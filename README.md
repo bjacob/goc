@@ -47,7 +47,7 @@ After the Release build above, run these commands from the source directory:
 ../goc-build/tests/cpuinfo
 ctest --test-dir ../goc-build --output-on-failure \
   -R 'HardwareCapturedExactResults|HardwareIntermediateOverflowState|Fp16V3|Bf16V3|Bf16CpuLevels|SubbyteWmma|Arithmetic'
-../goc-build/tests/goc_rdna4_wmma_benchmark_static 10000
+../goc-build/tests/goc_rdna4_wmma_benchmark_static
 ```
 
 The selected tests demonstrate FMA/LOG, WMMA numeric formats, hardware-captured
@@ -66,11 +66,16 @@ Every path checks all outputs against independent dense matrix goldens before
 and after timing. The workload uses fixed small-integer matrices, full EXEC,
 no modifiers, separate C/D storage and hot buffers. Timings include public API
 dispatch, input conversions and output stores. Each reported time is the median
-of seven samples after warmup; the argument sets calls per sample. CTest runs
-only a correctness smoke check, with no performance threshold.
+of seven samples after warmup. Each path starts at 128 calls (overridable by the
+positional argument) and doubles the count until the timed batch takes at least
+10 ms. Shorter batches are discarded. Subsequent samples retain that count and
+double again if necessary, so every accepted sample meets the minimum duration.
+Set `GOC_BENCH_MIN_MS` to a positive integer to override the minimum milliseconds,
+for example `GOC_BENCH_MIN_MS=50 ../goc-build/tests/goc_rdna4_wmma_benchmark_static`.
+CTest uses a 1 ms minimum for its correctness smoke check, with no speedup assertion.
 
 An illustrative local run on a Ryzen 9 7950X3D, Clang 21.1.8, Release, static
-linking and 10,000 calls/sample measured:
+linking and the earlier fixed 10,000 calls/sample measurement produced:
 
 | Input / semantics | CPU path | ns per wave | Speedup over same-format scalar loose |
 | --- | --- | ---: | ---: |

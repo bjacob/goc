@@ -48,6 +48,8 @@ foreach(library IN LISTS goc_library_targets)
   endif()
   # Smoke-test correctness and execution, with no timing/speedup assertions.
   add_test(NAME ${variant}.rdna4_wmma_benchmark COMMAND ${benchmark} 1)
+  set_tests_properties(${variant}.rdna4_wmma_benchmark PROPERTIES
+    ENVIRONMENT "GOC_BENCH_MIN_MS=1")
 endforeach()
 
 if(GOC_STATIC)
