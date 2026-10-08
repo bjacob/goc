@@ -39,6 +39,52 @@ CMake automatically enables x86-64 implementations for x86-64 targets using GCC
 or Clang. Optional CPU paths are compiled in separate translation units after
 compiler-flag checks. Other compilers and architectures use the portable paths.
 
+## Quick demonstration
+
+After the Release build above, run these commands from the source directory:
+
+```sh
+../goc-build/tests/cpuinfo
+ctest --test-dir ../goc-build --output-on-failure \
+  -R 'HardwareCapturedExactResults|HardwareIntermediateOverflowState|Fp16V3|SubbyteWmma|Arithmetic'
+../goc-build/tests/goc_rdna4_wmma_benchmark_static 10000
+```
+
+The selected tests demonstrate FMA/LOG, WMMA numeric formats, hardware-captured
+FP16/BF16 exactness, intermediate FP16 overflow state, and SIMD/scalar agreement.
+The full suite also covers DOT2, NEG/NEG_HI, wave64, masks, aliasing, C linkage,
+header self-containment and library exports.
+
+The benchmark compares scalar loose FP16 with x86-64-v3 and scalar loose BF16
+with the Zen4 AVX-512 BF16 path. Exact scalar timings are listed separately;
+SIMD rows never imply empirical bit-exactness. Unsupported or uncompiled SIMD
+paths are explicitly skipped. A corresponding `_shared` executable is built
+when `GOC_SHARED` is enabled; use it instead for a shared-only build and omit
+`cpuinfo`, which is static-only.
+
+Every path checks all outputs against independent dense matrix goldens before
+and after timing. The workload uses fixed small-integer matrices, full EXEC,
+no modifiers, separate C/D storage and hot buffers. Timings include public API
+dispatch, input conversions and output stores. Each reported time is the median
+of seven samples after warmup; the argument sets calls per sample. CTest runs
+only a correctness smoke check, with no performance threshold.
+
+An illustrative local run on a Ryzen 9 7950X3D, Clang 21.1.8, Release, static
+linking and 10,000 calls/sample measured:
+
+| Input / semantics | CPU path | ns per wave | Speedup over same-format scalar loose |
+| --- | --- | ---: | ---: |
+| FP16 loose | Scalar | 13,484 | 1.0x |
+| FP16 loose | x86-64-v3 | 203 | 66.6x |
+| BF16 loose | Scalar | 9,807 | 1.0x |
+| BF16 loose | Zen4 AVX-512 BF16 | 397 | 24.7x |
+| FP16 exact | Scalar integer model | 21,875 | — |
+| BF16 exact | Scalar integer model | 23,078 | — |
+
+These are CPU instruction-emulation microbenchmarks, not end-to-end emulator
+throughput or GPU comparisons. Results vary with host, compiler, workload and
+system load; the scalar reference is intentionally simple.
+
 ## Implemented instructions
 
 The entry points below use RDNA4 wave32. Names have the `goc_rdna4_` prefix.
@@ -51,7 +97,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_log_f32` | Scalar `log2` | Not implemented |
 | `v_dot2_f32_f16` | Scalar | Integer arithmetic model |
 | `v_dot2_f32_bf16` | Scalar | Integer arithmetic model |
-| `v_wmma_f32_16x16x16_f16` | Scalar | Integer arithmetic model |
+| `v_wmma_f32_16x16x16_f16` | Scalar, x86-64-v3 F16C/AVX2/FMA | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_bf16` | Scalar, AVX-512 BF16 | Integer arithmetic model |
 | `v_wmma_f16_16x16x16_f16` | Integer arithmetic model | Integer arithmetic model |
 | `v_wmma_bf16_16x16x16_bf16` | Integer arithmetic model | Integer arithmetic model |
@@ -65,10 +111,12 @@ C absolute value. FP8/BF8 WMMA supports C negation and absolute value; A/B
 negation bits are rejected. Integer WMMA supports independent signed/unsigned
 A/B inputs and signed output saturation (`GOC_WMMA_CLAMP`); without CLAMP,
 results wrap modulo 2^32. Other instructions accept only zero instruction flags.
-The new FP8/BF8 and integer entry points currently support wave32 only. The BF16
-fast path handles unmodified loose calls; exceptional values and extreme
-product exponents conservatively use scalar arithmetic. Exact modes never use
-the approximate SIMD path.
+The FP8/BF8 and integer entry points currently support wave32 only. FP16 and
+BF16 SIMD WMMA paths handle unmodified loose wave32 calls with FP32 outputs.
+The FP16 path handles subnormals, infinities and NaNs through CPU conversion/FMA;
+NaN payloads are unspecified in loose mode. The BF16 path conservatively falls
+back for exceptional values and extreme product exponents. Modified calls,
+packed outputs, wave64 and empirical exact modes use scalar arithmetic.
 
 ## Calling convention
 
