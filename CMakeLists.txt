@@ -13,19 +13,19 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# X86 is shorthand for x86-64, using GCC/Clang's SIMD implementations.
+# Enable x86-64 SIMD implementations when targeting x86-64 with GCC/Clang.
 set(goc_target_processor "${CMAKE_SYSTEM_PROCESSOR}")
 if(CMAKE_CXX_COMPILER_TARGET)
   string(REGEX REPLACE "-.*$" "" goc_target_processor "${CMAKE_CXX_COMPILER_TARGET}")
 endif()
 string(TOLOWER "${goc_target_processor}" goc_target_processor)
 
-unset(GOC_ENABLE_X86 CACHE)
-set(GOC_ENABLE_X86 OFF)
+unset(GOC_ENABLE_X86_64 CACHE)
+set(GOC_ENABLE_X86_64 OFF)
 if(CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$"
    AND goc_target_processor MATCHES "^(x86_64|amd64|x64|x86-64)$"
    AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-  set(GOC_ENABLE_X86 ON)
+  set(GOC_ENABLE_X86_64 ON)
 endif()
 
 add_subdirectory(src)
