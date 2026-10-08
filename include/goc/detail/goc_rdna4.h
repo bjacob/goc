@@ -246,6 +246,62 @@ GOC_API int goc_rdna4_v_ldexp_f64(uint64_t flags, uint64_t exec_mask, uint32_t i
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b);
 
+// Signed/unsigned 32-bit integer selection. Each operand uses one VGPR;
+// D may alias any whole source VGPR. These instructions have no arithmetic
+// modifiers: instruction_flags must be zero. Supports loose semantics.
+// MINMAX computes max(min(A, B), C); MAXMIN computes min(max(A, B), C).
+GOC_API int goc_rdna4_v_min_i32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_max_i32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_min3_i32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                 const uint32_t *const *a, const uint32_t *const *b,
+                                 const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_max3_i32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                 const uint32_t *const *a, const uint32_t *const *b,
+                                 const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_minmax_i32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                   const uint32_t *const *a, const uint32_t *const *b,
+                                   const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_maxmin_i32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                   const uint32_t *const *a, const uint32_t *const *b,
+                                   const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_med3_i32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                 const uint32_t *const *a, const uint32_t *const *b,
+                                 const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_min_u32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_max_u32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_min3_u32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                 const uint32_t *const *a, const uint32_t *const *b,
+                                 const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_max3_u32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                 const uint32_t *const *a, const uint32_t *const *b,
+                                 const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_minmax_u32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                   const uint32_t *const *a, const uint32_t *const *b,
+                                   const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_maxmin_u32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                   const uint32_t *const *a, const uint32_t *const *b,
+                                   const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_med3_u32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                 const uint32_t *const *a, const uint32_t *const *b,
+                                 const uint32_t *const *c);
+
 // True16 source/destination half selectors. Zero selects the low half.
 // DOT2 consumes both A/B halves, so only C and D have selectors.
 static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);

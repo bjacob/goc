@@ -343,6 +343,86 @@ bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t modifiers,
   return true;
 }
 
+template <auto Function>
+int integer_minmax_binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *) {
+  return Function(flags, mask, mode, d, a, b);
+}
+
+bool benchmark_integer_minmax(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {integer_minmax_binary<goc_rdna4_v_min_i32>,
+                            integer_minmax_binary<goc_rdna4_v_max_i32>,
+                            goc_rdna4_v_min3_i32,
+                            goc_rdna4_v_max3_i32,
+                            goc_rdna4_v_minmax_i32,
+                            goc_rdna4_v_maxmin_i32,
+                            goc_rdna4_v_med3_i32,
+                            integer_minmax_binary<goc_rdna4_v_min_u32>,
+                            integer_minmax_binary<goc_rdna4_v_max_u32>,
+                            goc_rdna4_v_min3_u32,
+                            goc_rdna4_v_max3_u32,
+                            goc_rdna4_v_minmax_u32,
+                            goc_rdna4_v_maxmin_u32,
+                            goc_rdna4_v_med3_u32};
+  const char *names[] = {"i32/min",    "i32/max",    "i32/min3",   "i32/max3", "i32/minmax",
+                         "i32/maxmin", "i32/med3",   "u32/min",    "u32/max",  "u32/min3",
+                         "u32/max3",   "u32/minmax", "u32/maxmin", "u32/med3"};
+  const uint32_t input[3][4] = {{1, 0xffffffff, 0x80000000, 0x7fffffff},
+                                {2, 1, 0x7fffffff, 0x80000000},
+                                {3, 0x80000000, 0, 0xffffffff}};
+  for (int op = 0; op < 14; ++op) {
+    Registers r;
+    r.output_regs = 1;
+    for (int lane = 0; lane < 32; ++lane) {
+      int64_t values[3];
+      for (int reg = 0; reg < 3; ++reg) {
+        uint32_t word = input[reg][lane % 4];
+        r.data[4 * reg][lane] = word;
+        values[reg] = word;
+        if (op < 7 && word > INT32_MAX)
+          values[reg] -= INT64_C(4294967296);
+      }
+      std::sort(values, values + 2);
+      int operation = op % 7;
+      int64_t want;
+      if (operation < 2) {
+        want = values[operation];
+      } else if (operation == 4) {
+        want = std::max(values[0], values[2]);
+      } else if (operation == 5) {
+        want = std::min(values[1], values[2]);
+      } else {
+        std::sort(values, values + 3);
+        want = values[operation == 2 ? 0 : operation == 3 ? 2 : 1];
+      }
+      r.expected[128 * (lane / 16) + lane % 16] = uint32_t(want);
+    }
+    double scalar = measure(functions[op], GOC_CPU_BASELINE, r, iterations, min_ms, 0);
+    if (scalar < 0)
+      return false;
+    print_result(names[op], "loose", "none", "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+    if (cpu >= GOC_CPU_X86_64_V3) {
+      double simd = measure(functions[op], GOC_CPU_X86_64_V3, r, iterations, min_ms, 0);
+      if (simd < 0)
+        return false;
+      print_result(names[op], "loose", "none", "x86-64-v3", simd, scalar / simd);
+    }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+    if (cpu >= GOC_CPU_X86_64_V4) {
+      double simd = measure(functions[op], GOC_CPU_X86_64_V4, r, iterations, min_ms, 0);
+      if (simd < 0)
+        return false;
+      print_result(names[op], "loose", "none", "x86-64-v4", simd, scalar / simd);
+    }
+#endif
+  }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_ldexp(uint64_t cpu, int iterations, int min_ms) {
   using Binary = decltype(&goc_rdna4_v_ldexp_f32);
   const Binary functions[] = {goc_rdna4_v_ldexp_f32, goc_rdna4_v_ldexp_f64};
@@ -980,7 +1060,8 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "DOT2 benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }
-  if (!benchmark_integer_dot(cpu, iterations, min_ms)) {
+  if (!benchmark_integer_dot(cpu, iterations, min_ms) ||
+      !benchmark_integer_minmax(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Integer DOT benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }

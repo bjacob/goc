@@ -149,6 +149,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_frexp_mant_f32`, `v_frexp_mant_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_frexp_exp_i32_f32`, `v_frexp_exp_i32_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_ldexp_f32`, `v_ldexp_f64` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
+| `v_min_i32`, `v_max_i32`, `v_min_u32`, `v_max_u32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
+| `v_min3_{i32,u32}`, `v_max3_{i32,u32}`, `v_minmax_{i32,u32}`, `v_maxmin_{i32,u32}`, `v_med3_{i32,u32}` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
@@ -349,6 +351,15 @@ floating-point modifiers. The v3 path adjusts exponents and rounds underflowing
 results once; v4 uses native vector scaling. Tests cover every exponent field,
 subnormal rounding ties, extreme signed exponents, special values, masks and
 aliases, including FP64 destination halves that overwrite A or B.
+
+Signed and unsigned 32-bit integer min/max instructions cover two-input
+selection, three-input min/max, mixed min/max and median. Mixed operations
+combine A/B first: `MINMAX = max(min(A, B), C)` and
+`MAXMIN = min(max(A, B), C)`. Every form has scalar, eight-lane v3 and sixteen-lane v4 paths,
+masked stores and whole-register aliases. These instructions have no arithmetic
+modifiers; `instruction_flags` must be zero. Tests cover boundary Cartesian
+products, random inputs, all mask patterns, source/destination aliases, signed
+versus unsigned ordering, operand grouping, and host FP-environment preservation.
 
 Unary FP32 instructions support `GOC_ALU_ABS_A`, `GOC_ALU_NEG_A`, output
 scaling (`GOC_ALU_OMOD_2`, `GOC_ALU_OMOD_4`, `GOC_ALU_OMOD_HALF`), and
