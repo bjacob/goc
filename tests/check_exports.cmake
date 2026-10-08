@@ -127,6 +127,12 @@ else()
     goc_rdna4_v_add_f64
     goc_rdna4_v_mul_f64
     goc_rdna4_v_fma_f64
+    goc_rdna4_v_pk_add_f16
+    goc_rdna4_v_pk_mul_f16
+    goc_rdna4_v_pk_min_num_f16
+    goc_rdna4_v_pk_max_num_f16
+    goc_rdna4_v_pk_minimum_f16
+    goc_rdna4_v_pk_maximum_f16
     goc_rdna4_v_pk_fma_f16
     goc_rdna4_v_pk_fmac_f16
     goc_rdna4_v_fmamk_f16

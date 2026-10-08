@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_packed_alu.h"
 #include "rdna4_packed_fma.h"
 #include "x86_64/rdna4_half_fma_x86_64_v3.h"
 #include "x86_64/rdna4_half_x86_64_v3.h"

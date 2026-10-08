@@ -96,6 +96,35 @@ GOC_API int goc_rdna4_v_pk_fmac_f16(uint64_t flags, uint64_t exec_mask, uint32_t
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b);
 
+// Packed FP16 binary arithmetic: supports GOC_PK_* negation and half selectors
+// for A/B, plus GOC_PK_CLAMP and GOC_FP16_OVFL. Flags for C are invalid. Each
+// result rounds to FP16; the two results use original inputs even with aliases.
+// Number min/max ignore a lone NaN; minimum/maximum propagate NaNs. Both order
+// -0 below +0. Loose semantics require host nearest-even with denormals enabled.
+GOC_API int goc_rdna4_v_pk_add_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_mul_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_min_num_f16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_max_num_f16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_minimum_f16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_maximum_f16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
 // Packed source negation: independent for the low and high result calculations.
 static const uint32_t GOC_PK_NEG_LO_A = (UINT32_C(1) << 0);
 static const uint32_t GOC_PK_NEG_LO_B = (UINT32_C(1) << 1);

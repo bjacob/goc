@@ -45,6 +45,19 @@ struct Case {
 };
 
 const Case cases[] = {
+    {binary<goc_rdna4_v_pk_add_f16>, false, false,
+     GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW | GOC_PK_CLAMP},
+    {binary<goc_rdna4_v_pk_mul_f16>, false, false,
+     GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW | GOC_PK_CLAMP},
+    {binary<goc_rdna4_v_pk_min_num_f16>, false, false,
+     GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW | GOC_PK_CLAMP},
+    {binary<goc_rdna4_v_pk_max_num_f16>, false, false,
+     GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW | GOC_PK_CLAMP},
+    {binary<goc_rdna4_v_pk_minimum_f16>, false, false,
+     GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW | GOC_PK_CLAMP},
+    {binary<goc_rdna4_v_pk_maximum_f16>, false, false,
+     GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW | GOC_PK_CLAMP},
+
     {goc_rdna4_v_pk_fma_f16, false, true, 0x1fff},
     {binary<goc_rdna4_v_pk_fmac_f16>, false, true, 0},
     {literal_fma<true, true>, false, true, GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},

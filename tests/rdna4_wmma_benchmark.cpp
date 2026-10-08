@@ -918,6 +918,61 @@ bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_packed_binary(uint64_t cpu, int iterations, int min_ms) {
+  using Binary = decltype(&goc_rdna4_v_pk_add_f16);
+  const Binary functions[] = {goc_rdna4_v_pk_add_f16,     goc_rdna4_v_pk_mul_f16,
+                              goc_rdna4_v_pk_min_num_f16, goc_rdna4_v_pk_max_num_f16,
+                              goc_rdna4_v_pk_minimum_f16, goc_rdna4_v_pk_maximum_f16};
+  const char *names[] = {"f16/padd", "f16/pmul", "f16/pminn", "f16/pmaxn", "f16/pmin", "f16/pmax"};
+  for (int op = 0; op < 6; ++op)
+    for (bool modified : {false, true}) {
+      uint32_t mode = modified ? GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH |
+                                     GOC_PK_HI_A_LOW | GOC_PK_LO_B_HIGH | GOC_PK_CLAMP
+                               : 0;
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        float al = float(lane - 16), ah = float(lane % 9 - 4), bl = float(lane % 7 - 3),
+              bh = float(lane % 5 - 2);
+        r.data[0][lane] = goc_test::half_bits(al) | (uint32_t(goc_test::half_bits(ah)) << 16);
+        r.data[4][lane] = goc_test::half_bits(bl) | (uint32_t(goc_test::half_bits(bh)) << 16);
+        uint32_t expected = 0;
+        for (int half = 0; half < 2; ++half) {
+          float x = modified ? (half ? -al : ah) : (half ? ah : al);
+          float y = modified ? (half ? bh : -bh) : (half ? bh : bl);
+          float value = op == 0    ? x + y
+                        : op == 1  ? x * y
+                        : (op & 1) ? std::max(x, y)
+                                   : std::min(x, y);
+          if (modified)
+            value = std::min(1.0f, std::max(0.0f, value));
+          expected |= uint32_t(goc_test::half_bits(value)) << (16 * half);
+        }
+        r.expected[128 * (lane / 16) + lane % 16] = expected;
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *) {
+        return functions[op](flags, mask, modifiers, d, a, b);
+      };
+      const char *label = modified ? "NEG/select/clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_packed_fma(uint64_t cpu, int iterations, int min_ms) {
   for (bool accumulate : {false, true})
     for (int modified = 0; modified < (accumulate ? 1 : 2); ++modified) {
@@ -1627,12 +1682,14 @@ int main(int argc, char **argv) {
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
   std::puts("DOT2 output widths: f16,b16 = 16-bit; fp16,bf16 = FP32.");
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
-  if (!benchmark_packed_fma(cpu, iterations, min_ms) ||
+  if (!benchmark_packed_binary(cpu, iterations, min_ms) ||
+      !benchmark_packed_fma(cpu, iterations, min_ms) ||
       !benchmark_literal_fma(cpu, iterations, min_ms) || !benchmark_fmac(cpu, iterations, min_ms) ||
       !benchmark_half_fma(cpu, iterations, min_ms) ||
       !benchmark_half_minmax3(cpu, iterations, min_ms) ||
       !benchmark_minmax3(cpu, iterations, min_ms)) {
-    std::fprintf(stderr, "FMA family or three-input min/max benchmark failed.\n");
+    std::fprintf(stderr,
+                 "Packed arithmetic, FMA family or three-input min/max benchmark failed.\n");
     return 1;
   }
   if (!benchmark_fp64(cpu, iterations, min_ms) || !benchmark_fp64_unary(cpu, iterations, min_ms)) {

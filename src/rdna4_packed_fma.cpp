@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_half_fma_scalar.h"
+#include "rdna4_packed_alu.h"
 
 #include <stdint.h>
 

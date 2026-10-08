@@ -382,6 +382,16 @@ word's sign extension, or against zero for unsigned products. Tests include
 literal high-word results, saturation thresholds, upper-byte noise, random
 products, masks, aliases and host FP-environment preservation.
 
+Packed FP16 `PK_ADD`, `PK_MUL`, `PK_MIN_NUM`, `PK_MAX_NUM`, `PK_MINIMUM`
+and `PK_MAXIMUM` compute two results per VGPR lane. They support all 512
+combinations of A/B `GOC_PK_*` negation, half selection and CLAMP, plus
+`GOC_FP16_OVFL`. C flags are invalid. Number min/max ignore a lone NaN;
+propagating min/max return NaN, and both families order negative zero below
+positive zero. Scalar and eight-packed-lane x86-64-v3 paths share the existing
+ordinary FP16 arithmetic/selection helpers. These are loose semantics.
+Tests cover every half encoding, special-value Cartesian pairs, all modifiers,
+overflow policy, masks, all aliases and literal cross-half/signed-zero/NaN cases.
+
 Packed FP16 `PK_FMA` computes both halves of `A * B + C`; `PK_FMAC` uses
 D as its accumulator. Each uses one VGPR per operand. `PK_FMA` supports all
 8,192 combinations of independent low/high-result source negation, half selection
