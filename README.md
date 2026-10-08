@@ -74,16 +74,20 @@ linking and 10,000 calls/sample measured:
 
 | Input / semantics | CPU path | ns per wave | Speedup over same-format scalar loose |
 | --- | --- | ---: | ---: |
-| FP16 loose | Scalar | 13,464 | 1.0x |
-| FP16 loose | x86-64-v3 | 201 | 66.9x |
-| BF16 loose | Scalar | 9,079 | 1.0x |
-| BF16 loose | x86-64-v3 | 192 | 47.3x |
-| BF16 loose | Zen4 AVX-512 BF16 | 398 | 22.8x |
-| FP16 exact | Scalar integer model | 21,842 | — |
-| BF16 exact | Scalar integer model | 22,856 | — |
+| FP16 loose | Scalar | 13,497 | 1.0x |
+| FP16 loose | x86-64-v3 | 206 | 65.4x |
+| BF16 loose | Scalar | 8,951 | 1.0x |
+| BF16 loose | x86-64-v3 | 191 | 47.0x |
+| BF16 loose | Zen4 AVX-512 BF16 | 99 | 90.2x |
+| FP16 exact | Scalar integer model | 22,000 | — |
+| BF16 exact | Scalar integer model | 23,192 | — |
 
-Here v3 beats the existing guarded Zen4 path; these timings include the latter's
-input eligibility scan. Dispatch still prefers Zen4 when inputs qualify.
+The Zen4 eligibility scan is vectorized. Previously a scalar scan made the
+public BF16 call take about 400 ns even though its AVX-512 kernel took only
+42–44 ns. The vectorized scan brings the public call to about 90–100 ns, versus
+about 190 ns for v3 on this host, while retaining the same conservative fallback
+rules. These figures include dispatch and the scan; the kernel-only measurement
+was a separate diagnostic.
 
 These are CPU instruction-emulation microbenchmarks, not end-to-end emulator
 throughput or GPU comparisons. Results vary with host, compiler, workload and

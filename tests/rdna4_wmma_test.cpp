@@ -581,3 +581,69 @@ TEST(Wmma, Bf16CpuLevelsRespectModifiers) {
           EXPECT_EQ(r.v[reg][lane], goc::as_bits(float(low + high + c)));
     }
 }
+
+TEST(Wmma, Bf16Zen4EligibilityChecksEveryPackedElement) {
+  if (goc_init_cpu_flags() < GOC_CPU_ZEN4)
+    GTEST_SKIP() << "Host does not support the Zen4 feature set";
+
+  struct FactorCase {
+    uint16_t value, partner;
+  };
+
+  const FactorCase cases[] = {
+      {1, 0x3f80}, {0x8001, 0x3f80}, {0x0080, 0x3f00}, {0x7f80, 0x3f80}, {0x7fc1, 0x3f80}};
+  for (int operand = 0; operand < 2; ++operand)
+    for (int reg = 0; reg < 4; ++reg)
+      for (int lane = 0; lane < 32; ++lane)
+        for (int half = 0; half < 2; ++half)
+          for (const auto &f : cases) {
+            Registers reference, actual;
+            for (int other_reg = 0; other_reg < 4; ++other_reg)
+              for (int other_lane = 0; other_lane < 32; ++other_lane) {
+                uint32_t word = uint32_t(f.partner) | (uint32_t(f.partner) << 16);
+                reference.v[4 * (1 - operand) + other_reg][other_lane] = word;
+                actual.v[4 * (1 - operand) + other_reg][other_lane] = word;
+              }
+            reference.v[4 * operand + reg][lane] = uint32_t(f.value) << (16 * half);
+            actual.v[4 * operand + reg][lane] = uint32_t(f.value) << (16 * half);
+            ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_BASELINE, UINT32_MAX, 0,
+                                                         reference.v + 16, reference.v,
+                                                         reference.v + 4, reference.v + 8),
+                      GOC_SUCCESS);
+            ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_ZEN4, UINT32_MAX, 0, actual.v + 16,
+                                                         actual.v, actual.v + 4, actual.v + 8),
+                      GOC_SUCCESS);
+            // All other products are zero, so the selected subnormal product
+            // survives in the output. An incorrect DPBF16 selection flushes it.
+            for (int out_reg = 16; out_reg < 24; ++out_reg)
+              for (int out_lane = 0; out_lane < 32; ++out_lane) {
+                float expected = goc::as_float(reference.v[out_reg][out_lane]);
+                if (std::isnan(expected))
+                  EXPECT_TRUE(std::isnan(goc::as_float(actual.v[out_reg][out_lane])));
+                else
+                  EXPECT_EQ(actual.v[out_reg][out_lane], reference.v[out_reg][out_lane]);
+              }
+          }
+}
+
+TEST(Wmma, Bf16Zen4EligibilityChecksEveryAccumulator) {
+  if (goc_init_cpu_flags() < GOC_CPU_ZEN4)
+    GTEST_SKIP() << "Host does not support the Zen4 feature set";
+  for (int reg = 0; reg < 8; ++reg)
+    for (int lane = 0; lane < 32; ++lane)
+      for (uint32_t bits : {1u, 0x80000001u, 0x7f800000u, 0x7fc12345u}) {
+        Registers r;
+        r.v[8 + reg][lane] = bits;
+        ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_ZEN4, UINT32_MAX, 0, r.v + 16, r.v,
+                                                     r.v + 4, r.v + 8),
+                  GOC_SUCCESS);
+        for (int out_reg = 0; out_reg < 8; ++out_reg)
+          for (int out_lane = 0; out_lane < 32; ++out_lane) {
+            uint32_t expected = out_reg == reg && out_lane == lane ? bits : 0;
+            if (std::isnan(goc::as_float(expected)))
+              EXPECT_TRUE(std::isnan(goc::as_float(r.v[16 + out_reg][out_lane])));
+            else
+              EXPECT_EQ(r.v[16 + out_reg][out_lane], expected);
+          }
+      }
+}
