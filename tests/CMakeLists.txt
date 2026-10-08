@@ -29,18 +29,14 @@ foreach(library IN LISTS goc_library_targets)
   target_link_libraries(${target} PRIVATE ${library} GTest::gtest_main)
   goc_test_warnings(${target})
   gtest_discover_tests(${target} TEST_PREFIX "${variant}.")
-
-  # Retain the cpuinfo executable name, preferring static when both are enabled.
-  if(variant STREQUAL "static" OR NOT GOC_STATIC)
-    set(cpuinfo_target cpuinfo)
-  else()
-    set(cpuinfo_target "cpuinfo_${variant}")
-  endif()
-  add_executable(${cpuinfo_target} cpuinfo.c)
-  target_link_libraries(${cpuinfo_target} PRIVATE ${library})
-  goc_test_warnings(${cpuinfo_target})
-  add_test(NAME "${variant}.cpuinfo" COMMAND ${cpuinfo_target})
 endforeach()
+
+if(GOC_STATIC)
+  add_executable(cpuinfo cpuinfo.c)
+  target_link_libraries(cpuinfo PRIVATE goc_static)
+  goc_test_warnings(cpuinfo)
+  add_test(NAME static.cpuinfo COMMAND cpuinfo)
+endif()
 
 # Compile each public header independently as C and C++, without linking.
 foreach(header IN ITEMS common rdna4 umbrella export)

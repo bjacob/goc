@@ -23,12 +23,11 @@ Static consumers inherit
 library; shared consumers see exported API declarations. Both variants are
 position-independent and keep implementation symbols hidden.
 
-The public API, C linkage, and `cpuinfo` are tested against every enabled variant.
+The public API and C linkage are tested against every enabled variant.
 Public headers are compiled independently once per language (C and C++), without
 linking. Private CPU decoding is tested separately. On Linux, export
-tests also check the shared API and static embedding. `tests/cpuinfo` uses the
-static variant when enabled, otherwise the shared variant. When both are built,
-`tests/cpuinfo_shared` exercises the shared variant.
+tests also check the shared API and static embedding. `tests/cpuinfo` links to
+`goc_static` and is only built and tested when `GOC_STATIC` is enabled.
 
 CMake uses a system GTest when available and otherwise fetches GTest 1.17.0.
 CMake automatically enables x86-64 implementations for x86-64 targets using GCC
