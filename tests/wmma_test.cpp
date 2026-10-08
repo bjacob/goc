@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+#include "dense_golden.h"
 #include "dot_fixtures.h"
 #include "float_formats.h"
 #include "rdna4_dot.h"
@@ -7,6 +8,7 @@
 #include <array>
 #include <cmath>
 #include <gtest/gtest.h>
+#include <random>
 namespace {
 using Wmma = decltype(&goc_rdna4_v_wmma_f32_16x16x16_f16);
 // Each logical VGPR is deliberately separated by padding and allocated in
@@ -238,4 +240,58 @@ TEST(Wmma, NormalBf16FactorsWithSubnormalProducts) {
   for (int reg = 16; reg < 24; ++reg)
     for (int lane = 0; lane < 32; ++lane)
       EXPECT_EQ(r.v[reg][lane], 0x02000000u);
+}
+
+TEST(Wmma, DeterministicDenseIntegerGolden) {
+  for (uint64_t level = 0; level <= goc_init_cpu_flags(); ++level)
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT})
+      for (bool bf16 : {false, true})
+        for (int dst : {0, 2, 8, 16}) {
+          Registers r;
+          std::minstd_rand rng(7);
+          const uint16_t f16[] = {0xc000, 0xbc00, 0, 0x3c00, 0x4000};
+          const uint16_t b16[] = {0xc000, 0xbf80, 0, 0x3f80, 0x4000};
+          const auto *values = bf16 ? b16 : f16;
+          for (int row = 0; row < 16; ++row)
+            for (int k = 0; k < 16; ++k)
+              set16(r.v, row, k, values[rng() % 5]);
+          for (int k = 0; k < 16; ++k)
+            for (int col = 0; col < 16; ++col)
+              set16(r.v + 4, col, k, values[rng() % 5]);
+          for (int row = 0; row < 16; ++row)
+            for (int col = 0; col < 16; ++col)
+              r.v[8 + row % 8][col + 16 * (row / 8)] = goc::as_bits(float(int(rng() % 5) - 2));
+          auto fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
+          ASSERT_EQ(fn(level | semantics | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, r.v + dst, r.v,
+                       r.v + 4, r.v + 8),
+                    0);
+          for (int row = 0; row < 16; ++row)
+            for (int col = 0; col < 16; ++col)
+              EXPECT_EQ(r.v[dst + row % 8][col + 16 * (row / 8)],
+                        goc::as_bits(float(kDenseGolden[row * 16 + col])))
+                  << "row=" << row << " col=" << col << " level=" << level
+                  << " semantics=" << semantics;
+        }
+}
+TEST(Rdna4Dot, LooseAndFallbackIntegerGolden) {
+  for (bool bf16 : {false, true})
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT, GOC_SEMANTICS_MASK}) {
+      Registers r;
+      uint32_t a = bf16 ? 0x40003f80u : 0x40003c00u; // 1,2
+      uint32_t b = bf16 ? 0x40804040u : 0x44004200u; // 3,4
+      for (int lane = 0; lane < 32; ++lane) {
+        r.v[0][lane] = a;
+        r.v[1][lane] = b;
+        r.v[2][lane] = 0xbf800000;
+      }
+      auto fn = bf16 ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
+      ASSERT_EQ(fn(semantics, UINT32_MAX, 0, r.v + 2, r.v, r.v + 1, r.v + 2), 0);
+      for (int lane = 0; lane < 32; ++lane)
+        EXPECT_EQ(r.v[2][lane], 0x41200000u); // 1*3+2*4-1=10
+      EXPECT_EQ(fn(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, r.v + 2, r.v, r.v + 1,
+                   r.v + 2),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      for (int lane = 0; lane < 32; ++lane)
+        EXPECT_EQ(r.v[2][lane], 0x41200000u);
+    }
 }
