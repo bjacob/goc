@@ -150,3 +150,51 @@ TEST(Rdna4Dot, HardwareCapturedSpecialValuesAndRounding) {
     EXPECT_EQ((goc::gfx12_dot_bits<true, 2>(a, b, f.c)), f.expected);
   }
 }
+
+TEST(Rdna4Dot, PublicApiHardwareFixturesMaskAndOverlap) {
+  const auto check = [](const auto &cases, Wmma fn) {
+    for (const auto &f : cases)
+      for (int dst : {0, 1, 2, 3}) {
+        Registers r;
+        for (int lane = 0; lane < 32; ++lane) {
+          r.v[0][lane] = f.a;
+          r.v[1][lane] = f.b;
+          r.v[2][lane] = f.c;
+        }
+        std::array<uint32_t, 32> old;
+        std::copy(r.v[dst], r.v[dst] + 32, old.begin());
+        ASSERT_EQ(fn(GOC_SEMANTICS_EXACT | GOC_SEMANTICS_STRICT, 0xaaaaaaaa, 0, r.v + dst, r.v,
+                     r.v + 1, r.v + 2),
+                  0);
+        for (int lane = 0; lane < 32; ++lane)
+          EXPECT_EQ(r.v[dst][lane], lane % 2 ? f.expected : old[lane]);
+      }
+  };
+  check(kGfx12DotF16Cases, goc_rdna4_v_dot2_f32_f16);
+  check(kGfx12DotBF16Cases, goc_rdna4_v_dot2_f32_bf16);
+}
+TEST(Wmma, AllModifierCombinations) {
+  for (bool bf16 : {false, true})
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT})
+      for (uint32_t modifiers = 0; modifiers < 64; ++modifiers) {
+        Registers r;
+        uint16_t one = bf16 ? 0x3f80 : 0x3c00;
+        for (int reg = 0; reg < 8; ++reg)
+          for (int lane = 0; lane < 32; ++lane)
+            r.v[reg][lane] = one | (uint32_t(one) << 16);
+        for (int reg = 8; reg < 16; ++reg)
+          std::fill(r.v[reg], r.v[reg] + 32, goc::as_bits(-3.0f));
+        int low = ((modifiers & 1) != 0) ^ ((modifiers & 2) != 0) ? -8 : 8;
+        int high = ((modifiers & 8) != 0) ^ ((modifiers & 16) != 0) ? -8 : 8;
+        int c = (modifiers & GOC_WMMA_ABS_C) ? 3 : -3;
+        if (modifiers & GOC_WMMA_NEG_C)
+          c = -c;
+        auto fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
+        ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, UINT32_MAX, modifiers, r.v + 8, r.v, r.v + 4,
+                     r.v + 8),
+                  0);
+        for (int reg = 8; reg < 16; ++reg)
+          for (int lane = 0; lane < 32; ++lane)
+            EXPECT_EQ(r.v[reg][lane], goc::as_bits(float(low + high + c)));
+      }
+}
