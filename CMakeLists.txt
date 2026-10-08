@@ -26,6 +26,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$"
   set(GOC_ENABLE_X86_64 ON)
 endif()
 
+option(GOC_STATIC "Build the static GoC library" ON)
+option(GOC_SHARED "Build the shared GoC library" ON)
+if(NOT GOC_STATIC AND NOT GOC_SHARED)
+  message(FATAL_ERROR "Enable at least one of GOC_STATIC or GOC_SHARED")
+endif()
+
 add_subdirectory(src)
 
 include(CTest)
