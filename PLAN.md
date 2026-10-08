@@ -71,7 +71,9 @@ The API shall provide an umbrella C header, `goc/goc.h`, directly including
 
 API users, including implementations and tests, shall include `goc/goc.h`. It is the
 only header directly under `include/goc/`; component headers live under
-`include/goc/detail/`. The compiler include directory remains `include/`.
+`include/goc/detail/`. Within `include/`, quoted includes are relative to the
+containing header's own directory. GoC's CMake targets expose `include/`, but the
+headers must also work when consumers reach them through other include paths.
 Internal and standard-library dependencies shall be included directly. Use minimal
 standard #includes (stdint.h, and maybe a few more as needed).
 

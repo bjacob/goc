@@ -43,14 +43,14 @@ if(GOC_STATIC)
   add_test(NAME static.cpuinfo COMMAND cpuinfo)
 endif()
 
-# Compile the public umbrella and each detail header independently as C and C++, without linking.
+# Compile the umbrella and each detail header independently as C and C++.
+# Absolute includes and no GoC include path verify header-relative dependencies.
 foreach(header IN ITEMS common rdna4 rdna4_umbrella export)
   foreach(extension IN ITEMS c cpp)
     set(source "${CMAKE_CURRENT_BINARY_DIR}/${header}_header_test.${extension}")
-    configure_file("headers/${header}.c" "${source}" COPYONLY)
+    configure_file("headers/${header}.c" "${source}" @ONLY)
     set(target "goc_${header}_header_${extension}_test")
     add_library(${target} OBJECT "${source}")
-    target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/include)
     goc_test_warnings(${target})
   endforeach()
 endforeach()

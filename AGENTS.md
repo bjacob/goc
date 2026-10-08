@@ -12,9 +12,11 @@ Build and test with full CPU parallelism.
 
 Separate file banners, header guards, include groups, and declarations with blank lines.
 
-Project-local #include paths are relative to include/, or to src/ for internal
-headers, including includes among files in the same directory. CMake must pass
-include/ publicly and src/ privately to implementation and test targets.
+Within include/, quoted #include paths are relative to the containing header's
+own directory, so public headers do not depend on the consumer's include paths.
+Elsewhere, project-local #include paths are relative to include/, or to src/ for
+internal headers. CMake must pass include/ publicly and src/ privately to
+implementation and test targets.
 
 Use goc/goc.h for the public API in implementations, tests, and consumers. It is the
 only header directly under include/goc/; component headers live in include/goc/detail/.
