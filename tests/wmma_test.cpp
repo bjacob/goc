@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
+#include "dot_fixtures.h"
 #include "float_formats.h"
+#include "rdna4_dot.h"
 #include "wmma_fixtures.h"
 #include <algorithm>
 #include <array>
@@ -93,8 +95,8 @@ TEST(Wmma, UnsupportedSemanticsPreserveAllRegisters) {
   for (auto &reg : r.storage)
     for (auto &x : reg)
       x = 0xdeadbeef;
-  EXPECT_EQ(goc_rdna4_v_wmma_f32_16x16x16_f16(GOC_SEMANTICS_EXACT | GOC_SEMANTICS_STRICT,
-                                              UINT32_MAX, 0, r.v, r.v, r.v, r.v),
+  EXPECT_EQ(goc_rdna4_v_wmma_f32_16x16x16_f16(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT, UINT32_MAX,
+                                              0, r.v, r.v, r.v, r.v),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
   for (auto &reg : r.storage)
     for (auto x : reg)
@@ -106,4 +108,45 @@ TEST(FloatFormats, HalfBoundaryBits) {
                           0x3f800000, 0x477fe000, 0x7f800000, 0xff800000, 0x7fc00000};
   for (int i = 0; i < 10; ++i)
     EXPECT_EQ(goc::as_bits(goc::f16_to_float(in[i])), out[i]);
+}
+
+TEST(Wmma, HardwareCapturedExactResults) {
+  for (bool bf16 : {false, true}) {
+    auto fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
+    const auto &fixtures = bf16 ? kGfx12WmmaBF16Cases : kGfx12WmmaF16Cases;
+    for (const auto &f : fixtures)
+      for (int dst : {0, 4, 8, 16})
+        for (uint32_t mask : {0u, 0x55555555u, 0xffffffffu}) {
+          Registers r;
+          for (int i = 0; i < 16; ++i)
+            for (int k = 0; k < 16; ++k) {
+              set16(r.v, i, k, f.a[k]);
+              set16(r.v + 4, i, k, f.b[k]);
+            }
+          for (int reg = 0; reg < 8; ++reg)
+            std::fill(r.v[8 + reg], r.v[8 + reg] + 32, f.c);
+          std::array<std::array<uint32_t, 32>, 8> old;
+          for (int reg = 0; reg < 8; ++reg)
+            std::copy(r.v[dst + reg], r.v[dst + reg] + 32, old[reg].begin());
+          ASSERT_EQ(fn(GOC_SEMANTICS_EXACT | GOC_SEMANTICS_STRICT, mask, 0, r.v + dst, r.v, r.v + 4,
+                       r.v + 8),
+                    0);
+          for (int reg = 0; reg < 8; ++reg)
+            for (int lane = 0; lane < 32; ++lane)
+              EXPECT_EQ(r.v[dst + reg][lane], ((mask >> lane) & 1) ? f.expected32 : old[reg][lane]);
+          r.guards();
+        }
+  }
+}
+TEST(Rdna4Dot, HardwareCapturedSpecialValuesAndRounding) {
+  for (const auto &f : kGfx12DotF16Cases) {
+    std::array<uint16_t, 2> a = {uint16_t(f.a), uint16_t(f.a >> 16)},
+                            b = {uint16_t(f.b), uint16_t(f.b >> 16)};
+    EXPECT_EQ((goc::gfx12_dot_bits<false, 2>(a, b, f.c)), f.expected);
+  }
+  for (const auto &f : kGfx12DotBF16Cases) {
+    std::array<uint16_t, 2> a = {uint16_t(f.a), uint16_t(f.a >> 16)},
+                            b = {uint16_t(f.b), uint16_t(f.b >> 16)};
+    EXPECT_EQ((goc::gfx12_dot_bits<true, 2>(a, b, f.c)), f.expected);
+  }
 }

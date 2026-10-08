@@ -14,11 +14,13 @@ inline uint32_t as_bits(float f) {
   std::memcpy(&v, &f, sizeof(v));
   return v;
 }
-inline int validate(uint64_t flags, uint32_t instruction_flags) {
+inline int validate(uint64_t flags, uint32_t instruction_flags, bool supports_exact = false) {
   constexpr uint64_t known = GOC_CPU_MASK | GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT;
   if ((flags & ~known) || (flags & GOC_CPU_MASK) > GOC_CPU_ZEN4 || instruction_flags)
     return GOC_ERROR_INVALID_FLAGS;
-  if ((flags & GOC_SEMANTICS_MASK) && (flags & GOC_SEMANTICS_STRICT))
+  if ((flags & GOC_SEMANTICS_MASK) &&
+      !(supports_exact && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT) &&
+      (flags & GOC_SEMANTICS_STRICT))
     return GOC_ERROR_UNSUPPORTED_SEMANTICS;
   return GOC_SUCCESS;
 }
