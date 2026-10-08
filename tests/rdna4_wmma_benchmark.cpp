@@ -343,6 +343,71 @@ bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t modifiers,
   return true;
 }
 
+bool benchmark_integer_mul(uint64_t cpu, int iterations, int min_ms) {
+  using Binary = decltype(&goc_rdna4_v_mul_lo_u32);
+  const Binary functions[] = {goc_rdna4_v_mul_lo_u32,     goc_rdna4_v_mul_hi_u32,
+                              goc_rdna4_v_mul_hi_i32,     goc_rdna4_v_mul_i32_i24,
+                              goc_rdna4_v_mul_hi_i32_i24, goc_rdna4_v_mul_u32_u24,
+                              goc_rdna4_v_mul_hi_u32_u24};
+  const char *names[] = {"u32/mullo", "u32/mulhi", "i32/mulhi", "i24/mul",
+                         "i24/mulhi", "u24/mul",   "u24/mulhi"};
+  const uint32_t inputs[][4] = {{0x007fffff, 0xff800000, 0xffffffff, 65535},
+                                {256, 0x00800000, 0xffffffff, 65536}};
+  for (int op = 0; op < 7; ++op)
+    for (int clamp = 0; clamp <= int(op == 3 || op == 5); ++clamp) {
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        uint64_t a = inputs[0][lane % 4], b = inputs[1][lane % 4];
+        r.data[0][lane] = uint32_t(a);
+        r.data[4][lane] = uint32_t(b);
+        bool signed_op = op == 2 || op == 3 || op == 4;
+        uint64_t modulus = UINT64_C(1) << (op < 3 ? 32 : 24);
+        a %= modulus;
+        b %= modulus;
+        bool na = signed_op && a >= modulus / 2, nb = signed_op && b >= modulus / 2;
+        uint64_t product = (na ? modulus - a : a) * (nb ? modulus - b : b);
+        if (clamp)
+          product =
+              std::min(product, signed_op ? (na != nb ? UINT64_C(0x80000000) : UINT64_C(0x7fffffff))
+                                          : uint64_t(UINT32_MAX));
+        if (na != nb)
+          product = UINT64_C(0) - product;
+        bool high = op == 1 || op == 2 || op == 4 || op == 6;
+        r.expected[128 * (lane / 16) + lane % 16] = uint32_t(high ? product >> 32 : product);
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *) {
+        return functions[op](flags, mask, mode, d, a, b);
+      };
+      const uint32_t mode = clamp ? GOC_ALU_CLAMP : 0;
+      const char *label = clamp ? "clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 template <auto Function>
 int integer_minmax_binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b,
@@ -1060,7 +1125,8 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "DOT2 benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }
-  if (!benchmark_integer_dot(cpu, iterations, min_ms) ||
+  if (!benchmark_integer_mul(cpu, iterations, min_ms) ||
+      !benchmark_integer_dot(cpu, iterations, min_ms) ||
       !benchmark_integer_minmax(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Integer DOT benchmark failed: API/result error or iteration overflow.\n");
     return 1;

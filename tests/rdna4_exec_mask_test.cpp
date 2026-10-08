@@ -31,6 +31,14 @@ struct Case {
 };
 
 const Case cases[] = {
+    {binary<goc_rdna4_v_mul_lo_u32>, false, false, 0},
+    {binary<goc_rdna4_v_mul_hi_u32>, false, false, 0},
+    {binary<goc_rdna4_v_mul_hi_i32>, false, false, 0},
+    {binary<goc_rdna4_v_mul_i32_i24>, false, false, GOC_ALU_CLAMP},
+    {binary<goc_rdna4_v_mul_hi_i32_i24>, false, false, 0},
+    {binary<goc_rdna4_v_mul_u32_u24>, false, false, GOC_ALU_CLAMP},
+    {binary<goc_rdna4_v_mul_hi_u32_u24>, false, false, 0},
+
     {binary<goc_rdna4_v_min_i32>, false, false, 0},
     {binary<goc_rdna4_v_max_i32>, false, false, 0},
     {goc_rdna4_v_min3_i32, false, false, 0},

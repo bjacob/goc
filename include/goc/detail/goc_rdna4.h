@@ -302,6 +302,40 @@ GOC_API int goc_rdna4_v_med3_u32(uint64_t flags, uint64_t mask, uint32_t mode, u
                                  const uint32_t *const *a, const uint32_t *const *b,
                                  const uint32_t *const *c);
 
+// Integer multiplication into one 32-bit VGPR. Each source uses one VGPR;
+// D may alias A or B. The 24-bit forms discard the upper byte of each input,
+// then sign-extend signed inputs. High forms select bits 63:32 of the product.
+// MUL_I32_I24 and MUL_U32_U24 support GOC_ALU_CLAMP to saturate to the signed
+// or unsigned 32-bit range; otherwise low results wrap. Other instruction_flags
+// must be zero. Supports loose semantics and preserves the host FP environment.
+GOC_API int goc_rdna4_v_mul_lo_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_mul_hi_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_mul_hi_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_mul_i32_i24(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_mul_hi_i32_i24(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_mul_u32_u24(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_mul_hi_u32_u24(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
 // True16 source/destination half selectors. Zero selects the low half.
 // DOT2 consumes both A/B halves, so only C and D have selectors.
 static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);

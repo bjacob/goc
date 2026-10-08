@@ -150,6 +150,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_frexp_exp_i32_f32`, `v_frexp_exp_i32_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_ldexp_f32`, `v_ldexp_f64` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_min_i32`, `v_max_i32`, `v_min_u32`, `v_max_u32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
+| `v_mul_lo_u32`, `v_mul_hi_u32`, `v_mul_hi_i32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
+| `v_mul_i32_i24`, `v_mul_hi_i32_i24`, `v_mul_u32_u24`, `v_mul_hi_u32_u24` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_min3_{i32,u32}`, `v_max3_{i32,u32}`, `v_minmax_{i32,u32}`, `v_maxmin_{i32,u32}`, `v_med3_{i32,u32}` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
@@ -360,6 +362,16 @@ masked stores and whole-register aliases. These instructions have no arithmetic
 modifiers; `instruction_flags` must be zero. Tests cover boundary Cartesian
 products, random inputs, all mask patterns, source/destination aliases, signed
 versus unsigned ordering, operand grouping, and host FP-environment preservation.
+
+Integer multiply covers low/high 32-bit products and all four signed/unsigned
+24-bit forms. The 24-bit forms discard each source's upper byte and sign-extend
+signed inputs. `v_mul_i32_i24` and `v_mul_u32_u24` accept `GOC_ALU_CLAMP` for signed
+or unsigned saturation; other forms require zero instruction flags. Scalar,
+eight-lane v3 and sixteen-lane v4 paths support masks and whole-register aliases.
+Saturation stays on SIMD by checking the high product word against the low
+word's sign extension, or against zero for unsigned products. Tests include
+literal high-word results, saturation thresholds, upper-byte noise, random
+products, masks, aliases and host FP-environment preservation.
 
 Unary FP32 instructions support `GOC_ALU_ABS_A`, `GOC_ALU_NEG_A`, output
 scaling (`GOC_ALU_OMOD_2`, `GOC_ALU_OMOD_4`, `GOC_ALU_OMOD_HALF`), and

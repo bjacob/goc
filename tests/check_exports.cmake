@@ -61,6 +61,13 @@ else()
     goc_rdna4_v_max_num_f64
     goc_rdna4_v_minimum_f64
     goc_rdna4_v_maximum_f64
+    goc_rdna4_v_mul_lo_u32
+    goc_rdna4_v_mul_hi_u32
+    goc_rdna4_v_mul_hi_i32
+    goc_rdna4_v_mul_i32_i24
+    goc_rdna4_v_mul_hi_i32_i24
+    goc_rdna4_v_mul_u32_u24
+    goc_rdna4_v_mul_hi_u32_u24
     goc_rdna4_v_min_i32
     goc_rdna4_v_max_i32
     goc_rdna4_v_min3_i32
