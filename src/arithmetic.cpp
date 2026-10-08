@@ -8,8 +8,8 @@
 #include <stdint.h>
 
 int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
-                        uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
-                        uint32_t *const *c) {
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *c) {
   if (int error = goc::validate(flags, instruction_flags))
     return error;
 
@@ -40,7 +40,7 @@ int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction
 }
 
 int goc_rdna4_v_log_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
-                        uint32_t *const *d, uint32_t *const *a) {
+                        uint32_t *const *d, const uint32_t *const *a) {
   if (int error = goc::validate(flags, instruction_flags))
     return error;
 

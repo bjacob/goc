@@ -8,8 +8,8 @@
 
 namespace goc {
 
-void wmma_avx512bf16(uint32_t mask, uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
-                     uint32_t *const *c) {
+void wmma_avx512bf16(uint32_t mask, uint32_t *const *d, const uint32_t *const *a,
+                     const uint32_t *const *b, const uint32_t *const *c) {
   uint32_t result[8][32];
   for (int row = 0; row < 16; ++row) {
     int reg = row % 8, group = row / 8;

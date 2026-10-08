@@ -11,5 +11,7 @@
 int main(void) {
   uint32_t words[32] = {0};
   uint32_t *vgpr = words;
-  return goc_rdna4_v_fma_f32(goc_init_cpu_flags(), 1, 0, &vgpr, &vgpr, &vgpr, &vgpr) != GOC_SUCCESS;
+  const uint32_t *input = words;
+  return goc_rdna4_v_fma_f32(goc_init_cpu_flags(), 1, 0, &vgpr, &input, &input, &input) !=
+         GOC_SUCCESS;
 }

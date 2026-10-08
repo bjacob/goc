@@ -16,6 +16,15 @@ extern "C" int goc_test_c_api(void);
 
 TEST(Api, C99LinksAgainstCppImplementation) { EXPECT_EQ(goc_test_c_api(), 1); }
 
+TEST(Arithmetic, ConstInputs) {
+  const uint32_t a[32] = {0x40000000}, b[32] = {0x40400000}, c[32] = {0x40800000};
+  const uint32_t *const pa = a, *const pb = b, *const pc = c;
+  uint32_t d[32] = {};
+  uint32_t *pd = d;
+  ASSERT_EQ(goc_rdna4_v_fma_f32(0, 1, 0, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+  EXPECT_EQ(d[0], 0x41200000u);
+}
+
 TEST(Arithmetic, DeterministicFmaMaskAndAliasing) {
   std::mt19937 rng(42);
   std::array<uint32_t, 32> a, b, c;

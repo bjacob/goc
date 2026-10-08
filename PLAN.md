@@ -88,12 +88,15 @@ following the above pattern. Each such function shall take the following functio
     of suitable width. For example, MFMA instructions with CBSZ, ABID, etc modes.
     Do combine all such flags into a single unsigned integer, rather than passing
     multiple short integers.
-* For each input or output VGPR operand of the GPU instruction, a uint32_t *const *
-  pointing to the array of pointers representing the VGPRs backing that operand.
+* For each VGPR operand of the GPU instruction, a pointer to the array of pointers
+  representing the VGPRs backing that operand: `const uint32_t *const *` for inputs,
+  and `uint32_t *const *` for outputs. Input pointers permit reads only; writes use
+  output pointers. This const qualification does not prohibit input/output aliasing.
   - Operands shall be enumerated in the same order as in the assembly syntax.
   - Each VGPR is expected to be backed by a contiguous array of uint32_t words,
-    one per lane. Thus, each VGPR is represented by one uint32_t* pointer. An array
-    of such pointers can thus represent an arbitrary multi-VGPR operand, without
+    one per lane. Thus, each VGPR is represented by one `const uint32_t *` input
+    pointer or `uint32_t *` output pointer. An array of such pointers can represent
+    an arbitrary multi-VGPR operand, without
     requiring the VGPRs to be adjacent to one another in memory, only requiring
     each of them to be internally contiguous (no stride between lanes).
   - These pointers are not "restrict". Aliasing is explicitly supported, corresponding
@@ -113,9 +116,9 @@ int goc_rdna4_v_wmma_f32_16x16x16_f16(
   uint64_t exec_mask,
   uint32_t instruction_flags,  // NEG and NEG_HI bits go here.
   uint32_t *const * vgpr_d,
-  uint32_t *const * vgpr_a,
-  uint32_t *const * vgpr_b,
-  uint32_t *const * vgpr_c
+  const uint32_t *const * vgpr_a,
+  const uint32_t *const * vgpr_b,
+  const uint32_t *const * vgpr_c
 );
 
 Notes:
