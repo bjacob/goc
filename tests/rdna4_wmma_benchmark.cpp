@@ -175,7 +175,7 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t mod
   const char *mode = modifiers == 0                   ? "loose"
                      : modifiers == GOC_WMMA_NEG_LO_A ? "NEG_LO_A"
                                                       : "mixed";
-  const char *format = bf16 ? "BF16" : "FP16";
+  const char *format = bf16 ? "bf16" : "fp16";
   Wmma fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
   double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
   if (scalar < 0)
@@ -225,7 +225,7 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t mod
 bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {goc_rdna4_v_wmma_i32_16x16x16_iu8, goc_rdna4_v_wmma_i32_16x16x16_iu4,
                             goc_rdna4_v_wmma_i32_16x16x32_iu4};
-  const char *names[] = {"INT8/K16", "INT4/K16", "INT4/K32"};
+  const char *names[] = {"int8/k16", "int4/k16", "int4/k32"};
   const char *mode_name = mode == 0 ? "u/u wrap" : "s/s clamp";
   const uint32_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
   Registers r(shape, mode);
