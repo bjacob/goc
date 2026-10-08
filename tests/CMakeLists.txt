@@ -30,7 +30,7 @@ foreach(library IN LISTS goc_library_targets)
   goc_test_warnings(${target})
   gtest_discover_tests(${target} TEST_PREFIX "${variant}.")
 
-  # Retain the standalone cpuinfo executable for the default library variant.
+  # Retain the cpuinfo executable name, preferring static when both are enabled.
   if(variant STREQUAL "static" OR NOT GOC_STATIC)
     set(cpuinfo_target cpuinfo)
   else()

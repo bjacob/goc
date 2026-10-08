@@ -17,8 +17,8 @@ ctest --test-dir ../goc-build --parallel "$(nproc)" --output-on-failure
 Both `GOC_STATIC` and `GOC_SHARED` default to `ON`, producing `libgoc.a` and
 `libgoc.so` on Linux. Disable either with `-DGOC_STATIC=OFF` or
 `-DGOC_SHARED=OFF`; at least one must remain enabled. CMake consumers link
-`goc_static` for private embedding or `goc_shared` for dynamic linking. The `goc`
-alias prefers the static variant when available. Static consumers inherit
+`goc_static` for private embedding or `goc_shared` for dynamic linking.
+Static consumers inherit
 `GOC_STATIC_DEFINE`, so GoC's API stays hidden when embedded in their shared
 library; shared consumers see exported API declarations. Both variants are
 position-independent and keep implementation symbols hidden.
@@ -26,8 +26,8 @@ position-independent and keep implementation symbols hidden.
 The public API, C linkage, public headers, and `cpuinfo` are tested against every
 enabled variant. Private CPU decoding is tested separately. On Linux, export
 tests also check the shared API and static embedding. `tests/cpuinfo` uses the
-default variant; when both are built, `tests/cpuinfo_shared` exercises the shared
-one.
+static variant when enabled, otherwise the shared variant. When both are built,
+`tests/cpuinfo_shared` exercises the shared variant.
 
 CMake uses a system GTest when available and otherwise fetches GTest 1.17.0.
 CMake automatically enables x86-64 implementations for x86-64 targets using GCC

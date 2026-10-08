@@ -43,10 +43,4 @@ if(GOC_ENABLE_X86_64)
   add_subdirectory(x86_64)
 endif()
 
-# Preserve the convenient default target, preferring static embedding.
-if(GOC_STATIC)
-  add_library(goc ALIAS goc_static)
-else()
-  add_library(goc ALIAS goc_shared)
-endif()
 set(goc_library_targets ${goc_library_targets} PARENT_SCOPE)
