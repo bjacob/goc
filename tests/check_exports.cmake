@@ -33,6 +33,10 @@ else()
     goc_rdna4_v_sub_f32
     goc_rdna4_v_subrev_f32
     goc_rdna4_v_mul_f32
+    goc_rdna4_v_min_num_f32
+    goc_rdna4_v_max_num_f32
+    goc_rdna4_v_minimum_f32
+    goc_rdna4_v_maximum_f32
     goc_init_cpu_flags
     goc_rdna4_v_fma_f32
     goc_rdna4_v_trunc_f32

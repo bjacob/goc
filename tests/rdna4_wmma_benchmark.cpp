@@ -383,10 +383,13 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
   using Binary = decltype(&goc_rdna4_v_add_f32);
-  const Binary functions[] = {goc_rdna4_v_add_f32, goc_rdna4_v_sub_f32, goc_rdna4_v_subrev_f32,
-                              goc_rdna4_v_mul_f32};
-  const char *names[] = {"f32/add", "f32/sub", "f32/subrev", "f32/mul"};
-  for (int op = 0; op < 4; ++op)
+  const Binary functions[] = {goc_rdna4_v_add_f32,     goc_rdna4_v_sub_f32,
+                              goc_rdna4_v_subrev_f32,  goc_rdna4_v_mul_f32,
+                              goc_rdna4_v_min_num_f32, goc_rdna4_v_max_num_f32,
+                              goc_rdna4_v_minimum_f32, goc_rdna4_v_maximum_f32};
+  const char *names[] = {"f32/add",    "f32/sub",    "f32/subrev", "f32/mul",
+                         "f32/minnum", "f32/maxnum", "f32/min",    "f32/max"};
+  for (int op = 0; op < 8; ++op)
     for (uint32_t mode :
          {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
@@ -400,6 +403,8 @@ bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
           b = -b;
         }
         float want = float(op == 0 ? a + b : op == 1 ? a - b : op == 2 ? b - a : a * b);
+        if (op >= 4)
+          want = float((op == 5 || op == 7) ? std::max(a, b) : std::min(a, b));
         if (mode)
           want = std::min(1.0f, std::max(0.0f, want * 0.5f));
         // Multiplication retains the sign of zero.

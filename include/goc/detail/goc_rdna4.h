@@ -56,6 +56,26 @@ GOC_API int goc_rdna4_v_mul_f32(uint64_t flags, uint64_t exec_mask, uint32_t ins
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b);
 
+// FP32 min/max: one VGPR per operand; supports A/B ABS/NEG, OMOD and CLAMP.
+// Loose semantics only. Number variants prefer numeric operands over NaNs;
+// minimum/maximum propagate NaNs, preferring signaling NaNs and quieting them.
+// Both families order -0 below +0.
+GOC_API int goc_rdna4_v_min_num_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_max_num_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_minimum_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_maximum_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
 // True16 source/destination half selectors. Zero selects the low half.
 // DOT2 consumes both A/B halves, so only C and D have selectors.
 static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);

@@ -9,6 +9,29 @@
 
 namespace {
 
+// IEEE selection orders -0 below +0. Number variants ignore even signaling NaNs
+// when the other operand is numeric; propagating variants prefer signaling NaNs.
+template <bool Maximum, bool Propagate> float minmax(float x, float y) {
+  uint32_t a = goc::as_bits(x), b = goc::as_bits(y);
+  bool an = (a & 0x7fffffff) > 0x7f800000, bn = (b & 0x7fffffff) > 0x7f800000;
+  if constexpr (Propagate) {
+    if (an && !(a & 0x00400000))
+      return goc::as_float(a | 0x00400000);
+    if (bn && !(b & 0x00400000))
+      return goc::as_float(b | 0x00400000);
+    if (an || bn)
+      return goc::as_float((an ? a : b) | 0x00400000);
+  } else {
+    if (an)
+      return bn ? goc::as_float(a | 0x00400000) : y;
+    if (bn)
+      return x;
+  }
+  if (x == y)
+    return goc::as_float(Maximum ? (a & b) : (a | b));
+  return (Maximum ? x > y : x < y) ? x : y;
+}
+
 template <goc::Binary Op>
 int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
            const uint32_t *const *a, const uint32_t *const *b) {
@@ -36,6 +59,14 @@ int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
       value = y - x;
     if constexpr (Op == goc::Binary::Mul)
       value = x * y;
+    if constexpr (Op == goc::Binary::MinNum)
+      value = minmax<false, false>(x, y);
+    if constexpr (Op == goc::Binary::MaxNum)
+      value = minmax<true, false>(x, y);
+    if constexpr (Op == goc::Binary::Minimum)
+      value = minmax<false, true>(x, y);
+    if constexpr (Op == goc::Binary::Maximum)
+      value = minmax<true, true>(x, y);
     result[lane] = goc::as_bits(goc::alu_output(value, mode));
   }
   for (int lane = 0; lane < 32; ++lane)
@@ -64,4 +95,24 @@ int goc_rdna4_v_subrev_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_
 int goc_rdna4_v_mul_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
   return binary<goc::Binary::Mul>(flags, mask, mode, d, a, b);
+}
+
+int goc_rdna4_v_min_num_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b) {
+  return binary<goc::Binary::MinNum>(flags, mask, mode, d, a, b);
+}
+
+int goc_rdna4_v_max_num_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b) {
+  return binary<goc::Binary::MaxNum>(flags, mask, mode, d, a, b);
+}
+
+int goc_rdna4_v_minimum_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b) {
+  return binary<goc::Binary::Minimum>(flags, mask, mode, d, a, b);
+}
+
+int goc_rdna4_v_maximum_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b) {
+  return binary<goc::Binary::Maximum>(flags, mask, mode, d, a, b);
 }

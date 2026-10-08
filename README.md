@@ -137,6 +137,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | Mnemonic | Loose semantics | Empirical exact semantics |
 | --- | --- | --- |
 | `v_add_f32`, `v_sub_f32`, `v_subrev_f32`, `v_mul_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_min_num_f32`, `v_max_num_f32`, `v_minimum_f32`, `v_maximum_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_fma_f32` | Scalar, AVX2/FMA, AVX-512 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
@@ -247,6 +248,13 @@ FP32 ADD, SUB, SUBREV and MUL support A/B ABS/NEG, output scaling and CLAMP
 on scalar and v3 paths. Tests cross all 128 modifier combinations with all CPU
 levels, 85 masks and aliases, including signed zeros, subnormals, infinities,
 NaNs and overflow. Their benchmark rows compare default and modified cases.
+
+FP32 `MIN_NUM`, `MAX_NUM`, `MINIMUM` and `MAXIMUM` have the same modifier,
+mask, alias and CPU-path coverage. Number variants select a numeric operand
+over either kind of NaN; propagating variants prefer signaling NaNs and quiet
+them. Both families order negative zero below positive zero. Literal tests
+check NaN selection and quieting, signed zeros, infinities and subnormals.
+The SIMD path handles these rules explicitly and supports all 128 modifiers.
 
 FMA supports all three source ABS/NEG pairs, OMOD scaling and CLAMP on scalar,
 x86-64-v3 and x86-64-v4 paths. Tests cross all 512 modifier combinations with
