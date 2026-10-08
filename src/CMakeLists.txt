@@ -1,4 +1,9 @@
 add_library(goc cpu.cpp arithmetic.cpp wmma.cpp dot.cpp)
+set_target_properties(goc PROPERTIES
+  C_VISIBILITY_PRESET hidden
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN ON
+)
 
 target_include_directories(goc
   PUBLIC ${PROJECT_SOURCE_DIR}/include

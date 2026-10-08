@@ -4,6 +4,7 @@
 #define GOC_H_
 
 #include "goc_common.h"
+#include "goc_export.h"
 #include "goc_rdna4.h"
 
 #endif

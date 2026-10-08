@@ -25,7 +25,7 @@ gtest_discover_tests(goc_tests)
 # Compile each public header first and in isolation in both supported languages.
 # Copies let the same source be compiled as C and C++ without source-property
 # overrides leaking between targets.
-foreach(header IN ITEMS common rdna4 umbrella)
+foreach(header IN ITEMS common rdna4 umbrella export)
   foreach(extension IN ITEMS c cpp)
     set(source "${CMAKE_CURRENT_BINARY_DIR}/${header}_header_test.${extension}")
     configure_file("headers/${header}.c" "${source}" COPYONLY)
