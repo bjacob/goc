@@ -69,8 +69,24 @@ GOC_API int goc_rdna4_v_exp_f32(uint64_t flags, uint64_t exec_mask, uint32_t ins
 GOC_API int goc_rdna4_v_log_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
 
+// Floating DOT2 sign modifiers act after selecting each packed half.
+static const uint32_t GOC_DOT_NEG_LO_A = (UINT32_C(1) << 0);
+static const uint32_t GOC_DOT_NEG_LO_B = (UINT32_C(1) << 1);
+static const uint32_t GOC_DOT_NEG_C = (UINT32_C(1) << 2);
+static const uint32_t GOC_DOT_NEG_HI_A = (UINT32_C(1) << 3);
+static const uint32_t GOC_DOT_NEG_HI_B = (UINT32_C(1) << 4);
+
+// Floating DOT2 half selection: defaults are low for term 0 and high for term 1.
+// These flags override those defaults; unlike raw op_sel_hi, zero means default.
+static const uint32_t GOC_DOT_LO_A_HIGH = (UINT32_C(1) << 7);
+static const uint32_t GOC_DOT_LO_B_HIGH = (UINT32_C(1) << 8);
+static const uint32_t GOC_DOT_HI_A_LOW = (UINT32_C(1) << 9);
+static const uint32_t GOC_DOT_HI_B_LOW = (UINT32_C(1) << 10);
+
 // RDNA4 DOT2: A/B each hold two packed 16-bit factors in one VGPR;
 // C/D each hold one FP32 value per lane. Loose and exact modes are supported.
+// Supports all floating DOT2 sign/half-selection flags. GOC_DOT_CLAMP is
+// accepted but has no effect on these floating DOT2 forms (as in rocjitsu).
 GOC_API int goc_rdna4_v_dot2_f32_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                                      uint32_t *const *d, const uint32_t *const *a,
                                      const uint32_t *const *b, const uint32_t *const *c);

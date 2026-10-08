@@ -142,8 +142,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
 | `v_dot4_i32_iu8`, `v_dot4_u32_u8` | Scalar, x86-64-v3 | Same integer result |
 | `v_dot8_i32_iu4`, `v_dot8_u32_u4` | Scalar, x86-64-v3 | Same integer result |
-| `v_dot2_f32_f16` | Scalar | Integer arithmetic model |
-| `v_dot2_f32_bf16` | Scalar | Integer arithmetic model |
+| `v_dot2_f32_f16` | Scalar, x86-64-v3 | Integer arithmetic model |
+| `v_dot2_f32_bf16` | Scalar, x86-64-v3 | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_f16` | Scalar, x86-64-v3 F16C/AVX2/FMA | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_bf16` | Scalar, x86-64-v3 AVX2/FMA, AVX-512 BF16 | Integer arithmetic model |
 | `v_wmma_f16_16x16x16_f16` | Integer arithmetic model | Integer arithmetic model |
@@ -192,6 +192,15 @@ FP32-output wave32 forms; wave64 uses two A/B VGPRs and four C/D VGPRs.
 Packed-output forms halve the C/D register counts, packing adjacent rows into
 the low and high 16 bits. Input and output operands may share whole VGPRs. Distinct backing
 addresses must not overlap, and every pointer must refer to sufficient storage.
+
+FP16/BF16 DOT2 supports independent negation of each selected A/B half and C.
+The four half-selection flags can swap or replicate halves; zero flags select
+low then high as before. Loose v3 paths retain SIMD for every modifier combination;
+exact requests keep the existing scalar model. Following rocjitsu's GFX12 DOT2
+implementation, CLAMP is accepted but has no effect. Tests cover all 1,024
+sign/selection/CLAMP combinations in both semantics, masks and aliases, with
+hardware-captured special-value fixtures recovered through inverse modifiers.
+The benchmark compares default, NEG_LO_A, and combined selection/NEG_HI_B cases.
 
 Integer DOT4/DOT8 use one VGPR for each operand. I32_IU forms support independent
 `GOC_DOT_SIGNED_A` / `GOC_DOT_SIGNED_B` flags and a signed accumulator;

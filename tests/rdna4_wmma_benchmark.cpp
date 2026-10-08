@@ -357,6 +357,42 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_dot2(uint64_t cpu, int iterations, int min_ms) {
+  for (bool bf16 : {false, true})
+    for (uint32_t modifiers :
+         {UINT32_C(0), GOC_DOT_NEG_LO_A, GOC_DOT_LO_A_HIGH | GOC_DOT_NEG_HI_B}) {
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        r.data[0][lane] = bf16 ? 0x40003f80 : 0x40003c00; // 1,2
+        r.data[4][lane] = bf16 ? 0x40804040 : 0x44004200; // 3,4
+        int c = lane - 16;
+        r.data[8][lane] = bits(float(c));
+        int dot = modifiers == 0 ? 11 : modifiers == GOC_DOT_NEG_LO_A ? 5 : -2;
+        r.expected[128 * (lane / 16) + lane % 16] = bits(float(dot + c));
+      }
+      Wmma fn = bf16 ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
+      const char *name = bf16 ? "dot2/bf16" : "dot2/fp16";
+      const char *mode = modifiers == 0                  ? "none"
+                         : modifiers == GOC_DOT_NEG_LO_A ? "NEG_LO_A"
+                                                         : "select/NEG_HI_B";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
+      if (scalar < 0)
+        return false;
+      print_result(name, "loose", mode, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
+        if (simd < 0)
+          return false;
+        print_result(name, "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_integer_dot(uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {goc_rdna4_v_dot4_i32_iu8, goc_rdna4_v_dot4_u32_u8,
                             goc_rdna4_v_dot8_i32_iu4, goc_rdna4_v_dot8_u32_u4};
@@ -438,6 +474,10 @@ int main(int argc, char **argv) {
             "matching instruction-flags settings.");
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
+  if (!benchmark_dot2(cpu, iterations, min_ms)) {
+    std::fprintf(stderr, "DOT2 benchmark failed: API/result error or iteration overflow.\n");
+    return 1;
+  }
   if (!benchmark_integer_dot(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Integer DOT benchmark failed: API/result error or iteration overflow.\n");
     return 1;

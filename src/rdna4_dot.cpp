@@ -4,6 +4,7 @@
 #include "float_formats.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_simd.h"
 
 #include <array>
 #include <cmath>
@@ -14,28 +15,50 @@ namespace {
 template <bool Bf16>
 int dot(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  if (int error = goc::validate(flags, instruction_flags, true))
+  // Bits 0..4: negation; bit 6: CLAMP; bits 7..10: half selection.
+  if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(0x7df), true))
     return error;
   if (uint32_t(mask) == 0)
     return GOC_SUCCESS;
 
+#if defined(GOC_HAVE_X86_64_V3)
+  if ((flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL &&
+      (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::dot2_x86_64_v3(Bf16, uint32_t(mask), instruction_flags, d[0], a[0], b[0], c[0]);
+    return GOC_SUCCESS;
+  }
+#endif
+  const int a0_shift = instruction_flags & GOC_DOT_LO_A_HIGH ? 16 : 0;
+  const int b0_shift = instruction_flags & GOC_DOT_LO_B_HIGH ? 16 : 0;
+  const int a1_shift = instruction_flags & GOC_DOT_HI_A_LOW ? 0 : 16;
+  const int b1_shift = instruction_flags & GOC_DOT_HI_B_LOW ? 0 : 16;
   uint32_t result[32];
-  for (int lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1) {
-      std::array<uint16_t, 2> left = {uint16_t(a[0][lane]), uint16_t(a[0][lane] >> 16)};
-      std::array<uint16_t, 2> right = {uint16_t(b[0][lane]), uint16_t(b[0][lane] >> 16)};
-      if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
-        result[lane] = goc::gfx12_dot_bits<Bf16, 2>(left, right, c[0][lane]);
-      else {
-        float acc = goc::as_float(c[0][lane]);
-        for (int j = 0; j < 2; ++j) {
-          float x = Bf16 ? goc::bf16_to_float(left[j]) : goc::f16_to_float(left[j]);
-          float y = Bf16 ? goc::bf16_to_float(right[j]) : goc::f16_to_float(right[j]);
-          acc = std::fma(x, y, acc);
-        }
-        result[lane] = goc::as_bits(acc);
+  for (int lane = 0; lane < 32; ++lane) {
+    std::array<uint16_t, 2> left = {uint16_t(a[0][lane] >> a0_shift),
+                                    uint16_t(a[0][lane] >> a1_shift)};
+    std::array<uint16_t, 2> right = {uint16_t(b[0][lane] >> b0_shift),
+                                     uint16_t(b[0][lane] >> b1_shift)};
+    if (instruction_flags & GOC_DOT_NEG_LO_A)
+      left[0] ^= 0x8000;
+    if (instruction_flags & GOC_DOT_NEG_HI_A)
+      left[1] ^= 0x8000;
+    if (instruction_flags & GOC_DOT_NEG_LO_B)
+      right[0] ^= 0x8000;
+    if (instruction_flags & GOC_DOT_NEG_HI_B)
+      right[1] ^= 0x8000;
+    uint32_t acc_bits = c[0][lane] ^ (instruction_flags & GOC_DOT_NEG_C ? 0x80000000 : 0);
+    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
+      result[lane] = goc::gfx12_dot_bits<Bf16, 2>(left, right, acc_bits);
+    else {
+      float acc = goc::as_float(acc_bits);
+      for (int j = 0; j < 2; ++j) {
+        float x = Bf16 ? goc::bf16_to_float(left[j]) : goc::f16_to_float(left[j]);
+        float y = Bf16 ? goc::bf16_to_float(right[j]) : goc::f16_to_float(right[j]);
+        acc = std::fma(x, y, acc);
       }
+      result[lane] = goc::as_bits(acc);
     }
+  }
 
   for (int lane = 0; lane < 32; ++lane)
     if ((mask >> lane) & 1)
