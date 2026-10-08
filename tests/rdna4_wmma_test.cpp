@@ -6,6 +6,7 @@
 #include "rdna4_dense_golden.h"
 #include "rdna4_dot.h"
 #include "rdna4_dot_fixtures.h"
+#include "rdna4_exec_masks.h"
 #include "rdna4_wmma_fixtures.h"
 
 #include <algorithm>
@@ -15,6 +16,7 @@
 #include <initializer_list>
 #include <random>
 #include <stdint.h>
+#include <vector>
 
 namespace {
 
@@ -328,7 +330,8 @@ TEST(WmmaWave64, CapturedGoldensMasksAndOverlap) {
       const auto &cases = bf16 ? kGfx12WmmaBF16Cases : kGfx12WmmaF16Cases;
       for (const auto &f : cases)
         for (int dst : {0, 1, 2, 4, 8})
-          for (uint64_t mask : {UINT64_C(0), UINT64_C(0xaaaaaaaa55555555), UINT64_MAX}) {
+          for (uint64_t mask : {UINT64_C(0), UINT64_C(1) << 32, UINT64_C(1) << 63,
+                                UINT64_C(0xaaaaaaaa55555555), UINT64_MAX}) {
             uint32_t data[12][64] = {};
             uint32_t *v[12];
             for (int i = 0; i < 12; ++i)
@@ -655,8 +658,13 @@ TEST(Wmma, SimdModifiersDenseReferenceMasksAndOverlap) {
     for (uint32_t modifiers = 0; modifiers < 64; ++modifiers)
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (int dst : {0, 2, 4, 8, 16})
-          for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000),
-                                UINT64_C(0xdeadbeef91234567), UINT64_MAX}) {
+          for (uint64_t mask :
+               (modifiers == 0 || modifiers == GOC_WMMA_NEG_LO_A ||
+                modifiers ==
+                    (GOC_WMMA_NEG_HI_A | GOC_WMMA_NEG_LO_B | GOC_WMMA_ABS_C | GOC_WMMA_NEG_C))
+                   ? rdna4_exec_masks()
+                   : std::vector<uint64_t>{0, UINT64_C(0xffffffff00000000),
+                                           UINT64_C(0xdeadbeef91234567), UINT64_MAX}) {
             SCOPED_TRACE(::testing::Message()
                          << "bf16=" << bf << " modifiers=" << modifiers << " cpu=" << cpu
                          << " dst=" << dst << " mask=" << mask);

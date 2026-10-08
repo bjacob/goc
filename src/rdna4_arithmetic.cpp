@@ -12,6 +12,8 @@ int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction
                         const uint32_t *const *c) {
   if (int error = goc::validate(flags, instruction_flags))
     return error;
+  if (uint32_t(exec_mask) == 0)
+    return GOC_SUCCESS;
 
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
@@ -43,6 +45,8 @@ int goc_rdna4_v_log_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction
                         uint32_t *const *d, const uint32_t *const *a) {
   if (int error = goc::validate(flags, instruction_flags))
     return error;
+  if (uint32_t(exec_mask) == 0)
+    return GOC_SUCCESS;
 
   uint32_t result[32];
   for (int lane = 0; lane < 32; ++lane)

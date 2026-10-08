@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_exec_masks.h"
 #include "rdna4_subbyte_golden.h"
 
 #include <algorithm>
@@ -175,8 +176,7 @@ TEST(SubbyteWmma, IntegerGoldensSignsClampMasksAndOverlap) {
     for (int shape = 0; shape < 3; ++shape)
       for (uint32_t mode = 0; mode < 8; ++mode)
         for (int dst : {0, 4, 8, 16})
-          for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000),
-                                UINT64_C(0xdeadbeefa55a1234), UINT64_MAX})
+          for (uint64_t mask : rdna4_exec_masks())
             for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
               int bits = shape == 0 ? 8 : 4, K = shape == 2 ? 32 : 16;
               Registers r;

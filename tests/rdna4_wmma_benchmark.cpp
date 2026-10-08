@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <initializer_list>
+#include <inttypes.h>
 #include <random>
 #include <stdint.h>
 #include <system_error>
@@ -26,14 +27,20 @@ uint32_t bits(float value) {
   return result;
 }
 
+// Sentinel for destination lanes that EXEC leaves inactive.
+static const uint32_t untouched = UINT32_C(0xa5a5a5a5);
+
 struct Registers {
   uint32_t data[24][32] = {};
   uint32_t *v[24];
   uint32_t expected[256];
+  int output_regs = 8;
 
   Registers() {
     for (int reg = 0; reg < 24; ++reg)
       v[reg] = data[reg];
+    for (int reg = 16; reg < 24; ++reg)
+      std::fill(data[reg], data[reg] + 32, untouched);
   }
 
   explicit Registers(bool bf16, uint32_t modifiers = 0) : Registers() {
@@ -100,11 +107,27 @@ struct Registers {
       }
   }
 
-  bool correct() const {
+  void initialize_fma() {
+    output_regs = 1;
+    std::minstd_rand random(31);
+    for (int lane = 0; lane < 32; ++lane) {
+      int a = int(random() % 33) - 16, b = int(random() % 33) - 16, c = int(random() % 33) - 16;
+      data[0][lane] = bits(float(a));
+      data[4][lane] = bits(float(b));
+      data[8][lane] = bits(float(c));
+      expected[128 * (lane / 16) + lane % 16] = bits(float(a * b + c));
+    }
+  }
+
+  bool correct(uint32_t mask) const {
     for (int row = 0; row < 16; ++row)
       for (int col = 0; col < 16; ++col)
-        if (data[16 + row % 8][col + 16 * (row / 8)] != expected[row * 16 + col])
-          return false;
+        if (row % 8 < output_regs) {
+          int lane = col + 16 * (row / 8);
+          uint32_t want = ((mask >> lane) & 1) ? expected[row * 16 + col] : untouched;
+          if (data[16 + row % 8][lane] != want)
+            return false;
+        }
     return true;
   }
 };
@@ -118,15 +141,13 @@ bool nonnegative_integer(const char *text, int &value) {
 // Returns median nanoseconds per wave, or a negative value on an API/result error
 // or iteration-count overflow. Every accepted sample spans at least min_ms.
 double measure(Wmma fn, uint64_t flags, Registers &r, int initial_iterations, int min_ms,
-               uint32_t modifiers = 0) {
+               uint32_t modifiers, uint32_t mask) {
   uint64_t iterations = uint64_t(initial_iterations);
-  const auto call = [&] {
-    return fn(flags, UINT32_MAX, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8);
-  };
+  const auto call = [&] { return fn(flags, mask, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8); };
   for (int warmup = 0; warmup < 32; ++warmup)
     if (call() != GOC_SUCCESS)
       return -1;
-  if (!r.correct())
+  if (!r.correct(mask))
     return -1;
 
   std::array<double, 7> samples;
@@ -137,7 +158,7 @@ double measure(Wmma fn, uint64_t flags, Registers &r, int initial_iterations, in
       for (uint64_t iteration = 0; iteration < iterations; ++iteration)
         status |= call();
       auto elapsed = std::chrono::steady_clock::now() - start;
-      if (status != GOC_SUCCESS || !r.correct())
+      if (status != GOC_SUCCESS || !r.correct(mask))
         return -1;
       if (elapsed >= std::chrono::milliseconds(min_ms)) {
         sample = std::chrono::duration<double, std::nano>(elapsed).count() / iterations;
@@ -154,40 +175,42 @@ double measure(Wmma fn, uint64_t flags, Registers &r, int initial_iterations, in
 
 // Print one table row using the same column widths for headings and results.
 void print_columns(const char *input, const char *semantics, const char *instruction_flags,
-                   const char *path, const char *time, const char *speedup) {
-  std::printf("%-10s %-10s %-18s %-20s %12s %11s\n", input, semantics, instruction_flags, path,
-              time, speedup);
+                   const char *exec_mask, const char *path, const char *time, const char *speedup) {
+  std::printf("%-10s %-10s %-18s %-10s %-20s %12s %11s\n", input, semantics, instruction_flags,
+              exec_mask, path, time, speedup);
 }
 
 // Print a result with fixed decimal precision; a negative speedup prints "--".
 void print_result(const char *input, const char *semantics, const char *instruction_flags,
-                  const char *path, double time, double speedup) {
-  char time_text[64], speedup_text[64];
+                  uint32_t mask, const char *path, double time, double speedup) {
+  char time_text[64], speedup_text[64], mask_text[11];
+  std::snprintf(mask_text, sizeof(mask_text), "0x%08" PRIx32, mask);
   std::snprintf(time_text, sizeof(time_text), "%.1f", time);
   if (speedup < 0)
     std::snprintf(speedup_text, sizeof(speedup_text), "--");
   else
     std::snprintf(speedup_text, sizeof(speedup_text), "%.2fx", speedup);
-  print_columns(input, semantics, instruction_flags, path, time_text, speedup_text);
+  print_columns(input, semantics, instruction_flags, mask_text, path, time_text, speedup_text);
 }
 
-bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t modifiers = 0) {
+bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t modifiers,
+               uint32_t mask) {
   Registers r(bf16, modifiers);
   const char *instruction_flags = modifiers == 0                   ? "none"
                                   : modifiers == GOC_WMMA_NEG_LO_A ? "NEG_LO_A"
                                                                    : "mixed";
   const char *format = bf16 ? "bf16" : "fp16";
   Wmma fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
-  double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
+  double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers, mask);
   if (scalar < 0)
     return false;
-  print_result(format, "loose", instruction_flags, "scalar", scalar, 1.0);
+  print_result(format, "loose", instruction_flags, mask, "scalar", scalar, 1.0);
 
   const auto accelerated = [&](const char *path, uint64_t level) {
-    double time = measure(fn, level, r, iterations, min_ms, modifiers);
+    double time = measure(fn, level, r, iterations, min_ms, modifiers, mask);
     if (time < 0)
       return false;
-    print_result(format, "loose", instruction_flags, path, time, scalar / time);
+    print_result(format, "loose", instruction_flags, mask, path, time, scalar / time);
     return true;
   };
   // Only label a SIMD path when both this build and the host support it.
@@ -216,14 +239,15 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t mod
 
   double exact =
       measure(fn, GOC_CPU_BASELINE | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, r,
-              iterations, min_ms);
+              iterations, min_ms, 0, mask);
   if (exact < 0)
     return false;
-  print_result(format, "exact", "none", "scalar", exact, -1);
+  print_result(format, "exact", "none", mask, "scalar", exact, -1);
   return true;
 }
 
-bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int min_ms) {
+bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int min_ms,
+                       uint32_t mask) {
   const Wmma functions[] = {goc_rdna4_v_wmma_i32_16x16x16_iu8, goc_rdna4_v_wmma_i32_16x16x16_iu4,
                             goc_rdna4_v_wmma_i32_16x16x32_iu4};
   const char *names[] = {"int8/k16", "int4/k16", "int4/k32"};
@@ -234,12 +258,12 @@ bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int mi
   const auto run = [&](const char *path, uint64_t level) {
     double time =
         measure(functions[shape], level | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, r,
-                iterations, min_ms, modifiers);
+                iterations, min_ms, modifiers, mask);
     if (time < 0)
       return false;
     if (level == GOC_CPU_BASELINE)
       scalar = time;
-    print_result(names[shape], "exact", instruction_flags, path, time, scalar / time);
+    print_result(names[shape], "exact", instruction_flags, mask, path, time, scalar / time);
     return true;
   };
   if (!run("scalar", GOC_CPU_BASELINE))
@@ -250,6 +274,33 @@ bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int mi
 #endif
 #if defined(GOC_BENCH_HAVE_AVX512VNNI)
   if (cpu >= GOC_CPU_ZEN4 && !run("Zen4 / avx512vnni", GOC_CPU_ZEN4))
+    return false;
+#endif
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t mask) {
+  Registers r;
+  r.initialize_fma();
+  double scalar = 0;
+  const auto run = [&](const char *path, uint64_t level) {
+    double time = measure(goc_rdna4_v_fma_f32, level, r, iterations, min_ms, 0, mask);
+    if (time < 0)
+      return false;
+    if (level == GOC_CPU_BASELINE)
+      scalar = time;
+    print_result("f32/fma", "loose", "none", mask, path, time, scalar / time);
+    return true;
+  };
+  if (!run("scalar", GOC_CPU_BASELINE))
+    return false;
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+  if (cpu >= GOC_CPU_X86_64_V3 && !run("x86-64-v3", GOC_CPU_X86_64_V3))
+    return false;
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+  if (cpu >= GOC_CPU_X86_64_V4 && !run("x86-64-v4", GOC_CPU_X86_64_V4))
     return false;
 #endif
   (void)cpu;
@@ -277,31 +328,39 @@ int main(int argc, char **argv) {
   }
 
   uint64_t cpu = goc_init_cpu_flags();
-  std::printf("RDNA4 wave32 WMMA, 16x16 output; CPU flags 0x%llx\n",
+  std::printf("RDNA4 wave32 WMMA (16x16 output) and FMA; CPU flags 0x%llx\n",
               static_cast<unsigned long long>(cpu));
   std::printf("Median of 7 samples, each at least %d ms, after warmup.\n", min_ms);
   std::printf("Start at %d calls; double until the minimum duration is reached.\n", iterations);
-  std::puts(
-      "Full EXEC, fixed inputs, separate C/D, hot buffers; independent dense goldens checked.");
+  std::puts("Fixed inputs, separate C/D, hot buffers; active outputs and untouched inactive lanes "
+            "checked.");
   std::puts("Timings include public API dispatch, input conversions and output stores.");
   std::puts("FP rows: loose speedups, exact scalar separately. Integer rows: exact, speedups "
-            "within each instruction-flags setting.");
+            "within each instruction-flags and EXEC-mask setting.");
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
-  print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
-  for (uint32_t modifiers :
-       {UINT32_C(0), GOC_WMMA_NEG_LO_A,
-        GOC_WMMA_NEG_HI_A | GOC_WMMA_NEG_LO_B | GOC_WMMA_ABS_C | GOC_WMMA_NEG_C})
-    if (!benchmark(false, cpu, iterations, min_ms, modifiers) ||
-        !benchmark(true, cpu, iterations, min_ms, modifiers)) {
-      std::fprintf(stderr,
-                   "Benchmark failed: API error, result mismatch or iteration-count overflow.\n");
+  std::puts("EXEC masks: full, alternating (16 lanes), sparse (4 lanes), empty.");
+  print_columns("Input", "Semantics", "Instruction flags", "EXEC mask", "CPU path", "ns/wave",
+                "Speedup");
+  for (uint32_t mask : {UINT32_MAX, UINT32_C(0xaaaaaaaa), UINT32_C(0x80018001), UINT32_C(0)}) {
+    if (!benchmark_fma(cpu, iterations, min_ms, mask)) {
+      std::fprintf(stderr, "FMA benchmark failed: API/result error or iteration overflow.\n");
       return 1;
     }
-  for (int shape = 0; shape < 3; ++shape)
-    for (int mode : {0, 7})
-      if (!benchmark_integer(shape, mode, cpu, iterations, min_ms)) {
-        std::fprintf(stderr, "Integer benchmark failed: API/result error or iteration overflow.\n");
+    for (uint32_t modifiers :
+         {UINT32_C(0), GOC_WMMA_NEG_LO_A,
+          GOC_WMMA_NEG_HI_A | GOC_WMMA_NEG_LO_B | GOC_WMMA_ABS_C | GOC_WMMA_NEG_C})
+      if (!benchmark(false, cpu, iterations, min_ms, modifiers, mask) ||
+          !benchmark(true, cpu, iterations, min_ms, modifiers, mask)) {
+        std::fprintf(stderr, "Benchmark failed: API/result error or iteration overflow.\n");
         return 1;
       }
+    for (int shape = 0; shape < 3; ++shape)
+      for (int mode : {0, 7})
+        if (!benchmark_integer(shape, mode, cpu, iterations, min_ms, mask)) {
+          std::fprintf(stderr,
+                       "Integer benchmark failed: API/result error or iteration overflow.\n");
+          return 1;
+        }
+  }
   return 0;
 }

@@ -34,6 +34,8 @@ int floating(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const 
   // FP8/BF8 WMMA supports C negation/absolute value, not A/B halfword negation.
   if (int error = goc::validate(flags, modifiers & ~(GOC_WMMA_NEG_C | GOC_WMMA_ABS_C)))
     return error;
+  if (uint32_t(mask) == 0)
+    return GOC_SUCCESS;
   uint32_t result[8][32];
   for (int row = 0; row < 16; ++row)
     for (int col = 0; col < 16; ++col) {
@@ -61,6 +63,8 @@ int integer(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *
   if (int error = goc::validate(
           flags, modifiers & ~(GOC_WMMA_SIGNED_A | GOC_WMMA_SIGNED_B | GOC_WMMA_CLAMP), true))
     return error;
+  if (uint32_t(mask) == 0)
+    return GOC_SUCCESS;
 #if defined(GOC_HAVE_AVX512VNNI)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_ZEN4) {
     goc::integer_wmma_avx512vnni(Bits, K, uint32_t(mask), modifiers, d, a, b, c);

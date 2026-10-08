@@ -73,7 +73,8 @@ TEST(PackedWmma, HardwareMatricesMasksOverlapAndHostState) {
     for (bool bf16 : {false, true})
       for (int fixture = 0; fixture < 7; ++fixture)
         for (int dst : {0, 4, 8, 12})
-          for (uint64_t mask : {UINT64_C(0), UINT64_C(0xa55a0123fedc9876), UINT64_MAX})
+          for (uint64_t mask : {UINT64_C(0), UINT64_C(1) << 32, UINT64_C(1) << 63,
+                                UINT64_C(0xa55a0123fedc9876), UINT64_MAX})
             for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
               Registers r;
               load(r, kPackedInputs[bf16][fixture], width);

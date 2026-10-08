@@ -21,6 +21,10 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(63), true))
     return error;
+  if constexpr (WaveSize == 32)
+    mask = uint32_t(mask);
+  if (mask == 0)
+    return GOC_SUCCESS;
 
 #if defined(GOC_HAVE_AVX512BF16)
   if constexpr (Bf16 && WaveSize == 32 && !Packed) {

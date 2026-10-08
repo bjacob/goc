@@ -16,6 +16,8 @@ int dot(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *con
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
+  if (uint32_t(mask) == 0)
+    return GOC_SUCCESS;
 
   uint32_t result[32];
   for (int lane = 0; lane < 32; ++lane)

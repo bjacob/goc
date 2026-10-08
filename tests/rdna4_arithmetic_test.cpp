@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_exec_masks.h"
 
 #include <algorithm>
 #include <array>
@@ -85,7 +86,7 @@ TEST(Arithmetic, AllCpuLevelsFmaGoldenAndAliasing) {
                              0x40000000, 0x00000000, 0x00400000, 0x00000000};
   for (uint64_t level = 0; level <= goc_init_cpu_flags(); ++level)
     for (int alias = 0; alias < 4; ++alias)
-      for (uint32_t mask : {0u, 1u, 0x80000000u, 0x55555555u, 0xffffffffu}) {
+      for (uint64_t mask : rdna4_exec_masks()) {
         SCOPED_TRACE(::testing::Message()
                      << "level=" << level << " alias=" << alias << " mask=" << mask);
         uint32_t storage[4][34]; // Offsets avoid requiring SIMD alignment.

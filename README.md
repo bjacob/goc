@@ -55,7 +55,7 @@ FP16/BF16 exactness, intermediate FP16 overflow state, and SIMD/scalar agreement
 The full suite also covers DOT2, NEG/NEG_HI, wave64, masks, aliasing, C linkage,
 header self-containment and library exports.
 
-The benchmark compares scalar loose FP16 with x86-64-v3, and scalar loose BF16
+The benchmark includes wave32 FP32 FMA on scalar, v3 and v4, and compares scalar loose FP16 with x86-64-v3, and scalar loose BF16
 with both x86-64-v3 and the Zen4 AVX-512 BF16 path. Integer rows cover
 INT8 K=16 and INT4 K=16/K=32 on scalar, v3 and Zen4 VNNI, with unsigned
 wrapping and signed CLAMP workloads. All integer rows request strict exact
@@ -72,8 +72,11 @@ and compares no modifiers, `NEG_LO_A` alone, and a mixed case
 (`NEG_HI_A | NEG_LO_B | ABS_C | NEG_C`). Modified floating-point rows use loose
 semantics and independent integer matrix references.
 Integer workloads use dense full-range factors and accumulators near overflow,
-with signedness and CLAMP as labeled. All workloads use full EXEC, separate C/D
-storage and hot buffers. Timings include public API
+with signedness and CLAMP as labeled. All workloads run with full, alternating,
+sparse (lanes 0, 15, 16, 31), and empty EXEC masks, shown in a separate column.
+They use separate C/D storage and hot buffers. Inactive destination lanes carry
+a sentinel checked before and after timing; FMA uses independent integer goldens.
+Speedups compare paths with the same input, semantics, instruction flags and mask. Timings include public API
 dispatch, input conversions and output stores. Each reported time is the median
 of seven samples after warmup. Each path starts at 128 calls (overridable by the
 positional argument) and doubles the count until the timed batch takes at least
@@ -187,7 +190,12 @@ addresses must not overlap, and every pointer must refer to sufficient storage.
 
 GoC applies `exec_mask` to destination writes, including WMMA, as specified by
 its API contract. Inactive destination lanes remain unchanged; source lanes are
-not masked. Errors preserve all destination registers. No pointer-validation
+not masked. Empty effective EXEC masks return immediately after flag validation,
+including high-bits-only masks in wave32. Invalid flags and unsupported strict
+semantics still return errors. Nonempty masks stay on the same SIMD paths;
+SIMD FMA/WMMA use masked stores, and WMMA stages results before writes to support
+aliasing. Sparse masks do not yet skip the inactive lanes' arithmetic.
+Errors preserve all destination registers. No pointer-validation
 or allocation ownership service is provided.
 
 Zero semantics bits select loose numerical behavior. Add `GOC_SEMANTICS_EXACT_EMPIRICAL`
@@ -234,6 +242,13 @@ Floating-point SIMD modifier tests cover all 64 combinations across every usable
 CPU level, masks, overlapping operands and noncontiguous/unaligned storage.
 Special-value tests include signed zeros, subnormal factors and accumulators,
 normal factors with subnormal products, overflow, infinities and NaNs.
+A shared 85-mask corpus covers every single-active and single-inactive wave32
+lane, both alternating patterns, empty/full/high-bits-only masks and 16 seeded
+random masks. FMA and integer WMMA cross it with all usable CPU levels and
+operand overlap; floating WMMA does so with representative modifiers, retaining
+the existing all-64-modifier tests. Empty-mask tests cover every entry point,
+flag-validation errors, unchanged registers and host FP exception state. Wave64
+tests explicitly exercise lone active lanes 32 and 63.
 Integer SIMD tests force every usable CPU level and cover unaligned, noncontiguous
 VGPR storage, masks and aliasing. Independent int64 matrix references additionally
 check extreme signed/unsigned factors, wrapping, final-only saturation and
