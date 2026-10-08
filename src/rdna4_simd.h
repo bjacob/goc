@@ -35,6 +35,10 @@ void wmma_bf16_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c);
 
+template <bool Multiply>
+void literal_fma_x86_64_v3(uint32_t mask, uint32_t literal, uint32_t *d, const uint32_t *a,
+                           const uint32_t *b);
+
 void fma_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
                    const uint32_t *b, const uint32_t *c);
 
@@ -43,6 +47,10 @@ void fma_dx9_zero_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *d, cons
 #endif
 
 #if defined(GOC_HAVE_X86_64_V4)
+template <bool Multiply>
+void literal_fma_x86_64_v4(uint32_t mask, uint32_t literal, uint32_t *d, const uint32_t *a,
+                           const uint32_t *b);
+
 void fma_x86_64_v4(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
                    const uint32_t *b, const uint32_t *c);
 

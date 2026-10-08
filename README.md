@@ -382,6 +382,16 @@ word's sign extension, or against zero for unsigned products. Tests include
 literal high-word results, saturation thresholds, upper-byte noise, random
 products, masks, aliases and host FP-environment preservation.
 
+FP16/FP32 `FMAMK` and `FMAAK` take a scalar literal by value, in assembly
+operand order: `D, A, literal, B` for multiply-literal and `D, A, B, literal`
+for add-literal. Literals are raw encodings (`uint16_t` / `uint32_t`). FP16
+accepts `HIGH_A/B/D` and preserves the other destination half; FP32 accepts
+no instruction flags. Both provide scalar and SIMD paths with direct literal
+broadcasts: eight lanes for FP16, eight or sixteen for FP32. FP16 also supports
+`GOC_FP16_OVFL` and the empirical exact FMA model. Tests cover every FP16 literal
+encoding with random operands, FP32 random triples, exceptional-value priority,
+fused rounding, all half selectors, masks, aliases, validation and the C ABI.
+
 FP16/FP32 `FMAC` multiplies A and B and adds the previous value of D.
 It supports A/B ABS/NEG, OMOD and CLAMP; FP16 also supports A/B/D half
 selection and `GOC_FP16_OVFL`. The destination half selects the accumulator

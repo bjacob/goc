@@ -37,5 +37,23 @@ int goc_test_c_api(void) {
     return 0;
   status = goc_rdna4_v_fma_f32(GOC_CPU_BASELINE, 1, UINT32_C(1) << 31, &pd, input_vgprs(&pa),
                                input_vgprs(&pb), input_vgprs(&pc));
-  return status == GOC_ERROR_INVALID_FLAGS && d[0] == 0x41d00000;
+  if (status != GOC_ERROR_INVALID_FLAGS || d[0] != 0x41d00000)
+    return 0;
+
+  // Literal arguments follow assembly order and carry raw floating-point bits.
+  const uint32_t *ra = a, *rb = b;
+  status = goc_rdna4_v_fmamk_f32(0, 1, 0, &pd, &ra, 0x40000000, &rb);
+  if (status != GOC_SUCCESS || d[0] != 0x41b80000) // 10 * 2 + 3 = 23
+    return 0;
+  status = goc_rdna4_v_fmaak_f32(0, 1, 0, &pd, &ra, &rb, 0x40000000);
+  if (status != GOC_SUCCESS || d[0] != 0x42000000) // 10 * 3 + 2 = 32
+    return 0;
+  a[0] = 0x4000;
+  b[0] = 0x4200;
+  d[0] = 0xfacecafe;
+  status = goc_rdna4_v_fmamk_f16(0, 1, 0, &pd, &ra, 0x4400, &rb);
+  if (status != GOC_SUCCESS || d[0] != 0xface4980) // 2 * 4 + 3 = 11
+    return 0;
+  status = goc_rdna4_v_fmaak_f16(0, 1, 0, &pd, &ra, &rb, 0x4400);
+  return status == GOC_SUCCESS && d[0] == 0xface4900; // 2 * 3 + 4 = 10
 }

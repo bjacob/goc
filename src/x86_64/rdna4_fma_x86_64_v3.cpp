@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_fma.h"
 #include "rdna4_simd.h"
 
 #include <immintrin.h>
@@ -10,9 +11,9 @@ namespace goc {
 
 namespace {
 
-template <bool Dx9Zero>
+template <bool Dx9Zero, FmaOperands Operands = FmaOperands::Registers>
 void run(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, const uint32_t *b,
-         const uint32_t *c) {
+         const uint32_t *c, uint32_t literal = 0) {
   const __m256i keep_a = _mm256_set1_epi32((modifiers & GOC_ALU_ABS_A) ? 0x7fffffff : -1);
   const __m256i flip_a = _mm256_set1_epi32((modifiers & GOC_ALU_NEG_A) ? INT32_MIN : 0);
   const __m256i keep_b = _mm256_set1_epi32((modifiers & GOC_ALU_ABS_B) ? 0x7fffffff : -1);
@@ -28,9 +29,17 @@ void run(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, cons
     auto vb = _mm256_castsi256_ps(_mm256_xor_si256(
         _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(b + i)), keep_b),
         flip_b));
-    auto vc = _mm256_castsi256_ps(_mm256_xor_si256(
-        _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(c + i)), keep_c),
-        flip_c));
+    __m256 vc;
+    if constexpr (Operands == FmaOperands::MultiplyLiteral) {
+      vc = vb;
+      vb = _mm256_castsi256_ps(_mm256_set1_epi32(int(literal)));
+    } else if constexpr (Operands == FmaOperands::AddLiteral) {
+      vc = _mm256_castsi256_ps(_mm256_set1_epi32(int(literal)));
+    } else {
+      vc = _mm256_castsi256_ps(_mm256_xor_si256(
+          _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(c + i)), keep_c),
+          flip_c));
+    }
     auto result = _mm256_fmadd_ps(va, vb, vc);
     if constexpr (Dx9Zero) {
       auto zero = _mm256_setzero_ps();
@@ -59,5 +68,17 @@ void fma_dx9_zero_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *d, cons
                             const uint32_t *b, const uint32_t *c) {
   run<true>(mask, modifiers, d, a, b, c);
 }
+
+template <bool Multiply>
+void literal_fma_x86_64_v3(uint32_t mask, uint32_t literal, uint32_t *d, const uint32_t *a,
+                           const uint32_t *b) {
+  run<false, Multiply ? FmaOperands::MultiplyLiteral : FmaOperands::AddLiteral>(mask, 0, d, a, b,
+                                                                                nullptr, literal);
+}
+
+template void literal_fma_x86_64_v3<false>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
+                                           const uint32_t *);
+template void literal_fma_x86_64_v3<true>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
+                                          const uint32_t *);
 
 } // namespace goc

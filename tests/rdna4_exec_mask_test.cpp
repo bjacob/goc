@@ -24,6 +24,20 @@ int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
   return Fn(flags, mask, mode, d, a, b);
 }
 
+template <bool Half, bool Multiply>
+int literal_fma(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
+  if constexpr (Half) {
+    if constexpr (Multiply)
+      return goc_rdna4_v_fmamk_f16(flags, mask, mode, d, a, 0x3800, b);
+    return goc_rdna4_v_fmaak_f16(flags, mask, mode, d, a, b, 0x3800);
+  } else {
+    if constexpr (Multiply)
+      return goc_rdna4_v_fmamk_f32(flags, mask, mode, d, a, 0x3f000000, b);
+    return goc_rdna4_v_fmaak_f32(flags, mask, mode, d, a, b, 0x3f000000);
+  }
+}
+
 struct Case {
   Instruction fn;
   bool wave64, exact;
@@ -31,6 +45,11 @@ struct Case {
 };
 
 const Case cases[] = {
+    {literal_fma<true, true>, false, true, GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
+    {literal_fma<true, false>, false, true, GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
+    {literal_fma<false, true>, false, false, 0},
+    {literal_fma<false, false>, false, false, 0},
+
     {goc_rdna4_v_min3_num_f16, false, false, UINT32_C(0x1fff)},
     {goc_rdna4_v_max3_num_f16, false, false, UINT32_C(0x1fff)},
     {goc_rdna4_v_minmax_num_f16, false, false, UINT32_C(0x1fff)},

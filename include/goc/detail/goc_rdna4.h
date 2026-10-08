@@ -49,6 +49,30 @@ GOC_API int goc_rdna4_v_fmac_f32(uint64_t flags, uint64_t exec_mask, uint32_t in
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b);
 
+// Literal FP16 FMA: FMAMK computes A * literal + B; FMAAK computes A * B +
+// literal. The literal is a raw FP16 encoding. HIGH_A/B/D select the two VGPR
+// inputs and destination half; the other D half is preserved. Other instruction
+// flags are invalid. Supports GOC_FP16_OVFL and empirical exact semantics with
+// the FP16 FMA rounding and host-environment contract.
+GOC_API int goc_rdna4_v_fmamk_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a, uint16_t literal,
+                                  const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_fmaak_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, uint16_t literal);
+
+// Literal FP32 FMA: FMAMK computes A * literal + B; FMAAK computes A * B +
+// literal. The literal is a raw FP32 encoding. No instruction flags are valid.
+// Loose semantics only; requires host nearest-even rounding and denormals enabled.
+GOC_API int goc_rdna4_v_fmamk_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
+                                  const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_fmaak_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, uint32_t literal);
+
 // DX9 FMA: one VGPR per operand, all ALU source/output modifiers, loose semantics.
 // If either modified factor is signed zero, select modified C unchanged before
 // output scaling/CLAMP; otherwise compute a fused multiply-add.

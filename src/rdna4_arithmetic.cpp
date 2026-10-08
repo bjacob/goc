@@ -59,6 +59,37 @@ int fma(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags, uint32_t
   return GOC_SUCCESS;
 }
 
+template <bool Multiply>
+int literal_fma(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                const uint32_t *const *a, const uint32_t *const *b, uint32_t literal) {
+  if (int error = goc::validate(flags, mode))
+    return error;
+  if (uint32_t(mask) == 0)
+    return GOC_SUCCESS;
+#if defined(GOC_HAVE_X86_64_V4)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
+    goc::literal_fma_x86_64_v4<Multiply>(uint32_t(mask), literal, d[0], a[0], b[0]);
+    return GOC_SUCCESS;
+  }
+#endif
+#if defined(GOC_HAVE_X86_64_V3)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::literal_fma_x86_64_v3<Multiply>(uint32_t(mask), literal, d[0], a[0], b[0]);
+    return GOC_SUCCESS;
+  }
+#endif
+  uint32_t result[32];
+  float k = goc::as_float(literal);
+  for (int lane = 0; lane < 32; ++lane) {
+    float x = goc::as_float(a[0][lane]), y = goc::as_float(b[0][lane]);
+    result[lane] = goc::as_bits(Multiply ? std::fma(x, k, y) : std::fma(x, y, k));
+  }
+  for (int lane = 0; lane < 32; ++lane)
+    if ((mask >> lane) & 1)
+      d[0][lane] = result[lane];
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
@@ -80,4 +111,14 @@ int goc_rdna4_v_fmac_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t 
   if (int error = goc::validate(flags, mode & ~known))
     return error;
   return fma<false>(flags, mask, mode, d, a, b, d);
+}
+
+int goc_rdna4_v_fmamk_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, uint32_t literal, const uint32_t *const *b) {
+  return literal_fma<true>(flags, mask, mode, d, a, b, literal);
+}
+
+int goc_rdna4_v_fmaak_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b, uint32_t literal) {
+  return literal_fma<false>(flags, mask, mode, d, a, b, literal);
 }
