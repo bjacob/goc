@@ -153,40 +153,41 @@ double measure(Wmma fn, uint64_t flags, Registers &r, int initial_iterations, in
 }
 
 // Print one table row using the same column widths for headings and results.
-void print_columns(const char *input, const char *mode, const char *path, const char *time,
-                   const char *speedup) {
-  std::printf("%-10s %-10s %-20s %12s %11s\n", input, mode, path, time, speedup);
+void print_columns(const char *input, const char *semantics, const char *instruction_flags,
+                   const char *path, const char *time, const char *speedup) {
+  std::printf("%-10s %-10s %-18s %-20s %12s %11s\n", input, semantics, instruction_flags, path,
+              time, speedup);
 }
 
 // Print a result with fixed decimal precision; a negative speedup prints "--".
-void print_result(const char *input, const char *mode, const char *path, double time,
-                  double speedup) {
+void print_result(const char *input, const char *semantics, const char *instruction_flags,
+                  const char *path, double time, double speedup) {
   char time_text[64], speedup_text[64];
   std::snprintf(time_text, sizeof(time_text), "%.1f", time);
   if (speedup < 0)
     std::snprintf(speedup_text, sizeof(speedup_text), "--");
   else
     std::snprintf(speedup_text, sizeof(speedup_text), "%.2fx", speedup);
-  print_columns(input, mode, path, time_text, speedup_text);
+  print_columns(input, semantics, instruction_flags, path, time_text, speedup_text);
 }
 
 bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t modifiers = 0) {
   Registers r(bf16, modifiers);
-  const char *mode = modifiers == 0                   ? "loose"
-                     : modifiers == GOC_WMMA_NEG_LO_A ? "NEG_LO_A"
-                                                      : "mixed";
+  const char *instruction_flags = modifiers == 0                   ? "none"
+                                  : modifiers == GOC_WMMA_NEG_LO_A ? "NEG_LO_A"
+                                                                   : "mixed";
   const char *format = bf16 ? "bf16" : "fp16";
   Wmma fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
   double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
   if (scalar < 0)
     return false;
-  print_result(format, mode, "scalar", scalar, 1.0);
+  print_result(format, "loose", instruction_flags, "scalar", scalar, 1.0);
 
   const auto accelerated = [&](const char *path, uint64_t level) {
     double time = measure(fn, level, r, iterations, min_ms, modifiers);
     if (time < 0)
       return false;
-    print_result(format, mode, path, time, scalar / time);
+    print_result(format, "loose", instruction_flags, path, time, scalar / time);
     return true;
   };
   // Only label a SIMD path when both this build and the host support it.
@@ -218,7 +219,7 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t mod
               iterations, min_ms);
   if (exact < 0)
     return false;
-  print_result(format, "exact", "scalar", exact, -1);
+  print_result(format, "exact", "none", "scalar", exact, -1);
   return true;
 }
 
@@ -226,7 +227,7 @@ bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int mi
   const Wmma functions[] = {goc_rdna4_v_wmma_i32_16x16x16_iu8, goc_rdna4_v_wmma_i32_16x16x16_iu4,
                             goc_rdna4_v_wmma_i32_16x16x32_iu4};
   const char *names[] = {"int8/k16", "int4/k16", "int4/k32"};
-  const char *mode_name = mode == 0 ? "u/u wrap" : "s/s clamp";
+  const char *instruction_flags = mode == 0 ? "u/u wrap" : "s/s clamp";
   const uint32_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
   Registers r(shape, mode);
   double scalar = 0;
@@ -238,7 +239,7 @@ bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int mi
       return false;
     if (level == GOC_CPU_BASELINE)
       scalar = time;
-    print_result(names[shape], mode_name, path, time, scalar / time);
+    print_result(names[shape], "exact", instruction_flags, path, time, scalar / time);
     return true;
   };
   if (!run("scalar", GOC_CPU_BASELINE))
@@ -284,10 +285,9 @@ int main(int argc, char **argv) {
       "Full EXEC, fixed inputs, separate C/D, hot buffers; independent dense goldens checked.");
   std::puts("Timings include public API dispatch, input conversions and output stores.");
   std::puts("FP rows: loose speedups, exact scalar separately. Integer rows: exact, speedups "
-            "within each mode.");
-  std::puts(
-      "FP NEG_LO_A/mixed rows use loose semantics; mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
-  print_columns("Input", "Mode", "CPU path", "ns/wave", "Speedup");
+            "within each instruction-flags setting.");
+  std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
+  print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
   for (uint32_t modifiers :
        {UINT32_C(0), GOC_WMMA_NEG_LO_A,
         GOC_WMMA_NEG_HI_A | GOC_WMMA_NEG_LO_B | GOC_WMMA_ABS_C | GOC_WMMA_NEG_C})
