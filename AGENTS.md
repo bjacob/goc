@@ -1,0 +1,11 @@
+Make frequent local git commits using my @bjacob GitHub identity: name = "Benoit Jacob", email = jacob.benoit.1@gmail.com
+
+Make feature work and testing expansing finely intertwined, each git commit must contain tests for the code just added,
+and tests must be verified to be all passing before committing.
+
+Borrow the .clang-format from rocjitsu, do clang-format before each commit.
+
+Borrow the license from rocjitsu.
+
+The CMake build directory should be out-of-tree. Use Ninja (generator).
+Build and test with full CPU parallelism.

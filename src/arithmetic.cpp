@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: MIT
+#include "internal.h"
+#include <cmath>
+int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                        uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
+                        uint32_t *const *c) {
+  if (int error = goc::validate(flags, instruction_flags))
+    return error;
+  uint32_t result[32];
+  for (int lane = 0; lane < 32; ++lane)
+    if ((exec_mask >> lane) & 1)
+      result[lane] = goc::as_bits(std::fma(goc::as_float(a[0][lane]), goc::as_float(b[0][lane]),
+                                           goc::as_float(c[0][lane])));
+  for (int lane = 0; lane < 32; ++lane)
+    if ((exec_mask >> lane) & 1)
+      d[0][lane] = result[lane];
+  return GOC_SUCCESS;
+}
+int goc_rdna4_v_log_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                        uint32_t *const *d, uint32_t *const *a) {
+  if (int error = goc::validate(flags, instruction_flags))
+    return error;
+  uint32_t result[32];
+  for (int lane = 0; lane < 32; ++lane)
+    if ((exec_mask >> lane) & 1)
+      result[lane] = goc::as_bits(std::log2(goc::as_float(a[0][lane])));
+  for (int lane = 0; lane < 32; ++lane)
+    if ((exec_mask >> lane) & 1)
+      d[0][lane] = result[lane];
+  return GOC_SUCCESS;
+}
