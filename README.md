@@ -15,9 +15,10 @@ ctest --test-dir ../goc-build --parallel "$(nproc)" --output-on-failure
 ```
 
 CMake uses a system GTest when available and otherwise fetches GTest 1.17.0.
-Use `-DGOC_ENABLE_X86=OFF` for the portable implementation. Optional CPU paths
-are compiled in separate translation units after compiler-flag checks. GCC and
-Clang are supported; other compilers use the portable paths.
+CMake automatically enables x86-64 implementations for x86-64 targets. Optional
+CPU paths are compiled in separate translation units after compiler-flag checks.
+GCC and Clang are supported; other compilers and architectures use the portable
+paths. Mixed-architecture Apple builds also use the portable paths.
 
 ## Implemented instructions
 
