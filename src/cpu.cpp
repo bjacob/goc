@@ -14,7 +14,7 @@
 namespace {
 
 // Returns XCR0. Requires CPUID to report both XSAVE and OSXSAVE support.
-__attribute__((target("xsave"))) uint64_t read_xcr0(void) { return _xgetbv(0); }
+[[gnu::target("xsave")]] uint64_t read_xcr0(void) { return _xgetbv(0); }
 
 } // namespace
 #endif

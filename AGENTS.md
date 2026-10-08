@@ -31,3 +31,6 @@ usage documentation instead.
 Use blank lines to separate logical groups of constants, declarations, and code.
 A comment must stay attached to its subject, with a blank line separating that
 group from neighboring material to which the comment does not apply.
+
+Use C++17 [[...]] syntax for C++ attributes, with a gnu:: namespace where needed,
+rather than __attribute__((...)).
