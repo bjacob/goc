@@ -57,6 +57,10 @@ else()
     goc_rdna4_v_sqrt_f64
     goc_rdna4_v_rcp_f64
     goc_rdna4_v_rsq_f64
+    goc_rdna4_v_min_num_f64
+    goc_rdna4_v_max_num_f64
+    goc_rdna4_v_minimum_f64
+    goc_rdna4_v_maximum_f64
     goc_rdna4_v_add_f64
     goc_rdna4_v_mul_f64
     goc_rdna4_v_fma_f64

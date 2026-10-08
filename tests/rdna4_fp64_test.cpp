@@ -29,6 +29,14 @@ int call(int op, uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *
     return goc_rdna4_v_add_f64(flags, mask, mode, d, a, b);
   if (op == 1)
     return goc_rdna4_v_mul_f64(flags, mask, mode, d, a, b);
+  if (op == 3)
+    return goc_rdna4_v_min_num_f64(flags, mask, mode, d, a, b);
+  if (op == 4)
+    return goc_rdna4_v_max_num_f64(flags, mask, mode, d, a, b);
+  if (op == 5)
+    return goc_rdna4_v_minimum_f64(flags, mask, mode, d, a, b);
+  if (op == 6)
+    return goc_rdna4_v_maximum_f64(flags, mask, mode, d, a, b);
   return goc_rdna4_v_fma_f64(flags, mask, mode, d, a, b, c);
 }
 
@@ -38,7 +46,7 @@ TEST(Fp64, AllModifiersMasksAndCrossHalfAliases) {
   const int aliases[][2] = {{6, 7}, {0, 1}, {2, 3}, {4, 5}, {1, 0},
                             {3, 2}, {5, 4}, {1, 2}, {4, 1}, {6, 6}};
   const double scales[] = {1, 2, 4, 0.5};
-  for (int op = 0; op < 3; ++op)
+  for (int op = 0; op < 7; ++op)
     for (uint32_t mode = 0; mode < 512; ++mode) {
       if (op != 2 && (mode & (GOC_ALU_NEG_C | GOC_ALU_ABS_C)))
         continue;
@@ -56,6 +64,16 @@ TEST(Fp64, AllModifiersMasksAndCrossHalfAliases) {
         }
         // Small dyadic inputs make these long-double expressions exact.
         double want = double(op == 0 ? x[0] + x[1] : op == 1 ? x[0] * x[1] : x[0] * x[1] + x[2]);
+        if (op >= 3) {
+          bool maximum = op == 4 || op == 6;
+          if (x[0] == 0 && x[1] == 0)
+            want = (maximum ? std::signbit(x[0]) && std::signbit(x[1])
+                            : std::signbit(x[0]) || std::signbit(x[1]))
+                       ? -0.0
+                       : 0.0;
+          else
+            want = double(maximum ? std::max(x[0], x[1]) : std::min(x[0], x[1]));
+        }
         want *= scales[(mode >> 6) & 3];
         if (mode & GOC_ALU_CLAMP)
           want = !(want > 0) ? 0 : std::min(want, 1.0);
@@ -143,11 +161,11 @@ TEST(Fp64, LiteralRoundingAndExceptionalValues) {
 TEST(Fp64, Validation) {
   uint32_t data[2][32] = {}, output[2][32];
   uint32_t *a[] = {data[0], data[1]}, *d[] = {output[0], output[1]};
-  for (int op = 0; op < 3; ++op) {
+  for (int op = 0; op < 7; ++op) {
     for (auto &reg : output)
       std::fill(reg, reg + 32, 0xdeadbeef);
     EXPECT_EQ(call(op, 0, UINT32_MAX, GOC_ALU_HIGH_C, d, a, a, a), GOC_ERROR_INVALID_FLAGS);
-    if (op < 2) {
+    if (op != 2) {
       EXPECT_EQ(call(op, 0, UINT32_MAX, GOC_ALU_NEG_C, d, a, a, a), GOC_ERROR_INVALID_FLAGS);
     }
     EXPECT_EQ(
@@ -159,4 +177,135 @@ TEST(Fp64, Validation) {
       for (uint32_t value : reg)
         EXPECT_EQ(value, 0xdeadbeef);
   }
+}
+
+namespace {
+
+uint64_t minmax_reference(int op, uint64_t a, uint64_t b, uint32_t mode) {
+  uint64_t operands[] = {a, b};
+  for (int source = 0; source < 2; ++source) {
+    if (mode & (GOC_ALU_ABS_A << source))
+      operands[source] &= UINT64_C(0x7fffffffffffffff);
+    if (mode & (GOC_ALU_NEG_A << source))
+      operands[source] ^= UINT64_C(0x8000000000000000);
+  }
+  const auto nan = [](uint64_t x) {
+    return (x & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000);
+  };
+  uint64_t selected = 0;
+  if (nan(operands[0]) || nan(operands[1])) {
+    if (op < 2) {
+      selected = nan(operands[0]) ? operands[1] : operands[0];
+      if (nan(operands[0]) && nan(operands[1]))
+        selected = operands[0];
+    } else {
+      // First signaling NaN, otherwise first quiet NaN.
+      bool found = false;
+      for (uint64_t x : operands)
+        if (!found && nan(x) && !(x & UINT64_C(0x0008000000000000))) {
+          selected = x;
+          found = true;
+        }
+      if (!found)
+        selected = nan(operands[0]) ? operands[0] : operands[1];
+    }
+    if (nan(selected))
+      selected |= UINT64_C(0x0008000000000000);
+  } else {
+    const auto key = [](uint64_t x) {
+      return x & UINT64_C(0x8000000000000000) ? ~x : x ^ UINT64_C(0x8000000000000000);
+    };
+    std::sort(operands, operands + 2, [&](uint64_t x, uint64_t y) { return key(x) < key(y); });
+    selected = operands[op % 2];
+  }
+  if (!nan(selected)) {
+    const int exponents[] = {0, 1, 2, -1};
+    selected = bits(
+        double(std::ldexp(static_cast<long double>(number(selected)), exponents[(mode >> 6) & 3])));
+  }
+  if (mode & GOC_ALU_CLAMP) {
+    if (nan(selected) || (selected & UINT64_C(0x8000000000000000)))
+      selected = 0;
+    else if (selected > UINT64_C(0x3ff0000000000000))
+      selected = UINT64_C(0x3ff0000000000000);
+  }
+  return selected;
+}
+
+} // namespace
+
+TEST(Fp64, MinMaxSpecialPairsAndAllModifiers) {
+  const uint64_t values[] = {0,
+                             0x8000000000000000,
+                             1,
+                             0x8000000000000001,
+                             0x000fffffffffffff,
+                             0x0010000000000000,
+                             0x3fe0000000000000,
+                             0xbfe0000000000000,
+                             0x3ff0000000000000,
+                             0xbff0000000000000,
+                             0x3ff0000000000001,
+                             0x3fefffffffffffff,
+                             0x7fefffffffffffff,
+                             0xffefffffffffffff,
+                             0x7ff0000000000000,
+                             0xfff0000000000000,
+                             0x7ff8000000001234,
+                             0xfff8000000005678,
+                             0x7ff0000000001234,
+                             0xfff0000000005678,
+                             0x3fd0000000000000,
+                             0x4000000000000000,
+                             0xc008000000000000,
+                             0x800fffffffffffff};
+  for (int op = 0; op < 4; ++op)
+    for (uint32_t variant = 0; variant < 128; ++variant) {
+      uint32_t mode = (variant & 3) | ((variant & 12) << 1) | ((variant & 112) << 2);
+      for (int batch = 0; batch < 18; ++batch) {
+        uint32_t a[2][32], b[2][32], d[2][32];
+        uint64_t expected[32];
+        for (int lane = 0; lane < 32; ++lane) {
+          uint64_t x = values[(batch * 32 + lane) / 24], y = values[(batch * 32 + lane) % 24];
+          a[0][lane] = uint32_t(x);
+          a[1][lane] = uint32_t(x >> 32);
+          b[0][lane] = uint32_t(y);
+          b[1][lane] = uint32_t(y >> 32);
+          expected[lane] = minmax_reference(op, x, y, mode);
+        }
+        uint32_t *pa[] = {a[0], a[1]}, *pb[] = {b[0], b[1]}, *pd[] = {d[0], d[1]};
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          SCOPED_TRACE(::testing::Message() << op << "/" << mode << "/" << batch << "/" << cpu);
+          ASSERT_EQ(call(op + 3, cpu, UINT32_MAX, mode, pd, pa, pb, nullptr), GOC_SUCCESS);
+          for (int lane = 0; lane < 32; ++lane)
+            EXPECT_EQ(d[0][lane] | (uint64_t(d[1][lane]) << 32), expected[lane]);
+        }
+      }
+    }
+}
+
+TEST(Fp64, MinMaxLiteralNaNPriorityAndZeros) {
+  const uint64_t cases[][6] = {
+      {0, 0x8000000000000000, 0x8000000000000000, 0, 0x8000000000000000, 0},
+      {0x8000000000000000, 0, 0x8000000000000000, 0, 0x8000000000000000, 0},
+      {0x7ff0000000001234, 0xbff0000000000000, 0xbff0000000000000, 0xbff0000000000000,
+       0x7ff8000000001234, 0x7ff8000000001234},
+      {0x7ff8000000001234, 0xfff0000000005678, 0x7ff8000000001234, 0x7ff8000000001234,
+       0xfff8000000005678, 0xfff8000000005678},
+      {0xfff0000000001234, 0x7ff0000000005678, 0xfff8000000001234, 0xfff8000000001234,
+       0xfff8000000001234, 0xfff8000000001234},
+  };
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (int op = 0; op < 4; ++op)
+      for (const auto &test : cases) {
+        uint32_t a[2][32], b[2][32], d[2][32];
+        uint32_t *pa[] = {a[0], a[1]}, *pb[] = {b[0], b[1]}, *pd[] = {d[0], d[1]};
+        for (int reg = 0; reg < 2; ++reg) {
+          std::fill(a[reg], a[reg] + 32, uint32_t(test[0] >> (32 * reg)));
+          std::fill(b[reg], b[reg] + 32, uint32_t(test[1] >> (32 * reg)));
+        }
+        ASSERT_EQ(call(op + 3, cpu, UINT32_MAX, 0, pd, pa, pb, nullptr), GOC_SUCCESS);
+        for (int lane = 0; lane < 32; ++lane)
+          EXPECT_EQ(d[0][lane] | (uint64_t(d[1][lane]) << 32), test[op + 2]);
+      }
 }

@@ -162,6 +162,26 @@ GOC_API int goc_rdna4_v_fma_f64(uint64_t flags, uint64_t exec_mask, uint32_t ins
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b, const uint32_t *const *c);
 
+// FP64 min/max uses two VGPRs per operand, with A/B ABS/NEG, OMOD and CLAMP.
+// Number variants prefer numeric operands over NaNs; minimum/maximum propagate
+// NaNs, preferring signaling NaNs and quieting them. Both order -0 below +0.
+// Loose semantics and the same FP64 alias/host-FP-state contract apply.
+GOC_API int goc_rdna4_v_min_num_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_max_num_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_minimum_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_maximum_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
 // Unary FP64 arithmetic uses the same low/high VGPR layout. Supports A ABS/NEG,
 // OMOD and CLAMP, with loose semantics. RNDNE rounds ties to even; FRACT computes
 // x - floor(x), capped at 0x3fefffffffffffff before output modifiers.

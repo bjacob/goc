@@ -500,8 +500,9 @@ bool benchmark_minmax3(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_fp64(uint64_t cpu, int iterations, int min_ms) {
-  const char *names[] = {"f64/add", "f64/mul", "f64/fma"};
-  for (int op = 0; op < 3; ++op)
+  const char *names[] = {"f64/add",    "f64/mul", "f64/fma", "f64/minnum",
+                         "f64/maxnum", "f64/min", "f64/max"};
+  for (int op = 0; op < 7; ++op)
     for (uint32_t mode :
          {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
@@ -520,6 +521,8 @@ bool benchmark_fp64(uint64_t cpu, int iterations, int min_ms) {
           x[1] = -x[1];
         }
         double want = op == 0 ? x[0] + x[1] : op == 1 ? x[0] * x[1] : x[0] * x[1] + x[2];
+        if (op >= 3)
+          want = (op == 4 || op == 6) ? std::max(x[0], x[1]) : std::min(x[0], x[1]);
         if (mode)
           want = std::min(1.0, std::max(0.0, want * 0.5));
         if (!mode && op == 1 && want == 0 && ((x[0] < 0) != (x[1] < 0)))
@@ -536,6 +539,14 @@ bool benchmark_fp64(uint64_t cpu, int iterations, int min_ms) {
           return goc_rdna4_v_add_f64(flags, mask, modifiers, d, a, b);
         if (op == 1)
           return goc_rdna4_v_mul_f64(flags, mask, modifiers, d, a, b);
+        if (op == 3)
+          return goc_rdna4_v_min_num_f64(flags, mask, modifiers, d, a, b);
+        if (op == 4)
+          return goc_rdna4_v_max_num_f64(flags, mask, modifiers, d, a, b);
+        if (op == 5)
+          return goc_rdna4_v_minimum_f64(flags, mask, modifiers, d, a, b);
+        if (op == 6)
+          return goc_rdna4_v_maximum_f64(flags, mask, modifiers, d, a, b);
         return goc_rdna4_v_fma_f64(flags, mask, modifiers, d, a, b, c);
       };
       const char *label = mode ? "ABS/NEG/half/clamp" : "none";

@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_fp64.h"
+#include "x86_64/rdna4_minmax_x86_64_v3.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -40,6 +41,14 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
       value = _mm256_mul_pd(x, y);
     if constexpr (Op == Fp64::Fma)
       value = _mm256_fmadd_pd(x, y, load(c, lane, kc, nc));
+    if constexpr (Op == Fp64::MinNum)
+      value = minmax<false, false>(x, y);
+    if constexpr (Op == Fp64::MaxNum)
+      value = minmax<true, false>(x, y);
+    if constexpr (Op == Fp64::Minimum)
+      value = minmax<false, true>(x, y);
+    if constexpr (Op == Fp64::Maximum)
+      value = minmax<true, true>(x, y);
     if constexpr (Op == Fp64::Trunc)
       value = _mm256_round_pd(x, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     if constexpr (Op == Fp64::Ceil)
@@ -102,6 +111,14 @@ void fp64_x86_64_v3(Fp64 op, uint32_t mask, uint32_t mode, uint32_t *const *d,
     return run<Fp64::Rcp>(mask, mode, d, a, b, c);
   case Fp64::Rsq:
     return run<Fp64::Rsq>(mask, mode, d, a, b, c);
+  case Fp64::MinNum:
+    return run<Fp64::MinNum>(mask, mode, d, a, b, c);
+  case Fp64::MaxNum:
+    return run<Fp64::MaxNum>(mask, mode, d, a, b, c);
+  case Fp64::Minimum:
+    return run<Fp64::Minimum>(mask, mode, d, a, b, c);
+  case Fp64::Maximum:
+    return run<Fp64::Maximum>(mask, mode, d, a, b, c);
   case Fp64::Add:
     return run<Fp64::Add>(mask, mode, d, a, b, c);
   case Fp64::Mul:

@@ -39,6 +39,14 @@ int arithmetic(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
       value = x * y;
     if constexpr (Op == goc::Fp64::Fma)
       value = std::fma(x, y, goc::fp64_input(c, lane, mode >> 2));
+    if constexpr (Op == goc::Fp64::MinNum)
+      value = goc::fp64_minmax<false, false>(x, y);
+    if constexpr (Op == goc::Fp64::MaxNum)
+      value = goc::fp64_minmax<true, false>(x, y);
+    if constexpr (Op == goc::Fp64::Minimum)
+      value = goc::fp64_minmax<false, true>(x, y);
+    if constexpr (Op == goc::Fp64::Maximum)
+      value = goc::fp64_minmax<true, true>(x, y);
     if constexpr (Op == goc::Fp64::Trunc)
       value = std::trunc(x);
     if constexpr (Op == goc::Fp64::Ceil)
@@ -127,4 +135,24 @@ int goc_rdna4_v_rcp_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *
 int goc_rdna4_v_rsq_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
                         const uint32_t *const *a) {
   return arithmetic<goc::Fp64::Rsq>(flags, mask, mode, d, a, nullptr, nullptr);
+}
+
+int goc_rdna4_v_min_num_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b) {
+  return arithmetic<goc::Fp64::MinNum>(flags, mask, mode, d, a, b, nullptr);
+}
+
+int goc_rdna4_v_max_num_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b) {
+  return arithmetic<goc::Fp64::MaxNum>(flags, mask, mode, d, a, b, nullptr);
+}
+
+int goc_rdna4_v_minimum_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b) {
+  return arithmetic<goc::Fp64::Minimum>(flags, mask, mode, d, a, b, nullptr);
+}
+
+int goc_rdna4_v_maximum_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b) {
+  return arithmetic<goc::Fp64::Maximum>(flags, mask, mode, d, a, b, nullptr);
 }
