@@ -3,7 +3,7 @@
 #ifndef GOC_FLOAT_FORMATS_H_
 #define GOC_FLOAT_FORMATS_H_
 
-#include "../src/internal.h"
+#include "internal.h"
 
 namespace goc {
 inline float bf16_to_float(uint16_t bits) { return as_float(uint32_t(bits) << 16); }

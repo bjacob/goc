@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-#include "../src/float_formats.h"
-#include "../src/rdna4_dot.h"
+#include "float_formats.h"
+#include "rdna4_dot.h"
 
 #include <cmath>
 

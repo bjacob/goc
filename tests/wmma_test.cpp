@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-#include "../src/float_formats.h"
-#include "../src/rdna4_dot.h"
 #include "../tests/dense_golden.h"
 #include "../tests/dot_fixtures.h"
 #include "../tests/wmma_fixtures.h"
+#include "float_formats.h"
+#include "rdna4_dot.h"
 
 #include <algorithm>
 #include <array>
