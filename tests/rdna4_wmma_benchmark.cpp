@@ -101,6 +101,30 @@ struct Registers {
       }
   }
 
+  void initialize_fp8_wmma(int format, uint32_t modifiers) {
+    std::minstd_rand random(12056925);
+    for (int operand = 0; operand < 2; ++operand) {
+      bool bf8 = operand ? format & 1 : format & 2;
+      for (int i = 0; i < 256; ++i) {
+        uint32_t x = random();
+        uint32_t code = (x & 128) | ((bf8 ? 48 : 32) + x % (bf8 ? 24 : 48));
+        int index = operand ? i % 16 : i / 16, k = operand ? i / 16 : i % 16;
+        data[4 * operand + (k % 8) / 4][index + 16 * (k / 8)] |= code << (8 * (k % 4));
+      }
+    }
+    for (int row = 0; row < 16; ++row)
+      for (int col = 0; col < 16; ++col) {
+        int c = int(random() % 33) - 16;
+        data[8 + row % 8][col + 16 * (row / 8)] = bits(float(c));
+        int adjusted = modifiers & GOC_WMMA_ABS_C ? std::abs(c) : c;
+        if (modifiers & GOC_WMMA_NEG_C)
+          adjusted = -adjusted;
+        float golden;
+        std::memcpy(&golden, &kFp8Dense[format][row * 16 + col], sizeof(golden));
+        expected[row * 16 + col] = bits(golden + float(adjusted - c));
+      }
+  }
+
   void initialize_fma(uint32_t modifiers) {
     output_regs = 1;
     std::minstd_rand random(31);
@@ -357,6 +381,35 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_fp8_wmma(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {
+      goc_rdna4_v_wmma_f32_16x16x16_fp8_fp8, goc_rdna4_v_wmma_f32_16x16x16_fp8_bf8,
+      goc_rdna4_v_wmma_f32_16x16x16_bf8_fp8, goc_rdna4_v_wmma_f32_16x16x16_bf8_bf8};
+  const char *names[] = {"wmma/f8f8", "wmma/f8b8", "wmma/b8f8", "wmma/b8b8"};
+  for (int format = 0; format < 4; ++format)
+    for (uint32_t modifiers : {UINT32_C(0), GOC_WMMA_NEG_C | GOC_WMMA_ABS_C}) {
+      Registers r;
+      r.initialize_fp8_wmma(format, modifiers);
+      const char *mode = modifiers ? "ABS_C/NEG_C" : "none";
+      double scalar =
+          measure(functions[format], GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
+      if (scalar < 0)
+        return false;
+      print_result(names[format], "loose", mode, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd =
+            measure(functions[format], GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
+        if (simd < 0)
+          return false;
+        print_result(names[format], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_fp8_dot(uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {goc_rdna4_v_dot4_f32_fp8_fp8, goc_rdna4_v_dot4_f32_fp8_bf8,
                             goc_rdna4_v_dot4_f32_bf8_fp8, goc_rdna4_v_dot4_f32_bf8_bf8};
@@ -514,6 +567,10 @@ int main(int argc, char **argv) {
             "matching instruction-flags settings.");
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
+  if (!benchmark_fp8_wmma(cpu, iterations, min_ms)) {
+    std::fprintf(stderr, "FP8 WMMA benchmark failed: API/result error or iteration overflow.\n");
+    return 1;
+  }
   if (!benchmark_fp8_dot(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "FP8 DOT4 benchmark failed: API/result error or iteration overflow.\n");
     return 1;

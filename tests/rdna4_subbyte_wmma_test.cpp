@@ -79,68 +79,82 @@ void save(Registers &r, int dst, uint32_t (&before)[8][32]) {
 } // namespace
 
 TEST(SubbyteWmma, Fp8DenseGoldensMasksAndOverlap) {
-  for (int format = 0; format < 4; ++format)
-    for (int dst : {0, 4, 8, 16})
-      for (uint64_t mask :
-           {UINT64_C(0), UINT64_C(0xa55a1234), UINT64_C(0xffffffff00000000), UINT64_MAX})
-        for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
-          Registers r;
-          std::minstd_rand random(12056925);
-          for (int operand = 0; operand < 2; ++operand) {
-            bool bf8 = operand ? format & 1 : format & 2;
-            for (int i = 0; i < 256; ++i) {
-              uint32_t x = random();
-              uint32_t code = (x & 128) | ((bf8 ? 48 : 32) + x % (bf8 ? 24 : 48));
-              set(r.v + 4 * operand, operand ? i % 16 : i / 16, operand ? i / 16 : i % 16, 8, code);
+  for (uint64_t cpu : cpu_levels())
+    for (uint32_t mode :
+         {UINT32_C(0), GOC_WMMA_NEG_C, GOC_WMMA_ABS_C, GOC_WMMA_NEG_C | GOC_WMMA_ABS_C})
+      for (int format = 0; format < 4; ++format)
+        for (int dst : {0, 4, 8, 16})
+          for (uint64_t mask : rdna4_exec_masks())
+            for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+              Registers r;
+              std::minstd_rand random(12056925);
+              for (int operand = 0; operand < 2; ++operand) {
+                bool bf8 = operand ? format & 1 : format & 2;
+                for (int i = 0; i < 256; ++i) {
+                  uint32_t x = random();
+                  uint32_t code = (x & 128) | ((bf8 ? 48 : 32) + x % (bf8 ? 24 : 48));
+                  set(r.v + 4 * operand, operand ? i % 16 : i / 16, operand ? i / 16 : i % 16, 8,
+                      code);
+                }
+              }
+              uint32_t expected[256];
+              for (int row = 0; row < 16; ++row)
+                for (int col = 0; col < 16; ++col) {
+                  int c = int(random() % 33) - 16;
+                  r.v[8 + row % 8][col + 16 * (row / 8)] = goc::as_bits(float(c));
+                  int adjusted = mode & GOC_WMMA_ABS_C ? std::abs(c) : c;
+                  if (mode & GOC_WMMA_NEG_C)
+                    adjusted = -adjusted;
+                  expected[row * 16 + col] = goc::as_bits(
+                      goc::as_float(kFp8Dense[format][row * 16 + col]) + float(adjusted - c));
+                }
+              uint32_t before[8][32];
+              save(r, dst, before);
+              ASSERT_EQ(
+                  floating[format](cpu | semantics, mask, mode, r.v + dst, r.v, r.v + 4, r.v + 8),
+                  0);
+              check(r, dst, mask, expected, before);
             }
-          }
-          for (int row = 0; row < 16; ++row)
-            for (int col = 0; col < 16; ++col)
-              r.v[8 + row % 8][col + 16 * (row / 8)] = goc::as_bits(float(int(random() % 33) - 16));
-          uint32_t before[8][32];
-          save(r, dst, before);
-          ASSERT_EQ(floating[format](semantics, mask, 0, r.v + dst, r.v, r.v + 4, r.v + 8), 0);
-          check(r, dst, mask, kFp8Dense[format], before);
-        }
 }
 
 TEST(SubbyteWmma, AllFp8CodesThroughApi) {
-  for (int format = 0; format < 4; ++format)
-    for (int operand = 0; operand < 2; ++operand)
-      for (int block = 0; block < 16; ++block) {
-        Registers r;
-        bool bf8 = operand ? format & 1 : format & 2;
-        for (int index = 0; index < 16; ++index)
-          for (int k = 0; k < 16; ++k) {
-            // Each row/column places one code at K=0. The other operand
-            // contains ones, including for nonfinite factors.
-            set(r.v + 4 * operand, index, k, 8, k == 0 ? block * 16 + index : 0);
-            bool other_bf8 = operand ? format & 2 : format & 1;
-            set(r.v + 4 * (1 - operand), index, k, 8, other_bf8 ? 0x3c : 0x38);
-          }
-        ASSERT_EQ(floating[format](0, UINT64_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8), 0);
-        for (int row = 0; row < 16; ++row)
-          for (int col = 0; col < 16; ++col) {
-            int code = block * 16 + (operand ? col : row);
-            int fraction_bits = bf8 ? 2 : 3, bias = bf8 ? 15 : 7;
-            int exponent = (code & 127) >> fraction_bits,
-                fraction = code & ((1 << fraction_bits) - 1);
-            float value = goc::as_float(r.v[16 + row % 8][col + 16 * (row / 8)]);
-            if ((bf8 && exponent == 31 && fraction) || (!bf8 && (code & 127) == 127)) {
-              EXPECT_TRUE(std::isnan(value));
-            } else {
-              // Independent arithmetic decoding, including E4M3's finite top exponent.
-              float want =
-                  bf8 && exponent == 31
-                      ? INFINITY
-                      : std::ldexp(float(exponent ? (1 << fraction_bits) + fraction : fraction),
-                                   (exponent ? exponent : 1) - bias - fraction_bits);
-              if (code & 128)
-                want = -want;
-              EXPECT_EQ(value, want);
+  for (uint64_t cpu : cpu_levels())
+    for (int format = 0; format < 4; ++format)
+      for (int operand = 0; operand < 2; ++operand)
+        for (int block = 0; block < 16; ++block) {
+          Registers r;
+          bool bf8 = operand ? format & 1 : format & 2;
+          for (int index = 0; index < 16; ++index)
+            for (int k = 0; k < 16; ++k) {
+              // Each row/column places one code at K=0. The other operand
+              // contains ones, including for nonfinite factors.
+              set(r.v + 4 * operand, index, k, 8, k == 0 ? block * 16 + index : 0);
+              bool other_bf8 = operand ? format & 2 : format & 1;
+              set(r.v + 4 * (1 - operand), index, k, 8, other_bf8 ? 0x3c : 0x38);
             }
-          }
-      }
+          ASSERT_EQ(floating[format](cpu, UINT64_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8), 0);
+          for (int row = 0; row < 16; ++row)
+            for (int col = 0; col < 16; ++col) {
+              int code = block * 16 + (operand ? col : row);
+              int fraction_bits = bf8 ? 2 : 3, bias = bf8 ? 15 : 7;
+              int exponent = (code & 127) >> fraction_bits,
+                  fraction = code & ((1 << fraction_bits) - 1);
+              float value = goc::as_float(r.v[16 + row % 8][col + 16 * (row / 8)]);
+              if ((bf8 && exponent == 31 && fraction) || (!bf8 && (code & 127) == 127)) {
+                EXPECT_TRUE(std::isnan(value));
+              } else {
+                // Independent arithmetic decoding, including E4M3's finite top exponent.
+                float want =
+                    bf8 && exponent == 31
+                        ? INFINITY
+                        : std::ldexp(float(exponent ? (1 << fraction_bits) + fraction : fraction),
+                                     (exponent ? exponent : 1) - bias - fraction_bits);
+                if (code & 128)
+                  want = -want;
+                EXPECT_EQ(value, want);
+              }
+            }
+        }
 }
 
 TEST(SubbyteWmma, Fp8ModifiersAndStrictErrors) {

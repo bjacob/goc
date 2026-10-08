@@ -36,12 +36,16 @@ int floating(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const 
     return error;
   if (uint32_t(mask) == 0)
     return GOC_SUCCESS;
+#if defined(GOC_HAVE_X86_64_V3)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::fp8_wmma_x86_64_v3(Bf8A, Bf8B, uint32_t(mask), modifiers, d, a, b, c);
+    return GOC_SUCCESS;
+  }
+#endif
   uint32_t result[8][32];
   for (int row = 0; row < 16; ++row)
     for (int col = 0; col < 16; ++col) {
       int lane = col + 16 * (row / 8), reg = row % 8;
-      if (!((mask >> lane) & 1))
-        continue;
       uint32_t bits = c[reg][lane];
       if (modifiers & GOC_WMMA_ABS_C)
         bits &= 0x7fffffff;

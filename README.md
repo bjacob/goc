@@ -149,7 +149,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_wmma_f32_16x16x16_bf16` | Scalar, x86-64-v3 AVX2/FMA, AVX-512 BF16 | Integer arithmetic model |
 | `v_wmma_f16_16x16x16_f16` | Integer arithmetic model | Integer arithmetic model |
 | `v_wmma_bf16_16x16x16_bf16` | Integer arithmetic model | Integer arithmetic model |
-| `v_wmma_f32_16x16x16_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar | Not implemented |
+| `v_wmma_f32_16x16x16_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar, x86-64-v3 | Not implemented |
 | `v_wmma_i32_16x16x16_iu8` | Scalar, x86-64-v3, Zen4 VNNI | Same exact integer paths |
 | `v_wmma_i32_16x16x16_iu4` | Scalar, x86-64-v3, Zen4 VNNI | Same exact integer paths |
 | `v_wmma_i32_16x16x32_iu4` | Scalar, x86-64-v3, Zen4 VNNI | Same exact integer paths |
@@ -193,6 +193,14 @@ FP32-output wave32 forms; wave64 uses two A/B VGPRs and four C/D VGPRs.
 Packed-output forms halve the C/D register counts, packing adjacent rows into
 the low and high 16 bits. Input and output operands may share whole VGPRs. Distinct backing
 addresses must not overlap, and every pointer must refer to sufficient storage.
+
+All four FP8/BF8 WMMA forms have v3 SIMD paths supporting NEG_C/ABS_C.
+They decode each input element once and reuse it across output rows/columns;
+all results are staged before masked writes to preserve operand aliasing.
+Tests cross dense matrix goldens with all CPU levels, all C modifiers, 85 EXEC
+masks and aliases, and check every input byte encoding through each operand.
+Benchmark `wmma/f8f8`, `wmma/f8b8`, `wmma/b8f8`, and `wmma/b8b8` rows
+compare scalar and SIMD with full EXEC, default flags and ABS_C/NEG_C.
 
 FP8/BF8 DOT4 supports all four E4M3FN/E5M2 input combinations with FP32
 accumulation and `GOC_DOT_ABS_C` / `GOC_DOT_NEG_C`, applied in that order.
