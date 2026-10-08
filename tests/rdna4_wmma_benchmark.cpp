@@ -200,7 +200,7 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t mod
 #endif
 #if defined(GOC_BENCH_HAVE_AVX512BF16)
   if (bf16 && cpu >= GOC_CPU_ZEN4) {
-    if (!accelerated("Zen4 / AVX512BF16", GOC_CPU_ZEN4))
+    if (!accelerated("Zen4 / avx512bf16", GOC_CPU_ZEN4))
       return false;
     ran_simd = true;
   }
@@ -248,7 +248,7 @@ bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int mi
     return false;
 #endif
 #if defined(GOC_BENCH_HAVE_AVX512VNNI)
-  if (cpu >= GOC_CPU_ZEN4 && !run("Zen4 / AVX512VNNI", GOC_CPU_ZEN4))
+  if (cpu >= GOC_CPU_ZEN4 && !run("Zen4 / avx512vnni", GOC_CPU_ZEN4))
     return false;
 #endif
   (void)cpu;
