@@ -9,6 +9,7 @@ list(JOIN goc_avx512bf16_flags " " goc_avx512bf16_check_flags)
 
 check_cxx_compiler_flag("${goc_x86_64_v3_flags}" GOC_COMPILER_X86_64_V3)
 check_cxx_compiler_flag("${goc_x86_64_v4_flags}" GOC_COMPILER_X86_64_V4)
+check_cxx_compiler_flag("${goc_avx512bf16_check_flags}" GOC_COMPILER_AVX512BF16)
 
 if(GOC_COMPILER_X86_64_V3)
   target_sources(goc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/fma_x86_64_v3.cpp)
@@ -22,7 +23,6 @@ if(GOC_COMPILER_X86_64_V4)
   target_compile_definitions(goc PRIVATE GOC_HAVE_X86_64_V4=1)
 endif()
 
-check_cxx_compiler_flag("${goc_avx512bf16_check_flags}" GOC_COMPILER_AVX512BF16)
 if(GOC_COMPILER_AVX512BF16)
   target_sources(goc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/wmma_avx512bf16.cpp)
   set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/wmma_avx512bf16.cpp TARGET_DIRECTORY goc PROPERTIES COMPILE_OPTIONS "${goc_avx512bf16_flags}")
