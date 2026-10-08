@@ -136,6 +136,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 
 | Mnemonic | Loose semantics | Empirical exact semantics |
 | --- | --- | --- |
+| `v_add_f32`, `v_sub_f32`, `v_subrev_f32`, `v_mul_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_fma_f32` | Scalar, AVX2/FMA, AVX-512 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
@@ -241,6 +242,11 @@ only after the complete dot plus accumulator; otherwise results wrap modulo
 factors avoids the unwanted intermediate saturation of x86 byte-pair dot
 instructions. Tests cover all signedness/CLAMP modes, overflow boundaries,
 85 masks, source/destination aliases and unchanged host FP state.
+
+FP32 ADD, SUB, SUBREV and MUL support A/B ABS/NEG, output scaling and CLAMP
+on scalar and v3 paths. Tests cross all 128 modifier combinations with all CPU
+levels, 85 masks and aliases, including signed zeros, subnormals, infinities,
+NaNs and overflow. Their benchmark rows compare default and modified cases.
 
 FMA supports all three source ABS/NEG pairs, OMOD scaling and CLAMP on scalar,
 x86-64-v3 and x86-64-v4 paths. Tests cross all 512 modifier combinations with

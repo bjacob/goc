@@ -1,0 +1,60 @@
+// SPDX-License-Identifier: MIT
+
+#include "goc/goc.h"
+#include "rdna4_binary.h"
+
+#include <immintrin.h>
+#include <stdint.h>
+
+namespace goc {
+namespace {
+
+template <Binary Op>
+void run(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uint32_t *b) {
+  const auto ka = _mm256_set1_epi32(mode & GOC_ALU_ABS_A ? INT32_MAX : -1);
+  const auto kb = _mm256_set1_epi32(mode & GOC_ALU_ABS_B ? INT32_MAX : -1);
+  const auto na = _mm256_set1_epi32(mode & GOC_ALU_NEG_A ? INT32_MIN : 0);
+  const auto nb = _mm256_set1_epi32(mode & GOC_ALU_NEG_B ? INT32_MIN : 0);
+  const float scales[] = {1, 2, 4, 0.5f};
+  const auto scale = _mm256_set1_ps(scales[(mode >> 6) & 3]);
+  for (int lane = 0; lane < 32; lane += 8) {
+    auto x = _mm256_castsi256_ps(_mm256_xor_si256(
+        _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)), ka), na));
+    auto y = _mm256_castsi256_ps(_mm256_xor_si256(
+        _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(b + lane)), kb), nb));
+    __m256 value;
+    if constexpr (Op == Binary::Add)
+      value = _mm256_add_ps(x, y);
+    if constexpr (Op == Binary::Sub)
+      value = _mm256_sub_ps(x, y);
+    if constexpr (Op == Binary::Subrev)
+      value = _mm256_sub_ps(y, x);
+    if constexpr (Op == Binary::Mul)
+      value = _mm256_mul_ps(x, y);
+    if (mode & GOC_ALU_OMOD_HALF)
+      value = _mm256_mul_ps(value, scale);
+    if (mode & GOC_ALU_CLAMP)
+      value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
+    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
+                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, _mm256_castps_si256(value));
+  }
+}
+
+} // namespace
+
+void binary_x86_64_v3(Binary op, uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+                      const uint32_t *b) {
+  switch (op) {
+  case Binary::Add:
+    return run<Binary::Add>(mask, mode, d, a, b);
+  case Binary::Sub:
+    return run<Binary::Sub>(mask, mode, d, a, b);
+  case Binary::Subrev:
+    return run<Binary::Subrev>(mask, mode, d, a, b);
+  case Binary::Mul:
+    return run<Binary::Mul>(mask, mode, d, a, b);
+  }
+}
+
+} // namespace goc

@@ -29,6 +29,10 @@ else()
     goc_rdna4_v_dot4_f32_bf8_bf8
     goc_rdna4_v_dot2_f16_f16
     goc_rdna4_v_dot2_bf16_bf16
+    goc_rdna4_v_add_f32
+    goc_rdna4_v_sub_f32
+    goc_rdna4_v_subrev_f32
+    goc_rdna4_v_mul_f32
     goc_init_cpu_flags
     goc_rdna4_v_fma_f32
     goc_rdna4_v_trunc_f32

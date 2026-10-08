@@ -38,6 +38,24 @@ static const uint32_t GOC_ALU_OMOD_4 = (UINT32_C(2) << 6);
 static const uint32_t GOC_ALU_OMOD_HALF = (UINT32_C(3) << 6);
 static const uint32_t GOC_ALU_CLAMP = (UINT32_C(1) << 8);
 
+// Binary FP32 arithmetic: one VGPR per operand. Supports ABS/NEG for A/B,
+// OMOD and CLAMP. Flags for C and half selection are invalid. Loose semantics only.
+GOC_API int goc_rdna4_v_add_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_sub_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_subrev_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_mul_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
 // True16 source/destination half selectors. Zero selects the low half.
 // DOT2 consumes both A/B halves, so only C and D have selectors.
 static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);

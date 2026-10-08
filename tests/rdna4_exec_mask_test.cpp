@@ -18,6 +18,12 @@ int unary(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
   return Fn(flags, mask, modifiers, d, a);
 }
 
+template <auto Fn>
+int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+           const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
+  return Fn(flags, mask, mode, d, a, b);
+}
+
 struct Case {
   Instruction fn;
   bool wave64, exact;
@@ -25,6 +31,15 @@ struct Case {
 };
 
 const Case cases[] = {
+    {binary<goc_rdna4_v_add_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+    {binary<goc_rdna4_v_sub_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+    {binary<goc_rdna4_v_subrev_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+    {binary<goc_rdna4_v_mul_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+
     {goc_rdna4_v_dot4_i32_iu8, false, true, GOC_DOT_SIGNED_A | GOC_DOT_SIGNED_B | GOC_DOT_CLAMP},
     {goc_rdna4_v_dot8_i32_iu4, false, true, GOC_DOT_SIGNED_A | GOC_DOT_SIGNED_B | GOC_DOT_CLAMP},
     {goc_rdna4_v_dot4_u32_u8, false, true, GOC_DOT_CLAMP},

@@ -381,6 +381,55 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
+  using Binary = decltype(&goc_rdna4_v_add_f32);
+  const Binary functions[] = {goc_rdna4_v_add_f32, goc_rdna4_v_sub_f32, goc_rdna4_v_subrev_f32,
+                              goc_rdna4_v_mul_f32};
+  const char *names[] = {"f32/add", "f32/sub", "f32/subrev", "f32/mul"};
+  for (int op = 0; op < 4; ++op)
+    for (uint32_t mode :
+         {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        int a = lane - 16, b = lane % 7 - 3;
+        r.data[0][lane] = bits(float(a));
+        r.data[4][lane] = bits(float(b));
+        if (mode) {
+          a = std::abs(a);
+          b = -b;
+        }
+        float want = float(op == 0 ? a + b : op == 1 ? a - b : op == 2 ? b - a : a * b);
+        if (mode)
+          want = std::min(1.0f, std::max(0.0f, want * 0.5f));
+        // Multiplication retains the sign of zero.
+        if (!mode && op == 3 && want == 0 && ((a < 0) != (b < 0)))
+          want = -0.0f;
+        r.expected[128 * (lane / 16) + lane % 16] = bits(want);
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *) {
+        return functions[op](flags, mask, modifiers, d, a, b);
+      };
+      const char *label = mode ? "ABS/NEG/half/clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_half_dot(uint64_t cpu, int iterations, int min_ms) {
   for (bool bf16 : {false, true})
     for (bool modified : {false, true}) {
@@ -607,6 +656,11 @@ int main(int argc, char **argv) {
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
   std::puts("DOT2 output widths: f16,b16 = 16-bit; fp16,bf16 = FP32.");
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
+  if (!benchmark_binary(cpu, iterations, min_ms)) {
+    std::fprintf(stderr,
+                 "Binary arithmetic benchmark failed: API/result error or iteration overflow.\n");
+    return 1;
+  }
   if (!benchmark_half_dot(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "True16 DOT2 benchmark failed: API/result error or iteration overflow.\n");
     return 1;
