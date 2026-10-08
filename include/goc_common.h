@@ -24,8 +24,8 @@ static const int GOC_SUCCESS = 0;
 static const int GOC_ERROR_UNSUPPORTED_SEMANTICS = 1;
 static const int GOC_ERROR_INVALID_FLAGS = 2;
 
-// Returns runtime-usable CPU capabilities only. Callers may select a lower CPU
-// level for testing, but must not claim features unavailable on the calling CPU.
+// Returns CPU capability flags for features usable on this machine, accounting
+// for CPU and operating-system support. All non-CPU flag bits are zero.
 uint64_t goc_init_cpu_flags(void);
 
 #ifdef __cplusplus

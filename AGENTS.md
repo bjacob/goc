@@ -20,3 +20,6 @@ includes every public component header.
 Closing braces for namespaces and extern "C" blocks must carry a comment naming
 what they close (for example, } // namespace goc or } // extern "C"). This does
 not apply to closing braces for classes or functions.
+Function comments describe the function contract: inputs, outputs, preconditions,
+side effects, and errors. Keep neighboring usage topics in the relevant API or
+usage documentation instead.
