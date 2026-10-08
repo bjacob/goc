@@ -3,7 +3,7 @@
 
 #pragma once
 
-/// @file packed16.h
+/// @file rdna4_packed16.h
 /// @brief Integer conversion and special-value handling for packed WMMA.
 
 #include <cstdint>

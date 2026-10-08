@@ -6,7 +6,7 @@
 /// @file rdna4_dot.h
 /// @brief Hardware-characterized GFX12 DOT2 and WMMA arithmetic with FP32 or packed outputs.
 
-#include "packed16.h"
+#include "rdna4_packed16.h"
 
 #include <algorithm>
 #include <array>

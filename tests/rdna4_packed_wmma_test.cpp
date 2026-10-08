@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-#include "goc_common.h"
-#include "goc_rdna4.h"
-#include "packed_modifier_fixtures.h"
-#include "packed_wmma_fixtures.h"
+#include "goc.h"
+#include "rdna4_packed_modifier_fixtures.h"
+#include "rdna4_packed_wmma_fixtures.h"
 
 #include <algorithm>
 #include <cfenv>

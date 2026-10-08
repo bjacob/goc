@@ -2,9 +2,12 @@
 
 GoC implements whole-wave GPU arithmetic through a synchronous C API. The public
 header is `include/goc.h`, usable from C99 and C++17. It directly includes
-`goc_common.h` (flags, status codes, CPU detection) and `goc_rdna4.h` (RDNA4
-instructions and modifiers). Each component header is independently usable. This is an initial RDNA4
-implementation; `PLAN.md` describes the broader intended coverage.
+`detail/goc_common.h` (flags, status codes, CPU detection) and
+`detail/goc_rdna4.h` (RDNA4 instructions and modifiers). API users include
+`goc.h`; detail headers are still checked for self-containment. This is an
+initial RDNA4 implementation; `PLAN.md` describes the broader intended coverage.
+GPU-specific implementation, test, and fixture filenames carry the architecture
+name, such as `rdna4_wmma.cpp` and `rdna4_wmma_test.cpp`.
 
 ## Build and test
 
@@ -24,8 +27,8 @@ library; shared consumers see exported API declarations. Both variants are
 position-independent and keep implementation symbols hidden.
 
 The public API and C linkage are tested against every enabled variant. Each
-`*_test.cpp` has its own executable, such as `tests/goc_wmma_test_static` and
-`tests/goc_wmma_test_shared`; the private decoder uses `tests/goc_cpu_decode_test`.
+`*_test.cpp` has its own executable, such as `tests/goc_rdna4_wmma_test_static` and
+`tests/goc_rdna4_wmma_test_shared`; the private decoder uses `tests/goc_cpu_decode_test`.
 Public headers are compiled independently once per language (C and C++), without
 linking. Private CPU decoding is tested separately. On Linux, export
 tests also check the shared API and static embedding. `tests/cpuinfo` links to
@@ -109,7 +112,7 @@ errors, sign modifiers, and deterministic dense matrix golden outputs.
 
 The empirical RDNA4 DOT/WMMA model in `src/rdna4_dot.h` is adapted from
 rocjitsu's `isa/arch/amdgpu/shared/gfx12_dot.h`. The hardware fixtures in
-`tests/dot_fixtures.h` and `tests/wmma_fixtures.h` come from rocjitsu's
+`tests/rdna4_dot_fixtures.h` and `tests/rdna4_wmma_fixtures.h` come from rocjitsu's
 `tests/fixtures/float_dot/gfx1201_cases.h`: Radeon AI Pro R9700 (`gfx1201`),
 TheRock `10.2.0a20260916`. They contain 121 DOT and 24 WMMA captures. No new
 GPU measurements or reverse engineering were performed for this implementation.

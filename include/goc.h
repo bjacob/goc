@@ -3,8 +3,8 @@
 #ifndef GOC_H_
 #define GOC_H_
 
-#include "goc_common.h"
-#include "goc_export.h"
-#include "goc_rdna4.h"
+#include "detail/goc_common.h"
+#include "detail/goc_export.h"
+#include "detail/goc_rdna4.h"
 
 #endif

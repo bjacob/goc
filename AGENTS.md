@@ -16,9 +16,15 @@ Project-local #include paths are relative to include/, or to src/ for internal
 headers, including includes among files in the same directory. CMake must pass
 include/ publicly and src/ privately to implementation and test targets.
 
-Include the headers defining what each file uses directly, including standard
-library headers; do not rely on transitive includes. The umbrella goc.h directly
-includes every public component header.
+Use goc.h for the public API in implementations, tests, and consumers. It is the
+only header at the top level of include/; component headers live in include/detail/.
+The umbrella directly includes every component header. Detail headers and their
+standalone compile checks may include detail headers directly. Otherwise include
+internal and standard-library dependencies directly rather than transitively.
+
+GPU-architecture-specific implementation files, internal headers, tests and
+fixtures must name the GPU architecture in their filenames (for example rdna4_).
+CPU-specific implementations also retain their CPU feature suffix.
 
 Closing braces for namespaces and extern "C" blocks must carry a comment naming
 what they close (for example, } // namespace goc or } // extern "C"). This does

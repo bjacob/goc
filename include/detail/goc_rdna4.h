@@ -3,7 +3,7 @@
 #ifndef GOC_RDNA4_H_
 #define GOC_RDNA4_H_
 
-#include "goc_export.h"
+#include "detail/goc_export.h"
 
 #include <stdint.h>
 

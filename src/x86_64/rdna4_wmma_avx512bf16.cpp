@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-#include "internal.h"
+#include "rdna4_simd.h"
 
 #include <cstring>
 #include <immintrin.h>

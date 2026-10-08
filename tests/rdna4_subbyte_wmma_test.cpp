@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-#include "goc_common.h"
-#include "goc_rdna4.h"
+#include "goc.h"
 #include "internal.h"
-#include "subbyte_golden.h"
+#include "rdna4_subbyte_golden.h"
 
 #include <algorithm>
 #include <cmath>

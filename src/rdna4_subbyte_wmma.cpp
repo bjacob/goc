@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "float_formats.h"
-#include "goc_common.h"
-#include "goc_rdna4.h"
+#include "goc.h"
 #include "internal.h"
 
 #include <algorithm>

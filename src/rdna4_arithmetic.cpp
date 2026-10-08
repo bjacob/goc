@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-#include "goc_common.h"
-#include "goc_rdna4.h"
+#include "goc.h"
 #include "internal.h"
+#include "rdna4_simd.h"
 
 #include <cmath>
 #include <stdint.h>

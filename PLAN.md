@@ -66,12 +66,13 @@ Example:
 goc_rdna4_v_wmma_f32_16x16x16_f16
 
 The API shall provide an umbrella C header, `goc.h`, directly including
-`goc_common.h` for common flags, error codes and CPU initialization, and
-`goc_rdna4.h` for RDNA4 instruction declarations and modifiers.
+`detail/goc_common.h` for common flags, error codes and CPU initialization, and
+`detail/goc_rdna4.h` for RDNA4 instruction declarations and modifiers.
 
-Each file shall directly include the headers defining what it uses, rather than
-relying on transitive includes. Use minimal standard #includes (stdint.h, and
-maybe a few more as needed).
+API users, including implementations and tests, shall include `goc.h`. It is the
+only top-level header in `include/`; component headers live under `detail/`.
+Internal and standard-library dependencies shall be included directly. Use minimal
+standard #includes (stdint.h, and maybe a few more as needed).
 
 Most entry points shall correspond 1:1 to a supported GPU instruction
 following the above pattern. Each such function shall take the following function parameters:
@@ -192,8 +193,8 @@ modulo 2^N is explicitly intended.
 cmake/              # Any shared CMake files
 CMakeLists.txt      # root CMakeLists.
 include/goc.h       # Umbrella API header
-include/goc_common.h # Common API definitions
-include/goc_rdna4.h # RDNA4 instruction API
+include/detail/goc_common.h # Common API definitions
+include/detail/goc_rdna4.h # RDNA4 instruction API
 src/                # Implementation. Architecture-agnostics files directly here.
 src/CMakeLists.txt  # src/ CMakeLists, handles the library build.
 src/x86_64/         # x86_64-specific code paths (AVX etc). No further subdirs for now.

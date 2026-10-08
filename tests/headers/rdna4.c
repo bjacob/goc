@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-#include "goc_rdna4.h"
+#include "detail/goc_rdna4.h"
 
 // Repeated inclusion must be harmless.
-#include "goc_rdna4.h"
+#include "detail/goc_rdna4.h"
 
 #include <stdint.h>
 

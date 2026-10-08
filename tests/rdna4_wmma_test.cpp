@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-#include "../tests/dense_golden.h"
-#include "../tests/dot_fixtures.h"
-#include "../tests/wmma_fixtures.h"
 #include "float_formats.h"
-#include "goc_common.h"
-#include "goc_rdna4.h"
+#include "goc.h"
 #include "internal.h"
+#include "rdna4_dense_golden.h"
 #include "rdna4_dot.h"
+#include "rdna4_dot_fixtures.h"
+#include "rdna4_wmma_fixtures.h"
 
 #include <algorithm>
 #include <array>

@@ -3,7 +3,7 @@
 #ifndef GOC_COMMON_H_
 #define GOC_COMMON_H_
 
-#include "goc_export.h"
+#include "detail/goc_export.h"
 
 #include <stdint.h>
 

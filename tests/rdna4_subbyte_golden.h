@@ -6,7 +6,7 @@
 // FP inputs are exact dyadic fractions in [-7.5,7.5]; outputs computed with
 // Python binary64 then packed as IEEE binary32. Integer goldens use unbounded
 // Python integers with explicit sign extension, signed clamp or modulo 2^32.
-// Input generation is reproduced in subbyte_wmma_test.cpp.
+// Input generation is reproduced in rdna4_subbyte_wmma_test.cpp.
 
 #include <stdint.h>
 
