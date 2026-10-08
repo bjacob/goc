@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 
+#include "float_formats.h"
 #include "rdna4_simd.h"
 
 #include <immintrin.h>
 #include <stdint.h>
 
-namespace goc {
+namespace {
 
-void wmma_f16_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *const *a,
-                        const uint32_t *const *b, const uint32_t *const *c) {
+template <bool Bf16>
+void wmma(uint32_t mask, uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+          const uint32_t *const *c) {
   // Decode B once for all output rows. Each input word holds two consecutive
   // K elements; columns occupy consecutive lanes within each half-wave.
   alignas(32) float right[16][16];
@@ -16,11 +18,18 @@ void wmma_f16_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *const
     for (int col = 0; col < 16; col += 8) {
       __m256i words = _mm256_loadu_si256(
           reinterpret_cast<const __m256i *>(b[(k % 8) / 2] + 16 * (k / 8) + col));
-      words =
-          k % 2 ? _mm256_srli_epi32(words, 16) : _mm256_and_si256(words, _mm256_set1_epi32(65535));
-      __m128i halves =
-          _mm_packus_epi32(_mm256_castsi256_si128(words), _mm256_extracti128_si256(words, 1));
-      _mm256_store_ps(right[k] + col, _mm256_cvtph_ps(halves));
+      if constexpr (Bf16) {
+        // BF16 widens exactly by placing its bits in FP32's high half.
+        words = k % 2 ? _mm256_and_si256(words, _mm256_set1_epi32(-65536))
+                      : _mm256_slli_epi32(words, 16);
+        _mm256_store_ps(right[k] + col, _mm256_castsi256_ps(words));
+      } else {
+        words = k % 2 ? _mm256_srli_epi32(words, 16)
+                      : _mm256_and_si256(words, _mm256_set1_epi32(65535));
+        __m128i halves =
+            _mm_packus_epi32(_mm256_castsi256_si128(words), _mm256_extracti128_si256(words, 1));
+        _mm256_store_ps(right[k] + col, _mm256_cvtph_ps(halves));
+      }
     }
 
   uint32_t result[8][32];
@@ -32,7 +41,7 @@ void wmma_f16_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *const
         _mm256_loadu_si256(reinterpret_cast<const __m256i *>(c[reg] + lane + 8)));
     for (int k = 0; k < 16; ++k) {
       uint16_t bits = uint16_t(a[(k % 8) / 2][row + 16 * (k / 8)] >> (16 * (k % 2)));
-      __m256 left = _mm256_set1_ps(_cvtsh_ss(bits));
+      __m256 left = _mm256_set1_ps(Bf16 ? goc::bf16_to_float(bits) : _cvtsh_ss(bits));
       low = _mm256_fmadd_ps(left, _mm256_load_ps(right[k]), low);
       high = _mm256_fmadd_ps(left, _mm256_load_ps(right[k] + 8), high);
     }
@@ -53,6 +62,20 @@ void wmma_f16_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *const
           reinterpret_cast<int *>(d[reg] + lane), active,
           _mm256_loadu_si256(reinterpret_cast<const __m256i *>(result[reg] + lane)));
   }
+}
+
+} // namespace
+
+namespace goc {
+
+void wmma_f16_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *const *a,
+                        const uint32_t *const *b, const uint32_t *const *c) {
+  wmma<false>(mask, d, a, b, c);
+}
+
+void wmma_bf16_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *const *a,
+                         const uint32_t *const *b, const uint32_t *const *c) {
+  wmma<true>(mask, d, a, b, c);
 }
 
 } // namespace goc

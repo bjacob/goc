@@ -97,7 +97,7 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations) {
   // Only label a SIMD path when both this build and the host support it.
   bool ran_simd = false;
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
-  if (!bf16 && cpu >= GOC_CPU_X86_64_V3) {
+  if (cpu >= GOC_CPU_X86_64_V3) {
     if (!accelerated("x86-64-v3", GOC_CPU_X86_64_V3))
       return false;
     ran_simd = true;

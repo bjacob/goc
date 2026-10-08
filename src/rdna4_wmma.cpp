@@ -24,22 +24,12 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
   if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(63), true))
     return error;
 
-#if defined(GOC_HAVE_X86_64_V3)
-  if constexpr (!Bf16 && WaveSize == 32 && !Packed) {
-    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
-        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL && instruction_flags == 0) {
-      goc::wmma_f16_x86_64_v3(static_cast<uint32_t>(mask), d, a, b, c);
-      return GOC_SUCCESS;
-    }
-  }
-#endif
-
 #if defined(GOC_HAVE_AVX512BF16)
   if constexpr (Bf16 && WaveSize == 32 && !Packed) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_ZEN4 &&
         (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL && instruction_flags == 0) {
-      // DPBF16 flushes denormals independently of MXCSR. Retain the scalar
-      // path for subnormal factors or accumulators and special values.
+      // DPBF16 flushes denormals independently of MXCSR. Fall through to
+      // v3 FMA (or scalar) for subnormal factors/accumulators and special values.
       bool ordinary = true;
       int min_exp[2] = {255, 255}, max_exp[2] = {0, 0};
       for (int reg = 0; reg < 4; ++reg)
@@ -72,6 +62,19 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
         goc::wmma_avx512bf16(static_cast<uint32_t>(mask), d, a, b, c);
         return GOC_SUCCESS;
       }
+    }
+  }
+#endif
+
+#if defined(GOC_HAVE_X86_64_V3)
+  if constexpr (WaveSize == 32 && !Packed) {
+    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
+        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL && instruction_flags == 0) {
+      if constexpr (Bf16)
+        goc::wmma_bf16_x86_64_v3(static_cast<uint32_t>(mask), d, a, b, c);
+      else
+        goc::wmma_f16_x86_64_v3(static_cast<uint32_t>(mask), d, a, b, c);
+      return GOC_SUCCESS;
     }
   }
 #endif

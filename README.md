@@ -46,7 +46,7 @@ After the Release build above, run these commands from the source directory:
 ```sh
 ../goc-build/tests/cpuinfo
 ctest --test-dir ../goc-build --output-on-failure \
-  -R 'HardwareCapturedExactResults|HardwareIntermediateOverflowState|Fp16V3|SubbyteWmma|Arithmetic'
+  -R 'HardwareCapturedExactResults|HardwareIntermediateOverflowState|Fp16V3|Bf16V3|Bf16CpuLevels|SubbyteWmma|Arithmetic'
 ../goc-build/tests/goc_rdna4_wmma_benchmark_static 10000
 ```
 
@@ -55,8 +55,8 @@ FP16/BF16 exactness, intermediate FP16 overflow state, and SIMD/scalar agreement
 The full suite also covers DOT2, NEG/NEG_HI, wave64, masks, aliasing, C linkage,
 header self-containment and library exports.
 
-The benchmark compares scalar loose FP16 with x86-64-v3 and scalar loose BF16
-with the Zen4 AVX-512 BF16 path. Exact scalar timings are listed separately;
+The benchmark compares scalar loose FP16 with x86-64-v3, and scalar loose BF16
+with both x86-64-v3 and the Zen4 AVX-512 BF16 path. Exact scalar timings are listed separately;
 SIMD rows never imply empirical bit-exactness. Unsupported or uncompiled SIMD
 paths are explicitly skipped. A corresponding `_shared` executable is built
 when `GOC_SHARED` is enabled; use it instead for a shared-only build and omit
@@ -74,12 +74,16 @@ linking and 10,000 calls/sample measured:
 
 | Input / semantics | CPU path | ns per wave | Speedup over same-format scalar loose |
 | --- | --- | ---: | ---: |
-| FP16 loose | Scalar | 13,484 | 1.0x |
-| FP16 loose | x86-64-v3 | 203 | 66.6x |
-| BF16 loose | Scalar | 9,807 | 1.0x |
-| BF16 loose | Zen4 AVX-512 BF16 | 397 | 24.7x |
-| FP16 exact | Scalar integer model | 21,875 | — |
-| BF16 exact | Scalar integer model | 23,078 | — |
+| FP16 loose | Scalar | 13,464 | 1.0x |
+| FP16 loose | x86-64-v3 | 201 | 66.9x |
+| BF16 loose | Scalar | 9,079 | 1.0x |
+| BF16 loose | x86-64-v3 | 192 | 47.3x |
+| BF16 loose | Zen4 AVX-512 BF16 | 398 | 22.8x |
+| FP16 exact | Scalar integer model | 21,842 | — |
+| BF16 exact | Scalar integer model | 22,856 | — |
+
+Here v3 beats the existing guarded Zen4 path; these timings include the latter's
+input eligibility scan. Dispatch still prefers Zen4 when inputs qualify.
 
 These are CPU instruction-emulation microbenchmarks, not end-to-end emulator
 throughput or GPU comparisons. Results vary with host, compiler, workload and
@@ -98,7 +102,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_dot2_f32_f16` | Scalar | Integer arithmetic model |
 | `v_dot2_f32_bf16` | Scalar | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_f16` | Scalar, x86-64-v3 F16C/AVX2/FMA | Integer arithmetic model |
-| `v_wmma_f32_16x16x16_bf16` | Scalar, AVX-512 BF16 | Integer arithmetic model |
+| `v_wmma_f32_16x16x16_bf16` | Scalar, x86-64-v3 AVX2/FMA, AVX-512 BF16 | Integer arithmetic model |
 | `v_wmma_f16_16x16x16_f16` | Integer arithmetic model | Integer arithmetic model |
 | `v_wmma_bf16_16x16x16_bf16` | Integer arithmetic model | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar | Not implemented |
@@ -113,9 +117,10 @@ A/B inputs and signed output saturation (`GOC_WMMA_CLAMP`); without CLAMP,
 results wrap modulo 2^32. Other instructions accept only zero instruction flags.
 The FP8/BF8 and integer entry points currently support wave32 only. FP16 and
 BF16 SIMD WMMA paths handle unmodified loose wave32 calls with FP32 outputs.
-The FP16 path handles subnormals, infinities and NaNs through CPU conversion/FMA;
-NaN payloads are unspecified in loose mode. The BF16 path conservatively falls
-back for exceptional values and extreme product exponents. Modified calls,
+The v3 paths handle subnormals, infinities and NaNs through widening and CPU FMA;
+NaN payloads are unspecified in loose mode. Zen4 first tries the AVX-512 BF16
+path, falling back to v3 for exceptional values and extreme product exponents,
+or to scalar if v3 was not compiled. Modified calls,
 packed outputs, wave64 and empirical exact modes use scalar arithmetic.
 
 ## Calling convention

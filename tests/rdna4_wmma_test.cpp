@@ -469,3 +469,115 @@ TEST(Wmma, Fp16V3FiniteAndExceptionalInputsMatchScalar) {
           actual.guards();
         }
 }
+
+TEST(Wmma, Bf16V3AndZen4FallbackMatchScalar) {
+  if (goc_init_cpu_flags() < GOC_CPU_X86_64_V3)
+    GTEST_SKIP() << "Host does not support x86-64-v3";
+  for (uint64_t level = GOC_CPU_X86_64_V3; level <= goc_init_cpu_flags(); ++level)
+    for (int trial = 0; trial < 8; ++trial)
+      for (int dst : {0, 2, 4, 8, 16})
+        for (uint64_t mask :
+             {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_C(0x91234567), UINT64_MAX}) {
+          Registers reference, actual;
+          std::minstd_rand random(107 + trial);
+          for (int reg = 0; reg < 24; ++reg)
+            for (int lane = 0; lane < 32; ++lane) {
+              uint32_t bits = uint32_t(random()) ^ (uint32_t(random()) << 16);
+              if (reg < 8) {
+                // Alternate moderate finite inputs with the full BF16 range.
+                if (trial % 2 == 0)
+                  bits = (bits & 0x807f807f) | 0x3f003f00;
+                if (trial == 3 && reg == 0 && lane == 3)
+                  bits = 0x7f80ff80;
+                if (trial == 5 && reg == 5 && lane == 11)
+                  bits = 0x7fc57f83;
+                // A subnormal forces Zen4 to reject DPBF16 and use its fallback.
+                if (reg == 0 && lane == 0)
+                  bits = 0x00010001;
+              } else {
+                bits &= 0xff7fffff;
+              }
+              reference.v[reg][lane] = actual.v[reg][lane] = bits;
+            }
+          ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_BASELINE, mask, 0, reference.v + dst,
+                                                       reference.v, reference.v + 4,
+                                                       reference.v + 8),
+                    GOC_SUCCESS);
+          ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(level, mask, 0, actual.v + dst, actual.v,
+                                                       actual.v + 4, actual.v + 8),
+                    GOC_SUCCESS);
+          for (int reg = 0; reg < 24; ++reg)
+            for (int lane = 0; lane < 32; ++lane) {
+              bool written = reg >= dst && reg < dst + 8 && ((mask >> lane) & 1);
+              if (written && std::isnan(goc::as_float(reference.v[reg][lane])))
+                EXPECT_TRUE(std::isnan(goc::as_float(actual.v[reg][lane])));
+              else
+                EXPECT_EQ(actual.v[reg][lane], reference.v[reg][lane]);
+            }
+          reference.guards();
+          actual.guards();
+        }
+}
+
+TEST(Wmma, Bf16V3BoundaryGoldens) {
+  struct Case {
+    uint16_t a, b;
+    uint32_t c, expected;
+  };
+
+  // Uniform factors: D = 16*A*B+C. These literal goldens exercise conditions
+  // that DPBF16 cannot handle with ordinary host FMA semantics.
+  const Case cases[] = {
+      {0x0001, 0x3f80, 0, 0x00100000}, // Minimum BF16 subnormal times 16.
+      {0x8001, 0x3f80, 0, 0x80100000},
+      {0x0080, 0x3f00, 0, 0x02000000}, // Normal factors with subnormal products.
+      {0x0080, 0x0080, 0, 0},          // Products underflow to zero.
+      {0, 0x3f80, 1, 1},               // Preserve the smallest FP32 accumulator.
+      {0x7f7f, 0x4000, 0, 0x7f800000}, // Finite factors overflow.
+      {0xff80, 0x3f80, 0, 0xff800000},
+  };
+  for (uint64_t level = 0; level <= goc_init_cpu_flags(); ++level)
+    for (const auto &f : cases) {
+      Registers r;
+      for (int reg = 0; reg < 8; ++reg)
+        for (int lane = 0; lane < 32; ++lane) {
+          if (reg < 4) {
+            r.v[reg][lane] = uint32_t(f.a) | (uint32_t(f.a) << 16);
+            r.v[4 + reg][lane] = uint32_t(f.b) | (uint32_t(f.b) << 16);
+          }
+          r.v[8 + reg][lane] = f.c;
+        }
+      ASSERT_EQ(
+          goc_rdna4_v_wmma_f32_16x16x16_bf16(level, UINT32_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8),
+          GOC_SUCCESS);
+      for (int reg = 16; reg < 24; ++reg)
+        for (int lane = 0; lane < 32; ++lane)
+          EXPECT_EQ(r.v[reg][lane], f.expected);
+    }
+}
+
+TEST(Wmma, Bf16CpuLevelsRespectModifiers) {
+  for (uint64_t level = 0; level <= goc_init_cpu_flags(); ++level)
+    for (uint32_t modifiers = 0; modifiers < 64; ++modifiers) {
+      Registers r;
+      for (int reg = 0; reg < 8; ++reg)
+        for (int lane = 0; lane < 32; ++lane) {
+          if (reg < 4) {
+            r.v[reg][lane] = 0x40003f80;     // Low A=1, high A=2.
+            r.v[4 + reg][lane] = 0x40804040; // Low B=3, high B=4.
+          }
+          r.v[8 + reg][lane] = goc::as_bits(-5.0f);
+        }
+      int low = (bool(modifiers & 1) != bool(modifiers & 2)) ? -24 : 24;
+      int high = (bool(modifiers & 8) != bool(modifiers & 16)) ? -64 : 64;
+      int c = (modifiers & GOC_WMMA_ABS_C) ? 5 : -5;
+      if (modifiers & GOC_WMMA_NEG_C)
+        c = -c;
+      ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(level, UINT32_MAX, modifiers, r.v + 8, r.v,
+                                                   r.v + 4, r.v + 8),
+                GOC_SUCCESS);
+      for (int reg = 8; reg < 16; ++reg)
+        for (int lane = 0; lane < 32; ++lane)
+          EXPECT_EQ(r.v[reg][lane], goc::as_bits(float(low + high + c)));
+    }
+}
