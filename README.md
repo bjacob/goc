@@ -52,9 +52,17 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_wmma_f32_16x16x16_bf16` | Scalar, AVX-512 BF16 | Integer arithmetic model |
 | `v_wmma_f16_16x16x16_f16` | Integer arithmetic model | Integer arithmetic model |
 | `v_wmma_bf16_16x16x16_bf16` | Integer arithmetic model | Integer arithmetic model |
+| `v_wmma_f32_16x16x16_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar | Not implemented |
+| `v_wmma_i32_16x16x16_iu8` | Scalar integer | Scalar integer |
+| `v_wmma_i32_16x16x16_iu4` | Scalar integer | Scalar integer |
+| `v_wmma_i32_16x16x32_iu4` | Scalar integer | Scalar integer |
 
-WMMA supports all six NEG/NEG_HI modifier bits, including C absolute value.
-Other instructions currently accept only zero instruction flags. The BF16
+The FP16/BF16 WMMA forms support all six NEG/NEG_HI modifier bits, including
+C absolute value. FP8/BF8 WMMA supports C negation and absolute value; A/B
+negation bits are rejected. Integer WMMA supports independent signed/unsigned
+A/B inputs and signed output saturation (`GOC_WMMA_CLAMP`); without CLAMP,
+results wrap modulo 2^32. Other instructions accept only zero instruction flags.
+The new FP8/BF8 and integer entry points currently support wave32 only. The BF16
 fast path handles unmodified loose calls; exceptional values and extreme
 product exponents conservatively use scalar arithmetic. Exact modes never use
 the approximate SIMD path.
@@ -69,7 +77,9 @@ implementations were compiled.
 Each VGPR pointer addresses 32 contiguous `uint32_t` lane words (64 for
 `rdna4w64`). A multi-VGPR
 operand is an array of these pointers; the backing arrays need not be adjacent
-or SIMD-aligned. A/B use four VGPRs and C/D use eight for the implemented WMMA
+or SIMD-aligned. FP8/BF8 and INT8 A/B use two VGPRs each. INT4 A/B
+use one each for K=16, or two for K=32; all these forms use eight C/D VGPRs.
+FP16/BF16 A/B use four VGPRs and C/D use eight for the implemented WMMA
 FP32-output wave32 forms; wave64 uses two A/B VGPRs and four C/D VGPRs.
 Packed-output forms halve the C/D register counts, packing adjacent rows into
 the low and high 16 bits. Input and output operands may share whole VGPRs. Distinct backing
@@ -109,6 +119,13 @@ RDNA4 subset of `tests/fixtures/float_dot/packed_wmma_cases.h`: 28 captured
 16x16 outputs across both formats and wave sizes, including subnormals,
 cancellation, NaNs and rare accumulator-alignment boundaries. Tests run these
 under all four host rounding modes with preexisting FP exception flags.
+
+FP8/BF8 conversions and integer WMMA borrow from rocjitsu's
+`util/data_types.h` and `shared/mma_exec.h`. FP8 uses OCP E4M3FN (finite through
+448); BF8 uses OCP E5M2 (with infinities), not the FNUZ encodings. Tests exercise
+all 256 codes through the public API and use deterministic dense mathematical
+goldens for every FP8/BF8 pairing and integer sign/clamp combination. These
+are mathematical checks, not new hardware evidence for exact FP8 accumulation.
 
 CPU detection follows the CPUID/XCR0 gating approach in
 `hrx-system/runtime/src/iree/base/internal/cpu_x86_64.c`, with GoC's coarse

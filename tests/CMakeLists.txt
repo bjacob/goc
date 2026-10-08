@@ -23,7 +23,7 @@ gtest_discover_tests(goc_cpu_decode_test TEST_PREFIX "internal.")
 
 foreach(library IN LISTS goc_library_targets)
   string(REPLACE "goc_" "" variant "${library}")
-  foreach(test IN ITEMS arithmetic cpu wmma packed_wmma)
+  foreach(test IN ITEMS arithmetic cpu wmma packed_wmma subbyte_wmma)
     set(target "goc_${test}_test_${variant}")
     add_executable(${target} "${test}_test.cpp")
     if(test STREQUAL "arithmetic")

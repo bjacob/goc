@@ -11,7 +11,7 @@ if(GOC_SHARED)
 endif()
 
 foreach(target IN LISTS goc_library_targets)
-  target_sources(${target} PRIVATE cpu.cpp cpu_decode.cpp arithmetic.cpp wmma.cpp dot.cpp)
+  target_sources(${target} PRIVATE cpu.cpp cpu_decode.cpp arithmetic.cpp wmma.cpp subbyte_wmma.cpp dot.cpp)
   set_target_properties(${target} PROPERTIES
     OUTPUT_NAME goc
     POSITION_INDEPENDENT_CODE ON
