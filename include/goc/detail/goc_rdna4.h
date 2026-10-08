@@ -44,6 +44,9 @@ static const uint32_t GOC_ALU_ABS_C = (UINT32_C(1) << 5);
 static const uint32_t GOC_ALU_OMOD_2 = (UINT32_C(1) << 6);
 static const uint32_t GOC_ALU_OMOD_4 = (UINT32_C(2) << 6);
 static const uint32_t GOC_ALU_OMOD_HALF = (UINT32_C(3) << 6);
+
+// Result clamping where supported: floating results to [0,1] (NaNs become zero),
+// integer results to the representable signed/unsigned destination range.
 static const uint32_t GOC_ALU_CLAMP = (UINT32_C(1) << 8);
 
 // Binary FP32 arithmetic: one VGPR per operand. Supports ABS/NEG for A/B,
@@ -335,6 +338,35 @@ GOC_API int goc_rdna4_v_mul_u32_u24(uint64_t flags, uint64_t exec_mask, uint32_t
 GOC_API int goc_rdna4_v_mul_hi_u32_u24(uint64_t flags, uint64_t exec_mask,
                                        uint32_t instruction_flags, uint32_t *const *d,
                                        const uint32_t *const *a, const uint32_t *const *b);
+
+// Non-carry 32-bit integer addition/subtraction. Each operand uses one VGPR;
+// D may alias any whole source VGPR. The two-input forms accept GOC_ALU_CLAMP
+// to saturate in the signed/unsigned result domain; otherwise results wrap.
+// ADD3 wraps modulo 2^32 and requires zero instruction_flags. Supports loose
+// semantics and preserves the host FP environment. No carry mask is produced.
+GOC_API int goc_rdna4_v_add_nc_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_sub_nc_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_subrev_nc_u32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_add_nc_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_sub_nc_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_add3_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c);
 
 // True16 source/destination half selectors. Zero selects the low half.
 // DOT2 consumes both A/B halves, so only C and D have selectors.

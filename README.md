@@ -151,6 +151,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_ldexp_f32`, `v_ldexp_f64` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_min_i32`, `v_max_i32`, `v_min_u32`, `v_max_u32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_mul_lo_u32`, `v_mul_hi_u32`, `v_mul_hi_i32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
+| `v_add_nc_u32`, `v_sub_nc_u32`, `v_subrev_nc_u32`, `v_add_nc_i32`, `v_sub_nc_i32`, `v_add3_u32` | Scalar, x86-64-v3 (saturation), x86-64-v4 | Not implemented |
 | `v_mul_i32_i24`, `v_mul_hi_i32_i24`, `v_mul_u32_u24`, `v_mul_hi_u32_u24` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_min3_{i32,u32}`, `v_max3_{i32,u32}`, `v_minmax_{i32,u32}`, `v_maxmin_{i32,u32}`, `v_med3_{i32,u32}` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
@@ -372,6 +373,17 @@ Saturation stays on SIMD by checking the high product word against the low
 word's sign extension, or against zero for unsigned products. Tests include
 literal high-word results, saturation thresholds, upper-byte noise, random
 products, masks, aliases and host FP-environment preservation.
+
+Non-carry integer add/subtract covers unsigned addition, subtraction and reverse
+subtraction, signed addition/subtraction, and unsigned three-input addition.
+Two-input forms support `GOC_ALU_CLAMP`; `v_add3_u32` wraps modulo 2^32 and has no
+arithmetic modifiers. Every form has scalar and sixteen-lane v4 paths; eight-lane
+v3 is selected for saturation, where it beats the baseline implementation.
+Wrapping forms use the baseline path on v3 CPUs because AVX2 masked-store
+overhead outweighs their arithmetic savings. Saturation remains SIMD, using
+integer overflow/borrow detection. Tests cover signed limits, unsigned
+carry/borrow, operand order, three-input wrap, masks, all whole-register alias
+layouts and host FP-environment preservation.
 
 Unary FP32 instructions support `GOC_ALU_ABS_A`, `GOC_ALU_NEG_A`, output
 scaling (`GOC_ALU_OMOD_2`, `GOC_ALU_OMOD_4`, `GOC_ALU_OMOD_HALF`), and

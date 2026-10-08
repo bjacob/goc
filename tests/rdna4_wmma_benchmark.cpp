@@ -409,22 +409,80 @@ bool benchmark_integer_mul(uint64_t cpu, int iterations, int min_ms) {
 }
 
 template <auto Function>
-int integer_minmax_binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
-                          const uint32_t *const *) {
+int integer_binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
   return Function(flags, mask, mode, d, a, b);
 }
 
+bool benchmark_integer_add(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {
+      integer_binary<goc_rdna4_v_add_nc_u32>,    integer_binary<goc_rdna4_v_sub_nc_u32>,
+      integer_binary<goc_rdna4_v_subrev_nc_u32>, integer_binary<goc_rdna4_v_add_nc_i32>,
+      integer_binary<goc_rdna4_v_sub_nc_i32>,    goc_rdna4_v_add3_u32};
+  const char *names[] = {"u32/add", "u32/sub", "u32/subrev", "i32/add", "i32/sub", "u32/add3"};
+  const uint32_t inputs[][4] = {
+      {0xffffffff, 0x7fffffff, 0x80000000, 0}, {1, 1, 0xffffffff, 1}, {0xffffffff, 2, 3, 4}};
+  for (int op = 0; op < 6; ++op)
+    for (int clamp = 0; clamp <= int(op != 5); ++clamp) {
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        int64_t a = inputs[0][lane % 4], b = inputs[1][lane % 4], c = inputs[2][lane % 4];
+        r.data[0][lane] = uint32_t(a);
+        r.data[4][lane] = uint32_t(b);
+        r.data[8][lane] = uint32_t(c);
+        bool signed_op = op == 3 || op == 4;
+        if (signed_op) {
+          if (a > INT32_MAX)
+            a -= INT64_C(4294967296);
+          if (b > INT32_MAX)
+            b -= INT64_C(4294967296);
+        }
+        int64_t value = op == 1 || op == 4 ? a - b : op == 2 ? b - a : a + b;
+        if (op == 5)
+          value += c;
+        if (clamp)
+          value = std::clamp(value, signed_op ? int64_t(INT32_MIN) : INT64_C(0),
+                             signed_op ? int64_t(INT32_MAX) : int64_t(UINT32_MAX));
+        r.expected[128 * (lane / 16) + lane % 16] = uint32_t(value);
+      }
+      const uint32_t mode = clamp ? GOC_ALU_CLAMP : 0;
+      const char *label = clamp ? "clamp" : "none";
+      double scalar = measure(functions[op], GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (clamp && cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(functions[op], GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(functions[op], GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_integer_minmax(uint64_t cpu, int iterations, int min_ms) {
-  const Wmma functions[] = {integer_minmax_binary<goc_rdna4_v_min_i32>,
-                            integer_minmax_binary<goc_rdna4_v_max_i32>,
+  const Wmma functions[] = {integer_binary<goc_rdna4_v_min_i32>,
+                            integer_binary<goc_rdna4_v_max_i32>,
                             goc_rdna4_v_min3_i32,
                             goc_rdna4_v_max3_i32,
                             goc_rdna4_v_minmax_i32,
                             goc_rdna4_v_maxmin_i32,
                             goc_rdna4_v_med3_i32,
-                            integer_minmax_binary<goc_rdna4_v_min_u32>,
-                            integer_minmax_binary<goc_rdna4_v_max_u32>,
+                            integer_binary<goc_rdna4_v_min_u32>,
+                            integer_binary<goc_rdna4_v_max_u32>,
                             goc_rdna4_v_min3_u32,
                             goc_rdna4_v_max3_u32,
                             goc_rdna4_v_minmax_u32,
@@ -1125,7 +1183,8 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "DOT2 benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }
-  if (!benchmark_integer_mul(cpu, iterations, min_ms) ||
+  if (!benchmark_integer_add(cpu, iterations, min_ms) ||
+      !benchmark_integer_mul(cpu, iterations, min_ms) ||
       !benchmark_integer_dot(cpu, iterations, min_ms) ||
       !benchmark_integer_minmax(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Integer DOT benchmark failed: API/result error or iteration overflow.\n");
