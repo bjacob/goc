@@ -18,6 +18,11 @@ template <Unary Op> void run(uint32_t mask, uint32_t modifiers, uint32_t *d, con
     __m256 value = _mm256_castsi256_ps(_mm256_xor_si256(
         _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)), keep),
         flip));
+    if constexpr (Op == Unary::Fract) {
+      value = _mm256_sub_ps(value, _mm256_floor_ps(value));
+      auto limit = _mm256_castsi256_ps(_mm256_set1_epi32(0x3f7fffff));
+      value = _mm256_blendv_ps(value, limit, _mm256_cmp_ps(value, limit, _CMP_GT_OQ));
+    }
     if constexpr (Op == Unary::Trunc)
       value = _mm256_round_ps(value, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     if constexpr (Op == Unary::Ceil)
@@ -44,6 +49,8 @@ template <Unary Op> void run(uint32_t mask, uint32_t modifiers, uint32_t *d, con
 
 void unary_x86_64_v3(Unary op, uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a) {
   switch (op) {
+  case Unary::Fract:
+    return run<Unary::Fract>(mask, modifiers, d, a);
   case Unary::Trunc:
     return run<Unary::Trunc>(mask, modifiers, d, a);
   case Unary::Ceil:

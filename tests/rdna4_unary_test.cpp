@@ -14,7 +14,8 @@ namespace {
 using Fn = decltype(&goc_rdna4_v_log_f32);
 const Fn functions[] = {goc_rdna4_v_trunc_f32, goc_rdna4_v_ceil_f32, goc_rdna4_v_rndne_f32,
                         goc_rdna4_v_floor_f32, goc_rdna4_v_sqrt_f32, goc_rdna4_v_rcp_f32,
-                        goc_rdna4_v_rsq_f32,   goc_rdna4_v_exp_f32,  goc_rdna4_v_log_f32};
+                        goc_rdna4_v_rsq_f32,   goc_rdna4_v_exp_f32,  goc_rdna4_v_log_f32,
+                        goc_rdna4_v_fract_f32};
 
 // Independent higher-precision reference, with explicit ties-to-even and
 // binary32 rounding before output scaling.
@@ -55,6 +56,11 @@ float reference(int op, float input, uint32_t flags) {
   case 7:
     y = std::exp2(x);
     break;
+  case 9:
+    y = x - std::floor(x);
+    if (y > double(goc::as_float(0x3f7fffff)))
+      y = goc::as_float(0x3f7fffff);
+    break;
   case 8:
     y = std::log2(x);
     break;
@@ -76,7 +82,7 @@ TEST(Unary, ModifiersMasksAliasesAndCpuLevels) {
                              0x00800000, 0x80800000, 0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000,
                              0x7fc12345, 0xffc12345, 0x4b000001, 0xcb000001, 0x3effffff, 0x3f000001,
                              0x3fffffff, 0x40000001};
-  for (int op = 0; op < 9; ++op)
+  for (int op = 0; op < 10; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned mode = 0; mode < 32; ++mode) {
         uint32_t flags = (mode & 1 ? GOC_ALU_NEG_A : 0) | (mode & 2 ? GOC_ALU_ABS_A : 0) |
@@ -131,4 +137,31 @@ TEST(Unary, ValidationAndEmptyMask) {
       EXPECT_EQ(value, 0xdeadbeef);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &pd, &pa), GOC_SUCCESS);
   }
+}
+
+TEST(Unary, FractLiteralBoundaries) {
+  const uint32_t cases[][2] = {
+      {0, 0},
+      {0x80000000, 0},
+      {1, 1},
+      {0x80000001, 0x3f7fffff},
+      {0x80800000, 0x3f7fffff},
+      {0x3e800000, 0x3e800000},
+      {0xbfa00000, 0x3f400000},
+      {0x3f800000, 0},
+      {0xbf800000, 0},
+      {0xbf7fffff, 0x33800000},
+      {0xb3000000, 0x3f7fffff},
+      {0x7f7fffff, 0},
+      {0xff7fffff, 0},
+  };
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (const auto &test : cases) {
+      uint32_t a[32], d[32];
+      std::fill(a, a + 32, test[0]);
+      auto pa = a, pd = d;
+      ASSERT_EQ(goc_rdna4_v_fract_f32(cpu, UINT32_MAX, 0, &pd, &pa), GOC_SUCCESS);
+      for (uint32_t value : d)
+        EXPECT_EQ(value, test[1]) << cpu << "/" << test[0];
+    }
 }

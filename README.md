@@ -136,12 +136,13 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 
 | Mnemonic | Loose semantics | Empirical exact semantics |
 | --- | --- | --- |
-| `v_add_f32`, `v_sub_f32`, `v_subrev_f32`, `v_mul_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_add_f32`, `v_sub_f32`, `v_subrev_f32`, `v_mul_f32`, `v_mul_dx9_zero_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_min_num_f32`, `v_max_num_f32`, `v_minimum_f32`, `v_maximum_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_min3_num_f32`, `v_max3_num_f32`, `v_minmax_num_f32`, `v_maxmin_num_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_minimum3_f32`, `v_maximum3_f32`, `v_minimummaximum_f32`, `v_maximumminimum_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_med3_num_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_fma_f32` | Scalar, AVX2/FMA, AVX-512 | Not implemented |
-| `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
 | `v_dot4_f32_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar, x86-64-v3 | Not implemented |
@@ -250,6 +251,9 @@ FP32 ADD, SUB, SUBREV and MUL support A/B ABS/NEG, output scaling and CLAMP
 on scalar and v3 paths. Tests cross all 128 modifier combinations with all CPU
 levels, 85 masks and aliases, including signed zeros, subnormals, infinities,
 NaNs and overflow. Their benchmark rows compare default and modified cases.
+The DX9 zero-multiplication variant supports the same paths and modifiers.
+Either signed-zero input forces positive zero, even with NaN or infinity in
+the other operand. Nonzero products that underflow retain their usual sign.
 
 FP32 `MIN_NUM`, `MAX_NUM`, `MINIMUM` and `MAXIMUM` have the same modifier,
 mask, alias and CPU-path coverage. Number variants select a numeric operand
@@ -267,10 +271,21 @@ NaN-priority and signed-zero cases plus 4,096 random input triples. Benchmark
 labels use `min3`/`max3` for repeated selections, `mnmx`/`mxmn` for mixed
 selections, and an `n` suffix for number-preferring variants.
 
+FP32 median selection also supports all 512 modifiers on scalar/v3 paths.
+With any NaN input it returns the three-input minimumNumber result; otherwise
+it follows the ISA rule of removing the first input numerically equal to the
+maximum and selecting the maximum of the other two. Tests include signed-zero
+ties, where this rule differs from sorting by a total order that distinguishes
+the signs of zero. The benchmark labels this instruction `f32/med3n`.
+
 FMA supports all three source ABS/NEG pairs, OMOD scaling and CLAMP on scalar,
 x86-64-v3 and x86-64-v4 paths. Tests cross all 512 modifier combinations with
 85 masks, all CPU levels and output aliasing each source; literal bit patterns
 add fused-rounding, signed-zero, subnormal, overflow and NaN-clamping cases.
+
+FP32 `FRACT` computes `x - floor(x)` and caps it at `0x3f7fffff` before
+output modifiers, so tiny negative inputs stay strictly below one. Scalar/v3
+paths support all 32 modifiers, with literal boundary and signed-zero tests.
 
 Unary FP32 instructions support `GOC_ALU_ABS_A`, `GOC_ALU_NEG_A`, output
 scaling (`GOC_ALU_OMOD_2`, `GOC_ALU_OMOD_4`, `GOC_ALU_OMOD_HALF`), and

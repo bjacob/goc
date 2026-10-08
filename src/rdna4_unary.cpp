@@ -81,3 +81,8 @@ int goc_rdna4_v_log_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction
                         uint32_t *const *d, const uint32_t *const *a) {
   return unary<goc::Unary::Log>(flags, exec_mask, instruction_flags, d, a);
 }
+
+int goc_rdna4_v_fract_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a) {
+  return unary<goc::Unary::Fract>(flags, exec_mask, instruction_flags, d, a);
+}

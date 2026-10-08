@@ -336,15 +336,16 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
   using Unary = decltype(&goc_rdna4_v_log_f32);
   const Unary functions[] = {goc_rdna4_v_trunc_f32, goc_rdna4_v_ceil_f32, goc_rdna4_v_rndne_f32,
                              goc_rdna4_v_floor_f32, goc_rdna4_v_sqrt_f32, goc_rdna4_v_rcp_f32,
-                             goc_rdna4_v_rsq_f32,   goc_rdna4_v_exp_f32,  goc_rdna4_v_log_f32};
+                             goc_rdna4_v_rsq_f32,   goc_rdna4_v_exp_f32,  goc_rdna4_v_log_f32,
+                             goc_rdna4_v_fract_f32};
   const char *names[] = {"f32/trunc", "f32/ceil", "f32/rndne", "f32/floor", "f32/sqrt",
-                         "f32/rcp",   "f32/rsq",  "f32/exp",   "f32/log"};
+                         "f32/rcp",   "f32/rsq",  "f32/exp",   "f32/log",   "f32/fract"};
   const float inputs[] = {0.25f, 1, 4, 16};
   const float exp_inputs[] = {0, 1, 2, 4};
-  const float golden[][4] = {{0, 1, 4, 16},       {1, 1, 4, 16},   {0, 1, 4, 16},
-                             {0, 1, 4, 16},       {0.5f, 1, 2, 4}, {4, 1, 0.25f, 0.0625f},
-                             {2, 1, 0.5f, 0.25f}, {1, 2, 4, 16},   {-2, 0, 2, 4}};
-  for (int op = 0; op < 9; ++op)
+  const float golden[][4] = {
+      {0, 1, 4, 16},          {1, 1, 4, 16},       {0, 1, 4, 16}, {0, 1, 4, 16}, {0.5f, 1, 2, 4},
+      {4, 1, 0.25f, 0.0625f}, {2, 1, 0.5f, 0.25f}, {1, 2, 4, 16}, {-2, 0, 2, 4}, {0.25f, 0, 0, 0}};
+  for (int op = 0; op < 10; ++op)
     for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
       r.output_regs = 1;
@@ -369,7 +370,7 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
         return false;
       print_result(names[op], "loose", mode, "scalar", scalar, 1);
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if (op < 7 && cpu >= GOC_CPU_X86_64_V3) {
+      if ((op < 7 || op == 9) && cpu >= GOC_CPU_X86_64_V3) {
         double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
         if (simd < 0)
           return false;
@@ -383,13 +384,13 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
   using Binary = decltype(&goc_rdna4_v_add_f32);
-  const Binary functions[] = {goc_rdna4_v_add_f32,     goc_rdna4_v_sub_f32,
-                              goc_rdna4_v_subrev_f32,  goc_rdna4_v_mul_f32,
-                              goc_rdna4_v_min_num_f32, goc_rdna4_v_max_num_f32,
-                              goc_rdna4_v_minimum_f32, goc_rdna4_v_maximum_f32};
-  const char *names[] = {"f32/add",    "f32/sub",    "f32/subrev", "f32/mul",
-                         "f32/minnum", "f32/maxnum", "f32/min",    "f32/max"};
-  for (int op = 0; op < 8; ++op)
+  const Binary functions[] = {
+      goc_rdna4_v_add_f32,     goc_rdna4_v_sub_f32,     goc_rdna4_v_subrev_f32,
+      goc_rdna4_v_mul_f32,     goc_rdna4_v_min_num_f32, goc_rdna4_v_max_num_f32,
+      goc_rdna4_v_minimum_f32, goc_rdna4_v_maximum_f32, goc_rdna4_v_mul_dx9_zero_f32};
+  const char *names[] = {"f32/add",    "f32/sub", "f32/subrev", "f32/mul",   "f32/minnum",
+                         "f32/maxnum", "f32/min", "f32/max",    "f32/muldx9"};
+  for (int op = 0; op < 9; ++op)
     for (uint32_t mode :
          {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
@@ -403,7 +404,7 @@ bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
           b = -b;
         }
         float want = float(op == 0 ? a + b : op == 1 ? a - b : op == 2 ? b - a : a * b);
-        if (op >= 4)
+        if (op >= 4 && op < 8)
           want = float((op == 5 || op == 7) ? std::max(a, b) : std::min(a, b));
         if (mode)
           want = std::min(1.0f, std::max(0.0f, want * 0.5f));
@@ -437,13 +438,13 @@ bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_minmax3(uint64_t cpu, int iterations, int min_ms) {
   using Ternary = decltype(&goc_rdna4_v_fma_f32);
-  const Ternary functions[] = {goc_rdna4_v_min3_num_f32,       goc_rdna4_v_max3_num_f32,
-                               goc_rdna4_v_minmax_num_f32,     goc_rdna4_v_maxmin_num_f32,
-                               goc_rdna4_v_minimum3_f32,       goc_rdna4_v_maximum3_f32,
-                               goc_rdna4_v_minimummaximum_f32, goc_rdna4_v_maximumminimum_f32};
-  const char *names[] = {"f32/min3n", "f32/max3n", "f32/mnmxn", "f32/mxmnn",
-                         "f32/min3",  "f32/max3",  "f32/mnmx",  "f32/mxmn"};
-  for (int op = 0; op < 8; ++op)
+  const Ternary functions[] = {
+      goc_rdna4_v_min3_num_f32,       goc_rdna4_v_max3_num_f32,       goc_rdna4_v_minmax_num_f32,
+      goc_rdna4_v_maxmin_num_f32,     goc_rdna4_v_minimum3_f32,       goc_rdna4_v_maximum3_f32,
+      goc_rdna4_v_minimummaximum_f32, goc_rdna4_v_maximumminimum_f32, goc_rdna4_v_med3_num_f32};
+  const char *names[] = {"f32/min3n", "f32/max3n", "f32/mnmxn", "f32/mxmnn", "f32/min3",
+                         "f32/max3",  "f32/mnmx",  "f32/mxmn",  "f32/med3n"};
+  for (int op = 0; op < 9; ++op)
     for (uint32_t mode : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C |
                                            GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
@@ -460,6 +461,11 @@ bool benchmark_minmax3(uint64_t cpu, int iterations, int min_ms) {
         }
         int ab = (op % 4 == 1 || op % 4 == 3) ? std::max(a, b) : std::min(a, b);
         float want = float((op % 4 == 1 || op % 4 == 2) ? std::max(ab, c) : std::min(ab, c));
+        if (op == 8) {
+          int sorted[] = {a, b, c};
+          std::sort(sorted, sorted + 3);
+          want = float(sorted[1]);
+        }
         if (mode)
           want = std::min(1.0f, std::max(0.0f, want * 0.5f));
         r.expected[128 * (lane / 16) + lane % 16] = bits(want);

@@ -35,6 +35,8 @@ int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
       value = x - y;
     if constexpr (Op == goc::Binary::Subrev)
       value = y - x;
+    if constexpr (Op == goc::Binary::MulDx9Zero)
+      value = (x == 0 || y == 0) ? 0.0f : x * y;
     if constexpr (Op == goc::Binary::Mul)
       value = x * y;
     if constexpr (Op == goc::Binary::MinNum)
@@ -93,4 +95,9 @@ int goc_rdna4_v_minimum_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32
 int goc_rdna4_v_maximum_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   return binary<goc::Binary::Maximum>(flags, mask, mode, d, a, b);
+}
+
+int goc_rdna4_v_mul_dx9_zero_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                                 const uint32_t *const *a, const uint32_t *const *b) {
+  return binary<goc::Binary::MulDx9Zero>(flags, mask, mode, d, a, b);
 }

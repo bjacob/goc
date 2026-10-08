@@ -30,6 +30,12 @@ void run(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uin
       value = _mm256_sub_ps(x, y);
     if constexpr (Op == Binary::Subrev)
       value = _mm256_sub_ps(y, x);
+    if constexpr (Op == Binary::MulDx9Zero) {
+      auto zero = _mm256_setzero_ps();
+      auto has_zero =
+          _mm256_or_ps(_mm256_cmp_ps(x, zero, _CMP_EQ_OQ), _mm256_cmp_ps(y, zero, _CMP_EQ_OQ));
+      value = _mm256_andnot_ps(has_zero, _mm256_mul_ps(x, y));
+    }
     if constexpr (Op == Binary::Mul)
       value = _mm256_mul_ps(x, y);
     if constexpr (Op == Binary::MinNum)
@@ -69,6 +75,8 @@ void binary_x86_64_v3(Binary op, uint32_t mask, uint32_t mode, uint32_t *d, cons
     return run<Binary::Minimum>(mask, mode, d, a, b);
   case Binary::Maximum:
     return run<Binary::Maximum>(mask, mode, d, a, b);
+  case Binary::MulDx9Zero:
+    return run<Binary::MulDx9Zero>(mask, mode, d, a, b);
   case Binary::Mul:
     return run<Binary::Mul>(mask, mode, d, a, b);
   }

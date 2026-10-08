@@ -32,6 +32,7 @@ template <bool Maximum, bool Propagate> float minmax(float x, float y) {
 }
 
 enum class Minmax3 {
+  MedianNum,
   Min3Num,
   Max3Num,
   MinmaxNum,

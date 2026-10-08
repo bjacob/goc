@@ -117,6 +117,27 @@ GOC_API int goc_rdna4_v_maximumminimum_f32(uint64_t flags, uint64_t exec_mask,
                                            const uint32_t *const *a, const uint32_t *const *b,
                                            const uint32_t *const *c);
 
+// DX9 multiplication: one VGPR per operand, with A/B ABS/NEG, OMOD and CLAMP.
+// Either signed-zero input forces a positive-zero product, including with NaN
+// or infinity as the other input. Loose semantics only.
+GOC_API int goc_rdna4_v_mul_dx9_zero_f32(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a, const uint32_t *const *b);
+
+// FP32 fractional part: x - floor(x), capped at the largest FP32 value below one
+// before output scaling/CLAMP. Supports A ABS/NEG, OMOD and CLAMP, loose semantics.
+// One VGPR per operand; infinite inputs produce NaN.
+GOC_API int goc_rdna4_v_fract_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+// FP32 median: one VGPR per operand; all A/B/C ABS/NEG, OMOD and CLAMP, loose
+// semantics. Any NaN selects minimumNumber across all three inputs. Otherwise
+// remove the first input numerically equal to the maximum and select the maximum
+// of the remaining two inputs, following the ISA's signed-zero tie behavior.
+GOC_API int goc_rdna4_v_med3_num_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
 // True16 source/destination half selectors. Zero selects the low half.
 // DOT2 consumes both A/B halves, so only C and D have selectors.
 static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);

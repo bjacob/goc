@@ -33,6 +33,9 @@ else()
     goc_rdna4_v_sub_f32
     goc_rdna4_v_subrev_f32
     goc_rdna4_v_mul_f32
+    goc_rdna4_v_mul_dx9_zero_f32
+    goc_rdna4_v_fract_f32
+    goc_rdna4_v_med3_num_f32
     goc_rdna4_v_min3_num_f32
     goc_rdna4_v_max3_num_f32
     goc_rdna4_v_minmax_num_f32
