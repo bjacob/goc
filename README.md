@@ -136,6 +136,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 
 | Mnemonic | Loose semantics | Empirical exact semantics |
 | --- | --- | --- |
+| `v_ldexp_f16`, `v_frexp_exp_i16_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_trunc_f16`, `v_ceil_f16`, `v_rndne_f16`, `v_floor_f16`, `v_fract_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f16`, `v_rcp_f16`, `v_rsq_f16`, `v_frexp_mant_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f16`, `v_log_f16` | Scalar | Not implemented |
@@ -378,6 +379,20 @@ Saturation stays on SIMD by checking the high product word against the low
 word's sign extension, or against zero for unsigned products. Tests include
 literal high-word results, saturation thresholds, upper-byte noise, random
 products, masks, aliases and host FP-environment preservation.
+
+FP16 `LDEXP` reads a floating half from A and a signed integer half from B,
+scales A by that power of two, and writes the selected D half. It accepts
+`HIGH_A/B/D`, A ABS/NEG, output scaling/clamp and `GOC_FP16_OVFL`. Scalar and
+eight-lane SIMD paths bound extreme integer exponents while preserving every
+FP16 rounding outcome, including output scaling at the underflow/overflow
+boundary. `FREXP_EXP_I16_F16` writes a signed 16-bit exponent into the selected
+D half, returning zero for zeros, infinities and NaNs. Source sign modifiers,
+OMOD and CLAMP do not change that integer result. Scalar and SIMD FREXP paths
+preserve the host FP environment, including with signaling NaNs and nondefault
+rounding modes.
+Both instructions preserve the unselected D half and support whole-register
+aliases. Tests cover all half encodings, every signed 16-bit exponent, all
+modifier combinations, all mask patterns, aliases and literal boundaries.
 
 Unary FP16 operations use the same selected-half storage and output-modifier
 rules as binary FP16. Rounding, reciprocal, square root, reciprocal square root,

@@ -700,6 +700,62 @@ bool benchmark_frexp_exp(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_half_exponent(uint64_t cpu, int iterations, int min_ms) {
+  const uint16_t inputs[] = {0x3400, 0xbc00, 0x4400, 0x4c00, 1, 0x3ff, 0x7bff, 0};
+  const int adjustments[] = {-2, -1, 0, 1, 24, 0, -1, 32767};
+  const int exponents[] = {-1, 1, 3, 5, -23, -14, 16, 0};
+  for (bool ldexp : {false, true})
+    for (bool modified : {false, true}) {
+      uint32_t mode = modified
+                          ? GOC_ALU_ABS_A | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | GOC_ALU_OMOD_HALF |
+                                GOC_ALU_CLAMP | (ldexp ? GOC_ALU_HIGH_B : 0)
+                          : 0;
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        auto half = inputs[lane % 8];
+        int exponent = adjustments[lane % 8];
+        r.data[0][lane] = uint32_t(half) | (uint32_t(half ^ 0x8000) << 16);
+        r.data[4][lane] = uint16_t(exponent) | (uint32_t(uint16_t(exponent)) << 16);
+        r.data[16][lane] = 0xfacecafe;
+        uint32_t result = uint16_t(exponents[lane % 8]);
+        if (ldexp) {
+          double x = goc_test::half_value(half);
+          if (modified)
+            x = std::abs(x);
+          double value = std::ldexp(x, exponent);
+          if (modified)
+            value = !(value > 0) ? 0 : std::min(value * 0.5, 1.0);
+          result = goc_test::half_bits(value);
+        }
+        r.expected[128 * (lane / 16) + lane % 16] =
+            modified ? (result << 16) | 0xcafe : 0xface0000 | result;
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *) {
+        return ldexp ? goc_rdna4_v_ldexp_f16(flags, mask, modifiers, d, a, b)
+                     : goc_rdna4_v_frexp_exp_i16_f16(flags, mask, modifiers, d, a);
+      };
+      const char *name = ldexp ? "f16/ldexp" : "f16/frexp";
+      const char *label = modified ? "ABS/hi/half/clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(name, "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
   using Unary = decltype(&goc_rdna4_v_log_f16);
   const Unary functions[] = {
@@ -1302,7 +1358,8 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "Integer DOT benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }
-  if (!benchmark_half_unary(cpu, iterations, min_ms) || !benchmark_unary(cpu, iterations, min_ms) ||
+  if (!benchmark_half_exponent(cpu, iterations, min_ms) ||
+      !benchmark_half_unary(cpu, iterations, min_ms) || !benchmark_unary(cpu, iterations, min_ms) ||
       !benchmark_frexp_exp(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
     return 1;

@@ -412,6 +412,24 @@ GOC_API int goc_rdna4_v_maximum_f16(uint64_t flags, uint64_t exec_mask, uint32_t
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b);
 
+// FP16 LDEXP: scale the selected half of A by 2 raised to the signed int16_t
+// exponent in the selected half of B. Supports A ABS/NEG, HIGH_A/B/D, OMOD,
+// CLAMP and GOC_FP16_OVFL. Other source modifiers are invalid. Preserves the
+// other D half and inactive lanes; D may alias a whole source VGPR. Loose
+// semantics require host nearest-even arithmetic with denormals enabled.
+GOC_API int goc_rdna4_v_ldexp_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b);
+
+// FP16 FREXP exponent: read the selected A half and write a signed int16_t
+// exponent into the selected D half. Zero, infinity and NaN return zero.
+// Preserves the other D half, inactive lanes and the host FP environment;
+// whole-register A/D aliasing is allowed. ABS_A/NEG_A, OMOD and CLAMP are
+// accepted but do not change the result. Supports loose semantics.
+GOC_API int goc_rdna4_v_frexp_exp_i16_f16(uint64_t flags, uint64_t exec_mask,
+                                          uint32_t instruction_flags, uint32_t *const *d,
+                                          const uint32_t *const *a);
+
 // Unary FP16: one independently selected half per A/D VGPR; supports ABS_A,
 // NEG_A, HIGH_A/D, OMOD, CLAMP and GOC_FP16_OVFL. Preserves the unselected D
 // half and inactive lanes; whole-register A/D aliasing is allowed. EXP/LOG
