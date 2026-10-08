@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
+
 #pragma once
+
 // Independent integer matrix product A*B+C. Inputs are the first 768 values
 // from minstd_rand(7), each mapped with x%5-2, in row-major A, B, C order.
 // Generated offline with exact Python integer arithmetic; no GoC helpers used.

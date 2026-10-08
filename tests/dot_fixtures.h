@@ -14,6 +14,7 @@ struct Gfx12DotCase {
   uint32_t c;
   uint32_t expected;
 };
+
 inline constexpr std::array<Gfx12DotCase, 50> kGfx12DotF16Cases = {{
     {0x48004200u, 0x44004800u, 0xbf800000u, 0x425c0000u},
     {0xc800c200u, 0x44004800u, 0x3f800000u, 0xc25c0000u},

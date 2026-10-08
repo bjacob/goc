@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
-#include "internal.h"
+
+#include "../src/internal.h"
+
 #include <cmath>
+
 int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                         uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
                         uint32_t *const *c) {
@@ -28,6 +31,7 @@ int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }
+
 int goc_rdna4_v_log_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                         uint32_t *const *d, uint32_t *const *a) {
   if (int error = goc::validate(flags, instruction_flags))

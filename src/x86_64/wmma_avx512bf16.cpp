@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
-#include "internal.h"
+
+#include "../src/internal.h"
+
 #include <immintrin.h>
+
 namespace goc {
 void wmma_avx512bf16(uint32_t mask, uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
                      uint32_t *const *c) {

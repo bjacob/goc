@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <array>
-
 #include <cstdint>
 
 // Adapted from rocjitsu shared/gfx12_dot.h. This is the existing gfx1201
@@ -22,6 +21,7 @@ inline int bit_width(uint64_t x) {
   }
   return n;
 }
+
 namespace gfx12_dot_detail {
 
 inline constexpr uint32_t kFactorNan = 0xffc00a3d;
@@ -49,15 +49,21 @@ template <bool Bf16> struct Factor {
   uint16_t bits;
 
   bool nan() const { return (bits & 0x7fff) > infinity; }
+
   bool inf() const { return (bits & 0x7fff) == infinity; }
+
   bool negative() const { return bits >> 15; }
+
   int exponent_field() const { return (bits & 0x7fff) >> fraction_bits; }
+
   uint64_t significand() const {
     if (exponent_field())
       return (1u << fraction_bits) | (bits & fraction_mask);
     return bits & fraction_mask;
   }
+
   int alignment_exponent() const { return int(std::max(exponent_field(), 1)) - bias; }
+
   Term product(Factor other) const {
     return {significand() * other.significand(),
             alignment_exponent() + other.alignment_exponent() - 2 * fraction_bits,

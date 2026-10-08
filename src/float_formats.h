@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
+
 #ifndef GOC_FLOAT_FORMATS_H_
 #define GOC_FLOAT_FORMATS_H_
-#include "internal.h"
+
+#include "../src/internal.h"
+
 namespace goc {
 inline float bf16_to_float(uint16_t bits) { return as_float(uint32_t(bits) << 16); }
+
 inline float f16_to_float(uint16_t bits) {
   uint32_t sign = uint32_t(bits & 0x8000) << 16;
   int exponent = (bits >> 10) & 31;
@@ -23,4 +27,5 @@ inline float f16_to_float(uint16_t bits) {
   return as_float(sign | (uint32_t(exponent + 112) << 23) | (fraction << 13));
 }
 } // namespace goc
+
 #endif

@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
-#include "float_formats.h"
-#include "rdna4_dot.h"
+
+#include "../src/float_formats.h"
+#include "../src/rdna4_dot.h"
+
 #include <cmath>
+
 namespace {
 // Physical packing follows rocjitsu shared/mma_exec.h: each lane supplies
 // eight (wave32) or four (wave64) consecutive K elements. Output lanes select
@@ -108,11 +111,13 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
   return GOC_SUCCESS;
 }
 } // namespace
+
 int goc_rdna4_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t mask, uint32_t instruction_flags,
                                       uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
                                       uint32_t *const *c) {
   return wmma<false>(flags, mask, instruction_flags, d, a, b, c);
 }
+
 int goc_rdna4_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t mask, uint32_t instruction_flags,
                                        uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
                                        uint32_t *const *c) {
@@ -124,6 +129,7 @@ int goc_rdna4w64_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t mask, uint32_t
                                          uint32_t *const *c) {
   return wmma<false, 64>(flags, mask, instruction_flags, d, a, b, c);
 }
+
 int goc_rdna4w64_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t mask, uint32_t instruction_flags,
                                           uint32_t *const *d, uint32_t *const *a,
                                           uint32_t *const *b, uint32_t *const *c) {

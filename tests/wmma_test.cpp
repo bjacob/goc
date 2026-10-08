@@ -1,27 +1,33 @@
 // SPDX-License-Identifier: MIT
-#include "dense_golden.h"
-#include "dot_fixtures.h"
-#include "float_formats.h"
-#include "rdna4_dot.h"
-#include "wmma_fixtures.h"
+
+#include "../src/float_formats.h"
+#include "../src/rdna4_dot.h"
+#include "../tests/dense_golden.h"
+#include "../tests/dot_fixtures.h"
+#include "../tests/wmma_fixtures.h"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <gtest/gtest.h>
 #include <random>
+
 namespace {
 using Wmma = decltype(&goc_rdna4_v_wmma_f32_16x16x16_f16);
+
 // Each logical VGPR is deliberately separated by padding and allocated in
 // reverse order, exercising the API's array-of-pointers contract.
 struct Registers {
   uint32_t storage[24][35] = {};
   uint32_t *v[24];
+
   Registers() {
     for (int i = 0; i < 24; ++i) {
       v[i] = storage[23 - i] + 1;
       storage[i][0] = storage[i][34] = 0xdeadbeef;
     }
   }
+
   void guards() {
     for (auto &r : storage) {
       EXPECT_EQ(r[0], 0xdeadbeef);
@@ -29,11 +35,13 @@ struct Registers {
     }
   }
 };
+
 void set16(uint32_t *const *v, int index, int k, uint16_t bits) {
   auto &word = v[k % 8 / 2][index + 16 * (k / 8)];
   int shift = 16 * (k % 2);
   word = (word & ~(0xffffu << shift)) | (uint32_t(bits) << shift);
 }
+
 bool fuzzy(float actual, float expected) {
   // NumPy-style isclose, as used by hrx-system's math.h.
   return actual == expected || (std::isnan(actual) && std::isnan(expected)) ||
@@ -41,6 +49,7 @@ bool fuzzy(float actual, float expected) {
           std::abs(double(actual) - expected) <= 1e-5 + 1e-5 * std::abs(double(expected)));
 }
 } // namespace
+
 TEST(Wmma, HardwareCapturedLooseResults) {
   for (uint64_t level = 0; level <= goc_init_cpu_flags(); ++level)
     for (bool bf16 : {false, true}) {
@@ -64,6 +73,7 @@ TEST(Wmma, HardwareCapturedLooseResults) {
         }
     }
 }
+
 TEST(Wmma, LaneMappingMaskAndPartialOperandOverlap) {
   for (uint64_t level = 0; level <= goc_init_cpu_flags(); ++level)
     for (bool bf16 : {false, true})
@@ -95,6 +105,7 @@ TEST(Wmma, LaneMappingMaskAndPartialOperandOverlap) {
         r.guards();
       }
 }
+
 TEST(Wmma, UnsupportedSemanticsPreserveAllRegisters) {
   Registers r;
   for (auto &reg : r.storage)
@@ -107,6 +118,7 @@ TEST(Wmma, UnsupportedSemanticsPreserveAllRegisters) {
     for (auto x : reg)
       EXPECT_EQ(x, 0xdeadbeef);
 }
+
 TEST(FloatFormats, HalfBoundaryBits) {
   const uint16_t in[] = {0, 0x8000, 1, 0x03ff, 0x0400, 0x3c00, 0x7bff, 0x7c00, 0xfc00, 0x7e00};
   const uint32_t out[] = {0,          0x80000000, 0x33800000, 0x387fc000, 0x38800000,
@@ -145,6 +157,7 @@ TEST(Wmma, HardwareCapturedExactResults) {
           }
     }
 }
+
 TEST(Rdna4Dot, HardwareCapturedSpecialValuesAndRounding) {
   for (const auto &f : kGfx12DotF16Cases) {
     std::array<uint16_t, 2> a = {uint16_t(f.a), uint16_t(f.a >> 16)},
@@ -180,6 +193,7 @@ TEST(Rdna4Dot, PublicApiHardwareFixturesMaskAndOverlap) {
   check(kGfx12DotF16Cases, goc_rdna4_v_dot2_f32_f16);
   check(kGfx12DotBF16Cases, goc_rdna4_v_dot2_f32_bf16);
 }
+
 TEST(Wmma, AllModifierCombinations) {
   for (bool bf16 : {false, true})
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT})
@@ -273,6 +287,7 @@ TEST(Wmma, DeterministicDenseIntegerGolden) {
                   << " semantics=" << semantics;
         }
 }
+
 TEST(Rdna4Dot, LooseAndFallbackIntegerGolden) {
   for (bool bf16 : {false, true})
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT, GOC_SEMANTICS_MASK}) {
@@ -333,6 +348,7 @@ TEST(WmmaWave64, CapturedGoldensMasksAndOverlap) {
           }
     }
 }
+
 TEST(WmmaWave64, DenseLaneMapping) {
   for (bool bf16 : {false, true})
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT}) {

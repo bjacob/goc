@@ -9,3 +9,7 @@ Borrow the license from rocjitsu.
 
 The CMake build directory should be out-of-tree. Use Ninja (generator).
 Build and test with full CPU parallelism.
+
+Separate file banners, header guards, include groups, and declarations with blank lines.
+All project-local #include paths are relative to include/, including includes among
+files in the same directory. CMake must pass include/ as an include directory.

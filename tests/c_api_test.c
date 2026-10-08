@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
+
 #include "goc.h"
+
 int goc_test_c_api(void) {
   uint32_t a[32] = {0x40000000}, b[32] = {0x40400000}, c[32] = {0x40800000}, d[32] = {0};
   uint32_t *pa = a, *pb = b, *pc = c, *pd = d;

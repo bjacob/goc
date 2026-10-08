@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: MIT
-#include "internal.h"
+
+#include "../src/internal.h"
+
 #include <array>
 #include <cmath>
 #include <gtest/gtest.h>
 #include <random>
+
 extern "C" int goc_test_c_api(void);
+
 TEST(Api, C99LinksAgainstCppImplementation) { EXPECT_EQ(goc_test_c_api(), 1); }
+
 TEST(Arithmetic, DeterministicFmaMaskAndAliasing) {
   std::mt19937 rng(42);
   std::array<uint32_t, 32> a, b, c;
@@ -23,6 +28,7 @@ TEST(Arithmetic, DeterministicFmaMaskAndAliasing) {
   for (int i = 0; i < 32; ++i)
     EXPECT_EQ(a[i], (i % 2) ? expected[i] : original[i]);
 }
+
 TEST(Arithmetic, ErrorsPreserveDestination) {
   uint32_t a[32] = {}, d[32];
   auto pa = a, pd = d;
@@ -40,6 +46,7 @@ TEST(Arithmetic, ErrorsPreserveDestination) {
   for (auto v : d)
     EXPECT_EQ(v, 0xdeadbeef);
 }
+
 TEST(Arithmetic, LogPowersOfTwoAndHighMaskBits) {
   uint32_t a[32];
   for (int i = 0; i < 32; ++i)

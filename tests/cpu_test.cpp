@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MIT
-#include "internal.h"
+
+#include "../src/internal.h"
+
 #include <gtest/gtest.h>
+
 TEST(Cpu, DetectionReturnsOnlyKnownCpuBits) { EXPECT_LE(goc_init_cpu_flags(), GOC_CPU_ZEN4); }
+
 TEST(Cpu, FeatureAndOsGating) {
   goc::CpuState s;
   EXPECT_EQ(goc::decode_cpu(s), GOC_CPU_BASELINE);
@@ -18,6 +22,7 @@ TEST(Cpu, FeatureAndOsGating) {
   s.leaf1_ecx &= ~(1u << 27);
   EXPECT_EQ(goc::decode_cpu(s), GOC_CPU_BASELINE);
 }
+
 TEST(Cpu, EveryRequiredFeatureIsChecked) {
   goc::CpuState full{UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, 0xe6};
   for (int bit : {0, 9, 12, 13, 19, 20, 22, 23, 26, 27, 28, 29}) {

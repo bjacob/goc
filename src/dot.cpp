@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
-#include "float_formats.h"
-#include "rdna4_dot.h"
+
+#include "../src/float_formats.h"
+#include "../src/rdna4_dot.h"
+
 #include <cmath>
+
 namespace {
 template <bool Bf16>
 int dot(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *const *d,
@@ -31,11 +34,13 @@ int dot(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *con
   return GOC_SUCCESS;
 }
 } // namespace
+
 int goc_rdna4_v_dot2_f32_f16(uint64_t flags, uint64_t mask, uint32_t instruction_flags,
                              uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
                              uint32_t *const *c) {
   return dot<false>(flags, mask, instruction_flags, d, a, b, c);
 }
+
 int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint64_t mask, uint32_t instruction_flags,
                               uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
                               uint32_t *const *c) {
