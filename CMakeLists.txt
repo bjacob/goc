@@ -14,11 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Enable x86-64 SIMD implementations when targeting x86-64 with GCC/Clang.
-set(goc_target_processor "${CMAKE_SYSTEM_PROCESSOR}")
-if(CMAKE_CXX_COMPILER_TARGET)
-  string(REGEX REPLACE "-.*$" "" goc_target_processor "${CMAKE_CXX_COMPILER_TARGET}")
-endif()
-string(TOLOWER "${goc_target_processor}" goc_target_processor)
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" goc_target_processor)
 
 unset(GOC_ENABLE_X86_64 CACHE)
 set(GOC_ENABLE_X86_64 OFF)
