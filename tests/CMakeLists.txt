@@ -1,3 +1,7 @@
+add_executable(cpuinfo cpuinfo.c)
+target_link_libraries(cpuinfo PRIVATE goc)
+add_test(NAME cpuinfo COMMAND cpuinfo)
+
 find_package(GTest CONFIG QUIET)
 if(NOT GTest_FOUND)
   include(FetchContent)
@@ -12,6 +16,7 @@ target_link_libraries(goc_tests PRIVATE goc GTest::gtest_main)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(goc_tests PRIVATE -Wall -Wextra -Werror -pedantic)
+  target_compile_options(cpuinfo PRIVATE -Wall -Wextra -Werror -pedantic)
 endif()
 
 include(GoogleTest)

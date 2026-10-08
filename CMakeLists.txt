@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(goc VERSION 0.1.0 LANGUAGES C CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
   message(FATAL_ERROR "GoC requires an out-of-tree build")
 endif()
