@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-#include "goc.h"
+#include "goc/goc.h"
 
 #include <stdint.h>
 

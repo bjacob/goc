@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
 // Deliberately test that the umbrella exposes both public components.
-#include "goc.h"
+#include "goc/goc.h"
 
 // Repeated inclusion must be harmless.
-#include "goc.h"
+#include "goc/goc.h"
 
 #include <stdint.h>
 

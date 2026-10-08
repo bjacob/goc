@@ -3,7 +3,7 @@
 #ifndef GOC_INTERNAL_H_
 #define GOC_INTERNAL_H_
 
-#include "goc.h"
+#include "goc/goc.h"
 
 #include <cstring>
 #include <stdint.h>

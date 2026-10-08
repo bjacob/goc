@@ -2,7 +2,7 @@
 
 #include "rdna4_dot.h"
 #include "float_formats.h"
-#include "goc.h"
+#include "goc/goc.h"
 #include "internal.h"
 
 #include <array>

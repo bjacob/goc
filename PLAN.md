@@ -65,12 +65,13 @@ Example:
 
 goc_rdna4_v_wmma_f32_16x16x16_f16
 
-The API shall provide an umbrella C header, `goc.h`, directly including
-`detail/goc_common.h` for common flags, error codes and CPU initialization, and
-`detail/goc_rdna4.h` for RDNA4 instruction declarations and modifiers.
+The API shall provide an umbrella C header, `goc/goc.h`, directly including
+`goc/detail/goc_common.h` for common flags, error codes and CPU initialization, and
+`goc/detail/goc_rdna4.h` for RDNA4 instruction declarations and modifiers.
 
-API users, including implementations and tests, shall include `goc.h`. It is the
-only top-level header in `include/`; component headers live under `detail/`.
+API users, including implementations and tests, shall include `goc/goc.h`. It is the
+only header directly under `include/goc/`; component headers live under
+`include/goc/detail/`. The compiler include directory remains `include/`.
 Internal and standard-library dependencies shall be included directly. Use minimal
 standard #includes (stdint.h, and maybe a few more as needed).
 
@@ -192,9 +193,9 @@ modulo 2^N is explicitly intended.
 ```
 cmake/              # Any shared CMake files
 CMakeLists.txt      # root CMakeLists.
-include/goc.h       # Umbrella API header
-include/detail/goc_common.h # Common API definitions
-include/detail/goc_rdna4.h # RDNA4 instruction API
+include/goc/goc.h       # Umbrella API header
+include/goc/detail/goc_common.h # Common API definitions
+include/goc/detail/goc_rdna4.h # RDNA4 instruction API
 src/                # Implementation. Architecture-agnostics files directly here.
 src/CMakeLists.txt  # src/ CMakeLists, handles the library build.
 src/x86_64/         # x86_64-specific code paths (AVX etc). No further subdirs for now.

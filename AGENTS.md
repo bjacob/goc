@@ -16,8 +16,8 @@ Project-local #include paths are relative to include/, or to src/ for internal
 headers, including includes among files in the same directory. CMake must pass
 include/ publicly and src/ privately to implementation and test targets.
 
-Use goc.h for the public API in implementations, tests, and consumers. It is the
-only header at the top level of include/; component headers live in include/detail/.
+Use goc/goc.h for the public API in implementations, tests, and consumers. It is the
+only header directly under include/goc/; component headers live in include/goc/detail/.
 The umbrella directly includes every component header. Detail headers and their
 standalone compile checks may include detail headers directly. Otherwise include
 internal and standard-library dependencies directly rather than transitively.
