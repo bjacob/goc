@@ -13,7 +13,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(goc PRIVATE -Wall -Wextra -Werror -ffp-contract=off)
 endif()
 
-if(GOC_ENABLE_X86 AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+if(GOC_ENABLE_X86)
   target_compile_definitions(goc PRIVATE GOC_X86_QUERY=1)
   add_subdirectory(x86_64)
 endif()
