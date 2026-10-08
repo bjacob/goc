@@ -4,14 +4,16 @@
 #pragma once
 
 /// @file rdna4_dot.h
-/// @brief Hardware-characterized GFX12 DOT2 and WMMA arithmetic with FP32 outputs.
+/// @brief Hardware-characterized GFX12 DOT2 and WMMA arithmetic with FP32 or packed outputs.
+
+#include "packed16.h"
 
 #include <algorithm>
 #include <array>
 #include <stdint.h>
 
 // Adapted from rocjitsu shared/gfx12_dot.h. This is the existing gfx1201
-// empirical model, specialized to FP32 outputs and C++17. No new hardware model.
+// empirical model, adapted to C++17. No new hardware model.
 namespace goc {
 
 inline int bit_width(uint64_t x) {
@@ -123,13 +125,18 @@ inline int64_t align(Term term, int grid, bool accumulator = false) {
 } // namespace gfx12_dot_detail
 
 // GFX12 first aligns each pair of products, then aligns pair sums with C.
-// Four-product steps are rounded to FP32. Integer arithmetic preserves the
+// Four-product steps are rounded to the output format. Integer arithmetic preserves the
 // empirically observed NaN precedence and subnormal behavior.
-template <bool Bf16, int N>
+template <bool Bf16, int N, bool Packed = false>
 inline uint32_t gfx12_dot_bits(const std::array<uint16_t, N> &a, const std::array<uint16_t, N> &b,
-                               uint32_t acc) {
+                               uint32_t acc, bool fp16_ovfl = false) {
   static_assert(N == 2 || N == 4);
   using namespace gfx12_dot_detail;
+  const auto special = [](uint32_t bits) -> uint32_t {
+    if constexpr (Packed)
+      return packed16::special<Bf16>(bits);
+    return bits;
+  };
   std::array<Term, N> products;
   std::array<int, N> product_grids;
   int product_grid = kEmptyExponent;
@@ -139,7 +146,7 @@ inline uint32_t gfx12_dot_bits(const std::array<uint16_t, N> &a, const std::arra
   for (int i = 0; i < N; ++i) {
     const Factor<Bf16> left{a[i]}, right{b[i]};
     if (left.nan() || right.nan())
-      return kFactorNan;
+      return special(kFactorNan);
     invalid |= (left.inf() && !right.significand()) || (right.inf() && !left.significand());
     if (left.inf() || right.inf()) {
       if (left.negative() != right.negative())
@@ -156,21 +163,22 @@ inline uint32_t gfx12_dot_bits(const std::array<uint16_t, N> &a, const std::arra
 
   // Factor NaNs, then invalid products, precede an accumulator NaN.
   if (invalid || (positive_inf && negative_inf))
-    return kInvalidProductNan;
+    return special(kInvalidProductNan);
   if ((acc & 0x7fffffff) > 0x7f800000)
-    return (acc | kQuietNanBit);
+    return special(acc | kQuietNanBit);
   positive_inf |= acc == 0x7f800000;
   negative_inf |= acc == 0xff800000;
   if (positive_inf || negative_inf)
-    return positive_inf && negative_inf ? kInvalidProductNan
-           : negative_inf               ? 0xff800000
-                                        : 0x7f800000;
+    return special(positive_inf && negative_inf ? kInvalidProductNan
+                   : negative_inf               ? 0xff800000
+                                                : 0x7f800000);
 
   const int acc_exp = (acc >> 23) & 255;
   const Term c{acc_exp ? (acc & 0x7fffff) | 0x800000u : acc & 0x7fffff,
                int(std::max(acc_exp, 1)) - 127 - 23, bool(acc >> 31)};
-  const int grid = std::max(product_grid, std::max(-126, c.leading_exponent()) - 26);
-  int64_t total = align(c, grid, true);
+  const int grid =
+      std::max(product_grid, std::max(Packed && !Bf16 ? -14 : -126, c.leading_exponent()) - 26);
+  int64_t total = align(c, grid, !(Packed && !Bf16 && grid <= -14));
   for (int i = 0; i < N; i += 2) {
     const int pair_grid = std::max(product_grids[i], product_grids[i + 1]);
     const int64_t pair = align(products[i], pair_grid) + align(products[i + 1], pair_grid);
@@ -180,6 +188,11 @@ inline uint32_t gfx12_dot_bits(const std::array<uint16_t, N> &a, const std::arra
 
   // Pair alignment retains at most 27 magnitude bits; the final sum and C
   // fit comfortably in int64_t. Zero, including underflow to zero, is positive.
+  if constexpr (Packed) {
+    if constexpr (Bf16)
+      return pack(total, grid) >> 16;
+    return packed16::pack_f16(total, grid, false, fp16_ovfl);
+  }
   return pack(total, grid);
 }
 

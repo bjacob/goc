@@ -15,8 +15,9 @@ extern "C" {
 // contiguous uint32_t lane words. Pointer arrays and backing storage must be valid.
 // Whole VGPRs may alias; distinct VGPR addresses must not overlap. Sources are
 // conceptually read before writes. Inactive destination lanes and all destinations
-// on error are unchanged. Host FP mode must be nearest-even with denormals enabled.
-// Initially only instruction_flags == 0 is supported. Exact semantics requests
+// on error are unchanged. Loose FP32 paths require host nearest-even rounding
+// with denormals enabled. Integer arithmetic paths preserve all host FP state.
+// FMA and LOG accept only instruction_flags == 0. Exact semantics requests
 // fall back to loose unless GOC_SEMANTICS_STRICT is set.
 GOC_API int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
@@ -71,6 +72,31 @@ GOC_API int goc_rdna4w64_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t exec_
                                                   const uint32_t *const *a,
                                                   const uint32_t *const *b,
                                                   const uint32_t *const *c);
+
+// Packed-output WMMA: A/B hold 4 VGPRs (wave32) or 2 (wave64);
+// C/D hold 4 or 2 VGPRs respectively, with adjacent rows in low/high halves.
+// Both semantics and all six floating WMMA modifiers are supported. Packed
+// results narrow after each four-product step; GOC_FP16_OVFL controls FP16 overflow.
+GOC_API int goc_rdna4_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t mask,
+                                              uint32_t instruction_flags, uint32_t *const *d,
+                                              const uint32_t *const *a, const uint32_t *const *b,
+                                              const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t mask,
+                                                uint32_t instruction_flags, uint32_t *const *d,
+                                                const uint32_t *const *a, const uint32_t *const *b,
+                                                const uint32_t *const *c);
+
+GOC_API int goc_rdna4w64_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t mask,
+                                                 uint32_t instruction_flags, uint32_t *const *d,
+                                                 const uint32_t *const *a, const uint32_t *const *b,
+                                                 const uint32_t *const *c);
+
+GOC_API int goc_rdna4w64_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t mask,
+                                                   uint32_t instruction_flags, uint32_t *const *d,
+                                                   const uint32_t *const *a,
+                                                   const uint32_t *const *b,
+                                                   const uint32_t *const *c);
 
 #ifdef __cplusplus
 } // extern "C"

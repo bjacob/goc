@@ -23,7 +23,8 @@ inline uint32_t as_bits(float f) {
 }
 
 inline int validate(uint64_t flags, uint32_t instruction_flags, bool supports_exact = false) {
-  constexpr uint64_t known = GOC_CPU_MASK | GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT;
+  constexpr uint64_t known =
+      GOC_CPU_MASK | GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT | GOC_FP16_OVFL;
   if ((flags & ~known) || (flags & GOC_CPU_MASK) > GOC_CPU_ZEN4 || instruction_flags)
     return GOC_ERROR_INVALID_FLAGS;
   if ((flags & GOC_SEMANTICS_MASK) &&

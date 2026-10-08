@@ -39,7 +39,7 @@ compiler-flag checks. Other compilers and architectures use the portable paths.
 ## Implemented instructions
 
 The entry points below use RDNA4 wave32. Names have the `goc_rdna4_` prefix.
-The two WMMA forms additionally have scalar wave64 variants named
+The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 `goc_rdna4w64_...`, supporting loose and empirical exact modes.
 
 | Mnemonic | Loose semantics | Empirical exact semantics |
@@ -50,6 +50,8 @@ The two WMMA forms additionally have scalar wave64 variants named
 | `v_dot2_f32_bf16` | Scalar | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_f16` | Scalar | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_bf16` | Scalar, AVX-512 BF16 | Integer arithmetic model |
+| `v_wmma_f16_16x16x16_f16` | Integer arithmetic model | Integer arithmetic model |
+| `v_wmma_bf16_16x16x16_bf16` | Integer arithmetic model | Integer arithmetic model |
 
 WMMA supports all six NEG/NEG_HI modifier bits, including C absolute value.
 Other instructions currently accept only zero instruction flags. The BF16
@@ -68,7 +70,9 @@ Each VGPR pointer addresses 32 contiguous `uint32_t` lane words (64 for
 `rdna4w64`). A multi-VGPR
 operand is an array of these pointers; the backing arrays need not be adjacent
 or SIMD-aligned. A/B use four VGPRs and C/D use eight for the implemented WMMA
-wave32 forms; wave64 uses two A/B VGPRs and four C/D VGPRs. Input and output operands may share whole VGPRs. Distinct backing
+FP32-output wave32 forms; wave64 uses two A/B VGPRs and four C/D VGPRs.
+Packed-output forms halve the C/D register counts, packing adjacent rows into
+the low and high 16 bits. Input and output operands may share whole VGPRs. Distinct backing
 addresses must not overlap, and every pointer must refer to sufficient storage.
 
 GoC applies `exec_mask` to destination writes, including WMMA, as specified by
@@ -80,9 +84,12 @@ Zero semantics bits select loose numerical behavior. Add `GOC_SEMANTICS_EXACT_EM
 for the empirical model; also add `GOC_SEMANTICS_STRICT` to require support.
 Unsupported exact requests otherwise fall back to loose semantics. Unassigned
 instruction/general flag bits are rejected, except reserved semantics values
-which follow the same fallback policy. No GPU FP-environment flag bits have
-been assigned yet. The caller's host FP environment must use nearest-even
-rounding and support denormals.
+which follow the same fallback policy. `GOC_FP16_OVFL` emulates GPU MODE.FP16_OVFL: finite FP16 overflow saturates
+to signed 65504 instead of infinity. Input infinities remain infinite, and
+BF16/FP32 instructions ignore this state. Packed results narrow after each
+four-product step. The packed path and empirical exact paths use integer
+arithmetic, preserving the caller's host rounding mode and exception flags.
+Other loose paths require nearest-even rounding and denormals enabled.
 
 ## Validation and provenance
 
@@ -97,10 +104,15 @@ rocjitsu's `isa/arch/amdgpu/shared/gfx12_dot.h`. The hardware fixtures in
 TheRock `10.2.0a20260916`. They contain 121 DOT and 24 WMMA captures. No new
 GPU measurements or reverse engineering were performed for this implementation.
 The empirical qualification is limited to that existing model and evidence.
+Packed-output support additionally borrows `shared/dot_packed16.h` and the
+RDNA4 subset of `tests/fixtures/float_dot/packed_wmma_cases.h`: 28 captured
+16x16 outputs across both formats and wave sizes, including subnormals,
+cancellation, NaNs and rare accumulator-alignment boundaries. Tests run these
+under all four host rounding modes with preexisting FP exception flags.
 
 CPU detection follows the CPUID/XCR0 gating approach in
 `hrx-system/runtime/src/iree/base/internal/cpu_x86_64.c`, with GoC's coarse
 feature bundles. Formatting and the MIT license are borrowed from rocjitsu.
 
 Still pending: other GPU architectures, additional instructions/formats,
-GPU FP-mode flags, and wider performance tuning.
+further GPU FP-mode flags, and wider performance tuning.
