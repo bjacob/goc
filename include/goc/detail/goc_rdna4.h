@@ -80,6 +80,32 @@ GOC_API int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint64_t exec_mask,
                                       const uint32_t *const *a, const uint32_t *const *b,
                                       const uint32_t *const *c);
 
+// Integer DOT modifiers: SIGNED selects signed factors for I32_IU forms.
+// U32_U forms accept only CLAMP. CLAMP saturates the final accumulator to its
+// signed/unsigned 32-bit range; otherwise arithmetic wraps modulo 2^32.
+static const uint32_t GOC_DOT_SIGNED_A = (UINT32_C(1) << 0);
+static const uint32_t GOC_DOT_SIGNED_B = (UINT32_C(1) << 1);
+static const uint32_t GOC_DOT_CLAMP = (UINT32_C(1) << 6);
+
+// Integer DOT wave32: one VGPR each for A/B/C/D. A/B contain four packed
+// bytes or eight packed nibbles. C/D are signed for I32_IU, unsigned for U32_U.
+// Loose and exact semantics return the same integer result.
+GOC_API int goc_rdna4_v_dot4_i32_iu8(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_dot4_u32_u8(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_dot8_i32_iu4(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_dot8_u32_u4(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c);
+
 // WMMA modifier layout follows neg_lo[0:2], then neg_hi[0:2]. For C,
 // neg_hi means absolute value, applied before neg_lo negation.
 static const uint32_t GOC_WMMA_NEG_LO_A = (UINT32_C(1) << 0);

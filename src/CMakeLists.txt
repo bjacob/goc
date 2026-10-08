@@ -11,7 +11,7 @@ if(GOC_SHARED)
 endif()
 
 foreach(target IN LISTS goc_library_targets)
-  target_sources(${target} PRIVATE cpu.cpp cpu_decode.cpp rdna4_arithmetic.cpp rdna4_unary.cpp rdna4_wmma.cpp rdna4_subbyte_wmma.cpp rdna4_dot.cpp)
+  target_sources(${target} PRIVATE cpu.cpp cpu_decode.cpp rdna4_arithmetic.cpp rdna4_unary.cpp rdna4_wmma.cpp rdna4_subbyte_wmma.cpp rdna4_dot.cpp rdna4_integer_dot.cpp)
   set_target_properties(${target} PROPERTIES
     OUTPUT_NAME goc
     POSITION_INDEPENDENT_CODE ON

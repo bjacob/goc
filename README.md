@@ -57,10 +57,12 @@ header self-containment and library exports.
 
 The benchmark includes wave32 FP32 unary arithmetic (unmodified and
 ABS/scaling/CLAMP), FP32 FMA (unmodified and NEG/ABS/scaling) on scalar, v3 and v4, and compares scalar loose FP16 with x86-64-v3, and scalar loose BF16
-with both x86-64-v3 and the Zen4 AVX-512 BF16 path. Integer rows cover
+with both x86-64-v3 and the Zen4 AVX-512 BF16 path. Integer WMMA rows cover
 INT8 K=16 and INT4 K=16/K=32 on scalar, v3 and Zen4 VNNI, with unsigned
-wrapping and signed CLAMP workloads. All integer rows request strict exact
-semantics and compare against independent integer goldens.
+wrapping and signed CLAMP workloads. Integer WMMA rows request strict exact
+semantics. Integer DOT4/DOT8 rows compare scalar and v3 for signed/unsigned
+accumulators and wrapping/CLAMP, using loose semantics. All integer rows check
+independent integer goldens.
 Floating-point exact scalar timings are listed separately;
 Floating-point SIMD rows do not imply empirical bit-exactness. Unsupported or uncompiled SIMD
 paths are explicitly skipped. A corresponding `_shared` executable is built
@@ -138,6 +140,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
+| `v_dot4_i32_iu8`, `v_dot4_u32_u8` | Scalar, x86-64-v3 | Same integer result |
+| `v_dot8_i32_iu4`, `v_dot8_u32_u4` | Scalar, x86-64-v3 | Same integer result |
 | `v_dot2_f32_f16` | Scalar | Integer arithmetic model |
 | `v_dot2_f32_bf16` | Scalar | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_f16` | Scalar, x86-64-v3 F16C/AVX2/FMA | Integer arithmetic model |
@@ -188,6 +192,15 @@ FP32-output wave32 forms; wave64 uses two A/B VGPRs and four C/D VGPRs.
 Packed-output forms halve the C/D register counts, packing adjacent rows into
 the low and high 16 bits. Input and output operands may share whole VGPRs. Distinct backing
 addresses must not overlap, and every pointer must refer to sufficient storage.
+
+Integer DOT4/DOT8 use one VGPR for each operand. I32_IU forms support independent
+`GOC_DOT_SIGNED_A` / `GOC_DOT_SIGNED_B` flags and a signed accumulator;
+U32_U forms use unsigned factors and accumulators. `GOC_DOT_CLAMP` saturates
+only after the complete dot plus accumulator; otherwise results wrap modulo
+2^32. Every flag combination remains on the v3 path. Widening to signed 16-bit
+factors avoids the unwanted intermediate saturation of x86 byte-pair dot
+instructions. Tests cover all signedness/CLAMP modes, overflow boundaries,
+85 masks, source/destination aliases and unchanged host FP state.
 
 FMA supports all three source ABS/NEG pairs, OMOD scaling and CLAMP on scalar,
 x86-64-v3 and x86-64-v4 paths. Tests cross all 512 modifier combinations with

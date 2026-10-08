@@ -357,6 +357,55 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_integer_dot(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {goc_rdna4_v_dot4_i32_iu8, goc_rdna4_v_dot4_u32_u8,
+                            goc_rdna4_v_dot8_i32_iu4, goc_rdna4_v_dot8_u32_u4};
+  const char *names[] = {"dot4/i8", "dot4/u8", "dot8/i4", "dot8/u4"};
+  const uint32_t a[] = {0xfedcba98, 0x80808080, 0x76543210, 0xffffffff};
+  const uint32_t b[] = {0x76543210, 0x7f7f7f7f, 0xfedcba98, 0xffffffff};
+  const uint32_t c[] = {0xfffffff0, 0x80000010, 0x7ffffff0, 0x00000000};
+  // Independently calculated integer results, indexed by instruction and CLAMP.
+  const uint32_t golden[][4] = {
+      {0xffffdf08, 0x7fff0210, 0x7fffdf08, 0x00000004},
+      {0xffffdf08, 0x80000000, 0x7fffdf08, 0x00000004},
+      {0x0000eb08, 0x8000fe10, 0x8000eb08, 0x0003f804},
+      {0xffffffff, 0x8000fe10, 0x8000eb08, 0x0003f804},
+      {0xffffff9c, 0x7fffff30, 0x7fffff9c, 0x00000008},
+      {0xffffff9c, 0x80000000, 0x7fffff9c, 0x00000008},
+      {0x0000015c, 0x800000f0, 0x8000015c, 0x00000708},
+      {0xffffffff, 0x800000f0, 0x8000015c, 0x00000708},
+  };
+  for (int op = 0; op < 4; ++op)
+    for (int clamp = 0; clamp < 2; ++clamp) {
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        r.data[0][lane] = a[lane % 4];
+        r.data[4][lane] = b[lane % 4];
+        r.data[8][lane] = c[lane % 4];
+        r.expected[128 * (lane / 16) + lane % 16] = golden[2 * op + clamp][lane % 4];
+      }
+      uint32_t modifiers =
+          (op & 1 ? 0 : GOC_DOT_SIGNED_A | GOC_DOT_SIGNED_B) | (clamp ? GOC_DOT_CLAMP : 0);
+      const char *mode =
+          op & 1 ? (clamp ? "u/u clamp" : "u/u wrap") : (clamp ? "s/s clamp" : "s/s wrap");
+      double scalar = measure(functions[op], GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", mode, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(functions[op], GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -378,16 +427,21 @@ int main(int argc, char **argv) {
   }
 
   uint64_t cpu = goc_init_cpu_flags();
-  std::printf("RDNA4 wave32 WMMA (16x16 output), FMA and unary arithmetic; CPU flags 0x%llx\n",
+  std::printf("RDNA4 wave32 WMMA (16x16 output), DOT, FMA and unary arithmetic; CPU flags 0x%llx\n",
               static_cast<unsigned long long>(cpu));
   std::printf("Median of 7 samples, each at least %d ms, after warmup.\n", min_ms);
   std::printf("Start at %d calls; double until the minimum duration is reached.\n", iterations);
   std::puts("Fixed inputs, full EXEC, separate C/D, hot buffers; all outputs checked.");
   std::puts("Timings include public API dispatch, input conversions and output stores.");
-  std::puts("FP rows: loose speedups, exact scalar separately. Integer rows: exact, speedups "
-            "within each instruction-flags setting.");
+  std::puts("FP rows: loose speedups, exact scalar separately. Integer WMMA rows: exact. Speedups "
+            "compare "
+            "matching instruction-flags settings.");
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
+  if (!benchmark_integer_dot(cpu, iterations, min_ms)) {
+    std::fprintf(stderr, "Integer DOT benchmark failed: API/result error or iteration overflow.\n");
+    return 1;
+  }
   if (!benchmark_unary(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
     return 1;
