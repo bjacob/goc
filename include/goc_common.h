@@ -29,7 +29,7 @@ static const int GOC_ERROR_INVALID_FLAGS = 2;
 uint64_t goc_init_cpu_flags(void);
 
 #ifdef __cplusplus
-}
+} // extern "C"
 #endif
 
 #endif

@@ -60,7 +60,7 @@ int goc_rdna4w64_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t exec_mask,
                                           uint32_t *const *c);
 
 #ifdef __cplusplus
-}
+} // extern "C"
 #endif
 
 #endif

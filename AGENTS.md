@@ -17,3 +17,6 @@ include/ publicly and src/ privately to implementation and test targets.
 Include the headers defining what each file uses directly, including standard
 library headers; do not rely on transitive includes. The umbrella goc.h directly
 includes every public component header.
+Closing braces for namespaces and extern "C" blocks must carry a comment naming
+what they close (for example, } // namespace goc or } // extern "C"). This does
+not apply to closing braces for classes or functions.
