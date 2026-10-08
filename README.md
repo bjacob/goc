@@ -23,8 +23,9 @@ Static consumers inherit
 library; shared consumers see exported API declarations. Both variants are
 position-independent and keep implementation symbols hidden.
 
-The public API, C linkage, public headers, and `cpuinfo` are tested against every
-enabled variant. Private CPU decoding is tested separately. On Linux, export
+The public API, C linkage, and `cpuinfo` are tested against every enabled variant.
+Public headers are compiled independently once per language (C and C++), without
+linking. Private CPU decoding is tested separately. On Linux, export
 tests also check the shared API and static embedding. `tests/cpuinfo` uses the
 static variant when enabled, otherwise the shared variant. When both are built,
 `tests/cpuinfo_shared` exercises the shared variant.
