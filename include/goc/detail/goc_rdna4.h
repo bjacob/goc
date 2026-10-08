@@ -81,6 +81,42 @@ GOC_API int goc_rdna4_v_fma_dx9_zero_f32(uint64_t flags, uint64_t exec_mask,
                                          const uint32_t *const *a, const uint32_t *const *b,
                                          const uint32_t *const *c);
 
+// Packed FP16 FMA: two independent fused results per lane. All GOC_PK_* flags
+// below are supported. With no flags, corresponding input halves are multiplied
+// and added. Each result rounds to FP16; CLAMP applies last. Supports
+// GOC_FP16_OVFL and empirical exact semantics with the FP16 FMA environment
+// contract. Both halves use the original inputs, including when D aliases A/B/C.
+GOC_API int goc_rdna4_v_pk_fma_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, const uint32_t *const *c);
+
+// Packed FP16 FMAC: component-wise A * B + D. No instruction flags are valid.
+// Supports GOC_FP16_OVFL and the same loose/exact semantics as packed FMA.
+GOC_API int goc_rdna4_v_pk_fmac_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+// Packed source negation: independent for the low and high result calculations.
+static const uint32_t GOC_PK_NEG_LO_A = (UINT32_C(1) << 0);
+static const uint32_t GOC_PK_NEG_LO_B = (UINT32_C(1) << 1);
+static const uint32_t GOC_PK_NEG_LO_C = (UINT32_C(1) << 2);
+static const uint32_t GOC_PK_NEG_HI_A = (UINT32_C(1) << 3);
+static const uint32_t GOC_PK_NEG_HI_B = (UINT32_C(1) << 4);
+static const uint32_t GOC_PK_NEG_HI_C = (UINT32_C(1) << 5);
+
+// Packed floating output clamp: each result to [0, 1], with NaNs and -0 to +0.
+static const uint32_t GOC_PK_CLAMP = (UINT32_C(1) << 6);
+
+// Packed half selectors flip the default choice for each result calculation.
+// Zero flags use low inputs for the low result and high inputs for the high one.
+// These flags can swap or replicate halves independently for each source.
+static const uint32_t GOC_PK_LO_A_HIGH = (UINT32_C(1) << 7);
+static const uint32_t GOC_PK_LO_B_HIGH = (UINT32_C(1) << 8);
+static const uint32_t GOC_PK_LO_C_HIGH = (UINT32_C(1) << 9);
+static const uint32_t GOC_PK_HI_A_LOW = (UINT32_C(1) << 10);
+static const uint32_t GOC_PK_HI_B_LOW = (UINT32_C(1) << 11);
+static const uint32_t GOC_PK_HI_C_LOW = (UINT32_C(1) << 12);
+
 // Floating ALU source modifiers: ABS precedes NEG.
 static const uint32_t GOC_ALU_NEG_A = (UINT32_C(1) << 0);
 static const uint32_t GOC_ALU_NEG_B = (UINT32_C(1) << 1);

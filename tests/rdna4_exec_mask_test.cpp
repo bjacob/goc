@@ -45,6 +45,8 @@ struct Case {
 };
 
 const Case cases[] = {
+    {goc_rdna4_v_pk_fma_f16, false, true, 0x1fff},
+    {binary<goc_rdna4_v_pk_fmac_f16>, false, true, 0},
     {literal_fma<true, true>, false, true, GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
     {literal_fma<true, false>, false, true, GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
     {literal_fma<false, true>, false, false, 0},

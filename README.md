@@ -382,6 +382,22 @@ word's sign extension, or against zero for unsigned products. Tests include
 literal high-word results, saturation thresholds, upper-byte noise, random
 products, masks, aliases and host FP-environment preservation.
 
+Packed FP16 `PK_FMA` computes both halves of `A * B + C`; `PK_FMAC` uses
+D as its accumulator. Each uses one VGPR per operand. `PK_FMA` supports all
+8,192 combinations of independent low/high-result source negation, half selection
+and CLAMP through `GOC_PK_*` flags. Zero flags select corresponding halves;
+selectors can swap or replicate source halves. RDNA4's `PK_FMAC` has no
+instruction flags. Both support `GOC_FP16_OVFL` and the empirical exact scalar
+FMA model. The loose x86-64-v3 path computes eight packed lanes at a time
+(two vectors of eight FP16 results) and supports every modifier combination.
+
+Both result halves are computed from the original inputs before destination
+stores, including cross-half source selections when D aliases an input. Tests
+cover every flag combination and half encoding, random triples, overflow policy,
+masks, all whole-register aliases, explicit cross-half alias witnesses, packed
+rocjitsu hardware cases and exact host-environment preservation. Packed FMAC
+benchmarks include the same fixed-accumulator reset as ordinary FMAC.
+
 FP16/FP32 `FMAMK` and `FMAAK` take a scalar literal by value, in assembly
 operand order: `D, A, literal, B` for multiply-literal and `D, A, B, literal`
 for add-literal. Literals are raw encodings (`uint16_t` / `uint32_t`). FP16
