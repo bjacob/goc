@@ -109,10 +109,10 @@ struct Registers {
   }
 };
 
-bool positive_integer(const char *text, int &value) {
+bool nonnegative_integer(const char *text, int &value) {
   const char *end = text + std::strlen(text);
   auto parsed = std::from_chars(text, end, value);
-  return parsed.ec == std::errc{} && parsed.ptr == end && value > 0;
+  return parsed.ec == std::errc{} && parsed.ptr == end && value >= 0;
 }
 
 // Returns median nanoseconds per wave, or a negative value on an API/result error
@@ -265,13 +265,13 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "Usage: %s [positive initial iterations]\n", argv[0]);
     return 2;
   }
-  if (argc == 2 && !positive_integer(argv[1], iterations)) {
+  if (argc == 2 && (!nonnegative_integer(argv[1], iterations) || iterations == 0)) {
     std::fprintf(stderr, "Initial iterations must be a positive integer.\n");
     return 2;
   }
   if (const char *value = std::getenv("GOC_BENCH_MIN_MS")) {
-    if (!positive_integer(value, min_ms)) {
-      std::fprintf(stderr, "GOC_BENCH_MIN_MS must be a positive integer in milliseconds.\n");
+    if (!nonnegative_integer(value, min_ms)) {
+      std::fprintf(stderr, "GOC_BENCH_MIN_MS must be a nonnegative integer in milliseconds.\n");
       return 2;
     }
   }

@@ -79,9 +79,11 @@ of seven samples after warmup. Each path starts at 128 calls (overridable by the
 positional argument) and doubles the count until the timed batch takes at least
 10 ms. Shorter batches are discarded. Subsequent samples retain that count and
 double again if necessary, so every accepted sample meets the minimum duration.
-Set `GOC_BENCH_MIN_MS` to a positive integer to override the minimum milliseconds,
+Set `GOC_BENCH_MIN_MS` to a nonnegative integer to override the minimum milliseconds,
 for example `GOC_BENCH_MIN_MS=50 ../goc-build/tests/goc_rdna4_wmma_benchmark_static`.
-CTest uses a 1 ms minimum for its correctness smoke check, with no speedup assertion.
+CTest uses a 0 ms minimum and starts at one call per sample for its correctness
+smoke check, with no speedup assertion. Zero disables the minimum-duration
+requirement; warmup and output checks still run.
 
 An illustrative local run on a Ryzen 9 7950X3D, Clang 21.1.8, Release, static
 linking and the earlier fixed 10,000 calls/sample measurement produced:
