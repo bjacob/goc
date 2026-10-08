@@ -25,11 +25,12 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
 #if defined(GOC_HAVE_AVX512BF16)
   if constexpr (Bf16 && WaveSize == 32 && !Packed) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_ZEN4 &&
-        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL && instruction_flags == 0) {
+        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL) {
       // DPBF16 flushes denormals independently of MXCSR. Check eligibility
       // with SIMD before using it; rejected inputs fall through to v3/scalar.
+      // NEG/ABS only change sign bits, so eligibility is modifier-independent.
       if (goc::wmma_inputs_avx512bf16(a, b, c)) {
-        goc::wmma_avx512bf16(static_cast<uint32_t>(mask), d, a, b, c);
+        goc::wmma_avx512bf16(static_cast<uint32_t>(mask), instruction_flags, d, a, b, c);
         return GOC_SUCCESS;
       }
     }
@@ -39,11 +40,11 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
 #if defined(GOC_HAVE_X86_64_V3)
   if constexpr (WaveSize == 32 && !Packed) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
-        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL && instruction_flags == 0) {
+        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL) {
       if constexpr (Bf16)
-        goc::wmma_bf16_x86_64_v3(static_cast<uint32_t>(mask), d, a, b, c);
+        goc::wmma_bf16_x86_64_v3(static_cast<uint32_t>(mask), instruction_flags, d, a, b, c);
       else
-        goc::wmma_f16_x86_64_v3(static_cast<uint32_t>(mask), d, a, b, c);
+        goc::wmma_f16_x86_64_v3(static_cast<uint32_t>(mask), instruction_flags, d, a, b, c);
       return GOC_SUCCESS;
     }
   }

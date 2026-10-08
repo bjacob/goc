@@ -36,22 +36,46 @@ struct Registers {
       v[reg] = data[reg];
   }
 
-  explicit Registers(bool bf16) : Registers() {
+  explicit Registers(bool bf16, uint32_t modifiers = 0) : Registers() {
     for (int i = 0; i < 256; ++i)
       expected[i] = bits(float(kDenseGolden[i]));
     const uint16_t fp16_values[] = {0xc000, 0xbc00, 0, 0x3c00, 0x4000};
     const uint16_t bf16_values[] = {0xc000, 0xbf80, 0, 0x3f80, 0x4000};
     const auto *values = bf16 ? bf16_values : fp16_values;
+    int left[16][16], right[16][16];
     std::minstd_rand random(7);
     for (int row = 0; row < 16; ++row)
-      for (int k = 0; k < 16; ++k)
-        data[k % 8 / 2][row + 16 * (k / 8)] |= uint32_t(values[random() % 5]) << (16 * (k % 2));
+      for (int k = 0; k < 16; ++k) {
+        int index = random() % 5;
+        left[row][k] = index - 2;
+        data[k % 8 / 2][row + 16 * (k / 8)] |= uint32_t(values[index]) << (16 * (k % 2));
+      }
     for (int k = 0; k < 16; ++k)
-      for (int col = 0; col < 16; ++col)
-        data[4 + k % 8 / 2][col + 16 * (k / 8)] |= uint32_t(values[random() % 5]) << (16 * (k % 2));
+      for (int col = 0; col < 16; ++col) {
+        int index = random() % 5;
+        right[k][col] = index - 2;
+        data[4 + k % 8 / 2][col + 16 * (k / 8)] |= uint32_t(values[index]) << (16 * (k % 2));
+      }
     for (int row = 0; row < 16; ++row)
-      for (int col = 0; col < 16; ++col)
-        data[8 + row % 8][col + 16 * (row / 8)] = bits(float(int(random() % 5) - 2));
+      for (int col = 0; col < 16; ++col) {
+        int c = int(random() % 5) - 2;
+        data[8 + row % 8][col + 16 * (row / 8)] = bits(float(c));
+        if (modifiers) {
+          // Independent integer reference for the modified small-integer matrices.
+          int acc = (modifiers & GOC_WMMA_ABS_C) ? std::abs(c) : c;
+          if (modifiers & GOC_WMMA_NEG_C)
+            acc = -acc;
+          for (int k = 0; k < 16; ++k) {
+            int a = left[row][k], b = right[k][col];
+            if (modifiers & (k % 2 ? GOC_WMMA_NEG_HI_A : GOC_WMMA_NEG_LO_A))
+              a = -a;
+            if (modifiers & (k % 2 ? GOC_WMMA_NEG_HI_B : GOC_WMMA_NEG_LO_B))
+              b = -b;
+            acc += a * b;
+          }
+          expected[row * 16 + col] = bits(float(acc));
+        }
+      }
   }
 
   Registers(int shape, int mode) : Registers() {
@@ -146,20 +170,23 @@ void print_result(const char *input, const char *mode, const char *path, double 
   print_columns(input, mode, path, time_text, speedup_text);
 }
 
-bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms) {
-  Registers r(bf16);
+bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t modifiers = 0) {
+  Registers r(bf16, modifiers);
+  const char *mode = modifiers == 0                   ? "loose"
+                     : modifiers == GOC_WMMA_NEG_LO_A ? "NEG_LO_A"
+                                                      : "mixed";
   const char *format = bf16 ? "BF16" : "FP16";
   Wmma fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
-  double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms);
+  double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
   if (scalar < 0)
     return false;
-  print_result(format, "loose", "scalar", scalar, 1.0);
+  print_result(format, mode, "scalar", scalar, 1.0);
 
   const auto accelerated = [&](const char *path, uint64_t level) {
-    double time = measure(fn, level, r, iterations, min_ms);
+    double time = measure(fn, level, r, iterations, min_ms, modifiers);
     if (time < 0)
       return false;
-    print_result(format, "loose", path, time, scalar / time);
+    print_result(format, mode, path, time, scalar / time);
     return true;
   };
   // Only label a SIMD path when both this build and the host support it.
@@ -182,6 +209,9 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms) {
   (void)accelerated;
   if (!ran_simd)
     std::printf("%-6s SIMD unavailable in this build or on this host; skipped.\n", format);
+
+  if (modifiers)
+    return true;
 
   double exact =
       measure(fn, GOC_CPU_BASELINE | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, r,
@@ -255,12 +285,18 @@ int main(int argc, char **argv) {
   std::puts("Timings include public API dispatch, input conversions and output stores.");
   std::puts("FP rows: loose speedups, exact scalar separately. Integer rows: exact, speedups "
             "within each mode.");
+  std::puts(
+      "FP NEG_LO_A/mixed rows use loose semantics; mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
   print_columns("Input", "Mode", "CPU path", "ns/wave", "Speedup");
-  if (!benchmark(false, cpu, iterations, min_ms) || !benchmark(true, cpu, iterations, min_ms)) {
-    std::fprintf(stderr,
-                 "Benchmark failed: API error, result mismatch or iteration-count overflow.\n");
-    return 1;
-  }
+  for (uint32_t modifiers :
+       {UINT32_C(0), GOC_WMMA_NEG_LO_A,
+        GOC_WMMA_NEG_HI_A | GOC_WMMA_NEG_LO_B | GOC_WMMA_ABS_C | GOC_WMMA_NEG_C})
+    if (!benchmark(false, cpu, iterations, min_ms, modifiers) ||
+        !benchmark(true, cpu, iterations, min_ms, modifiers)) {
+      std::fprintf(stderr,
+                   "Benchmark failed: API error, result mismatch or iteration-count overflow.\n");
+      return 1;
+    }
   for (int shape = 0; shape < 3; ++shape)
     for (int mode : {0, 7})
       if (!benchmark_integer(shape, mode, cpu, iterations, min_ms)) {

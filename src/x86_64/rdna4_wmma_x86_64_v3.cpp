@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "float_formats.h"
+#include "goc/goc.h"
 #include "rdna4_simd.h"
 
 #include <immintrin.h>
@@ -8,9 +9,11 @@
 
 namespace {
 
-template <bool Bf16>
-void wmma(uint32_t mask, uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-          const uint32_t *const *c) {
+template <bool Bf16, bool Modified>
+void wmma(uint32_t mask, uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
+          const uint32_t *const *b, const uint32_t *const *c) {
+  const uint32_t a_sign = ((modifiers & GOC_WMMA_NEG_LO_A) ? UINT32_C(0x8000) : 0) |
+                          ((modifiers & GOC_WMMA_NEG_HI_A) ? UINT32_C(0x80000000) : 0);
   // Decode B once for all output rows. Each input word holds two consecutive
   // K elements; columns occupy consecutive lanes within each half-wave.
   alignas(32) float right[16][16];
@@ -18,6 +21,11 @@ void wmma(uint32_t mask, uint32_t *const *d, const uint32_t *const *a, const uin
     for (int col = 0; col < 16; col += 8) {
       __m256i words = _mm256_loadu_si256(
           reinterpret_cast<const __m256i *>(b[(k % 8) / 2] + 16 * (k / 8) + col));
+      if constexpr (Modified) {
+        __m256i signs = _mm256_set1_epi32(((modifiers & GOC_WMMA_NEG_LO_B) ? 0x8000 : 0) |
+                                          ((modifiers & GOC_WMMA_NEG_HI_B) ? INT32_MIN : 0));
+        words = _mm256_xor_si256(words, signs);
+      }
       if constexpr (Bf16) {
         // BF16 widens exactly by placing its bits in FP32's high half.
         words = k % 2 ? _mm256_and_si256(words, _mm256_set1_epi32(-65536))
@@ -39,8 +47,19 @@ void wmma(uint32_t mask, uint32_t *const *d, const uint32_t *const *a, const uin
         _mm256_castsi256_ps(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(c[reg] + lane)));
     __m256 high = _mm256_castsi256_ps(
         _mm256_loadu_si256(reinterpret_cast<const __m256i *>(c[reg] + lane + 8)));
+    if constexpr (Modified) {
+      __m256 keep =
+          _mm256_castsi256_ps(_mm256_set1_epi32((modifiers & GOC_WMMA_ABS_C) ? INT32_MAX : -1));
+      __m256 sign =
+          _mm256_castsi256_ps(_mm256_set1_epi32((modifiers & GOC_WMMA_NEG_C) ? INT32_MIN : 0));
+      low = _mm256_xor_ps(_mm256_and_ps(low, keep), sign);
+      high = _mm256_xor_ps(_mm256_and_ps(high, keep), sign);
+    }
     for (int k = 0; k < 16; ++k) {
-      uint16_t bits = uint16_t(a[(k % 8) / 2][row + 16 * (k / 8)] >> (16 * (k % 2)));
+      uint32_t word = a[(k % 8) / 2][row + 16 * (k / 8)];
+      if constexpr (Modified)
+        word ^= a_sign;
+      uint16_t bits = uint16_t(word >> (16 * (k % 2)));
       __m256 left = _mm256_set1_ps(Bf16 ? goc::bf16_to_float(bits) : _cvtsh_ss(bits));
       low = _mm256_fmadd_ps(left, _mm256_load_ps(right[k]), low);
       high = _mm256_fmadd_ps(left, _mm256_load_ps(right[k] + 8), high);
@@ -68,14 +87,22 @@ void wmma(uint32_t mask, uint32_t *const *d, const uint32_t *const *a, const uin
 
 namespace goc {
 
-void wmma_f16_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *const *a,
-                        const uint32_t *const *b, const uint32_t *const *c) {
-  wmma<false>(mask, d, a, b, c);
+void wmma_f16_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *const *d,
+                        const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *c) {
+  if (modifiers)
+    wmma<false, true>(mask, modifiers, d, a, b, c);
+  else
+    wmma<false, false>(mask, 0, d, a, b, c);
 }
 
-void wmma_bf16_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *const *a,
-                         const uint32_t *const *b, const uint32_t *const *c) {
-  wmma<true>(mask, d, a, b, c);
+void wmma_bf16_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
+  if (modifiers)
+    wmma<true, true>(mask, modifiers, d, a, b, c);
+  else
+    wmma<true, false>(mask, 0, d, a, b, c);
 }
 
 } // namespace goc

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "goc/goc.h"
 #include "rdna4_simd.h"
 
 #include <cstring>
@@ -68,18 +69,35 @@ bool wmma_inputs_avx512bf16(const uint32_t *const *a, const uint32_t *const *b,
   return true;
 }
 
-void wmma_avx512bf16(uint32_t mask, uint32_t *const *d, const uint32_t *const *a,
-                     const uint32_t *const *b, const uint32_t *const *c) {
+template <bool Modified>
+static void wmma_bf16(uint32_t mask, uint32_t modifiers, uint32_t *const *d,
+                      const uint32_t *const *a, const uint32_t *const *b,
+                      const uint32_t *const *c) {
+  const uint32_t a_sign = ((modifiers & GOC_WMMA_NEG_LO_A) ? UINT32_C(0x8000) : 0) |
+                          ((modifiers & GOC_WMMA_NEG_HI_A) ? UINT32_C(0x80000000) : 0);
+  const __m512i b_sign = _mm512_set1_epi32(((modifiers & GOC_WMMA_NEG_LO_B) ? 0x8000 : 0) |
+                                           ((modifiers & GOC_WMMA_NEG_HI_B) ? INT32_MIN : 0));
   uint32_t result[8][32];
   for (int row = 0; row < 16; ++row) {
     int reg = row % 8, group = row / 8;
     __m512 acc = _mm512_castsi512_ps(_mm512_loadu_si512(c[reg] + 16 * group));
+    if constexpr (Modified) {
+      __m512i keep = _mm512_set1_epi32((modifiers & GOC_WMMA_ABS_C) ? INT32_MAX : -1);
+      __m512i sign = _mm512_set1_epi32((modifiers & GOC_WMMA_NEG_C) ? INT32_MIN : 0);
+      acc = _mm512_castsi512_ps(
+          _mm512_xor_si512(_mm512_and_si512(_mm512_castps_si512(acc), keep), sign));
+    }
     for (int pair = 0; pair < 8; ++pair) {
       uint32_t aw = a[pair % 4][row + 16 * (pair / 4)];
+      if constexpr (Modified)
+        aw ^= a_sign;
       int32_t signed_word;
       std::memcpy(&signed_word, &aw, sizeof(aw));
       __m512bh va = (__m512bh)_mm512_set1_epi32(signed_word);
-      __m512bh vb = (__m512bh)_mm512_loadu_si512(b[pair % 4] + 16 * (pair / 4));
+      __m512i bw = _mm512_loadu_si512(b[pair % 4] + 16 * (pair / 4));
+      if constexpr (Modified)
+        bw = _mm512_xor_si512(bw, b_sign);
+      __m512bh vb = (__m512bh)bw;
       acc = _mm512_dpbf16_ps(acc, va, vb);
     }
     _mm512_storeu_si512(result[reg] + 16 * group, _mm512_castps_si512(acc));
@@ -88,6 +106,14 @@ void wmma_avx512bf16(uint32_t mask, uint32_t *const *d, const uint32_t *const *a
     for (int group = 0; group < 2; ++group)
       _mm512_mask_storeu_epi32(d[reg] + 16 * group, static_cast<__mmask16>(mask >> (16 * group)),
                                _mm512_loadu_si512(result[reg] + 16 * group));
+}
+
+void wmma_avx512bf16(uint32_t mask, uint32_t modifiers, uint32_t *const *d,
+                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (modifiers)
+    wmma_bf16<true>(mask, modifiers, d, a, b, c);
+  else
+    wmma_bf16<false>(mask, 0, d, a, b, c);
 }
 
 } // namespace goc

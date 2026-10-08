@@ -647,3 +647,123 @@ TEST(Wmma, Bf16Zen4EligibilityChecksEveryAccumulator) {
           }
       }
 }
+
+TEST(Wmma, SimdModifiersDenseReferenceMasksAndOverlap) {
+  const uint16_t fp16[] = {0xc000, 0xbc00, 0, 0x3c00, 0x4000};
+  const uint16_t bf16[] = {0xc000, 0xbf80, 0, 0x3f80, 0x4000};
+  for (bool bf : {false, true})
+    for (uint32_t modifiers = 0; modifiers < 64; ++modifiers)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (int dst : {0, 2, 4, 8, 16})
+          for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000),
+                                UINT64_C(0xdeadbeef91234567), UINT64_MAX}) {
+            SCOPED_TRACE(::testing::Message()
+                         << "bf16=" << bf << " modifiers=" << modifiers << " cpu=" << cpu
+                         << " dst=" << dst << " mask=" << mask);
+            Registers r;
+            int a[16][16], b[16][16], c[16][16];
+            std::minstd_rand random(87);
+            for (int row = 0; row < 16; ++row)
+              for (int k = 0; k < 16; ++k) {
+                int ai = random() % 5, bi = random() % 5;
+                a[row][k] = ai - 2;
+                b[row][k] = bi - 2;
+                set16(r.v, row, k, bf ? bf16[ai] : fp16[ai]);
+                set16(r.v + 4, row, k, bf ? bf16[bi] : fp16[bi]);
+              }
+            for (int row = 0; row < 16; ++row)
+              for (int col = 0; col < 16; ++col) {
+                c[row][col] = int(random() % 9) - 4;
+                r.v[8 + row % 8][col + 16 * (row / 8)] = goc::as_bits(float(c[row][col]));
+              }
+            uint32_t before[24][32];
+            for (int reg = 0; reg < 24; ++reg)
+              std::copy(r.v[reg], r.v[reg] + 32, before[reg]);
+            auto fn = bf ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
+            ASSERT_EQ(fn(cpu, mask, modifiers, r.v + dst, r.v, r.v + 4, r.v + 8), GOC_SUCCESS);
+            for (int row = 0; row < 16; ++row)
+              for (int col = 0; col < 16; ++col) {
+                int acc = (modifiers & GOC_WMMA_ABS_C) ? std::abs(c[row][col]) : c[row][col];
+                if (modifiers & GOC_WMMA_NEG_C)
+                  acc = -acc;
+                for (int k = 0; k < 16; ++k) {
+                  int left = a[row][k], right = b[col][k];
+                  if (modifiers & (k % 2 ? GOC_WMMA_NEG_HI_A : GOC_WMMA_NEG_LO_A))
+                    left = -left;
+                  if (modifiers & (k % 2 ? GOC_WMMA_NEG_HI_B : GOC_WMMA_NEG_LO_B))
+                    right = -right;
+                  acc += left * right;
+                }
+                int reg = dst + row % 8, lane = col + 16 * (row / 8);
+                if ((mask >> lane) & 1) {
+                  EXPECT_EQ(goc::as_float(r.v[reg][lane]), float(acc));
+                }
+              }
+            for (int reg = 0; reg < 24; ++reg)
+              for (int lane = 0; lane < 32; ++lane)
+                if (reg < dst || reg >= dst + 8 || !((mask >> lane) & 1)) {
+                  EXPECT_EQ(r.v[reg][lane], before[reg][lane]);
+                }
+            r.guards();
+          }
+}
+
+TEST(Wmma, SimdModifiersSpecialValuesAndFallback) {
+  struct Case {
+    uint16_t fp16_a, fp16_b, bf16_a, bf16_b;
+    uint32_t c;
+  };
+
+  const Case cases[] = {
+      {1, 0x3c00, 1, 0x3f80, 0}, // Subnormal factors.
+      {0x8001, 0x3c00, 0x8001, 0x3f80, 0},
+      {0x0400, 0x3800, 0x0080, 0x3f00, 0},          // BF16 normal factors, subnormal products.
+      {0x7bff, 0x4000, 0x7f7f, 0x4000, 0},          // BF16 product overflow.
+      {0x7c00, 0x3c00, 0x7f80, 0x3f80, 0},          // Infinity.
+      {0x7e55, 0x3c00, 0x7fc5, 0x3f80, 0},          // Quiet NaN.
+      {0x7d23, 0x3c00, 0x7f83, 0x3f80, 0},          // Signaling NaN.
+      {0x8000, 0x3c00, 0x8000, 0x3f80, 0x80000000}, // Signed zeros.
+      {0, 0x3c00, 0, 0x3f80, 1},                    // Subnormal accumulator.
+      {0, 0x3c00, 0, 0x3f80, 0x80000001},
+      {0, 0x3c00, 0, 0x3f80, 0xff800000}, // Infinite accumulator.
+      {0, 0x3c00, 0, 0x3f80, 0xffc12345}, // NaN accumulator.
+  };
+  for (bool bf : {false, true})
+    for (const auto &f : cases)
+      for (uint32_t modifiers = 0; modifiers < 64; ++modifiers) {
+        Registers reference;
+        const auto fill = [&](Registers &r) {
+          uint32_t a = bf ? f.bf16_a : f.fp16_a, b = bf ? f.bf16_b : f.fp16_b;
+          for (int reg = 0; reg < 4; ++reg)
+            for (int lane = 0; lane < 32; ++lane) {
+              r.v[reg][lane] = a | (a << 16);
+              r.v[4 + reg][lane] = b | (b << 16);
+            }
+          for (int reg = 8; reg < 16; ++reg)
+            std::fill(r.v[reg], r.v[reg] + 32, f.c);
+        };
+        fill(reference);
+        auto fn = bf ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
+        ASSERT_EQ(fn(GOC_CPU_BASELINE, UINT32_MAX, modifiers, reference.v + 16, reference.v,
+                     reference.v + 4, reference.v + 8),
+                  GOC_SUCCESS);
+        for (uint64_t cpu = GOC_CPU_X86_64_V3; cpu <= goc_init_cpu_flags(); ++cpu) {
+          SCOPED_TRACE(::testing::Message() << "bf16=" << bf << " modifiers=" << modifiers
+                                            << " cpu=" << cpu << " a=" << f.bf16_a << " c=" << f.c);
+          Registers actual;
+          fill(actual);
+          ASSERT_EQ(
+              fn(cpu, UINT32_MAX, modifiers, actual.v + 8, actual.v, actual.v + 4, actual.v + 8),
+              GOC_SUCCESS);
+          for (int reg = 0; reg < 8; ++reg)
+            for (int lane = 0; lane < 32; ++lane) {
+              float want = goc::as_float(reference.v[16 + reg][lane]);
+              if (std::isnan(want))
+                EXPECT_TRUE(std::isnan(goc::as_float(actual.v[8 + reg][lane])));
+              else
+                EXPECT_EQ(actual.v[8 + reg][lane], reference.v[16 + reg][lane]);
+            }
+          actual.guards();
+        }
+      }
+}

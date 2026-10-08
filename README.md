@@ -68,7 +68,9 @@ when `GOC_SHARED` is enabled; use it instead for a shared-only build and omit
 
 Every path checks all outputs against independent dense matrix goldens before
 and after timing. The floating-point workload uses fixed small-integer matrices
-and no modifiers.
+and compares no modifiers, `NEG_LO_A` alone, and a mixed case
+(`NEG_HI_A | NEG_LO_B | ABS_C | NEG_C`). Modified floating-point rows use loose
+semantics and independent integer matrix references.
 Integer workloads use dense full-range factors and accumulators near overflow,
 with signedness and CLAMP as labeled. All workloads use full EXEC, separate C/D
 storage and hot buffers. Timings include public API
@@ -147,12 +149,15 @@ negation bits are rejected. Integer WMMA supports independent signed/unsigned
 A/B inputs and signed output saturation (`GOC_WMMA_CLAMP`); without CLAMP,
 results wrap modulo 2^32. Other instructions accept only zero instruction flags.
 The FP8/BF8 and integer entry points currently support wave32 only. FP16 and
-BF16 SIMD WMMA paths handle unmodified loose wave32 calls with FP32 outputs.
+BF16 SIMD WMMA paths handle loose wave32 calls with FP32 outputs and all 64
+combinations of `NEG_LO`/`NEG_HI` on A/B and `NEG`/`ABS` on C. `ABS_C` is applied before
+`NEG_C`. These sign-bit transformations preserve the magnitude-only Zen4 BF16
+eligibility checks; rejected inputs still fall back to v3 when available.
 The v3 paths handle subnormals, infinities and NaNs through widening and CPU FMA;
 NaN payloads are unspecified in loose mode. Zen4 first tries the AVX-512 BF16
 path, falling back to v3 for exceptional values and extreme product exponents,
-or to scalar if v3 was not compiled. Modified calls,
-packed outputs, wave64 and floating-point empirical exact modes use scalar arithmetic.
+or to scalar if v3 was not compiled. Packed outputs, wave64 and floating-point
+empirical exact modes use scalar arithmetic.
 Integer WMMA uses SIMD in both semantics, for every signedness and CLAMP
 combination.
 Its v3 path uses signed 16-bit pairwise multiply-adds; Zen4 uses AVX-512 VNNI
@@ -223,6 +228,10 @@ FP8/BF8 conversions and integer WMMA borrow from rocjitsu's
 all 256 codes through the public API and use deterministic dense mathematical
 goldens for every FP8/BF8 pairing and integer sign/clamp combination. These
 are mathematical checks, not new hardware evidence for exact FP8 accumulation.
+Floating-point SIMD modifier tests cover all 64 combinations across every usable
+CPU level, masks, overlapping operands and noncontiguous/unaligned storage.
+Special-value tests include signed zeros, subnormal factors and accumulators,
+normal factors with subnormal products, overflow, infinities and NaNs.
 Integer SIMD tests force every usable CPU level and cover unaligned, noncontiguous
 VGPR storage, masks and aliasing. Independent int64 matrix references additionally
 check extreme signed/unsigned factors, wrapping, final-only saturation and
