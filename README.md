@@ -147,6 +147,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_trunc_f64`, `v_ceil_f64`, `v_rndne_f64`, `v_floor_f64`, `v_fract_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f64`, `v_rcp_f64`, `v_rsq_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_frexp_mant_f32`, `v_frexp_mant_f64` | Scalar, x86-64-v3 | Not implemented |
+| `v_frexp_exp_i32_f32`, `v_frexp_exp_i32_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
@@ -331,6 +332,13 @@ zero, infinity and NaN bits pass through before output modifiers. Both widths
 support all 32 unary modifier combinations and the same mask/alias guarantees
 as their other arithmetic operations. Literal tests check subnormal boundaries
 and exceptional-value bit preservation, including signaling NaNs.
+
+`FREXP_EXP_I32_F32` and `FREXP_EXP_I32_F64` return a signed binary exponent
+in one destination VGPR, using one or two source VGPRs respectively. Zero,
+infinity and NaN inputs return zero. Both scalar and v3 paths handle subnormals;
+ABS/NEG, OMOD and CLAMP are accepted without changing the integer result.
+Tests cover all 32 modifier combinations, every exponent field and subnormal
+leading-bit position, special values, masks, and aliases with either FP64 half.
 
 Unary FP32 instructions support `GOC_ALU_ABS_A`, `GOC_ALU_NEG_A`, output
 scaling (`GOC_ALU_OMOD_2`, `GOC_ALU_OMOD_4`, `GOC_ALU_OMOD_HALF`), and

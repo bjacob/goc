@@ -221,6 +221,19 @@ GOC_API int goc_rdna4_v_frexp_mant_f64(uint64_t flags, uint64_t exec_mask,
                                        uint32_t instruction_flags, uint32_t *const *d,
                                        const uint32_t *const *a);
 
+// Binary exponent extraction into one signed 32-bit VGPR. A uses one FP32
+// VGPR or an FP64 low/high pair. Returns zero for zeros, infinities and NaNs;
+// finite nonzero inputs satisfy A = FREXP_MANT(A) * 2^D, including subnormals.
+// A ABS/NEG, OMOD and CLAMP are accepted but do not change the integer result.
+// Supports loose semantics; D may alias either whole source VGPR.
+GOC_API int goc_rdna4_v_frexp_exp_i32_f32(uint64_t flags, uint64_t exec_mask,
+                                          uint32_t instruction_flags, uint32_t *const *d,
+                                          const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_frexp_exp_i32_f64(uint64_t flags, uint64_t exec_mask,
+                                          uint32_t instruction_flags, uint32_t *const *d,
+                                          const uint32_t *const *a);
+
 // True16 source/destination half selectors. Zero selects the low half.
 // DOT2 consumes both A/B halves, so only C and D have selectors.
 static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);

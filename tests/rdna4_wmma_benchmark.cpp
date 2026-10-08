@@ -342,6 +342,47 @@ bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t modifiers,
   return true;
 }
 
+bool benchmark_frexp_exp(uint64_t cpu, int iterations, int min_ms) {
+  using Unary = decltype(&goc_rdna4_v_frexp_exp_i32_f32);
+  const Unary functions[] = {goc_rdna4_v_frexp_exp_i32_f32, goc_rdna4_v_frexp_exp_i32_f64};
+  const uint64_t inputs[][4] = {{0x3e800000, 0xbf800000, 0x40800000, 0x41800000},
+                                {UINT64_C(0x3fd0000000000000), UINT64_C(0xbff0000000000000),
+                                 UINT64_C(0x4010000000000000), UINT64_C(0x4030000000000000)}};
+  const int exponents[] = {-1, 1, 3, 5};
+  for (int fp64 = 0; fp64 < 2; ++fp64)
+    for (uint32_t mode :
+         {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        r.data[0][lane] = uint32_t(inputs[fp64][lane % 4]);
+        r.data[1][lane] = uint32_t(inputs[fp64][lane % 4] >> 32);
+        r.expected[128 * (lane / 16) + lane % 16] = uint32_t(exponents[lane % 4]);
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *,
+                          const uint32_t *const *) {
+        return functions[fp64](flags, mask, modifiers, d, a);
+      };
+      const char *name = fp64 ? "f64/frexp" : "f32/frexp";
+      const char *label = mode ? "NEG/ABS/half/clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(name, "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
   using Unary = decltype(&goc_rdna4_v_log_f32);
   const Unary functions[] = {
@@ -881,7 +922,7 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "Integer DOT benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }
-  if (!benchmark_unary(cpu, iterations, min_ms)) {
+  if (!benchmark_unary(cpu, iterations, min_ms) || !benchmark_frexp_exp(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }
