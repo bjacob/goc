@@ -13,8 +13,12 @@ check_cxx_compiler_flag("${goc_avx512bf16_check_flags}" GOC_COMPILER_AVX512BF16)
 
 foreach(target IN LISTS goc_library_targets)
   if(GOC_COMPILER_X86_64_V3)
-    target_sources(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_fma_x86_64_v3.cpp)
-    set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/rdna4_fma_x86_64_v3.cpp TARGET_DIRECTORY ${target} PROPERTIES COMPILE_OPTIONS "${goc_x86_64_v3_flags}")
+    set(goc_x86_64_v3_sources
+      ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_fma_x86_64_v3.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_wmma_f16_x86_64_v3.cpp
+    )
+    target_sources(${target} PRIVATE ${goc_x86_64_v3_sources})
+    set_source_files_properties(${goc_x86_64_v3_sources} TARGET_DIRECTORY ${target} PROPERTIES COMPILE_OPTIONS "${goc_x86_64_v3_flags}")
     target_compile_definitions(${target} PRIVATE GOC_HAVE_X86_64_V3=1)
   endif()
 

@@ -421,3 +421,51 @@ TEST(WmmaWave64, ModifiersAndErrorsPreserveState) {
             EXPECT_EQ(v[reg][lane], goc::as_bits(float(low + high + c)));
       }
 }
+
+TEST(Wmma, Fp16V3FiniteAndExceptionalInputsMatchScalar) {
+  if (goc_init_cpu_flags() < GOC_CPU_X86_64_V3)
+    GTEST_SKIP() << "Host does not support x86-64-v3";
+  for (bool exceptional : {false, true})
+    for (int trial = 0; trial < 8; ++trial)
+      for (int dst : {0, 2, 4, 8, 16})
+        for (uint64_t mask :
+             {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_C(0x91234567), UINT64_MAX}) {
+          Registers reference, actual;
+          std::minstd_rand random(73 + trial);
+          for (int reg = 0; reg < 24; ++reg)
+            for (int lane = 0; lane < 32; ++lane) {
+              uint32_t bits = uint32_t(random()) ^ (uint32_t(random()) << 16);
+              if (reg < 8) {
+                // Both signs and the full finite exponent range, including
+                // FP16 subnormals. Separate trials inject NaNs and infinities.
+                bits &= 0xfbfffbff;
+                if (exceptional && lane == 3 && reg == 0)
+                  bits = 0x7c00fc00;
+                if (exceptional && lane == 11 && reg == 5)
+                  bits = 0x7e557d23;
+              } else {
+                bits &= 0xff7fffff;
+              }
+              reference.v[reg][lane] = actual.v[reg][lane] = bits;
+            }
+          ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_f16(GOC_CPU_BASELINE, mask, 0, reference.v + dst,
+                                                      reference.v, reference.v + 4,
+                                                      reference.v + 8),
+                    GOC_SUCCESS);
+          ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_f16(GOC_CPU_X86_64_V3, mask, 0, actual.v + dst,
+                                                      actual.v, actual.v + 4, actual.v + 8),
+                    GOC_SUCCESS);
+          // Finite values use the same K order and FMA operations. Loose NaN
+          // payloads may differ between the CPU converter and scalar widening.
+          for (int reg = 0; reg < 24; ++reg)
+            for (int lane = 0; lane < 32; ++lane) {
+              bool written = reg >= dst && reg < dst + 8 && ((mask >> lane) & 1);
+              if (written && std::isnan(goc::as_float(reference.v[reg][lane])))
+                EXPECT_TRUE(std::isnan(goc::as_float(actual.v[reg][lane])));
+              else
+                EXPECT_EQ(actual.v[reg][lane], reference.v[reg][lane]);
+            }
+          reference.guards();
+          actual.guards();
+        }
+}
