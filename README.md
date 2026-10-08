@@ -56,15 +56,22 @@ The full suite also covers DOT2, NEG/NEG_HI, wave64, masks, aliasing, C linkage,
 header self-containment and library exports.
 
 The benchmark compares scalar loose FP16 with x86-64-v3, and scalar loose BF16
-with both x86-64-v3 and the Zen4 AVX-512 BF16 path. Exact scalar timings are listed separately;
-SIMD rows never imply empirical bit-exactness. Unsupported or uncompiled SIMD
+with both x86-64-v3 and the Zen4 AVX-512 BF16 path. Integer rows cover
+INT8 K=16 and INT4 K=16/K=32 on scalar, v3 and Zen4 VNNI, with unsigned
+wrapping and signed CLAMP workloads. All integer rows request strict exact
+semantics and compare against independent integer goldens.
+Floating-point exact scalar timings are listed separately;
+Floating-point SIMD rows do not imply empirical bit-exactness. Unsupported or uncompiled SIMD
 paths are explicitly skipped. A corresponding `_shared` executable is built
 when `GOC_SHARED` is enabled; use it instead for a shared-only build and omit
 `cpuinfo`, which is static-only.
 
 Every path checks all outputs against independent dense matrix goldens before
-and after timing. The workload uses fixed small-integer matrices, full EXEC,
-no modifiers, separate C/D storage and hot buffers. Timings include public API
+and after timing. The floating-point workload uses fixed small-integer matrices
+and no modifiers.
+Integer workloads use dense full-range factors and accumulators near overflow,
+with signedness and CLAMP as labeled. All workloads use full EXEC, separate C/D
+storage and hot buffers. Timings include public API
 dispatch, input conversions and output stores. Each reported time is the median
 of seven samples after warmup. Each path starts at 128 calls (overridable by the
 positional argument) and doubles the count until the timed batch takes at least
@@ -94,6 +101,21 @@ about 190 ns for v3 on this host, while retaining the same conservative fallback
 rules. These figures include dispatch and the scan; the kernel-only measurement
 was a separate diagnostic.
 
+Integer SIMD measurements on the same host (Clang Release, static, CPU 8),
+using the median of three benchmark invocations with a 50 ms minimum per sample:
+
+| Shape | Mode | Scalar ns/wave | v3 ns/wave | Zen4 VNNI ns/wave |
+| --- | --- | ---: | ---: | ---: |
+| INT8/K16 | u/u wrap | 4,883.7 | 66.0 | 57.2 |
+| INT8/K16 | s/s clamp | 7,726.6 | 84.3 | 72.2 |
+| INT4/K16 | u/u wrap | 1,640.8 | 73.1 | 55.5 |
+| INT4/K16 | s/s clamp | 5,730.5 | 88.7 | 73.1 |
+| INT4/K32 | u/u wrap | 9,719.1 | 153.0 | 130.8 |
+| INT4/K32 | s/s clamp | 15,027.5 | 195.7 | 134.4 |
+
+The SMT sibling was online for these measurements; timing variation remains.
+All integer results were checked against the independent dense goldens.
+
 These are CPU instruction-emulation microbenchmarks, not end-to-end emulator
 throughput or GPU comparisons. Results vary with host, compiler, workload and
 system load; the scalar reference is intentionally simple.
@@ -115,9 +137,9 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_wmma_f16_16x16x16_f16` | Integer arithmetic model | Integer arithmetic model |
 | `v_wmma_bf16_16x16x16_bf16` | Integer arithmetic model | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar | Not implemented |
-| `v_wmma_i32_16x16x16_iu8` | Scalar integer | Scalar integer |
-| `v_wmma_i32_16x16x16_iu4` | Scalar integer | Scalar integer |
-| `v_wmma_i32_16x16x32_iu4` | Scalar integer | Scalar integer |
+| `v_wmma_i32_16x16x16_iu8` | Scalar, x86-64-v3, Zen4 VNNI | Same exact integer paths |
+| `v_wmma_i32_16x16x16_iu4` | Scalar, x86-64-v3, Zen4 VNNI | Same exact integer paths |
+| `v_wmma_i32_16x16x32_iu4` | Scalar, x86-64-v3, Zen4 VNNI | Same exact integer paths |
 
 The FP16/BF16 WMMA forms support all six NEG/NEG_HI modifier bits, including
 C absolute value. FP8/BF8 WMMA supports C negation and absolute value; A/B
@@ -130,7 +152,13 @@ The v3 paths handle subnormals, infinities and NaNs through widening and CPU FMA
 NaN payloads are unspecified in loose mode. Zen4 first tries the AVX-512 BF16
 path, falling back to v3 for exceptional values and extreme product exponents,
 or to scalar if v3 was not compiled. Modified calls,
-packed outputs, wave64 and empirical exact modes use scalar arithmetic.
+packed outputs, wave64 and floating-point empirical exact modes use scalar arithmetic.
+Integer WMMA uses SIMD in both semantics, for every signedness and CLAMP
+combination.
+Its v3 path uses signed 16-bit pairwise multiply-adds; Zen4 uses AVX-512 VNNI
+word dot products. Unsigned bytes widen to positive 16-bit values, avoiding
+saturating byte-pair operations. Each kernel computes the complete dot before
+adding C and optionally saturating, including cancellation near int32 limits.
 
 ## Calling convention
 
@@ -195,6 +223,10 @@ FP8/BF8 conversions and integer WMMA borrow from rocjitsu's
 all 256 codes through the public API and use deterministic dense mathematical
 goldens for every FP8/BF8 pairing and integer sign/clamp combination. These
 are mathematical checks, not new hardware evidence for exact FP8 accumulation.
+Integer SIMD tests force every usable CPU level and cover unaligned, noncontiguous
+VGPR storage, masks and aliasing. Independent int64 matrix references additionally
+check extreme signed/unsigned factors, wrapping, final-only saturation and
+intermediate cancellation; SIMD builds and scalar-only builds run the same tests.
 
 CPU detection follows the CPUID/XCR0 gating approach in
 `hrx-system/runtime/src/iree/base/internal/cpu_x86_64.c`, with GoC's coarse

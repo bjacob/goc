@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_dense_golden.h"
+#include "rdna4_subbyte_golden.h"
 
 #include <algorithm>
 #include <array>
@@ -10,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <initializer_list>
 #include <random>
 #include <stdint.h>
 #include <system_error>
@@ -27,10 +29,16 @@ uint32_t bits(float value) {
 struct Registers {
   uint32_t data[24][32] = {};
   uint32_t *v[24];
+  uint32_t expected[256];
 
-  explicit Registers(bool bf16) {
+  Registers() {
     for (int reg = 0; reg < 24; ++reg)
       v[reg] = data[reg];
+  }
+
+  explicit Registers(bool bf16) : Registers() {
+    for (int i = 0; i < 256; ++i)
+      expected[i] = bits(float(kDenseGolden[i]));
     const uint16_t fp16_values[] = {0xc000, 0xbc00, 0, 0x3c00, 0x4000};
     const uint16_t bf16_values[] = {0xc000, 0xbf80, 0, 0x3f80, 0x4000};
     const auto *values = bf16 ? bf16_values : fp16_values;
@@ -46,10 +54,32 @@ struct Registers {
         data[8 + row % 8][col + 16 * (row / 8)] = bits(float(int(random() % 5) - 2));
   }
 
+  Registers(int shape, int mode) : Registers() {
+    std::copy(kIntegerDense[shape][mode], kIntegerDense[shape][mode] + 256, expected);
+    const int width = shape == 0 ? 8 : 4, k_size = shape == 2 ? 32 : 16;
+    std::minstd_rand random(12056925);
+    for (int operand = 0; operand < 2; ++operand)
+      for (int i = 0; i < 16 * k_size; ++i) {
+        int index = operand ? i % 16 : i / k_size;
+        int k = operand ? i / 16 : i % k_size;
+        int group = k / 8;
+        int reg = 4 * operand + group / 2 * (width / 4) + k % 8 / (32 / width);
+        int lane = index + 16 * (group % 2), shift = k % (32 / width) * width;
+        data[reg][lane] |= (random() % (1u << width)) << shift;
+      }
+    for (int row = 0; row < 16; ++row)
+      for (int col = 0; col < 16; ++col) {
+        int i = row * 16 + col;
+        data[8 + row % 8][col + 16 * (row / 8)] = i % 4 == 0   ? 0x7ffffff0
+                                                  : i % 4 == 1 ? 0x80000010
+                                                               : random();
+      }
+  }
+
   bool correct() const {
     for (int row = 0; row < 16; ++row)
       for (int col = 0; col < 16; ++col)
-        if (data[16 + row % 8][col + 16 * (row / 8)] != bits(float(kDenseGolden[row * 16 + col])))
+        if (data[16 + row % 8][col + 16 * (row / 8)] != expected[row * 16 + col])
           return false;
     return true;
   }
@@ -63,9 +93,12 @@ bool positive_integer(const char *text, int &value) {
 
 // Returns median nanoseconds per wave, or a negative value on an API/result error
 // or iteration-count overflow. Every accepted sample spans at least min_ms.
-double measure(Wmma fn, uint64_t flags, Registers &r, int initial_iterations, int min_ms) {
+double measure(Wmma fn, uint64_t flags, Registers &r, int initial_iterations, int min_ms,
+               uint32_t modifiers = 0) {
   uint64_t iterations = uint64_t(initial_iterations);
-  const auto call = [&] { return fn(flags, UINT32_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8); };
+  const auto call = [&] {
+    return fn(flags, UINT32_MAX, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8);
+  };
   for (int warmup = 0; warmup < 32; ++warmup)
     if (call() != GOC_SUCCESS)
       return -1;
@@ -98,7 +131,7 @@ double measure(Wmma fn, uint64_t flags, Registers &r, int initial_iterations, in
 // Print one table row using the same column widths for headings and results.
 void print_columns(const char *input, const char *mode, const char *path, const char *time,
                    const char *speedup) {
-  std::printf("%-6s %-8s %-20s %12s %11s\n", input, mode, path, time, speedup);
+  std::printf("%-10s %-10s %-20s %12s %11s\n", input, mode, path, time, speedup);
 }
 
 // Print a result with fixed decimal precision; a negative speedup prints "--".
@@ -159,6 +192,39 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {goc_rdna4_v_wmma_i32_16x16x16_iu8, goc_rdna4_v_wmma_i32_16x16x16_iu4,
+                            goc_rdna4_v_wmma_i32_16x16x32_iu4};
+  const char *names[] = {"INT8/K16", "INT4/K16", "INT4/K32"};
+  const char *mode_name = mode == 0 ? "u/u wrap" : "s/s clamp";
+  const uint32_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
+  Registers r(shape, mode);
+  double scalar = 0;
+  const auto run = [&](const char *path, uint64_t level) {
+    double time =
+        measure(functions[shape], level | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, r,
+                iterations, min_ms, modifiers);
+    if (time < 0)
+      return false;
+    if (level == GOC_CPU_BASELINE)
+      scalar = time;
+    print_result(names[shape], mode_name, path, time, scalar / time);
+    return true;
+  };
+  if (!run("scalar", GOC_CPU_BASELINE))
+    return false;
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+  if (cpu >= GOC_CPU_X86_64_V3 && !run("x86-64-v3", GOC_CPU_X86_64_V3))
+    return false;
+#endif
+#if defined(GOC_BENCH_HAVE_AVX512VNNI)
+  if (cpu >= GOC_CPU_ZEN4 && !run("Zen4 / AVX512VNNI", GOC_CPU_ZEN4))
+    return false;
+#endif
+  (void)cpu;
+  return true;
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -180,19 +246,26 @@ int main(int argc, char **argv) {
   }
 
   uint64_t cpu = goc_init_cpu_flags();
-  std::printf("RDNA4 wave32 WMMA, 16x16x16, FP32 output; CPU flags 0x%llx\n",
+  std::printf("RDNA4 wave32 WMMA, 16x16 output; CPU flags 0x%llx\n",
               static_cast<unsigned long long>(cpu));
   std::printf("Median of 7 samples, each at least %d ms, after warmup.\n", min_ms);
   std::printf("Start at %d calls; double until the minimum duration is reached.\n", iterations);
   std::puts(
-      "Full EXEC, no modifiers, fixed small-integer inputs; independent dense goldens checked.");
-  std::puts("Timings include public API dispatch and stores; buffers stay hot in cache.");
-  std::puts("Speedups compare loose paths of the SAME format; exact is reported separately.");
+      "Full EXEC, fixed inputs, separate C/D, hot buffers; independent dense goldens checked.");
+  std::puts("Timings include public API dispatch, input conversions and output stores.");
+  std::puts("FP rows: loose speedups, exact scalar separately. Integer rows: exact, speedups "
+            "within each mode.");
   print_columns("Input", "Mode", "CPU path", "ns/wave", "Speedup");
   if (!benchmark(false, cpu, iterations, min_ms) || !benchmark(true, cpu, iterations, min_ms)) {
     std::fprintf(stderr,
                  "Benchmark failed: API error, result mismatch or iteration-count overflow.\n");
     return 1;
   }
+  for (int shape = 0; shape < 3; ++shape)
+    for (int mode : {0, 7})
+      if (!benchmark_integer(shape, mode, cpu, iterations, min_ms)) {
+        std::fprintf(stderr, "Integer benchmark failed: API/result error or iteration overflow.\n");
+        return 1;
+      }
   return 0;
 }

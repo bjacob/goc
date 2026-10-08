@@ -4,6 +4,7 @@
 #include "float_formats.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_simd.h"
 
 #include <algorithm>
 #include <cmath>
@@ -60,6 +61,18 @@ int integer(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *
   if (int error = goc::validate(
           flags, modifiers & ~(GOC_WMMA_SIGNED_A | GOC_WMMA_SIGNED_B | GOC_WMMA_CLAMP), true))
     return error;
+#if defined(GOC_HAVE_AVX512VNNI)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_ZEN4) {
+    goc::integer_wmma_avx512vnni(Bits, K, uint32_t(mask), modifiers, d, a, b, c);
+    return GOC_SUCCESS;
+  }
+#endif
+#if defined(GOC_HAVE_X86_64_V3)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::integer_wmma_x86_64_v3(Bits, K, uint32_t(mask), modifiers, d, a, b, c);
+    return GOC_SUCCESS;
+  }
+#endif
   const auto extend = [](uint32_t bits, bool is_signed) -> int64_t {
     return int64_t(bits) - (is_signed && (bits & (1u << (Bits - 1))) ? (1u << Bits) : 0);
   };

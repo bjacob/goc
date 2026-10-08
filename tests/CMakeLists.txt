@@ -46,6 +46,9 @@ foreach(library IN LISTS goc_library_targets)
   if(GOC_ENABLE_X86_64 AND GOC_COMPILER_AVX512BF16)
     target_compile_definitions(${benchmark} PRIVATE GOC_BENCH_HAVE_AVX512BF16=1)
   endif()
+  if(GOC_ENABLE_X86_64 AND GOC_COMPILER_AVX512VNNI)
+    target_compile_definitions(${benchmark} PRIVATE GOC_BENCH_HAVE_AVX512VNNI=1)
+  endif()
   # Smoke-test correctness and execution, with no timing/speedup assertions.
   add_test(NAME ${variant}.rdna4_wmma_benchmark COMMAND ${benchmark} 1)
   set_tests_properties(${variant}.rdna4_wmma_benchmark PROPERTIES
