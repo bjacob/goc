@@ -35,6 +35,15 @@ int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction
                         uint32_t *const *c);
 int goc_rdna4_v_log_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                         uint32_t *const *d, uint32_t *const *a);
+// Wave32 16x16x16 WMMA: A/B each contain 4 VGPRs of packed 16-bit
+// elements; C/D each contain 8 VGPRs of FP32 elements. GoC applies exec_mask
+// to destination writes, including WMMA. All source lanes remain readable.
+int goc_rdna4_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      uint32_t *const *a, uint32_t *const *b, uint32_t *const *c);
+int goc_rdna4_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       uint32_t *const *a, uint32_t *const *b, uint32_t *const *c);
 #ifdef __cplusplus
 }
 #endif

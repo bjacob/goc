@@ -1,4 +1,4 @@
-add_library(goc cpu.cpp arithmetic.cpp)
+add_library(goc cpu.cpp arithmetic.cpp wmma.cpp)
 target_include_directories(goc PUBLIC ${PROJECT_SOURCE_DIR}/include PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 if(UNIX)
   target_link_libraries(goc PRIVATE m)
