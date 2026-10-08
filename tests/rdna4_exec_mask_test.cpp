@@ -31,6 +31,40 @@ struct Case {
 };
 
 const Case cases[] = {
+    {unary<goc_rdna4_v_trunc_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_D},
+    {unary<goc_rdna4_v_ceil_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_D},
+    {unary<goc_rdna4_v_rndne_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_D},
+    {unary<goc_rdna4_v_floor_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_D},
+    {unary<goc_rdna4_v_sqrt_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_D},
+    {unary<goc_rdna4_v_rcp_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_D},
+    {unary<goc_rdna4_v_rsq_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_D},
+    {unary<goc_rdna4_v_exp_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_D},
+    {unary<goc_rdna4_v_log_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_D},
+    {unary<goc_rdna4_v_fract_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_D},
+    {unary<goc_rdna4_v_frexp_mant_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_D},
+
     {binary<goc_rdna4_v_add_f16>, false, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},

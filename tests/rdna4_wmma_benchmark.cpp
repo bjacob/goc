@@ -700,6 +700,62 @@ bool benchmark_frexp_exp(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
+  using Unary = decltype(&goc_rdna4_v_log_f16);
+  const Unary functions[] = {
+      goc_rdna4_v_trunc_f16, goc_rdna4_v_ceil_f16,      goc_rdna4_v_rndne_f16,
+      goc_rdna4_v_floor_f16, goc_rdna4_v_sqrt_f16,      goc_rdna4_v_rcp_f16,
+      goc_rdna4_v_rsq_f16,   goc_rdna4_v_exp_f16,       goc_rdna4_v_log_f16,
+      goc_rdna4_v_fract_f16, goc_rdna4_v_frexp_mant_f16};
+  const char *names[] = {"f16/trunc", "f16/ceil", "f16/rndne", "f16/floor", "f16/sqrt", "f16/rcp",
+                         "f16/rsq",   "f16/exp",  "f16/log",   "f16/fract", "f16/mant"};
+  const float inputs[] = {0.25f, 1, 4, 16};
+  const float exp_inputs[] = {0, 1, 2, 4};
+  const float golden[][4] = {{0, 1, 4, 16},       {1, 1, 4, 16},       {0, 1, 4, 16},
+                             {0, 1, 4, 16},       {0.5f, 1, 2, 4},     {4, 1, 0.25f, 0.0625f},
+                             {2, 1, 0.5f, 0.25f}, {1, 2, 4, 16},       {-2, 0, 2, 4},
+                             {0.25f, 0, 0, 0},    {0.5, 0.5, 0.5, 0.5}};
+  for (int op = 0; op < 11; ++op)
+    for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D |
+                                                GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        float input = (op == 7 ? exp_inputs : inputs)[lane % 4];
+        float want = golden[op][lane % 4];
+        if (modifiers) {
+          input = -input;
+          want = std::min(1.0f, std::max(0.0f, want * 0.5f));
+        }
+        uint32_t code = goc_test::half_bits(input), result = goc_test::half_bits(want);
+        r.data[0][lane] = modifiers ? (code << 16) | 0xbeef : 0xdead0000 | code;
+        r.data[16][lane] = 0xfacecafe;
+        r.expected[128 * (lane / 16) + lane % 16] =
+            modifiers ? (result << 16) | 0xcafe : 0xface0000 | result;
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *,
+                          const uint32_t *const *) {
+        return functions[op](flags, mask, mode, d, a);
+      };
+      const char *mode = modifiers ? "ABS/hi/half/clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", mode, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if ((op < 7 || op >= 9) && cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
   using Unary = decltype(&goc_rdna4_v_log_f32);
   const Unary functions[] = {
@@ -1246,7 +1302,8 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "Integer DOT benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }
-  if (!benchmark_unary(cpu, iterations, min_ms) || !benchmark_frexp_exp(cpu, iterations, min_ms)) {
+  if (!benchmark_half_unary(cpu, iterations, min_ms) || !benchmark_unary(cpu, iterations, min_ms) ||
+      !benchmark_frexp_exp(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }

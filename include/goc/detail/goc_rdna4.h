@@ -412,6 +412,46 @@ GOC_API int goc_rdna4_v_maximum_f16(uint64_t flags, uint64_t exec_mask, uint32_t
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b);
 
+// Unary FP16: one independently selected half per A/D VGPR; supports ABS_A,
+// NEG_A, HIGH_A/D, OMOD, CLAMP and GOC_FP16_OVFL. Preserves the unselected D
+// half and inactive lanes; whole-register A/D aliasing is allowed. EXP/LOG
+// use base two, RNDNE rounds ties to even, and FRACT is capped below one.
+// Loose semantics use FP32 arithmetic and output modifiers before nearest-even
+// FP16 narrowing, requiring host nearest-even arithmetic with denormals enabled.
+GOC_API int goc_rdna4_v_trunc_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_ceil_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_rndne_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_floor_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_sqrt_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_rcp_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_rsq_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_exp_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_log_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_fract_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_frexp_mant_f16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a);
+
 // True16 DOT2: A/B each hold two packed factors; C supplies one selected half.
 // D replaces only its selected half, preserving the other half. Supports all
 // six GOC_ALU ABS/NEG flags and HIGH_C/HIGH_D, without OMOD or CLAMP.

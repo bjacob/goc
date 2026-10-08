@@ -69,4 +69,44 @@ inline double half_binary(int op, double x, double y) {
   }
 }
 
+// op: trunc, ceil, rndne, floor, sqrt, rcp, rsq, exp2, log2, fract, frexp_mant.
+inline double half_unary(int op, double x) {
+  switch (op) {
+  case 0:
+    return std::trunc(x);
+  case 1:
+    return std::ceil(x);
+  case 2: {
+    if (!std::isfinite(x) || x == 0)
+      return x;
+    double low = std::floor(x), tail = x - low;
+    double result = low + (tail > 0.5 || (tail == 0.5 && std::fmod(low, 2) != 0));
+    return std::copysign(std::abs(result), x);
+  }
+  case 3:
+    return std::floor(x);
+  case 4:
+    return std::sqrt(x);
+  case 5:
+    return 1 / x;
+  case 6:
+    return 1 / std::sqrt(x);
+  case 7: {
+    double result = std::exp2(x);
+    // Preserve finite-overflow provenance through subsequent output scaling.
+    return std::isfinite(x) && result > 1e100 ? 1e100 : result;
+  }
+  case 8:
+    return std::log2(x);
+  case 9: {
+    double result = x - std::floor(x);
+    return result > 1.0 - 1.0 / 2048 ? 1.0 - 1.0 / 2048 : result;
+  }
+  default: {
+    int exponent;
+    return std::isfinite(x) ? std::frexp(x, &exponent) : x;
+  }
+  }
+}
+
 } // namespace goc_test

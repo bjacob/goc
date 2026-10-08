@@ -136,6 +136,9 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 
 | Mnemonic | Loose semantics | Empirical exact semantics |
 | --- | --- | --- |
+| `v_trunc_f16`, `v_ceil_f16`, `v_rndne_f16`, `v_floor_f16`, `v_fract_f16` | Scalar, x86-64-v3 | Not implemented |
+| `v_sqrt_f16`, `v_rcp_f16`, `v_rsq_f16`, `v_frexp_mant_f16` | Scalar, x86-64-v3 | Not implemented |
+| `v_exp_f16`, `v_log_f16` | Scalar | Not implemented |
 | `v_add_f16`, `v_sub_f16`, `v_subrev_f16`, `v_mul_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_min_num_f16`, `v_max_num_f16`, `v_minimum_f16`, `v_maximum_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_add_f32`, `v_sub_f32`, `v_subrev_f32`, `v_mul_f32`, `v_mul_dx9_zero_f32` | Scalar, x86-64-v3 | Not implemented |
@@ -375,6 +378,18 @@ Saturation stays on SIMD by checking the high product word against the low
 word's sign extension, or against zero for unsigned products. Tests include
 literal high-word results, saturation thresholds, upper-byte noise, random
 products, masks, aliases and host FP-environment preservation.
+
+Unary FP16 operations use the same selected-half storage and output-modifier
+rules as binary FP16. Rounding, reciprocal, square root, reciprocal square root,
+fraction and mantissa extraction have eight-lane x86-64-v3 paths for all 128
+combinations of source ABS/NEG, output scaling/clamp and A/D half selection.
+Base-two EXP/LOG use scalar libm paths. FRACT caps its result at the largest
+half below one before output modifiers; finite EXP overflow honors
+`GOC_FP16_OVFL`, even when the mathematical result exceeds FP32's range.
+Tests cover all 65,536 half encodings, both overflow policies, every modifier
+combination, masks, aliases, untouched destination halves and literal boundaries.
+Transcendental accuracy is tested to within one adjacent half encoding of an
+independent double-precision reference; exact semantics are not claimed.
 
 Binary FP16 arithmetic and min/max use one selected half of each VGPR. The
 `GOC_ALU_HIGH_A`, `GOC_ALU_HIGH_B` and `GOC_ALU_HIGH_D` flags select high halves;
