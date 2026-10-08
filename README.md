@@ -143,6 +143,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_dot4_f32_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar, x86-64-v3 | Not implemented |
 | `v_dot4_i32_iu8`, `v_dot4_u32_u8` | Scalar, x86-64-v3 | Same integer result |
 | `v_dot8_i32_iu4`, `v_dot8_u32_u4` | Scalar, x86-64-v3 | Same integer result |
+| `v_dot2_f16_f16`, `v_dot2_bf16_bf16` | Scalar, x86-64-v3 | Not implemented |
 | `v_dot2_f32_f16` | Scalar, x86-64-v3 | Integer arithmetic model |
 | `v_dot2_f32_bf16` | Scalar, x86-64-v3 | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_f16` | Scalar, x86-64-v3 F16C/AVX2/FMA | Integer arithmetic model |
@@ -209,6 +210,19 @@ values; no input-dependent fallback is needed. Tests exhaust all 65,536 input
 byte pairs for every format combination, modifier combination and CPU level.
 Strict exact requests are rejected. Benchmark labels `f8` and `b8` denote
 FP8 and BF8; each combination has unmodified and ABS_C/NEG_C rows.
+
+The true16 `v_dot2_f16_f16` and `v_dot2_bf16_bf16` instructions instead use
+`GOC_ALU_` ABS/NEG modifiers on each whole operand, `GOC_ALU_HIGH_C` for
+the accumulator half, and `GOC_ALU_HIGH_D` for the destination half. The
+unselected destination half is preserved, including when D aliases an input.
+They do not accept OMOD or CLAMP. Scalar and v3 paths retain FP32 product/sum
+association followed by nearest-even narrowing, matching rocjitsu's loose
+evaluation. BF16 input/output denormals flush independently of other FP flags;
+FP16 supports `GOC_FP16_OVFL`. Host nearest-even rounding and enabled denormals
+remain required by the loose FP contract. Tests cover every accumulator encoding,
+all 256 modifier/half-selector combinations with 85 masks and aliases, literal
+rounding/overflow cases, and random scalar/SIMD comparisons. Benchmark
+`dot2/f16` / `dot2/b16` rows denote these 16-bit-output instructions.
 
 FP16/BF16 DOT2 supports independent negation of each selected A/B half and C.
 The four half-selection flags can swap or replicate halves; zero flags select

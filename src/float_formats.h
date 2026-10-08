@@ -30,6 +30,47 @@ inline float f16_to_float(uint16_t bits) {
   return as_float(sign | (uint32_t(exponent + 112) << 23) | (fraction << 13));
 }
 
+// Nearest-even FP32-to-FP16 conversion, adapted from rocjitsu util/data_types.h.
+// Retains NaN payload bits; finite overflow can saturate to the largest value.
+inline uint16_t float_to_f16(float value, bool saturate = false) {
+  uint32_t bits = as_bits(value), sign = (bits >> 16) & 0x8000;
+  uint32_t exponent = (bits >> 23) & 255, fraction = bits & 0x7fffff;
+  if (exponent == 255) {
+    uint32_t payload = fraction >> 13;
+    return uint16_t(sign | 0x7c00 | (fraction ? (payload ? payload : 1) : 0));
+  }
+  int adjusted = int(exponent) - 112;
+  if (adjusted <= 0) {
+    if (adjusted < -10)
+      return uint16_t(sign);
+    uint32_t significand = fraction | 0x800000;
+    int shift = 14 - adjusted;
+    uint32_t rounded = significand >> shift;
+    uint32_t tail = significand & ((1u << shift) - 1), half = 1u << (shift - 1);
+    rounded += tail > half || (tail == half && (rounded & 1));
+    return uint16_t(sign | rounded);
+  }
+  if (adjusted >= 31)
+    return uint16_t(sign | (saturate ? 0x7bff : 0x7c00));
+  uint32_t rounded = fraction >> 13, tail = fraction & 8191;
+  rounded += tail > 4096 || (tail == 4096 && (rounded & 1));
+  if (rounded == 1024) {
+    rounded = 0;
+    ++adjusted;
+  }
+  if (adjusted >= 31)
+    return uint16_t(sign | (saturate ? 0x7bff : 0x7c00));
+  return uint16_t(sign | (uint32_t(adjusted) << 10) | rounded);
+}
+
+// Nearest-even FP32-to-BF16 conversion; NaNs are quieted and remain NaNs.
+inline uint16_t float_to_bf16(float value) {
+  uint32_t bits = as_bits(value);
+  if ((bits & 0x7fffffff) > 0x7f800000)
+    return uint16_t((bits >> 16) | 0x40);
+  return uint16_t((bits + 0x7fff + ((bits >> 16) & 1)) >> 16);
+}
+
 // OCP FP8 E4M3FN and BF8 E5M2, adapted from rocjitsu util/data_types.h.
 // E4M3FN's top exponent remains finite except codes 0x7f/0xff; E5M2 has
 // infinities. Neither uses the FNUZ encoding. All finite values widen exactly.

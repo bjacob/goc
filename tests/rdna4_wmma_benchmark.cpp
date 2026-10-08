@@ -381,6 +381,45 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_half_dot(uint64_t cpu, int iterations, int min_ms) {
+  for (bool bf16 : {false, true})
+    for (bool modified : {false, true}) {
+      Registers r;
+      r.output_regs = 1;
+      const uint32_t mode =
+          modified ? GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D : 0;
+      for (int lane = 0; lane < 32; ++lane) {
+        r.data[0][lane] = bf16 ? 0x40003f80 : 0x40003c00; // 1,2
+        if (modified)
+          r.data[0][lane] ^= 0x80008000;
+        r.data[4][lane] = bf16 ? 0x40804040 : 0x44004200; // 3,4
+        r.data[8][lane] = bf16 ? 0xc0003f80 : 0xc0003c00; // 1,-2
+        r.data[16][lane] = 0xfacecafe;
+        // Default: 1*3+2*4+1=12; modified: -1*3-2*4-2=-13.
+        uint32_t code = bf16 ? (modified ? 0xc150 : 0x4140) : (modified ? 0xca80 : 0x4a00);
+        r.expected[128 * (lane / 16) + lane % 16] =
+            modified ? (code << 16) | 0xcafe : 0xface0000 | code;
+      }
+      Wmma fn = bf16 ? goc_rdna4_v_dot2_bf16_bf16 : goc_rdna4_v_dot2_f16_f16;
+      const char *name = bf16 ? "dot2/b16" : "dot2/f16";
+      const char *label = modified ? "ABS/NEG/hiC/hiD" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(name, "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_fp8_wmma(uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {
       goc_rdna4_v_wmma_f32_16x16x16_fp8_fp8, goc_rdna4_v_wmma_f32_16x16x16_fp8_bf8,
@@ -566,7 +605,12 @@ int main(int argc, char **argv) {
             "compare "
             "matching instruction-flags settings.");
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
+  std::puts("DOT2 output widths: f16,b16 = 16-bit; fp16,bf16 = FP32.");
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
+  if (!benchmark_half_dot(cpu, iterations, min_ms)) {
+    std::fprintf(stderr, "True16 DOT2 benchmark failed: API/result error or iteration overflow.\n");
+    return 1;
+  }
   if (!benchmark_fp8_wmma(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "FP8 WMMA benchmark failed: API/result error or iteration overflow.\n");
     return 1;

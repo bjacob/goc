@@ -38,6 +38,25 @@ static const uint32_t GOC_ALU_OMOD_4 = (UINT32_C(2) << 6);
 static const uint32_t GOC_ALU_OMOD_HALF = (UINT32_C(3) << 6);
 static const uint32_t GOC_ALU_CLAMP = (UINT32_C(1) << 8);
 
+// True16 source/destination half selectors. Zero selects the low half.
+// DOT2 consumes both A/B halves, so only C and D have selectors.
+static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);
+static const uint32_t GOC_ALU_HIGH_D = (UINT32_C(1) << 12);
+
+// True16 DOT2: A/B each hold two packed factors; C supplies one selected half.
+// D replaces only its selected half, preserving the other half. Supports all
+// six GOC_ALU ABS/NEG flags and HIGH_C/HIGH_D, without OMOD or CLAMP.
+// Loose semantics use FP32 products and sums followed by nearest-even narrowing.
+// BF16 flushes input/output denormals; F16 honors GOC_FP16_OVFL.
+GOC_API int goc_rdna4_v_dot2_f16_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_dot2_bf16_bf16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b,
+                                       const uint32_t *const *c);
+
 // Unary FP32: one VGPR each for A/D. Supports NEG_A, ABS_A, OMOD and CLAMP;
 // modifiers for absent operands are invalid. CLAMP maps NaNs to +0 and clamps
 // to [0, 1]. EXP and LOG use base 2; RSQ computes reciprocal square root.
