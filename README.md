@@ -136,6 +136,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 
 | Mnemonic | Loose semantics | Empirical exact semantics |
 | --- | --- | --- |
+| `v_min3_num_f16`, `v_max3_num_f16`, `v_minmax_num_f16`, `v_maxmin_num_f16` | Scalar, x86-64-v3 | Not implemented |
+| `v_minimum3_f16`, `v_maximum3_f16`, `v_minimummaximum_f16`, `v_maximumminimum_f16`, `v_med3_num_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_ldexp_f16`, `v_frexp_exp_i16_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_trunc_f16`, `v_ceil_f16`, `v_rndne_f16`, `v_floor_f16`, `v_fract_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f16`, `v_rcp_f16`, `v_rsq_f16`, `v_frexp_mant_f16` | Scalar, x86-64-v3 | Not implemented |
@@ -379,6 +381,16 @@ Saturation stays on SIMD by checking the high product word against the low
 word's sign extension, or against zero for unsigned products. Tests include
 literal high-word results, saturation thresholds, upper-byte noise, random
 products, masks, aliases and host FP-environment preservation.
+
+Three-input FP16 min/max and median share the FP32 selection rules. The mixed
+forms select A/B first and then C; median uses the minimumNumber result if any
+input is NaN and follows the ISA's first-maximum removal rule for signed-zero
+ties. Scalar and eight-lane SIMD paths support all 8,192 combinations of A/B/C
+ABS/NEG, output scaling/clamp, and independent A/B/C/D half selectors, plus
+`GOC_FP16_OVFL`. Output modifiers apply after the final selection. Tests cover
+every half encoding, special-value Cartesian products, all modifier combinations,
+all mask patterns, all whole-register alias layouts, and literal operand-order,
+NaN and signed-zero cases. Nonselected destination halves remain unchanged.
 
 FP16 `LDEXP` reads a floating half from A and a signed integer half from B,
 scales A by that power of two, and writes the selected D half. It accepts

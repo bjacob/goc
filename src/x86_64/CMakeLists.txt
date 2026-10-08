@@ -26,6 +26,7 @@ foreach(target IN LISTS goc_library_targets)
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_integer_minmax_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_integer_mul_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_integer_add_x86_64_v3.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_half_minmax_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_minmax_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_dot2_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_half_dot_x86_64_v3.cpp

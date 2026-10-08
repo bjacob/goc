@@ -28,22 +28,7 @@ void run(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uin
         _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(b + lane)), kb), nb));
     auto z = _mm256_castsi256_ps(_mm256_xor_si256(
         _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(c + lane)), kc), nc));
-    __m256 value;
-    if constexpr (Median) {
-      auto ab = minmax<true, false>(x, y);
-      auto maximum = minmax<true, false>(ab, z);
-      value =
-          _mm256_blendv_ps(ab, minmax<true, false>(x, z), _mm256_cmp_ps(maximum, y, _CMP_EQ_OQ));
-      value =
-          _mm256_blendv_ps(value, minmax<true, false>(y, z), _mm256_cmp_ps(maximum, x, _CMP_EQ_OQ));
-      auto has_nan =
-          _mm256_or_ps(_mm256_cmp_ps(x, y, _CMP_UNORD_Q), _mm256_cmp_ps(z, z, _CMP_UNORD_Q));
-      auto minimum = minmax<false, false>(minmax<false, false>(x, y), z);
-      value = _mm256_blendv_ps(value, minimum, has_nan);
-    } else {
-      auto ab = minmax<FirstMaximum, Propagate>(x, y);
-      value = minmax<SecondMaximum, Propagate>(ab, z);
-    }
+    auto value = minmax3_value<FirstMaximum, SecondMaximum, Propagate, Median>(x, y, z);
     if (mode & GOC_ALU_OMOD_HALF)
       value = _mm256_mul_ps(value, scale);
     if (mode & GOC_ALU_CLAMP)

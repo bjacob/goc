@@ -412,6 +412,53 @@ GOC_API int goc_rdna4_v_maximum_f16(uint64_t flags, uint64_t exec_mask, uint32_t
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b);
 
+// Three-input FP16 min/max and median: independently selected halves of A/B/C/D,
+// with all source ABS/NEG, OMOD, CLAMP and GOC_FP16_OVFL. Output modifiers apply
+// after the final selection. Preserves the other D half and inactive lanes;
+// any whole-VGPR aliases are allowed. MINMAX/MAXMIN select A/B first, then C.
+// Number variants ignore lone NaNs; MINIMUM/MAXIMUM propagate NaNs. MED3 uses
+// minimumNumber(A,B,C) if any input is NaN. Loose semantics require host
+// nearest-even arithmetic with denormals enabled.
+GOC_API int goc_rdna4_v_min3_num_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_max3_num_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_minmax_num_f16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b,
+                                       const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_maxmin_num_f16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b,
+                                       const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_minimum3_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_maximum3_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_minimummaximum_f16(uint64_t flags, uint64_t exec_mask,
+                                           uint32_t instruction_flags, uint32_t *const *d,
+                                           const uint32_t *const *a, const uint32_t *const *b,
+                                           const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_maximumminimum_f16(uint64_t flags, uint64_t exec_mask,
+                                           uint32_t instruction_flags, uint32_t *const *d,
+                                           const uint32_t *const *a, const uint32_t *const *b,
+                                           const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_med3_num_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
 // FP16 LDEXP: scale the selected half of A by 2 raised to the signed int16_t
 // exponent in the selected half of B. Supports A ABS/NEG, HIGH_A/B/D, OMOD,
 // CLAMP and GOC_FP16_OVFL. Other source modifiers are invalid. Preserves the

@@ -65,4 +65,25 @@ template <bool Maximum, bool Propagate> __m256d minmax(__m256d x, __m256d y) {
   return value;
 }
 
+// Select A/B first and then C, including the median's NaN and signed-zero rules.
+template <bool FirstMaximum, bool SecondMaximum, bool Propagate, bool Median = false>
+__m256 minmax3_value(__m256 x, __m256 y, __m256 z) {
+  __m256 value;
+  if constexpr (Median) {
+    auto ab = minmax<true, false>(x, y);
+    auto maximum = minmax<true, false>(ab, z);
+    value = _mm256_blendv_ps(ab, minmax<true, false>(x, z), _mm256_cmp_ps(maximum, y, _CMP_EQ_OQ));
+    value =
+        _mm256_blendv_ps(value, minmax<true, false>(y, z), _mm256_cmp_ps(maximum, x, _CMP_EQ_OQ));
+    auto has_nan =
+        _mm256_or_ps(_mm256_cmp_ps(x, y, _CMP_UNORD_Q), _mm256_cmp_ps(z, z, _CMP_UNORD_Q));
+    auto minimum = minmax<false, false>(minmax<false, false>(x, y), z);
+    value = _mm256_blendv_ps(value, minimum, has_nan);
+  } else {
+    auto ab = minmax<FirstMaximum, Propagate>(x, y);
+    value = minmax<SecondMaximum, Propagate>(ab, z);
+  }
+  return value;
+}
+
 } // namespace goc

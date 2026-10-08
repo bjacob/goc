@@ -31,6 +31,30 @@ template <bool Maximum, bool Propagate> float minmax(float x, float y) {
   return (Maximum ? x > y : x < y) ? x : y;
 }
 
+// Select A/B first and then C; median follows the ISA's first-maximum removal
+// rule and returns minimumNumber(A,B,C) if any input is NaN.
+template <bool FirstMaximum, bool SecondMaximum, bool Propagate, bool Median = false>
+float minmax3_value(float x, float y, float z) {
+  float value;
+  if constexpr (Median) {
+    const bool has_nan = (goc::as_bits(x) & 0x7fffffff) > 0x7f800000 ||
+                         (goc::as_bits(y) & 0x7fffffff) > 0x7f800000 ||
+                         (goc::as_bits(z) & 0x7fffffff) > 0x7f800000;
+    if (has_nan) {
+      value = goc::minmax<false, false>(goc::minmax<false, false>(x, y), z);
+    } else {
+      float maximum = goc::minmax<true, false>(goc::minmax<true, false>(x, y), z);
+      value = maximum == x   ? goc::minmax<true, false>(y, z)
+              : maximum == y ? goc::minmax<true, false>(x, z)
+                             : goc::minmax<true, false>(x, y);
+    }
+  } else {
+    float ab = goc::minmax<FirstMaximum, Propagate>(x, y);
+    value = goc::minmax<SecondMaximum, Propagate>(ab, z);
+  }
+  return value;
+}
+
 enum class Minmax3 {
   MedianNum,
   Min3Num,
