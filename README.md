@@ -59,7 +59,7 @@ its API contract. Inactive destination lanes remain unchanged; source lanes are
 not masked. Errors preserve all destination registers. No pointer-validation
 or allocation ownership service is provided.
 
-Zero semantics bits select loose numerical behavior. Add `GOC_SEMANTICS_EXACT`
+Zero semantics bits select loose numerical behavior. Add `GOC_SEMANTICS_EXACT_EMPIRICAL`
 for the empirical model; also add `GOC_SEMANTICS_STRICT` to require support.
 Unsupported exact requests otherwise fall back to loose semantics. Unassigned
 instruction/general flag bits are rejected, except reserved semantics values

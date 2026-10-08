@@ -39,15 +39,15 @@ TEST(Arithmetic, ErrorsPreserveDestination) {
   auto pa = a, pd = d;
   for (auto &v : d)
     v = 0xdeadbeef;
-  EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT | GOC_SEMANTICS_STRICT, ~UINT64_C(0), 0, &pd,
-                                &pa, &pa, &pa),
+  EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, ~UINT64_C(0),
+                                0, &pd, &pa, &pa, &pa),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
   EXPECT_EQ(goc_rdna4_v_log_f32(0, ~UINT64_C(0), 1, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
   EXPECT_EQ(goc_rdna4_v_log_f32(UINT64_C(1) << 63, ~UINT64_C(0), 0, &pd, &pa),
             GOC_ERROR_INVALID_FLAGS);
   for (auto v : d)
     EXPECT_EQ(v, 0xdeadbeef);
-  EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT, 0, 0, &pd, &pa, &pa, &pa), 0);
+  EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &pd, &pa, &pa, &pa), 0);
   for (auto v : d)
     EXPECT_EQ(v, 0xdeadbeef);
 }

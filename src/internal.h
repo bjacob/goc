@@ -27,7 +27,7 @@ inline int validate(uint64_t flags, uint32_t instruction_flags, bool supports_ex
   if ((flags & ~known) || (flags & GOC_CPU_MASK) > GOC_CPU_ZEN4 || instruction_flags)
     return GOC_ERROR_INVALID_FLAGS;
   if ((flags & GOC_SEMANTICS_MASK) &&
-      !(supports_exact && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT) &&
+      !(supports_exact && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) &&
       (flags & GOC_SEMANTICS_STRICT))
     return GOC_ERROR_UNSUPPORTED_SEMANTICS;
   return GOC_SUCCESS;

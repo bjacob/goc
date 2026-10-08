@@ -155,8 +155,8 @@ TEST(Wmma, HardwareCapturedExactResults) {
             std::array<std::array<uint32_t, 32>, 8> old;
             for (int reg = 0; reg < 8; ++reg)
               std::copy(r.v[dst + reg], r.v[dst + reg] + 32, old[reg].begin());
-            ASSERT_EQ(fn(level | GOC_SEMANTICS_EXACT | GOC_SEMANTICS_STRICT, mask, 0, r.v + dst,
-                         r.v, r.v + 4, r.v + 8),
+            ASSERT_EQ(fn(level | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0,
+                         r.v + dst, r.v, r.v + 4, r.v + 8),
                       0);
             for (int reg = 0; reg < 8; ++reg)
               for (int lane = 0; lane < 32; ++lane)
@@ -192,8 +192,8 @@ TEST(Rdna4Dot, PublicApiHardwareFixturesMaskAndOverlap) {
         }
         std::array<uint32_t, 32> old;
         std::copy(r.v[dst], r.v[dst] + 32, old.begin());
-        ASSERT_EQ(fn(GOC_SEMANTICS_EXACT | GOC_SEMANTICS_STRICT, 0xaaaaaaaa, 0, r.v + dst, r.v,
-                     r.v + 1, r.v + 2),
+        ASSERT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0xaaaaaaaa, 0, r.v + dst,
+                     r.v, r.v + 1, r.v + 2),
                   0);
         for (int lane = 0; lane < 32; ++lane)
           EXPECT_EQ(r.v[dst][lane], lane % 2 ? f.expected : old[lane]);
@@ -205,7 +205,7 @@ TEST(Rdna4Dot, PublicApiHardwareFixturesMaskAndOverlap) {
 
 TEST(Wmma, AllModifierCombinations) {
   for (bool bf16 : {false, true})
-    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT})
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (uint32_t modifiers = 0; modifiers < 64; ++modifiers) {
         Registers r;
         uint16_t one = bf16 ? 0x3f80 : 0x3c00;
@@ -268,7 +268,7 @@ TEST(Wmma, NormalBf16FactorsWithSubnormalProducts) {
 
 TEST(Wmma, DeterministicDenseIntegerGolden) {
   for (uint64_t level = 0; level <= goc_init_cpu_flags(); ++level)
-    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT})
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (bool bf16 : {false, true})
         for (int dst : {0, 2, 8, 16}) {
           Registers r;
@@ -300,7 +300,8 @@ TEST(Wmma, DeterministicDenseIntegerGolden) {
 
 TEST(Rdna4Dot, LooseAndFallbackIntegerGolden) {
   for (bool bf16 : {false, true})
-    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT, GOC_SEMANTICS_MASK}) {
+    for (uint64_t semantics :
+         {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL, GOC_SEMANTICS_MASK}) {
       Registers r;
       uint32_t a = bf16 ? 0x40003f80u : 0x40003c00u; // 1,2
       uint32_t b = bf16 ? 0x40804040u : 0x44004200u; // 3,4
@@ -323,7 +324,7 @@ TEST(Rdna4Dot, LooseAndFallbackIntegerGolden) {
 
 TEST(WmmaWave64, CapturedGoldensMasksAndOverlap) {
   for (bool bf16 : {false, true})
-    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT}) {
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
       auto fn = bf16 ? goc_rdna4w64_v_wmma_f32_16x16x16_bf16 : goc_rdna4w64_v_wmma_f32_16x16x16_f16;
       const auto &cases = bf16 ? kGfx12WmmaBF16Cases : kGfx12WmmaF16Cases;
       for (const auto &f : cases)
@@ -349,7 +350,7 @@ TEST(WmmaWave64, CapturedGoldensMasksAndOverlap) {
               for (int lane = 0; lane < 64; ++lane) {
                 if (!((mask >> lane) & 1))
                   EXPECT_EQ(v[dst + reg][lane], old[reg][lane]);
-                else if (semantics == GOC_SEMANTICS_EXACT)
+                else if (semantics == GOC_SEMANTICS_EXACT_EMPIRICAL)
                   EXPECT_EQ(v[dst + reg][lane], f.expected64);
                 else
                   EXPECT_TRUE(
@@ -361,7 +362,7 @@ TEST(WmmaWave64, CapturedGoldensMasksAndOverlap) {
 
 TEST(WmmaWave64, DenseLaneMapping) {
   for (bool bf16 : {false, true})
-    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT}) {
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
       uint32_t data[12][64] = {};
       uint32_t *v[12];
       for (int i = 0; i < 12; ++i)
@@ -391,7 +392,7 @@ TEST(WmmaWave64, DenseLaneMapping) {
 
 TEST(WmmaWave64, ModifiersAndErrorsPreserveState) {
   for (bool bf16 : {false, true})
-    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT})
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (uint32_t modifiers = 0; modifiers < 64; ++modifiers) {
         uint32_t data[8][64];
         uint32_t *v[8];

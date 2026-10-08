@@ -14,7 +14,7 @@ int goc_test_c_api(void) {
 
   // Public constants are typed, addressable objects in C99 too. Exercise flag
   // composition and the error contract from C, without relying on C++ rules.
-  const uint64_t *exact = &GOC_SEMANTICS_EXACT;
+  const uint64_t *exact = &GOC_SEMANTICS_EXACT_EMPIRICAL;
   const uint64_t *strict = &GOC_SEMANTICS_STRICT;
   const int *unsupported = &GOC_ERROR_UNSUPPORTED_SEMANTICS;
   const uint32_t *modifier = &GOC_WMMA_NEG_C;

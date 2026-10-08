@@ -23,7 +23,7 @@ int dot(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *con
     if ((mask >> lane) & 1) {
       std::array<uint16_t, 2> left = {uint16_t(a[0][lane]), uint16_t(a[0][lane] >> 16)};
       std::array<uint16_t, 2> right = {uint16_t(b[0][lane]), uint16_t(b[0][lane] >> 16)};
-      if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT)
+      if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
         result[lane] = goc::gfx12_dot_bits<Bf16, 2>(left, right, c[0][lane]);
       else {
         float acc = goc::as_float(c[0][lane]);

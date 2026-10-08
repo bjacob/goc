@@ -26,7 +26,7 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
 #if defined(GOC_HAVE_AVX512BF16)
   if constexpr (Bf16 && WaveSize == 32) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_ZEN4 &&
-        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT && instruction_flags == 0) {
+        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL && instruction_flags == 0) {
       // DPBF16 flushes denormals independently of MXCSR. Retain the scalar
       // path for subnormal factors or accumulators and special values.
       bool ordinary = true;
@@ -85,7 +85,7 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
         c_bits &= 0x7fffffff;
       if (instruction_flags & GOC_WMMA_NEG_C)
         c_bits ^= 0x80000000;
-      if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT) {
+      if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
         uint32_t acc = c_bits;
         for (int k = 0; k < 16; k += 4) {
           std::array<uint16_t, 4> left, right;
