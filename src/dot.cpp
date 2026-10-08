@@ -11,11 +11,13 @@
 #include <stdint.h>
 
 namespace {
+
 template <bool Bf16>
 int dot(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *const *d,
         uint32_t *const *a, uint32_t *const *b, uint32_t *const *c) {
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
+
   uint32_t result[32];
   for (int lane = 0; lane < 32; ++lane)
     if ((mask >> lane) & 1) {
@@ -33,11 +35,13 @@ int dot(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *con
         result[lane] = goc::as_bits(acc);
       }
     }
+
   for (int lane = 0; lane < 32; ++lane)
     if ((mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }
+
 } // namespace
 
 int goc_rdna4_v_dot2_f32_f16(uint64_t flags, uint64_t mask, uint32_t instruction_flags,

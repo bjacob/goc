@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 namespace goc {
+
 void wmma_avx512bf16(uint32_t mask, uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
                      uint32_t *const *c) {
   uint32_t result[8][32];
@@ -28,4 +29,5 @@ void wmma_avx512bf16(uint32_t mask, uint32_t *const *d, uint32_t *const *a, uint
       _mm512_mask_storeu_epi32(d[reg] + 16 * group, static_cast<__mmask16>(mask >> (16 * group)),
                                _mm512_loadu_si512(result[reg] + 16 * group));
 }
+
 } // namespace goc

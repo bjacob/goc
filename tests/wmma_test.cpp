@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 namespace {
+
 using Wmma = decltype(&goc_rdna4_v_wmma_f32_16x16x16_f16);
 
 // Each logical VGPR is deliberately separated by padding and allocated in
@@ -53,6 +54,7 @@ bool fuzzy(float actual, float expected) {
          (std::isfinite(expected) &&
           std::abs(double(actual) - expected) <= 1e-5 + 1e-5 * std::abs(double(expected)));
 }
+
 } // namespace
 
 TEST(Wmma, HardwareCapturedLooseResults) {
@@ -85,6 +87,7 @@ TEST(Wmma, LaneMappingMaskAndPartialOperandOverlap) {
       for (uint32_t mask : {0u, 1u, 0xaaaaaaaa, 0xffffffff}) {
         Registers r;
         const uint16_t one = bf16 ? 0x3f80 : 0x3c00;
+
         // A is identity. B encodes a row/column-dependent power of two so that
         // every D coordinate has an independently known, exactly representable value.
         for (int row = 0; row < 16; ++row)
@@ -93,6 +96,7 @@ TEST(Wmma, LaneMappingMaskAndPartialOperandOverlap) {
         for (int col = 0; col < 16; ++col)
           for (int k = 0; k < 16; ++k)
             set16(r.v + 4, col, k, uint16_t(one + ((k + col) % 8) * (bf16 ? 128 : 1024)));
+
         // D starts at register 2, so it shares only some VGPRs with A, B and C.
         std::array<std::array<uint32_t, 32>, 8> old;
         for (int reg = 0; reg < 8; ++reg)
@@ -227,6 +231,7 @@ TEST(Wmma, AllModifierCombinations) {
 
 TEST(Wmma, Bf16FastPathSubnormalFallback) {
   Registers r;
+
   // 16 * min-normal * 0.5 is a normal result, despite subnormal products.
   // Include a subnormal C to require the scalar fallback.
   for (int reg = 0; reg < 4; ++reg)

@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 namespace goc {
+
 inline float bf16_to_float(uint16_t bits) { return as_float(uint32_t(bits) << 16); }
 
 inline float f16_to_float(uint16_t bits) {
@@ -28,6 +29,7 @@ inline float f16_to_float(uint16_t bits) {
   }
   return as_float(sign | (uint32_t(exponent + 112) << 23) | (fraction << 13));
 }
+
 } // namespace goc
 
 #endif

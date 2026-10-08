@@ -13,6 +13,7 @@
 // Adapted from rocjitsu shared/gfx12_dot.h. This is the existing gfx1201
 // empirical model, specialized to FP32 outputs and C++17. No new hardware model.
 namespace goc {
+
 inline int bit_width(uint64_t x) {
   int n = 0;
   while (x) {
@@ -27,6 +28,7 @@ namespace gfx12_dot_detail {
 inline constexpr uint32_t kFactorNan = 0xffc00a3d;
 inline constexpr uint32_t kInvalidProductNan = 0xffc00000;
 inline constexpr uint32_t kQuietNanBit = 0x00400000;
+
 inline constexpr int kEmptyExponent = -1024;
 
 // A nonnegative integer significand times 2^exponent. Keeping products in this
@@ -46,6 +48,7 @@ template <bool Bf16> struct Factor {
   static constexpr int bias = Bf16 ? 127 : 15;
   static constexpr uint16_t fraction_mask = (1u << fraction_bits) - 1;
   static constexpr uint16_t infinity = Bf16 ? 0x7f80 : 0x7c00;
+
   uint16_t bits;
 
   bool nan() const { return (bits & 0x7fff) > infinity; }
@@ -88,6 +91,7 @@ inline uint32_t pack(int64_t units, int grid) {
   const uint64_t magnitude = units < 0 ? uint64_t(-units) : uint64_t(units);
   const int top = int(bit_width(magnitude)) - 1;
   int exponent = top + grid;
+
   // Round directly on the subnormal grid to avoid double rounding.
   if (exponent < -126) {
     const uint64_t fraction = shift_round_even(magnitude, -149 - grid);
@@ -115,6 +119,7 @@ inline int64_t align(Term term, int grid, bool accumulator = false) {
   return term.negative ? -int64_t(magnitude) - (tail && (!accumulator || magnitude))
                        : int64_t(magnitude);
 }
+
 } // namespace gfx12_dot_detail
 
 // GFX12 first aligns each pair of products, then aligns pair sums with C.
@@ -148,6 +153,7 @@ inline uint32_t gfx12_dot_bits(const std::array<uint16_t, N> &a, const std::arra
                            : kEmptyExponent;
     product_grid = std::max(product_grid, product_grids[i]);
   }
+
   // Factor NaNs, then invalid products, precede an accumulator NaN.
   if (invalid || (positive_inf && negative_inf))
     return kInvalidProductNan;
@@ -171,6 +177,7 @@ inline uint32_t gfx12_dot_bits(const std::array<uint16_t, N> &a, const std::arra
     const Term sum{uint64_t(pair < 0 ? -pair : pair), pair_grid, pair < 0};
     total += align(sum, grid);
   }
+
   // Pair alignment retains at most 27 magnitude bits; the final sum and C
   // fit comfortably in int64_t. Zero, including underflow to zero, is positive.
   return pack(total, grid);

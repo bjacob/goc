@@ -11,6 +11,7 @@ int goc_test_c_api(void) {
   int status = goc_rdna4_v_fma_f32(0, 1, 0, &pd, &pa, &pb, &pc);
   if (status != GOC_SUCCESS || d[0] != 0x41200000)
     return 0;
+
   // Public constants are typed, addressable objects in C99 too. Exercise flag
   // composition and the error contract from C, without relying on C++ rules.
   const uint64_t *exact = &GOC_SEMANTICS_EXACT;

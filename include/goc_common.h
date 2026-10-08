@@ -15,9 +15,11 @@ static const uint64_t GOC_CPU_BASELINE = UINT64_C(0);
 static const uint64_t GOC_CPU_X86_64_V3 = UINT64_C(1);
 static const uint64_t GOC_CPU_X86_64_V4 = UINT64_C(2);
 static const uint64_t GOC_CPU_ZEN4 = UINT64_C(3);
+
 static const uint64_t GOC_SEMANTICS_MASK = (UINT64_C(3) << 16);
 static const uint64_t GOC_SEMANTICS_LOOSE = UINT64_C(0);
 static const uint64_t GOC_SEMANTICS_EXACT = (UINT64_C(1) << 16);
+
 static const uint64_t GOC_SEMANTICS_STRICT = (UINT64_C(1) << 18);
 
 static const int GOC_SUCCESS = 0;

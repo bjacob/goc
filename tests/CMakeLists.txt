@@ -5,12 +5,15 @@ if(NOT GTest_FOUND)
   set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(googletest)
 endif()
+
 add_executable(goc_tests arithmetic_test.cpp cpu_test.cpp wmma_test.cpp c_api_test.c)
 target_include_directories(goc_tests PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(goc_tests PRIVATE goc GTest::gtest_main)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(goc_tests PRIVATE -Wall -Wextra -Werror -pedantic)
 endif()
+
 include(GoogleTest)
 gtest_discover_tests(goc_tests)
 

@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 namespace goc {
+
 void fma_avx512f(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
                  const uint32_t *c) {
   for (int i = 0; i < 32; i += 16) {
@@ -16,4 +17,5 @@ void fma_avx512f(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *
                              _mm512_castps_si512(_mm512_fmadd_ps(va, vb, vc)));
   }
 }
+
 } // namespace goc

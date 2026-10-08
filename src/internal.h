@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 namespace goc {
+
 inline float as_float(uint32_t v) {
   float f;
   std::memcpy(&f, &v, sizeof(f));
@@ -39,17 +40,21 @@ struct CpuState {
 };
 
 uint64_t decode_cpu(const CpuState &s);
+
 #if defined(GOC_HAVE_AVX2)
 void fma_avx2(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b, const uint32_t *c);
 #endif
+
 #if defined(GOC_HAVE_AVX512F)
 void fma_avx512f(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
                  const uint32_t *c);
 #endif
+
 #if defined(GOC_HAVE_AVX512BF16)
 void wmma_avx512bf16(uint32_t mask, uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
                      uint32_t *const *c);
 #endif
+
 } // namespace goc
 
 #endif

@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 namespace {
+
 // Physical packing follows rocjitsu shared/mma_exec.h: each lane supplies
 // eight (wave32) or four (wave64) consecutive K elements. Output lanes select
 // columns and row groups.
@@ -21,6 +22,7 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
          uint32_t *const *a, uint32_t *const *b, uint32_t *const *c) {
   if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(63), true))
     return error;
+
 #if defined(GOC_HAVE_AVX512BF16)
   if constexpr (Bf16 && WaveSize == 32) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_ZEN4 &&
@@ -51,6 +53,7 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
           if (exp == 255 || (exp == 0 && (bits & 0x7fffff)))
             ordinary = false;
         }
+
       // Keep products safely inside FP32's normal range as well: normal
       // factors alone do not rule out product underflow or overflow.
       ordinary &= min_exp[0] + min_exp[1] >= 128 && max_exp[0] + max_exp[1] <= 380;
@@ -61,6 +64,7 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
     }
   }
 #endif
+
   constexpr int OutputRegs = 256 / WaveSize;
   constexpr int KPerLane = 256 / WaveSize;
   uint32_t result[OutputRegs][WaveSize];
@@ -109,6 +113,7 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
         result[reg][lane] = goc::as_bits(acc);
       }
     }
+
   // Delayed stores are necessary even with exact whole-VGPR aliasing: a
   // destination may overwrite sources consumed by a different output lane.
   for (int reg = 0; reg < OutputRegs; ++reg)
@@ -117,6 +122,7 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
         d[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
 }
+
 } // namespace
 
 int goc_rdna4_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t mask, uint32_t instruction_flags,
