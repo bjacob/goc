@@ -125,7 +125,7 @@ struct Registers {
       }
   }
 
-  void initialize_fma(uint32_t modifiers) {
+  void initialize_fma(uint32_t modifiers, bool dx9) {
     output_regs = 1;
     std::minstd_rand random(31);
     for (int lane = 0; lane < 32; ++lane) {
@@ -138,9 +138,18 @@ struct Registers {
         c = -c;
       }
       float want = float(a * b + c);
+      if (dx9 && (a == 0 || b == 0))
+        want = modifiers && c == 0 ? -0.0f : float(c);
       if (modifiers)
         want *= 0.5f;
       expected[128 * (lane / 16) + lane % 16] = bits(want);
+    }
+    if (dx9) {
+      // Zero times a positive factor selects C's negative zero unchanged.
+      data[0][0] = 0;
+      data[4][0] = 0x40000000;
+      data[8][0] = 0x80000000;
+      expected[0] = modifiers ? 0 : 0x80000000;
     }
   }
 
@@ -304,18 +313,19 @@ bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int mi
   return true;
 }
 
-bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t modifiers) {
+bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t modifiers, bool dx9) {
   Registers r;
-  r.initialize_fma(modifiers);
+  r.initialize_fma(modifiers, dx9);
   double scalar = 0;
   const auto run = [&](const char *path, uint64_t level) {
-    double time = measure(goc_rdna4_v_fma_f32, level, r, iterations, min_ms, modifiers);
+    auto fn = dx9 ? goc_rdna4_v_fma_dx9_zero_f32 : goc_rdna4_v_fma_f32;
+    double time = measure(fn, level, r, iterations, min_ms, modifiers);
     if (time < 0)
       return false;
     if (level == GOC_CPU_BASELINE)
       scalar = time;
-    print_result("f32/fma", "loose", modifiers ? "NEG/ABS/half" : "none", path, time,
-                 scalar / time);
+    print_result(dx9 ? "f32/fmadx9" : "f32/fma", "loose", modifiers ? "NEG/ABS/half" : "none", path,
+                 time, scalar / time);
     return true;
   };
   if (!run("scalar", GOC_CPU_BASELINE))
@@ -750,7 +760,8 @@ int main(int argc, char **argv) {
   }
   for (uint32_t modifiers :
        {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_NEG_C | GOC_ALU_OMOD_HALF})
-    if (!benchmark_fma(cpu, iterations, min_ms, modifiers)) {
+    if (!benchmark_fma(cpu, iterations, min_ms, modifiers, false) ||
+        !benchmark_fma(cpu, iterations, min_ms, modifiers, true)) {
       std::fprintf(stderr, "FMA benchmark failed: API/result error or iteration overflow.\n");
       return 1;
     }

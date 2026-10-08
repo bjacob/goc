@@ -74,6 +74,7 @@ const Case cases[] = {
     {goc_rdna4_v_dot2_f16_f16, false, false, 63 | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D},
     {goc_rdna4_v_dot2_bf16_bf16, false, false, 63 | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D},
     {goc_rdna4_v_fma_f32, false, false, 0x1ff},
+    {goc_rdna4_v_fma_dx9_zero_f32, false, false, 0x1ff},
     {unary<goc_rdna4_v_log_f32>, false, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
     {unary<goc_rdna4_v_exp_f32>, false, false,

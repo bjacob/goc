@@ -8,8 +8,11 @@
 
 namespace goc {
 
-void fma_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
-                   const uint32_t *b, const uint32_t *c) {
+namespace {
+
+template <bool Dx9Zero>
+void run(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, const uint32_t *b,
+         const uint32_t *c) {
   const __m256i keep_a = _mm256_set1_epi32((modifiers & GOC_ALU_ABS_A) ? 0x7fffffff : -1);
   const __m256i flip_a = _mm256_set1_epi32((modifiers & GOC_ALU_NEG_A) ? INT32_MIN : 0);
   const __m256i keep_b = _mm256_set1_epi32((modifiers & GOC_ALU_ABS_B) ? 0x7fffffff : -1);
@@ -29,6 +32,12 @@ void fma_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_
         _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(c + i)), keep_c),
         flip_c));
     auto result = _mm256_fmadd_ps(va, vb, vc);
+    if constexpr (Dx9Zero) {
+      auto zero = _mm256_setzero_ps();
+      auto has_zero =
+          _mm256_or_ps(_mm256_cmp_ps(va, zero, _CMP_EQ_OQ), _mm256_cmp_ps(vb, zero, _CMP_EQ_OQ));
+      result = _mm256_blendv_ps(result, vc, has_zero);
+    }
     if (modifiers & GOC_ALU_OMOD_HALF)
       result = _mm256_mul_ps(result, scale);
     if (modifiers & GOC_ALU_CLAMP)
@@ -37,6 +46,18 @@ void fma_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_
                                        _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
     _mm256_maskstore_epi32(reinterpret_cast<int *>(d + i), active, _mm256_castps_si256(result));
   }
+}
+
+} // namespace
+
+void fma_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
+                   const uint32_t *b, const uint32_t *c) {
+  run<false>(mask, modifiers, d, a, b, c);
+}
+
+void fma_dx9_zero_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
+                            const uint32_t *b, const uint32_t *c) {
+  run<true>(mask, modifiers, d, a, b, c);
 }
 
 } // namespace goc

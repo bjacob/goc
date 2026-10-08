@@ -141,7 +141,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_num_f32`, `v_max3_num_f32`, `v_minmax_num_f32`, `v_maxmin_num_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_minimum3_f32`, `v_maximum3_f32`, `v_minimummaximum_f32`, `v_maximumminimum_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_med3_num_f32` | Scalar, x86-64-v3 | Not implemented |
-| `v_fma_f32` | Scalar, AVX2/FMA, AVX-512 | Not implemented |
+| `v_fma_f32`, `v_fma_dx9_zero_f32` | Scalar, AVX2/FMA, AVX-512 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
@@ -282,6 +282,11 @@ FMA supports all three source ABS/NEG pairs, OMOD scaling and CLAMP on scalar,
 x86-64-v3 and x86-64-v4 paths. Tests cross all 512 modifier combinations with
 85 masks, all CPU levels and output aliasing each source; literal bit patterns
 add fused-rounding, signed-zero, subnormal, overflow and NaN-clamping cases.
+The DX9 FMA variant has the same scalar/v3/v4 paths and full modifier/mask/alias
+coverage. If either factor is signed zero, it selects modified C before output
+scaling and CLAMP. Without output modifiers, the selected C retains its signed
+zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
+a literal fused-rounding witness for nonzero products.
 
 FP32 `FRACT` computes `x - floor(x)` and caps it at `0x3f7fffff` before
 output modifiers, so tiny negative inputs stay strictly below one. Scalar/v3

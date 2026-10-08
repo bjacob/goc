@@ -8,8 +8,11 @@
 
 namespace goc {
 
-void fma_x86_64_v4(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
-                   const uint32_t *b, const uint32_t *c) {
+namespace {
+
+template <bool Dx9Zero>
+void run(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, const uint32_t *b,
+         const uint32_t *c) {
   const __m512i keep_a = _mm512_set1_epi32((modifiers & GOC_ALU_ABS_A) ? 0x7fffffff : -1);
   const __m512i flip_a = _mm512_set1_epi32((modifiers & GOC_ALU_NEG_A) ? INT32_MIN : 0);
   const __m512i keep_b = _mm512_set1_epi32((modifiers & GOC_ALU_ABS_B) ? 0x7fffffff : -1);
@@ -26,12 +29,30 @@ void fma_x86_64_v4(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_
     auto vc = _mm512_castsi512_ps(
         _mm512_xor_si512(_mm512_and_si512(_mm512_loadu_si512(c + i), keep_c), flip_c));
     auto result = _mm512_fmadd_ps(va, vb, vc);
+    if constexpr (Dx9Zero) {
+      auto zero = _mm512_setzero_ps();
+      auto has_zero =
+          _mm512_cmp_ps_mask(va, zero, _CMP_EQ_OQ) | _mm512_cmp_ps_mask(vb, zero, _CMP_EQ_OQ);
+      result = _mm512_mask_mov_ps(result, has_zero, vc);
+    }
     if (modifiers & GOC_ALU_OMOD_HALF)
       result = _mm512_mul_ps(result, scale);
     if (modifiers & GOC_ALU_CLAMP)
       result = _mm512_min_ps(_mm512_max_ps(result, _mm512_setzero_ps()), _mm512_set1_ps(1));
     _mm512_mask_storeu_epi32(d + i, static_cast<__mmask16>(mask >> i), _mm512_castps_si512(result));
   }
+}
+
+} // namespace
+
+void fma_x86_64_v4(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
+                   const uint32_t *b, const uint32_t *c) {
+  run<false>(mask, modifiers, d, a, b, c);
+}
+
+void fma_dx9_zero_x86_64_v4(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
+                            const uint32_t *b, const uint32_t *c) {
+  run<true>(mask, modifiers, d, a, b, c);
 }
 
 } // namespace goc

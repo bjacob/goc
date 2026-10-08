@@ -114,7 +114,10 @@ TEST(Arithmetic, AllCpuLevelsFmaGoldenAndAliasing) {
       }
 }
 
-TEST(Arithmetic, FmaAllModifiersCpuLevelsMasksAndAliases) {
+namespace {
+
+void check_fma_modifiers(bool dx9) {
+  auto fn = dx9 ? goc_rdna4_v_fma_dx9_zero_f32 : goc_rdna4_v_fma_f32;
   const float scales[] = {1, 2, 4, 0.5f};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint32_t modifiers = 0; modifiers < 512; ++modifiers)
@@ -140,14 +143,15 @@ TEST(Arithmetic, FmaAllModifiersCpuLevelsMasksAndAliases) {
             // Dyadic inputs have an exactly representable double-precision
             // product/sum, independent of the implementation's FP32 FMA.
             float want = float(inputs[0] * inputs[1] + inputs[2]);
+            if (dx9 && (inputs[0] == 0 || inputs[1] == 0))
+              want = float(inputs[2]);
             want *= scales[modifiers >> 6 & 3];
             if (modifiers & GOC_ALU_CLAMP)
               want = std::min(1.0f, std::max(0.0f, want));
             expected[lane] = goc::as_bits(want);
             original[lane] = v[alias][lane];
           }
-          ASSERT_EQ(goc_rdna4_v_fma_f32(cpu, mask, modifiers, &v[alias], &v[0], &v[1], &v[2]),
-                    GOC_SUCCESS);
+          ASSERT_EQ(fn(cpu, mask, modifiers, &v[alias], &v[0], &v[1], &v[2]), GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
             EXPECT_EQ(v[alias][lane], ((mask >> lane) & 1) ? expected[lane] : original[lane]);
           for (const auto &reg : storage) {
@@ -156,6 +160,12 @@ TEST(Arithmetic, FmaAllModifiersCpuLevelsMasksAndAliases) {
           }
         }
 }
+
+} // namespace
+
+TEST(Arithmetic, FmaAllModifiersCpuLevelsMasksAndAliases) { check_fma_modifiers(false); }
+
+TEST(Arithmetic, Dx9FmaAllModifiersCpuLevelsMasksAndAliases) { check_fma_modifiers(true); }
 
 TEST(Arithmetic, FmaModifierSpecialValues) {
   const uint32_t a_bits[] = {0x3f800001, 0x7fc12345, 0x7f800000, 0x80000000,
@@ -178,4 +188,71 @@ TEST(Arithmetic, FmaModifierSpecialValues) {
       for (uint32_t value : d)
         EXPECT_EQ(value, golden[test]);
     }
+}
+
+TEST(Arithmetic, Dx9FmaZeroSelectionWithEveryModifierAndAlias) {
+  const uint32_t values[] = {0,          0x80000000, 1,          0x80000001, 0x3f800000, 0xbf800000,
+                             0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000, 0x7fc12345, 0xffc12345,
+                             0x7f812345, 0xff812345, 0x3f000000, 0xbf000000};
+  const double scales[] = {1, 2, 4, 0.5};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint32_t mode = 0; mode < 512; ++mode)
+      for (bool reverse : {false, true})
+        for (int alias = 0; alias < 4; ++alias) {
+          SCOPED_TRACE(::testing::Message()
+                       << cpu << "/" << mode << "/" << reverse << "/" << alias);
+          uint32_t storage[4][32], expected[32];
+          uint32_t *v[4] = {storage[0], storage[1], storage[2], storage[3]};
+          for (int lane = 0; lane < 32; ++lane) {
+            uint32_t zero = lane & 1 ? 0x80000000 : 0;
+            uint32_t other = values[(lane * 5 + 3) % 16];
+            v[0][lane] = reverse ? other : zero;
+            v[1][lane] = reverse ? zero : other;
+            v[2][lane] = values[lane % 16];
+            uint32_t want = v[2][lane];
+            if (mode & GOC_ALU_ABS_C)
+              want &= 0x7fffffff;
+            if (mode & GOC_ALU_NEG_C)
+              want ^= 0x80000000;
+            if (mode & GOC_ALU_OMOD_HALF) {
+              if ((want & 0x7fffffff) > 0x7f800000)
+                want |= 0x00400000;
+              else
+                want = goc::as_bits(float(double(goc::as_float(want)) * scales[(mode >> 6) & 3]));
+            }
+            if (mode & GOC_ALU_CLAMP) {
+              float value = goc::as_float(want);
+              want = !(value > 0) ? 0 : value > 1 ? 0x3f800000 : want;
+            }
+            expected[lane] = want;
+          }
+          ASSERT_EQ(
+              goc_rdna4_v_fma_dx9_zero_f32(cpu, UINT32_MAX, mode, &v[alias], &v[0], &v[1], &v[2]),
+              GOC_SUCCESS);
+          for (int lane = 0; lane < 32; ++lane)
+            EXPECT_EQ(v[alias][lane], expected[lane]);
+        }
+}
+
+TEST(Arithmetic, Dx9FmaFusedRoundingAndValidation) {
+  // The ordinary fused-rounding witness must survive the DX9 extension.
+  uint32_t a[32], b[32], c[32], d[32];
+  std::fill(a, a + 32, 0x3f800001);
+  std::fill(b, b + 32, 0x3f7ffffe);
+  std::fill(c, c + 32, 0xbf800000);
+  auto pa = a, pb = b, pc = c, pd = d;
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    std::fill(d, d + 32, 0xdeadbeef);
+    EXPECT_EQ(goc_rdna4_v_fma_dx9_zero_f32(cpu, UINT32_MAX, GOC_ALU_HIGH_C, &pd, &pa, &pb, &pc),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(
+        goc_rdna4_v_fma_dx9_zero_f32(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                     UINT32_MAX, 0, &pd, &pa, &pb, &pc),
+        GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    for (uint32_t value : d)
+      EXPECT_EQ(value, 0xdeadbeef);
+    ASSERT_EQ(goc_rdna4_v_fma_dx9_zero_f32(cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+    for (uint32_t value : d)
+      EXPECT_EQ(value, 0xa8800000);
+  }
 }

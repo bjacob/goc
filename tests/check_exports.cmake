@@ -50,6 +50,7 @@ else()
     goc_rdna4_v_maximum_f32
     goc_init_cpu_flags
     goc_rdna4_v_fma_f32
+    goc_rdna4_v_fma_dx9_zero_f32
     goc_rdna4_v_trunc_f32
     goc_rdna4_v_ceil_f32
     goc_rdna4_v_rndne_f32

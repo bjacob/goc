@@ -23,6 +23,14 @@ GOC_API int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t ins
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b, const uint32_t *const *c);
 
+// DX9 FMA: one VGPR per operand, all ALU source/output modifiers, loose semantics.
+// If either modified factor is signed zero, select modified C unchanged before
+// output scaling/CLAMP; otherwise compute a fused multiply-add.
+GOC_API int goc_rdna4_v_fma_dx9_zero_f32(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a, const uint32_t *const *b,
+                                         const uint32_t *const *c);
+
 // Floating ALU source modifiers: ABS precedes NEG.
 static const uint32_t GOC_ALU_NEG_A = (UINT32_C(1) << 0);
 static const uint32_t GOC_ALU_NEG_B = (UINT32_C(1) << 1);
