@@ -7,6 +7,16 @@
 
 #if defined(GOC_X86_64_QUERY)
 #include <cpuid.h>
+#include <immintrin.h>
+#endif
+
+#if defined(GOC_X86_64_QUERY)
+namespace {
+
+// Returns XCR0. Requires CPUID to report both XSAVE and OSXSAVE support.
+__attribute__((target("xsave"))) uint64_t read_xcr0(void) { return _xgetbv(0); }
+
+} // namespace
 #endif
 
 namespace goc {
@@ -90,10 +100,8 @@ uint64_t goc_init_cpu_flags(void) {
 
   // CPUID(1, 0).ECX: XSAVE (26) and OSXSAVE (27) make XGETBV available.
   constexpr uint32_t xgetbv_leaf1_ecx = 0x0c000000;
-  if ((s.leaf1_ecx & xgetbv_leaf1_ecx) == xgetbv_leaf1_ecx) {
-    __asm__ volatile("xgetbv" : "=a"(a), "=d"(d) : "c"(0));
-    s.xcr0 = (uint64_t(d) << 32) | a;
-  }
+  if ((s.leaf1_ecx & xgetbv_leaf1_ecx) == xgetbv_leaf1_ecx)
+    s.xcr0 = read_xcr0();
 
   return goc::decode_cpu(s);
 #else
