@@ -3,6 +3,7 @@
 #include "rdna4_unary.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_alu.h"
 
 #include <stdint.h>
 

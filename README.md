@@ -56,7 +56,7 @@ The full suite also covers DOT2, NEG/NEG_HI, wave64, masks, aliasing, C linkage,
 header self-containment and library exports.
 
 The benchmark includes wave32 FP32 unary arithmetic (unmodified and
-ABS/scaling/CLAMP), FP32 FMA on scalar, v3 and v4, and compares scalar loose FP16 with x86-64-v3, and scalar loose BF16
+ABS/scaling/CLAMP), FP32 FMA (unmodified and NEG/ABS/scaling) on scalar, v3 and v4, and compares scalar loose FP16 with x86-64-v3, and scalar loose BF16
 with both x86-64-v3 and the Zen4 AVX-512 BF16 path. Integer rows cover
 INT8 K=16 and INT4 K=16/K=32 on scalar, v3 and Zen4 VNNI, with unsigned
 wrapping and signed CLAMP workloads. All integer rows request strict exact
@@ -188,6 +188,11 @@ FP32-output wave32 forms; wave64 uses two A/B VGPRs and four C/D VGPRs.
 Packed-output forms halve the C/D register counts, packing adjacent rows into
 the low and high 16 bits. Input and output operands may share whole VGPRs. Distinct backing
 addresses must not overlap, and every pointer must refer to sufficient storage.
+
+FMA supports all three source ABS/NEG pairs, OMOD scaling and CLAMP on scalar,
+x86-64-v3 and x86-64-v4 paths. Tests cross all 512 modifier combinations with
+85 masks, all CPU levels and output aliasing each source; literal bit patterns
+add fused-rounding, signed-zero, subnormal, overflow and NaN-clamping cases.
 
 Unary FP32 instructions support `GOC_ALU_ABS_A`, `GOC_ALU_NEG_A`, output
 scaling (`GOC_ALU_OMOD_2`, `GOC_ALU_OMOD_4`, `GOC_ALU_OMOD_HALF`), and

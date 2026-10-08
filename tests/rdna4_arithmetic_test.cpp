@@ -113,3 +113,69 @@ TEST(Arithmetic, AllCpuLevelsFmaGoldenAndAliasing) {
         }
       }
 }
+
+TEST(Arithmetic, FmaAllModifiersCpuLevelsMasksAndAliases) {
+  const float scales[] = {1, 2, 4, 0.5f};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint32_t modifiers = 0; modifiers < 512; ++modifiers)
+      for (uint64_t mask : rdna4_exec_masks())
+        for (int alias = 0; alias < 4; ++alias) {
+          SCOPED_TRACE(::testing::Message()
+                       << cpu << "/" << modifiers << "/" << mask << "/" << alias);
+          uint32_t storage[4][34], original[32], expected[32];
+          uint32_t *v[4];
+          for (int reg = 0; reg < 4; ++reg) {
+            std::fill(storage[reg], storage[reg] + 34, 0xdeadbeef);
+            v[reg] = storage[reg] + 1;
+          }
+          for (int lane = 0; lane < 32; ++lane) {
+            double inputs[3] = {(lane - 17) * 0.25, (lane % 7 - 3) * 0.5, (lane % 11 - 5) * 0.25};
+            for (int source = 0; source < 3; ++source) {
+              v[source][lane] = goc::as_bits(float(inputs[source]));
+              if (modifiers & (8u << source))
+                inputs[source] = std::abs(inputs[source]);
+              if (modifiers & (1u << source))
+                inputs[source] = -inputs[source];
+            }
+            // Dyadic inputs have an exactly representable double-precision
+            // product/sum, independent of the implementation's FP32 FMA.
+            float want = float(inputs[0] * inputs[1] + inputs[2]);
+            want *= scales[modifiers >> 6 & 3];
+            if (modifiers & GOC_ALU_CLAMP)
+              want = std::min(1.0f, std::max(0.0f, want));
+            expected[lane] = goc::as_bits(want);
+            original[lane] = v[alias][lane];
+          }
+          ASSERT_EQ(goc_rdna4_v_fma_f32(cpu, mask, modifiers, &v[alias], &v[0], &v[1], &v[2]),
+                    GOC_SUCCESS);
+          for (int lane = 0; lane < 32; ++lane)
+            EXPECT_EQ(v[alias][lane], ((mask >> lane) & 1) ? expected[lane] : original[lane]);
+          for (const auto &reg : storage) {
+            EXPECT_EQ(reg[0], 0xdeadbeef);
+            EXPECT_EQ(reg[33], 0xdeadbeef);
+          }
+        }
+}
+
+TEST(Arithmetic, FmaModifierSpecialValues) {
+  const uint32_t a_bits[] = {0x3f800001, 0x7fc12345, 0x7f800000, 0x80000000,
+                             0x00000001, 0x7f7fffff, 0x3fc00000, 0x3fc00000};
+  const uint32_t b_bits[] = {0x3f7ffffe, 0x3f800000, 0x00000000, 0x40000000,
+                             0x3f800000, 0x40000000, 0x3fc00000, 0x3fc00000};
+  const uint32_t c_bits[] = {0xbf800000, 0, 0, 0x80000000, 1, 0, 0xbe800000, 0xbe800000};
+  const uint32_t modes[] = {
+      GOC_ALU_OMOD_2,    GOC_ALU_CLAMP, GOC_ALU_CLAMP, GOC_ALU_OMOD_HALF,
+      GOC_ALU_OMOD_HALF, GOC_ALU_CLAMP, GOC_ALU_ABS_C, GOC_ALU_ABS_C | GOC_ALU_NEG_C};
+  const uint32_t golden[] = {0xa9000000, 0, 0, 0x80000000, 1, 0x3f800000, 0x40200000, 0x40000000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (int test = 0; test < 8; ++test) {
+      uint32_t a[32], b[32], c[32], d[32];
+      std::fill(a, a + 32, a_bits[test]);
+      std::fill(b, b + 32, b_bits[test]);
+      std::fill(c, c + 32, c_bits[test]);
+      auto pa = a, pb = b, pc = c, pd = d;
+      ASSERT_EQ(goc_rdna4_v_fma_f32(cpu, UINT32_MAX, modes[test], &pd, &pa, &pb, &pc), GOC_SUCCESS);
+      for (uint32_t value : d)
+        EXPECT_EQ(value, golden[test]);
+    }
+}

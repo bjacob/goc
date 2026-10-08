@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "goc/goc.h"
 #include "rdna4_simd.h"
 
 #include <immintrin.h>
@@ -7,14 +8,29 @@
 
 namespace goc {
 
-void fma_x86_64_v4(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
-                   const uint32_t *c) {
+void fma_x86_64_v4(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
+                   const uint32_t *b, const uint32_t *c) {
+  const __m512i keep_a = _mm512_set1_epi32((modifiers & GOC_ALU_ABS_A) ? 0x7fffffff : -1);
+  const __m512i flip_a = _mm512_set1_epi32((modifiers & GOC_ALU_NEG_A) ? INT32_MIN : 0);
+  const __m512i keep_b = _mm512_set1_epi32((modifiers & GOC_ALU_ABS_B) ? 0x7fffffff : -1);
+  const __m512i flip_b = _mm512_set1_epi32((modifiers & GOC_ALU_NEG_B) ? INT32_MIN : 0);
+  const __m512i keep_c = _mm512_set1_epi32((modifiers & GOC_ALU_ABS_C) ? 0x7fffffff : -1);
+  const __m512i flip_c = _mm512_set1_epi32((modifiers & GOC_ALU_NEG_C) ? INT32_MIN : 0);
+  const float scales[] = {1, 2, 4, 0.5f};
+  const auto scale = _mm512_set1_ps(scales[(modifiers >> 6) & 3]);
   for (int i = 0; i < 32; i += 16) {
-    auto va = _mm512_castsi512_ps(_mm512_loadu_si512(a + i));
-    auto vb = _mm512_castsi512_ps(_mm512_loadu_si512(b + i));
-    auto vc = _mm512_castsi512_ps(_mm512_loadu_si512(c + i));
-    _mm512_mask_storeu_epi32(d + i, static_cast<__mmask16>(mask >> i),
-                             _mm512_castps_si512(_mm512_fmadd_ps(va, vb, vc)));
+    auto va = _mm512_castsi512_ps(
+        _mm512_xor_si512(_mm512_and_si512(_mm512_loadu_si512(a + i), keep_a), flip_a));
+    auto vb = _mm512_castsi512_ps(
+        _mm512_xor_si512(_mm512_and_si512(_mm512_loadu_si512(b + i), keep_b), flip_b));
+    auto vc = _mm512_castsi512_ps(
+        _mm512_xor_si512(_mm512_and_si512(_mm512_loadu_si512(c + i), keep_c), flip_c));
+    auto result = _mm512_fmadd_ps(va, vb, vc);
+    if (modifiers & GOC_ALU_OMOD_HALF)
+      result = _mm512_mul_ps(result, scale);
+    if (modifiers & GOC_ALU_CLAMP)
+      result = _mm512_min_ps(_mm512_max_ps(result, _mm512_setzero_ps()), _mm512_set1_ps(1));
+    _mm512_mask_storeu_epi32(d + i, static_cast<__mmask16>(mask >> i), _mm512_castps_si512(result));
   }
 }
 

@@ -17,7 +17,7 @@ extern "C" {
 // conceptually read before writes. Inactive destination lanes and all destinations
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
-// FMA accepts only instruction_flags == 0. Exact semantics requests
+// FMA supports all GOC_ALU source/output modifiers. Exact semantics requests
 // fall back to loose unless GOC_SEMANTICS_STRICT is set.
 GOC_API int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
