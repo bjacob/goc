@@ -119,6 +119,10 @@ RDNA4 subset of `tests/fixtures/float_dot/packed_wmma_cases.h`: 28 captured
 16x16 outputs across both formats and wave sizes, including subnormals,
 cancellation, NaNs and rare accumulator-alignment boundaries. Tests run these
 under all four host rounding modes with preexisting FP exception flags.
+Another 128 modifier captures come from `float_dot/packed_operand_cases.h`.
+The intermediate-overflow tests are adapted from rocjitsu's
+`PackedWmma.HardwareOverflowModeAtIntermediateSteps`; they distinguish saturation
+at each four-product step from saturation applied only to the final result.
 
 FP8/BF8 conversions and integer WMMA borrow from rocjitsu's
 `util/data_types.h` and `shared/mma_exec.h`. FP8 uses OCP E4M3FN (finite through

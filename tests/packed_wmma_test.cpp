@@ -2,6 +2,7 @@
 
 #include "goc_common.h"
 #include "goc_rdna4.h"
+#include "packed_modifier_fixtures.h"
 #include "packed_wmma_fixtures.h"
 
 #include <algorithm>
@@ -169,4 +170,71 @@ TEST(PackedWmma, EveryModifierCombinationAndValidation) {
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
         EXPECT_EQ(r.v[12][0], old);
       }
+}
+
+TEST(PackedWmma, HardwareModifierCaptures) {
+  for (int width : {32, 64})
+    for (const auto &f : kPackedModifiers) {
+      Registers r;
+      for (int reg = 0; reg < 128 / width; ++reg)
+        for (int lane = 0; lane < width; ++lane) {
+          r.v[reg][lane] = f.a;
+          r.v[4 + reg][lane] = f.b;
+          r.v[8 + reg][lane] = f.c;
+        }
+      ASSERT_EQ(function(width, f.bf16)(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                        UINT64_MAX, f.modifiers, r.v + 12, r.v, r.v + 4, r.v + 8),
+                0);
+      for (int reg = 0; reg < 128 / width; ++reg)
+        for (int lane = 0; lane < width; ++lane)
+          EXPECT_EQ(r.v[12 + reg][lane], f.expected) << "modifiers=" << f.modifiers;
+    }
+}
+
+TEST(PackedWmma, HardwareIntermediateOverflowState) {
+  // Adapted from rocjitsu PackedWmma.HardwareOverflowModeAtIntermediateSteps.
+  // Two maximum*2 products overflow the first dot4. A later opposite-sign
+  // maximum cancels saturated FP16 to zero, but cannot cancel infinity.
+  HostState restore;
+  for (int width : {32, 64})
+    for (bool bf16 : {false, true})
+      for (bool saturate : {false, true})
+        for (int pattern = 0; pattern < 4; ++pattern)
+          for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+            Registers r;
+            PackedWmmaInput input{};
+            uint16_t maximum = bf16 ? 0x7f7f : 0x7bff;
+            uint16_t infinity = bf16 ? 0x7f80 : 0x7c00;
+            for (int index = 0; index < 16; ++index) {
+              for (int k = 0; k < 2; ++k) {
+                input.a[index * 16 + k] =
+                    (pattern == 3 ? infinity : maximum) | (pattern == 2 ? 0x8000 : 0);
+                input.b[k * 16 + index] = 0x4000;
+              }
+              if (pattern) {
+                // The second dot4 begins at physical K=8 in wave32 and K=4 in wave64.
+                int k = width == 32 ? 8 : 4;
+                input.a[index * 16 + k] = maximum | (pattern == 2 ? 0 : 0x8000);
+                input.b[k * 16 + index] = bf16 ? 0x3f80 : 0x3c00;
+              }
+            }
+            load(r, input, width);
+            std::fesetround(rounding);
+            std::feclearexcept(FE_ALL_EXCEPT);
+            std::feraiseexcept(FE_INEXACT);
+            uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                             (saturate ? GOC_FP16_OVFL : 0);
+            ASSERT_EQ(function(width, bf16)(flags, UINT64_MAX, 0, r.v + 12, r.v, r.v + 4, r.v + 8),
+                      0);
+            EXPECT_EQ(std::fegetround(), rounding);
+            EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
+            uint32_t expected = infinity | (pattern == 2 ? 0x8000 : 0);
+            if (!bf16 && saturate && pattern != 3)
+              expected = pattern == 0 ? 0x7bff : 0;
+            for (int reg = 0; reg < 128 / width; ++reg)
+              for (int lane = 0; lane < width; ++lane)
+                EXPECT_EQ(r.v[12 + reg][lane], expected | (expected << 16))
+                    << "width=" << width << " bf16=" << bf16 << " saturate=" << saturate
+                    << " pattern=" << pattern;
+          }
 }

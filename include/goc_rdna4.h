@@ -77,22 +77,22 @@ GOC_API int goc_rdna4w64_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t exec_
 // C/D hold 4 or 2 VGPRs respectively, with adjacent rows in low/high halves.
 // Both semantics and all six floating WMMA modifiers are supported. Packed
 // results narrow after each four-product step; GOC_FP16_OVFL controls FP16 overflow.
-GOC_API int goc_rdna4_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t mask,
+GOC_API int goc_rdna4_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t exec_mask,
                                               uint32_t instruction_flags, uint32_t *const *d,
                                               const uint32_t *const *a, const uint32_t *const *b,
                                               const uint32_t *const *c);
 
-GOC_API int goc_rdna4_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t mask,
+GOC_API int goc_rdna4_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t exec_mask,
                                                 uint32_t instruction_flags, uint32_t *const *d,
                                                 const uint32_t *const *a, const uint32_t *const *b,
                                                 const uint32_t *const *c);
 
-GOC_API int goc_rdna4w64_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t mask,
+GOC_API int goc_rdna4w64_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t exec_mask,
                                                  uint32_t instruction_flags, uint32_t *const *d,
                                                  const uint32_t *const *a, const uint32_t *const *b,
                                                  const uint32_t *const *c);
 
-GOC_API int goc_rdna4w64_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t mask,
+GOC_API int goc_rdna4w64_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t exec_mask,
                                                    uint32_t instruction_flags, uint32_t *const *d,
                                                    const uint32_t *const *a,
                                                    const uint32_t *const *b,
@@ -102,25 +102,25 @@ GOC_API int goc_rdna4w64_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t mask
 // FP8 is OCP E4M3FN; BF8 is OCP E5M2. Only loose semantics are implemented;
 // strict exact requests return GOC_ERROR_UNSUPPORTED_SEMANTICS. Supported
 // modifiers are GOC_WMMA_NEG_C and GOC_WMMA_ABS_C.
-GOC_API int goc_rdna4_v_wmma_f32_16x16x16_fp8_fp8(uint64_t flags, uint64_t mask,
+GOC_API int goc_rdna4_v_wmma_f32_16x16x16_fp8_fp8(uint64_t flags, uint64_t exec_mask,
                                                   uint32_t instruction_flags, uint32_t *const *d,
                                                   const uint32_t *const *a,
                                                   const uint32_t *const *b,
                                                   const uint32_t *const *c);
 
-GOC_API int goc_rdna4_v_wmma_f32_16x16x16_fp8_bf8(uint64_t flags, uint64_t mask,
+GOC_API int goc_rdna4_v_wmma_f32_16x16x16_fp8_bf8(uint64_t flags, uint64_t exec_mask,
                                                   uint32_t instruction_flags, uint32_t *const *d,
                                                   const uint32_t *const *a,
                                                   const uint32_t *const *b,
                                                   const uint32_t *const *c);
 
-GOC_API int goc_rdna4_v_wmma_f32_16x16x16_bf8_fp8(uint64_t flags, uint64_t mask,
+GOC_API int goc_rdna4_v_wmma_f32_16x16x16_bf8_fp8(uint64_t flags, uint64_t exec_mask,
                                                   uint32_t instruction_flags, uint32_t *const *d,
                                                   const uint32_t *const *a,
                                                   const uint32_t *const *b,
                                                   const uint32_t *const *c);
 
-GOC_API int goc_rdna4_v_wmma_f32_16x16x16_bf8_bf8(uint64_t flags, uint64_t mask,
+GOC_API int goc_rdna4_v_wmma_f32_16x16x16_bf8_bf8(uint64_t flags, uint64_t exec_mask,
                                                   uint32_t instruction_flags, uint32_t *const *d,
                                                   const uint32_t *const *a,
                                                   const uint32_t *const *b,
@@ -135,17 +135,17 @@ static const uint32_t GOC_WMMA_CLAMP = (UINT32_C(1) << 6);
 // Wave32 integer WMMA: C/D each hold 8 VGPRs. A/B each hold 2 VGPRs for
 // IU8 and K=32 IU4, or 1 VGPR for K=16 IU4. Supports loose and exact semantics,
 // signed/unsigned factors, and CLAMP. Accumulators are signed 32-bit integers.
-GOC_API int goc_rdna4_v_wmma_i32_16x16x16_iu8(uint64_t flags, uint64_t mask,
+GOC_API int goc_rdna4_v_wmma_i32_16x16x16_iu8(uint64_t flags, uint64_t exec_mask,
                                               uint32_t instruction_flags, uint32_t *const *d,
                                               const uint32_t *const *a, const uint32_t *const *b,
                                               const uint32_t *const *c);
 
-GOC_API int goc_rdna4_v_wmma_i32_16x16x16_iu4(uint64_t flags, uint64_t mask,
+GOC_API int goc_rdna4_v_wmma_i32_16x16x16_iu4(uint64_t flags, uint64_t exec_mask,
                                               uint32_t instruction_flags, uint32_t *const *d,
                                               const uint32_t *const *a, const uint32_t *const *b,
                                               const uint32_t *const *c);
 
-GOC_API int goc_rdna4_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t mask,
+GOC_API int goc_rdna4_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t exec_mask,
                                               uint32_t instruction_flags, uint32_t *const *d,
                                               const uint32_t *const *a, const uint32_t *const *b,
                                               const uint32_t *const *c);
