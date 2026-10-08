@@ -30,7 +30,9 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
   auto scale = _mm256_set1_pd(scales[(mode >> 6) & 3]);
   uint32_t result[2][32];
   for (int lane = 0; lane < 32; lane += 4) {
-    auto x = load(a, lane, ka, na), y = load(b, lane, kb, nb);
+    auto x = load(a, lane, ka, na), y = _mm256_setzero_pd();
+    if constexpr (fp64_sources(Op) >= 2)
+      y = load(b, lane, kb, nb);
     __m256d value;
     if constexpr (Op == Fp64::Add)
       value = _mm256_add_pd(x, y);
@@ -38,6 +40,25 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
       value = _mm256_mul_pd(x, y);
     if constexpr (Op == Fp64::Fma)
       value = _mm256_fmadd_pd(x, y, load(c, lane, kc, nc));
+    if constexpr (Op == Fp64::Trunc)
+      value = _mm256_round_pd(x, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+    if constexpr (Op == Fp64::Ceil)
+      value = _mm256_round_pd(x, _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
+    if constexpr (Op == Fp64::Rndne)
+      value = _mm256_round_pd(x, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+    if constexpr (Op == Fp64::Floor)
+      value = _mm256_round_pd(x, _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
+    if constexpr (Op == Fp64::Sqrt || Op == Fp64::Rsq)
+      value = _mm256_sqrt_pd(x);
+    if constexpr (Op == Fp64::Rcp)
+      value = _mm256_div_pd(_mm256_set1_pd(1), x);
+    if constexpr (Op == Fp64::Rsq)
+      value = _mm256_div_pd(_mm256_set1_pd(1), value);
+    if constexpr (Op == Fp64::Fract) {
+      value = _mm256_sub_pd(x, _mm256_floor_pd(x));
+      auto limit = _mm256_castsi256_pd(_mm256_set1_epi64x(INT64_C(0x3fefffffffffffff)));
+      value = _mm256_blendv_pd(value, limit, _mm256_cmp_pd(value, limit, _CMP_GT_OQ));
+    }
     if (mode & GOC_ALU_OMOD_HALF)
       value = _mm256_mul_pd(value, scale);
     if (mode & GOC_ALU_CLAMP)
@@ -65,6 +86,22 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
 void fp64_x86_64_v3(Fp64 op, uint32_t mask, uint32_t mode, uint32_t *const *d,
                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   switch (op) {
+  case Fp64::Trunc:
+    return run<Fp64::Trunc>(mask, mode, d, a, b, c);
+  case Fp64::Ceil:
+    return run<Fp64::Ceil>(mask, mode, d, a, b, c);
+  case Fp64::Rndne:
+    return run<Fp64::Rndne>(mask, mode, d, a, b, c);
+  case Fp64::Floor:
+    return run<Fp64::Floor>(mask, mode, d, a, b, c);
+  case Fp64::Fract:
+    return run<Fp64::Fract>(mask, mode, d, a, b, c);
+  case Fp64::Sqrt:
+    return run<Fp64::Sqrt>(mask, mode, d, a, b, c);
+  case Fp64::Rcp:
+    return run<Fp64::Rcp>(mask, mode, d, a, b, c);
+  case Fp64::Rsq:
+    return run<Fp64::Rsq>(mask, mode, d, a, b, c);
   case Fp64::Add:
     return run<Fp64::Add>(mask, mode, d, a, b, c);
   case Fp64::Mul:

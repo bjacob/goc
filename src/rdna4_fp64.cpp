@@ -12,10 +12,11 @@ namespace {
 template <goc::Fp64 Op>
 int arithmetic(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
                const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  const uint32_t known = Op == goc::Fp64::Fma
-                             ? 0x1ff
-                             : GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_ABS_B | GOC_ALU_NEG_B |
-                                   GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
+  uint32_t known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
+  if constexpr (goc::fp64_sources(Op) >= 2)
+    known |= GOC_ALU_ABS_B | GOC_ALU_NEG_B;
+  if constexpr (goc::fp64_sources(Op) == 3)
+    known |= GOC_ALU_ABS_C | GOC_ALU_NEG_C;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
   if (uint32_t(mask) == 0)
@@ -28,7 +29,9 @@ int arithmetic(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 #endif
   uint32_t result[2][32];
   for (int lane = 0; lane < 32; ++lane) {
-    double x = goc::fp64_input(a, lane, mode), y = goc::fp64_input(b, lane, mode >> 1);
+    double x = goc::fp64_input(a, lane, mode), y = 0;
+    if constexpr (goc::fp64_sources(Op) >= 2)
+      y = goc::fp64_input(b, lane, mode >> 1);
     double value;
     if constexpr (Op == goc::Fp64::Add)
       value = x + y;
@@ -36,6 +39,26 @@ int arithmetic(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
       value = x * y;
     if constexpr (Op == goc::Fp64::Fma)
       value = std::fma(x, y, goc::fp64_input(c, lane, mode >> 2));
+    if constexpr (Op == goc::Fp64::Trunc)
+      value = std::trunc(x);
+    if constexpr (Op == goc::Fp64::Ceil)
+      value = std::ceil(x);
+    if constexpr (Op == goc::Fp64::Rndne)
+      value = goc::fp64_rndne(x);
+    if constexpr (Op == goc::Fp64::Floor)
+      value = std::floor(x);
+    if constexpr (Op == goc::Fp64::Sqrt)
+      value = std::sqrt(x);
+    if constexpr (Op == goc::Fp64::Rcp)
+      value = 1.0 / x;
+    if constexpr (Op == goc::Fp64::Rsq)
+      value = 1.0 / std::sqrt(x);
+    if constexpr (Op == goc::Fp64::Fract) {
+      value = x - std::floor(x);
+      double limit = goc::as_double(UINT64_C(0x3fefffffffffffff));
+      if (value > limit)
+        value = limit;
+    }
     uint64_t bits = goc::double_bits(goc::fp64_output(value, mode));
     result[0][lane] = uint32_t(bits);
     result[1][lane] = uint32_t(bits >> 32);
@@ -64,4 +87,44 @@ int goc_rdna4_v_fma_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   return arithmetic<goc::Fp64::Fma>(flags, mask, mode, d, a, b, c);
+}
+
+int goc_rdna4_v_trunc_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a) {
+  return arithmetic<goc::Fp64::Trunc>(flags, mask, mode, d, a, nullptr, nullptr);
+}
+
+int goc_rdna4_v_ceil_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                         const uint32_t *const *a) {
+  return arithmetic<goc::Fp64::Ceil>(flags, mask, mode, d, a, nullptr, nullptr);
+}
+
+int goc_rdna4_v_rndne_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a) {
+  return arithmetic<goc::Fp64::Rndne>(flags, mask, mode, d, a, nullptr, nullptr);
+}
+
+int goc_rdna4_v_floor_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a) {
+  return arithmetic<goc::Fp64::Floor>(flags, mask, mode, d, a, nullptr, nullptr);
+}
+
+int goc_rdna4_v_fract_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a) {
+  return arithmetic<goc::Fp64::Fract>(flags, mask, mode, d, a, nullptr, nullptr);
+}
+
+int goc_rdna4_v_sqrt_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                         const uint32_t *const *a) {
+  return arithmetic<goc::Fp64::Sqrt>(flags, mask, mode, d, a, nullptr, nullptr);
+}
+
+int goc_rdna4_v_rcp_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                        const uint32_t *const *a) {
+  return arithmetic<goc::Fp64::Rcp>(flags, mask, mode, d, a, nullptr, nullptr);
+}
+
+int goc_rdna4_v_rsq_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                        const uint32_t *const *a) {
+  return arithmetic<goc::Fp64::Rsq>(flags, mask, mode, d, a, nullptr, nullptr);
 }

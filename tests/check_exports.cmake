@@ -49,6 +49,14 @@ else()
     goc_rdna4_v_minimum_f32
     goc_rdna4_v_maximum_f32
     goc_init_cpu_flags
+    goc_rdna4_v_trunc_f64
+    goc_rdna4_v_ceil_f64
+    goc_rdna4_v_rndne_f64
+    goc_rdna4_v_floor_f64
+    goc_rdna4_v_fract_f64
+    goc_rdna4_v_sqrt_f64
+    goc_rdna4_v_rcp_f64
+    goc_rdna4_v_rsq_f64
     goc_rdna4_v_add_f64
     goc_rdna4_v_mul_f64
     goc_rdna4_v_fma_f64

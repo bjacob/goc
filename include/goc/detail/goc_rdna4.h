@@ -162,6 +162,33 @@ GOC_API int goc_rdna4_v_fma_f64(uint64_t flags, uint64_t exec_mask, uint32_t ins
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b, const uint32_t *const *c);
 
+// Unary FP64 arithmetic uses the same low/high VGPR layout. Supports A ABS/NEG,
+// OMOD and CLAMP, with loose semantics. RNDNE rounds ties to even; FRACT computes
+// x - floor(x), capped at 0x3fefffffffffffff before output modifiers.
+GOC_API int goc_rdna4_v_trunc_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_ceil_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_rndne_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_floor_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_fract_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_sqrt_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_rcp_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_rsq_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
 // True16 source/destination half selectors. Zero selects the low half.
 // DOT2 consumes both A/B halves, so only C and D have selectors.
 static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);

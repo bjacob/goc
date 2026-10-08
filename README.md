@@ -143,6 +143,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_med3_num_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_fma_f32`, `v_fma_dx9_zero_f32` | Scalar, AVX2/FMA, AVX-512 | Not implemented |
 | `v_add_f64`, `v_mul_f64`, `v_fma_f64` | Scalar, x86-64-v3 | Not implemented |
+| `v_trunc_f64`, `v_ceil_f64`, `v_rndne_f64`, `v_floor_f64`, `v_fract_f64` | Scalar, x86-64-v3 | Not implemented |
+| `v_sqrt_f64`, `v_rcp_f64`, `v_rsq_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
@@ -259,6 +261,15 @@ including reversed halves, aliases spanning different operands, and identical
 output buffers; the latter receive the high-word write last. Literal cases
 cover fused rounding, subnormals, overflow, signed zero, NaNs and CLAMP.
 These loose paths require host nearest-even rounding with denormals enabled.
+
+FP64 TRUNC, CEIL, RNDNE, FLOOR, FRACT, SQRT, RCP and RSQ share that layout and
+four-lane SIMD implementation, with all 32 A ABS/NEG/OMOD/CLAMP combinations.
+RNDNE uses ties-to-even rounding and preserves signed zero; FRACT caps its
+fractional result at `0x3fefffffffffffff` before output modifiers. Tests cross
+all modifiers, CPU levels, 85 masks and six destination layouts with signed
+zeros, subnormals, infinities and NaNs, using higher-precision references and
+literal rounding/boundary cases. Unary paths also stage both output halves
+before writes, including reversed or identical destination buffers.
 
 FP32 ADD, SUB, SUBREV and MUL support A/B ABS/NEG, output scaling and CLAMP
 on scalar and v3 paths. Tests cross all 128 modifier combinations with all CPU
