@@ -4,14 +4,15 @@
 #include <cmath>
 namespace {
 // Physical packing follows rocjitsu shared/mma_exec.h: each lane supplies
-// eight consecutive K elements. Output lanes select columns and 8-row groups.
-template <bool Bf16>
+// eight (wave32) or four (wave64) consecutive K elements. Output lanes select
+// columns and row groups.
+template <bool Bf16, int WaveSize = 32>
 int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *const *d,
          uint32_t *const *a, uint32_t *const *b, uint32_t *const *c) {
   if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(63), true))
     return error;
 #if defined(GOC_HAVE_AVX512BF16)
-  if constexpr (Bf16) {
+  if constexpr (Bf16 && WaveSize == 32) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_ZEN4 &&
         (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT && instruction_flags == 0) {
       // DPBF16 flushes denormals independently of MXCSR. Retain the scalar
@@ -50,16 +51,19 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
     }
   }
 #endif
-  uint32_t result[8][32];
+  constexpr int OutputRegs = 256 / WaveSize;
+  constexpr int KPerLane = 256 / WaveSize;
+  uint32_t result[OutputRegs][WaveSize];
   const auto read_bits = [instruction_flags](uint32_t *const *v, int index, int k, int operand) {
-    uint16_t value = uint16_t(v[(k % 8) / 2][index + 16 * (k / 8)] >> (16 * (k % 2)));
+    uint16_t value = uint16_t(v[(k % KPerLane) / 2][index + 16 * (k / KPerLane)] >> (16 * (k % 2)));
     if ((instruction_flags >> (operand + 3 * (k % 2))) & 1)
       value ^= 0x8000;
     return value;
   };
   for (int row = 0; row < 16; ++row)
     for (int col = 0; col < 16; ++col) {
-      int lane = col + 16 * (row / 8), reg = row % 8;
+      int lane = col + 16 * (row / 8) + (WaveSize == 64 ? 32 * ((row / 4) % 2) : 0);
+      int reg = row % OutputRegs;
       if (!((mask >> lane) & 1))
         continue;
       uint32_t c_bits = c[reg][lane];
@@ -72,9 +76,12 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
         for (int k = 0; k < 16; k += 4) {
           std::array<uint16_t, 4> left, right;
           for (int j = 0; j < 4; ++j) {
-            // GFX12 wave32 processes physical K chunks in order 0,8,4,12.
+            // GFX12 wave32 processes physical K chunks in order 0,8,4,12;
+            // wave64 processes them in order 0,4,8,12.
             int logical = k + j;
-            int physical = (logical & 3) | ((logical & 4) << 1) | ((logical & 8) >> 1);
+            int physical = WaveSize == 32
+                               ? (logical & 3) | ((logical & 4) << 1) | ((logical & 8) >> 1)
+                               : logical;
             left[j] = read_bits(a, row, physical, 0);
             right[j] = read_bits(b, col, physical, 1);
           }
@@ -94,8 +101,8 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
     }
   // Delayed stores are necessary even with exact whole-VGPR aliasing: a
   // destination may overwrite sources consumed by a different output lane.
-  for (int reg = 0; reg < 8; ++reg)
-    for (int lane = 0; lane < 32; ++lane)
+  for (int reg = 0; reg < OutputRegs; ++reg)
+    for (int lane = 0; lane < WaveSize; ++lane)
       if ((mask >> lane) & 1)
         d[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
@@ -110,4 +117,15 @@ int goc_rdna4_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t mask, uint32_t i
                                        uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
                                        uint32_t *const *c) {
   return wmma<true>(flags, mask, instruction_flags, d, a, b, c);
+}
+
+int goc_rdna4w64_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t mask, uint32_t instruction_flags,
+                                         uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,
+                                         uint32_t *const *c) {
+  return wmma<false, 64>(flags, mask, instruction_flags, d, a, b, c);
+}
+int goc_rdna4w64_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t mask, uint32_t instruction_flags,
+                                          uint32_t *const *d, uint32_t *const *a,
+                                          uint32_t *const *b, uint32_t *const *c) {
+  return wmma<true, 64>(flags, mask, instruction_flags, d, a, b, c);
 }

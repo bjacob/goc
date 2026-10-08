@@ -62,6 +62,16 @@ int goc_rdna4_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t exec_mask,
 int goc_rdna4_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t exec_mask,
                                        uint32_t instruction_flags, uint32_t *const *d,
                                        uint32_t *const *a, uint32_t *const *b, uint32_t *const *c);
+// Wave64 variants: 64 words per VGPR; 2 VGPRs for A/B, 4 for C/D.
+// Both semantics and all WMMA modifiers are supported through scalar paths.
+int goc_rdna4w64_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         uint32_t *const *a, uint32_t *const *b,
+                                         uint32_t *const *c);
+int goc_rdna4w64_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t exec_mask,
+                                          uint32_t instruction_flags, uint32_t *const *d,
+                                          uint32_t *const *a, uint32_t *const *b,
+                                          uint32_t *const *c);
 #ifdef __cplusplus
 }
 #endif

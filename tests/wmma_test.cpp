@@ -295,3 +295,103 @@ TEST(Rdna4Dot, LooseAndFallbackIntegerGolden) {
         EXPECT_EQ(r.v[2][lane], 0x41200000u);
     }
 }
+
+TEST(WmmaWave64, CapturedGoldensMasksAndOverlap) {
+  for (bool bf16 : {false, true})
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT}) {
+      auto fn = bf16 ? goc_rdna4w64_v_wmma_f32_16x16x16_bf16 : goc_rdna4w64_v_wmma_f32_16x16x16_f16;
+      const auto &cases = bf16 ? kGfx12WmmaBF16Cases : kGfx12WmmaF16Cases;
+      for (const auto &f : cases)
+        for (int dst : {0, 1, 2, 4, 8})
+          for (uint64_t mask : {UINT64_C(0), UINT64_C(0xaaaaaaaa55555555), UINT64_MAX}) {
+            uint32_t data[12][64] = {};
+            uint32_t *v[12];
+            for (int i = 0; i < 12; ++i)
+              v[i] = data[11 - i];
+            for (int reg = 0; reg < 2; ++reg)
+              for (int lane = 0; lane < 64; ++lane) {
+                int k = 4 * (lane / 16) + 2 * reg;
+                v[reg][lane] = f.a[k] | (uint32_t(f.a[k + 1]) << 16);
+                v[2 + reg][lane] = f.b[k] | (uint32_t(f.b[k + 1]) << 16);
+              }
+            for (int reg = 4; reg < 8; ++reg)
+              std::fill(v[reg], v[reg] + 64, f.c);
+            uint32_t old[4][64];
+            for (int reg = 0; reg < 4; ++reg)
+              std::copy(v[dst + reg], v[dst + reg] + 64, old[reg]);
+            ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, mask, 0, v + dst, v, v + 2, v + 4), 0);
+            for (int reg = 0; reg < 4; ++reg)
+              for (int lane = 0; lane < 64; ++lane) {
+                if (!((mask >> lane) & 1))
+                  EXPECT_EQ(v[dst + reg][lane], old[reg][lane]);
+                else if (semantics == GOC_SEMANTICS_EXACT)
+                  EXPECT_EQ(v[dst + reg][lane], f.expected64);
+                else
+                  EXPECT_TRUE(
+                      fuzzy(goc::as_float(v[dst + reg][lane]), goc::as_float(f.expected64)));
+              }
+          }
+    }
+}
+TEST(WmmaWave64, DenseLaneMapping) {
+  for (bool bf16 : {false, true})
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT}) {
+      uint32_t data[12][64] = {};
+      uint32_t *v[12];
+      for (int i = 0; i < 12; ++i)
+        v[i] = data[i];
+      std::minstd_rand rng(7);
+      const uint16_t f16[] = {0xc000, 0xbc00, 0, 0x3c00, 0x4000};
+      const uint16_t b16[] = {0xc000, 0xbf80, 0, 0x3f80, 0x4000};
+      auto values = bf16 ? b16 : f16;
+      for (int row = 0; row < 16; ++row)
+        for (int k = 0; k < 16; ++k)
+          v[k % 4 / 2][row + 16 * (k / 4)] |= uint32_t(values[rng() % 5]) << (16 * (k % 2));
+      for (int k = 0; k < 16; ++k)
+        for (int col = 0; col < 16; ++col)
+          v[2 + k % 4 / 2][col + 16 * (k / 4)] |= uint32_t(values[rng() % 5]) << (16 * (k % 2));
+      for (int row = 0; row < 16; ++row)
+        for (int col = 0; col < 16; ++col)
+          v[4 + row % 4][col + 16 * (row / 8) + 32 * ((row / 4) % 2)] =
+              goc::as_bits(float(int(rng() % 5) - 2));
+      auto fn = bf16 ? goc_rdna4w64_v_wmma_f32_16x16x16_bf16 : goc_rdna4w64_v_wmma_f32_16x16x16_f16;
+      ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, v + 8, v, v + 2, v + 4), 0);
+      for (int row = 0; row < 16; ++row)
+        for (int col = 0; col < 16; ++col)
+          EXPECT_EQ(v[8 + row % 4][col + 16 * (row / 8) + 32 * ((row / 4) % 2)],
+                    goc::as_bits(float(kDenseGolden[row * 16 + col])));
+    }
+}
+
+TEST(WmmaWave64, ModifiersAndErrorsPreserveState) {
+  for (bool bf16 : {false, true})
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT})
+      for (uint32_t modifiers = 0; modifiers < 64; ++modifiers) {
+        uint32_t data[8][64];
+        uint32_t *v[8];
+        for (int i = 0; i < 8; ++i)
+          v[i] = data[i];
+        uint32_t one = bf16 ? 0x3f80u : 0x3c00u;
+        for (int reg = 0; reg < 4; ++reg)
+          std::fill(v[reg], v[reg] + 64, one | (one << 16));
+        for (int reg = 4; reg < 8; ++reg)
+          std::fill(v[reg], v[reg] + 64, 0xc0400000u);
+        auto fn =
+            bf16 ? goc_rdna4w64_v_wmma_f32_16x16x16_bf16 : goc_rdna4w64_v_wmma_f32_16x16x16_f16;
+        ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, UINT64_MAX, 64, v + 4, v, v + 2, v + 4),
+                  GOC_ERROR_INVALID_FLAGS);
+        for (int reg = 4; reg < 8; ++reg)
+          for (int lane = 0; lane < 64; ++lane)
+            ASSERT_EQ(v[reg][lane], 0xc0400000u);
+        int low = ((modifiers & 1) != 0) ^ ((modifiers & 2) != 0) ? -8 : 8;
+        int high = ((modifiers & 8) != 0) ^ ((modifiers & 16) != 0) ? -8 : 8;
+        int c = (modifiers & GOC_WMMA_ABS_C) ? 3 : -3;
+        if (modifiers & GOC_WMMA_NEG_C)
+          c = -c;
+        ASSERT_EQ(
+            fn(semantics | GOC_SEMANTICS_STRICT, UINT64_MAX, modifiers, v + 4, v, v + 2, v + 4), 0);
+        for (int reg = 4; reg < 8; ++reg)
+          for (int lane = 0; lane < 64; ++lane)
+            EXPECT_EQ(v[reg][lane], goc::as_bits(float(low + high + c)));
+      }
+}

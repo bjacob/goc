@@ -19,7 +19,9 @@ Clang are supported; other compilers use the portable paths.
 
 ## Implemented instructions
 
-All entry points below use RDNA4 wave32. Names have the `goc_rdna4_` prefix.
+The entry points below use RDNA4 wave32. Names have the `goc_rdna4_` prefix.
+The two WMMA forms additionally have scalar wave64 variants named
+`goc_rdna4w64_...`, supporting loose and empirical exact modes.
 
 | Mnemonic | Loose semantics | Empirical exact semantics |
 | --- | --- | --- |
@@ -43,10 +45,11 @@ are enumerations, not independent bits. A caller may select a lower CPU level
 but must never claim unavailable capabilities. Dispatch also respects which
 implementations were compiled.
 
-Each VGPR pointer addresses 32 contiguous `uint32_t` lane words. A multi-VGPR
+Each VGPR pointer addresses 32 contiguous `uint32_t` lane words (64 for
+`rdna4w64`). A multi-VGPR
 operand is an array of these pointers; the backing arrays need not be adjacent
 or SIMD-aligned. A/B use four VGPRs and C/D use eight for the implemented WMMA
-forms. Input and output operands may share whole VGPRs. Distinct backing
+wave32 forms; wave64 uses two A/B VGPRs and four C/D VGPRs. Input and output operands may share whole VGPRs. Distinct backing
 addresses must not overlap, and every pointer must refer to sufficient storage.
 
 GoC applies `exec_mask` to destination writes, including WMMA, as specified by
@@ -81,4 +84,4 @@ CPU detection follows the CPUID/XCR0 gating approach in
 feature bundles. Formatting and the MIT license are borrowed from rocjitsu.
 
 Still pending: other GPU architectures, additional instructions/formats,
-wave64 matrix variants, GPU FP-mode flags, and wider performance tuning.
+GPU FP-mode flags, and wider performance tuning.
