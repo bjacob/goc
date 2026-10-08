@@ -138,6 +138,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | --- | --- | --- |
 | `v_add_f32`, `v_sub_f32`, `v_subrev_f32`, `v_mul_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_min_num_f32`, `v_max_num_f32`, `v_minimum_f32`, `v_maximum_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_min3_num_f32`, `v_max3_num_f32`, `v_minmax_num_f32`, `v_maxmin_num_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_minimum3_f32`, `v_maximum3_f32`, `v_minimummaximum_f32`, `v_maximumminimum_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_fma_f32` | Scalar, AVX2/FMA, AVX-512 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
@@ -255,6 +257,15 @@ over either kind of NaN; propagating variants prefer signaling NaNs and quiet
 them. Both families order negative zero below positive zero. Literal tests
 check NaN selection and quieting, signed zeros, infinities and subnormals.
 The SIMD path handles these rules explicitly and supports all 128 modifiers.
+
+All eight three-input FP32 min/max variants use the same scalar/v3 selection
+rules. They select between A/B first, then between that result and C, applying
+output scaling and CLAMP only at the end. All 512 A/B/C modifier combinations
+remain on the SIMD path. Tests cross those combinations with 85 masks, every
+CPU level and each destination/source alias, and include literal evaluation-order,
+NaN-priority and signed-zero cases plus 4,096 random input triples. Benchmark
+labels use `min3`/`max3` for repeated selections, `mnmx`/`mxmn` for mixed
+selections, and an `n` suffix for number-preferring variants.
 
 FMA supports all three source ABS/NEG pairs, OMOD scaling and CLAMP on scalar,
 x86-64-v3 and x86-64-v4 paths. Tests cross all 512 modifier combinations with

@@ -4,33 +4,11 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_alu.h"
+#include "rdna4_minmax.h"
 
 #include <stdint.h>
 
 namespace {
-
-// IEEE selection orders -0 below +0. Number variants ignore even signaling NaNs
-// when the other operand is numeric; propagating variants prefer signaling NaNs.
-template <bool Maximum, bool Propagate> float minmax(float x, float y) {
-  uint32_t a = goc::as_bits(x), b = goc::as_bits(y);
-  bool an = (a & 0x7fffffff) > 0x7f800000, bn = (b & 0x7fffffff) > 0x7f800000;
-  if constexpr (Propagate) {
-    if (an && !(a & 0x00400000))
-      return goc::as_float(a | 0x00400000);
-    if (bn && !(b & 0x00400000))
-      return goc::as_float(b | 0x00400000);
-    if (an || bn)
-      return goc::as_float((an ? a : b) | 0x00400000);
-  } else {
-    if (an)
-      return bn ? goc::as_float(a | 0x00400000) : y;
-    if (bn)
-      return x;
-  }
-  if (x == y)
-    return goc::as_float(Maximum ? (a & b) : (a | b));
-  return (Maximum ? x > y : x < y) ? x : y;
-}
 
 template <goc::Binary Op>
 int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
@@ -60,13 +38,13 @@ int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
     if constexpr (Op == goc::Binary::Mul)
       value = x * y;
     if constexpr (Op == goc::Binary::MinNum)
-      value = minmax<false, false>(x, y);
+      value = goc::minmax<false, false>(x, y);
     if constexpr (Op == goc::Binary::MaxNum)
-      value = minmax<true, false>(x, y);
+      value = goc::minmax<true, false>(x, y);
     if constexpr (Op == goc::Binary::Minimum)
-      value = minmax<false, true>(x, y);
+      value = goc::minmax<false, true>(x, y);
     if constexpr (Op == goc::Binary::Maximum)
-      value = minmax<true, true>(x, y);
+      value = goc::minmax<true, true>(x, y);
     result[lane] = goc::as_bits(goc::alu_output(value, mode));
   }
   for (int lane = 0; lane < 32; ++lane)

@@ -31,6 +31,15 @@ struct Case {
 };
 
 const Case cases[] = {
+    {goc_rdna4_v_min3_num_f32, false, false, 0x1ff},
+    {goc_rdna4_v_max3_num_f32, false, false, 0x1ff},
+    {goc_rdna4_v_minmax_num_f32, false, false, 0x1ff},
+    {goc_rdna4_v_maxmin_num_f32, false, false, 0x1ff},
+    {goc_rdna4_v_minimum3_f32, false, false, 0x1ff},
+    {goc_rdna4_v_maximum3_f32, false, false, 0x1ff},
+    {goc_rdna4_v_minimummaximum_f32, false, false, 0x1ff},
+    {goc_rdna4_v_maximumminimum_f32, false, false, 0x1ff},
+
     {binary<goc_rdna4_v_min_num_f32>, false, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
     {binary<goc_rdna4_v_max_num_f32>, false, false,
