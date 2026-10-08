@@ -148,6 +148,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_sqrt_f64`, `v_rcp_f64`, `v_rsq_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_frexp_mant_f32`, `v_frexp_mant_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_frexp_exp_i32_f32`, `v_frexp_exp_i32_f64` | Scalar, x86-64-v3 | Not implemented |
+| `v_ldexp_f32`, `v_ldexp_f64` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
@@ -339,6 +340,15 @@ infinity and NaN inputs return zero. Both scalar and v3 paths handle subnormals;
 ABS/NEG, OMOD and CLAMP are accepted without changing the integer result.
 Tests cover all 32 modifier combinations, every exponent field and subnormal
 leading-bit position, special values, masks, and aliases with either FP64 half.
+
+FP32/FP64 `LDEXP` scales A by an integer power of two held in one B VGPR.
+A and D use one VGPR for FP32 or low/high pairs for FP64. Both widths have
+scalar, v3 and v4 implementations, supporting all 32 A ABS/NEG, OMOD and CLAMP
+combinations without falling back to scalar. B is an integer and has no
+floating-point modifiers. The v3 path adjusts exponents and rounds underflowing
+results once; v4 uses native vector scaling. Tests cover every exponent field,
+subnormal rounding ties, extreme signed exponents, special values, masks and
+aliases, including FP64 destination halves that overwrite A or B.
 
 Unary FP32 instructions support `GOC_ALU_ABS_A`, `GOC_ALU_NEG_A`, output
 scaling (`GOC_ALU_OMOD_2`, `GOC_ALU_OMOD_4`, `GOC_ALU_OMOD_HALF`), and

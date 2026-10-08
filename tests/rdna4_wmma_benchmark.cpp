@@ -8,6 +8,7 @@
 #include <array>
 #include <charconv>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -338,6 +339,67 @@ bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t modifiers,
   if (cpu >= GOC_CPU_X86_64_V4 && !run("x86-64-v4", GOC_CPU_X86_64_V4))
     return false;
 #endif
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_ldexp(uint64_t cpu, int iterations, int min_ms) {
+  using Binary = decltype(&goc_rdna4_v_ldexp_f32);
+  const Binary functions[] = {goc_rdna4_v_ldexp_f32, goc_rdna4_v_ldexp_f64};
+  const double inputs[] = {0.75, -0.5, 1.5, -2};
+  const int powers[] = {-2, -1, 1, 2};
+  const double golden[] = {0.1875, -0.25, 3, -8};
+  for (int fp64 = 0; fp64 < 2; ++fp64)
+    for (uint32_t mode : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+      Registers r;
+      r.output_regs = fp64 ? 2 : 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        double input = inputs[lane % 4], want = golden[lane % 4];
+        if (mode)
+          want = std::min(1.0, std::abs(want) * 0.5);
+        uint64_t input_bits, output_bits;
+        std::memcpy(&input_bits, &input, sizeof(input));
+        std::memcpy(&output_bits, &want, sizeof(want));
+        if (!fp64) {
+          input_bits = bits(float(input));
+          output_bits = bits(float(want));
+        }
+        r.data[0][lane] = uint32_t(input_bits);
+        r.data[1][lane] = uint32_t(input_bits >> 32);
+        r.data[4][lane] = uint32_t(powers[lane % 4]);
+        int index = 128 * (lane / 16) + lane % 16;
+        r.expected[index] = uint32_t(output_bits);
+        if (fp64)
+          r.expected[index + 16] = uint32_t(output_bits >> 32);
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *) {
+        return functions[fp64](flags, mask, modifiers, d, a, b);
+      };
+      const char *name = fp64 ? "f64/ldexp" : "f32/ldexp";
+      const char *label = mode ? "ABS_A / half/clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(name, "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "loose", label, "x86-64-v4", simd, scalar / simd);
+      }
+#endif
+    }
   (void)cpu;
   return true;
 }
@@ -897,7 +959,7 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "FP64 benchmark failed.\n");
     return 1;
   }
-  if (!benchmark_binary(cpu, iterations, min_ms)) {
+  if (!benchmark_binary(cpu, iterations, min_ms) || !benchmark_ldexp(cpu, iterations, min_ms)) {
     std::fprintf(stderr,
                  "Binary arithmetic benchmark failed: API/result error or iteration overflow.\n");
     return 1;

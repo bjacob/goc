@@ -21,6 +21,7 @@ foreach(target IN LISTS goc_library_targets)
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_binary_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_fp64_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_frexp_exp_x86_64_v3.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_ldexp_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_minmax_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_dot2_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_half_dot_x86_64_v3.cpp
@@ -39,6 +40,8 @@ foreach(target IN LISTS goc_library_targets)
   if(GOC_COMPILER_X86_64_V4)
     target_sources(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_fma_x86_64_v4.cpp)
     set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/rdna4_fma_x86_64_v4.cpp TARGET_DIRECTORY ${target} PROPERTIES COMPILE_OPTIONS "${goc_x86_64_v4_flags}")
+    target_sources(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_ldexp_x86_64_v4.cpp)
+    set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/rdna4_ldexp_x86_64_v4.cpp TARGET_DIRECTORY ${target} PROPERTIES COMPILE_OPTIONS "${goc_x86_64_v4_flags}")
     target_compile_definitions(${target} PRIVATE GOC_HAVE_X86_64_V4=1)
   endif()
 

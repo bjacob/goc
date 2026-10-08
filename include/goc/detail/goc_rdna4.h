@@ -234,6 +234,18 @@ GOC_API int goc_rdna4_v_frexp_exp_i32_f64(uint64_t flags, uint64_t exec_mask,
                                           uint32_t instruction_flags, uint32_t *const *d,
                                           const uint32_t *const *a);
 
+// Scale A by 2^B, with a signed 32-bit integer exponent in one B VGPR.
+// FP32 A/D each use one VGPR; FP64 A/D use low/high pairs. Supports A ABS/NEG,
+// OMOD and CLAMP with loose semantics and gradual underflow. Integer B has no
+// sign modifiers. D may alias any whole source VGPR; FP64 writes low then high.
+GOC_API int goc_rdna4_v_ldexp_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_ldexp_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b);
+
 // True16 source/destination half selectors. Zero selects the low half.
 // DOT2 consumes both A/B halves, so only C and D have selectors.
 static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);
