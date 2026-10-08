@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_dense_golden.h"
+#include "rdna4_half_reference.h"
 #include "rdna4_subbyte_golden.h"
 
 #include <algorithm>
@@ -412,6 +413,57 @@ template <auto Function>
 int integer_binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
                    const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
   return Function(flags, mask, mode, d, a, b);
+}
+
+bool benchmark_half_binary(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {
+      integer_binary<goc_rdna4_v_add_f16>,     integer_binary<goc_rdna4_v_sub_f16>,
+      integer_binary<goc_rdna4_v_subrev_f16>,  integer_binary<goc_rdna4_v_mul_f16>,
+      integer_binary<goc_rdna4_v_min_num_f16>, integer_binary<goc_rdna4_v_max_num_f16>,
+      integer_binary<goc_rdna4_v_minimum_f16>, integer_binary<goc_rdna4_v_maximum_f16>};
+  const char *names[] = {"f16/add",    "f16/sub",    "f16/subrev", "f16/mul",
+                         "f16/minnum", "f16/maxnum", "f16/minim",  "f16/maxim"};
+  const uint32_t modified = GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D | GOC_ALU_ABS_A |
+                            GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
+  for (int op = 0; op < 8; ++op)
+    for (uint32_t mode : {UINT32_C(0), modified}) {
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        double a = (lane % 11 - 5) * 0.25, b = (lane % 7 - 3) * 0.25;
+        r.data[0][lane] = goc_test::half_bits(a) | (uint32_t(goc_test::half_bits(-a)) << 16);
+        r.data[4][lane] = goc_test::half_bits(b) | (uint32_t(goc_test::half_bits(-b)) << 16);
+        r.data[16][lane] = 0xfacecafe;
+        if (mode) {
+          a = std::abs(-a);
+          // HIGH_B selects -b; NEG_B restores b.
+        }
+        double want = goc_test::half_binary(op, a, b);
+        if (mode)
+          want = std::clamp(want * 0.5, 0.0, 1.0);
+        // CLAMP produces positive zero.
+        if (mode && want == 0)
+          want = 0.0;
+        uint32_t half = goc_test::half_bits(want);
+        r.expected[128 * (lane / 16) + lane % 16] =
+            mode ? (half << 16) | 0xcafe : 0xface0000 | half;
+      }
+      const char *label = mode ? "ABS/NEG/hi/half/cl" : "none";
+      double scalar = measure(functions[op], GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(functions[op], GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
 }
 
 bool benchmark_integer_add(uint64_t cpu, int iterations, int min_ms) {
@@ -1165,6 +1217,10 @@ int main(int argc, char **argv) {
   if (!benchmark_binary(cpu, iterations, min_ms) || !benchmark_ldexp(cpu, iterations, min_ms)) {
     std::fprintf(stderr,
                  "Binary arithmetic benchmark failed: API/result error or iteration overflow.\n");
+    return 1;
+  }
+  if (!benchmark_half_binary(cpu, iterations, min_ms)) {
+    std::fprintf(stderr, "FP16 binary benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }
   if (!benchmark_half_dot(cpu, iterations, min_ms)) {

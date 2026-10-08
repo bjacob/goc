@@ -31,6 +31,31 @@ struct Case {
 };
 
 const Case cases[] = {
+    {binary<goc_rdna4_v_add_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
+    {binary<goc_rdna4_v_sub_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
+    {binary<goc_rdna4_v_subrev_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
+    {binary<goc_rdna4_v_mul_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
+    {binary<goc_rdna4_v_min_num_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
+    {binary<goc_rdna4_v_max_num_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
+    {binary<goc_rdna4_v_minimum_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
+    {binary<goc_rdna4_v_maximum_f16>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+         GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
+
     {binary<goc_rdna4_v_add_nc_u32>, false, false, GOC_ALU_CLAMP},
     {binary<goc_rdna4_v_sub_nc_u32>, false, false, GOC_ALU_CLAMP},
     {binary<goc_rdna4_v_subrev_nc_u32>, false, false, GOC_ALU_CLAMP},

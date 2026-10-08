@@ -136,6 +136,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 
 | Mnemonic | Loose semantics | Empirical exact semantics |
 | --- | --- | --- |
+| `v_add_f16`, `v_sub_f16`, `v_subrev_f16`, `v_mul_f16` | Scalar, x86-64-v3 | Not implemented |
+| `v_min_num_f16`, `v_max_num_f16`, `v_minimum_f16`, `v_maximum_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_add_f32`, `v_sub_f32`, `v_subrev_f32`, `v_mul_f32`, `v_mul_dx9_zero_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_min_num_f32`, `v_max_num_f32`, `v_minimum_f32`, `v_maximum_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_min3_num_f32`, `v_max3_num_f32`, `v_minmax_num_f32`, `v_maxmin_num_f32` | Scalar, x86-64-v3 | Not implemented |
@@ -373,6 +375,18 @@ Saturation stays on SIMD by checking the high product word against the low
 word's sign extension, or against zero for unsigned products. Tests include
 literal high-word results, saturation thresholds, upper-byte noise, random
 products, masks, aliases and host FP-environment preservation.
+
+Binary FP16 arithmetic and min/max use one selected half of each VGPR. The
+`GOC_ALU_HIGH_A`, `GOC_ALU_HIGH_B` and `GOC_ALU_HIGH_D` flags select high halves;
+low halves are the default. The other destination half remains unchanged,
+including when the destination aliases a source. All 1,024 combinations of
+source ABS/NEG, output scaling/clamp, and half selectors stay on the eight-lane
+x86-64-v3 path. Scalar and SIMD paths widen to FP32, perform the operation and
+output modifiers, then narrow to FP16 with nearest-even rounding. `GOC_FP16_OVFL`
+saturates finite overflow to the largest finite half. These are loose semantics;
+host rounding must be nearest-even with denormals enabled. Tests cover every
+half encoding, random pairs, all modifier combinations, all mask patterns,
+source/destination aliases, signed zeros, NaN rules, rounding ties and overflow.
 
 Non-carry integer add/subtract covers unsigned addition, subtraction and reverse
 subtraction, signed addition/subtraction, and unsigned three-input addition.

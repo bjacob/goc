@@ -369,9 +369,48 @@ GOC_API int goc_rdna4_v_add3_u32(uint64_t flags, uint64_t exec_mask, uint32_t in
                                  const uint32_t *const *b, const uint32_t *const *c);
 
 // True16 source/destination half selectors. Zero selects the low half.
-// DOT2 consumes both A/B halves, so only C and D have selectors.
+// DOT2 consumes both A/B halves and accepts only the C and D selectors.
+static const uint32_t GOC_ALU_HIGH_A = (UINT32_C(1) << 9);
+static const uint32_t GOC_ALU_HIGH_B = (UINT32_C(1) << 10);
 static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);
 static const uint32_t GOC_ALU_HIGH_D = (UINT32_C(1) << 12);
+
+// Binary FP16 arithmetic: one VGPR per operand, with independently selected
+// source and destination halves. Preserves the other destination half and all
+// inactive lanes; D may alias a whole source VGPR. Supports source ABS/NEG,
+// OMOD then CLAMP before nearest-even FP16 narrowing, and GOC_FP16_OVFL.
+// Loose semantics require host nearest-even arithmetic with denormals enabled.
+GOC_API int goc_rdna4_v_add_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_sub_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_subrev_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_mul_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_min_num_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_max_num_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_minimum_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_maximum_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
 
 // True16 DOT2: A/B each hold two packed factors; C supplies one selected half.
 // D replaces only its selected half, preserving the other half. Supports all
