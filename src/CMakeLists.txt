@@ -11,7 +11,7 @@ if(GOC_SHARED)
 endif()
 
 foreach(target IN LISTS goc_library_targets)
-  target_sources(${target} PRIVATE cpu.cpp cpu_decode.cpp rdna4_arithmetic.cpp rdna4_unary.cpp rdna4_half_unary.cpp rdna4_half_exponent.cpp rdna4_wmma.cpp rdna4_subbyte_wmma.cpp rdna4_dot.cpp rdna4_integer_dot.cpp rdna4_fp8_dot.cpp rdna4_half_dot.cpp rdna4_binary.cpp rdna4_half_binary.cpp rdna4_minmax.cpp rdna4_half_minmax.cpp rdna4_fp64.cpp rdna4_frexp_exp.cpp rdna4_ldexp.cpp rdna4_integer_minmax.cpp rdna4_integer_mul.cpp rdna4_integer_add.cpp)
+  target_sources(${target} PRIVATE cpu.cpp cpu_decode.cpp rdna4_arithmetic.cpp rdna4_half_fma.cpp rdna4_unary.cpp rdna4_half_unary.cpp rdna4_half_exponent.cpp rdna4_wmma.cpp rdna4_subbyte_wmma.cpp rdna4_dot.cpp rdna4_integer_dot.cpp rdna4_fp8_dot.cpp rdna4_half_dot.cpp rdna4_binary.cpp rdna4_half_binary.cpp rdna4_minmax.cpp rdna4_half_minmax.cpp rdna4_fp64.cpp rdna4_frexp_exp.cpp rdna4_ldexp.cpp rdna4_integer_minmax.cpp rdna4_integer_mul.cpp rdna4_integer_add.cpp)
   set_target_properties(${target} PROPERTIES
     OUTPUT_NAME goc
     POSITION_INDEPENDENT_CODE ON

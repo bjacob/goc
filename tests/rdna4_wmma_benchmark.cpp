@@ -918,6 +918,52 @@ bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_half_fma(uint64_t cpu, int iterations, int min_ms) {
+  for (uint32_t mode : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C |
+                                         GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
+                                         GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D}) {
+    Registers r;
+    r.output_regs = 1;
+    for (int lane = 0; lane < 32; ++lane) {
+      int a = lane - 16, b = lane % 7 - 3, c = lane % 11 - 5;
+      uint32_t ha = goc_test::half_bits(a), hb = goc_test::half_bits(b),
+               hc = goc_test::half_bits(c);
+      r.data[0][lane] = mode ? (ha << 16) | 0xbeef : 0xdead0000 | ha;
+      r.data[4][lane] = mode ? (hb << 16) | 0x7c01 : 0xfc010000 | hb;
+      r.data[8][lane] = mode ? (hc << 16) | 0x7c00 : 0xfc000000 | hc;
+      r.data[16][lane] = 0xfacecafe;
+      float want = mode ? float(std::abs(a) * -b - c) : float(a * b + c);
+      if (mode)
+        want = std::min(1.0f, std::max(0.0f, want * 0.5f));
+      uint32_t result = goc_test::half_bits(want);
+      r.expected[128 * (lane / 16) + lane % 16] =
+          mode ? (result << 16) | 0xcafe : 0xface0000 | result;
+    }
+    auto fn = goc_rdna4_v_fma_f16;
+    const char *label = mode ? "ABS/NEG/hi/half/cl" : "none";
+    double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+    if (scalar < 0)
+      return false;
+    print_result("f16/fma", "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+    if (cpu >= GOC_CPU_X86_64_V3) {
+      double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+      if (simd < 0)
+        return false;
+      print_result("f16/fma", "loose", label, "x86-64-v3", simd, scalar / simd);
+    }
+#endif
+    double exact =
+        measure(fn, GOC_CPU_BASELINE | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, r,
+                iterations, min_ms, mode);
+    if (exact < 0)
+      return false;
+    print_result("f16/fma", "exact", label, "scalar", exact, 1);
+  }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_half_minmax3(uint64_t cpu, int iterations, int min_ms) {
   using Ternary = decltype(&goc_rdna4_v_min3_num_f16);
   const Ternary functions[] = {
@@ -1377,9 +1423,10 @@ int main(int argc, char **argv) {
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
   std::puts("DOT2 output widths: f16,b16 = 16-bit; fp16,bf16 = FP32.");
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
-  if (!benchmark_half_minmax3(cpu, iterations, min_ms) ||
+  if (!benchmark_half_fma(cpu, iterations, min_ms) ||
+      !benchmark_half_minmax3(cpu, iterations, min_ms) ||
       !benchmark_minmax3(cpu, iterations, min_ms)) {
-    std::fprintf(stderr, "Three-input min/max benchmark failed.\n");
+    std::fprintf(stderr, "FP16 FMA or three-input min/max benchmark failed.\n");
     return 1;
   }
   if (!benchmark_fp64(cpu, iterations, min_ms) || !benchmark_fp64_unary(cpu, iterations, min_ms)) {

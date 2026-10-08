@@ -127,6 +127,7 @@ else()
     goc_rdna4_v_add_f64
     goc_rdna4_v_mul_f64
     goc_rdna4_v_fma_f64
+    goc_rdna4_v_fma_f16
     goc_rdna4_v_fma_f32
     goc_rdna4_v_fma_dx9_zero_f32
     goc_rdna4_v_trunc_f32

@@ -17,6 +17,18 @@ extern "C" {
 // conceptually read before writes. Inactive destination lanes and all destinations
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
+
+// FP16 fused multiply-add: selected halves of A/B/C/D, all ALU source/output
+// modifiers and GOC_FP16_OVFL. Preserves the other D half and inactive lanes.
+// Arithmetic rounds to FP16 before OMOD; active OMOD flushes tiny arithmetic
+// results to +0 and newly tiny scaled results to signed zero. CLAMP is last.
+// Exact empirical semantics follow rocjitsu's RNE/denormal-preserving model,
+// including NaN payload priority, and preserve the host floating-point environment.
+// Loose semantics require host nearest-even arithmetic with denormals enabled.
+GOC_API int goc_rdna4_v_fma_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
 // FMA supports all GOC_ALU source/output modifiers. Exact semantics requests
 // fall back to loose unless GOC_SEMANTICS_STRICT is set.
 GOC_API int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,

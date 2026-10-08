@@ -382,6 +382,24 @@ word's sign extension, or against zero for unsigned products. Tests include
 literal high-word results, saturation thresholds, upper-byte noise, random
 products, masks, aliases and host FP-environment preservation.
 
+FP16 `FMA` supports all 8,192 combinations of source ABS/NEG, OMOD, CLAMP
+and A/B/C/D half selectors, plus `GOC_FP16_OVFL`. Loose semantics have scalar
+and eight-lane x86-64-v3 paths. The SIMD path retains a product/sum residual
+to avoid double rounding when narrowing to FP16; modifiers stay on SIMD.
+Arithmetic rounds to FP16 before OMOD. Active OMOD flushes tiny arithmetic
+results to positive zero and newly tiny scaled results to signed zero, matching
+rocjitsu's captured RDNA4 behavior. Consequently, output scaling cannot recover
+an arithmetic overflow or a flushed tiny value. CLAMP applies last.
+
+An empirical exact scalar path borrows rocjitsu's FMA exceptional-value and
+rounding policies, including NaN payload priority and invalid-product ordering.
+It uses nearest-even arithmetic with preserved denormals and restores the host
+floating-point environment. Tests use an independent integer-significand oracle,
+all half encodings, random triples, all modifier combinations, mask/alias cases,
+rocjitsu hardware witnesses, double-rounding and tininess boundaries, and all
+four host rounding modes. Benchmarks compare full-EXEC scalar/SIMD loose paths
+and report exact scalar separately, with default and modified inputs.
+
 Three-input FP16 min/max and median share the FP32 selection rules. The mixed
 forms select A/B first and then C; median uses the minimumNumber result if any
 input is NaN and follows the ISA's first-maximum removal rule for signed-zero
@@ -474,8 +492,9 @@ instruction/general flag bits are rejected, except reserved semantics values
 which follow the same fallback policy. `GOC_FP16_OVFL` emulates GPU MODE.FP16_OVFL: finite FP16 overflow saturates
 to signed 65504 instead of infinity. Input infinities remain infinite, and
 BF16/FP32 instructions ignore this state. Packed results narrow after each
-four-product step. The packed path and empirical exact paths use integer
+four-product step. The packed WMMA and empirical exact WMMA paths use integer
 arithmetic, preserving the caller's host rounding mode and exception flags.
+Exact FP16 FMA instead saves and restores the host floating-point environment.
 Other loose paths require nearest-even rounding and denormals enabled.
 
 ## Validation and provenance
@@ -500,6 +519,12 @@ Another 128 modifier captures come from `float_dot/packed_operand_cases.h`.
 The intermediate-overflow tests are adapted from rocjitsu's
 `PackedWmma.HardwareOverflowModeAtIntermediateSteps`; they distinguish saturation
 at each four-product step from saturation applied only to the final result.
+
+FP16 FMA borrows `fma_f16` / `finish_fma_f16` from rocjitsu's
+`shared/fp_mode.h`, restricted to nearest-even with denormals preserved. Its
+NaN/OMOD literal witnesses come from `tests/valu_fp_mode_test.cpp`
+(`f16_fma_nan_cases` and `f16_fma_omod_cases`), which records gfx1201 captures.
+The integer test oracle and SIMD residual implementation are independent.
 
 FP8/BF8 conversions and integer WMMA borrow from rocjitsu's
 `util/data_types.h` and `shared/mma_exec.h`. FP8 uses OCP E4M3FN (finite through
