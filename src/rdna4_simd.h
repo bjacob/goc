@@ -7,6 +7,9 @@
 namespace goc {
 
 #if defined(GOC_HAVE_X86_64_V3)
+void fp8_dot_x86_64_v3(bool bf8_a, bool bf8_b, uint32_t mask, uint32_t modifiers, uint32_t *d,
+                       const uint32_t *a, const uint32_t *b, const uint32_t *c);
+
 void dot2_x86_64_v3(bool bf16, uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
                     const uint32_t *b, const uint32_t *c);
 

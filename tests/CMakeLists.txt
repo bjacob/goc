@@ -23,7 +23,7 @@ gtest_discover_tests(goc_cpu_decode_test TEST_PREFIX "internal.")
 
 foreach(library IN LISTS goc_library_targets)
   string(REPLACE "goc_" "" variant "${library}")
-  foreach(test IN ITEMS rdna4_dot2 rdna4_integer_dot rdna4_arithmetic rdna4_unary rdna4_exec_mask cpu rdna4_wmma rdna4_packed_wmma rdna4_subbyte_wmma)
+  foreach(test IN ITEMS rdna4_fp8_dot rdna4_dot2 rdna4_integer_dot rdna4_arithmetic rdna4_unary rdna4_exec_mask cpu rdna4_wmma rdna4_packed_wmma rdna4_subbyte_wmma)
     set(target "goc_${test}_test_${variant}")
     add_executable(${target} "${test}_test.cpp")
     if(test STREQUAL "rdna4_arithmetic")

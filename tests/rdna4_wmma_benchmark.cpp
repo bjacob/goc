@@ -357,6 +357,46 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_fp8_dot(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {goc_rdna4_v_dot4_f32_fp8_fp8, goc_rdna4_v_dot4_f32_fp8_bf8,
+                            goc_rdna4_v_dot4_f32_bf8_fp8, goc_rdna4_v_dot4_f32_bf8_bf8};
+  const char *names[] = {"dot4/f8f8", "dot4/f8b8", "dot4/b8f8", "dot4/b8b8"};
+  const int golden[] = {-6, 2, -3, 7};
+  for (int op = 0; op < 4; ++op)
+    for (uint32_t modifiers : {UINT32_C(0), GOC_DOT_NEG_C | GOC_DOT_ABS_C}) {
+      Registers r;
+      r.output_regs = 1;
+      // A rotates [1,-2,2,-1]; B is [2,1,-2,2].
+      uint32_t left = op >= 2 ? 0xbc40c03c : 0xb840c038;
+      uint32_t right = op & 1 ? 0x40c03c40 : 0x40c03840;
+      for (int lane = 0; lane < 32; ++lane) {
+        unsigned shift = (lane % 4) * 8;
+        r.data[0][lane] = shift ? (left >> shift) | (left << (32 - shift)) : left;
+        r.data[4][lane] = right;
+        int c = lane - 16;
+        r.data[8][lane] = bits(float(c));
+        if (modifiers)
+          c = -std::abs(c);
+        r.expected[128 * (lane / 16) + lane % 16] = bits(float(golden[lane % 4] + c));
+      }
+      const char *mode = modifiers ? "ABS_C/NEG_C" : "none";
+      double scalar = measure(functions[op], GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", mode, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(functions[op], GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_dot2(uint64_t cpu, int iterations, int min_ms) {
   for (bool bf16 : {false, true})
     for (uint32_t modifiers :
@@ -474,6 +514,10 @@ int main(int argc, char **argv) {
             "matching instruction-flags settings.");
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
+  if (!benchmark_fp8_dot(cpu, iterations, min_ms)) {
+    std::fprintf(stderr, "FP8 DOT4 benchmark failed: API/result error or iteration overflow.\n");
+    return 1;
+  }
   if (!benchmark_dot2(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "DOT2 benchmark failed: API/result error or iteration overflow.\n");
     return 1;

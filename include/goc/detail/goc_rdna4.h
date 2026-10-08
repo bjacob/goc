@@ -96,6 +96,32 @@ GOC_API int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint64_t exec_mask,
                                       const uint32_t *const *a, const uint32_t *const *b,
                                       const uint32_t *const *c);
 
+// FP8/BF8 DOT4 accepts NEG_C and ABS_C; ABS precedes NEG. A/B modifiers,
+// half selection, output scaling and CLAMP are not supported.
+static const uint32_t GOC_DOT_ABS_C = (UINT32_C(1) << 5);
+
+// Wave32 DOT4: one VGPR each for A/B/C/D, four packed bytes per A/B lane;
+// C/D are FP32. FP8 is OCP E4M3FN, BF8 is OCP E5M2. Loose semantics only.
+GOC_API int goc_rdna4_v_dot4_f32_fp8_fp8(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a, const uint32_t *const *b,
+                                         const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_dot4_f32_fp8_bf8(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a, const uint32_t *const *b,
+                                         const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_dot4_f32_bf8_fp8(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a, const uint32_t *const *b,
+                                         const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_dot4_f32_bf8_bf8(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a, const uint32_t *const *b,
+                                         const uint32_t *const *c);
+
 // Integer DOT modifiers: SIGNED selects signed factors for I32_IU forms.
 // U32_U forms accept only CLAMP. CLAMP saturates the final accumulator to its
 // signed/unsigned 32-bit range; otherwise arithmetic wraps modulo 2^32.

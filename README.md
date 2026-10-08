@@ -140,6 +140,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
+| `v_dot4_f32_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar, x86-64-v3 | Not implemented |
 | `v_dot4_i32_iu8`, `v_dot4_u32_u8` | Scalar, x86-64-v3 | Same integer result |
 | `v_dot8_i32_iu4`, `v_dot8_u32_u4` | Scalar, x86-64-v3 | Same integer result |
 | `v_dot2_f32_f16` | Scalar, x86-64-v3 | Integer arithmetic model |
@@ -192,6 +193,14 @@ FP32-output wave32 forms; wave64 uses two A/B VGPRs and four C/D VGPRs.
 Packed-output forms halve the C/D register counts, packing adjacent rows into
 the low and high 16 bits. Input and output operands may share whole VGPRs. Distinct backing
 addresses must not overlap, and every pointer must refer to sufficient storage.
+
+FP8/BF8 DOT4 supports all four E4M3FN/E5M2 input combinations with FP32
+accumulation and `GOC_DOT_ABS_C` / `GOC_DOT_NEG_C`, applied in that order.
+Both scalar and v3 paths handle all encodings, including subnormals and special
+values; no input-dependent fallback is needed. Tests exhaust all 65,536 input
+byte pairs for every format combination, modifier combination and CPU level.
+Strict exact requests are rejected. Benchmark labels `f8` and `b8` denote
+FP8 and BF8; each combination has unmodified and ABS_C/NEG_C rows.
 
 FP16/BF16 DOT2 supports independent negation of each selected A/B half and C.
 The four half-selection flags can swap or replicate halves; zero flags select
