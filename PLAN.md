@@ -141,6 +141,14 @@ Notes:
   - x86-64 masked stores are exactly the CPU ISA feature making this simpler
     and more efficient to handle inside GoC.
 
+* Improving performance on sparse `exec_mask` values is an explicit non-goal.
+  Performance should be independent of the mask: compute the full result and
+  use masked destination stores. Do not add mask-density checks, active-lane
+  iteration, or specialized sparse-mask paths; their code size and runtime
+  overhead are unwanted. This is a performance design goal, not a constant-time
+  guarantee. Existing empty-mask early returns are not a reason to introduce
+  further mask-dependent optimizations.
+
 ### The `flags` bit-field
 
 This `uint64_t` bit-field shall combine:

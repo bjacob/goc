@@ -42,3 +42,9 @@ group from neighboring material to which the comment does not apply.
 
 Use C++17 [[...]] syntax for C++ attributes, with a gnu:: namespace where needed,
 rather than __attribute__((...)).
+
+Improving sparse exec_mask performance is a non-goal. Aim for mask-independent
+performance by computing full results and masking destination stores. Do not add
+mask-density checks, active-lane iteration, or sparse-mask specializations:
+their code size and runtime overhead are unwanted. Existing empty-mask early
+returns do not justify further mask-dependent optimizations.

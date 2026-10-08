@@ -192,7 +192,11 @@ not masked. Empty effective EXEC masks return immediately after flag validation,
 including high-bits-only masks in wave32. Invalid flags and unsupported strict
 semantics still return errors. Nonempty masks stay on the same SIMD paths;
 SIMD FMA/WMMA use masked stores, and WMMA stages results before writes to support
-aliasing. Sparse masks do not yet skip the inactive lanes' arithmetic.
+aliasing. Improving sparse-mask performance is an explicit non-goal: the intended
+performance is independent of the mask. Compute full results and mask destination
+stores, without mask-density checks or sparse-mask specializations that add code
+size and runtime overhead. The existing empty-mask early return is an exception;
+this design goal is not a constant-time guarantee.
 Errors preserve all destination registers. No pointer-validation
 or allocation ownership service is provided.
 
