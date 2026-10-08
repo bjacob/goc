@@ -95,6 +95,24 @@ double measure(Wmma fn, uint64_t flags, Registers &r, int initial_iterations, in
   return samples[samples.size() / 2];
 }
 
+// Print one table row using the same column widths for headings and results.
+void print_columns(const char *input, const char *mode, const char *path, const char *time,
+                   const char *speedup) {
+  std::printf("%-6s %-8s %-20s %12s %11s\n", input, mode, path, time, speedup);
+}
+
+// Print a result with fixed decimal precision; a negative speedup prints "--".
+void print_result(const char *input, const char *mode, const char *path, double time,
+                  double speedup) {
+  char time_text[64], speedup_text[64];
+  std::snprintf(time_text, sizeof(time_text), "%.1f", time);
+  if (speedup < 0)
+    std::snprintf(speedup_text, sizeof(speedup_text), "--");
+  else
+    std::snprintf(speedup_text, sizeof(speedup_text), "%.2fx", speedup);
+  print_columns(input, mode, path, time_text, speedup_text);
+}
+
 bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms) {
   Registers r(bf16);
   const char *format = bf16 ? "BF16" : "FP16";
@@ -102,13 +120,13 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms) {
   double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms);
   if (scalar < 0)
     return false;
-  std::printf("%-6s %-8s %-16s %12.1f %10.2fx\n", format, "loose", "scalar", scalar, 1.0);
+  print_result(format, "loose", "scalar", scalar, 1.0);
 
   const auto accelerated = [&](const char *path, uint64_t level) {
     double time = measure(fn, level, r, iterations, min_ms);
     if (time < 0)
       return false;
-    std::printf("%-6s %-8s %-16s %12.1f %10.2fx\n", format, "loose", path, time, scalar / time);
+    print_result(format, "loose", path, time, scalar / time);
     return true;
   };
   // Only label a SIMD path when both this build and the host support it.
@@ -137,7 +155,7 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms) {
               iterations, min_ms);
   if (exact < 0)
     return false;
-  std::printf("%-6s %-8s %-16s %12.1f %11s\n", format, "exact", "scalar", exact, "--");
+  print_result(format, "exact", "scalar", exact, -1);
   return true;
 }
 
@@ -170,7 +188,7 @@ int main(int argc, char **argv) {
       "Full EXEC, no modifiers, fixed small-integer inputs; independent dense goldens checked.");
   std::puts("Timings include public API dispatch and stores; buffers stay hot in cache.");
   std::puts("Speedups compare loose paths of the SAME format; exact is reported separately.");
-  std::printf("%-6s %-8s %-16s %12s %11s\n", "Input", "Mode", "CPU path", "ns/wave", "Speedup");
+  print_columns("Input", "Mode", "CPU path", "ns/wave", "Speedup");
   if (!benchmark(false, cpu, iterations, min_ms) || !benchmark(true, cpu, iterations, min_ms)) {
     std::fprintf(stderr,
                  "Benchmark failed: API error, result mismatch or iteration-count overflow.\n");
