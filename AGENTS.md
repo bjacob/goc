@@ -46,5 +46,6 @@ rather than __attribute__((...)).
 Improving sparse exec_mask performance is a non-goal. Aim for mask-independent
 performance by computing full results and masking destination stores. Do not add
 mask-density checks, active-lane iteration, or sparse-mask specializations:
-their code size and runtime overhead are unwanted. Existing empty-mask early
-returns do not justify further mask-dependent optimizations.
+their code size and runtime overhead are unwanted. An early return for a zero
+effective mask is explicitly allowed; it does not justify further mask-dependent
+optimizations.

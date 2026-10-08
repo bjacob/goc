@@ -146,8 +146,8 @@ Notes:
   use masked destination stores. Do not add mask-density checks, active-lane
   iteration, or specialized sparse-mask paths; their code size and runtime
   overhead are unwanted. This is a performance design goal, not a constant-time
-  guarantee. Existing empty-mask early returns are not a reason to introduce
-  further mask-dependent optimizations.
+  guarantee. An early return for a zero effective mask is explicitly allowed;
+  it is not a reason to introduce further mask-dependent optimizations.
 
 ### The `flags` bit-field
 
