@@ -11,7 +11,7 @@
 
 namespace goc {
 
-enum class Unary { Trunc, Ceil, Rndne, Floor, Sqrt, Rcp, Rsq, Exp, Log, Fract };
+enum class Unary { Trunc, Ceil, Rndne, Floor, Sqrt, Rcp, Rsq, Exp, Log, Fract, FrexpMant };
 
 // Round to an integral FP32 value, ties to even, preserving signed zero and
 // quieting NaNs without depending on the host rounding mode.
@@ -33,6 +33,13 @@ inline float rndne(float value) {
 }
 
 template <Unary Op> inline float unary_value(float value) {
+  if constexpr (Op == Unary::FrexpMant) {
+    uint32_t magnitude = as_bits(value) & 0x7fffffff;
+    if (magnitude == 0 || magnitude >= 0x7f800000)
+      return value;
+    int exponent;
+    return std::frexp(value, &exponent);
+  }
   if constexpr (Op == Unary::Trunc)
     return std::trunc(value);
   if constexpr (Op == Unary::Ceil)

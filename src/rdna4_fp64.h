@@ -24,6 +24,7 @@ enum class Fp64 {
   Fract,
   Sqrt,
   Rcp,
+  FrexpMant,
   Rsq
 };
 

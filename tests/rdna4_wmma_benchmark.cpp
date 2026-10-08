@@ -344,18 +344,20 @@ bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t modifiers,
 
 bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
   using Unary = decltype(&goc_rdna4_v_log_f32);
-  const Unary functions[] = {goc_rdna4_v_trunc_f32, goc_rdna4_v_ceil_f32, goc_rdna4_v_rndne_f32,
-                             goc_rdna4_v_floor_f32, goc_rdna4_v_sqrt_f32, goc_rdna4_v_rcp_f32,
-                             goc_rdna4_v_rsq_f32,   goc_rdna4_v_exp_f32,  goc_rdna4_v_log_f32,
-                             goc_rdna4_v_fract_f32};
-  const char *names[] = {"f32/trunc", "f32/ceil", "f32/rndne", "f32/floor", "f32/sqrt",
-                         "f32/rcp",   "f32/rsq",  "f32/exp",   "f32/log",   "f32/fract"};
+  const Unary functions[] = {
+      goc_rdna4_v_trunc_f32, goc_rdna4_v_ceil_f32,      goc_rdna4_v_rndne_f32,
+      goc_rdna4_v_floor_f32, goc_rdna4_v_sqrt_f32,      goc_rdna4_v_rcp_f32,
+      goc_rdna4_v_rsq_f32,   goc_rdna4_v_exp_f32,       goc_rdna4_v_log_f32,
+      goc_rdna4_v_fract_f32, goc_rdna4_v_frexp_mant_f32};
+  const char *names[] = {"f32/trunc", "f32/ceil", "f32/rndne", "f32/floor", "f32/sqrt", "f32/rcp",
+                         "f32/rsq",   "f32/exp",  "f32/log",   "f32/fract", "f32/mant"};
   const float inputs[] = {0.25f, 1, 4, 16};
   const float exp_inputs[] = {0, 1, 2, 4};
-  const float golden[][4] = {
-      {0, 1, 4, 16},          {1, 1, 4, 16},       {0, 1, 4, 16}, {0, 1, 4, 16}, {0.5f, 1, 2, 4},
-      {4, 1, 0.25f, 0.0625f}, {2, 1, 0.5f, 0.25f}, {1, 2, 4, 16}, {-2, 0, 2, 4}, {0.25f, 0, 0, 0}};
-  for (int op = 0; op < 10; ++op)
+  const float golden[][4] = {{0, 1, 4, 16},       {1, 1, 4, 16},       {0, 1, 4, 16},
+                             {0, 1, 4, 16},       {0.5f, 1, 2, 4},     {4, 1, 0.25f, 0.0625f},
+                             {2, 1, 0.5f, 0.25f}, {1, 2, 4, 16},       {-2, 0, 2, 4},
+                             {0.25f, 0, 0, 0},    {0.5, 0.5, 0.5, 0.5}};
+  for (int op = 0; op < 11; ++op)
     for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
       r.output_regs = 1;
@@ -380,7 +382,7 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
         return false;
       print_result(names[op], "loose", mode, "scalar", scalar, 1);
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if ((op < 7 || op == 9) && cpu >= GOC_CPU_X86_64_V3) {
+      if ((op < 7 || op >= 9) && cpu >= GOC_CPU_X86_64_V3) {
         double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
         if (simd < 0)
           return false;
@@ -569,16 +571,17 @@ bool benchmark_fp64(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_fp64_unary(uint64_t cpu, int iterations, int min_ms) {
   using Unary = decltype(&goc_rdna4_v_sqrt_f64);
-  const Unary functions[] = {goc_rdna4_v_trunc_f64, goc_rdna4_v_ceil_f64,  goc_rdna4_v_rndne_f64,
-                             goc_rdna4_v_floor_f64, goc_rdna4_v_fract_f64, goc_rdna4_v_sqrt_f64,
-                             goc_rdna4_v_rcp_f64,   goc_rdna4_v_rsq_f64};
-  const char *names[] = {"f64/trunc", "f64/ceil", "f64/rndne", "f64/floor",
-                         "f64/fract", "f64/sqrt", "f64/rcp",   "f64/rsq"};
+  const Unary functions[] = {
+      goc_rdna4_v_trunc_f64, goc_rdna4_v_ceil_f64,  goc_rdna4_v_rndne_f64,
+      goc_rdna4_v_floor_f64, goc_rdna4_v_fract_f64, goc_rdna4_v_sqrt_f64,
+      goc_rdna4_v_rcp_f64,   goc_rdna4_v_rsq_f64,   goc_rdna4_v_frexp_mant_f64};
+  const char *names[] = {"f64/trunc", "f64/ceil", "f64/rndne", "f64/floor", "f64/fract",
+                         "f64/sqrt",  "f64/rcp",  "f64/rsq",   "f64/mant"};
   const double inputs[] = {0.25, 1, 4, 16};
-  const double golden[][4] = {{0, 1, 4, 16},        {1, 1, 4, 16},    {0, 1, 4, 16},
-                              {0, 1, 4, 16},        {0.25, 0, 0, 0},  {0.5, 1, 2, 4},
-                              {4, 1, 0.25, 0.0625}, {2, 1, 0.5, 0.25}};
-  for (int op = 0; op < 8; ++op)
+  const double golden[][4] = {{0, 1, 4, 16},        {1, 1, 4, 16},     {0, 1, 4, 16},
+                              {0, 1, 4, 16},        {0.25, 0, 0, 0},   {0.5, 1, 2, 4},
+                              {4, 1, 0.25, 0.0625}, {2, 1, 0.5, 0.25}, {0.5, 0.5, 0.5, 0.5}};
+  for (int op = 0; op < 9; ++op)
     for (uint32_t mode : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
       r.output_regs = 2;

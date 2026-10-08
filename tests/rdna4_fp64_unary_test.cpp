@@ -14,7 +14,7 @@ namespace {
 using Fn = decltype(&goc_rdna4_v_sqrt_f64);
 const Fn functions[] = {goc_rdna4_v_trunc_f64, goc_rdna4_v_ceil_f64,  goc_rdna4_v_rndne_f64,
                         goc_rdna4_v_floor_f64, goc_rdna4_v_fract_f64, goc_rdna4_v_sqrt_f64,
-                        goc_rdna4_v_rcp_f64,   goc_rdna4_v_rsq_f64};
+                        goc_rdna4_v_rcp_f64,   goc_rdna4_v_rsq_f64,   goc_rdna4_v_frexp_mant_f64};
 
 uint64_t bits(double value) {
   uint64_t result;
@@ -36,6 +36,11 @@ double reference(int op, uint64_t input, uint32_t mode) {
     x = -x;
   long double y = 0;
   switch (op) {
+  case 8: {
+    int exponent;
+    y = std::isfinite(x) ? std::frexp(x, &exponent) : x;
+    break;
+  }
   case 0:
     y = std::trunc(x);
     break;
@@ -112,7 +117,7 @@ TEST(Fp64Unary, AllModifiersMasksAndCrossHalfAliases) {
                              0x000fffffffffffff,
                              0x800fffffffffffff};
   const int aliases[][2] = {{2, 3}, {0, 1}, {1, 0}, {1, 2}, {2, 0}, {2, 2}};
-  for (int op = 0; op < 8; ++op)
+  for (int op = 0; op < 9; ++op)
     for (uint32_t variant = 0; variant < 32; ++variant) {
       uint32_t mode = (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
                       ((variant >> 2 & 3) << 6) | (variant & 16 ? GOC_ALU_CLAMP : 0);
@@ -229,4 +234,28 @@ TEST(Fp64Unary, Validation) {
       for (uint32_t value : reg)
         EXPECT_EQ(value, 0xdeadbeef);
   }
+}
+
+TEST(Fp64Unary, MantissaLiteralSubnormalsAndPassthrough) {
+  const uint64_t cases[][2] = {{1, 0x3fe0000000000000},
+                               {0x8000000000000001, 0xbfe0000000000000},
+                               {0x000fffffffffffff, 0x3feffffffffffffe},
+                               {0x0010000000000000, 0x3fe0000000000000},
+                               {0x4018000000000000, 0x3fe8000000000000},
+                               {0, 0},
+                               {0x8000000000000000, 0x8000000000000000},
+                               {0x7ff0000000000000, 0x7ff0000000000000},
+                               {0xfff0000000000000, 0xfff0000000000000},
+                               {0x7ff0000000001234, 0x7ff0000000001234},
+                               {0xfff8000000001234, 0xfff8000000001234}};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (const auto &test : cases) {
+      uint32_t a[2][32], d[2][32];
+      uint32_t *pa[] = {a[0], a[1]}, *pd[] = {d[0], d[1]};
+      std::fill(a[0], a[0] + 32, uint32_t(test[0]));
+      std::fill(a[1], a[1] + 32, uint32_t(test[0] >> 32));
+      ASSERT_EQ(goc_rdna4_v_frexp_mant_f64(cpu, UINT32_MAX, 0, pd, pa), GOC_SUCCESS);
+      for (int lane = 0; lane < 32; ++lane)
+        EXPECT_EQ(d[0][lane] | (uint64_t(d[1][lane]) << 32), test[1]);
+    }
 }

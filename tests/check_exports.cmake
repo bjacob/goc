@@ -61,6 +61,8 @@ else()
     goc_rdna4_v_max_num_f64
     goc_rdna4_v_minimum_f64
     goc_rdna4_v_maximum_f64
+    goc_rdna4_v_frexp_mant_f32
+    goc_rdna4_v_frexp_mant_f64
     goc_rdna4_v_add_f64
     goc_rdna4_v_mul_f64
     goc_rdna4_v_fma_f64

@@ -47,6 +47,13 @@ int arithmetic(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
       value = goc::fp64_minmax<false, true>(x, y);
     if constexpr (Op == goc::Fp64::Maximum)
       value = goc::fp64_minmax<true, true>(x, y);
+    if constexpr (Op == goc::Fp64::FrexpMant) {
+      uint64_t magnitude = goc::double_bits(x) & UINT64_C(0x7fffffffffffffff);
+      int exponent;
+      value = magnitude == 0 || magnitude >= UINT64_C(0x7ff0000000000000)
+                  ? x
+                  : std::frexp(x, &exponent);
+    }
     if constexpr (Op == goc::Fp64::Trunc)
       value = std::trunc(x);
     if constexpr (Op == goc::Fp64::Ceil)
@@ -155,4 +162,9 @@ int goc_rdna4_v_minimum_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32
 int goc_rdna4_v_maximum_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   return arithmetic<goc::Fp64::Maximum>(flags, mask, mode, d, a, b, nullptr);
+}
+
+int goc_rdna4_v_frexp_mant_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                               const uint32_t *const *a) {
+  return arithmetic<goc::Fp64::FrexpMant>(flags, mask, mode, d, a, nullptr, nullptr);
 }

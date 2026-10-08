@@ -12,10 +12,10 @@
 namespace {
 
 using Fn = decltype(&goc_rdna4_v_log_f32);
-const Fn functions[] = {goc_rdna4_v_trunc_f32, goc_rdna4_v_ceil_f32, goc_rdna4_v_rndne_f32,
-                        goc_rdna4_v_floor_f32, goc_rdna4_v_sqrt_f32, goc_rdna4_v_rcp_f32,
-                        goc_rdna4_v_rsq_f32,   goc_rdna4_v_exp_f32,  goc_rdna4_v_log_f32,
-                        goc_rdna4_v_fract_f32};
+const Fn functions[] = {goc_rdna4_v_trunc_f32, goc_rdna4_v_ceil_f32,      goc_rdna4_v_rndne_f32,
+                        goc_rdna4_v_floor_f32, goc_rdna4_v_sqrt_f32,      goc_rdna4_v_rcp_f32,
+                        goc_rdna4_v_rsq_f32,   goc_rdna4_v_exp_f32,       goc_rdna4_v_log_f32,
+                        goc_rdna4_v_fract_f32, goc_rdna4_v_frexp_mant_f32};
 
 // Independent higher-precision reference, with explicit ties-to-even and
 // binary32 rounding before output scaling.
@@ -27,6 +27,11 @@ float reference(int op, float input, uint32_t flags) {
     x = -x;
   double y = 0;
   switch (op) {
+  case 10: {
+    int exponent;
+    y = std::isfinite(x) ? std::frexp(x, &exponent) : x;
+    break;
+  }
   case 0:
     y = std::trunc(x);
     break;
@@ -82,7 +87,7 @@ TEST(Unary, ModifiersMasksAliasesAndCpuLevels) {
                              0x00800000, 0x80800000, 0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000,
                              0x7fc12345, 0xffc12345, 0x4b000001, 0xcb000001, 0x3effffff, 0x3f000001,
                              0x3fffffff, 0x40000001};
-  for (int op = 0; op < 10; ++op)
+  for (int op = 0; op < 11; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned mode = 0; mode < 32; ++mode) {
         uint32_t flags = (mode & 1 ? GOC_ALU_NEG_A : 0) | (mode & 2 ? GOC_ALU_ABS_A : 0) |
@@ -163,5 +168,22 @@ TEST(Unary, FractLiteralBoundaries) {
       ASSERT_EQ(goc_rdna4_v_fract_f32(cpu, UINT32_MAX, 0, &pd, &pa), GOC_SUCCESS);
       for (uint32_t value : d)
         EXPECT_EQ(value, test[1]) << cpu << "/" << test[0];
+    }
+}
+
+TEST(Unary, MantissaLiteralSubnormalsAndPassthrough) {
+  const uint32_t cases[][2] = {
+      {1, 0x3f000000},          {0x80000001, 0xbf000000}, {0x007fffff, 0x3f7ffffe},
+      {0x00800000, 0x3f000000}, {0x40c00000, 0x3f400000}, {0, 0},
+      {0x80000000, 0x80000000}, {0x7f800000, 0x7f800000}, {0xff800000, 0xff800000},
+      {0x7f812345, 0x7f812345}, {0xffc12345, 0xffc12345}};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (const auto &test : cases) {
+      uint32_t a[32], d[32];
+      std::fill(a, a + 32, test[0]);
+      auto pa = a, pd = d;
+      ASSERT_EQ(goc_rdna4_v_frexp_mant_f32(cpu, UINT32_MAX, 0, &pd, &pa), GOC_SUCCESS);
+      for (uint32_t value : d)
+        EXPECT_EQ(value, test[1]);
     }
 }

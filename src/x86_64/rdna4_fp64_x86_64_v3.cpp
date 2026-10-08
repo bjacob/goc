@@ -49,6 +49,22 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
       value = minmax<false, true>(x, y);
     if constexpr (Op == Fp64::Maximum)
       value = minmax<true, true>(x, y);
+    if constexpr (Op == Fp64::FrexpMant) {
+      auto original = _mm256_castpd_si256(x);
+      auto magnitude = _mm256_and_si256(original, _mm256_set1_epi64x(INT64_MAX));
+      auto subnormal =
+          _mm256_cmpgt_epi64(_mm256_set1_epi64x(INT64_C(0x0010000000000000)), magnitude);
+      auto normalized = _mm256_blendv_pd(x, _mm256_mul_pd(x, _mm256_set1_pd(0x1p54)),
+                                         _mm256_castsi256_pd(subnormal));
+      auto mantissa = _mm256_or_si256(
+          _mm256_and_si256(_mm256_castpd_si256(normalized),
+                           _mm256_set1_epi64x(int64_t(UINT64_C(0x800fffffffffffff)))),
+          _mm256_set1_epi64x(INT64_C(0x3fe0000000000000)));
+      auto special = _mm256_or_si256(
+          _mm256_cmpeq_epi64(magnitude, _mm256_setzero_si256()),
+          _mm256_cmpgt_epi64(magnitude, _mm256_set1_epi64x(INT64_C(0x7ff0000000000000) - 1)));
+      value = _mm256_castsi256_pd(_mm256_blendv_epi8(mantissa, original, special));
+    }
     if constexpr (Op == Fp64::Trunc)
       value = _mm256_round_pd(x, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     if constexpr (Op == Fp64::Ceil)
@@ -95,6 +111,8 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
 void fp64_x86_64_v3(Fp64 op, uint32_t mask, uint32_t mode, uint32_t *const *d,
                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   switch (op) {
+  case Fp64::FrexpMant:
+    return run<Fp64::FrexpMant>(mask, mode, d, a, b, c);
   case Fp64::Trunc:
     return run<Fp64::Trunc>(mask, mode, d, a, b, c);
   case Fp64::Ceil:
