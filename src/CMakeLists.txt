@@ -14,6 +14,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 if(GOC_ENABLE_X86_64)
-  target_compile_definitions(goc PRIVATE GOC_X86_QUERY=1)
+  target_compile_definitions(goc PRIVATE GOC_X86_64_QUERY=1)
   add_subdirectory(x86_64)
 endif()

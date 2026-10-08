@@ -130,7 +130,7 @@ Notes:
 * Why make exec_mask part of GoC instead of letting the caller handle it?
   - For the caller to handle it correctly w.r.t. input-output aliasing, they
     would need to save destination registers before calling GoC.
-  - x86 masked stores are exactly the CPU ISA feature making this simpler
+  - x86-64 masked stores are exactly the CPU ISA feature making this simpler
     and more efficient to handle inside GoC.
 
 ### The `flags` bit-field

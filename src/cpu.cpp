@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 
-#if defined(GOC_X86_QUERY)
+#if defined(GOC_X86_64_QUERY)
 #include <cpuid.h>
 #endif
 
@@ -37,7 +37,7 @@ uint64_t decode_cpu(const CpuState &s) {
 } // namespace goc
 
 uint64_t goc_init_cpu_flags(void) {
-#if defined(GOC_X86_QUERY)
+#if defined(GOC_X86_64_QUERY)
   goc::CpuState s;
   uint32_t a, b, c, d;
   const uint32_t max_leaf = __get_cpuid_max(0, nullptr);
