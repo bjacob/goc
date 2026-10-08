@@ -499,6 +499,63 @@ bool benchmark_minmax3(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_fp64(uint64_t cpu, int iterations, int min_ms) {
+  const char *names[] = {"f64/add", "f64/mul", "f64/fma"};
+  for (int op = 0; op < 3; ++op)
+    for (uint32_t mode :
+         {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+      Registers r;
+      r.output_regs = 2;
+      for (int lane = 0; lane < 32; ++lane) {
+        int x[] = {lane - 16, lane % 7 - 3, lane % 11 - 5};
+        for (int operand = 0; operand < 3; ++operand) {
+          double value = x[operand];
+          uint64_t raw;
+          std::memcpy(&raw, &value, sizeof(raw));
+          r.data[4 * operand][lane] = uint32_t(raw);
+          r.data[4 * operand + 1][lane] = uint32_t(raw >> 32);
+        }
+        if (mode) {
+          x[0] = std::abs(x[0]);
+          x[1] = -x[1];
+        }
+        double want = op == 0 ? x[0] + x[1] : op == 1 ? x[0] * x[1] : x[0] * x[1] + x[2];
+        if (mode)
+          want = std::min(1.0, std::max(0.0, want * 0.5));
+        if (!mode && op == 1 && want == 0 && ((x[0] < 0) != (x[1] < 0)))
+          want = -0.0;
+        uint64_t raw;
+        std::memcpy(&raw, &want, sizeof(raw));
+        r.expected[128 * (lane / 16) + lane % 16] = uint32_t(raw);
+        r.expected[128 * (lane / 16) + 16 + lane % 16] = uint32_t(raw >> 32);
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+        if (op == 0)
+          return goc_rdna4_v_add_f64(flags, mask, modifiers, d, a, b);
+        if (op == 1)
+          return goc_rdna4_v_mul_f64(flags, mask, modifiers, d, a, b);
+        return goc_rdna4_v_fma_f64(flags, mask, modifiers, d, a, b, c);
+      };
+      const char *label = mode ? "ABS/NEG/half/clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_half_dot(uint64_t cpu, int iterations, int min_ms) {
   for (bool bf16 : {false, true})
     for (bool modified : {false, true}) {
@@ -727,6 +784,10 @@ int main(int argc, char **argv) {
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
   if (!benchmark_minmax3(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Three-input min/max benchmark failed.\n");
+    return 1;
+  }
+  if (!benchmark_fp64(cpu, iterations, min_ms)) {
+    std::fprintf(stderr, "FP64 benchmark failed.\n");
     return 1;
   }
   if (!benchmark_binary(cpu, iterations, min_ms)) {

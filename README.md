@@ -142,6 +142,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_minimum3_f32`, `v_maximum3_f32`, `v_minimummaximum_f32`, `v_maximumminimum_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_med3_num_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_fma_f32`, `v_fma_dx9_zero_f32` | Scalar, AVX2/FMA, AVX-512 | Not implemented |
+| `v_add_f64`, `v_mul_f64`, `v_fma_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
@@ -246,6 +247,18 @@ only after the complete dot plus accumulator; otherwise results wrap modulo
 factors avoids the unwanted intermediate saturation of x86 byte-pair dot
 instructions. Tests cover all signedness/CLAMP modes, overflow boundaries,
 85 masks, source/destination aliases and unchanged host FP state.
+
+FP64 ADD, MUL and FMA use two VGPRs per operand: element zero of each pointer
+array names the low-word buffer and element one names the high-word buffer.
+Each buffer still contains 32 lane words; their addresses need not be adjacent.
+Scalar and x86-64-v3 paths support all applicable ALU source/output modifiers
+(128 combinations for binary operations, 512 for FMA). The SIMD path processes
+four FP64 lanes at a time and stages both result halves before masked stores.
+Tests cross all modifiers, CPU levels and 85 masks with ten destination layouts,
+including reversed halves, aliases spanning different operands, and identical
+output buffers; the latter receive the high-word write last. Literal cases
+cover fused rounding, subnormals, overflow, signed zero, NaNs and CLAMP.
+These loose paths require host nearest-even rounding with denormals enabled.
 
 FP32 ADD, SUB, SUBREV and MUL support A/B ABS/NEG, output scaling and CLAMP
 on scalar and v3 paths. Tests cross all 128 modifier combinations with all CPU

@@ -19,6 +19,7 @@ foreach(target IN LISTS goc_library_targets)
     set(goc_x86_64_v3_sources
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_fma_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_binary_x86_64_v3.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_fp64_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_minmax_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_dot2_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_half_dot_x86_64_v3.cpp

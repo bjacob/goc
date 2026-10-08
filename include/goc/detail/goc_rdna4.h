@@ -146,6 +146,22 @@ GOC_API int goc_rdna4_v_med3_num_f32(uint64_t flags, uint64_t exec_mask, uint32_
                                      uint32_t *const *d, const uint32_t *const *a,
                                      const uint32_t *const *b, const uint32_t *const *c);
 
+// FP64 arithmetic: two VGPRs per operand, holding each lane's low/high words.
+// Supports ALU ABS/NEG on present sources, OMOD and CLAMP, with loose semantics.
+// Host nearest-even rounding and enabled denormals are required. Whole VGPR
+// aliases may cross operand halves; sources are read before destination writes.
+GOC_API int goc_rdna4_v_add_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_mul_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_fma_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
 // True16 source/destination half selectors. Zero selects the low half.
 // DOT2 consumes both A/B halves, so only C and D have selectors.
 static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);
