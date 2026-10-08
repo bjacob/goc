@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: MIT
 
+#include "goc_common.h"
+#include "goc_rdna4.h"
 #include "internal.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
+#include <stdint.h>
 
 extern "C" int goc_test_c_api(void);
 

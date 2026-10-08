@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
 
+#include "goc_common.h"
 #include "internal.h"
 
 #include <gtest/gtest.h>
+#include <initializer_list>
+#include <stdint.h>
 
 TEST(Cpu, DetectionReturnsOnlyKnownCpuBits) { EXPECT_LE(goc_init_cpu_flags(), GOC_CPU_ZEN4); }
 

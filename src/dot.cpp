@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MIT
 
 #include "float_formats.h"
+#include "goc_common.h"
+#include "goc_rdna4.h"
+#include "internal.h"
 #include "rdna4_dot.h"
 
+#include <array>
 #include <cmath>
+#include <stdint.h>
 
 namespace {
 template <bool Bf16>

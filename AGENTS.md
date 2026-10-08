@@ -14,3 +14,6 @@ Separate file banners, header guards, include groups, and declarations with blan
 Project-local #include paths are relative to include/, or to src/ for internal
 headers, including includes among files in the same directory. CMake must pass
 include/ publicly and src/ privately to implementation and test targets.
+Include the headers defining what each file uses directly, including standard
+library headers; do not rely on transitive includes. The umbrella goc.h directly
+includes every public component header.

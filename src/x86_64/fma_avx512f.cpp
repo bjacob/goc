@@ -3,6 +3,7 @@
 #include "internal.h"
 
 #include <immintrin.h>
+#include <stdint.h>
 
 namespace goc {
 void fma_avx512f(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,

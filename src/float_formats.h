@@ -5,6 +5,8 @@
 
 #include "internal.h"
 
+#include <stdint.h>
+
 namespace goc {
 inline float bf16_to_float(uint16_t bits) { return as_float(uint32_t(bits) << 16); }
 

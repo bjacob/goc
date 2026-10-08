@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: MIT
 
 #include "float_formats.h"
+#include "goc_common.h"
+#include "goc_rdna4.h"
+#include "internal.h"
 #include "rdna4_dot.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <initializer_list>
+#include <stdint.h>
 
 namespace {
 // Physical packing follows rocjitsu shared/mma_exec.h: each lane supplies

@@ -6,7 +6,7 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
+#include <stdint.h>
 
 struct Gfx12WmmaCase {
   std::array<uint16_t, 16> a;

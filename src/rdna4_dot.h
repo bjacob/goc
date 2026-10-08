@@ -8,7 +8,7 @@
 
 #include <algorithm>
 #include <array>
-#include <cstdint>
+#include <stdint.h>
 
 // Adapted from rocjitsu shared/gfx12_dot.h. This is the existing gfx1201
 // empirical model, specialized to FP32 outputs and C++17. No new hardware model.

@@ -2,7 +2,9 @@
 
 #include "internal.h"
 
+#include <cstring>
 #include <immintrin.h>
+#include <stdint.h>
 
 namespace goc {
 void wmma_avx512bf16(uint32_t mask, uint32_t *const *d, uint32_t *const *a, uint32_t *const *b,

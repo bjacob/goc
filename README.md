@@ -1,7 +1,9 @@
 # GoC: GPU arithmetic on a CPU
 
 GoC implements whole-wave GPU arithmetic through a synchronous C API. The public
-header is `include/goc.h`, usable from C99 and C++17. This is an initial RDNA4
+header is `include/goc.h`, usable from C99 and C++17. It directly includes
+`goc_common.h` (flags, status codes, CPU detection) and `goc_rdna4.h` (RDNA4
+instructions and modifiers). Each component header is independently usable. This is an initial RDNA4
 implementation; `PLAN.md` describes the broader intended coverage.
 
 ## Build and test

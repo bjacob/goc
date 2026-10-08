@@ -6,7 +6,7 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
+#include <stdint.h>
 
 struct Gfx12DotCase {
   uint32_t a;

@@ -4,13 +4,18 @@
 #include "../tests/dot_fixtures.h"
 #include "../tests/wmma_fixtures.h"
 #include "float_formats.h"
+#include "goc_common.h"
+#include "goc_rdna4.h"
+#include "internal.h"
 #include "rdna4_dot.h"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
+#include <stdint.h>
 
 namespace {
 using Wmma = decltype(&goc_rdna4_v_wmma_f32_16x16x16_f16);

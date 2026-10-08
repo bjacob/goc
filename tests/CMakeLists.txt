@@ -13,3 +13,20 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 include(GoogleTest)
 gtest_discover_tests(goc_tests)
+
+# Compile each public header first and in isolation in both supported languages.
+# Copies let the same source be compiled as C and C++ without source-property
+# overrides leaking between targets.
+foreach(header IN ITEMS common rdna4 umbrella)
+  foreach(extension IN ITEMS c cpp)
+    set(source "${CMAKE_CURRENT_BINARY_DIR}/${header}_header_test.${extension}")
+    configure_file("headers/${header}.c" "${source}" COPYONLY)
+    set(target "goc_${header}_header_${extension}_test")
+    add_executable(${target} "${source}")
+    target_link_libraries(${target} PRIVATE goc)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+      target_compile_options(${target} PRIVATE -Wall -Wextra -Werror -pedantic)
+    endif()
+    add_test(NAME ${target} COMMAND ${target})
+  endforeach()
+endforeach()

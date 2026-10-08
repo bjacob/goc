@@ -3,9 +3,10 @@
 #ifndef GOC_INTERNAL_H_
 #define GOC_INTERNAL_H_
 
-#include "goc.h"
+#include "goc_common.h"
 
 #include <cstring>
+#include <stdint.h>
 
 namespace goc {
 inline float as_float(uint32_t v) {

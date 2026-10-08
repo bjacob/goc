@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 
+#include "goc_common.h"
 #include "internal.h"
+
+#include <stdint.h>
 
 #if defined(GOC_X86_QUERY)
 #include <cpuid.h>
