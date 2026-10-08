@@ -382,6 +382,18 @@ word's sign extension, or against zero for unsigned products. Tests include
 literal high-word results, saturation thresholds, upper-byte noise, random
 products, masks, aliases and host FP-environment preservation.
 
+FP16/FP32 `FMAC` multiplies A and B and adds the previous value of D.
+It supports A/B ABS/NEG, OMOD and CLAMP; FP16 also supports A/B/D half
+selection and `GOC_FP16_OVFL`. The destination half selects the accumulator
+half as well. Independent C modifiers, including `HIGH_C`, are invalid.
+All 1,024 FP16 and 128 FP32 modifier combinations use the existing FMA
+scalar/SIMD paths: eight lanes for FP16, eight or sixteen for FP32. FP16
+also inherits the empirical exact FMA model and host-environment preservation.
+Tests cover modifiers, masks, every whole-register accumulator alias, half
+selection, overflow policy, fused rounding and rocjitsu's FMA/FMAC witnesses.
+FMAC benchmark timings include resetting D to a fixed accumulator before each
+call, equally for all CPU paths, to avoid drift during repeated accumulation.
+
 FP16 `FMA` supports all 8,192 combinations of source ABS/NEG, OMOD, CLAMP
 and A/B/C/D half selectors, plus `GOC_FP16_OVFL`. Loose semantics have scalar
 and eight-lane x86-64-v3 paths. The SIMD path retains a product/sum residual

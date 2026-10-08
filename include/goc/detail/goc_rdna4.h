@@ -35,6 +35,20 @@ GOC_API int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t ins
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b, const uint32_t *const *c);
 
+// FP16 fused multiply-accumulate into D. Supports A/B ABS/NEG, OMOD, CLAMP,
+// HIGH_A/B/D and GOC_FP16_OVFL, with the same rounding and exact-semantics
+// contract as FP16 FMA. HIGH_D selects both the accumulator and result half;
+// preserves the other half. C modifiers (including HIGH_C) are invalid.
+GOC_API int goc_rdna4_v_fmac_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b);
+
+// FP32 fused multiply-accumulate into D. Supports A/B ABS/NEG, OMOD and CLAMP.
+// C modifiers and half selectors are invalid. Loose semantics only.
+GOC_API int goc_rdna4_v_fmac_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b);
+
 // DX9 FMA: one VGPR per operand, all ALU source/output modifiers, loose semantics.
 // If either modified factor is signed zero, select modified C unchanged before
 // output scaling/CLAMP; otherwise compute a fused multiply-add.

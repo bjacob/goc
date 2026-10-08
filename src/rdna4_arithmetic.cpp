@@ -72,3 +72,12 @@ int goc_rdna4_v_fma_dx9_zero_f32(uint64_t flags, uint64_t exec_mask, uint32_t in
                                  const uint32_t *const *b, const uint32_t *const *c) {
   return fma<true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
+
+int goc_rdna4_v_fmac_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b) {
+  const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
+                         GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
+  if (int error = goc::validate(flags, mode & ~known))
+    return error;
+  return fma<false>(flags, mask, mode, d, a, b, d);
+}

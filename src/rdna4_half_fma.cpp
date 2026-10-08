@@ -105,11 +105,8 @@ uint16_t fma(uint16_t a, uint16_t b, uint16_t c, uint32_t mode, bool saturate) {
   return mode & GOC_ALU_CLAMP ? clamp(result) : result;
 }
 
-} // namespace
-
-int goc_rdna4_v_fma_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
-                        const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c) {
+int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+        const uint32_t *const *b, const uint32_t *const *c) {
   if (int error = goc::validate(flags, mode & ~UINT32_C(0x1fff), true))
     return error;
   if (uint32_t(mask) == 0)
@@ -136,4 +133,25 @@ int goc_rdna4_v_fma_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *
       d[0][lane] =
           (d[0][lane] & ~(UINT32_C(0xffff) << d_shift)) | (uint32_t(result[lane]) << d_shift);
   return GOC_SUCCESS;
+}
+
+} // namespace
+
+int goc_rdna4_v_fma_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                        const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *c) {
+  return run(flags, mask, mode, d, a, b, c);
+}
+
+int goc_rdna4_v_fmac_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b) {
+  const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
+                         GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A | GOC_ALU_HIGH_B |
+                         GOC_ALU_HIGH_D;
+  if (int error = goc::validate(flags, mode & ~known, true))
+    return error;
+  // FMAC reads the same destination half that it overwrites.
+  if (mode & GOC_ALU_HIGH_D)
+    mode |= GOC_ALU_HIGH_C;
+  return run(flags, mask, mode, d, a, b, d);
 }
