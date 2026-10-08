@@ -7,8 +7,8 @@
 
 namespace goc {
 
-void fma_avx512f(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
-                 const uint32_t *c) {
+void fma_x86_64_v4(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
+                   const uint32_t *c) {
   for (int i = 0; i < 32; i += 16) {
     auto va = _mm512_castsi512_ps(_mm512_loadu_si512(a + i));
     auto vb = _mm512_castsi512_ps(_mm512_loadu_si512(b + i));

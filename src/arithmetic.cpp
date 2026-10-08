@@ -13,16 +13,16 @@ int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction
   if (int error = goc::validate(flags, instruction_flags))
     return error;
 
-#if defined(GOC_HAVE_AVX512F)
+#if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::fma_avx512f(static_cast<uint32_t>(exec_mask), d[0], a[0], b[0], c[0]);
+    goc::fma_x86_64_v4(static_cast<uint32_t>(exec_mask), d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
 
-#if defined(GOC_HAVE_AVX2)
+#if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::fma_avx2(static_cast<uint32_t>(exec_mask), d[0], a[0], b[0], c[0]);
+    goc::fma_x86_64_v3(static_cast<uint32_t>(exec_mask), d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif

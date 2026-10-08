@@ -41,13 +41,14 @@ struct CpuState {
 
 uint64_t decode_cpu(const CpuState &s);
 
-#if defined(GOC_HAVE_AVX2)
-void fma_avx2(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b, const uint32_t *c);
+#if defined(GOC_HAVE_X86_64_V3)
+void fma_x86_64_v3(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
+                   const uint32_t *c);
 #endif
 
-#if defined(GOC_HAVE_AVX512F)
-void fma_avx512f(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
-                 const uint32_t *c);
+#if defined(GOC_HAVE_X86_64_V4)
+void fma_x86_64_v4(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
+                   const uint32_t *c);
 #endif
 
 #if defined(GOC_HAVE_AVX512BF16)
