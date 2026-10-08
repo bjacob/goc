@@ -23,7 +23,9 @@ Static consumers inherit
 library; shared consumers see exported API declarations. Both variants are
 position-independent and keep implementation symbols hidden.
 
-The public API and C linkage are tested against every enabled variant.
+The public API and C linkage are tested against every enabled variant. Each
+`*_test.cpp` has its own executable, such as `tests/goc_wmma_test_static` and
+`tests/goc_wmma_test_shared`; the private decoder uses `tests/goc_cpu_decode_test`.
 Public headers are compiled independently once per language (C and C++), without
 linking. Private CPU decoding is tested separately. On Linux, export
 tests also check the shared API and static embedding. `tests/cpuinfo` links to
