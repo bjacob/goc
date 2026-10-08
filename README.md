@@ -72,13 +72,11 @@ and compares no modifiers, `NEG_LO_A` alone, and a mixed case
 (`NEG_HI_A | NEG_LO_B | ABS_C | NEG_C`). Modified floating-point rows use loose
 semantics and independent integer matrix references.
 Integer workloads use dense full-range factors and accumulators near overflow,
-with signedness and CLAMP as labeled. All workloads run with full, alternating,
-sparse (lanes 0, 15, 16, 31), and empty EXEC masks, shown in a separate column.
-They use separate C/D storage and hot buffers. Inactive destination lanes carry
-a sentinel checked before and after timing; FMA uses independent integer goldens.
-Speedups compare paths with the same input, semantics, instruction flags and mask. Timings include public API
-dispatch, input conversions and output stores. Each reported time is the median
-of seven samples after warmup. Each path starts at 128 calls (overridable by the
+with signedness and CLAMP as labeled. All workloads run with full EXEC, separate
+C/D storage and hot buffers. FMA uses independent integer goldens.
+Speedups compare paths with the same input, semantics and instruction flags.
+Timings include public API dispatch, input conversions and output stores. Each
+reported time is the median of seven samples after warmup. Each path starts at 128 calls (overridable by the
 positional argument) and doubles the count until the timed batch takes at least
 10 ms. Shorter batches are discarded. Subsequent samples retain that count and
 double again if necessary, so every accepted sample meets the minimum duration.
