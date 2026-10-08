@@ -10,6 +10,46 @@ int wmma(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *co
          uint32_t *const *a, uint32_t *const *b, uint32_t *const *c) {
   if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(63), true))
     return error;
+#if defined(GOC_HAVE_AVX512BF16)
+  if constexpr (Bf16) {
+    if ((flags & GOC_CPU_MASK) >= GOC_CPU_ZEN4 &&
+        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT && instruction_flags == 0) {
+      // DPBF16 flushes denormals independently of MXCSR. Retain the scalar
+      // path for subnormal factors or accumulators and special values.
+      bool ordinary = true;
+      int min_exp[2] = {255, 255}, max_exp[2] = {0, 0};
+      for (int reg = 0; reg < 4; ++reg)
+        for (int lane = 0; lane < 32; ++lane)
+          for (int shift : {0, 16}) {
+            for (int operand = 0; operand < 2; ++operand) {
+              uint32_t word = operand ? b[reg][lane] : a[reg][lane];
+              uint16_t bits = uint16_t(word >> shift);
+              int exp = (bits >> 7) & 255;
+              if (bits & 0x7fff) {
+                min_exp[operand] = std::min(min_exp[operand], exp);
+                max_exp[operand] = std::max(max_exp[operand], exp);
+              }
+              if (exp == 255 || (exp == 0 && (bits & 127)))
+                ordinary = false;
+            }
+          }
+      for (int reg = 0; reg < 8; ++reg)
+        for (int lane = 0; lane < 32; ++lane) {
+          uint32_t bits = c[reg][lane];
+          int exp = (bits >> 23) & 255;
+          if (exp == 255 || (exp == 0 && (bits & 0x7fffff)))
+            ordinary = false;
+        }
+      // Keep products safely inside FP32's normal range as well: normal
+      // factors alone do not rule out product underflow or overflow.
+      ordinary &= min_exp[0] + min_exp[1] >= 128 && max_exp[0] + max_exp[1] <= 380;
+      if (ordinary) {
+        goc::wmma_avx512bf16(static_cast<uint32_t>(mask), d, a, b, c);
+        return GOC_SUCCESS;
+      }
+    }
+  }
+#endif
   uint32_t result[8][32];
   const auto read_bits = [instruction_flags](uint32_t *const *v, int index, int k, int operand) {
     uint16_t value = uint16_t(v[(k % 8) / 2][index + 16 * (k / 8)] >> (16 * (k % 2)));
