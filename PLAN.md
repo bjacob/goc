@@ -32,14 +32,14 @@ the compile will generate a C ABI, not a C++ ABI, regardless of whether it is
 compiling as C or C++.
 
 In the API, try to avoid C-type contortions to represent GPU data types.
-For example, representing a bf16 value might be possible using a non-standard
+For example, representing a `bf16` value might be possible using a non-standard
 compiler extension type such as `__bf16`. Don't bother with that in the API.
-If we had to pass a bf16 uniform value, it could be passed as a `uint16_t`.
+If we had to pass a `bf16` uniform value, it could be passed as a `uint16_t`.
 Generally, fall back on sized unsigned integer types to pass raw bits if there
-isn't a standard C type / `stdint.h` type doing exactly what is needed. A float32
-value may be passed as C float. Generally, we are willing to entrench the
-assumption that float is IEEE-754 single precision, and double is IEEE-754
-double precision. For integer types, see `Data types` below.
+isn't a standard C type / `stdint.h` type doing exactly what is needed. A `float32`
+value may be passed as C `float`. Generally, we are willing to entrench the
+assumption that `float` is IEEE-754 single precision, and `double` is IEEE-754
+double precision. For integer types, see [Data types](#data-types) below.
 
 Public named integer constants shall use `static const` with an explicit integer
 type, rather than preprocessor macros. C99 constant-expression support is not
@@ -53,8 +53,8 @@ GoC entry point names follow the pattern
 
 Where:
 
-* `<architecture>` is the architecture name like rdna4, cdna3, etc. Each
-  architecture implies its own default wave size, e.g. rdna4 implies wave32.
+* `<architecture>` is the architecture name like `rdna4`, `cdna3`, etc. Each
+  architecture implies its own default wave size, e.g. `rdna4` implies wave32.
   - Note: see "What about Wave64 variants on Wave32-native architecture?" below.
 * `<mnemonic>` is the instruction mnemonic like `v_wmma_f32_16x16x16_f16`. We follow
   instruction mnemonics, not intrinsic names, because the API model here really
@@ -65,17 +65,17 @@ Example:
 
 `goc_rdna4_v_wmma_f32_16x16x16_f16`
 
-The API shall provide an umbrella C header, `goc/goc.h`, directly including
-`goc/detail/goc_common.h` for common flags, error codes and CPU initialization, and
-`goc/detail/goc_rdna4.h` for RDNA4 instruction declarations and modifiers.
+The API shall provide an umbrella C header, [`goc/goc.h`](https://github.com/bjacob/goc/blob/main/include/goc/goc.h), directly including
+[`goc/detail/goc_common.h`](https://github.com/bjacob/goc/blob/main/include/goc/detail/goc_common.h) for common flags, error codes and CPU initialization, and
+[`goc/detail/goc_rdna4.h`](https://github.com/bjacob/goc/blob/main/include/goc/detail/goc_rdna4.h) for RDNA4 instruction declarations and modifiers.
 
-API users, including implementations and tests, shall include `goc/goc.h`. It is the
-only header directly under `include/goc/`; component headers live under
-`include/goc/detail/`. Within `include/`, quoted includes are relative to the
-containing header's own directory. GoC's CMake targets expose `include/`, but the
+API users, including implementations and tests, shall include [`goc/goc.h`](https://github.com/bjacob/goc/blob/main/include/goc/goc.h). It is the
+only header directly under [`include/goc/`](https://github.com/bjacob/goc/tree/main/include/goc); component headers live under
+[`include/goc/detail/`](https://github.com/bjacob/goc/tree/main/include/goc/detail). Within [`include/`](https://github.com/bjacob/goc/tree/main/include), quoted includes are relative to the
+containing header's own directory. GoC's CMake targets expose [`include/`](https://github.com/bjacob/goc/tree/main/include), but the
 headers must also work when consumers reach them through other include paths.
 Internal and standard-library dependencies shall be included directly. Use minimal
-standard #includes (`stdint.h`, and maybe a few more as needed).
+standard `#include` directives (`stdint.h`, and maybe a few more as needed).
 
 Most entry points shall correspond 1:1 to a supported GPU instruction
 following the above pattern. Each such function shall take the following function parameters:
@@ -90,13 +90,13 @@ following the above pattern. Each such function shall take the following functio
   - Operands shall be enumerated in the same order as in the assembly syntax.
   - Instructions that have mode/flag bits, can pass them here, typically as a
     `instruction_flags` parameter before other instruction operands, an unsigned integer
-    of suitable width. For example, MFMA instructions with CBSZ, ABID, etc modes.
+    of suitable width. For example, MFMA instructions with `CBSZ`, `ABID`, etc modes.
     Do combine all such flags into a single unsigned integer, rather than passing
     multiple short integers.
 * For each VGPR operand of the GPU instruction, a pointer to the array of pointers
   representing the VGPRs backing that operand: `const uint32_t *const *` for inputs,
   and `uint32_t *const *` for outputs. Input pointers permit reads only; writes use
-  output pointers. This const qualification does not prohibit input/output aliasing.
+  output pointers. This `const` qualification does not prohibit input/output aliasing.
   - Operands shall be enumerated in the same order as in the assembly syntax.
   - Each VGPR is expected to be backed by a contiguous array of `uint32_t` words,
     one per lane. Thus, each VGPR is represented by one `const uint32_t *` input
@@ -158,7 +158,7 @@ One special entry point, `goc_init_cpu_flags`, shall have the prototype
 
 `uint64_t goc_init_cpu_flags(void);`
 
-and it shall perform CPU feature detection, returning a uint64 whose bits shall
+and it shall perform CPU feature detection, returning a `uint64_t` whose bits shall
 encode the availability of certain CPU features that GoC functions may rely on.
 
 Naturally, the 3 kinds of flags occupy disjoint bit ranges, and `goc_init_cpu_flags`
@@ -186,30 +186,30 @@ Try to stick to standard C with the data types provided by `stdint.h` and `stdde
 unless a specific need arises, then discuss.
 
 Prefer sized integer types from `stdint.h` (e.g. `int32_t`, `uint64_t`). Of the
-builtin-keyword standard integer types (short, int, long, long long), only use
-int, and only use it to mean "must be at least 32-bit, don't care about the
+builtin-keyword standard integer types (`short`, `int`, `long`, `long long`), only use
+`int`, and only use it to mean "must be at least 32-bit, don't care about the
 exact size".
 
-For sizes and indices, use signed integers, not unsigned.
+For sizes and indices, use signed integers, not `unsigned`.
 
-Use unsigned to convey either that we are looking at raw bits, or that wrapping
+Use `unsigned` to convey either that we are looking at raw bits, or that wrapping
 modulo 2^N is explicitly intended.
 
 ### Source tree
 
-```
-cmake/              # Any shared CMake files
-CMakeLists.txt      # root CMakeLists.
-include/goc/goc.h       # Umbrella API header
-include/goc/detail/goc_common.h # Common API definitions
-include/goc/detail/goc_rdna4.h # RDNA4 instruction API
-src/                # Implementation. Architecture-agnostics files directly here.
-src/CMakeLists.txt  # src/ CMakeLists, handles the library build.
-src/x86_64/         # x86_64-specific code paths (AVX etc). No further subdirs for now.
-src/x86_64/CMakeLists.txt # Handles the details of building x86-64 code paths.
-tests/              # Validation test suite.
-tests/CMakeLists.txt  # Build and register the tests
-```
+| Path | Purpose |
+| --- | --- |
+| `cmake/` | Any shared CMake files (planned; directory not yet present). |
+| [`CMakeLists.txt`](https://github.com/bjacob/goc/blob/main/CMakeLists.txt) | Root CMake configuration. |
+| [`include/goc/goc.h`](https://github.com/bjacob/goc/blob/main/include/goc/goc.h) | Umbrella API header. |
+| [`include/goc/detail/goc_common.h`](https://github.com/bjacob/goc/blob/main/include/goc/detail/goc_common.h) | Common API definitions. |
+| [`include/goc/detail/goc_rdna4.h`](https://github.com/bjacob/goc/blob/main/include/goc/detail/goc_rdna4.h) | RDNA4 instruction API. |
+| [`src/`](https://github.com/bjacob/goc/tree/main/src) | Implementation; architecture-agnostic files directly here. |
+| [`src/CMakeLists.txt`](https://github.com/bjacob/goc/blob/main/src/CMakeLists.txt) | Library build configuration. |
+| [`src/x86_64/`](https://github.com/bjacob/goc/tree/main/src/x86_64) | x86-64-specific code paths (AVX etc). No further subdirectories for now. |
+| [`src/x86_64/CMakeLists.txt`](https://github.com/bjacob/goc/blob/main/src/x86_64/CMakeLists.txt) | x86-64 code-path build configuration. |
+| [`tests/`](https://github.com/bjacob/goc/tree/main/tests) | Validation test suite. |
+| [`tests/CMakeLists.txt`](https://github.com/bjacob/goc/blob/main/tests/CMakeLists.txt) | Build and register the tests. |
 
 ### ISA-extension-specific code paths
 
@@ -218,15 +218,15 @@ We don't know outright what specific ISA features (e.g. AVX-512 features) we wil
 When implementation code needs to use a feature:
 
 * The code path actually using the feature needs to be in an source file with the feature name part of its leaf file name,
-  e.g. `rdna4_wmma_avx512bf16`  (use the lowercase CPU feature string names from GCC/Clang feature enablement strings, as in the GCC/Clang `-march=` flag, just without the prefix + sign).
-* These code paths must be located in an architecture-specific subdir, e.g. `src/x86_64/`.
+  e.g. [`rdna4_wmma_avx512bf16.cpp`](https://github.com/bjacob/goc/blob/main/src/x86_64/rdna4_wmma_avx512bf16.cpp) (use the lowercase CPU feature string names from GCC/Clang feature enablement strings, as in the GCC/Clang `-march=` flag, just without the prefix + sign).
+* These code paths must be located in an architecture-specific subdir, e.g. [`src/x86_64/`](https://github.com/bjacob/goc/tree/main/src/x86_64).
 * The functions actually using the feature also must have the same lowercase GCC-Clang-compatible feature name as a suffix
   in their identifier names.
-* The local `CMakeLists.txt` (e.g. `src/x86_64/CMakeLists.txt`) shall handle the build, such that each source file
+* The local [`src/x86_64/CMakeLists.txt`](https://github.com/bjacob/goc/blob/main/src/x86_64/CMakeLists.txt) shall handle the build, such that each source file
   gets the appropriate GCC/Clang compile flags. Only GCC and Clang are concerned: any other compiler will get only the
   default, standard-C/C++, architecture-agnostic code paths.
-* The local `CMakeLists.txt` will ensure that features are only enabled when the compiler supports the corresponding flag. This can use the standard CMake mechanism to try compiler flags. If the compiler does not support the corresponding flag, the feature will be disabled.
-* A reasonable balance will be achieved in granularity of CPU feature testing, w.r.t. our current audience and the fact that we are now in late 2026 and working at AMD. Here are our tiers of usage scenarios. Tier 1: modern (>= Zen4) AMD CPUs must get the best possible code paths. That means that an important baseline feature set for us is what Zen4 supports, and we will as useful add additional code paths for newer Zen architectures, e.g. is Zen6 adds avx512fp16 we will want to use that. Tier 2: AMD and Intel CPUs from the past 10 years should all support the x86-64-v3 feature set (which includes AVX2, FMA, F16C, BMI and BMI2). We want to support that decently: make good use of these features as useful, but without necessarily trying to support all the intermediate feature sets between that and Zen4, meaning that for a CPU like Zen3 that supports x86-64-v3 plus several features, it is not a high priority to utilize these features, even if they would be substantial speedups. It might be reasonable to have one middle step being x86-64-v4: that would help some Intel CPUs. I'd be open to that if not too much effort. Tier 3: anything not supporting x86-64-v3, we don't care to optimize for, we just want to not crash. That means, use plain scalar code, no SIMD.
+* The local [`src/x86_64/CMakeLists.txt`](https://github.com/bjacob/goc/blob/main/src/x86_64/CMakeLists.txt) will ensure that features are only enabled when the compiler supports the corresponding flag. This can use the standard CMake mechanism to try compiler flags. If the compiler does not support the corresponding flag, the feature will be disabled.
+* A reasonable balance will be achieved in granularity of CPU feature testing, w.r.t. our current audience and the fact that we are now in late 2026 and working at AMD. Here are our tiers of usage scenarios. Tier 1: modern (>= Zen4) AMD CPUs must get the best possible code paths. That means that an important baseline feature set for us is what Zen4 supports, and we will as useful add additional code paths for newer Zen architectures, e.g. is Zen6 adds `avx512fp16` we will want to use that. Tier 2: AMD and Intel CPUs from the past 10 years should all support the `x86-64-v3` feature set (which includes AVX2, FMA, F16C, BMI and BMI2). We want to support that decently: make good use of these features as useful, but without necessarily trying to support all the intermediate feature sets between that and Zen4, meaning that for a CPU like Zen3 that supports `x86-64-v3` plus several features, it is not a high priority to utilize these features, even if they would be substantial speedups. It might be reasonable to have one middle step being `x86-64-v4`: that would help some Intel CPUs. I'd be open to that if not too much effort. Tier 3: anything not supporting `x86-64-v3`, we don't care to optimize for, we just want to not crash. That means, use plain scalar code, no SIMD.
 
 ### Details on CPU flags and `goc_init_cpu_flags`.
 
@@ -237,9 +237,9 @@ For x86-64, that means that we are going to lean on folding features into totall
 We will reserve 4 bits to encode the baseline feature set:
 
 * `0` = Baseline x86-64
-* `1` = x86-64-v3
-* `2` = x86-64-v4
-* `3` = The Zen4 feature set.  That means x86-64-v4 plus these additional AVX-512 features: VPOPCNTDQ, IFMA, VBMI, VBMI2, VNNI, BF16, BITALG, VPCLMULQDQ, GFNI, VAES).
+* `1` = `x86-64-v3`
+* `2` = `x86-64-v4`
+* `3` = The Zen4 feature set.  That means `x86-64-v4` plus these additional AVX-512 features: VPOPCNTDQ, IFMA, VBMI, VBMI2, VNNI, BF16, BITALG, VPCLMULQDQ, GFNI, VAES).
 * `4..15` = reserved.
 
 We can then reserve the next 12 bits for additional CPU features.
@@ -251,7 +251,7 @@ restrictive condition than merely "the host CPU supports this feature", since th
 to support the corresponding registers in context switches. Thus, proper detection code needs to combine the CPU
 hardware query (which can use `__builtin_cpuid` on x86-64) with either a control-word access or an OS system call to confirm that the OS is allowing userspace code to rely on the feature. Fortunately, we won't have to invent this code as it is already written in
 
-`~/workspace/hrx-system/runtime/src/iree/base/internal/cpu_x86_64.c`
+[`~/workspace/hrx-system/runtime/src/iree/base/internal/cpu_x86_64.c`](https://github.com/ROCm/hrx-system/blob/main/runtime/src/iree/base/internal/cpu_x86_64.c)
 
 Take a close look at this code and borrow from it what is relevant to us. The fine-grained CPU feature check will need
 to be borrowed into the implementation of `goc_init_cpu_flags`, but unlike the hrx-system code, we won't directly expose these fine-grained feature, we will only expose coalesced coarser feature flags as described above. When borrowing from hrx-system, do not bother reflecting their file structure 1:1, liberally adapt it to minimize our resulting codebase. Disclaimer: I was the main author of that hrx-system code, so I know it's OK to borrow without much crediting, but it will help to have a short comment stating where this is coming from.
@@ -260,7 +260,7 @@ to be borrowed into the implementation of `goc_init_cpu_flags`, but unlike the h
 
 For now, this can be a 2-bit field encoding an enumeration:
 
-* `0` = Default, loose semantics. This means that it's OK to naively implement a GPU FMA as a CPU FMA or even a separate mul and add, it's OK to have more roundings or fewer roundings, and it's OK to implement a GPU math function like log2() as the corresponding C standard library math function, whatever the numerical discrepancies. It would NOT be OK to generate a nonsensical result, so any common bug such as mixing up the lane mapping, or omitting an arithmetic operation, should be expected to produce a test failure outside of a minority of accidental cases where the wrong value just happens to be close to the correct value. TLDR: "Anything that is mathematically sound, neglecting reasonable approximation discrepancies". Testing will rely on fuzzy comparisons with empirically-adjusted tolerances.
+* `0` = Default, loose semantics. This means that it's OK to naively implement a GPU FMA as a CPU FMA or even a separate mul and add, it's OK to have more roundings or fewer roundings, and it's OK to implement a GPU math function like `log2()` as the corresponding C standard library math function, whatever the numerical discrepancies. It would NOT be OK to generate a nonsensical result, so any common bug such as mixing up the lane mapping, or omitting an arithmetic operation, should be expected to produce a test failure outside of a minority of accidental cases where the wrong value just happens to be close to the correct value. TLDR: "Anything that is mathematically sound, neglecting reasonable approximation discrepancies". Testing will rely on fuzzy comparisons with empirically-adjusted tolerances.
 
 * `1` = Empirically bit-exact. This means that the implementation must produce results that are in practice, empirically, observed to be bit-exact. Such implementations might be created by agents observing the values coming out of a program running on the actual hardware, and then empirically constructing a model, or just lookup tables, to match these results.
 
@@ -287,11 +287,11 @@ The implementation may assume that the CPU environment is in its default/standar
 ### GPU floating-point types with no CPU support
 
 For FP8, FP6, FP4 arithmetic with no CPU support, the implementation will need to implement the correct arithmetic locally.
-Before embarking on big adventures, it will tour existing rocjitsu code, as well as the conversion helpers in this hrx-systems file: `hrx-system/runtime/src/iree/base/internal/math.h` for a good generic implementation of conversions to/from these types (which may be borrowed as needed). The implementation will make a reasonable effort to mutualize this support code rather than have it be completely duplicated between all instruction implementations, while striking a trade-off with performance.
+Before embarking on big adventures, it will tour existing rocjitsu code, as well as the conversion helpers in this hrx-systems file: [`hrx-system/runtime/src/iree/base/internal/math.h`](https://github.com/ROCm/hrx-system/blob/main/runtime/src/iree/base/internal/math.h) for a good generic implementation of conversions to/from these types (which may be borrowed as needed). The implementation will make a reasonable effort to mutualize this support code rather than have it be completely duplicated between all instruction implementations, while striking a trade-off with performance.
 
 ### Testing.
 
-The test suite in `tests/` will be more of a "validation" than a "unit" test suite: our implementation won't have
+The test suite in [`tests/`](https://github.com/bjacob/goc/tree/main/tests) will be more of a "validation" than a "unit" test suite: our implementation won't have
 much testable finer-grained functions than the API entry points, and testing on these API entry points will basically mean
 comparing their numerical outputs to a reference output, using either fuzzy or exact comparisons.
 
@@ -301,7 +301,7 @@ Fuzzy comparisons should broadly follow numpy conventions, as already imported i
 Testing will use pseudorandom numbers. It is OK to use the C++ standard header `<random>` as long as only the
 fully defined (not implementation-defined), deterministic subset is used. This is OK: `std::mt19937`, `std::minstd_rand`, any other `std::` specific engine.  This is NOT OK:  `std::default_random_engine` (not OK because implementation-defined which engine is selected as the default), `std::*_distribution` (the generated values are implementation-defined).  Tests should use random engines in a way that guarantees that the values remain the same regardless of the order in which testcases are run, or filtered. This could be achieved by letting each test use its own random engine object.
 
-Testing should use the GTest framework.  The CMake build should look for it as a system-installed dependency, and if not found, fall back to the CMake FetchContent feature.
+Testing should use the GTest framework.  The CMake build should look for it as a system-installed dependency, and if not found, fall back to the CMake `FetchContent` feature.
 
 Testing should be structured such that all implementation code paths are testable without GPU access.
 This means that we completely decouple the discovery (what are GPUs doing exactly, how do we isolate the contract that bit-exactness actually means) from the testing (ensure that GoC implementation doesn't regress wrt the contract). Tests should be self-contained in covering the contract. This means golden output values encoded in tests.
@@ -321,7 +321,7 @@ First architecture to start with: RDNA4. Then extend to this set: RDNA3/4, CDNA3
 
 #### Dimension 2: instructions
 
-Start with a few key instructions of each class: a few WMMA/MFMA, a few elementwise basic arithmetic (vector FMA), and maybe one math function (say log2). Then grow to more WMMA/MFMA and dot-products, remaining element-wise arithmetic, remaining math functions.
+Start with a few key instructions of each class: a few WMMA/MFMA, a few elementwise basic arithmetic (vector FMA), and maybe one math function (say `log2`). Then grow to more WMMA/MFMA and dot-products, remaining element-wise arithmetic, remaining math functions.
 
 #### Dimension 3: semantics modes
 
@@ -330,7 +330,7 @@ Do not bother about semantics modes 2-3 for now, treat them as just reserved for
 
 #### Dimension 4: instruction flags
 
-For instructions that have flags (e.g. NEG on RDNA4 WMMA), focus at first on the default common case, then later grow to include the support for these flags. Note: the implementation and testing of instruction flags shall be grown simultaneously, so that there is never a question of "what should tests do if an instruction flag hasn't been implemented yet". Before it exists at all, the question itself doesn't exit. Once it exists, it exists jointly in the implementation and test. This leaves open the question of what if the instruction flag exists at an early stage where only loose semantics are implemented, and then bit-exact semantics are implemented but only for some instruction flags values. In that case, an instruction with instruction flags not supported by the given semantics flags, and having the "strict" no-fallback bit set in its semantics flag, is treated as the error case of unsupported semantics. That is, the error-generation won't try to distinguish the fact that only that particular instruction flag is not supported by these semantics.
+For instructions that have flags (e.g. `NEG` on RDNA4 WMMA), focus at first on the default common case, then later grow to include the support for these flags. Note: the implementation and testing of instruction flags shall be grown simultaneously, so that there is never a question of "what should tests do if an instruction flag hasn't been implemented yet". Before it exists at all, the question itself doesn't exit. Once it exists, it exists jointly in the implementation and test. This leaves open the question of what if the instruction flag exists at an early stage where only loose semantics are implemented, and then bit-exact semantics are implemented but only for some instruction flags values. In that case, an instruction with instruction flags not supported by the given semantics flags, and having the "strict" no-fallback bit set in its semantics flag, is treated as the error case of unsupported semantics. That is, the error-generation won't try to distinguish the fact that only that particular instruction flag is not supported by these semantics.
 
 #### Dimension 5: floating-point environment
 
