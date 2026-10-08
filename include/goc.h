@@ -7,17 +7,19 @@ extern "C" {
 #endif
 
 // CPU levels are an enumeration, not independently OR-able feature bits.
-#define GOC_CPU_MASK UINT64_C(0xffff)
-#define GOC_CPU_BASELINE UINT64_C(0)
-#define GOC_CPU_X86_64_V3 UINT64_C(1)
-#define GOC_CPU_X86_64_V4 UINT64_C(2)
-#define GOC_CPU_ZEN4 UINT64_C(3)
-#define GOC_SEMANTICS_MASK (UINT64_C(3) << 16)
-#define GOC_SEMANTICS_LOOSE UINT64_C(0)
-#define GOC_SEMANTICS_EXACT (UINT64_C(1) << 16)
-#define GOC_SEMANTICS_STRICT (UINT64_C(1) << 18)
+static const uint64_t GOC_CPU_MASK = UINT64_C(0xffff);
+static const uint64_t GOC_CPU_BASELINE = UINT64_C(0);
+static const uint64_t GOC_CPU_X86_64_V3 = UINT64_C(1);
+static const uint64_t GOC_CPU_X86_64_V4 = UINT64_C(2);
+static const uint64_t GOC_CPU_ZEN4 = UINT64_C(3);
+static const uint64_t GOC_SEMANTICS_MASK = (UINT64_C(3) << 16);
+static const uint64_t GOC_SEMANTICS_LOOSE = UINT64_C(0);
+static const uint64_t GOC_SEMANTICS_EXACT = (UINT64_C(1) << 16);
+static const uint64_t GOC_SEMANTICS_STRICT = (UINT64_C(1) << 18);
 
-enum { GOC_SUCCESS = 0, GOC_ERROR_UNSUPPORTED_SEMANTICS = 1, GOC_ERROR_INVALID_FLAGS = 2 };
+static const int GOC_SUCCESS = 0;
+static const int GOC_ERROR_UNSUPPORTED_SEMANTICS = 1;
+static const int GOC_ERROR_INVALID_FLAGS = 2;
 
 // Returns runtime-usable CPU capabilities only. Callers may select a lower CPU
 // level for testing, but must not claim features unavailable on the calling CPU.
@@ -46,12 +48,12 @@ int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint64_t exec_mask, uint32_t instr
 
 // WMMA modifier layout follows neg_lo[0:2], then neg_hi[0:2]. For C,
 // neg_hi means absolute value, applied before neg_lo negation.
-#define GOC_WMMA_NEG_LO_A (UINT32_C(1) << 0)
-#define GOC_WMMA_NEG_LO_B (UINT32_C(1) << 1)
-#define GOC_WMMA_NEG_C (UINT32_C(1) << 2)
-#define GOC_WMMA_NEG_HI_A (UINT32_C(1) << 3)
-#define GOC_WMMA_NEG_HI_B (UINT32_C(1) << 4)
-#define GOC_WMMA_ABS_C (UINT32_C(1) << 5)
+static const uint32_t GOC_WMMA_NEG_LO_A = (UINT32_C(1) << 0);
+static const uint32_t GOC_WMMA_NEG_LO_B = (UINT32_C(1) << 1);
+static const uint32_t GOC_WMMA_NEG_C = (UINT32_C(1) << 2);
+static const uint32_t GOC_WMMA_NEG_HI_A = (UINT32_C(1) << 3);
+static const uint32_t GOC_WMMA_NEG_HI_B = (UINT32_C(1) << 4);
+static const uint32_t GOC_WMMA_ABS_C = (UINT32_C(1) << 5);
 // Wave32 16x16x16 WMMA: A/B each contain 4 VGPRs of packed 16-bit
 // elements; C/D each contain 8 VGPRs of FP32 elements. GoC applies exec_mask
 // to destination writes, including WMMA. All source lanes remain readable.

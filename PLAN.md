@@ -41,6 +41,10 @@ value may be passed as C float. Generally, we are willing to entrench the
 assumption that float is IEEE-754 single precision, and double is IEEE-754
 double precision. For integer types, see `Data types` below.
 
+Public named integer constants shall use `static const` with an explicit integer
+type, rather than preprocessor macros. C99 constant-expression support is not
+required for these names. If that becomes necessary, consider moving to C23.
+
 ### Anatomy of an entry point
 
 GoC entry point names follow the pattern
