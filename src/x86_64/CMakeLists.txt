@@ -18,6 +18,7 @@ foreach(target IN LISTS goc_library_targets)
   if(GOC_COMPILER_X86_64_V3)
     set(goc_x86_64_v3_sources
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_fma_x86_64_v3.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_unary_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_wmma_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_integer_wmma_x86_64_v3.cpp
     )

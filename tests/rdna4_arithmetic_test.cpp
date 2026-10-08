@@ -51,7 +51,7 @@ TEST(Arithmetic, ErrorsPreserveDestination) {
   EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, ~UINT64_C(0),
                                 0, &pd, &pa, &pa, &pa),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
-  EXPECT_EQ(goc_rdna4_v_log_f32(0, ~UINT64_C(0), 1, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
+  EXPECT_EQ(goc_rdna4_v_log_f32(0, ~UINT64_C(0), GOC_ALU_NEG_B, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
   EXPECT_EQ(goc_rdna4_v_log_f32(UINT64_C(1) << 63, ~UINT64_C(0), 0, &pd, &pa),
             GOC_ERROR_INVALID_FLAGS);
   for (auto v : d)

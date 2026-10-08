@@ -12,9 +12,10 @@ namespace {
 
 using Instruction = decltype(&goc_rdna4_v_fma_f32);
 
-int log(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
-        const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
-  return goc_rdna4_v_log_f32(flags, mask, modifiers, d, a);
+template <auto Fn>
+int unary(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+          const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
+  return Fn(flags, mask, modifiers, d, a);
 }
 
 struct Case {
@@ -25,7 +26,24 @@ struct Case {
 
 const Case cases[] = {
     {goc_rdna4_v_fma_f32, false, false, 0},
-    {log, false, false, 0},
+    {unary<goc_rdna4_v_log_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+    {unary<goc_rdna4_v_exp_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+    {unary<goc_rdna4_v_sqrt_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+    {unary<goc_rdna4_v_rcp_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+    {unary<goc_rdna4_v_rsq_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+    {unary<goc_rdna4_v_floor_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+    {unary<goc_rdna4_v_ceil_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+    {unary<goc_rdna4_v_trunc_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
+    {unary<goc_rdna4_v_rndne_f32>, false, false,
+     GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
     {goc_rdna4_v_dot2_f32_f16, false, true, 0},
     {goc_rdna4_v_dot2_f32_bf16, false, true, 0},
     {goc_rdna4_v_wmma_f32_16x16x16_f16, false, true, 63},

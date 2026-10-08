@@ -21,6 +21,14 @@ else()
     goc_rdna4_v_wmma_i32_16x16x32_iu4
     goc_init_cpu_flags
     goc_rdna4_v_fma_f32
+    goc_rdna4_v_trunc_f32
+    goc_rdna4_v_ceil_f32
+    goc_rdna4_v_rndne_f32
+    goc_rdna4_v_floor_f32
+    goc_rdna4_v_sqrt_f32
+    goc_rdna4_v_rcp_f32
+    goc_rdna4_v_rsq_f32
+    goc_rdna4_v_exp_f32
     goc_rdna4_v_log_f32
     goc_rdna4_v_dot2_f32_f16
     goc_rdna4_v_dot2_f32_bf16

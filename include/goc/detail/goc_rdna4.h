@@ -17,11 +17,54 @@ extern "C" {
 // conceptually read before writes. Inactive destination lanes and all destinations
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
-// FMA and LOG accept only instruction_flags == 0. Exact semantics requests
+// FMA accepts only instruction_flags == 0. Exact semantics requests
 // fall back to loose unless GOC_SEMANTICS_STRICT is set.
 GOC_API int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b, const uint32_t *const *c);
+
+// Floating ALU source modifiers: ABS precedes NEG.
+static const uint32_t GOC_ALU_NEG_A = (UINT32_C(1) << 0);
+static const uint32_t GOC_ALU_NEG_B = (UINT32_C(1) << 1);
+static const uint32_t GOC_ALU_NEG_C = (UINT32_C(1) << 2);
+static const uint32_t GOC_ALU_ABS_A = (UINT32_C(1) << 3);
+static const uint32_t GOC_ALU_ABS_B = (UINT32_C(1) << 4);
+static const uint32_t GOC_ALU_ABS_C = (UINT32_C(1) << 5);
+
+// Floating ALU output scaling precedes CLAMP. OMOD is a two-bit enumeration:
+// none, multiply by 2, multiply by 4, divide by 2.
+static const uint32_t GOC_ALU_OMOD_2 = (UINT32_C(1) << 6);
+static const uint32_t GOC_ALU_OMOD_4 = (UINT32_C(2) << 6);
+static const uint32_t GOC_ALU_OMOD_HALF = (UINT32_C(3) << 6);
+static const uint32_t GOC_ALU_CLAMP = (UINT32_C(1) << 8);
+
+// Unary FP32: one VGPR each for A/D. Supports NEG_A, ABS_A, OMOD and CLAMP;
+// modifiers for absent operands are invalid. CLAMP maps NaNs to +0 and clamps
+// to [0, 1]. EXP and LOG use base 2; RSQ computes reciprocal square root.
+// RNDNE rounds ties to even. Only loose semantics are implemented.
+GOC_API int goc_rdna4_v_trunc_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_ceil_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_rndne_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_floor_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_sqrt_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_rcp_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_rsq_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_exp_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
 
 GOC_API int goc_rdna4_v_log_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);

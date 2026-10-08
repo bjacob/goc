@@ -40,21 +40,3 @@ int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }
-
-int goc_rdna4_v_log_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
-                        uint32_t *const *d, const uint32_t *const *a) {
-  if (int error = goc::validate(flags, instruction_flags))
-    return error;
-  if (uint32_t(exec_mask) == 0)
-    return GOC_SUCCESS;
-
-  uint32_t result[32];
-  for (int lane = 0; lane < 32; ++lane)
-    if ((exec_mask >> lane) & 1)
-      result[lane] = goc::as_bits(std::log2(goc::as_float(a[0][lane])));
-
-  for (int lane = 0; lane < 32; ++lane)
-    if ((exec_mask >> lane) & 1)
-      d[0][lane] = result[lane];
-  return GOC_SUCCESS;
-}

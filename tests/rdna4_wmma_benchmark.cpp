@@ -133,7 +133,8 @@ bool nonnegative_integer(const char *text, int &value) {
 
 // Returns median nanoseconds per wave, or a negative value on an API/result error
 // or iteration-count overflow. Every accepted sample spans at least min_ms.
-double measure(Wmma fn, uint64_t flags, Registers &r, int initial_iterations, int min_ms,
+template <typename Instruction>
+double measure(Instruction fn, uint64_t flags, Registers &r, int initial_iterations, int min_ms,
                uint32_t modifiers) {
   uint64_t iterations = uint64_t(initial_iterations);
   const auto call = [&] {
@@ -299,6 +300,55 @@ bool benchmark_fma(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
+  using Unary = decltype(&goc_rdna4_v_log_f32);
+  const Unary functions[] = {goc_rdna4_v_trunc_f32, goc_rdna4_v_ceil_f32, goc_rdna4_v_rndne_f32,
+                             goc_rdna4_v_floor_f32, goc_rdna4_v_sqrt_f32, goc_rdna4_v_rcp_f32,
+                             goc_rdna4_v_rsq_f32,   goc_rdna4_v_exp_f32,  goc_rdna4_v_log_f32};
+  const char *names[] = {"f32/trunc", "f32/ceil", "f32/rndne", "f32/floor", "f32/sqrt",
+                         "f32/rcp",   "f32/rsq",  "f32/exp",   "f32/log"};
+  const float inputs[] = {0.25f, 1, 4, 16};
+  const float exp_inputs[] = {0, 1, 2, 4};
+  const float golden[][4] = {{0, 1, 4, 16},       {1, 1, 4, 16},   {0, 1, 4, 16},
+                             {0, 1, 4, 16},       {0.5f, 1, 2, 4}, {4, 1, 0.25f, 0.0625f},
+                             {2, 1, 0.5f, 0.25f}, {1, 2, 4, 16},   {-2, 0, 2, 4}};
+  for (int op = 0; op < 9; ++op)
+    for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        float input = (op == 7 ? exp_inputs : inputs)[lane % 4];
+        float want = golden[op][lane % 4];
+        if (modifiers) {
+          input = -input;
+          want = std::min(1.0f, std::max(0.0f, want * 0.5f));
+        }
+        r.data[0][lane] = bits(input);
+        r.expected[128 * (lane / 16) + lane % 16] = bits(want);
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *,
+                          const uint32_t *const *) {
+        return functions[op](flags, mask, mode, d, a);
+      };
+      const char *mode = modifiers ? "ABS_A / half/clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", mode, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (op < 7 && cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -320,7 +370,7 @@ int main(int argc, char **argv) {
   }
 
   uint64_t cpu = goc_init_cpu_flags();
-  std::printf("RDNA4 wave32 WMMA (16x16 output) and FMA; CPU flags 0x%llx\n",
+  std::printf("RDNA4 wave32 WMMA (16x16 output), FMA and unary arithmetic; CPU flags 0x%llx\n",
               static_cast<unsigned long long>(cpu));
   std::printf("Median of 7 samples, each at least %d ms, after warmup.\n", min_ms);
   std::printf("Start at %d calls; double until the minimum duration is reached.\n", iterations);
@@ -330,6 +380,10 @@ int main(int argc, char **argv) {
             "within each instruction-flags setting.");
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
+  if (!benchmark_unary(cpu, iterations, min_ms)) {
+    std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
+    return 1;
+  }
   if (!benchmark_fma(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "FMA benchmark failed: API/result error or iteration overflow.\n");
     return 1;

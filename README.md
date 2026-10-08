@@ -50,12 +50,13 @@ ctest --test-dir ../goc-build --output-on-failure \
 ../goc-build/tests/goc_rdna4_wmma_benchmark_static
 ```
 
-The selected tests demonstrate FMA/LOG, WMMA numeric formats, hardware-captured
+The selected tests demonstrate FP32 unary arithmetic, FMA, WMMA numeric formats, hardware-captured
 FP16/BF16 exactness, intermediate FP16 overflow state, and SIMD/scalar agreement.
 The full suite also covers DOT2, NEG/NEG_HI, wave64, masks, aliasing, C linkage,
 header self-containment and library exports.
 
-The benchmark includes wave32 FP32 FMA on scalar, v3 and v4, and compares scalar loose FP16 with x86-64-v3, and scalar loose BF16
+The benchmark includes wave32 FP32 unary arithmetic (unmodified and
+ABS/scaling/CLAMP), FP32 FMA on scalar, v3 and v4, and compares scalar loose FP16 with x86-64-v3, and scalar loose BF16
 with both x86-64-v3 and the Zen4 AVX-512 BF16 path. Integer rows cover
 INT8 K=16 and INT4 K=16/K=32 on scalar, v3 and Zen4 VNNI, with unsigned
 wrapping and signed CLAMP workloads. All integer rows request strict exact
@@ -134,7 +135,9 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | Mnemonic | Loose semantics | Empirical exact semantics |
 | --- | --- | --- |
 | `v_fma_f32` | Scalar, AVX2/FMA, AVX-512 | Not implemented |
-| `v_log_f32` | Scalar `log2` | Not implemented |
+| `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
 | `v_dot2_f32_f16` | Scalar | Integer arithmetic model |
 | `v_dot2_f32_bf16` | Scalar | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_f16` | Scalar, x86-64-v3 F16C/AVX2/FMA | Integer arithmetic model |
@@ -185,6 +188,18 @@ FP32-output wave32 forms; wave64 uses two A/B VGPRs and four C/D VGPRs.
 Packed-output forms halve the C/D register counts, packing adjacent rows into
 the low and high 16 bits. Input and output operands may share whole VGPRs. Distinct backing
 addresses must not overlap, and every pointer must refer to sufficient storage.
+
+Unary FP32 instructions support `GOC_ALU_ABS_A`, `GOC_ALU_NEG_A`, output
+scaling (`GOC_ALU_OMOD_2`, `GOC_ALU_OMOD_4`, `GOC_ALU_OMOD_HALF`), and
+`GOC_ALU_CLAMP` on both scalar and SIMD paths. ABS precedes NEG; scaling
+precedes CLAMP. CLAMP maps NaNs to positive zero and clamps to [0, 1].
+These loose semantics explicitly apply the requested scaling; GPU FP-state
+rules that conditionally suppress OMOD are not yet modeled.
+The scalar ties-to-even helper is adapted from rocjitsu's
+[`rndne_scalar`](https://github.com/ROCm/rocm-systems/blob/develop/emulation/rocjitsu/lib/util/include/util/simd.h).
+Unary tests cross all 32 modifier combinations with 85 masks, both separate and
+aliased output, and all available CPU levels, including signed zeros, subnormals,
+infinities, NaNs, half-integer ties and large integral values.
 
 GoC applies `exec_mask` to destination writes, including WMMA, as specified by
 its API contract. Inactive destination lanes remain unchanged; source lanes are
