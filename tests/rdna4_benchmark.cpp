@@ -234,22 +234,23 @@ double measure(Instruction fn, uint64_t flags, RegisterFile &r, int initial_iter
 }
 
 // Print one table row using the same column widths for headings and results.
-void print_columns(const char *input, const char *semantics, const char *instruction_flags,
-                   const char *path, const char *time, const char *speedup) {
-  std::printf("%-10s %-10s %-18s %-20s %12s %11s\n", input, semantics, instruction_flags, path,
-              time, speedup);
+void print_columns(const char *instruction, const char *semantics, const char *instruction_flags,
+                   const char *path, const char *time, const char *speedup, const char *wave) {
+  std::printf("%-36s %4s %-10s %-18s %-20s %12s %11s\n", instruction, wave, semantics,
+              instruction_flags, path, time, speedup);
 }
 
 // Print a result with fixed decimal precision; a negative speedup prints "--".
-void print_result(const char *input, const char *semantics, const char *instruction_flags,
-                  const char *path, double time, double speedup) {
+void print_result(const char *instruction, const char *semantics, const char *instruction_flags,
+                  const char *path, double time, double speedup, int wave = 32) {
   char time_text[64], speedup_text[64];
   std::snprintf(time_text, sizeof(time_text), "%.1f", time);
   if (speedup < 0)
     std::snprintf(speedup_text, sizeof(speedup_text), "--");
   else
     std::snprintf(speedup_text, sizeof(speedup_text), "%.2fx", speedup);
-  print_columns(input, semantics, instruction_flags, path, time_text, speedup_text);
+  print_columns(instruction, semantics, instruction_flags, path, time_text, speedup_text,
+                wave == 64 ? "64" : "32");
 }
 
 bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t modifiers) {
@@ -257,7 +258,7 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t mod
   const char *instruction_flags = modifiers == 0                   ? "none"
                                   : modifiers == GOC_WMMA_NEG_LO_A ? "NEG_LO_A"
                                                                    : "mixed";
-  const char *format = bf16 ? "bf16" : "fp16";
+  const char *format = bf16 ? "v_wmma_f32_16x16x16_bf16" : "v_wmma_f32_16x16x16_f16";
   Wmma fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
   double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
   if (scalar < 0)
@@ -307,7 +308,8 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t mod
 bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {goc_rdna4_v_wmma_i32_16x16x16_iu8, goc_rdna4_v_wmma_i32_16x16x16_iu4,
                             goc_rdna4_v_wmma_i32_16x16x32_iu4};
-  const char *names[] = {"int8/k16", "int4/k16", "int4/k32"};
+  const char *names[] = {"v_wmma_i32_16x16x16_iu8", "v_wmma_i32_16x16x16_iu4",
+                         "v_wmma_i32_16x16x32_iu4"};
   const char *instruction_flags = mode == 0 ? "u/u wrap" : "s/s clamp";
   const uint32_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
   Registers r(shape, mode);
@@ -348,8 +350,8 @@ bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t modifiers,
       return false;
     if (level == GOC_CPU_BASELINE)
       scalar = time;
-    print_result(dx9 ? "f32/fmadx9" : "f32/fma", "loose", modifiers ? "NEG/ABS/half" : "none", path,
-                 time, scalar / time);
+    print_result(dx9 ? "v_fma_dx9_zero_f32" : "v_fma_f32", "loose",
+                 modifiers ? "NEG/ABS/half" : "none", path, time, scalar / time);
     return true;
   };
   if (!run("scalar", GOC_CPU_BASELINE))
@@ -372,8 +374,8 @@ bool benchmark_integer_mul(uint64_t cpu, int iterations, int min_ms) {
                               goc_rdna4_v_mul_hi_i32,     goc_rdna4_v_mul_i32_i24,
                               goc_rdna4_v_mul_hi_i32_i24, goc_rdna4_v_mul_u32_u24,
                               goc_rdna4_v_mul_hi_u32_u24};
-  const char *names[] = {"u32/mullo", "u32/mulhi", "i32/mulhi", "i24/mul",
-                         "i24/mulhi", "u24/mul",   "u24/mulhi"};
+  const char *names[] = {"v_mul_lo_u32",     "v_mul_hi_u32",  "v_mul_hi_i32",    "v_mul_i32_i24",
+                         "v_mul_hi_i32_i24", "v_mul_u32_u24", "v_mul_hi_u32_u24"};
   const uint32_t inputs[][4] = {{0x007fffff, 0xff800000, 0xffffffff, 65535},
                                 {256, 0x00800000, 0xffffffff, 65536}};
   for (int op = 0; op < 7; ++op)
@@ -443,8 +445,8 @@ bool benchmark_half_binary(uint64_t cpu, int iterations, int min_ms) {
       integer_binary<goc_rdna4_v_subrev_f16>,  integer_binary<goc_rdna4_v_mul_f16>,
       integer_binary<goc_rdna4_v_min_num_f16>, integer_binary<goc_rdna4_v_max_num_f16>,
       integer_binary<goc_rdna4_v_minimum_f16>, integer_binary<goc_rdna4_v_maximum_f16>};
-  const char *names[] = {"f16/add",    "f16/sub",    "f16/subrev", "f16/mul",
-                         "f16/minnum", "f16/maxnum", "f16/minim",  "f16/maxim"};
+  const char *names[] = {"v_add_f16",     "v_sub_f16",     "v_subrev_f16",  "v_mul_f16",
+                         "v_min_num_f16", "v_max_num_f16", "v_minimum_f16", "v_maximum_f16"};
   const uint32_t modified = GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D | GOC_ALU_ABS_A |
                             GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   for (int op = 0; op < 8; ++op)
@@ -493,7 +495,8 @@ bool benchmark_integer_add(uint64_t cpu, int iterations, int min_ms) {
       integer_binary<goc_rdna4_v_add_nc_u32>,    integer_binary<goc_rdna4_v_sub_nc_u32>,
       integer_binary<goc_rdna4_v_subrev_nc_u32>, integer_binary<goc_rdna4_v_add_nc_i32>,
       integer_binary<goc_rdna4_v_sub_nc_i32>,    goc_rdna4_v_add3_u32};
-  const char *names[] = {"u32/add", "u32/sub", "u32/subrev", "i32/add", "i32/sub", "u32/add3"};
+  const char *names[] = {"v_add_nc_u32", "v_sub_nc_u32", "v_subrev_nc_u32",
+                         "v_add_nc_i32", "v_sub_nc_i32", "v_add3_u32"};
   const uint32_t inputs[][4] = {
       {0xffffffff, 0x7fffffff, 0x80000000, 0}, {1, 1, 0xffffffff, 1}, {0xffffffff, 2, 3, 4}};
   for (int op = 0; op < 6; ++op)
@@ -562,9 +565,10 @@ bool benchmark_integer_minmax(uint64_t cpu, int iterations, int min_ms) {
                             goc_rdna4_v_minmax_u32,
                             goc_rdna4_v_maxmin_u32,
                             goc_rdna4_v_med3_u32};
-  const char *names[] = {"i32/min",    "i32/max",    "i32/min3",   "i32/max3", "i32/minmax",
-                         "i32/maxmin", "i32/med3",   "u32/min",    "u32/max",  "u32/min3",
-                         "u32/max3",   "u32/minmax", "u32/maxmin", "u32/med3"};
+  const char *names[] = {"v_min_i32",    "v_max_i32",    "v_min3_i32", "v_max3_i32",
+                         "v_minmax_i32", "v_maxmin_i32", "v_med3_i32", "v_min_u32",
+                         "v_max_u32",    "v_min3_u32",   "v_max3_u32", "v_minmax_u32",
+                         "v_maxmin_u32", "v_med3_u32"};
   const uint32_t input[3][4] = {{1, 0xffffffff, 0x80000000, 0x7fffffff},
                                 {2, 1, 0x7fffffff, 0x80000000},
                                 {3, 0x80000000, 0, 0xffffffff}};
@@ -654,7 +658,7 @@ bool benchmark_ldexp(uint64_t cpu, int iterations, int min_ms) {
                           const uint32_t *const *) {
         return functions[fp64](flags, mask, modifiers, d, a, b);
       };
-      const char *name = fp64 ? "f64/ldexp" : "f32/ldexp";
+      const char *name = fp64 ? "v_ldexp_f64" : "v_ldexp_f32";
       const char *label = mode ? "ABS_A / half/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
       if (scalar < 0)
@@ -703,7 +707,7 @@ bool benchmark_frexp_exp(uint64_t cpu, int iterations, int min_ms) {
                           const uint32_t *const *) {
         return functions[fp64](flags, mask, modifiers, d, a);
       };
-      const char *name = fp64 ? "f64/frexp" : "f32/frexp";
+      const char *name = fp64 ? "v_frexp_exp_i32_f64" : "v_frexp_exp_i32_f32";
       const char *label = mode ? "NEG/ABS/half/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
       if (scalar < 0)
@@ -759,7 +763,7 @@ bool benchmark_half_exponent(uint64_t cpu, int iterations, int min_ms) {
         return ldexp ? goc_rdna4_v_ldexp_f16(flags, mask, modifiers, d, a, b)
                      : goc_rdna4_v_frexp_exp_i16_f16(flags, mask, modifiers, d, a);
       };
-      const char *name = ldexp ? "f16/ldexp" : "f16/frexp";
+      const char *name = ldexp ? "v_ldexp_f16" : "v_frexp_exp_i16_f16";
       const char *label = modified ? "ABS/hi/half/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
       if (scalar < 0)
@@ -785,8 +789,9 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
       goc_rdna4_v_floor_f16, goc_rdna4_v_sqrt_f16,      goc_rdna4_v_rcp_f16,
       goc_rdna4_v_rsq_f16,   goc_rdna4_v_exp_f16,       goc_rdna4_v_log_f16,
       goc_rdna4_v_fract_f16, goc_rdna4_v_frexp_mant_f16};
-  const char *names[] = {"f16/trunc", "f16/ceil", "f16/rndne", "f16/floor", "f16/sqrt", "f16/rcp",
-                         "f16/rsq",   "f16/exp",  "f16/log",   "f16/fract", "f16/mant"};
+  const char *names[] = {"v_trunc_f16", "v_ceil_f16",  "v_rndne_f16",     "v_floor_f16",
+                         "v_sqrt_f16",  "v_rcp_f16",   "v_rsq_f16",       "v_exp_f16",
+                         "v_log_f16",   "v_fract_f16", "v_frexp_mant_f16"};
   const float inputs[] = {0.25f, 1, 4, 16};
   const float exp_inputs[] = {0, 1, 2, 4};
   const float golden[][4] = {{0, 1, 4, 16},       {1, 1, 4, 16},       {0, 1, 4, 16},
@@ -837,7 +842,7 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
 bool benchmark_mixed_fma(uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {goc_rdna4_v_fma_mix_f32, goc_rdna4_v_fma_mixlo_f16,
                             goc_rdna4_v_fma_mixhi_f16};
-  const char *names[] = {"f32/mix", "f16/mixlo", "f16/mixhi"};
+  const char *names[] = {"v_fma_mix_f32", "v_fma_mixlo_f16", "v_fma_mixhi_f16"};
   const uint32_t modes[] = {0,
                             GOC_MIX_F16_A | GOC_MIX_F16_C | GOC_ALU_HIGH_A | GOC_ALU_NEG_A |
                                 GOC_ALU_ABS_B | GOC_ALU_CLAMP,
@@ -895,8 +900,9 @@ bool benchmark_bit_count(uint64_t cpu, int iterations, int min_ms) {
       goc_test::count_leading,         goc_test::count_trailing,       goc_test::count_sign,
       goc_rdna4_v_bcnt_u32_b32,        goc_rdna4_v_mbcnt_lo_u32_b32,   goc_rdna4_v_mbcnt_hi_u32_b32,
       goc_rdna4w64_v_mbcnt_lo_u32_b32, goc_rdna4w64_v_mbcnt_hi_u32_b32};
-  const char *names[] = {"u32/clz",   "b32/ctz",   "i32/cls",    "u32/bcnt",
-                         "u32/mbclo", "u32/mbchi", "u32/mbcl64", "u32/mbch64"};
+  const char *names[] = {"v_clz_i32_u32",      "v_ctz_i32_b32",      "v_cls_i32",
+                         "v_bcnt_u32_b32",     "v_mbcnt_lo_u32_b32", "v_mbcnt_hi_u32_b32",
+                         "v_mbcnt_lo_u32_b32", "v_mbcnt_hi_u32_b32"};
 
   struct CountRegisters {
     uint32_t data[3][64] = {}, expected[64] = {};
@@ -933,14 +939,14 @@ bool benchmark_bit_count(uint64_t cpu, int iterations, int min_ms) {
     double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, 0, mask);
     if (scalar < 0)
       return false;
-    print_result(names[op], "loose", label, "scalar", scalar, 1);
+    print_result(names[op], "loose", label, "scalar", scalar, 1, op >= 6 ? 64 : 32);
 
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
     if (cpu >= GOC_CPU_X86_64_V3 && op != 5) {
       double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, 0, mask);
       if (simd < 0)
         return false;
-      print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd, op >= 6 ? 64 : 32);
     }
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
@@ -948,7 +954,7 @@ bool benchmark_bit_count(uint64_t cpu, int iterations, int min_ms) {
       double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, 0, mask);
       if (simd < 0)
         return false;
-      print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
+      print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd, op >= 6 ? 64 : 32);
     }
 #endif
   }
@@ -961,8 +967,8 @@ bool benchmark_boolean(uint64_t cpu, int iterations, int min_ms) {
   const Binary functions[] = {goc_rdna4_v_and_b32,     goc_rdna4_v_or_b32,     goc_rdna4_v_xor_b32,
                               goc_test::boolean_not32, goc_rdna4_v_and_b16,    goc_rdna4_v_or_b16,
                               goc_rdna4_v_xor_b16,     goc_test::boolean_not16};
-  const char *names[] = {"b32/and", "b32/or", "b32/xor", "b32/not",
-                         "b16/and", "b16/or", "b16/xor", "b16/not"};
+  const char *names[] = {"v_and_b32", "v_or_b32", "v_xor_b32", "v_not_b32",
+                         "v_and_b16", "v_or_b16", "v_xor_b16", "v_not_b16"};
   for (int op = 0; op < 8; ++op)
     for (bool modified : {false, true}) {
       if (op < 4 && modified)
@@ -1004,7 +1010,7 @@ bool benchmark_boolean(uint64_t cpu, int iterations, int min_ms) {
 bool benchmark_bitfield(uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {goc_rdna4_v_bfe_u32, goc_rdna4_v_bfe_i32, goc_rdna4_v_bfi_b32,
                             goc_test::bitfield_mask, goc_test::bitfield_reverse};
-  const char *names[] = {"u32/bfe", "i32/bfe", "b32/bfi", "b32/bfm", "b32/bfrev"};
+  const char *names[] = {"v_bfe_u32", "v_bfe_i32", "v_bfi_b32", "v_bfm_b32", "v_bfrev_b32"};
   for (int op = 0; op < 5; ++op) {
     Registers r;
     r.output_regs = 1;
@@ -1045,8 +1051,8 @@ bool benchmark_integer_ternary(uint64_t cpu, int iterations, int min_ms) {
                             goc_rdna4_v_lshl_or_b32,  goc_rdna4_v_and_or_b32,
                             goc_rdna4_v_or3_b32,      goc_rdna4_v_xor3_b32,
                             goc_rdna4_v_xad_u32,      goc_rdna4_v_lerp_u8};
-  const char *names[] = {"u32/shladd", "u32/addshl", "b32/shlor", "b32/andor",
-                         "b32/or3",    "b32/xor3",   "u32/xad",   "u8/lerp"};
+  const char *names[] = {"v_lshl_add_u32", "v_add_lshl_u32", "v_lshl_or_b32", "v_and_or_b32",
+                         "v_or3_b32",      "v_xor3_b32",     "v_xad_u32",     "v_lerp_u8"};
   for (int op = 0; op < 8; ++op) {
     Registers r;
     r.output_regs = 1;
@@ -1087,8 +1093,8 @@ bool benchmark_sad(uint64_t cpu, int iterations, int min_ms) {
                             goc_rdna4_v_sad_u16,         goc_rdna4_v_sad_u32,
                             goc_rdna4_v_msad_u8,         goc_rdna4_v_qsad_pk_u16_u8,
                             goc_rdna4_v_mqsad_pk_u16_u8, goc_rdna4_v_mqsad_u32_u8};
-  const char *names[] = {"u8/sad",  "u8/sadhi", "u16/sad",   "u32/sad",
-                         "u8/msad", "u16/qsad", "u16/mqsad", "u32/mqsad"};
+  const char *names[] = {"v_sad_u8",  "v_sad_hi_u8",      "v_sad_u16",         "v_sad_u32",
+                         "v_msad_u8", "v_qsad_pk_u16_u8", "v_mqsad_pk_u16_u8", "v_mqsad_u32_u8"};
   for (int op = 0; op < 8; ++op)
     for (uint32_t mode : {UINT32_C(0), GOC_ALU_CLAMP}) {
       Registers r;
@@ -1128,7 +1134,8 @@ bool benchmark_shift(uint64_t cpu, int iterations, int min_ms) {
   const Binary functions[] = {goc_rdna4_v_lshlrev_b32, goc_rdna4_v_lshrrev_b32,
                               goc_rdna4_v_ashrrev_i32, goc_rdna4_v_lshlrev_b64,
                               goc_rdna4_v_lshrrev_b64, goc_rdna4_v_ashrrev_i64};
-  const char *names[] = {"b32/shl", "b32/shr", "i32/ashr", "b64/shl", "b64/shr", "i64/ashr"};
+  const char *names[] = {"v_lshlrev_b32", "v_lshrrev_b32", "v_ashrrev_i32",
+                         "v_lshlrev_b64", "v_lshrrev_b64", "v_ashrrev_i64"};
   for (int op = 0; op < 6; ++op) {
     Registers r;
     int width = op < 3 ? 32 : 64;
@@ -1170,7 +1177,7 @@ bool benchmark_shift(uint64_t cpu, int iterations, int min_ms) {
 bool benchmark_half_trig(uint64_t cpu, int iterations, int min_ms) {
   using Unary = decltype(&goc_rdna4_v_sin_f16);
   const Unary functions[] = {goc_rdna4_v_sin_f16, goc_rdna4_v_cos_f16};
-  const char *names[] = {"f16/sin", "f16/cos"};
+  const char *names[] = {"v_sin_f16", "v_cos_f16"};
   for (int op = 0; op < 2; ++op)
     for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D |
                                                 GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
@@ -1221,7 +1228,7 @@ bool benchmark_half_trig(uint64_t cpu, int iterations, int min_ms) {
 bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
   using Unary = decltype(&goc_rdna4_v_sin_f32);
   const Unary functions[] = {goc_rdna4_v_sin_f32, goc_rdna4_v_cos_f32};
-  const char *names[] = {"f32/sin", "f32/cos"};
+  const char *names[] = {"v_sin_f32", "v_cos_f32"};
   for (int op = 0; op < 2; ++op)
     for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
@@ -1267,8 +1274,9 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
       goc_rdna4_v_floor_f32, goc_rdna4_v_sqrt_f32,      goc_rdna4_v_rcp_f32,
       goc_rdna4_v_rsq_f32,   goc_rdna4_v_exp_f32,       goc_rdna4_v_log_f32,
       goc_rdna4_v_fract_f32, goc_rdna4_v_frexp_mant_f32};
-  const char *names[] = {"f32/trunc", "f32/ceil", "f32/rndne", "f32/floor", "f32/sqrt", "f32/rcp",
-                         "f32/rsq",   "f32/exp",  "f32/log",   "f32/fract", "f32/mant"};
+  const char *names[] = {"v_trunc_f32", "v_ceil_f32",  "v_rndne_f32",     "v_floor_f32",
+                         "v_sqrt_f32",  "v_rcp_f32",   "v_rsq_f32",       "v_exp_f32",
+                         "v_log_f32",   "v_fract_f32", "v_frexp_mant_f32"};
   const float inputs[] = {0.25f, 1, 4, 16};
   const float exp_inputs[] = {0, 1, 2, 4};
   const float golden[][4] = {{0, 1, 4, 16},       {1, 1, 4, 16},       {0, 1, 4, 16},
@@ -1318,8 +1326,9 @@ bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
       goc_rdna4_v_add_f32,     goc_rdna4_v_sub_f32,     goc_rdna4_v_subrev_f32,
       goc_rdna4_v_mul_f32,     goc_rdna4_v_min_num_f32, goc_rdna4_v_max_num_f32,
       goc_rdna4_v_minimum_f32, goc_rdna4_v_maximum_f32, goc_rdna4_v_mul_dx9_zero_f32};
-  const char *names[] = {"f32/add",    "f32/sub", "f32/subrev", "f32/mul",   "f32/minnum",
-                         "f32/maxnum", "f32/min", "f32/max",    "f32/muldx9"};
+  const char *names[] = {"v_add_f32",     "v_sub_f32",     "v_subrev_f32",
+                         "v_mul_f32",     "v_min_num_f32", "v_max_num_f32",
+                         "v_minimum_f32", "v_maximum_f32", "v_mul_dx9_zero_f32"};
   for (int op = 0; op < 9; ++op)
     for (uint32_t mode :
          {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
@@ -1370,7 +1379,7 @@ bool benchmark_integer_mad(uint64_t cpu, int iterations, int min_ms) {
   using Fn = decltype(&goc_rdna4_v_mad_i32_i16);
   const Fn functions[] = {goc_rdna4_v_mad_u32_u16, goc_rdna4_v_mad_i32_i16, goc_rdna4_v_mad_u32_u24,
                           goc_rdna4_v_mad_i32_i24};
-  const char *names[] = {"u16/mad32", "i16/mad32", "u24/mad32", "i24/mad32"};
+  const char *names[] = {"v_mad_u32_u16", "v_mad_i32_i16", "v_mad_u32_u24", "v_mad_i32_i24"};
   for (int op = 0; op < 4; ++op)
     for (bool modified : {false, true}) {
       uint32_t mode = modified ? GOC_ALU_CLAMP | (op < 2 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0) : 0;
@@ -1408,8 +1417,8 @@ bool benchmark_integer16_ternary(uint64_t cpu, int iterations, int min_ms) {
   const Fn functions[] = {goc_rdna4_v_mad_u16,  goc_rdna4_v_mad_i16,  goc_rdna4_v_min3_u16,
                           goc_rdna4_v_min3_i16, goc_rdna4_v_max3_u16, goc_rdna4_v_max3_i16,
                           goc_rdna4_v_med3_u16, goc_rdna4_v_med3_i16};
-  const char *names[] = {"u16/mad",  "i16/mad",  "u16/min3", "i16/min3",
-                         "u16/max3", "i16/max3", "u16/med3", "i16/med3"};
+  const char *names[] = {"v_mad_u16",  "v_mad_i16",  "v_min3_u16", "v_min3_i16",
+                         "v_max3_u16", "v_max3_i16", "v_med3_u16", "v_med3_i16"};
   for (int op = 0; op < 8; ++op)
     for (bool modified : {false, true}) {
       uint32_t mode =
@@ -1461,7 +1470,7 @@ bool benchmark_packed_mad(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] = goc_test::packed_mad_reference(
             sign, r.data[0][lane], r.data[4][lane], r.data[8][lane], mode);
       }
-      const char *name = sign ? "i16/pmad" : "u16/pmad";
+      const char *name = sign ? "v_pk_mad_i16" : "v_pk_mad_u16";
       const char *label = modified ? "select/clamp" : "none";
       double scalar = measure(functions[sign], GOC_CPU_BASELINE, r, iterations, min_ms, mode);
       if (scalar < 0)
@@ -1487,8 +1496,9 @@ bool benchmark_integer16(uint64_t cpu, int iterations, int min_ms) {
       goc_rdna4_v_sub_nc_u16,  goc_rdna4_v_min_i16,     goc_rdna4_v_max_i16,
       goc_rdna4_v_min_u16,     goc_rdna4_v_max_u16,     goc_rdna4_v_mul_lo_u16,
       goc_rdna4_v_lshlrev_b16, goc_rdna4_v_lshrrev_b16, goc_rdna4_v_ashrrev_i16};
-  const char *names[] = {"i16/add", "i16/sub", "u16/add", "u16/sub", "i16/min", "i16/max",
-                         "u16/min", "u16/max", "u16/mul", "u16/shl", "u16/shr", "i16/shr"};
+  const char *names[] = {"v_add_nc_i16", "v_sub_nc_i16",  "v_add_nc_u16",  "v_sub_nc_u16",
+                         "v_min_i16",    "v_max_i16",     "v_min_u16",     "v_max_u16",
+                         "v_mul_lo_u16", "v_lshlrev_b16", "v_lshrrev_b16", "v_ashrrev_i16"};
   for (int op = 0; op < 12; ++op)
     for (bool modified : {false, true}) {
       uint32_t mode =
@@ -1533,8 +1543,10 @@ bool benchmark_packed_integer(uint64_t cpu, int iterations, int min_ms) {
       goc_rdna4_v_pk_sub_u16,     goc_rdna4_v_pk_min_i16,     goc_rdna4_v_pk_max_i16,
       goc_rdna4_v_pk_min_u16,     goc_rdna4_v_pk_max_u16,     goc_rdna4_v_pk_mul_lo_u16,
       goc_rdna4_v_pk_lshlrev_b16, goc_rdna4_v_pk_lshrrev_b16, goc_rdna4_v_pk_ashrrev_i16};
-  const char *names[] = {"i16/padd", "i16/psub", "u16/padd", "u16/psub", "i16/pmin", "i16/pmax",
-                         "u16/pmin", "u16/pmax", "u16/pmul", "u16/pshl", "u16/pshr", "i16/pshr"};
+  const char *names[] = {"v_pk_add_i16",     "v_pk_sub_i16",     "v_pk_add_u16",
+                         "v_pk_sub_u16",     "v_pk_min_i16",     "v_pk_max_i16",
+                         "v_pk_min_u16",     "v_pk_max_u16",     "v_pk_mul_lo_u16",
+                         "v_pk_lshlrev_b16", "v_pk_lshrrev_b16", "v_pk_ashrrev_i16"};
   for (int op = 0; op < 12; ++op)
     for (bool modified : {false, true}) {
       uint32_t mode =
@@ -1575,7 +1587,8 @@ bool benchmark_packed_binary(uint64_t cpu, int iterations, int min_ms) {
   const Binary functions[] = {goc_rdna4_v_pk_add_f16,     goc_rdna4_v_pk_mul_f16,
                               goc_rdna4_v_pk_min_num_f16, goc_rdna4_v_pk_max_num_f16,
                               goc_rdna4_v_pk_minimum_f16, goc_rdna4_v_pk_maximum_f16};
-  const char *names[] = {"f16/padd", "f16/pmul", "f16/pminn", "f16/pmaxn", "f16/pmin", "f16/pmax"};
+  const char *names[] = {"v_pk_add_f16",     "v_pk_mul_f16",     "v_pk_min_num_f16",
+                         "v_pk_max_num_f16", "v_pk_minimum_f16", "v_pk_maximum_f16"};
   for (int op = 0; op < 6; ++op)
     for (bool modified : {false, true}) {
       uint32_t mode = modified ? GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH |
@@ -1659,7 +1672,7 @@ bool benchmark_packed_fma(uint64_t cpu, int iterations, int min_ms) {
         }
         return goc_rdna4_v_pk_fma_f16(flags, mask, modifiers, d, a, b, c);
       };
-      const char *name = accumulate ? "f16/pkfmac" : "f16/pkfma";
+      const char *name = accumulate ? "v_pk_fmac_f16" : "v_pk_fma_f16";
       const char *label = modified ? "NEG/select/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
       if (scalar < 0)
@@ -1719,8 +1732,8 @@ bool benchmark_literal_fma(uint64_t cpu, int iterations, int min_ms) {
           return multiply ? goc_rdna4_v_fmamk_f32(flags, mask, modifiers, d, a, literal, b)
                           : goc_rdna4_v_fmaak_f32(flags, mask, modifiers, d, a, b, literal);
         };
-        const char *name =
-            half ? (multiply ? "f16/fmamk" : "f16/fmaak") : (multiply ? "f32/fmamk" : "f32/fmaak");
+        const char *name = half ? (multiply ? "v_fmamk_f16" : "v_fmaak_f16")
+                                : (multiply ? "v_fmamk_f32" : "v_fmaak_f32");
         const char *label = selection ? "hi" : "none";
         double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
         if (scalar < 0)
@@ -1794,7 +1807,7 @@ bool benchmark_fmac(uint64_t cpu, int iterations, int min_ms) {
         std::memcpy(d[0], c[0], 32 * sizeof(uint32_t));
         return operation(flags, mask, modifiers, d, a, b);
       };
-      const char *name = half ? "f16/fmac" : "f32/fmac";
+      const char *name = half ? "v_fmac_f16" : "v_fmac_f32";
       const char *label = modified ? (half ? "ABS/NEG/hi/half/cl" : "ABS/NEG/half/cl") : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
       if (scalar < 0)
@@ -1855,13 +1868,13 @@ bool benchmark_half_fma(uint64_t cpu, int iterations, int min_ms) {
     double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
     if (scalar < 0)
       return false;
-    print_result("f16/fma", "loose", label, "scalar", scalar, 1);
+    print_result("v_fma_f16", "loose", label, "scalar", scalar, 1);
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
     if (cpu >= GOC_CPU_X86_64_V3) {
       double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
       if (simd < 0)
         return false;
-      print_result("f16/fma", "loose", label, "x86-64-v3", simd, scalar / simd);
+      print_result("v_fma_f16", "loose", label, "x86-64-v3", simd, scalar / simd);
     }
 #endif
     double exact =
@@ -1869,7 +1882,7 @@ bool benchmark_half_fma(uint64_t cpu, int iterations, int min_ms) {
                 iterations, min_ms, mode);
     if (exact < 0)
       return false;
-    print_result("f16/fma", "exact", label, "scalar", exact, 1);
+    print_result("v_fma_f16", "exact", label, "scalar", exact, 1);
   }
   (void)cpu;
   return true;
@@ -1881,8 +1894,9 @@ bool benchmark_half_minmax3(uint64_t cpu, int iterations, int min_ms) {
       goc_rdna4_v_min3_num_f16,       goc_rdna4_v_max3_num_f16,       goc_rdna4_v_minmax_num_f16,
       goc_rdna4_v_maxmin_num_f16,     goc_rdna4_v_minimum3_f16,       goc_rdna4_v_maximum3_f16,
       goc_rdna4_v_minimummaximum_f16, goc_rdna4_v_maximumminimum_f16, goc_rdna4_v_med3_num_f16};
-  const char *names[] = {"f16/min3n", "f16/max3n", "f16/mnmxn", "f16/mxmnn", "f16/min3",
-                         "f16/max3",  "f16/mnmx",  "f16/mxmn",  "f16/med3n"};
+  const char *names[] = {"v_min3_num_f16",       "v_max3_num_f16",       "v_minmax_num_f16",
+                         "v_maxmin_num_f16",     "v_minimum3_f16",       "v_maximum3_f16",
+                         "v_minimummaximum_f16", "v_maximumminimum_f16", "v_med3_num_f16"};
   for (int op = 0; op < 9; ++op)
     for (uint32_t mode : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C |
                                            GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
@@ -1940,8 +1954,9 @@ bool benchmark_minmax3(uint64_t cpu, int iterations, int min_ms) {
       goc_rdna4_v_min3_num_f32,       goc_rdna4_v_max3_num_f32,       goc_rdna4_v_minmax_num_f32,
       goc_rdna4_v_maxmin_num_f32,     goc_rdna4_v_minimum3_f32,       goc_rdna4_v_maximum3_f32,
       goc_rdna4_v_minimummaximum_f32, goc_rdna4_v_maximumminimum_f32, goc_rdna4_v_med3_num_f32};
-  const char *names[] = {"f32/min3n", "f32/max3n", "f32/mnmxn", "f32/mxmnn", "f32/min3",
-                         "f32/max3",  "f32/mnmx",  "f32/mxmn",  "f32/med3n"};
+  const char *names[] = {"v_min3_num_f32",       "v_max3_num_f32",       "v_minmax_num_f32",
+                         "v_maxmin_num_f32",     "v_minimum3_f32",       "v_maximum3_f32",
+                         "v_minimummaximum_f32", "v_maximumminimum_f32", "v_med3_num_f32"};
   for (int op = 0; op < 9; ++op)
     for (uint32_t mode : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C |
                                            GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
@@ -1988,8 +2003,8 @@ bool benchmark_minmax3(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_fp64(uint64_t cpu, int iterations, int min_ms) {
-  const char *names[] = {"f64/add",    "f64/mul", "f64/fma", "f64/minnum",
-                         "f64/maxnum", "f64/min", "f64/max"};
+  const char *names[] = {"v_add_f64",     "v_mul_f64",     "v_fma_f64",    "v_min_num_f64",
+                         "v_max_num_f64", "v_minimum_f64", "v_maximum_f64"};
   for (int op = 0; op < 7; ++op)
     for (uint32_t mode :
          {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
@@ -2061,8 +2076,9 @@ bool benchmark_fp64_unary(uint64_t cpu, int iterations, int min_ms) {
       goc_rdna4_v_trunc_f64, goc_rdna4_v_ceil_f64,  goc_rdna4_v_rndne_f64,
       goc_rdna4_v_floor_f64, goc_rdna4_v_fract_f64, goc_rdna4_v_sqrt_f64,
       goc_rdna4_v_rcp_f64,   goc_rdna4_v_rsq_f64,   goc_rdna4_v_frexp_mant_f64};
-  const char *names[] = {"f64/trunc", "f64/ceil", "f64/rndne", "f64/floor", "f64/fract",
-                         "f64/sqrt",  "f64/rcp",  "f64/rsq",   "f64/mant"};
+  const char *names[] = {"v_trunc_f64", "v_ceil_f64",  "v_rndne_f64",
+                         "v_floor_f64", "v_fract_f64", "v_sqrt_f64",
+                         "v_rcp_f64",   "v_rsq_f64",   "v_frexp_mant_f64"};
   const double inputs[] = {0.25, 1, 4, 16};
   const double golden[][4] = {{0, 1, 4, 16},        {1, 1, 4, 16},     {0, 1, 4, 16},
                               {0, 1, 4, 16},        {0.25, 0, 0, 0},   {0.5, 1, 2, 4},
@@ -2128,7 +2144,7 @@ bool benchmark_half_dot(uint64_t cpu, int iterations, int min_ms) {
             modified ? (code << 16) | 0xcafe : 0xface0000 | code;
       }
       Wmma fn = bf16 ? goc_rdna4_v_dot2_bf16_bf16 : goc_rdna4_v_dot2_f16_f16;
-      const char *name = bf16 ? "dot2/b16" : "dot2/f16";
+      const char *name = bf16 ? "v_dot2_bf16_bf16" : "v_dot2_f16_f16";
       const char *label = modified ? "ABS/NEG/hiC/hiD" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
       if (scalar < 0)
@@ -2151,7 +2167,8 @@ bool benchmark_fp8_wmma(uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {
       goc_rdna4_v_wmma_f32_16x16x16_fp8_fp8, goc_rdna4_v_wmma_f32_16x16x16_fp8_bf8,
       goc_rdna4_v_wmma_f32_16x16x16_bf8_fp8, goc_rdna4_v_wmma_f32_16x16x16_bf8_bf8};
-  const char *names[] = {"wmma/f8f8", "wmma/f8b8", "wmma/b8f8", "wmma/b8b8"};
+  const char *names[] = {"v_wmma_f32_16x16x16_fp8_fp8", "v_wmma_f32_16x16x16_fp8_bf8",
+                         "v_wmma_f32_16x16x16_bf8_fp8", "v_wmma_f32_16x16x16_bf8_bf8"};
   for (int format = 0; format < 4; ++format)
     for (uint32_t modifiers : {UINT32_C(0), GOC_WMMA_NEG_C | GOC_WMMA_ABS_C}) {
       Registers r;
@@ -2179,7 +2196,8 @@ bool benchmark_fp8_wmma(uint64_t cpu, int iterations, int min_ms) {
 bool benchmark_fp8_dot(uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {goc_rdna4_v_dot4_f32_fp8_fp8, goc_rdna4_v_dot4_f32_fp8_bf8,
                             goc_rdna4_v_dot4_f32_bf8_fp8, goc_rdna4_v_dot4_f32_bf8_bf8};
-  const char *names[] = {"dot4/f8f8", "dot4/f8b8", "dot4/b8f8", "dot4/b8b8"};
+  const char *names[] = {"v_dot4_f32_fp8_fp8", "v_dot4_f32_fp8_bf8", "v_dot4_f32_bf8_fp8",
+                         "v_dot4_f32_bf8_bf8"};
   const int golden[] = {-6, 2, -3, 7};
   for (int op = 0; op < 4; ++op)
     for (uint32_t modifiers : {UINT32_C(0), GOC_DOT_NEG_C | GOC_DOT_ABS_C}) {
@@ -2231,7 +2249,7 @@ bool benchmark_dot2(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] = bits(float(dot + c));
       }
       Wmma fn = bf16 ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
-      const char *name = bf16 ? "dot2/bf16" : "dot2/fp16";
+      const char *name = bf16 ? "v_dot2_f32_bf16" : "v_dot2_f32_f16";
       const char *mode = modifiers == 0                  ? "none"
                          : modifiers == GOC_DOT_NEG_LO_A ? "NEG_LO_A"
                                                          : "select/NEG_HI_B";
@@ -2255,7 +2273,7 @@ bool benchmark_dot2(uint64_t cpu, int iterations, int min_ms) {
 bool benchmark_integer_dot(uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {goc_rdna4_v_dot4_i32_iu8, goc_rdna4_v_dot4_u32_u8,
                             goc_rdna4_v_dot8_i32_iu4, goc_rdna4_v_dot8_u32_u4};
-  const char *names[] = {"dot4/i8", "dot4/u8", "dot8/i4", "dot8/u4"};
+  const char *names[] = {"v_dot4_i32_iu8", "v_dot4_u32_u8", "v_dot8_i32_iu4", "v_dot8_u32_u4"};
   const uint32_t a[] = {0xfedcba98, 0x80808080, 0x76543210, 0xffffffff};
   const uint32_t b[] = {0x76543210, 0x7f7f7f7f, 0xfedcba98, 0xffffffff};
   const uint32_t c[] = {0xfffffff0, 0x80000010, 0x7ffffff0, 0x00000000};
@@ -2322,7 +2340,7 @@ int main(int argc, char **argv) {
   }
 
   uint64_t cpu = goc_init_cpu_flags();
-  std::printf("RDNA4 wave32 WMMA (16x16 output), DOT, FMA and unary arithmetic; CPU flags 0x%llx\n",
+  std::printf("RDNA4 instruction benchmarks; CPU flags 0x%llx\n",
               static_cast<unsigned long long>(cpu));
   std::printf("Median of 7 samples, each at least %d ms, after warmup.\n", min_ms);
   std::printf("Start at %d calls; double until the minimum duration is reached.\n", iterations);
@@ -2332,8 +2350,8 @@ int main(int argc, char **argv) {
             "compare "
             "matching instruction-flags settings.");
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
-  std::puts("DOT2 output widths: f16,b16 = 16-bit; fp16,bf16 = FP32.");
-  print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
+  print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
+                "Wave");
   if (!benchmark_integer_mad(cpu, iterations, min_ms) ||
       !benchmark_integer16_ternary(cpu, iterations, min_ms) ||
       !benchmark_integer16(cpu, iterations, min_ms) ||

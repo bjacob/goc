@@ -47,7 +47,7 @@ After the Release build above, run these commands from the source directory:
 ../goc-build/tests/cpuinfo
 ctest --test-dir ../goc-build --output-on-failure \
   -R 'HardwareCapturedExactResults|HardwareIntermediateOverflowState|Fp16V3|Bf16V3|Bf16CpuLevels|SubbyteWmma|Arithmetic'
-../goc-build/tests/goc_rdna4_wmma_benchmark_static
+../goc-build/tests/goc_rdna4_benchmark_static
 ```
 
 The selected tests demonstrate FP32 unary arithmetic, FMA, WMMA numeric formats, hardware-captured
@@ -77,14 +77,16 @@ semantics and independent integer matrix references.
 Integer workloads use dense full-range factors and accumulators near overflow,
 with signedness and CLAMP as labeled. All workloads run with full EXEC, separate
 C/D storage and hot buffers. FMA uses independent integer goldens.
-Speedups compare paths with the same input, semantics and instruction flags.
+The `Instruction` column uses standard instruction mnemonics, including operand types.
+The `Wave` column distinguishes wave32 and wave64 workloads.
+Speedups compare paths with the same instruction, wave size, semantics and instruction flags.
 Timings include public API dispatch, input conversions and output stores. Each
 reported time is the median of seven samples after warmup. Each path starts at 128 calls (overridable by the
 positional argument) and doubles the count until the timed batch takes at least
 10 ms. Shorter batches are discarded. Subsequent samples retain that count and
 double again if necessary, so every accepted sample meets the minimum duration.
 Set `GOC_BENCH_MIN_MS` to a nonnegative integer to override the minimum milliseconds,
-for example `GOC_BENCH_MIN_MS=50 ../goc-build/tests/goc_rdna4_wmma_benchmark_static`.
+for example `GOC_BENCH_MIN_MS=50 ../goc-build/tests/goc_rdna4_benchmark_static`.
 CTest uses a 0 ms minimum and starts at one call per sample for its correctness
 smoke check, with no speedup assertion. Zero disables the minimum-duration
 requirement; warmup and output checks still run.

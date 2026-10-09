@@ -35,8 +35,8 @@ foreach(library IN LISTS goc_library_targets)
     gtest_discover_tests(${target} TEST_PREFIX "${variant}.")
   endforeach()
 
-  set(benchmark "goc_rdna4_wmma_benchmark_${variant}")
-  add_executable(${benchmark} rdna4_wmma_benchmark.cpp)
+  set(benchmark "goc_rdna4_benchmark_${variant}")
+  add_executable(${benchmark} rdna4_benchmark.cpp)
   target_include_directories(${benchmark} PRIVATE ${PROJECT_SOURCE_DIR}/tests)
   target_link_libraries(${benchmark} PRIVATE ${library})
   goc_test_warnings(${benchmark})
@@ -53,8 +53,8 @@ foreach(library IN LISTS goc_library_targets)
     target_compile_definitions(${benchmark} PRIVATE GOC_BENCH_HAVE_AVX512VNNI=1)
   endif()
   # Smoke-test correctness and execution, with no timing/speedup assertions.
-  add_test(NAME ${variant}.rdna4_wmma_benchmark COMMAND ${benchmark} 1)
-  set_tests_properties(${variant}.rdna4_wmma_benchmark PROPERTIES
+  add_test(NAME ${variant}.rdna4_benchmark COMMAND ${benchmark} 1)
+  set_tests_properties(${variant}.rdna4_benchmark PROPERTIES
     ENVIRONMENT "GOC_BENCH_MIN_MS=0")
 endforeach()
 
