@@ -18,6 +18,47 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Floating-point class-mask bits; any combination may be supplied in B.
+static const uint32_t GOC_CLASS_SNAN = (UINT32_C(1) << 0);
+static const uint32_t GOC_CLASS_QNAN = (UINT32_C(1) << 1);
+static const uint32_t GOC_CLASS_NEG_INF = (UINT32_C(1) << 2);
+static const uint32_t GOC_CLASS_NEG_NORMAL = (UINT32_C(1) << 3);
+static const uint32_t GOC_CLASS_NEG_SUBNORMAL = (UINT32_C(1) << 4);
+static const uint32_t GOC_CLASS_NEG_ZERO = (UINT32_C(1) << 5);
+static const uint32_t GOC_CLASS_POS_ZERO = (UINT32_C(1) << 6);
+static const uint32_t GOC_CLASS_POS_SUBNORMAL = (UINT32_C(1) << 7);
+static const uint32_t GOC_CLASS_POS_NORMAL = (UINT32_C(1) << 8);
+static const uint32_t GOC_CLASS_POS_INF = (UINT32_C(1) << 9);
+
+// Classify A's raw encoding and test the corresponding bit of B's class mask.
+// CMP writes a scalar condition mask to d; CMPX writes the replacement EXEC
+// mask to d. Inactive bits are zero, including for zero EXEC. d must always be
+// writable and may alias any input word; all inputs are read before that write.
+// Zero EXEC permits null VGPR pointers. Errors leave d unchanged.
+// A uses one VGPR for FP16/FP32 or a low/high pair for FP64; B uses one VGPR.
+// Supports ABS_A/NEG_A. FP16 also supports HIGH_A and HIGH_B, selecting source
+// halves. Only B's low ten selected bits matter. Signaling NaNs are not quieted.
+// Supports loose and empirical-exact semantics, independently of denormal
+// controls. All host FP state is preserved.
+GOC_API int goc_rdna4_v_cmp_class_f16(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d,
+                                      const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_class_f32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d,
+                                      const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_class_f64(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d,
+                                      const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_class_f16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_class_f32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_class_f64(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
 // Interpolation wait-count field (0..7). Accepted for every interpolation
 // instruction; it has no effect on synchronous CPU execution.
 static const uint32_t GOC_INTERP_WAIT_EXP_SHIFT = 13;

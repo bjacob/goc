@@ -470,6 +470,24 @@ Ryzen 9 7950X3D measurements show 5.76–5.96x for P10, 11.99–12.38x for RTZ
 P10, and 3.78–4.10x for the P2 forms versus scalar, including modifiers
 (seven samples, each at least 10 ms).
 
+Floating-point classification (`v_cmp_class_f16/f32/f64` and their CMPX forms)
+tests raw source encodings against the ten-bit class mask in B. CMP returns a
+scalar condition mask; CMPX returns a replacement EXEC mask. Inactive bits are
+zero, including for empty EXEC. The scalar output may alias any input word.
+ABS/NEG and FP16 source-half selectors stay on the eight-lane v3 and sixteen-lane
+v4 paths. Both semantics use the integer class model borrowed from rocjitsu,
+preserving host rounding, denormal controls and exception flags. Subnormals
+remain a distinct class even when GPU denormal flushing is enabled; signaling
+NaNs are classified without quieting them.
+
+Tests compare 983,040 GPU-captured masks across all three formats, CMP/CMPX,
+modifiers, five EXEC masks and both GPU denormal modes. Further tests cover all
+1,024 class masks, every class, source/output aliases, unaligned storage, a
+larger set of EXEC masks, invalid flags and complete host FP-state preservation.
+Pinned-core Ryzen 9 7950X3D measurements show 5.25–6.67x for v3 and
+6.73–9.45x for v4 versus scalar, including ABS/NEG and half selection (seven
+samples, each at least 10 ms).
+
 Conditional selection (`v_cndmask_b32` and `v_cndmask_b16`) selects B for set
 bits in a separate wave32 condition mask and A for clear bits. EXEC independently
 controls destination writes. ABS/NEG modify only source sign bits; all payload
