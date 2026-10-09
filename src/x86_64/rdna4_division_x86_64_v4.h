@@ -73,6 +73,36 @@ template <bool Wide> struct DivisionOpsV4 {
     else
       return _mm512_mask_blend_epi32(m, no, yes);
   }
+
+  static V band(V a, V b) { return _mm512_and_si512(a, b); }
+
+  static V bor(V a, V b) { return _mm512_or_si512(a, b); }
+
+  static V bxor(V a, V b) { return _mm512_xor_si512(a, b); }
+
+  static V shlv(V a, V count) {
+    if constexpr (Wide)
+      return _mm512_sllv_epi64(a, count);
+    else
+      return _mm512_sllv_epi32(a, count);
+  }
+
+  static V shrv(V a, V count) {
+    if constexpr (Wide)
+      return _mm512_srlv_epi64(a, count);
+    else
+      return _mm512_srlv_epi32(a, count);
+  }
+
+  // Convert an encoded significand to a normalized floating value's raw bits.
+  static V normalize_fraction(V encoded) {
+    if constexpr (Wide)
+      return _mm512_castpd_si512(
+          _mm512_sub_pd(_mm512_castsi512_pd(encoded), _mm512_set1_pd(0x1p52)));
+    else
+      return _mm512_castps_si512(
+          _mm512_sub_ps(_mm512_castsi512_ps(encoded), _mm512_set1_ps(0x1p23f)));
+  }
 };
 
 } // namespace goc

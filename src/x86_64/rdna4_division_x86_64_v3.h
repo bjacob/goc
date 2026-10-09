@@ -68,6 +68,36 @@ template <bool Wide> struct DivisionOpsV3 {
   static Mask inverse(Mask a) { return _mm256_xor_si256(a, _mm256_set1_epi32(-1)); }
 
   static V select(Mask m, V yes, V no) { return _mm256_blendv_epi8(no, yes, m); }
+
+  static V band(V a, V b) { return _mm256_and_si256(a, b); }
+
+  static V bor(V a, V b) { return _mm256_or_si256(a, b); }
+
+  static V bxor(V a, V b) { return _mm256_xor_si256(a, b); }
+
+  static V shlv(V a, V count) {
+    if constexpr (Wide)
+      return _mm256_sllv_epi64(a, count);
+    else
+      return _mm256_sllv_epi32(a, count);
+  }
+
+  static V shrv(V a, V count) {
+    if constexpr (Wide)
+      return _mm256_srlv_epi64(a, count);
+    else
+      return _mm256_srlv_epi32(a, count);
+  }
+
+  // Convert an encoded significand to a normalized floating value's raw bits.
+  static V normalize_fraction(V encoded) {
+    if constexpr (Wide)
+      return _mm256_castpd_si256(
+          _mm256_sub_pd(_mm256_castsi256_pd(encoded), _mm256_set1_pd(0x1p52)));
+    else
+      return _mm256_castps_si256(
+          _mm256_sub_ps(_mm256_castsi256_ps(encoded), _mm256_set1_ps(0x1p23f)));
+  }
 };
 
 } // namespace goc

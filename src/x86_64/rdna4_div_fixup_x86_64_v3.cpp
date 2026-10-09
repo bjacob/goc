@@ -6,6 +6,7 @@
 #include "goc/goc.h"
 #include "rdna4_div_fixup.h"
 #include "rdna4_division.h"
+#include "x86_64/rdna4_division_simd.h"
 #include "x86_64/rdna4_division_x86_64_v3.h"
 
 #include <immintrin.h>
@@ -14,53 +15,6 @@
 namespace {
 
 template <bool Wide> using Ops = goc::DivisionOpsV3<Wide>;
-
-template <unsigned Width>
-__m256i value(__m256i a, __m256i b, __m256i c, uint32_t mode, bool saturate) {
-  using F = goc::DivisionFormat<Width>;
-  using O = Ops<Width == 64>;
-  auto zero = O::set(0), inf = O::set(F::infinity), signbit = O::set(F::sign),
-       magmask = O::set(F::sign - 1);
-  auto pm = _mm256_and_si256(a, magmask), bm = _mm256_and_si256(b, magmask),
-       cm = _mm256_and_si256(c, magmask);
-  auto sign = _mm256_and_si256(_mm256_xor_si256(b, c), signbit);
-  auto overflow = O::set(F::infinity - (Width == 16 && saturate));
-  auto result = _mm256_or_si256(sign, O::select(O::gt(inf, pm), pm, overflow));
-  if constexpr (Width != 16) {
-    auto delta = O::sub(O::shr(cm, F::fraction), O::shr(bm, F::fraction));
-    result =
-        O::select(O::gt(O::set(uint64_t(-int64_t(F::bias + F::fraction))), delta), sign, result);
-  }
-  auto bz = O::eq(bm, zero), cz = O::eq(cm, zero), bi = O::eq(bm, inf), ci = O::eq(cm, inf);
-  result = O::select(O::either(cz, bi), sign, result);
-  result = O::select(O::either(bz, ci), _mm256_or_si256(sign, inf), result);
-  result = O::select(O::either(O::both(bz, cz), O::both(bi, ci)),
-                     O::set(F::sign | F::infinity | F::quiet), result);
-  result = O::select(O::gt(bm, inf), _mm256_or_si256(b, O::set(F::quiet)), result);
-  result = O::select(O::gt(cm, inf), _mm256_or_si256(c, O::set(F::quiet)), result);
-  unsigned omod = (mode >> 6) & 3;
-  if (omod) {
-    auto exponent = _mm256_and_si256(result, inf), output_sign = _mm256_and_si256(result, signbit),
-         step = O::set(uint64_t(1) << F::fraction);
-    __m256i scaled;
-    if (omod == 3)
-      scaled = O::select(O::eq(exponent, step), output_sign, O::sub(result, step));
-    else {
-      auto increment = O::set(uint64_t(omod) << F::fraction);
-      scaled = O::select(O::inverse(O::gt(O::sub(inf, increment), exponent)),
-                         _mm256_or_si256(output_sign, overflow), O::add(result, increment));
-    }
-    result = O::select(O::eq(exponent, inf), result, scaled);
-    result = O::select(O::eq(exponent, zero), zero, result);
-  }
-  if (mode & GOC_ALU_CLAMP) {
-    auto negative = O::inverse(O::eq(_mm256_and_si256(result, signbit), zero));
-    result = O::select(O::either(negative, O::gt(result, inf)), zero, result);
-    auto one = O::set(uint64_t(F::bias) << F::fraction);
-    result = O::select(O::gt(result, one), one, result);
-  }
-  return result;
-}
 
 template <unsigned Width>
 __m256i load(const uint32_t *const *v, unsigned lane, uint32_t mode, unsigned operand) {
@@ -96,8 +50,9 @@ void fixup_x86_64_v3(uint32_t mask, uint32_t mode, bool saturate, uint32_t *cons
   constexpr unsigned lanes = Width == 64 ? 4 : 8;
   uint32_t staged[2][32];
   for (unsigned lane = 0; lane < 32; lane += lanes) {
-    auto result = value<Width>(load<Width>(a, lane, mode, 0), load<Width>(b, lane, mode, 1),
-                               load<Width>(c, lane, mode, 2), mode, saturate);
+    auto result = division_fixup_value<Width, Ops<Width == 64>>(
+        load<Width>(a, lane, mode, 0), load<Width>(b, lane, mode, 1), load<Width>(c, lane, mode, 2),
+        mode, saturate);
     if constexpr (Width == 64) {
       auto words = _mm256_permutevar8x32_epi32(result, _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7));
       _mm_storeu_si128(reinterpret_cast<__m128i *>(staged[0] + lane),
