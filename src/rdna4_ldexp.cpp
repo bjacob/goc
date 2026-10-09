@@ -42,8 +42,17 @@ int ldexp(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
       result[0][lane] = uint32_t(bits);
       result[1][lane] = uint32_t(bits >> 32);
     } else {
-      float value = std::ldexp(goc::alu_input(a[0][lane], mode), exponent);
-      result[0][lane] = goc::as_bits(goc::alu_output(value, mode));
+      float input = goc::alu_input(a[0][lane], mode);
+      float value;
+      if (mode & GOC_ALU_OMOD_HALF) {
+        // OMOD flushes tininess before FP32 rounding, including values
+        // that would round upward to minimum normal.
+        double wide = std::ldexp(double(input), exponent);
+        value = std::abs(wide) < 0x1p-126 ? 0.0f : float(wide);
+      } else {
+        value = std::ldexp(input, exponent);
+      }
+      result[0][lane] = goc::as_bits(goc::alu_output_f32(value, mode));
     }
   }
   for (int reg = 0; reg < (Fp64 ? 2 : 1); ++reg)

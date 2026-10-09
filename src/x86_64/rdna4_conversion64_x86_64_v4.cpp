@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_conversion64.h"
+#include "x86_64/rdna4_alu_x86_64_v3.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -55,7 +56,14 @@ void conversion64_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d,
       __m256i output;
       if constexpr (Op == Conversion64::DoubleToFloat) {
         auto x = _mm512_cvtpd_ps(value);
-        x = _mm256_mul_ps(x, _mm256_set1_ps(float(scales[(mode >> 6) & 3])));
+        if (mode & GOC_ALU_OMOD_HALF) {
+          auto magnitude = _mm512_castsi512_pd(
+              _mm512_and_si512(_mm512_castpd_si512(value), _mm512_set1_epi64(INT64_MAX)));
+          auto tiny = _mm512_cmp_pd_mask(magnitude, _mm512_set1_pd(0x1p-126), _CMP_LT_OQ);
+          x = _mm256_mask_mov_ps(x, tiny, _mm256_setzero_ps());
+          x = prepare_omod_f32(x, mode);
+          x = _mm256_mul_ps(x, _mm256_set1_ps(float(scales[(mode >> 6) & 3])));
+        }
         if (mode & GOC_ALU_CLAMP)
           x = _mm256_min_ps(_mm256_max_ps(x, _mm256_setzero_ps()), _mm256_set1_ps(1));
         output = _mm256_castps_si256(x);

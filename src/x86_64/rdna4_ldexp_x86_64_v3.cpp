@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_ldexp.h"
+#include "x86_64/rdna4_alu_x86_64_v3.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -64,8 +65,14 @@ void run32(uint32_t mode, uint32_t result[2][32], const uint32_t *const *a, cons
                                   _mm256_set1_epi32(0x400000));
     bits = _mm256_blendv_epi8(bits, _mm256_or_si256(raw, quiet), special);
     auto value = _mm256_castsi256_ps(bits);
-    if (mode & GOC_ALU_OMOD_HALF)
+    if (mode & GOC_ALU_OMOD_HALF) {
+      auto finite = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x7f800000), magnitude);
+      auto tiny_before_rounding =
+          _mm256_and_si256(finite, _mm256_cmpgt_epi32(_mm256_set1_epi32(1), exponent));
+      value = _mm256_andnot_ps(_mm256_castsi256_ps(tiny_before_rounding), value);
+      value = prepare_omod_f32(value, mode);
       value = _mm256_mul_ps(value, _mm256_set1_ps(scales[(mode >> 6) & 3]));
+    }
     if (mode & GOC_ALU_CLAMP)
       value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
     bits = _mm256_castps_si256(value);

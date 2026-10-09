@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_omod_reference.h"
 
 #include <algorithm>
 #include <cmath>
@@ -34,9 +35,15 @@ template <typename T, typename U> U reference(U input, int exponent, uint32_t mo
   std::memcpy(&value, &input, sizeof(value));
   // Long double has enough range for every finite FP32/FP64 boundary. Clamp
   // extreme exponents first; they have already forced overflow or underflow.
-  value = T(std::ldexp(static_cast<long double>(value), std::clamp(exponent, -4096, 4096)));
+  long double wide = std::ldexp(static_cast<long double>(value), std::clamp(exponent, -4096, 4096));
+  if constexpr (sizeof(T) == sizeof(float))
+    if ((mode & GOC_ALU_OMOD_HALF) && std::abs(wide) < std::ldexp(1.0L, -126))
+      wide = 0;
+  value = T(wide);
   const T scale[] = {T(1), T(2), T(4), T(0.5)};
-  if (mode & GOC_ALU_OMOD_HALF)
+  if constexpr (sizeof(T) == sizeof(float))
+    value = goc_test::omod_f32_reference(value, mode);
+  else if (mode & GOC_ALU_OMOD_HALF)
     value *= scale[(mode >> 6) & 3];
   if (mode & GOC_ALU_CLAMP)
     value = !(value > 0) ? T(0) : value > 1 ? T(1) : value;

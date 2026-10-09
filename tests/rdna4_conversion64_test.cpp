@@ -78,7 +78,7 @@ TEST(Conversion64, LiteralRoundingSaturationAndScalingOrder) {
                         {5, 0x3690000000000001, 1, 0},
                         {5, 0xb690000000000000, 0x80000000, 0},
                         {5, 0x36a8000000000000, 2, 0},
-                        {5, 0x36a8000000000000, 1, GOC_ALU_OMOD_HALF},
+                        {5, 0x36a8000000000000, 0, GOC_ALU_OMOD_HALF},
                         {5, 0x47effffff0000000, 0x7f800000, 0},
                         {5, 0x47effffff0000000, 0x7f800000, GOC_ALU_OMOD_HALF},
                         {5, 0x47effffff0000000, 0x3f800000, GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},

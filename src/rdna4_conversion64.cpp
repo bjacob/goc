@@ -57,7 +57,11 @@ int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
       if constexpr (Op == goc::Conversion64::DoubleToFloat) {
         // Round to FP32 before output scaling, as in rocjitsu's conversion
         // semantics. A later scale-down must not undo conversion overflow.
-        result[0][lane] = goc::as_bits(goc::alu_output(float(value), mode));
+        // Active OMOD flushes tininess before narrowing, even when rounding
+        // would otherwise produce minimum normal.
+        if ((mode & GOC_ALU_OMOD_HALF) && std::abs(value) < 0x1p-126)
+          value = 0;
+        result[0][lane] = goc::as_bits(goc::alu_output_f32(float(value), mode));
       } else if constexpr (Op == goc::Conversion64::DoubleToUnsigned) {
         // Match rocjitsu's sema_lower.py: truncate, saturate, map NaN to zero.
         // Classify before casting, to avoid undefined out-of-range casts.

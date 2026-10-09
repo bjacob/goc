@@ -20,6 +20,18 @@ inline __m256 flush_denorm_f32(__m256 value) {
 
 // Prepare FP32 results for a nonzero OMOD: tiny values become +0, while
 // halving normal values below twice minimum normal produces signed zero.
+inline __m128 prepare_omod_f32(__m128 value, uint32_t mode) {
+  auto magnitude = _mm_and_si128(_mm_castps_si128(value), _mm_set1_epi32(INT32_MAX));
+  auto tiny = _mm_cmpgt_epi32(_mm_set1_epi32(0x00800000), magnitude);
+  value = _mm_andnot_ps(_mm_castsi128_ps(tiny), value);
+  if ((mode & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF) {
+    auto underflow = _mm_cmpgt_epi32(_mm_set1_epi32(0x01000000), magnitude);
+    auto sign = _mm_and_ps(value, _mm_castsi128_ps(_mm_set1_epi32(INT32_MIN)));
+    value = _mm_blendv_ps(value, sign, _mm_castsi128_ps(underflow));
+  }
+  return value;
+}
+
 inline __m256 prepare_omod_f32(__m256 value, uint32_t mode) {
   auto magnitude = _mm256_and_si256(_mm256_castps_si256(value), _mm256_set1_epi32(INT32_MAX));
   auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x00800000), magnitude);

@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_ldexp.h"
+#include "x86_64/rdna4_alu_x86_64_v4.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -49,8 +50,15 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
       exponent = _mm512_min_epi32(_mm512_max_epi32(exponent, _mm512_set1_epi32(-4096)),
                                   _mm512_set1_epi32(4096));
       auto value = _mm512_scalef_ps(_mm512_castsi512_ps(bits), _mm512_cvtepi32_ps(exponent));
-      if (mode & GOC_ALU_OMOD_HALF)
+      if (mode & GOC_ALU_OMOD_HALF) {
+        auto exact_exponent = _mm512_add_ps(_mm512_getexp_ps(_mm512_castsi512_ps(bits)),
+                                            _mm512_cvtepi32_ps(exponent));
+        auto tiny_before_rounding =
+            _mm512_cmp_ps_mask(exact_exponent, _mm512_set1_ps(-126), _CMP_LT_OQ);
+        value = _mm512_mask_mov_ps(value, tiny_before_rounding, _mm512_setzero_ps());
+        value = prepare_omod_f32(value, mode);
         value = _mm512_mul_ps(value, _mm512_set1_ps(scales[(mode >> 6) & 3]));
+      }
       if (mode & GOC_ALU_CLAMP)
         value = _mm512_min_ps(_mm512_max_ps(value, _mm512_setzero_ps()), _mm512_set1_ps(1));
       _mm512_storeu_si512(result[0] + lane, _mm512_castps_si512(value));

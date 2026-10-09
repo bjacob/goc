@@ -106,6 +106,14 @@ inline uint64_t conversion64_reference(int op, uint64_t raw, uint32_t mode) {
   }
   unsigned fraction = conversion64_wide_output(op) ? 52 : 23;
   int bias = conversion64_wide_output(op) ? 1023 : 127;
+  if (op == 5 && (mode & GOC_ALU_OMOD_HALF)) {
+    uint32_t magnitude = uint32_t(output) & 0x7fffffff;
+    if ((raw & UINT64_C(0x7fffffffffffffff)) < UINT64_C(0x3810000000000000) ||
+        magnitude < 0x00800000)
+      output = 0;
+    else if ((mode & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF && magnitude < 0x01000000)
+      output &= 0x80000000;
+  }
   const int scales[] = {0, 1, 2, -1};
   output = conversion_reencode(output, fraction, bias, fraction, bias, scales[(mode >> 6) & 3]);
   if (mode & GOC_ALU_CLAMP) {

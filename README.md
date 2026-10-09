@@ -1129,6 +1129,18 @@ results once; v4 uses native vector scaling. Tests cover every exponent field,
 subnormal rounding ties, extreme signed exponents, special values, masks and
 aliases, including FP64 destination halves that overwrite A or B.
 
+FP32 `LDEXP` and FP64-to-FP32 conversion apply the FP32 OMOD zero/denormal
+rules on all scalar and SIMD paths. Active OMOD also flushes an exact tiny
+result before FP32 rounding, even when rounding would otherwise produce minimum
+normal. A 12,288-result GFX1201 capture checks all modifiers, underflow and
+normal-boundary cases, extreme LDEXP exponents, and FP16-to-FP32 conversion as
+a cross-check. Tests repeat the capture checks at every CPU level and with
+source/destination aliases; the existing mask and rounding tests use the same
+architectural rule. On the Ryzen 9 7950X3D, modified FP32 LDEXP measures
+25.9 ns on AVX2 and 5.5 ns on AVX-512 (4.8× and 22.6× scalar speed).
+Modified FP64-to-FP32 conversion measures 23.6 ns and 8.7 ns (2.3× and 6.1×);
+its unmodified AVX2 path is roughly tied with scalar.
+
 Signed and unsigned 32-bit integer min/max instructions cover two-input
 selection, three-input min/max, mixed min/max and median. Mixed operations
 combine A/B first: `MINMAX = max(min(A, B), C)` and
