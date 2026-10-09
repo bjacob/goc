@@ -1192,6 +1192,30 @@ GOC_API int goc_rdna4_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t exec_mask
                                               const uint32_t *const *a, const uint32_t *const *b,
                                               const uint32_t *const *c);
 
+// Wave32 bit operations: every operand holds one VGPR. No instruction modifiers
+// are supported. Only loose semantics are implemented. BFE offsets and widths,
+// and BFM widths and offsets, use their low five bits; a zero width produces zero.
+// Signed BFE sign-extends A before extraction and sign-extends the extracted field.
+// BFI selects B where A has a set bit, C otherwise. BFREV reverses all 32 bits.
+GOC_API int goc_rdna4_v_bfe_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_bfe_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_bfi_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_bfm_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_bfrev_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

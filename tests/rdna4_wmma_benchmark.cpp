@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_bitfield_reference.h"
 #include "rdna4_dense_golden.h"
 #include "rdna4_half_reference.h"
 #include "rdna4_integer16_reference.h"
@@ -828,6 +829,45 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
       }
 #endif
     }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_bitfield(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {goc_rdna4_v_bfe_u32, goc_rdna4_v_bfe_i32, goc_rdna4_v_bfi_b32,
+                            goc_test::bitfield_mask, goc_test::bitfield_reverse};
+  const char *names[] = {"u32/bfe", "i32/bfe", "b32/bfi", "b32/bfm", "b32/bfrev"};
+  for (int op = 0; op < 5; ++op) {
+    Registers r;
+    r.output_regs = 1;
+    std::mt19937 random(452);
+    for (int lane = 0; lane < 32; ++lane) {
+      for (int reg : {0, 4, 8})
+        r.data[reg][lane] = random();
+      r.expected[128 * (lane / 16) + lane % 16] =
+          goc_test::bitfield_reference(op, r.data[0][lane], r.data[4][lane], r.data[8][lane]);
+    }
+    double scalar = measure(functions[op], GOC_CPU_BASELINE, r, iterations, min_ms, 0);
+    if (scalar < 0)
+      return false;
+    print_result(names[op], "loose", "none", "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+    if (cpu >= GOC_CPU_X86_64_V3 && op != 2) {
+      double simd = measure(functions[op], GOC_CPU_X86_64_V3, r, iterations, min_ms, 0);
+      if (simd < 0)
+        return false;
+      print_result(names[op], "loose", "none", "x86-64-v3", simd, scalar / simd);
+    }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+    if (cpu >= GOC_CPU_X86_64_V4) {
+      double simd = measure(functions[op], GOC_CPU_X86_64_V4, r, iterations, min_ms, 0);
+      if (simd < 0)
+        return false;
+      print_result(names[op], "loose", "none", "x86-64-v4", simd, scalar / simd);
+    }
+#endif
+  }
   (void)cpu;
   return true;
 }
@@ -2179,10 +2219,10 @@ int main(int argc, char **argv) {
   }
   if (!benchmark_half_exponent(cpu, iterations, min_ms) ||
       !benchmark_integer_ternary(cpu, iterations, min_ms) ||
-      !benchmark_sad(cpu, iterations, min_ms) || !benchmark_shift(cpu, iterations, min_ms) ||
-      !benchmark_half_trig(cpu, iterations, min_ms) || !benchmark_trig(cpu, iterations, min_ms) ||
-      !benchmark_half_unary(cpu, iterations, min_ms) || !benchmark_unary(cpu, iterations, min_ms) ||
-      !benchmark_frexp_exp(cpu, iterations, min_ms)) {
+      !benchmark_bitfield(cpu, iterations, min_ms) || !benchmark_sad(cpu, iterations, min_ms) ||
+      !benchmark_shift(cpu, iterations, min_ms) || !benchmark_half_trig(cpu, iterations, min_ms) ||
+      !benchmark_trig(cpu, iterations, min_ms) || !benchmark_half_unary(cpu, iterations, min_ms) ||
+      !benchmark_unary(cpu, iterations, min_ms) || !benchmark_frexp_exp(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }

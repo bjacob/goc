@@ -175,6 +175,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_i16`, `v_min3_u16`, `v_max3_i16`, `v_max3_u16`, `v_med3_i16`, `v_med3_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
 | `v_add_nc_i16`, `v_sub_nc_i16`, `v_add_nc_u16`, `v_sub_nc_u16` | Scalar, x86-64-v3; half selectors and saturation | Not implemented |
 | `v_min_i16`, `v_max_i16`, `v_min_u16`, `v_max_u16`, `v_mul_lo_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
+| `v_bfe_u32`, `v_bfe_i32`, `v_bfm_b32`, `v_bfrev_b32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
+| `v_bfi_b32` | Scalar, x86-64-v4 | Not implemented |
 | `v_lshl_add_u32`, `v_add_lshl_u32`, `v_lshl_or_b32`, `v_lerp_u8` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_and_or_b32`, `v_or3_b32`, `v_xor3_b32`, `v_xad_u32` | Scalar, x86-64-v4 | Not implemented |
 | `v_sad_u8`, `v_sad_hi_u8`, `v_sad_u16`, `v_sad_u32`, `v_msad_u8` | Scalar, x86-64-v3; saturation | Not implemented |
@@ -383,6 +385,20 @@ SIMD outputs within one half-precision ULP of the model. Further tests cover
 all modifiers, half selectors, aliases, masks, host FP settings, and literal
 OMOD underflow boundaries. `GOC_FP16_OVFL` is accepted but has no effect because
 finite trig outputs and their permitted scaling cannot overflow FP16.
+
+Bit-field instructions include unsigned/signed extraction, insertion, mask
+creation, and reversal. `BFE` takes its offset from `B` and width from `C`;
+`BFM` takes width from `A` and offset from `B`. Offsets and widths use only
+five bits, so width 32 produces zero. Signed extraction first sign-extends the
+source beyond bit 31, then sign-extends the selected field. `BFI` selects bits
+from `B` wherever `A` is set and from `C` elsewhere. `BFREV` reverses all 32 bits.
+These rules follow rocjitsu's integer helpers. No instruction modifiers apply;
+all host FP state is preserved. Eight-lane v3 and sixteen-lane v4 paths use
+variable shifts, Boolean operations, and byte lookup/shuffle reversal. `BFI`
+uses scalar on v3 because its AVX2 candidate showed little benefit; v4 uses
+native ternary logic. Independent per-bit tests cover every offset, width and
+source bit, signed boundary crossings, ignored high count bits, truth tables,
+EXEC masks, and whole-register aliases.
 
 Combined integer instructions include shift/add, add/shift, shift/OR, AND/OR,
 three-input OR/XOR, and XOR/add. Shifts mask their count to five bits, and
