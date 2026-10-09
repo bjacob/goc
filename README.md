@@ -17,22 +17,15 @@ cmake --build ../goc-build --parallel "$(nproc)"
 ctest --test-dir ../goc-build --parallel "$(nproc)" --output-on-failure
 ```
 
-Both `GOC_STATIC` and `GOC_SHARED` default to `ON`, producing `libgoc.a` and
-`libgoc.so` on Linux. Disable either with `-DGOC_STATIC=OFF` or
-`-DGOC_SHARED=OFF`; at least one must remain enabled. CMake consumers link
-`goc_static` for private embedding or `goc_shared` for dynamic linking.
-Static consumers inherit
-`GOC_STATIC_DEFINE`, so GoC's API stays hidden when embedded in their shared
-library; shared consumers see exported API declarations. Both variants are
-position-independent and keep implementation symbols hidden.
+GoC builds only a static library (`libgoc.a` on Linux). CMake consumers link
+`goc`. The library is position-independent and has hidden visibility so that
+embedding it in a consumer shared library does not export GoC symbols.
 
-The public API and C linkage are tested against every enabled variant. Each
-`*_test.cpp` has its own executable, such as `tests/goc_rdna4_wmma_test_static` and
-`tests/goc_rdna4_wmma_test_shared`; the private decoder uses `tests/goc_cpu_decode_test`.
-Public headers are compiled independently once per language (C and C++), without
-linking. Private CPU decoding is tested separately. On Linux, export
-tests also check the shared API and static embedding. `tests/cpuinfo` links to
-`goc_static` and is only built and tested when `GOC_STATIC` is enabled.
+Each `*_test.cpp` has its own executable, such as `tests/goc_rdna4_wmma_test`.
+Public headers are compiled independently as C and C++, without linking.
+Private CPU decoding is tested separately. On Linux, an embedding test checks
+that a consumer shared library exports only its own API. `tests/cpuinfo` prints
+the detected CPU capabilities.
 
 CMake uses a system GTest when available and otherwise fetches GTest 1.17.0.
 CMake automatically enables x86-64 implementations for x86-64 targets using GCC
@@ -47,7 +40,7 @@ After the Release build above, run these commands from the source directory:
 ../goc-build/tests/cpuinfo
 ctest --test-dir ../goc-build --output-on-failure \
   -R 'HardwareCapturedExactResults|HardwareIntermediateOverflowState|Fp16V3|Bf16V3|Bf16CpuLevels|SubbyteWmma|Arithmetic'
-../goc-build/tests/goc_rdna4_benchmark_static
+../goc-build/tests/goc_rdna4_benchmark
 ```
 
 The selected tests demonstrate FP32 unary arithmetic, FMA, WMMA numeric formats, hardware-captured
@@ -65,9 +58,7 @@ accumulators and wrapping/CLAMP, using loose semantics. All integer rows check
 independent integer goldens.
 Floating-point exact scalar timings are listed separately;
 Floating-point SIMD rows do not imply empirical bit-exactness. Unsupported or uncompiled SIMD
-paths are explicitly skipped. A corresponding `_shared` executable is built
-when `GOC_SHARED` is enabled; use it instead for a shared-only build and omit
-`cpuinfo`, which is static-only.
+paths are explicitly skipped.
 
 Every workload checks its outputs against independent goldens before and after
 timing. Floating-point WMMA workloads use fixed small-integer matrices
@@ -88,7 +79,7 @@ numeric speedup ratios (empty when unavailable). Explanatory text goes to stderr
 For example:
 
 ```sh
-../goc-build/tests/goc_rdna4_benchmark_static --csv > results.csv
+../goc-build/tests/goc_rdna4_benchmark --csv > results.csv
 ```
 
 `--csv` and `--min-ms` can appear before or after the optional initial iteration count.
@@ -99,7 +90,7 @@ positional argument) and doubles the count until the timed batch takes at least
 10 ms. Shorter batches are discarded. Subsequent samples retain that count and
 double again if necessary, so every accepted sample meets the minimum duration.
 Pass `--min-ms` with a nonnegative integer to override the minimum milliseconds,
-for example `../goc-build/tests/goc_rdna4_benchmark_static --min-ms 50`.
+for example `../goc-build/tests/goc_rdna4_benchmark --min-ms 50`.
 Benchmark controls are command-line arguments; no environment variables are read.
 CTest uses a 0 ms minimum and starts at one call per sample for its correctness
 smoke check, with no speedup assertion. Zero disables the minimum-duration

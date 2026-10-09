@@ -133,14 +133,12 @@ function(goc_add_x86_64_backend feature)
     return()
   endif()
   string(TOLOWER "${feature}" backend)
-  foreach(target IN LISTS goc_library_targets)
-    target_sources(${target} PRIVATE ${goc_${backend}_sources})
-    set_source_files_properties(${goc_${backend}_sources}
-      TARGET_DIRECTORY ${target}
-      PROPERTIES COMPILE_OPTIONS "${goc_${backend}_flags}"
-    )
-    target_compile_definitions(${target} PRIVATE GOC_HAVE_${feature}=1)
-  endforeach()
+  target_sources(goc PRIVATE ${goc_${backend}_sources})
+  set_source_files_properties(${goc_${backend}_sources}
+    TARGET_DIRECTORY goc
+    PROPERTIES COMPILE_OPTIONS "${goc_${backend}_flags}"
+  )
+  target_compile_definitions(goc PRIVATE GOC_HAVE_${feature}=1)
 endfunction()
 
 foreach(feature IN ITEMS X86_64_V3 X86_64_V4 AVX512BF16 AVX512VNNI)

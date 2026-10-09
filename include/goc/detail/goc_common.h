@@ -3,8 +3,6 @@
 #ifndef GOC_COMMON_H_
 #define GOC_COMMON_H_
 
-#include "goc_export.h"
-
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -54,7 +52,7 @@ static const int GOC_ERROR_INVALID_FLAGS = 2;
 
 // Returns CPU capability flags for features usable on this machine, accounting
 // for CPU and operating-system support. All non-CPU flag bits are zero.
-GOC_API uint64_t goc_init_cpu_flags(void);
+uint64_t goc_init_cpu_flags(void);
 
 #ifdef __cplusplus
 } // extern "C"
