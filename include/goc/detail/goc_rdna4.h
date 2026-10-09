@@ -18,6 +18,34 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// FP16 conversions, one VGPR per operand; loose semantics only. HIGH_A selects
+// a 16-bit source half, HIGH_D selects a 16-bit destination half, preserving the
+// other half. The corresponding selector is invalid for a full FP32 operand.
+// Floating inputs support ABS/NEG; integer inputs reject them. Floating outputs
+// support OMOD/CLAMP. FP16 results round before OMOD, using nearest-even and
+// FP16_OVFL at both rounding stages. Nonzero OMOD flushes initially tiny
+// results and either initial zero to +0; newly tiny scaled results become
+// signed zero. NaNs are quieted. Integer outputs
+// truncate, saturate, map NaNs to zero, and ignore CLAMP/OMOD numerically.
+
+GOC_API int goc_rdna4_v_cvt_f16_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_f16_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_i16_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_u16_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_f16_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_f32_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
 // FP64 conversions: FP64 operands use two VGPRs, low word first; FP32 and
 // integer operands use one. Loose semantics only. Integer inputs reject ABS/NEG;
 // floating inputs support ABS/NEG. Floating outputs round to the destination

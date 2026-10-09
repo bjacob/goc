@@ -375,6 +375,31 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Six FP16 conversions cover `v_cvt_f16_i16`, `v_cvt_f16_u16`,
+`v_cvt_i16_f16`, `v_cvt_u16_f16`, `v_cvt_f16_f32`, and `v_cvt_f32_f16`.
+Each operand occupies one VGPR. Half selectors preserve the unused destination
+half; floating sources support ABS/NEG, and floating destinations support
+OMOD/CLAMP. Integer outputs truncate with saturation and NaN-to-zero, accepting
+CLAMP/OMOD without numeric effect. FP16 narrowing uses nearest-even with
+`GOC_FP16_OVFL` saturation before OMOD and again after scaling. Active OMOD
+flushes initially tiny values to positive zero, while division underflow from
+normal values preserves the sign of zero. All six expose loose semantics only.
+
+Scalar, eight-lane x86-64-v3 and sixteen-lane x86-64-v4 paths support every valid
+modifier, full EXEC masking and in-place operation. Tests exhaust all 65,536
+half/integer input encodings, every FP16 narrowing midpoint and its adjacent
+FP32 values, all modifiers, both overflow modes, and 85 masks crossed with
+aliasing and unaligned storage. An independent integer-bit reference checks
+random full words and rounding boundaries. Another 42 literal input cases
+were captured on an RX 9070 (`gfx1201`) with nearest-even rounding and denormals
+enabled, each under eight instruction/modifier combinations and both overflow
+modes. These establish rounding-before-OMOD, the extra precision used for
+tininess at the normal boundary, NaN quieting, signed-zero and overflow rules.
+Benchmark rows use full EXEC, overflow saturation enabled, and both default
+and modified instructions. On the development Ryzen 9 7950X3D, pinned-core
+measurements gave 4.12–10.28x for v3 and 11.07–19.01x for v4 versus scalar
+across those workloads (seven samples, each at least 10 ms).
+
 Six FP64 conversions cover `v_cvt_f64_i32`, `v_cvt_f64_u32`,
 `v_cvt_i32_f64`, `v_cvt_u32_f64`, `v_cvt_f64_f32`, and `v_cvt_f32_f64`.
 FP64 operands occupy two VGPRs, low word first. Source/destination halves may
