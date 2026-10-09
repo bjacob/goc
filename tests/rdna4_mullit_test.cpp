@@ -72,8 +72,7 @@ TEST(Mullit, AllModifiersMasksAndAliases) {
 }
 
 TEST(Mullit, InvalidFlagsAndEmptyExec) {
-  EXPECT_EQ(goc_rdna4_v_mullit_f32(0, UINT32_C(0), 511, nullptr, nullptr, nullptr, nullptr),
-            GOC_SUCCESS);
+  EXPECT_EQ(goc_rdna4_v_mullit_f32(0, 0U, 511, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
   for (unsigned bit = 9; bit < 32; ++bit)
     EXPECT_EQ(goc_rdna4_v_mullit_f32(0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
@@ -155,6 +154,6 @@ TEST(Mullit, DppHardwareCorpus) {
             hash = goc_test::capture_hash_word(hash, word);
           }
         }
-    EXPECT_EQ(hash, UINT64_C(0x7d17538d3e94b7a5));
+    EXPECT_EQ(hash, 0x7d17538d3e94b7a5ULL);
   }
 }

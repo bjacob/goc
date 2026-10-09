@@ -9,7 +9,7 @@ namespace goc {
 // Sign-extend a low-bit field to a 32-bit raw register word.
 template <unsigned Bits> uint32_t sign_extend_word(uint32_t value) {
   static_assert(Bits > 0 && Bits <= 32);
-  constexpr uint32_t sign = UINT32_C(1) << (Bits - 1);
+  constexpr uint32_t sign = 1U << (Bits - 1);
   return ((value & (UINT32_MAX >> (32 - Bits))) ^ sign) - sign;
 }
 
@@ -18,7 +18,7 @@ template <unsigned Bits, bool Signed> int64_t extend_integer(uint32_t value) {
   static_assert(Bits > 0 && Bits <= 32);
   value &= UINT32_MAX >> (32 - Bits);
   if constexpr (Signed) {
-    constexpr uint32_t sign = UINT32_C(1) << (Bits - 1);
+    constexpr uint32_t sign = 1U << (Bits - 1);
     if constexpr (Bits <= 16)
       return int64_t(value ^ sign) - sign;
     else
@@ -31,9 +31,9 @@ template <unsigned Bits, bool Signed> int64_t extend_integer(uint32_t value) {
 
 // Number of set bits in an unsigned 32- or 64-bit word.
 template <typename T> uint32_t bit_population(T x) {
-  x -= (x >> 1) & T(UINT64_C(0x5555555555555555));
-  x = (x & T(UINT64_C(0x3333333333333333))) + ((x >> 2) & T(UINT64_C(0x3333333333333333)));
-  x = (x + (x >> 4)) & T(UINT64_C(0x0f0f0f0f0f0f0f0f));
+  x -= (x >> 1) & T(0x5555555555555555ULL);
+  x = (x & T(0x3333333333333333ULL)) + ((x >> 2) & T(0x3333333333333333ULL));
+  x = (x + (x >> 4)) & T(0x0f0f0f0f0f0f0f0fULL);
   x += x >> 8;
   x += x >> 16;
   if constexpr (sizeof(T) == 8)
@@ -77,16 +77,16 @@ template <bool Trailing, typename T> uint32_t bit_count_zero(T a) {
 
 // Reverse all bits of an unsigned 32- or 64-bit word.
 template <typename T> T bit_reverse(T x) {
-  const T m1 = T(UINT64_C(0x5555555555555555));
-  const T m2 = T(UINT64_C(0x3333333333333333));
-  const T m4 = T(UINT64_C(0x0f0f0f0f0f0f0f0f));
-  const T m8 = T(UINT64_C(0x00ff00ff00ff00ff));
+  const T m1 = T(0x5555555555555555ULL);
+  const T m2 = T(0x3333333333333333ULL);
+  const T m4 = T(0x0f0f0f0f0f0f0f0fULL);
+  const T m8 = T(0x00ff00ff00ff00ffULL);
   x = ((x >> 1) & m1) | ((x & m1) << 1);
   x = ((x >> 2) & m2) | ((x & m2) << 2);
   x = ((x >> 4) & m4) | ((x & m4) << 4);
   x = ((x >> 8) & m8) | ((x & m8) << 8);
   if constexpr (sizeof(T) == 8) {
-    const T m16 = UINT64_C(0x0000ffff0000ffff);
+    const T m16 = 0x0000ffff0000ffffULL;
     x = ((x >> 16) & m16) | ((x & m16) << 16);
     return (x >> 32) | (x << 32);
   } else {

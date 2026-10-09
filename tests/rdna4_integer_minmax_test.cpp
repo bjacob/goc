@@ -103,10 +103,10 @@ TEST(IntegerMinmax, ValidationAndFpEnvironment) {
       std::fill(input, input + 32, 0x7f800001);
       std::fill(output, output + 32, 0xdeadbeef);
       auto a = input, d = output;
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit)
-          EXPECT_EQ(fn(cpu, mask, UINT32_C(1) << bit, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(cpu | (UINT64_C(1) << 63), mask, 0, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(fn(cpu, mask, 1U << bit, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(cpu | (1ULL << 63), mask, 0, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(
             fn(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &d, &a, &a, &a),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
@@ -129,13 +129,13 @@ TEST(IntegerMinmax, EverySingleLaneAndComplementWithAlias) {
   for (unsigned op = 0; op < 14; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned bit = 0; bit < 32; ++bit)
-        for (uint32_t mask : {UINT32_C(1) << bit, ~(UINT32_C(1) << bit)}) {
+        for (uint32_t mask : {1U << bit, ~(1U << bit)}) {
           uint32_t words[3][32], expected[32];
           for (unsigned lane = 0; lane < 32; ++lane) {
-            words[0][lane] = UINT32_C(0x80000000) + lane;
-            words[1][lane] = UINT32_C(0x7fffffff) - lane;
+            words[0][lane] = 0x80000000U + lane;
+            words[1][lane] = 0x7fffffffU - lane;
             words[2][lane] = lane & 1 ? UINT32_MAX : 0;
-            expected[lane] = mask & (UINT32_C(1) << lane)
+            expected[lane] = mask & (1U << lane)
                                  ? goc_test::integer_minmax_reference(
                                        op, words[0][lane], words[1][lane], words[2][lane])
                                  : words[1][lane];

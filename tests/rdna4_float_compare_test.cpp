@@ -169,8 +169,8 @@ TEST(FloatCompare, ValidationAndCompleteHostFpState) {
   EXPECT_EQ(result, 0xdeadbeef);
   for (unsigned op = 0; op < 84; ++op) {
     uint32_t known = goc_test::float_compare_mode(op < 28 ? 63 : 15), d = 1;
-    EXPECT_EQ(goc_test::float_compare_functions[op](GOC_FP_FLUSH_INPUT_DENORMALS, UINT32_C(0),
-                                                    known, &d, nullptr, nullptr),
+    EXPECT_EQ(goc_test::float_compare_functions[op](GOC_FP_FLUSH_INPUT_DENORMALS, 0U, known, &d,
+                                                    nullptr, nullptr),
               GOC_SUCCESS);
     EXPECT_EQ(d, 0u);
     for (unsigned bit = 0; bit < 32; ++bit)
@@ -261,11 +261,11 @@ TEST(FloatCompare, DppValidationAndZeroExec) {
     for (auto descriptor : goc_test::dpp_modes) {
       uint32_t d = 0xdeadbeef;
       auto fn = goc_test::float_compare_functions[op];
-      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 2}) {
+      for (auto invalid : {1ULL << 36, 1ULL << 2}) {
         EXPECT_EQ(fn(0, 0, descriptor | invalid, &d, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(d, 0xdeadbeefu);
       }
-      EXPECT_EQ(fn(0, UINT32_C(0), descriptor, &d, nullptr, nullptr),
+      EXPECT_EQ(fn(0, 0U, descriptor, &d, nullptr, nullptr),
                 op < 56 ? GOC_SUCCESS : GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(d, op < 56 ? 0u : 0xdeadbeefu);
     }
@@ -309,7 +309,7 @@ TEST(FloatCompare, DppHardwareCorpusAndHostFpState) {
                               GOC_SUCCESS);
                     hash = goc_test::capture_hash_word(hash, output);
                   }
-        EXPECT_EQ(hash, UINT64_C(0xbe15e5a37f47d025)) << cpu << "/" << semantics;
+        EXPECT_EQ(hash, 0xbe15e5a37f47d025ULL) << cpu << "/" << semantics;
         EXPECT_EQ(std::fegetround(), rounding);
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
       }

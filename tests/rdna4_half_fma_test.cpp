@@ -25,7 +25,7 @@ bool nan(uint16_t bits) { return (bits & 0x7fff) > 0x7c00; }
 
 void check(uint32_t actual, uint32_t before, uint16_t want, uint32_t mode, bool exact) {
   int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  EXPECT_EQ((actual ^ before) & ~(UINT32_C(0xffff) << shift), 0u);
+  EXPECT_EQ((actual ^ before) & ~(0xffffU << shift), 0u);
   uint16_t got = uint16_t(actual >> shift);
   if (!exact && nan(want)) {
     EXPECT_TRUE(nan(got));
@@ -232,20 +232,17 @@ TEST(HalfFma, ValidationAndSemantics) {
   uint32_t data[32];
   std::fill(data, data + 32, 0xdeadbeef);
   auto p = data;
-  for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+  for (uint32_t mask : {0U, UINT32_MAX}) {
     for (int bit = 13; bit < 32; ++bit)
-      EXPECT_EQ(goc_rdna4_v_fma_f16(0, mask, UINT32_C(1) << bit, &p, &p, &p, &p),
-                GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(goc_rdna4_v_fma_f16(UINT64_C(1) << 63, mask, 0, &p, &p, &p, &p),
-              GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(
-        goc_rdna4_v_fma_f16((UINT64_C(2) << 16) | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p, &p),
-        GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      EXPECT_EQ(goc_rdna4_v_fma_f16(0, mask, 1U << bit, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(goc_rdna4_v_fma_f16(1ULL << 63, mask, 0, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(goc_rdna4_v_fma_f16((2ULL << 16) | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p, &p),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
   }
   for (auto word : data)
     EXPECT_EQ(word, 0xdeadbeef);
   EXPECT_EQ(goc_rdna4_v_fma_f16(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr,
                                 nullptr, nullptr, nullptr),
             GOC_SUCCESS);
-  EXPECT_EQ(goc_rdna4_v_fma_f16(UINT64_C(2) << 16, UINT32_MAX, 0, &p, &p, &p, &p), GOC_SUCCESS);
+  EXPECT_EQ(goc_rdna4_v_fma_f16(2ULL << 16, UINT32_MAX, 0, &p, &p, &p, &p), GOC_SUCCESS);
 }

@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cfenv>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
 #include <stdint.h>
 
@@ -102,7 +103,7 @@ TEST(ByteConversion, HostRoundingAndExceptionsArePreserved) {
     EXPECT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
     EXPECT_EQ(std::feraiseexcept(FE_INVALID | FE_INEXACT), 0);
     int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
-    for (auto cpu = UINT64_C(0); cpu <= goc_init_cpu_flags(); ++cpu)
+    for (auto cpu = 0ULL; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned byte = 0; byte < 4; ++byte)
         for (unsigned variant = 0; variant < 8; ++variant)
           for (unsigned start = 0; start < 256; start += 32) {
@@ -133,12 +134,12 @@ TEST(ByteConversion, ValidationAndSemanticFallback) {
           EXPECT_EQ(fn(cpu, UINT32_MAX, uint32_t(1) << bit, d, a), GOC_ERROR_INVALID_FLAGS);
           EXPECT_EQ(fn(cpu, 0, uint32_t(1) << bit, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(fn(cpu | (UINT64_C(1) << 63), UINT32_MAX, 0, d, a), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(cpu | (1ULL << 63), UINT32_MAX, 0, d, a), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, d, a),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(fn(cpu, UINT32_C(0), 0, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu, 0U, 0, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned semantics = 0; semantics < 4; ++semantics) {
         EXPECT_EQ(fn(cpu | (uint64_t(semantics) << 16) | GOC_FP16_OVFL, UINT32_MAX, 0, d, a),
                   GOC_SUCCESS);
@@ -186,7 +187,8 @@ TEST(ByteConversion, DppValidation) {
        {functions[0], functions[1], functions[2], functions[3], goc_rdna4_v_cvt_off_f32_i4})
     for (auto mode : goc_test::dpp_modes) {
       EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr), GOC_SUCCESS);
-      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_ABS_A), uint64_t(GOC_ALU_NEG_A)})
+      for (auto invalid : std::initializer_list<uint64_t>{1ULL << 36, uint64_t(GOC_ALU_ABS_A),
+                                                          uint64_t(GOC_ALU_NEG_A)})
         EXPECT_EQ(fn(0, 0, mode | invalid, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
     }
 }
@@ -216,6 +218,6 @@ TEST(ByteConversion, DppHardwareCorpus) {
             for (auto word : output)
               hash = goc_test::capture_hash_word(hash, word);
           }
-    EXPECT_EQ(hash, UINT64_C(0x5aa55d075a279fa5)) << cpu;
+    EXPECT_EQ(hash, 0x5aa55d075a279fa5ULL) << cpu;
   }
 }

@@ -42,7 +42,7 @@ TEST(DppInteger, HardwareCorpus) {
             hash = goc_test::capture_hash_word(hash, d[lane]);
           }
         }
-    EXPECT_EQ(hash, UINT64_C(0x5da3e13cc67cda25));
+    EXPECT_EQ(hash, 0x5da3e13cc67cda25ULL);
   }
 }
 
@@ -75,7 +75,7 @@ TEST(DppInteger, ShiftHardwareCorpus) {
             hash = goc_test::capture_hash_word(hash, d[lane]);
           }
         }
-    EXPECT_EQ(hash, UINT64_C(0x03caa0b347b9fe02));
+    EXPECT_EQ(hash, 0x03caa0b347b9fe02ULL);
   }
 }
 
@@ -127,11 +127,10 @@ TEST(DppInteger, ValidationAndHostFpState) {
 
   for (auto fn : goc_test::dpp_integer_functions)
     for (uint64_t mode : goc_test::dpp_modes) {
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         EXPECT_EQ(fn(0, mask, mode | GOC_ALU_NEG_A, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(UINT64_C(1) << 63, mask, mode, nullptr, nullptr, nullptr),
-                  GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(1ULL << 63, mask, mode, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, mode, nullptr,
                      nullptr, nullptr),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);

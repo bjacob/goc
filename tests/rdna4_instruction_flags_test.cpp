@@ -130,13 +130,12 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
       if (supports_dpp && (bit == 32 || bit == 34)) {
         // Family tests supply required scalar outputs even for zero EXEC.
         if (exec == 0 && !dpp_scalar_output) {
-          EXPECT_EQ(instruction(0, exec, UINT64_C(1) << bit, Operands{}...), GOC_SUCCESS);
+          EXPECT_EQ(instruction(0, exec, 1ULL << bit, Operands{}...), GOC_SUCCESS);
         }
         continue;
       }
       // Invalid flags must be rejected before reading even required scalar outputs.
-      EXPECT_EQ(instruction(0, exec, UINT64_C(1) << bit, Operands{}...), GOC_ERROR_INVALID_FLAGS)
-          << bit;
+      EXPECT_EQ(instruction(0, exec, 1ULL << bit, Operands{}...), GOC_ERROR_INVALID_FLAGS) << bit;
     }
 }
 

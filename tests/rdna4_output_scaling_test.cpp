@@ -14,10 +14,10 @@ namespace {
 // Four input sets, LDEXP_F32 / CVT_F32_F16 / CVT_F32_F64, all 32 modifiers,
 // 32 lanes. FNV-1a over little-endian result bytes, NaNs normalized to 0x7fc00000.
 const uint64_t hardware_hashes[4][3] = {
-    {UINT64_C(0x1f93c115d1cdd755), UINT64_C(0xa358ade8ebb6a9d5), UINT64_C(0x1f93c115d1cdd755)},
-    {UINT64_C(0xd4295ecd2f0742a5), UINT64_C(0xa358ade8ebb6a9d5), UINT64_C(0xd4295ecd2f0742a5)},
-    {UINT64_C(0x54aa0c65d508fe45), UINT64_C(0xa358ade8ebb6a9d5), UINT64_C(0x54aa0c65d508fe45)},
-    {UINT64_C(0x42ca079dcbd3a10d), UINT64_C(0xa358ade8ebb6a9d5), UINT64_C(0xe63df8098a3b6325)}};
+    {0x1f93c115d1cdd755ULL, 0xa358ade8ebb6a9d5ULL, 0x1f93c115d1cdd755ULL},
+    {0xd4295ecd2f0742a5ULL, 0xa358ade8ebb6a9d5ULL, 0xd4295ecd2f0742a5ULL},
+    {0x54aa0c65d508fe45ULL, 0xa358ade8ebb6a9d5ULL, 0x54aa0c65d508fe45ULL},
+    {0x42ca079dcbd3a10dULL, 0xa358ade8ebb6a9d5ULL, 0xe63df8098a3b6325ULL}};
 
 const uint32_t inputs32[] = {
     0x00000000, 0x80000000, 0x00000001, 0x80000001, 0x007fffff, 0x807fffff, 0x00800000, 0x80800000,
@@ -83,8 +83,7 @@ TEST(OutputScaling, LdexpAndConversionsHardwareBoundaries) {
 TEST(OutputScaling, WideConversionsHardwareBoundaries) {
   // RX 9070, gfx1201, MODE=0xf0. Same input words as inputs32.
   // FP32 widening covers ABS/NEG; integer widening only encodes OMOD/CLAMP.
-  const uint64_t hashes[] = {UINT64_C(0xe618186b9bac389d), UINT64_C(0xf8126ee2eef77260),
-                             UINT64_C(0xab3308cda26a2808)};
+  const uint64_t hashes[] = {0xe618186b9bac389dULL, 0xf8126ee2eef77260ULL, 0xab3308cda26a2808ULL};
   using Fn = decltype(&goc_rdna4_v_cvt_f64_f32);
   const Fn functions[] = {goc_rdna4_v_cvt_f64_f32, goc_rdna4_v_cvt_f64_i32,
                           goc_rdna4_v_cvt_f64_u32};
@@ -105,8 +104,8 @@ TEST(OutputScaling, WideConversionsHardwareBoundaries) {
           ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, d, p), GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             uint64_t raw = d[0][lane] | (uint64_t(d[1][lane]) << 32);
-            if ((raw & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000))
-              raw = UINT64_C(0x7ff8000000000000);
+            if ((raw & 0x7fffffffffffffffULL) > 0x7ff0000000000000ULL)
+              raw = 0x7ff8000000000000ULL;
             for (unsigned shift = 0; shift < 64; shift += 8)
               hash = goc_test::capture_hash_word(hash, ((raw >> shift) & 255));
           }

@@ -94,8 +94,7 @@ TEST(ScalarFma, ErrorsAndHostRounding) {
     uint32_t d = 123;
     for (unsigned bit = 0; bit < 32; ++bit)
       EXPECT_EQ(goc_test::scalar_fma_call(k, 0, 0, 1u << bit, &d, 0, 0), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(goc_test::scalar_fma_call(k, UINT64_C(1) << 63, 0, 0, &d, 0, 0),
-              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(goc_test::scalar_fma_call(k, 1ULL << 63, 0, 0, &d, 0, 0), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(goc_test::scalar_fma_call(k, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
                                         0, &d, 0, 0),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);

@@ -9,9 +9,9 @@
 // Wave32 masks covering every single active/inactive lane, SIMD chunk boundaries,
 // empty/full/alternating masks, deterministic random masks.
 inline std::vector<uint32_t> rdna4_exec_masks() {
-  std::vector<uint32_t> masks = {0, UINT32_MAX, UINT32_C(0x55555555), UINT32_C(0xaaaaaaaa)};
+  std::vector<uint32_t> masks = {0, UINT32_MAX, 0x55555555U, 0xaaaaaaaaU};
   for (int lane = 0; lane < 32; ++lane) {
-    uint32_t bit = UINT32_C(1) << lane;
+    uint32_t bit = 1U << lane;
     masks.push_back(bit);
     masks.push_back(uint32_t(~bit));
   }

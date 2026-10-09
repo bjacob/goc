@@ -49,11 +49,9 @@ int arithmetic(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
     if constexpr (Op == goc::Fp64::Maximum)
       value = goc::minmax<true, true>(x, y);
     if constexpr (Op == goc::Fp64::FrexpMant) {
-      uint64_t magnitude = goc::double_bits(x) & UINT64_C(0x7fffffffffffffff);
+      uint64_t magnitude = goc::double_bits(x) & 0x7fffffffffffffffULL;
       int exponent;
-      value = magnitude == 0 || magnitude >= UINT64_C(0x7ff0000000000000)
-                  ? x
-                  : std::frexp(x, &exponent);
+      value = magnitude == 0 || magnitude >= 0x7ff0000000000000ULL ? x : std::frexp(x, &exponent);
     }
     if constexpr (Op == goc::Fp64::Trunc)
       value = std::trunc(x);
@@ -71,7 +69,7 @@ int arithmetic(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
       value = 1.0 / std::sqrt(x);
     if constexpr (Op == goc::Fp64::Fract) {
       value = x - std::floor(x);
-      double limit = goc::as_double(UINT64_C(0x3fefffffffffffff));
+      double limit = goc::as_double(0x3fefffffffffffffULL);
       if (value > limit)
         value = limit;
     }

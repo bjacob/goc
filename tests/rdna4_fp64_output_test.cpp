@@ -79,10 +79,10 @@ TEST(Fp64Output, HardwareModifiersAndCrossHalfAliases) {
             uint64_t raw = d[0][lane] | (uint64_t(d[1][lane]) << 32);
             if (op >= 8 && op <= 10) {
               uint64_t want = goc_test::fp64_transcendental_hardware[op - 8][v][lane];
-              uint64_t magnitude = want & UINT64_C(0x7fffffffffffffff);
-              if (magnitude > UINT64_C(0x7ff0000000000000)) {
+              uint64_t magnitude = want & 0x7fffffffffffffffULL;
+              if (magnitude > 0x7ff0000000000000ULL) {
                 EXPECT_TRUE(std::isnan(goc::as_double(raw)));
-              } else if (!magnitude || magnitude == UINT64_C(0x7ff0000000000000)) {
+              } else if (!magnitude || magnitude == 0x7ff0000000000000ULL) {
                 EXPECT_EQ(raw, want);
               } else {
                 // RDNA4 FP64 transcendental approximations have substantially
@@ -93,8 +93,8 @@ TEST(Fp64Output, HardwareModifiersAndCrossHalfAliases) {
                 EXPECT_NEAR(goc::as_double(raw) / goc::as_double(want), 1.0, 0x1p-23);
               }
             }
-            if ((raw & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000))
-              raw = UINT64_C(0x7ff8000000000000);
+            if ((raw & 0x7fffffffffffffffULL) > 0x7ff0000000000000ULL)
+              raw = 0x7ff8000000000000ULL;
             for (unsigned shift = 0; shift < 64; shift += 8)
               hash = goc_test::capture_hash_word(hash, ((raw >> shift) & 255));
           }
@@ -107,7 +107,7 @@ TEST(Fp64Output, HardwareModifiersAndCrossHalfAliases) {
 
 TEST(Fp64Output, LdexpHardwareBoundaries) {
   // Same gfx1201 capture and inputs as the arithmetic corpus, exponent 0/-1.
-  const uint64_t hashes[] = {UINT64_C(0x91b37a3decfcf2a5), UINT64_C(0xad1830abf629d830)};
+  const uint64_t hashes[] = {0x91b37a3decfcf2a5ULL, 0xad1830abf629d830ULL};
   const unsigned aliases[][2] = {{3, 4}, {0, 1}, {1, 0}, {2, 0}, {1, 2}};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned set = 0; set < 2; ++set)
@@ -129,8 +129,8 @@ TEST(Fp64Output, LdexpHardwareBoundaries) {
           ASSERT_EQ(goc_rdna4_v_ldexp_f64(cpu, UINT32_MAX, mode, d, p, p + 2), GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             uint64_t raw = d[0][lane] | (uint64_t(d[1][lane]) << 32);
-            if ((raw & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000))
-              raw = UINT64_C(0x7ff8000000000000);
+            if ((raw & 0x7fffffffffffffffULL) > 0x7ff0000000000000ULL)
+              raw = 0x7ff8000000000000ULL;
             for (unsigned shift = 0; shift < 64; shift += 8)
               hash = goc_test::capture_hash_word(hash, ((raw >> shift) & 255));
           }

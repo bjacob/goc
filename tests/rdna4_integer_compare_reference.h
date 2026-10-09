@@ -96,7 +96,7 @@ inline bool integer_compare_reference(unsigned op, unsigned m, const uint32_t *w
   uint64_t b = fmt == 0   ? ((w[2] >> (m & 2 ? 16 : 0)) & 65535)
                : fmt == 1 ? w[2]
                           : (uint64_t(w[3]) << 32) | w[2];
-  uint64_t sign = UINT64_C(1) << (fmt == 0 ? 15 : fmt == 1 ? 31 : 63);
+  uint64_t sign = 1ULL << (fmt == 0 ? 15 : fmt == 1 ? 31 : 63);
   bool less = is_signed && ((a ^ b) & sign) ? bool(a & sign) : a < b;
   switch (predicate) {
   case 0:

@@ -27,7 +27,7 @@ void inputs(unsigned op, unsigned role, uint32_t mode, uint64_t b, uint64_t c, u
             unsigned lane) {
   uint64_t a = role ? c : b;
   if (bool(mode & GOC_ALU_NEG_A) != bool(mode & (role ? GOC_ALU_NEG_C : GOC_ALU_NEG_B)))
-    a ^= UINT64_C(1) << (op ? 63 : 31);
+    a ^= 1ULL << (op ? 63 : 31);
   uint64_t values[] = {a, b, c};
   for (unsigned i = 0; i < 3; ++i) {
     data[2 * i][lane] = uint32_t(values[i]);
@@ -168,7 +168,7 @@ TEST(DivScale, ValidationAndZeroExec) {
                    &condition, nullptr, nullptr, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       EXPECT_EQ(condition, 0xdeadbeef);
-      EXPECT_EQ(fn(cpu | exact, UINT32_C(0), 0, nullptr, &condition, nullptr, nullptr, nullptr),
+      EXPECT_EQ(fn(cpu | exact, 0U, 0, nullptr, &condition, nullptr, nullptr, nullptr),
                 GOC_SUCCESS);
       EXPECT_EQ(condition, 0u);
       condition = 0xdeadbeef;

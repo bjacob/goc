@@ -143,7 +143,7 @@ TEST(Integer16, ValidationAndFloatingEnvironment) {
     const uint32_t known =
         GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D | (op < 4 ? GOC_ALU_CLAMP : 0);
     for (int bit = 0; bit < 32; ++bit) {
-      uint32_t invalid = UINT32_C(1) << bit;
+      uint32_t invalid = 1U << bit;
       if (invalid & known)
         continue;
       EXPECT_EQ(fn(0, UINT32_MAX, invalid, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
@@ -153,7 +153,7 @@ TEST(Integer16, ValidationAndFloatingEnvironment) {
     EXPECT_EQ(
         fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr, nullptr),
         GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(fn(0, UINT32_C(0), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, 0U, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
     goc_test::ScopedFpEnvironment environment;
     ASSERT_TRUE(environment.saved());
     std::fesetround(FE_DOWNWARD);

@@ -170,13 +170,12 @@ TEST(Bitfield, ValidationAndHostFpState) {
             std::fill_n(reg, 32, 0x7f800001);
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
-          for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+          for (uint32_t mask : {0U, UINT32_MAX}) {
             for (int bit = 0; bit < 32; ++bit)
               EXPECT_EQ(goc_test::bitfield_functions[op](cpu, mask, uint32_t(1) << bit, d, a, b, c),
                         GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(
-                goc_test::bitfield_functions[op](cpu | (UINT64_C(1) << 63), mask, 0, d, a, b, c),
-                GOC_ERROR_INVALID_FLAGS);
+            EXPECT_EQ(goc_test::bitfield_functions[op](cpu | (1ULL << 63), mask, 0, d, a, b, c),
+                      GOC_ERROR_INVALID_FLAGS);
             EXPECT_EQ(goc_test::bitfield_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
                                                            GOC_SEMANTICS_STRICT,
                                                        mask, 0, d, a, b, c),
@@ -200,7 +199,7 @@ TEST(Bitfield, AlignmentEveryConcatenatedBitAndShift) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned bit = 0; bit < 64; ++bit)
         for (bool inverted : {false, true}) {
-          uint64_t source = (UINT64_C(1) << bit) ^ (inverted ? UINT64_MAX : 0);
+          uint64_t source = (1ULL << bit) ^ (inverted ? UINT64_MAX : 0);
           uint32_t words[4][32];
           for (unsigned lane = 0; lane < 32; ++lane) {
             words[0][lane] = uint32_t(source >> 32);
@@ -219,7 +218,7 @@ TEST(Bitfield, PermuteEverySelectorAndSourceBit) {
         for (unsigned start = 0; start < 256; start += 32) {
           uint32_t words[4][32];
           for (unsigned lane = 0; lane < 32; ++lane) {
-            uint64_t source = (UINT64_C(1) << ((bit + lane) % 64)) ^ (invert ? UINT64_MAX : 0);
+            uint64_t source = (1ULL << ((bit + lane) % 64)) ^ (invert ? UINT64_MAX : 0);
             words[0][lane] = uint32_t(source >> 32);
             words[1][lane] = uint32_t(source);
             words[2][lane] = (start + lane) * 0x01010101u;
@@ -249,16 +248,15 @@ TEST(Bitfield, PermuteHardwareAllSelectorBytes) {
       for (uint32_t value : words[3])
         digest = goc_test::capture_hash_bytes(digest, value, 4);
     }
-    EXPECT_EQ(digest, UINT64_C(0x130dcc447fe090a6)) << cpu;
+    EXPECT_EQ(digest, 0x130dcc447fe090a6ULL) << cpu;
   }
 }
 
 TEST(Bitfield, UnalignedStorageAndEmptyExec) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 8; ++op) {
-      EXPECT_EQ(
-          goc_test::bitfield_functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr),
-          GOC_SUCCESS);
+      EXPECT_EQ(goc_test::bitfield_functions[op](cpu, 0U, 0, nullptr, nullptr, nullptr, nullptr),
+                GOC_SUCCESS);
       for (unsigned target = 0; target < 4; ++target)
         for (uint32_t mask : rdna4_exec_masks()) {
           uint32_t words[4][35], expected[4][35];

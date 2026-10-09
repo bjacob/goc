@@ -61,10 +61,9 @@ TEST(Mad64, SignedScalarOutputIsTheExtendedSign) {
     for (bool clamp : {false, true}) {
       uint32_t data[6][32];
       const uint32_t av[] = {0, 0x80000000, 0x80000000, 1}, bv[] = {0, 0x80000000, 0x7fffffff, 1};
-      const uint64_t cv[] = {UINT64_MAX, UINT64_MAX >> 1, UINT64_C(1) << 63, 0};
-      const uint64_t wrapped[] = {UINT64_MAX, UINT64_C(0xbfffffffffffffff),
-                                  UINT64_C(0x4000000080000000), 1};
-      const uint64_t saturated[] = {UINT64_MAX, UINT64_MAX >> 1, UINT64_C(1) << 63, 1};
+      const uint64_t cv[] = {UINT64_MAX, UINT64_MAX >> 1, 1ULL << 63, 0};
+      const uint64_t wrapped[] = {UINT64_MAX, 0xbfffffffffffffffULL, 0x4000000080000000ULL, 1};
+      const uint64_t saturated[] = {UINT64_MAX, UINT64_MAX >> 1, 1ULL << 63, 1};
       for (unsigned lane = 0; lane < 32; ++lane) {
         data[0][lane] = av[lane % 4];
         data[1][lane] = bv[lane % 4];
@@ -210,8 +209,7 @@ TEST(Mad64, ValidationAndZeroExec) {
       EXPECT_EQ(carry, 0x12345678);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(fn(cpu | exact, UINT32_C(0), 0, nullptr, &carry, nullptr, nullptr, nullptr),
-                GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu | exact, 0U, 0, nullptr, &carry, nullptr, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(carry, 0u);
       carry = 0x12345678;
       EXPECT_EQ(fn(cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, &carry, nullptr, nullptr,

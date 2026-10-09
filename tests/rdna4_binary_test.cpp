@@ -76,7 +76,7 @@ TEST(Binary, Validation) {
     EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_C, &pd, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, &pd, &pa, &pa),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_C(0), 0, &pd, &pa, &pa), GOC_SUCCESS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0U, 0, &pd, &pa, &pa), GOC_SUCCESS);
     for (auto value : d)
       EXPECT_EQ(value, 0xdeadbeef);
   }
@@ -118,7 +118,7 @@ TEST(Binary, Dx9ZeroOverridesEveryOtherOperand) {
                              0x7fc12345, 0xffc12345, 0x7f812345, 0xff812345};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint32_t variant = 0; variant < 128; ++variant)
-      for (uint32_t zero : {UINT32_C(0), UINT32_C(0x80000000)})
+      for (uint32_t zero : {0U, 0x80000000U})
         for (bool reverse : {false, true}) {
           uint32_t a[32], b[32], d[32];
           uint32_t mode = (variant & 3) | ((variant & 12) << 1) | ((variant & 112) << 2);

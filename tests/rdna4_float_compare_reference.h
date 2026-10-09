@@ -73,21 +73,21 @@ inline void float_compare_inputs(unsigned fmt, unsigned i, uint32_t *w) {
                               0x3f800000, 0xbf800000, 0x7f7fffff, 0xff7fffff,
                               0x7f800000, 0xff800000, 0x7f800001, 0x7fc00001};
   const uint64_t edges64[] = {0,
-                              UINT64_C(0x8000000000000000),
+                              0x8000000000000000ULL,
                               1,
-                              UINT64_C(0x8000000000000001),
-                              UINT64_C(0xfffffffffffff),
-                              UINT64_C(0x800fffffffffffff),
-                              UINT64_C(0x10000000000000),
-                              UINT64_C(0x8010000000000000),
-                              UINT64_C(0x3ff0000000000000),
-                              UINT64_C(0xbff0000000000000),
-                              UINT64_C(0x7fefffffffffffff),
-                              UINT64_C(0xffefffffffffffff),
-                              UINT64_C(0x7ff0000000000000),
-                              UINT64_C(0xfff0000000000000),
-                              UINT64_C(0x7ff0000000000001),
-                              UINT64_C(0x7ff8000000000001)};
+                              0x8000000000000001ULL,
+                              0xfffffffffffffULL,
+                              0x800fffffffffffffULL,
+                              0x10000000000000ULL,
+                              0x8010000000000000ULL,
+                              0x3ff0000000000000ULL,
+                              0xbff0000000000000ULL,
+                              0x7fefffffffffffffULL,
+                              0xffefffffffffffffULL,
+                              0x7ff0000000000000ULL,
+                              0xfff0000000000000ULL,
+                              0x7ff0000000000001ULL,
+                              0x7ff8000000000001ULL};
 
   uint64_t a, b;
   if (i < 256) {
@@ -114,9 +114,9 @@ inline void float_compare_inputs(unsigned fmt, unsigned i, uint32_t *w) {
 inline bool float_compare_reference(unsigned op, unsigned m, bool flush, const uint32_t *w) {
   unsigned fmt = op / 28, p = op % 14 + 1;
   unsigned bits = fmt == 0 ? 16 : fmt == 1 ? 32 : 64;
-  uint64_t sign = UINT64_C(1) << (bits - 1), inf = fmt == 0   ? 0x7c00
-                                                   : fmt == 1 ? 0x7f800000
-                                                              : UINT64_C(0x7ff0000000000000);
+  uint64_t sign = 1ULL << (bits - 1), inf = fmt == 0   ? 0x7c00
+                                            : fmt == 1 ? 0x7f800000
+                                                       : 0x7ff0000000000000ULL;
   uint64_t a = fmt == 2   ? (uint64_t(w[1]) << 32) | w[0]
                : fmt == 0 ? ((w[0] >> (m & 16 ? 16 : 0)) & 65535)
                           : w[0];

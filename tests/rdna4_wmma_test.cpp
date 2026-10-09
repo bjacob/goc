@@ -330,8 +330,8 @@ TEST(WmmaWave64, CapturedGoldensMasksAndOverlap) {
       const auto &cases = bf16 ? kGfx12WmmaBF16Cases : kGfx12WmmaF16Cases;
       for (const auto &f : cases)
         for (int dst : {0, 1, 2, 4, 8})
-          for (uint64_t mask : {UINT64_C(0), UINT64_C(1) << 32, UINT64_C(1) << 63,
-                                UINT64_C(0xaaaaaaaa55555555), UINT64_MAX}) {
+          for (uint64_t mask : std::initializer_list<uint64_t>{0ULL, 1ULL << 32, 1ULL << 63,
+                                                               0xaaaaaaaa55555555ULL, UINT64_MAX}) {
             uint32_t data[12][64] = {};
             uint32_t *v[12];
             for (int i = 0; i < 12; ++i)
@@ -431,7 +431,7 @@ TEST(Wmma, Fp16V3FiniteAndExceptionalInputsMatchScalar) {
   for (bool exceptional : {false, true})
     for (int trial = 0; trial < 8; ++trial)
       for (int dst : {0, 2, 4, 8, 16})
-        for (uint32_t mask : {UINT32_C(0), UINT32_C(0x91234567), UINT32_MAX}) {
+        for (uint32_t mask : {0U, 0x91234567U, UINT32_MAX}) {
           Registers reference, actual;
           std::minstd_rand random(73 + trial);
           for (int reg = 0; reg < 24; ++reg)
@@ -478,7 +478,7 @@ TEST(Wmma, Bf16V3AndZen4FallbackMatchScalar) {
   for (uint64_t level = GOC_CPU_X86_64_V3; level <= goc_init_cpu_flags(); ++level)
     for (int trial = 0; trial < 8; ++trial)
       for (int dst : {0, 2, 4, 8, 16})
-        for (uint32_t mask : {UINT32_C(0), UINT32_C(0x91234567), UINT32_MAX}) {
+        for (uint32_t mask : {0U, 0x91234567U, UINT32_MAX}) {
           Registers reference, actual;
           std::minstd_rand random(107 + trial);
           for (int reg = 0; reg < 24; ++reg)
@@ -660,7 +660,7 @@ TEST(Wmma, SimdModifiersDenseReferenceMasksAndOverlap) {
                                 modifiers == (GOC_WMMA_NEG_HI_A | GOC_WMMA_NEG_LO_B |
                                               GOC_WMMA_ABS_C | GOC_WMMA_NEG_C))
                                    ? rdna4_exec_masks()
-                                   : std::vector<uint32_t>{0, UINT32_C(0x91234567), UINT32_MAX}) {
+                                   : std::vector<uint32_t>{0, 0x91234567U, UINT32_MAX}) {
             SCOPED_TRACE(::testing::Message()
                          << "bf16=" << bf << " modifiers=" << modifiers << " cpu=" << cpu
                          << " dst=" << dst << " mask=" << mask);

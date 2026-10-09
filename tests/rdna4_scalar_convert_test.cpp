@@ -100,7 +100,7 @@ TEST(ScalarConvert, ErrorsAndHostRounding) {
     for (unsigned bit = 0; bit < 32; ++bit)
       EXPECT_EQ(goc_test::scalar_convert_call(op, 0, 0, 1u << bit, &d, 0, 0),
                 GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(goc_test::scalar_convert_call(op, UINT64_C(1) << 63, 0, 0, &d, 0, 0),
+    EXPECT_EQ(goc_test::scalar_convert_call(op, 1ULL << 63, 0, 0, &d, 0, 0),
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(goc_test::scalar_convert_call(
                   op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, &d, 0, 0),

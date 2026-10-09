@@ -9,9 +9,8 @@ namespace goc_test {
 // RX 9070, gfx1201, RNE. All four hardware denormal modes produced
 // identical results for 4 datasets x 512 modifiers x 32 lanes (262,144 words).
 // FNV-1a hashes use little-endian bytes, with all NaNs normalized to 0x7fc00000.
-static const uint64_t dx9_hardware_hashes[] = {
-    UINT64_C(0x6861d7131cc26bc5), UINT64_C(0xebe85366f7780f45), UINT64_C(0xb07008694d13afb5),
-    UINT64_C(0xef878f0125b62325)};
+static const uint64_t dx9_hardware_hashes[] = {0x6861d7131cc26bc5ULL, 0xebe85366f7780f45ULL,
+                                               0xb07008694d13afb5ULL, 0xef878f0125b62325ULL};
 
 inline void dx9_hardware_inputs(unsigned set, unsigned lane, uint32_t &a, uint32_t &b,
                                 uint32_t &c) {

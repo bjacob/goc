@@ -22,7 +22,7 @@ const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x380
 
 void check(uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
   int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  EXPECT_EQ((actual ^ before) & ~(UINT32_C(0xffff) << shift), 0u);
+  EXPECT_EQ((actual ^ before) & ~(0xffffU << shift), 0u);
   uint16_t got = uint16_t(actual >> shift);
   if (goc_test::half_minmax_nan(want)) {
     EXPECT_TRUE(goc_test::half_minmax_nan(got));
@@ -103,7 +103,7 @@ TEST(HalfMinmax3, AllModifiersAndHalfSelectors) {
 TEST(HalfMinmax3, MasksAndAllWholeRegisterAliases) {
   const int layouts[][3] = {{0, 1, 2}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}};
   const uint32_t modes[] = {
-      0, UINT32_C(63) | GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D,
+      0, 63U | GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D,
       GOC_ALU_HIGH_A | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP,
       GOC_ALU_HIGH_B | GOC_ALU_OMOD_4};
   for (int op = 0; op < 9; ++op)
@@ -191,10 +191,10 @@ TEST(HalfMinmax3, ValidationAndSemantics) {
     uint32_t data[32];
     std::fill(data, data + 32, 0xdeadbeef);
     auto p = data;
-    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+    for (uint32_t mask : {0U, UINT32_MAX}) {
       for (int bit = 13; bit < 32; ++bit)
-        EXPECT_EQ(fn(0, mask, UINT32_C(1) << bit, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(UINT64_C(1) << 63, mask, 0, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(0, mask, 1U << bit, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(1ULL << 63, mask, 0, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p, &p),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
@@ -222,7 +222,7 @@ TEST(HalfMinmax3, HardwareMedianSignedZeroOrdering) {
       for (uint32_t word : words[3])
         hash = goc_test::capture_hash_word(hash, word);
     }
-    EXPECT_EQ(hash, UINT64_C(0x6621dd1b4ac695ed));
+    EXPECT_EQ(hash, 0x6621dd1b4ac695edULL);
   }
 }
 
@@ -247,6 +247,6 @@ TEST(HalfMinmax3, HardwareMedianNanRules) {
         hash = goc_test::capture_hash_word(hash, word);
       }
     }
-    EXPECT_EQ(hash, UINT64_C(0x513891779d603325));
+    EXPECT_EQ(hash, 0x513891779d603325ULL);
   }
 }

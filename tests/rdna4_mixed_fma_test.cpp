@@ -126,7 +126,7 @@ TEST(MixedFma, DppHardwareCorpus) {
             for (uint32_t word : words[3])
               hash = goc_test::capture_hash_word(hash, word);
           }
-    EXPECT_EQ(hash, UINT64_C(0x67b9a4c5cebf1238));
+    EXPECT_EQ(hash, 0x67b9a4c5cebf1238ULL);
   }
 }
 
@@ -223,7 +223,7 @@ TEST(MixedFma, UnsupportedNonstrictSemanticsFallBackToLoose) {
       for (int reg = 0; reg < 4; ++reg)
         for (int lane = 0; lane < 32; ++lane)
           words[reg][lane] = values[(lane + reg * 5) % 24];
-      for (uint64_t semantics : {UINT64_C(2) << 16, UINT64_C(3) << 16})
+      for (uint64_t semantics : {2ULL << 16, 3ULL << 16})
         EXPECT_TRUE(check(op, cpu | semantics, 0, words));
       if (!op) {
         EXPECT_TRUE(check(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, 0, words));
@@ -380,16 +380,15 @@ TEST(MixedFma, ExactPreservesHostStateAndErrorsPrecedeEmptyMask) {
           uint32_t original[32];
           std::copy_n(words[3], 32, original);
           uint32_t known = goc_test::mixed_fma_reference::mode(8191);
-          for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+          for (uint32_t mask : {0U, UINT32_MAX}) {
             for (int bit = 0; bit < 32; ++bit)
               if (!(known & (uint32_t(1) << bit))) {
                 EXPECT_EQ(functions[op](cpu, mask, uint32_t(1) << bit, d, a, b, c),
                           GOC_ERROR_INVALID_FLAGS);
               }
-            EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), mask, 0, d, a, b, c),
+            EXPECT_EQ(functions[op](cpu | (1ULL << 63), mask, 0, d, a, b, c),
                       GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(functions[op](cpu | (UINT64_C(2) << 16) | GOC_SEMANTICS_STRICT, mask, 0, d, a,
-                                    b, c),
+            EXPECT_EQ(functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, mask, 0, d, a, b, c),
                       GOC_ERROR_UNSUPPORTED_SEMANTICS);
             if (!op) {
               EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
@@ -398,10 +397,10 @@ TEST(MixedFma, ExactPreservesHostStateAndErrorsPrecedeEmptyMask) {
             }
           }
           EXPECT_TRUE(std::equal(words[3], words[3] + 32, original));
-          EXPECT_EQ(functions[op](cpu, UINT32_C(0), known, d, a, b, c), GOC_SUCCESS);
+          EXPECT_EQ(functions[op](cpu, 0U, known, d, a, b, c), GOC_SUCCESS);
           EXPECT_TRUE(std::equal(words[3], words[3] + 32, original));
           if (op) {
-            for (uint32_t mode : {UINT32_C(0), known, GOC_MIX_F16_A | GOC_ALU_HIGH_A})
+            for (uint32_t mode : {0U, known, GOC_MIX_F16_A | GOC_ALU_HIGH_A})
               EXPECT_TRUE(check(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                                 mode, words));
             std::fill_n(words[0], 32, 0x3f800000);

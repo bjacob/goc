@@ -109,8 +109,7 @@ TEST(Conversion64, ExponentBoundariesAndEveryModifier) {
         for (unsigned exponent = 0; exponent < count; ++exponent) {
           uint64_t input[32];
           for (unsigned lane = 0; lane < 32; ++lane) {
-            uint64_t base =
-                op < 2 ? UINT64_C(1) << exponent : uint64_t(exponent) << (op == 4 ? 23 : 52);
+            uint64_t base = op < 2 ? 1ULL << exponent : uint64_t(exponent) << (op == 4 ? 23 : 52);
             input[lane] =
                 (base + lane % 16 - 8) ^ (uint64_t(lane / 16) << (op < 2 || op == 4 ? 31 : 63));
             if (op < 2 || op == 4)
@@ -182,8 +181,8 @@ TEST(Conversion64, MasksCrossHalfAliasesAndUnalignedStorage) {
             // Loose NaN payloads are unspecified. Check quiet-NaN classification
             // even when D0 == D1 leaves only the high word, then use the actual
             // payload for the whole-buffer preservation checks.
-            uint64_t nan = goc_test::conversion64_wide_output(op) ? UINT64_C(0x7ff8000000000000)
-                                                                  : UINT64_C(0x7fc00000);
+            uint64_t nan =
+                goc_test::conversion64_wide_output(op) ? 0x7ff8000000000000ULL : 0x7fc00000ULL;
             for (int lane = 0; lane < 32; ++lane)
               if (((mask >> lane) & 1) && op != 2 && op != 3 &&
                   goc_test::conversion64_equal(op, results[lane], nan)) {
@@ -222,15 +221,14 @@ TEST(Conversion64, ValidationAndSemanticFallback) {
           EXPECT_EQ(functions[op](cpu, 0, uint32_t(1) << bit, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), UINT32_MAX, 0, d, a),
-                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                               UINT32_MAX, 0, d, a),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto &reg : output)
         for (auto word : reg)
           EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, 0U, 0, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 1; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16), 0, input));
     }

@@ -171,7 +171,7 @@ TEST(Fp64, Validation) {
     EXPECT_EQ(
         call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, d, a, a, a),
         GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_C(0), 0, d, a, a, a), GOC_SUCCESS);
+    EXPECT_EQ(call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, 0U, 0, d, a, a, a), GOC_SUCCESS);
     for (auto &reg : output)
       for (uint32_t value : reg)
         EXPECT_EQ(value, 0xdeadbeef);
@@ -184,13 +184,11 @@ uint64_t minmax_reference(int op, uint64_t a, uint64_t b, uint32_t mode) {
   uint64_t operands[] = {a, b};
   for (int source = 0; source < 2; ++source) {
     if (mode & (GOC_ALU_ABS_A << source))
-      operands[source] &= UINT64_C(0x7fffffffffffffff);
+      operands[source] &= 0x7fffffffffffffffULL;
     if (mode & (GOC_ALU_NEG_A << source))
-      operands[source] ^= UINT64_C(0x8000000000000000);
+      operands[source] ^= 0x8000000000000000ULL;
   }
-  const auto nan = [](uint64_t x) {
-    return (x & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000);
-  };
+  const auto nan = [](uint64_t x) { return (x & 0x7fffffffffffffffULL) > 0x7ff0000000000000ULL; };
   uint64_t selected = 0;
   if (nan(operands[0]) || nan(operands[1])) {
     if (op < 2) {
@@ -201,7 +199,7 @@ uint64_t minmax_reference(int op, uint64_t a, uint64_t b, uint32_t mode) {
       // First signaling NaN, otherwise first quiet NaN.
       bool found = false;
       for (uint64_t x : operands)
-        if (!found && nan(x) && !(x & UINT64_C(0x0008000000000000))) {
+        if (!found && nan(x) && !(x & 0x0008000000000000ULL)) {
           selected = x;
           found = true;
         }
@@ -209,10 +207,10 @@ uint64_t minmax_reference(int op, uint64_t a, uint64_t b, uint32_t mode) {
         selected = nan(operands[0]) ? operands[0] : operands[1];
     }
     if (nan(selected))
-      selected |= UINT64_C(0x0008000000000000);
+      selected |= 0x0008000000000000ULL;
   } else {
     const auto key = [](uint64_t x) {
-      return x & UINT64_C(0x8000000000000000) ? ~x : x ^ UINT64_C(0x8000000000000000);
+      return x & 0x8000000000000000ULL ? ~x : x ^ 0x8000000000000000ULL;
     };
     std::sort(operands, operands + 2, [&](uint64_t x, uint64_t y) { return key(x) < key(y); });
     selected = operands[op % 2];
@@ -220,10 +218,10 @@ uint64_t minmax_reference(int op, uint64_t a, uint64_t b, uint32_t mode) {
   if (!nan(selected))
     selected = bits(goc_test::omod_f64_reference(number(selected), mode));
   if (mode & GOC_ALU_CLAMP) {
-    if (nan(selected) || (selected & UINT64_C(0x8000000000000000)))
+    if (nan(selected) || (selected & 0x8000000000000000ULL))
       selected = 0;
-    else if (selected > UINT64_C(0x3ff0000000000000))
-      selected = UINT64_C(0x3ff0000000000000);
+    else if (selected > 0x3ff0000000000000ULL)
+      selected = 0x3ff0000000000000ULL;
   }
   return selected;
 }

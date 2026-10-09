@@ -43,7 +43,7 @@ constexpr std::array<uint64_t, 2370> make_table() {
                                    : 0;
       } else {
         value = (uint64_t(exponent + 1023) << 52) |
-                ((significand << (52 - leading)) & UINT64_C(0xfffffffffffff));
+                ((significand << (52 - leading)) & 0xfffffffffffffULL);
       }
       table[bank * 1185 + shift] = value;
     }
@@ -98,7 +98,7 @@ int goc_rdna4_v_trig_preop_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode
       }
     }
     if (mode & GOC_ALU_CLAMP)
-      value = std::min(value, UINT64_C(0x3ff0000000000000));
+      value = std::min<uint64_t>(value, 0x3ff0000000000000ULL);
     result[lane] = value;
   }
   for (unsigned reg = 0; reg < 2; ++reg)

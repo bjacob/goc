@@ -209,10 +209,10 @@ TEST(Trig, InvalidFlagsAndReservedSemanticsPreserveDestination) {
       uint32_t mode = uint32_t(1) << bit;
       if (mode & (GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP))
         continue;
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX})
+      for (uint32_t mask : {0U, UINT32_MAX})
         EXPECT_EQ(fn(0, mask, mode, dp, ap), GOC_ERROR_INVALID_FLAGS);
     }
-    EXPECT_EQ(fn(UINT64_C(1) << 63, 0, 0, dp, ap), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(1ULL << 63, 0, 0, dp, ap), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(fn(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT, 0, 0, dp, ap),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     for (uint32_t value : d)
@@ -266,7 +266,7 @@ TEST(Trig, DppValidation) {
   for (auto fn : functions)
     for (auto descriptor : goc_test::dpp_modes) {
       EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
-      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 1})
+      for (auto invalid : {1ULL << 36, 1ULL << 1})
         EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
     }
 }
@@ -296,6 +296,6 @@ TEST(Trig, DppHardwareCorpus) {
               for (auto word : output)
                 hash = goc_test::capture_hash_word(hash, word);
             }
-      EXPECT_EQ(hash, UINT64_C(0xeeebc98ab70cbf25)) << cpu << "/" << semantics;
+      EXPECT_EQ(hash, 0xeeebc98ab70cbf25ULL) << cpu << "/" << semantics;
     }
 }

@@ -90,7 +90,7 @@ inline uint32_t conversion32_reference(int op, uint32_t raw, uint32_t mode) {
     ++magnitude;
   if (op == 3)
     return magnitude > UINT32_MAX ? UINT32_MAX : uint32_t(magnitude);
-  uint64_t limit = negative ? UINT64_C(0x80000000) : UINT64_C(0x7fffffff);
+  uint64_t limit = negative ? 0x80000000ULL : 0x7fffffffULL;
   if (magnitude > limit)
     magnitude = limit;
   return negative ? uint32_t(0) - uint32_t(magnitude) : uint32_t(magnitude);

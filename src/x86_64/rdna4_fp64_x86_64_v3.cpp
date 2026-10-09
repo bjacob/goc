@@ -57,10 +57,10 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
           _mm256_cmpgt_epi64(_mm256_set1_epi64x(INT64_C(0x0010000000000000)), magnitude);
       auto normalized = _mm256_blendv_pd(x, _mm256_mul_pd(x, _mm256_set1_pd(0x1p54)),
                                          _mm256_castsi256_pd(subnormal));
-      auto mantissa = _mm256_or_si256(
-          _mm256_and_si256(_mm256_castpd_si256(normalized),
-                           _mm256_set1_epi64x(int64_t(UINT64_C(0x800fffffffffffff)))),
-          _mm256_set1_epi64x(INT64_C(0x3fe0000000000000)));
+      auto mantissa =
+          _mm256_or_si256(_mm256_and_si256(_mm256_castpd_si256(normalized),
+                                           _mm256_set1_epi64x(int64_t(0x800fffffffffffffULL))),
+                          _mm256_set1_epi64x(INT64_C(0x3fe0000000000000)));
       auto special = _mm256_or_si256(
           _mm256_cmpeq_epi64(magnitude, _mm256_setzero_si256()),
           _mm256_cmpgt_epi64(magnitude, _mm256_set1_epi64x(INT64_C(0x7ff0000000000000) - 1)));

@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
 #include <stdint.h>
 
@@ -75,7 +76,7 @@ TEST(Dpp16, HardwareCorpus) {
                 hash = goc_test::capture_hash_word(hash, d[lane]);
               }
             }
-    EXPECT_EQ(hash, UINT64_C(0x72f55867e357a325));
+    EXPECT_EQ(hash, 0x72f55867e357a325ULL);
   }
 }
 
@@ -167,9 +168,9 @@ TEST(Dpp16, InvalidControlAndDescriptorFields) {
                    nullptr),
               GOC_ERROR_INVALID_FLAGS);
   }
-  for (uint64_t mode :
-       {GOC_DPP16 | GOC_DPP8, GOC_DPP16 | (UINT64_C(1) << 57), GOC_DPP16 | (UINT64_C(1) << 36),
-        GOC_DPP_BOUND_CTRL, GOC_DPP_ROW_MASK, GOC_DPP_BANK_MASK})
+  for (uint64_t mode : std::initializer_list<uint64_t>{
+           GOC_DPP16 | GOC_DPP8, GOC_DPP16 | (1ULL << 57), GOC_DPP16 | (1ULL << 36),
+           GOC_DPP_BOUND_CTRL, GOC_DPP_ROW_MASK, GOC_DPP_BANK_MASK})
     EXPECT_EQ(call(false, 0, 0, mode, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
   EXPECT_EQ(call(false, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, GOC_DPP16, nullptr,
                  nullptr, nullptr, nullptr),

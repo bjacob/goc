@@ -23,12 +23,11 @@ TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
     auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
     for (uint32_t selection = 0; selection < 16; ++selection)
       for (uint32_t negate = 0; negate < 32; ++negate)
-        for (uint32_t clamp : {UINT32_C(0), GOC_DOT_CLAMP}) {
+        for (uint32_t clamp : {0U, GOC_DOT_CLAMP}) {
           const uint32_t mode = negate | (selection << 7) | clamp;
           for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
             for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
-              for (uint32_t mask :
-                   {UINT32_MAX, UINT32_C(0xaaaaaaaa), UINT32_C(0), UINT32_C(0x80018001)})
+              for (uint32_t mask : {UINT32_MAX, 0xaaaaaaaaU, 0U, 0x80018001U})
                 for (int alias = 0; alias < 4; ++alias) {
                   SCOPED_TRACE(::testing::Message() << brain << "/" << mode << "/" << cpu << "/"
                                                     << semantics << "/" << mask << "/" << alias);
@@ -116,7 +115,7 @@ TEST(Dot2, SimdSpecialValuesAndEveryExecMask) {
   const uint32_t bbf[] = {0x3f803f80, 0x3f803f80, 0x3f803f80, 0x3f803f80, 0x3f7e3f7e, 0x00800080};
   for (bool brain : {false, true})
     for (uint32_t mode :
-         {UINT32_C(0), GOC_DOT_NEG_C | GOC_DOT_NEG_LO_A | GOC_DOT_LO_B_HIGH | GOC_DOT_HI_A_LOW})
+         {0U, GOC_DOT_NEG_C | GOC_DOT_NEG_LO_A | GOC_DOT_LO_B_HIGH | GOC_DOT_HI_A_LOW})
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (uint32_t mask : rdna4_exec_masks()) {
           auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
@@ -207,7 +206,7 @@ TEST(Dot2, DppValidation) {
   for (auto fn : {goc_rdna4_v_dot2_f32_f16, goc_rdna4_v_dot2_f32_bf16})
     for (auto descriptor : goc_test::dpp_modes) {
       EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 5})
+      for (auto invalid : {1ULL << 36, 1ULL << 5})
         EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
     }
@@ -248,6 +247,6 @@ TEST(Dot2, DppHardwareCorpus) {
                 hash = goc_test::capture_hash_word(hash, word);
               }
             }
-      EXPECT_EQ(hash, UINT64_C(0xd46ee8a52b583d85)) << cpu << "/" << semantics;
+      EXPECT_EQ(hash, 0xd46ee8a52b583d85ULL) << cpu << "/" << semantics;
     }
 }

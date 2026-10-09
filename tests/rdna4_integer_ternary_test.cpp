@@ -182,14 +182,14 @@ TEST(IntegerTernary, ValidationAndHostFpState) {
             std::fill_n(reg, 32, 0x7f800001);
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
-          for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+          for (uint32_t mask : {0U, UINT32_MAX}) {
             for (int bit = 0; bit < 32; ++bit)
               EXPECT_EQ(goc_test::integer_ternary_functions[op](cpu, mask, uint32_t(1) << bit, d, a,
                                                                 b, c),
                         GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(goc_test::integer_ternary_functions[op](cpu | (UINT64_C(1) << 63), mask, 0, d,
-                                                              a, b, c),
-                      GOC_ERROR_INVALID_FLAGS);
+            EXPECT_EQ(
+                goc_test::integer_ternary_functions[op](cpu | (1ULL << 63), mask, 0, d, a, b, c),
+                GOC_ERROR_INVALID_FLAGS);
             EXPECT_EQ(goc_test::integer_ternary_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
                                                                   GOC_SEMANTICS_STRICT,
                                                               mask, 0, d, a, b, c),

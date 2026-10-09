@@ -42,7 +42,7 @@ TEST(ScalarPack, ExecAndOutputOverlap) {
   for (unsigned op = 0; op < 11; ++op)
     for (unsigned seed = 0; seed < 2; ++seed)
       for (uint32_t mask : rdna4_exec_masks()) {
-        uint64_t a = UINT64_C(0x87654321abcdef01), b = UINT64_C(0x1234567800000041), wide = 0;
+        uint64_t a = 0x87654321abcdef01ULL, b = 0x1234567800000041ULL, wide = 0;
         uint32_t d = 0, cc = seed;
         ASSERT_EQ(goc_test::scalar_pack_call(op, 0, mask, 0, &d, &wide, a, b, &cc, seed),
                   GOC_SUCCESS);
@@ -76,7 +76,7 @@ TEST(ScalarPack, BasisBitsAndEveryQuadPresenceMask) {
   for (unsigned bit = 0; bit < 32; ++bit) {
     uint64_t d;
     ASSERT_EQ(goc_rdna4_s_bitreplicate_b64_b32(0, 0, 0, &d, 1u << bit), GOC_SUCCESS);
-    EXPECT_EQ(d, UINT64_C(3) << (2 * bit));
+    EXPECT_EQ(d, 3ULL << (2 * bit));
     uint32_t result;
     for (unsigned op = 0; op < 4; ++op) {
       uint32_t cc;
@@ -93,8 +93,8 @@ TEST(ScalarPack, BasisBitsAndEveryQuadPresenceMask) {
     uint64_t a = 0, expanded = 0;
     for (unsigned group = 0; group < 16; ++group)
       if ((presence >> group) & 1) {
-        a |= UINT64_C(1) << (4 * group + (group % 4));
-        expanded |= UINT64_C(15) << (4 * group);
+        a |= 1ULL << (4 * group + (group % 4));
+        expanded |= 15ULL << (4 * group);
       }
     uint64_t d64;
     uint32_t d, cc;
@@ -125,11 +125,11 @@ TEST(ScalarPack, ErrorsAndHostFpState) {
       for (unsigned bit = 0; bit < 32; ++bit)
         EXPECT_EQ(goc_test::scalar_pack_call(op, 0, 0, 1u << bit, &d, &d64, 0, 0, &cc, 0),
                   GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(goc_test::scalar_pack_call(op, UINT64_C(1) << 63, 0, 0, &d, &d64, 0, 0, &cc, 0),
+      EXPECT_EQ(goc_test::scalar_pack_call(op, 1ULL << 63, 0, 0, &d, &d64, 0, 0, &cc, 0),
                 GOC_ERROR_INVALID_FLAGS);
       for (unsigned bit = 32; bit < 64; ++bit)
-        EXPECT_EQ(goc_test::scalar_pack_call(op, 0, 0, UINT64_C(1) << bit, nullptr, nullptr,
-                                             UINT64_MAX, 0, nullptr, 0),
+        EXPECT_EQ(goc_test::scalar_pack_call(op, 0, 0, 1ULL << bit, nullptr, nullptr, UINT64_MAX, 0,
+                                             nullptr, 0),
                   GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(d, 123u);
       EXPECT_EQ(d64, 789u);

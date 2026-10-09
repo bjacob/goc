@@ -28,11 +28,11 @@ TEST(Shift, EveryCountAndBitPosition) {
   for (int op = 0; op < 6; ++op) {
     int bits = op < 3 ? 32 : 64;
     uint64_t mask = bits == 32 ? UINT32_MAX : UINT64_MAX;
-    std::vector<uint64_t> values = {0, mask, UINT64_C(0xaaaaaaaaaaaaaaaa) & mask,
-                                    UINT64_C(0x5555555555555555) & mask};
+    std::vector<uint64_t> values = {0, mask, 0xaaaaaaaaaaaaaaaaULL & mask,
+                                    0x5555555555555555ULL & mask};
     for (int bit = 0; bit < bits; ++bit) {
-      values.push_back(UINT64_C(1) << bit);
-      values.push_back(mask ^ (UINT64_C(1) << bit));
+      values.push_back(1ULL << bit);
+      values.push_back(mask ^ (1ULL << bit));
     }
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t value : values)
@@ -168,10 +168,10 @@ TEST(Shift, RejectsModifiersAndStrictExactBeforeEmptyMask) {
     uint32_t *dp[] = {d[0], d[1]};
     for (auto &reg : d)
       std::fill_n(reg, 32, 0xdeadbeef);
-    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+    for (uint32_t mask : {0U, UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit)
         EXPECT_EQ(fn(0, mask, uint32_t(1) << bit, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(UINT64_C(1) << 63, mask, 0, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(1ULL << 63, mask, 0, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, dp, ap, bp),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }

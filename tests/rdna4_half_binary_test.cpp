@@ -17,7 +17,7 @@ namespace {
 
 void check(uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
   int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  EXPECT_EQ((actual ^ before) & ~(UINT32_C(0xffff) << shift), 0u);
+  EXPECT_EQ((actual ^ before) & ~(0xffffU << shift), 0u);
   uint16_t got = uint16_t(actual >> shift);
   if ((want & 0x7fff) > 0x7c00) {
     EXPECT_GT(got & 0x7fff, 0x7c00);
@@ -33,8 +33,7 @@ TEST(HalfBinary, CanonicalNanPreservesUnselectedHalf) {
     const bool nan = (bits & 0x7c00) == 0x7c00 && (bits & 0x3ff) != 0;
     const uint32_t expected = nan ? 0x7e00 : bits;
     // A signaling NaN in the other half must remain untouched.
-    EXPECT_EQ(goc_test::canonical_half_nan(UINT32_C(0xfc010000) | bits, 0),
-              UINT32_C(0xfc010000) | expected);
+    EXPECT_EQ(goc_test::canonical_half_nan(0xfc010000U | bits, 0), 0xfc010000U | expected);
     EXPECT_EQ(goc_test::canonical_half_nan((bits << 16) | 0x7c01, GOC_ALU_HIGH_D),
               (expected << 16) | 0x7c01);
   }
@@ -186,12 +185,12 @@ TEST(HalfBinary, ValidationAndSemantics) {
     uint32_t data[32];
     std::fill(data, data + 32, 0xdeadbeef);
     auto p = data;
-    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+    for (uint32_t mask : {0U, UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit)
-        if (!(goc_test::half_binary_known & (UINT32_C(1) << bit))) {
-          EXPECT_EQ(fn(0, mask, UINT32_C(1) << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+        if (!(goc_test::half_binary_known & (1U << bit))) {
+          EXPECT_EQ(fn(0, mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(fn(UINT64_C(1) << 63, mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(1ULL << 63, mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }

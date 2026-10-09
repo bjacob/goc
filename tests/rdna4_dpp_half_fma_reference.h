@@ -31,7 +31,7 @@ inline uint32_t half_fma_result(unsigned op, uint32_t a, uint32_t b, uint32_t c,
   }
   uint32_t value = half_fma_reference::evaluate(a, b, c, mode, saturate);
   unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  return (old_d & ~(UINT32_C(65535) << shift)) | (value << shift);
+  return (old_d & ~(65535U << shift)) | (value << shift);
 }
 
 } // namespace goc_test

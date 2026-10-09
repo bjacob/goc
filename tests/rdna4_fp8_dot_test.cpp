@@ -48,8 +48,7 @@ void compare(uint32_t word, double expected) {
 TEST(Fp8Dot, ExhaustiveBytePairsAllFormatsAndModifiers) {
   for (int op = 0; op < 4; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (uint32_t modifiers :
-           {UINT32_C(0), GOC_DOT_NEG_C, GOC_DOT_ABS_C, GOC_DOT_ABS_C | GOC_DOT_NEG_C})
+      for (uint32_t modifiers : {0U, GOC_DOT_NEG_C, GOC_DOT_ABS_C, GOC_DOT_ABS_C | GOC_DOT_NEG_C})
         for (unsigned base = 0; base < 65536; base += 32) {
           SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << modifiers << "/" << base);
           uint32_t a[32], b[32], c[32], d[32];
@@ -93,7 +92,7 @@ TEST(Fp8Dot, MixedBytesMasksAndAliases) {
       }
       inputs[2][lane] = goc::as_bits(float(lane - 16));
     }
-    for (uint32_t mode : {UINT32_C(0), GOC_DOT_NEG_C, GOC_DOT_ABS_C, GOC_DOT_NEG_C | GOC_DOT_ABS_C})
+    for (uint32_t mode : {0U, GOC_DOT_NEG_C, GOC_DOT_ABS_C, GOC_DOT_NEG_C | GOC_DOT_ABS_C})
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (uint32_t mask : rdna4_exec_masks())
           for (int alias = 0; alias < 4; ++alias) {
@@ -134,9 +133,8 @@ TEST(Fp8Dot, ValidationAndLooseFallback) {
     uint32_t a[32] = {}, d[32];
     std::fill(d, d + 32, 0xdeadbeef);
     auto pa = a, pd = d;
-    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
-      for (uint32_t invalid :
-           {GOC_DOT_NEG_LO_A, GOC_DOT_CLAMP, GOC_DOT_LO_A_HIGH, UINT32_C(1) << 31})
+    for (uint32_t mask : {0U, UINT32_MAX}) {
+      for (uint32_t invalid : {GOC_DOT_NEG_LO_A, GOC_DOT_CLAMP, GOC_DOT_LO_A_HIGH, 1U << 31})
         EXPECT_EQ(fn(0, mask, invalid, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(
           fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &pd, &pa, &pa, &pa),

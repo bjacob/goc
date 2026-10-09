@@ -28,7 +28,7 @@ inline float rndne(float value) {
     return value;
   if (exponent < 127)
     return as_float(sign | (magnitude > 0x3f000000 ? 0x3f800000 : 0));
-  const uint32_t unit = UINT32_C(1) << (150 - exponent);
+  const uint32_t unit = 1U << (150 - exponent);
   const uint32_t fraction = magnitude & (unit - 1);
   uint32_t rounded = magnitude & ~(unit - 1);
   if (fraction > unit / 2 || (fraction == unit / 2 && (rounded & unit)))

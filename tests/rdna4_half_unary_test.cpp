@@ -18,7 +18,7 @@ namespace {
 
 void check(int op, uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
   int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  EXPECT_EQ((actual ^ before) & ~(UINT32_C(0xffff) << shift), 0u);
+  EXPECT_EQ((actual ^ before) & ~(0xffffU << shift), 0u);
   uint16_t got = uint16_t(actual >> shift);
   if ((want & 0x7fff) > 0x7c00) {
     EXPECT_GT(got & 0x7fff, 0x7c00);
@@ -37,7 +37,7 @@ TEST(HalfUnary, EveryEncodingAndCpuLevel) {
   for (int op = 0; op < 11; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool saturate : {false, true})
-        for (uint32_t mode : {UINT32_C(0), GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | GOC_ALU_OMOD_4})
+        for (uint32_t mode : {0U, GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | GOC_ALU_OMOD_4})
           for (unsigned base = 0; base < 65536; base += 32) {
             SCOPED_TRACE(::testing::Message()
                          << op << '/' << cpu << '/' << saturate << '/' << mode << '/' << base);
@@ -148,7 +148,7 @@ TEST(HalfUnary, LiteralBoundaries) {
                                                         UINT32_MAX, test.mode, &d, &a),
                 GOC_SUCCESS);
       for (auto word : output)
-        EXPECT_EQ(word, UINT32_C(0xdead0000) | test.result);
+        EXPECT_EQ(word, 0xdead0000U | test.result);
     }
 }
 
@@ -157,13 +157,13 @@ TEST(HalfUnary, ValidationAndSemantics) {
     uint32_t data[32];
     std::fill(data, data + 32, 0xdeadbeef);
     auto p = data;
-    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+    for (uint32_t mask : {0U, UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit) {
-        if (!(goc_test::half_unary_known & (UINT32_C(1) << bit))) {
-          EXPECT_EQ(fn(0, mask, UINT32_C(1) << bit, &p, &p), GOC_ERROR_INVALID_FLAGS);
+        if (!(goc_test::half_unary_known & (1U << bit))) {
+          EXPECT_EQ(fn(0, mask, 1U << bit, &p, &p), GOC_ERROR_INVALID_FLAGS);
         }
       }
-      EXPECT_EQ(fn(UINT64_C(1) << 63, mask, 0, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(1ULL << 63, mask, 0, &p, &p), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &p, &p),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
@@ -227,15 +227,15 @@ TEST(HalfUnary, HardwareExpLogRoundingAndOverflow) {
                 if (goc_test::dpp_source(descriptor | mode, mask, lane, source)) {
                   uint32_t value = goc_test::half_unary_reference(op, source < 0 ? 0 : a[source],
                                                                   mode, saturate);
-                  want = (want & ~(UINT32_C(65535) << shift)) | (value << shift);
+                  want = (want & ~(65535U << shift)) | (value << shift);
                 }
                 check(op, d[lane], 0xdead0000u + lane, uint16_t(want >> shift), mode);
                 uint32_t word = d[lane];
                 if (((word >> shift) & 0x7fff) > 0x7c00)
-                  word = (word & ~(UINT32_C(65535) << shift)) | (UINT32_C(0x7e00) << shift);
+                  word = (word & ~(65535U << shift)) | (0x7e00U << shift);
                 hash = goc_test::capture_hash_word(hash, word);
               }
             }
-      EXPECT_EQ(hash, saturate ? UINT64_C(0x7e3c62853aa82d6c) : UINT64_C(0xdeda4067db286486));
+      EXPECT_EQ(hash, saturate ? 0x7e3c62853aa82d6cULL : 0xdeda4067db286486ULL);
     }
 }

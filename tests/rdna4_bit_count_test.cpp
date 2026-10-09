@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cfenv>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
 #include <stdint.h>
 #include <vector>
@@ -49,8 +50,8 @@ std::vector<uint64_t> masks(int op) {
   std::vector<uint64_t> result(wave32.begin(), wave32.end());
   if (op >= 6) {
     for (unsigned bit = 0; bit < 64; ++bit) {
-      result.push_back(UINT64_C(1) << bit);
-      result.push_back(~(UINT64_C(1) << bit));
+      result.push_back(1ULL << bit);
+      result.push_back(~(1ULL << bit));
     }
     result.push_back(0xaaaaaaaaaaaaaaaa);
     result.push_back(0x5555555555555555);
@@ -127,7 +128,7 @@ TEST(BitCount, EveryPopulationAndAccumulatorWrapping) {
       for (unsigned ones = 0; ones <= 32; ++ones) {
         uint32_t words[3][64];
         for (unsigned lane = 0; lane < 64; ++lane) {
-          words[0][lane] = uint32_t((UINT64_C(1) << ones) - 1);
+          words[0][lane] = uint32_t((1ULL << ones) - 1);
           words[1][lane] = lane % 2 ? UINT32_MAX - ones / 2 : 0;
           words[2][lane] = 0x859e43c1;
         }
@@ -202,12 +203,11 @@ TEST(BitCount, ValidationAndHostFpState) {
             std::fill_n(reg, 64, 0x7f800001);
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]};
           uint32_t *d[] = {words[2]};
-          for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+          for (uint64_t mask : std::initializer_list<uint64_t>{0ULL, UINT64_MAX}) {
             for (int bit = 0; bit < 32; ++bit)
               EXPECT_EQ(functions[op](cpu, mask, uint32_t(1) << bit, d, a, b),
                         GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), mask, 0, d, a, b),
-                      GOC_ERROR_INVALID_FLAGS);
+            EXPECT_EQ(functions[op](cpu | (1ULL << 63), mask, 0, d, a, b), GOC_ERROR_INVALID_FLAGS);
             EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                                     mask, 0, d, a, b),
                       GOC_ERROR_UNSUPPORTED_SEMANTICS);

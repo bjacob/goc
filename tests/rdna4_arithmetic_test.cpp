@@ -57,8 +57,7 @@ TEST(Arithmetic, ErrorsPreserveDestination) {
                                 &pd, &pa, &pa, &pa),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
   EXPECT_EQ(goc_rdna4_v_log_f32(0, UINT32_MAX, GOC_ALU_NEG_B, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
-  EXPECT_EQ(goc_rdna4_v_log_f32(UINT64_C(1) << 63, UINT32_MAX, 0, &pd, &pa),
-            GOC_ERROR_INVALID_FLAGS);
+  EXPECT_EQ(goc_rdna4_v_log_f32(1ULL << 63, UINT32_MAX, 0, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
   for (auto v : d)
     EXPECT_EQ(v, 0xdeadbeef);
   EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &pd, &pa, &pa, &pa), 0);
@@ -71,7 +70,7 @@ TEST(Arithmetic, LogPowersOfTwoAndEmptyMask) {
   for (int i = 0; i < 32; ++i)
     a[i] = goc::as_bits(std::ldexp(1.0f, i - 16));
   auto pa = a;
-  ASSERT_EQ(goc_rdna4_v_log_f32(0, UINT32_C(0), 0, &pa, &pa), 0);
+  ASSERT_EQ(goc_rdna4_v_log_f32(0, 0U, 0, &pa, &pa), 0);
   EXPECT_EQ(a[0], goc::as_bits(std::ldexp(1.0f, -16)));
   ASSERT_EQ(goc_rdna4_v_log_f32(0, UINT32_MAX, 0, &pa, &pa), 0);
   for (int i = 0; i < 32; ++i)
@@ -365,7 +364,7 @@ TEST(Arithmetic, Dx9DppHardwareCorpus) {
             hash = goc_test::capture_hash_word(hash, word);
           }
         }
-    EXPECT_EQ(hash, UINT64_C(0xda037611da867b25));
+    EXPECT_EQ(hash, 0xda037611da867b25ULL);
   }
 }
 

@@ -67,8 +67,8 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *d, const ui
       bv |= uint64_t(b[1][lane]) << 32;
     }
     if constexpr (Signed) {
-      av ^= UINT64_C(1) << (Bits - 1);
-      bv ^= UINT64_C(1) << (Bits - 1);
+      av ^= 1ULL << (Bits - 1);
+      bv ^= 1ULL << (Bits - 1);
     }
     less |= uint32_t(av < bv) << lane;
     equal |= uint32_t(av == bv) << lane;

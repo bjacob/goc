@@ -153,8 +153,8 @@ TEST(HalfDot, Validation) {
     uint32_t a[32] = {}, d[32];
     std::fill(d, d + 32, 0xdeadbeef);
     auto pa = a, pd = d;
-    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
-      for (uint32_t invalid : {GOC_ALU_CLAMP, GOC_ALU_OMOD_2, UINT32_C(1) << 31})
+    for (uint32_t mask : {0U, UINT32_MAX}) {
+      for (uint32_t invalid : {GOC_ALU_CLAMP, GOC_ALU_OMOD_2, 1U << 31})
         EXPECT_EQ(fn(0, mask, invalid, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(
           fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &pd, &pa, &pa, &pa),
@@ -264,8 +264,9 @@ TEST(HalfDot, DppValidation) {
   for (auto fn : functions)
     for (auto descriptor : goc_test::dpp_modes) {
       EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_CLAMP), uint64_t(GOC_ALU_HIGH_A),
-                           uint64_t(GOC_ALU_HIGH_B)})
+      for (auto invalid :
+           std::initializer_list<uint64_t>{1ULL << 36, uint64_t(GOC_ALU_CLAMP),
+                                           uint64_t(GOC_ALU_HIGH_A), uint64_t(GOC_ALU_HIGH_B)})
         EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
     }
@@ -302,6 +303,6 @@ TEST(HalfDot, DppHardwareCorpus) {
               for (auto word : output)
                 hash = goc_test::capture_hash_word(hash, word);
             }
-    EXPECT_EQ(hash, UINT64_C(0xf79822666bfa7c45)) << cpu;
+    EXPECT_EQ(hash, 0xf79822666bfa7c45ULL) << cpu;
   }
 }

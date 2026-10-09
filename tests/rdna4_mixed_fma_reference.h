@@ -63,7 +63,7 @@ inline uint32_t pack(const Magnitude &a, bool negative, bool half, bool saturate
     sticky |= a[i] != 0;
   int tail = (shift - 1) % 64;
   if (tail)
-    sticky |= (a[(shift - 1) / 64] & ((UINT64_C(1) << tail) - 1)) != 0;
+    sticky |= (a[(shift - 1) / 64] & ((1ULL << tail) - 1)) != 0;
   if (!rtz)
     significand += bit(a, shift - 1) && (sticky || (significand & 1));
   if (significand == (uint32_t(1) << precision)) {
@@ -98,7 +98,7 @@ inline Number decode(uint32_t raw, uint32_t mode, int operand) {
   if (mode & (GOC_ALU_NEG_A << operand))
     negative = !negative;
   bool special = exponent == ((1u << exponent_bits) - 1);
-  return {fraction + (exponent && !special ? UINT64_C(1) << fraction_bits : 0),
+  return {fraction + (exponent && !special ? 1ULL << fraction_bits : 0),
           int(exponent ? exponent : 1) - (half ? 25 : 150), negative, special && !fraction,
           special && fraction
               ? (uint32_t(negative) << 31) | 0x7fc00000 | (half ? fraction << 13 : fraction)

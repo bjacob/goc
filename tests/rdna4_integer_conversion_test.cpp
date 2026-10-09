@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cfenv>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
 #include <stdint.h>
 
@@ -135,14 +136,13 @@ TEST(IntegerConversion, ValidationAndSemanticFallback) {
           EXPECT_EQ(functions[op](cpu, 0, 1u << bit, nullptr, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), UINT32_MAX, 0, d, a, a),
-                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a, a), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                               UINT32_MAX, 0, d, a, a),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeefu);
-      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, 0U, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 0; sem < 4; ++sem) {
         EXPECT_EQ(functions[op](cpu | (uint64_t(sem) << 16), UINT32_MAX, 0, d, a, a), GOC_SUCCESS);
         for (auto word : output)
@@ -205,7 +205,7 @@ TEST(IntegerConversion, DppHardwareCorpus) {
             for (auto word : output)
               hash = goc_test::capture_hash_word(hash, word);
           }
-    EXPECT_EQ(hash, UINT64_C(0x1520b5b44ef7c66a)) << cpu;
+    EXPECT_EQ(hash, 0x1520b5b44ef7c66aULL) << cpu;
   }
 }
 
@@ -213,7 +213,8 @@ TEST(IntegerConversion, DppValidation) {
   for (auto fn : functions)
     for (auto descriptor : goc_test::dpp_modes) {
       EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_ABS_A), uint64_t(GOC_ALU_CLAMP)})
+      for (auto invalid : std::initializer_list<uint64_t>{1ULL << 36, uint64_t(GOC_ALU_ABS_A),
+                                                          uint64_t(GOC_ALU_CLAMP)})
         EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
     }

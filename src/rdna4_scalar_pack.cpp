@@ -19,12 +19,12 @@ int validate(uint64_t flags, uint32_t mode) {
 template <typename T, bool Compress> T quad(T a) {
   a |= a >> 1;
   a |= a >> 2;
-  a &= T(UINT64_C(0x1111111111111111));
+  a &= T(0x1111111111111111ULL);
   if constexpr (!Compress)
     return a * 15;
-  a = (a | (a >> 3)) & T(UINT64_C(0x0303030303030303));
-  a = (a | (a >> 6)) & T(UINT64_C(0x000f000f000f000f));
-  a = (a | (a >> 12)) & T(UINT64_C(0x000000ff000000ff));
+  a = (a | (a >> 3)) & T(0x0303030303030303ULL);
+  a = (a | (a >> 6)) & T(0x000f000f000f000fULL);
+  a = (a | (a >> 12)) & T(0x000000ff000000ffULL);
   if constexpr (sizeof(T) == 8)
     a = (a | (a >> 24)) & 65535;
   return a;
@@ -88,11 +88,11 @@ int goc_rdna4_s_bitreplicate_b64_b32(uint64_t flags, uint32_t exec_mask, uint64_
   if (int error = validate(flags, instruction_flags))
     return error;
   uint64_t x = a;
-  x = (x | (x << 16)) & UINT64_C(0x0000ffff0000ffff);
-  x = (x | (x << 8)) & UINT64_C(0x00ff00ff00ff00ff);
-  x = (x | (x << 4)) & UINT64_C(0x0f0f0f0f0f0f0f0f);
-  x = (x | (x << 2)) & UINT64_C(0x3333333333333333);
-  x = (x | (x << 1)) & UINT64_C(0x5555555555555555);
+  x = (x | (x << 16)) & 0x0000ffff0000ffffULL;
+  x = (x | (x << 8)) & 0x00ff00ff00ff00ffULL;
+  x = (x | (x << 4)) & 0x0f0f0f0f0f0f0f0fULL;
+  x = (x | (x << 2)) & 0x3333333333333333ULL;
+  x = (x | (x << 1)) & 0x5555555555555555ULL;
   uint64_t result = x | (x << 1);
   *d = result;
   return GOC_SUCCESS;

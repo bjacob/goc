@@ -71,7 +71,7 @@ void integer16_ternary_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, cons
       result = Signed ? _mm256_max_epi16(lower, limited) : _mm256_max_epu16(lower, limited);
     }
     if constexpr (!Packed) {
-      auto output_mask = _mm256_set1_epi32(int(UINT32_C(65535) << d_shift));
+      auto output_mask = _mm256_set1_epi32(int(65535U << d_shift));
       auto original = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(d + lane));
       auto selected = _mm256_sllv_epi32(result, _mm256_set1_epi32(d_shift));
       result = _mm256_or_si256(_mm256_and_si256(selected, output_mask),

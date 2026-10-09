@@ -125,17 +125,16 @@ TEST(IntegerAdd, ValidationAndFpEnvironment) {
       std::fill(input, input + 32, 0x7f800001);
       std::fill(output, output + 32, 0xdeadbeef);
       auto a = input, d = output;
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit) {
-          uint32_t mode = UINT32_C(1) << bit;
+          uint32_t mode = 1U << bit;
           if (op != 5 && mode == GOC_ALU_CLAMP)
             continue;
           EXPECT_EQ(goc_test::integer_add_functions[op](cpu, mask, mode, &d, &a, &a, &a),
                     GOC_ERROR_INVALID_FLAGS);
         }
-        EXPECT_EQ(
-            goc_test::integer_add_functions[op](cpu | (UINT64_C(1) << 63), mask, 0, &d, &a, &a, &a),
-            GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(goc_test::integer_add_functions[op](cpu | (1ULL << 63), mask, 0, &d, &a, &a, &a),
+                  GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(goc_test::integer_add_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
                                                           GOC_SEMANTICS_STRICT,
                                                       mask, 0, &d, &a, &a, &a),

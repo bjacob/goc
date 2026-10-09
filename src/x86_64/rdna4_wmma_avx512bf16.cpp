@@ -73,8 +73,8 @@ template <bool Modified>
 static void wmma_bf16(uint32_t mask, uint32_t modifiers, uint32_t *const *d,
                       const uint32_t *const *a, const uint32_t *const *b,
                       const uint32_t *const *c) {
-  const uint32_t a_sign = ((modifiers & GOC_WMMA_NEG_LO_A) ? UINT32_C(0x8000) : 0) |
-                          ((modifiers & GOC_WMMA_NEG_HI_A) ? UINT32_C(0x80000000) : 0);
+  const uint32_t a_sign = ((modifiers & GOC_WMMA_NEG_LO_A) ? 0x8000U : 0) |
+                          ((modifiers & GOC_WMMA_NEG_HI_A) ? 0x80000000U : 0);
   const __m512i b_sign = _mm512_set1_epi32(((modifiers & GOC_WMMA_NEG_LO_B) ? 0x8000 : 0) |
                                            ((modifiers & GOC_WMMA_NEG_HI_B) ? INT32_MIN : 0));
   uint32_t result[8][32];

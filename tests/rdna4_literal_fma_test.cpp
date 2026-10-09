@@ -60,7 +60,7 @@ uint32_t reference(bool half, bool multiply, uint32_t a, uint32_t b, uint32_t li
 
 void check(bool half, uint32_t actual, uint32_t before, uint32_t want, uint32_t mode, bool exact) {
   unsigned shift = half && (mode & GOC_ALU_HIGH_D) ? 16 : 0;
-  uint32_t mask = half ? UINT32_C(0xffff) << shift : UINT32_MAX;
+  uint32_t mask = half ? 0xffffU << shift : UINT32_MAX;
   EXPECT_EQ(actual & ~mask, before & ~mask);
   uint32_t got = (actual & mask) >> shift;
   uint32_t magnitude = half ? 0x7fff : 0x7fffffff, infinity = half ? 0x7c00 : 0x7f800000;
@@ -240,17 +240,16 @@ TEST(LiteralFma, ValidationAndZeroMasks) {
       uint32_t words[32];
       std::fill(words, words + 32, 0xfacecafe);
       auto p = words;
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         for (unsigned bit = 0; bit < 32; ++bit) {
-          if ((UINT32_C(1) << bit) & ~(half ? known16 : 0)) {
-            EXPECT_EQ(call(half, multiply, 0, mask, UINT32_C(1) << bit, &p, &p, &p, 0),
+          if ((1U << bit) & ~(half ? known16 : 0)) {
+            EXPECT_EQ(call(half, multiply, 0, mask, 1U << bit, &p, &p, &p, 0),
                       GOC_ERROR_INVALID_FLAGS);
           }
         }
-        EXPECT_EQ(call(half, multiply, UINT64_C(1) << 63, mask, 0, &p, &p, &p, 0),
+        EXPECT_EQ(call(half, multiply, 1ULL << 63, mask, 0, &p, &p, &p, 0),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(call(half, multiply, (UINT64_C(2) << 16) | GOC_SEMANTICS_STRICT, mask, 0, &p, &p,
-                       &p, 0),
+        EXPECT_EQ(call(half, multiply, (2ULL << 16) | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p, 0),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
         if (!half) {
           EXPECT_EQ(call(half, multiply, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask,
@@ -261,7 +260,7 @@ TEST(LiteralFma, ValidationAndZeroMasks) {
       for (auto word : words)
         EXPECT_EQ(word, 0xfacecafe);
       EXPECT_EQ(call(half, multiply, 0, 0, 0, nullptr, nullptr, nullptr, 0), GOC_SUCCESS);
-      EXPECT_EQ(call(half, multiply, 0, UINT32_C(0), 0, nullptr, nullptr, nullptr, 0), GOC_SUCCESS);
-      EXPECT_EQ(call(half, multiply, UINT64_C(2) << 16, UINT32_MAX, 0, &p, &p, &p, 0), GOC_SUCCESS);
+      EXPECT_EQ(call(half, multiply, 0, 0U, 0, nullptr, nullptr, nullptr, 0), GOC_SUCCESS);
+      EXPECT_EQ(call(half, multiply, 2ULL << 16, UINT32_MAX, 0, &p, &p, &p, 0), GOC_SUCCESS);
     }
 }

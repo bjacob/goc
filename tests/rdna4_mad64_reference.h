@@ -30,7 +30,7 @@ inline Mad64Result mad64_reference(bool is_signed, uint32_t a, uint32_t b, uint6
   bool carry = (uint64_t(sum >> 64) & 1) != 0;
   bool overflow = is_signed ? (carry != bool(value >> 63)) : carry;
   if (clamp && overflow)
-    value = is_signed ? (carry ? UINT64_C(1) << 63 : UINT64_MAX >> 1) : UINT64_MAX;
+    value = is_signed ? (carry ? 1ULL << 63 : UINT64_MAX >> 1) : UINT64_MAX;
   return {value, carry};
 }
 

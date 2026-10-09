@@ -67,15 +67,15 @@ const Case cases[] = {
     {literal_fma<false, true>, false, 0},
     {literal_fma<false, false>, false, 0},
 
-    {goc_rdna4_v_min3_num_f16, false, UINT32_C(0x1fff)},
-    {goc_rdna4_v_max3_num_f16, false, UINT32_C(0x1fff)},
-    {goc_rdna4_v_minmax_num_f16, false, UINT32_C(0x1fff)},
-    {goc_rdna4_v_maxmin_num_f16, false, UINT32_C(0x1fff)},
-    {goc_rdna4_v_minimum3_f16, false, UINT32_C(0x1fff)},
-    {goc_rdna4_v_maximum3_f16, false, UINT32_C(0x1fff)},
-    {goc_rdna4_v_minimummaximum_f16, false, UINT32_C(0x1fff)},
-    {goc_rdna4_v_maximumminimum_f16, false, UINT32_C(0x1fff)},
-    {goc_rdna4_v_med3_num_f16, false, UINT32_C(0x1fff)},
+    {goc_rdna4_v_min3_num_f16, false, 0x1fffU},
+    {goc_rdna4_v_max3_num_f16, false, 0x1fffU},
+    {goc_rdna4_v_minmax_num_f16, false, 0x1fffU},
+    {goc_rdna4_v_maxmin_num_f16, false, 0x1fffU},
+    {goc_rdna4_v_minimum3_f16, false, 0x1fffU},
+    {goc_rdna4_v_maximum3_f16, false, 0x1fffU},
+    {goc_rdna4_v_minimummaximum_f16, false, 0x1fffU},
+    {goc_rdna4_v_maximumminimum_f16, false, 0x1fffU},
+    {goc_rdna4_v_med3_num_f16, false, 0x1fffU},
 
     {binary<goc_rdna4_v_ldexp_f16>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
@@ -320,7 +320,7 @@ TEST(ExecMask, EmptyMaskStillValidatesFlagsAndPreservesState) {
       uint32_t *v[24];
       for (int reg = 0; reg < 24; ++reg) {
         // Signaling NaNs expose accidental FP evaluation on inactive lanes.
-        std::fill(storage[reg], storage[reg] + 64, UINT32_C(0x7f800001));
+        std::fill(storage[reg], storage[reg] + 64, 0x7f800001U);
         v[reg] = storage[reg];
       }
       const auto call = [&](uint64_t flags, uint32_t modifiers, int expected) {
@@ -330,17 +330,16 @@ TEST(ExecMask, EmptyMaskStillValidatesFlagsAndPreservesState) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
         for (const auto &reg : storage)
           for (uint32_t bits : reg)
-            EXPECT_EQ(bits, UINT32_C(0x7f800001));
+            EXPECT_EQ(bits, 0x7f800001U);
       };
-      for (uint32_t modifiers : {UINT32_C(0), f.modifiers}) {
+      for (uint32_t modifiers : {0U, f.modifiers}) {
         call(cpu, modifiers, GOC_SUCCESS);
         call(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, modifiers, GOC_SUCCESS);
         call(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, modifiers,
              f.exact ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
-        call(cpu | (UINT64_C(2) << 16) | GOC_SEMANTICS_STRICT, modifiers,
-             GOC_ERROR_UNSUPPORTED_SEMANTICS);
-        call(cpu | (UINT64_C(1) << 63), modifiers, GOC_ERROR_INVALID_FLAGS);
+        call(cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, modifiers, GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        call(cpu | (1ULL << 63), modifiers, GOC_ERROR_INVALID_FLAGS);
       }
-      call(cpu, UINT32_C(1) << 31, GOC_ERROR_INVALID_FLAGS);
+      call(cpu, 1U << 31, GOC_ERROR_INVALID_FLAGS);
     }
 }

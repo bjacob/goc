@@ -11,6 +11,7 @@
 #include <cfenv>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
 #include <stdint.h>
 #include <vector>
@@ -29,7 +30,7 @@ uint32_t mode(int variant) {
 // its position with the exponent field. Never interpret a NaN as a host float.
 uint32_t reference(uint64_t bits, bool fp64) {
   int width = fp64 ? 52 : 23, bias = fp64 ? 1023 : 127;
-  uint64_t fraction = bits & ((UINT64_C(1) << width) - 1);
+  uint64_t fraction = bits & ((1ULL << width) - 1);
   int field = int(bits >> width) & (2 * bias + 1);
   if (field == 2 * bias + 1 || (field == 0 && fraction == 0))
     return 0;
@@ -46,8 +47,8 @@ uint32_t reference(uint64_t bits, bool fp64) {
 TEST(FrexpExp, AllModifiersMasksAndAliases) {
   for (int fp64 = 0; fp64 < 2; ++fp64) {
     const int width = fp64 ? 52 : 23, bias = fp64 ? 1023 : 127;
-    const uint64_t sign = UINT64_C(1) << (fp64 ? 63 : 31);
-    const uint64_t min_normal = UINT64_C(1) << width;
+    const uint64_t sign = 1ULL << (fp64 ? 63 : 31);
+    const uint64_t min_normal = 1ULL << width;
     const uint64_t inf = uint64_t(2 * bias + 1) << width;
     const uint64_t inputs[] = {0,
                                sign,
@@ -112,17 +113,17 @@ TEST(FrexpExp, AllModifiersMasksAndAliases) {
 TEST(FrexpExp, EveryExponentAndSubnormalLeadingBit) {
   for (int fp64 = 0; fp64 < 2; ++fp64) {
     int width = fp64 ? 52 : 23, max_field = fp64 ? 2047 : 255;
-    uint64_t sign = UINT64_C(1) << (fp64 ? 63 : 31);
-    uint64_t fraction = (UINT64_C(1) << width) - 1;
+    uint64_t sign = 1ULL << (fp64 ? 63 : 31);
+    uint64_t fraction = (1ULL << width) - 1;
     std::vector<uint64_t> inputs;
     for (int field = 0; field <= max_field; ++field)
-      for (uint64_t tail : {UINT64_C(0), UINT64_C(1), fraction / 2, fraction}) {
+      for (uint64_t tail : std::initializer_list<uint64_t>{0ULL, 1ULL, fraction / 2, fraction}) {
         uint64_t value = (uint64_t(field) << width) | tail;
         inputs.push_back(value);
         inputs.push_back(value | sign);
       }
     for (int bit = 0; bit < width; ++bit)
-      for (uint64_t value : {UINT64_C(1) << bit, (UINT64_C(1) << bit) - 1}) {
+      for (uint64_t value : {1ULL << bit, (1ULL << bit) - 1}) {
         inputs.push_back(value);
         inputs.push_back(value | sign);
       }
@@ -167,11 +168,10 @@ TEST(FrexpExp, LiteralValuesAndValidation) {
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(d[lane], uint32_t(expected[fp64][lane % 8]));
       std::fill(d, d + 32, 0xdeadbeef);
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
-        for (uint32_t invalid : {GOC_ALU_NEG_B, GOC_ALU_ABS_B, GOC_ALU_HIGH_D, UINT32_C(1) << 31})
+      for (uint32_t mask : {0U, UINT32_MAX}) {
+        for (uint32_t invalid : {GOC_ALU_NEG_B, GOC_ALU_ABS_B, GOC_ALU_HIGH_D, 1U << 31})
           EXPECT_EQ(functions[fp64](cpu, mask, invalid, &pd, pa), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(functions[fp64](cpu | (UINT64_C(1) << 63), mask, 0, &pd, pa),
-                  GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(functions[fp64](cpu | (1ULL << 63), mask, 0, &pd, pa), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask,
                                   0, &pd, pa),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
@@ -208,7 +208,7 @@ TEST(FrexpExp, DppHardwareCorpus) {
             hash = goc_test::capture_hash_word(hash, d[lane]);
           }
         }
-    EXPECT_EQ(hash, UINT64_C(0xb96b26fadd63a1e5));
+    EXPECT_EQ(hash, 0xb96b26fadd63a1e5ULL);
   }
 }
 
@@ -274,7 +274,7 @@ TEST(FrexpExp, DppValidation) {
     EXPECT_EQ(functions[0](0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | GOC_ALU_HIGH_A, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | (UINT64_C(1) << 36), nullptr, nullptr),
+    EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(functions[0](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
                            descriptor, nullptr, nullptr),

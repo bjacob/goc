@@ -40,7 +40,7 @@ struct Registers {
 } // namespace
 
 TEST(SwmmacInteger, CaptureInputsKeepSeedAndDrawOrder) {
-  const uint64_t expected[] = {UINT64_C(0x7689d9af055e43b6), UINT64_C(0x1fadfb09a98d158f)};
+  const uint64_t expected[] = {0x7689d9af055e43b6ULL, 0x1fadfb09a98d158fULL};
   for (unsigned i = 0; i < 2; ++i) {
     uint32_t data[15][32];
     goc_test::integer_wmma_capture_inputs(i ? 15 : 0, data);
@@ -58,7 +58,7 @@ TEST(SwmmacInteger, HardwareAllModifiers) {
       for (unsigned variant = 0; variant < (op == 2 ? 8u : 16u); ++variant)
         for (unsigned sample = 0; sample < 16; ++sample)
           for (uint64_t semantics :
-               {UINT64_C(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
+               {uint64_t{0}, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
             Registers r(op, sample);
             ASSERT_EQ(
                 functions[op](cpu | semantics, UINT32_MAX, mode(variant), r.d, r.a, r.b, r.index),
@@ -123,7 +123,7 @@ TEST(SwmmacInteger, OverlappingSourcesAndDuplicateDestinations) {
 TEST(SwmmacInteger, ValidationAndEmptyExec) {
   for (unsigned op = 0; op < 3; ++op) {
     Fn fn = functions[op];
-    EXPECT_EQ(fn(0, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr,
                  nullptr, nullptr),
               GOC_SUCCESS);

@@ -64,8 +64,7 @@ TEST(Cube, AxisTiesAtEveryMaskedLaneWithAlias) {
           words[reg][lane] = inputs[lane % 4][reg];
       const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
       uint32_t *d[] = {words[0]};
-      ASSERT_EQ(goc_rdna4_v_cubeid_f32(cpu | exact, UINT32_C(1) << selected, 0, d, a, b, c),
-                GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_v_cubeid_f32(cpu | exact, 1U << selected, 0, d, a, b, c), GOC_SUCCESS);
       for (unsigned lane = 0; lane < 32; ++lane)
         EXPECT_EQ(words[0][lane], lane == selected ? faces[lane % 4] : inputs[lane % 4][0]);
     }
@@ -220,7 +219,7 @@ TEST(Cube, ValidationAndSemanticFallback) {
       }
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(fn(cpu | exact, UINT32_C(0), 511, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu | exact, 0U, 511, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(fn(cpu, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(fn(cpu | (2 * GOC_SEMANTICS_EXACT_EMPIRICAL), UINT32_MAX, 0, d, a, a, a),
                 GOC_SUCCESS);
@@ -274,7 +273,7 @@ TEST(Cube, DppValidation) {
   for (auto fn : functions)
     for (auto descriptor : goc_test::dpp_modes) {
       EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 9})
+      for (auto invalid : {1ULL << 36, 1ULL << 9})
         EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
     }
@@ -315,7 +314,7 @@ TEST(Cube, DppHardwareCorpusAndHostFpState) {
                 for (auto word : output)
                   hash = goc_test::capture_hash_word(hash, word);
               }
-        EXPECT_EQ(hash, UINT64_C(0xb1d0cbb608c5c005)) << cpu << "/" << semantics;
+        EXPECT_EQ(hash, 0xb1d0cbb608c5c005ULL) << cpu << "/" << semantics;
         EXPECT_EQ(std::fegetround(), rounding);
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
       }

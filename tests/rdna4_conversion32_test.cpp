@@ -156,14 +156,13 @@ TEST(Conversion32, ValidationAndSemanticFallback) {
           EXPECT_EQ(functions[op](cpu, 0, uint32_t(1) << bit, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), UINT32_MAX, 0, d, a),
-                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                               UINT32_MAX, 0, d, a),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, 0U, 0, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 1; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16), 0, input));
     }
@@ -249,7 +248,7 @@ TEST(Conversion32, HardwareOrdinaryAndDppCorpus) {
                 hash = goc_test::capture_hash_word(hash, d[lane]);
               }
             }
-      EXPECT_EQ(hash, dpp ? UINT64_C(0x4fc3a683d5b1e3b5) : UINT64_C(0x87a638b369ca680d));
+      EXPECT_EQ(hash, dpp ? 0x4fc3a683d5b1e3b5ULL : 0x87a638b369ca680dULL);
     }
 }
 
@@ -259,7 +258,7 @@ TEST(Conversion32, DppValidation) {
       EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_HIGH_A, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | (UINT64_C(1) << 36), nullptr, nullptr),
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
       if (op < 2) {
         EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_NEG_A, nullptr, nullptr),

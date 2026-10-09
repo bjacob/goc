@@ -129,7 +129,7 @@ TEST(RcpIflag, ActiveSubnormalsClampAndStickyState) {
 TEST(RcpIflag, ValidationAndHostRounding) {
   uint32_t status = 0xdeadbeef, dwords[32] = {};
   uint32_t *dp[] = {dwords};
-  EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, UINT32_C(0), 0, nullptr, nullptr, &status, 0x12345678),
+  EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, 0U, 0, nullptr, nullptr, &status, 0x12345678),
             GOC_SUCCESS);
   EXPECT_EQ(status, 0x12345678u);
   const uint32_t known = goc_test::rcp_iflag_mode(31);
@@ -145,7 +145,7 @@ TEST(RcpIflag, ValidationAndHostRounding) {
                                       dp, nullptr, &status, 0),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
   EXPECT_EQ(status, 0xdeadbeef);
-  EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(UINT64_C(1) << 63, 0, 0, dp, nullptr, &status, 0),
+  EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(1ULL << 63, 0, 0, dp, nullptr, &status, 0),
             GOC_ERROR_INVALID_FLAGS);
   EXPECT_EQ(status, 0xdeadbeef);
   goc_test::ScopedFpEnvironment saved;
@@ -211,8 +211,8 @@ TEST(RcpIflag, DppModifiersMasksAndStatusAliases) {
 TEST(RcpIflag, DppValidationAndZeroExec) {
   for (auto descriptor : goc_test::dpp_modes) {
     uint32_t status = 0xdeadbeef;
-    for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 1})
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+    for (auto invalid : {1ULL << 36, 1ULL << 1})
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, mask, descriptor | invalid, nullptr, nullptr,
                                             &status, 0x15),
                   GOC_ERROR_INVALID_FLAGS);
@@ -222,8 +222,7 @@ TEST(RcpIflag, DppValidationAndZeroExec) {
                                         descriptor, nullptr, nullptr, &status, 0x15),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(status, 0xdeadbeefu);
-    EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, UINT32_C(0), descriptor, nullptr, nullptr, &status,
-                                        0x12345678),
+    EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, 0U, descriptor, nullptr, nullptr, &status, 0x12345678),
               GOC_SUCCESS);
     EXPECT_EQ(status, 0x12345678u);
   }
@@ -239,7 +238,8 @@ TEST(RcpIflag, DppHardwareCorpus) {
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (uint64_t fp : {GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS, UINT64_C(0)})
+    for (uint64_t fp : std::initializer_list<uint64_t>{
+             GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS, 0ULL})
       for (uint32_t seed : {0u, 0x15u, 0x55u})
         for (auto mask : masks)
           for (unsigned m = 0; m < 32; ++m)
@@ -262,6 +262,6 @@ TEST(RcpIflag, DppHardwareCorpus) {
               }
               hash = goc_test::capture_hash_word(hash, status);
             }
-    EXPECT_EQ(hash, UINT64_C(0x0c1abc142a4dc525)) << cpu;
+    EXPECT_EQ(hash, 0x0c1abc142a4dc525ULL) << cpu;
   }
 }

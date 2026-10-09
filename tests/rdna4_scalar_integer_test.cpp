@@ -16,7 +16,7 @@ TEST(ScalarInteger, HardwareResultsAndScc) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (unsigned seed = 0; seed < 2; ++seed)
-        for (uint32_t mask : {UINT32_C(0), UINT32_MAX, UINT32_C(0xaaaaaaaa)})
+        for (uint32_t mask : {0U, UINT32_MAX, 0xaaaaaaaaU})
           for (unsigned k = 0; k < 40; ++k) {
             uint64_t hash = goc_test::capture_hash_seed;
             unsigned op = k < 18 ? k : k < 29 ? 18 : 19;
@@ -49,12 +49,12 @@ TEST(ScalarInteger, ExecAndAliasing) {
           goc_test::scalar_integer_call(op, 0, mask, 0, &d, &wide, d, 0xffffffffu, &cc, 1, 0xffff),
           GOC_SUCCESS);
       uint32_t words[] = {0x12345678, 0x80000000u, 0x87654321};
-      uint64_t wide2 = UINT64_C(0x80000000);
+      uint64_t wide2 = 0x80000000ULL;
       ASSERT_EQ(goc_test::scalar_integer_call(op, 0, mask, 0, words + 1, &wide2, words[1],
                                               0xffffffffu, words + 1, 1, 0xffff),
                 GOC_SUCCESS);
       ASSERT_EQ(words[1], op < 12 || op == 18 ? cc : op >= 15 && op <= 17 ? 0x80000000u : d);
-      ASSERT_EQ(wide2, op >= 15 && op <= 17 ? wide : UINT64_C(0x80000000));
+      ASSERT_EQ(wide2, op >= 15 && op <= 17 ? wide : 0x80000000ULL);
       ASSERT_EQ(words[0], 0x12345678u);
       ASSERT_EQ(words[2], 0x87654321u);
     }
@@ -91,12 +91,11 @@ TEST(ScalarInteger, ErrorsDoNotWrite) {
     for (unsigned bit = 0; bit < 32; ++bit)
       EXPECT_EQ(goc_test::scalar_integer_call(op, 0, 0, 1u << bit, &d, &wide, 0, 0, &cc, 0, 0),
                 GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(
-        goc_test::scalar_integer_call(op, UINT64_C(1) << 63, 0, 0, &d, &wide, 0, 0, &cc, 0, 0),
-        GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(goc_test::scalar_integer_call(op, 1ULL << 63, 0, 0, &d, &wide, 0, 0, &cc, 0, 0),
+              GOC_ERROR_INVALID_FLAGS);
     for (unsigned bit = 32; bit < 64; ++bit)
-      EXPECT_EQ(goc_test::scalar_integer_call(op, 0, 0, UINT64_C(1) << bit, nullptr, nullptr,
-                                              UINT64_MAX, UINT64_MAX, nullptr, 1, 0xffff),
+      EXPECT_EQ(goc_test::scalar_integer_call(op, 0, 0, 1ULL << bit, nullptr, nullptr, UINT64_MAX,
+                                              UINT64_MAX, nullptr, 1, 0xffff),
                 GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(d, 123u);
     EXPECT_EQ(cc, 456u);
@@ -128,7 +127,7 @@ TEST(ScalarInteger, SignExtendExhaustiveHardware) {
   // GFX1201 / HIP 7.13: every low 16-bit pattern with changing upper bits.
   // Full/empty/alternating EXEC and incoming SCC 0/1 yielded identical results
   // and preserved SCC: 786432 result/SCC triples checked against signed values.
-  const uint64_t hashes[] = {UINT64_C(0x03ad8958c79f2325), UINT64_C(0x41d0f9b5b59f2325)};
+  const uint64_t hashes[] = {0x03ad8958c79f2325ULL, 0x41d0f9b5b59f2325ULL};
   const auto functions = {goc_rdna4_s_sext_i32_i8, goc_rdna4_s_sext_i32_i16};
   unsigned op = 0;
   for (auto fn : functions) {
@@ -170,7 +169,7 @@ TEST(ScalarInteger, SignExtendExecAliasesFlagsAndHostState) {
       uint32_t d = 123;
       for (unsigned bit = 0; bit < 32; ++bit)
         EXPECT_EQ(fn(0, 0, 1u << bit, &d, 0), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(UINT64_C(1) << 63, 0, 0, &d, 0), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(1ULL << 63, 0, 0, &d, 0), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(d, 123u);
       EXPECT_EQ(std::fegetround(), rounding);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);

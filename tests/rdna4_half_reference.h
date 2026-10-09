@@ -16,7 +16,7 @@ namespace goc_test {
 inline uint32_t canonical_half_nan(uint32_t word, uint32_t mode) {
   unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
   if (((word >> shift) & 0x7fff) > 0x7c00)
-    return (word & ~(UINT32_C(65535) << shift)) | (UINT32_C(0x7e00) << shift);
+    return (word & ~(65535U << shift)) | (0x7e00U << shift);
   return word;
 }
 

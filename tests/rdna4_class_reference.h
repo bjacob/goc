@@ -15,21 +15,21 @@ static const uint32_t class_edges32[] = {
     0,          0x80000000, 1,          0x80000001, 0x007fffff, 0x807fffff, 0x00800000, 0x80800000,
     0x3f800000, 0xbf800000, 0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000, 0x7f800001, 0x7fc00001};
 static const uint64_t class_edges64[] = {0,
-                                         UINT64_C(0x8000000000000000),
+                                         0x8000000000000000ULL,
                                          1,
-                                         UINT64_C(0x8000000000000001),
-                                         UINT64_C(0xfffffffffffff),
-                                         UINT64_C(0x800fffffffffffff),
-                                         UINT64_C(0x10000000000000),
-                                         UINT64_C(0x8010000000000000),
-                                         UINT64_C(0x3ff0000000000000),
-                                         UINT64_C(0xbff0000000000000),
-                                         UINT64_C(0x7fefffffffffffff),
-                                         UINT64_C(0xffefffffffffffff),
-                                         UINT64_C(0x7ff0000000000000),
-                                         UINT64_C(0xfff0000000000000),
-                                         UINT64_C(0x7ff0000000000001),
-                                         UINT64_C(0x7ff8000000000001)};
+                                         0x8000000000000001ULL,
+                                         0xfffffffffffffULL,
+                                         0x800fffffffffffffULL,
+                                         0x10000000000000ULL,
+                                         0x8010000000000000ULL,
+                                         0x3ff0000000000000ULL,
+                                         0xbff0000000000000ULL,
+                                         0x7fefffffffffffffULL,
+                                         0xffefffffffffffffULL,
+                                         0x7ff0000000000000ULL,
+                                         0xfff0000000000000ULL,
+                                         0x7ff0000000000001ULL,
+                                         0x7ff8000000000001ULL};
 
 inline uint32_t class_mode(unsigned m) {
   return (m & 1 ? GOC_ALU_ABS_A : 0) | (m & 2 ? GOC_ALU_NEG_A : 0) | (m & 4 ? GOC_ALU_HIGH_A : 0) |
@@ -48,12 +48,12 @@ inline bool class_reference(unsigned fmt, uint32_t lo, uint32_t hi, uint32_t mas
     raw = (raw >> (m & 4 ? 16 : 0)) & 65535;
     mask >>= m & 8 ? 16 : 0;
   }
-  uint64_t sign = UINT64_C(1) << (fraction_bits + exponent_bits);
+  uint64_t sign = 1ULL << (fraction_bits + exponent_bits);
   if (m & 1)
     raw &= ~sign;
   if (m & 2)
     raw ^= sign;
-  uint64_t fraction = raw & ((UINT64_C(1) << fraction_bits) - 1);
+  uint64_t fraction = raw & ((1ULL << fraction_bits) - 1);
   unsigned exponent = unsigned((raw >> fraction_bits) & ((1u << exponent_bits) - 1));
   bool negative = raw & sign, maximum = exponent == ((1u << exponent_bits) - 1);
   bool nan = maximum && fraction, quiet = (raw >> (fraction_bits - 1)) & 1;

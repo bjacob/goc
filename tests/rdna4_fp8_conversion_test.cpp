@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cfenv>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
 #include <stdint.h>
 
@@ -166,15 +167,14 @@ TEST(Fp8Conversion, ValidationAndSemanticFallback) {
           EXPECT_EQ(functions[op](cpu, UINT32_MAX, 1u << bit, d, a), GOC_ERROR_INVALID_FLAGS);
           EXPECT_EQ(functions[op](cpu, 0, 1u << bit, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), UINT32_MAX, 0, d, a),
-                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                               UINT32_MAX, 0, d, a),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto &reg : output)
         for (auto word : reg)
           EXPECT_EQ(word, 0xdeadbeefu);
-      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, 0U, 0, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 0; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16) | GOC_FP16_OVFL, 0, input));
     }
@@ -214,13 +214,14 @@ TEST(Fp8Conversion, DppValidation) {
   for (auto descriptor : goc_test::dpp_modes) {
     for (unsigned op = 0; op < 2; ++op) {
       EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
-      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_NEG_A), uint64_t(GOC_ALU_ABS_A)})
+      for (auto invalid : std::initializer_list<uint64_t>{1ULL << 36, uint64_t(GOC_ALU_NEG_A),
+                                                          uint64_t(GOC_ALU_ABS_A)})
         EXPECT_EQ(functions[op](0, 0, descriptor | invalid, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
     }
     // RDNA4's two-result widening forms have no DPP encoding.
     for (unsigned op = 2; op < 4; ++op)
-      for (auto mask : {UINT64_C(0), UINT64_C(0xffffffff)})
+      for (auto mask : {0ULL, 0xffffffffULL})
         EXPECT_EQ(functions[op](0, mask, descriptor, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
   }
 }
@@ -260,7 +261,7 @@ TEST(Fp8Conversion, DppHardwareCorpusAndHostEnvironment) {
                   hash = goc_test::capture_hash_word(hash, word);
                 }
               }
-      EXPECT_EQ(hash, UINT64_C(0xd937e5afc80bb725)) << cpu;
+      EXPECT_EQ(hash, 0xd937e5afc80bb725ULL) << cpu;
       EXPECT_EQ(std::fegetround(), rounding);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
     }

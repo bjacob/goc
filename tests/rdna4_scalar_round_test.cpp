@@ -99,7 +99,7 @@ TEST(ScalarRound, ErrorsDoNotWrite) {
     for (unsigned bit = 0; bit < 32; ++bit)
       EXPECT_EQ(goc_test::scalar_round_functions[op](0, 0, 1u << bit, &d, 0),
                 GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(goc_test::scalar_round_functions[op](UINT64_C(1) << 63, 0, 0, &d, 0),
+    EXPECT_EQ(goc_test::scalar_round_functions[op](1ULL << 63, 0, 0, &d, 0),
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(d, 123u);
   }

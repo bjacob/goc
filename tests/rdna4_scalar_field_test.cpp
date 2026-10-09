@@ -18,7 +18,7 @@ TEST(ScalarField, HardwareResultsAndScc) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (unsigned seed = 0; seed < 2; ++seed)
-        for (uint32_t mask : {UINT32_C(0), UINT32_MAX, UINT32_C(0xaaaaaaaa)})
+        for (uint32_t mask : {0U, UINT32_MAX, 0xaaaaaaaaU})
           for (unsigned op = 0; op < 20; ++op) {
             uint64_t hash = goc_test::capture_hash_seed;
             for (unsigned i = 0; i < 16384; ++i) {
@@ -40,7 +40,7 @@ TEST(ScalarField, HardwareResultsAndScc) {
 }
 
 TEST(ScalarField, ExecAndAliasing) {
-  const uint64_t a = UINT64_C(0x87654321abcdef01);
+  const uint64_t a = 0x87654321abcdef01ULL;
   for (unsigned op = 0; op < 20; ++op)
     for (uint32_t mask : rdna4_exec_masks()) {
       uint32_t d = uint32_t(a), cc = 7;
@@ -83,7 +83,8 @@ TEST(ScalarField, ExecAndAliasing) {
 
 TEST(ScalarField, EveryFieldWidthAndOffset) {
   for (unsigned width : {32u, 64u})
-    for (uint64_t a : {UINT64_C(0), UINT64_C(1), UINT64_C(0x87654321abcdef01), UINT64_MAX})
+    for (uint64_t a :
+         std::initializer_list<uint64_t>{0ULL, 1ULL, 0x87654321abcdef01ULL, UINT64_MAX})
       for (unsigned count = 0; count < 128; ++count)
         for (unsigned offset = 0; offset < 64; ++offset)
           for (unsigned sign = 0; sign < 2; ++sign) {
@@ -111,7 +112,7 @@ TEST(ScalarField, CountSentinelsAndSingleBits) {
     for (unsigned op = 6; op < 16; op += 2) {
       unsigned index = op + (width == 64);
       for (unsigned bit = 0; bit <= width; ++bit) {
-        uint64_t a = bit == width ? 0 : UINT64_C(1) << bit;
+        uint64_t a = bit == width ? 0 : 1ULL << bit;
         uint32_t d, cc = 7;
         uint64_t unused;
         ASSERT_EQ(goc_test::scalar_field_call(index, 0, 0, 0, &d, &unused, a, 0, &cc), GOC_SUCCESS);
@@ -148,8 +149,8 @@ TEST(ScalarField, ErrorsDoNotWriteAndHostFpStatePreserved) {
         EXPECT_EQ(goc_test::scalar_field_call(op, 0, 0, 1u << bit, &d, &wide, 0, 0, &cc),
                   GOC_ERROR_INVALID_FLAGS);
       for (unsigned bit = 32; bit < 64; ++bit)
-        EXPECT_EQ(goc_test::scalar_field_call(op, 0, 0, UINT64_C(1) << bit, nullptr, nullptr,
-                                              UINT64_MAX, 63, nullptr),
+        EXPECT_EQ(goc_test::scalar_field_call(op, 0, 0, 1ULL << bit, nullptr, nullptr, UINT64_MAX,
+                                              63, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(d, 123u);
       EXPECT_EQ(cc, 456u);
@@ -164,7 +165,7 @@ TEST(ScalarField, ErrorsDoNotWriteAndHostFpStatePreserved) {
 
 TEST(ScalarField, BitUtilitiesAtEveryWordPosition) {
   for (unsigned bit = 0; bit < 64; ++bit) {
-    uint64_t input = UINT64_C(1) << bit, reversed = 0;
+    uint64_t input = 1ULL << bit, reversed = 0;
     uint32_t count = 0, cc = 0;
     ASSERT_EQ(goc_rdna4_s_bcnt1_i32_b64(0, 0, 0, &count, input, &cc), GOC_SUCCESS);
     EXPECT_EQ(count, 1u);
@@ -174,7 +175,7 @@ TEST(ScalarField, BitUtilitiesAtEveryWordPosition) {
     ASSERT_EQ(goc_rdna4_s_ctz_i32_b64(0, 0, 0, &count, input), GOC_SUCCESS);
     EXPECT_EQ(count, bit);
     ASSERT_EQ(goc_rdna4_s_brev_b64(0, 0, 0, &reversed, input), GOC_SUCCESS);
-    EXPECT_EQ(reversed, UINT64_C(1) << (63 - bit));
+    EXPECT_EQ(reversed, 1ULL << (63 - bit));
     if (bit >= 32)
       continue;
     uint32_t words[32], output[32];

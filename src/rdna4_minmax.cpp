@@ -21,7 +21,7 @@ int minmax3(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                             });
   }
 
-  if (int error = goc::validate(flags, mode & ~UINT32_C(0x1ff)))
+  if (int error = goc::validate(flags, mode & ~0x1ffU))
     return error;
   if (mask == 0)
     return GOC_SUCCESS;

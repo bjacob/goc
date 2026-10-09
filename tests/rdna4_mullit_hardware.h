@@ -17,12 +17,10 @@ static const uint32_t mullit_capture_modes[] = {
     0x0, 0x1, 0x2, 0x4, 0x38, 0x3f, 0xa, 0x11, 0x40, 0x80, 0xc0, 0x100, 0x140, 0x180, 0x1c0, 0x1ff};
 
 static const uint64_t mullit_capture_digests[] = {
-    UINT64_C(0xf20466eb7a036845), UINT64_C(0x07c64fed29076f45), UINT64_C(0xb60dd7a82effec45),
-    UINT64_C(0x02aafccdafbd9bc5), UINT64_C(0x0196140c04f241a5), UINT64_C(0x41eec6ad6eb96325),
-    UINT64_C(0x36ff4f53c9859e45), UINT64_C(0x187d937f707d2fc5), UINT64_C(0x650a1308f0e11c35),
-    UINT64_C(0xee4837ef37fec675), UINT64_C(0xc52eafd4ceec33e5), UINT64_C(0x3bd560af486e741d),
-    UINT64_C(0xc02d4db4db0465fd), UINT64_C(0x436fb9f2af99247d), UINT64_C(0xfe5c40e88c10111d),
-    UINT64_C(0x9c1bda7f8c872325),
+    0xf20466eb7a036845ULL, 0x07c64fed29076f45ULL, 0xb60dd7a82effec45ULL, 0x02aafccdafbd9bc5ULL,
+    0x0196140c04f241a5ULL, 0x41eec6ad6eb96325ULL, 0x36ff4f53c9859e45ULL, 0x187d937f707d2fc5ULL,
+    0x650a1308f0e11c35ULL, 0xee4837ef37fec675ULL, 0xc52eafd4ceec33e5ULL, 0x3bd560af486e741dULL,
+    0xc02d4db4db0465fdULL, 0x436fb9f2af99247dULL, 0xfe5c40e88c10111dULL, 0x9c1bda7f8c872325ULL,
 };
 
 } // namespace goc_test

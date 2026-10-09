@@ -47,7 +47,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
       overflow = (((product ^ sum) & (cv ^ sum)) >> 63) != 0;
       co = bool(sum >> 63) ^ overflow;
       if ((mode & GOC_ALU_CLAMP) && overflow)
-        sum = (product >> 63) ? UINT64_C(1) << 63 : UINT64_MAX >> 1;
+        sum = (product >> 63) ? 1ULL << 63 : UINT64_MAX >> 1;
     } else {
       overflow = sum < product;
       co = overflow;

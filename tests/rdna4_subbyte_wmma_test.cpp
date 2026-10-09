@@ -83,8 +83,7 @@ void save(Registers &r, int dst, uint32_t (&before)[8][32]) {
 
 TEST(SubbyteWmma, Fp8DenseGoldensMasksAndOverlap) {
   for (uint64_t cpu : cpu_levels())
-    for (uint32_t mode :
-         {UINT32_C(0), GOC_WMMA_NEG_C, GOC_WMMA_ABS_C, GOC_WMMA_NEG_C | GOC_WMMA_ABS_C})
+    for (uint32_t mode : {0U, GOC_WMMA_NEG_C, GOC_WMMA_ABS_C, GOC_WMMA_NEG_C | GOC_WMMA_ABS_C})
       for (int format = 0; format < 4; ++format)
         for (int dst : {0, 4, 8, 16})
           for (uint32_t mask : rdna4_exec_masks())
@@ -182,7 +181,7 @@ TEST(SubbyteWmma, Fp8ModifiersAndStrictErrors) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       EXPECT_EQ(fn(0, UINT32_MAX, GOC_WMMA_NEG_LO_A, r.v + 16, r.v, r.v + 4, r.v + 8),
                 GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(UINT64_C(1) << 63, UINT32_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8),
+      EXPECT_EQ(fn(1ULL << 63, UINT32_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8),
                 GOC_ERROR_INVALID_FLAGS);
       check(r, 16, 0, nullptr, before);
     }
@@ -227,12 +226,12 @@ TEST(SubbyteWmma, IntegerErrorsPreserveEveryDestination) {
         std::fill(r.v[16 + reg], r.v[16 + reg] + 32, 0x12345678);
       uint32_t before[8][32];
       save(r, 16, before);
-      for (uint32_t flag : {GOC_WMMA_NEG_C, GOC_WMMA_NEG_HI_A, GOC_WMMA_NEG_HI_B, GOC_WMMA_ABS_C,
-                            UINT32_C(1) << 31})
+      for (uint32_t flag :
+           {GOC_WMMA_NEG_C, GOC_WMMA_NEG_HI_A, GOC_WMMA_NEG_HI_B, GOC_WMMA_ABS_C, 1U << 31})
         EXPECT_EQ(fn(cpu, UINT32_MAX, flag, r.v + 16, r.v, r.v + 4, r.v + 8),
                   GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(cpu | (UINT64_C(2) << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, r.v + 16, r.v,
-                   r.v + 4, r.v + 8),
+      EXPECT_EQ(fn(cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, r.v + 16, r.v, r.v + 4,
+                   r.v + 8),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       check(r, 16, 0, nullptr, before);
     }

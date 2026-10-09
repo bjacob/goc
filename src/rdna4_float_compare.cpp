@@ -55,10 +55,10 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *d, const ui
     return GOC_SUCCESS;
   }
 #endif
-  constexpr uint64_t sign = UINT64_C(1) << (Bits - 1), magnitude = sign - 1;
+  constexpr uint64_t sign = 1ULL << (Bits - 1), magnitude = sign - 1;
   constexpr uint64_t infinity = Bits == 16   ? 0x7c00
                                 : Bits == 32 ? 0x7f800000
-                                             : UINT64_C(0x7ff0000000000000);
+                                             : 0x7ff0000000000000ULL;
   uint32_t less = 0, equal = 0, ordered = 0;
   // Keep baseline variable shifts from introducing host FP exceptions.
 #if defined(__clang__)

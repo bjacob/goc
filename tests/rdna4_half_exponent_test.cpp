@@ -63,7 +63,7 @@ uint16_t reference(int op, uint32_t a, uint32_t b, uint32_t mode, bool saturate)
 
 void check(int op, uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
   int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  EXPECT_EQ((actual ^ before) & ~(UINT32_C(0xffff) << shift), 0u);
+  EXPECT_EQ((actual ^ before) & ~(0xffffU << shift), 0u);
   uint16_t got = uint16_t(actual >> shift);
   if (op == 0 && (want & 0x7fff) > 0x7c00) {
     EXPECT_GT(got & 0x7fff, 0x7c00);
@@ -218,7 +218,7 @@ TEST(HalfExponent, LiteralRoundingAndOverflow) {
                                       test.mode, p + 2, p, p + 1),
                 GOC_SUCCESS);
       for (auto word : words[2])
-        EXPECT_EQ(word, UINT32_C(0xdead0000) | test.result);
+        EXPECT_EQ(word, 0xdead0000U | test.result);
     }
     for (const auto &test : exponent_cases) {
       uint32_t a[32], d[32];
@@ -227,7 +227,7 @@ TEST(HalfExponent, LiteralRoundingAndOverflow) {
       auto pa = a, pd = d;
       ASSERT_EQ(goc_rdna4_v_frexp_exp_i16_f16(cpu, UINT32_MAX, 0, &pd, &pa), GOC_SUCCESS);
       for (auto word : d)
-        EXPECT_EQ(word, UINT32_C(0xdead0000) | test[1]);
+        EXPECT_EQ(word, 0xdead0000U | test[1]);
     }
   }
 }
@@ -264,14 +264,13 @@ TEST(HalfExponent, ValidationAndSemantics) {
     std::fill(data, data + 32, 0xdeadbeef);
     auto p = data;
     uint32_t known = common_modes | (op == 0 ? GOC_ALU_HIGH_B : 0);
-    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+    for (uint32_t mask : {0U, UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit) {
-        if (!(known & (UINT32_C(1) << bit))) {
-          EXPECT_EQ(functions[op](0, mask, UINT32_C(1) << bit, &p, &p, &p),
-                    GOC_ERROR_INVALID_FLAGS);
+        if (!(known & (1U << bit))) {
+          EXPECT_EQ(functions[op](0, mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
         }
       }
-      EXPECT_EQ(functions[op](UINT64_C(1) << 63, mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](1ULL << 63, mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(
           functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p),
           GOC_ERROR_UNSUPPORTED_SEMANTICS);
@@ -355,7 +354,7 @@ TEST(HalfExponent, HardwareRoundingCorpus) {
               hash = goc_test::capture_hash_word(hash, word);
             }
           }
-    EXPECT_EQ(hash, UINT64_C(0x62b2fe854d088725));
+    EXPECT_EQ(hash, 0x62b2fe854d088725ULL);
   }
 }
 
@@ -380,7 +379,7 @@ TEST(HalfExponent, DppHardwareCorpus) {
             for (auto word : d)
               hash = goc_test::capture_hash_word(hash, word);
           }
-    EXPECT_EQ(hash, UINT64_C(0x1af7c9e0f5f41bf6));
+    EXPECT_EQ(hash, 0x1af7c9e0f5f41bf6ULL);
   }
 }
 
@@ -418,9 +417,8 @@ TEST(HalfExponent, DppValidation) {
       EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(
-          functions[op](0, UINT32_MAX, descriptor | (UINT64_C(1) << 36), nullptr, nullptr, nullptr),
-          GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
                               descriptor, nullptr, nullptr, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);

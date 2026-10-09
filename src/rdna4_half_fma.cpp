@@ -25,7 +25,7 @@ int run(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const 
     }
   }
   const uint32_t known = Operands == goc::FmaOperands::Registers
-                             ? UINT32_C(0x1fff)
+                             ? 0x1fffU
                              : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D;
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;
@@ -60,8 +60,7 @@ int run(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const 
   }
   for (int lane = 0; lane < 32; ++lane)
     if ((mask >> lane) & 1)
-      d[0][lane] =
-          (d[0][lane] & ~(UINT32_C(0xffff) << d_shift)) | (uint32_t(result[lane]) << d_shift);
+      d[0][lane] = (d[0][lane] & ~(0xffffU << d_shift)) | (uint32_t(result[lane]) << d_shift);
   return GOC_SUCCESS;
 }
 

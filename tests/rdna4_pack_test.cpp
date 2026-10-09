@@ -69,8 +69,7 @@ TEST(Pack, MasksAliasesAndUnalignedStorage) {
 TEST(Pack, ValidationAndEmptyMask) {
   for (unsigned variant : {0u, 2u}) {
     uint32_t allowed = goc_test::pack_mode(variant == 0 ? 1 : 65);
-    EXPECT_EQ(goc_test::pack_call(variant, 0, UINT32_C(0), 0, nullptr, nullptr, nullptr),
-              GOC_SUCCESS);
+    EXPECT_EQ(goc_test::pack_call(variant, 0, 0U, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!(allowed & (1u << bit))) {
         EXPECT_EQ(goc_test::pack_call(variant, 0, 0, 1u << bit, nullptr, nullptr, nullptr),
@@ -142,9 +141,9 @@ TEST(Pack, DppValidation) {
     for (auto descriptor : goc_test::dpp_modes) {
       EXPECT_EQ(goc_test::pack_call(variant, 0, 0, descriptor, nullptr, nullptr, nullptr),
                 GOC_SUCCESS);
-      EXPECT_EQ(goc_test::pack_call(variant, 0, 0, descriptor | (UINT64_C(1) << 36), nullptr,
-                                    nullptr, nullptr),
-                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(
+          goc_test::pack_call(variant, 0, 0, descriptor | (1ULL << 36), nullptr, nullptr, nullptr),
+          GOC_ERROR_INVALID_FLAGS);
     }
 }
 
@@ -180,7 +179,7 @@ TEST(Pack, DppHardwareCorpusAndHostFpState) {
             for (auto word : output)
               hash = goc_test::capture_hash_word(hash, word);
           }
-      EXPECT_EQ(hash, UINT64_C(0x001666e8f93d98c9)) << cpu;
+      EXPECT_EQ(hash, 0x001666e8f93d98c9ULL) << cpu;
       EXPECT_EQ(std::fegetround(), rounding);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
     }

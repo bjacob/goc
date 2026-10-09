@@ -61,8 +61,8 @@ double reference(int op, uint64_t input, uint32_t mode) {
     break;
   case 4:
     y = x - std::floor(x);
-    if (y > number(UINT64_C(0x3fefffffffffffff)))
-      y = number(UINT64_C(0x3fefffffffffffff));
+    if (y > number(0x3fefffffffffffffULL))
+      y = number(0x3fefffffffffffffULL);
     break;
   case 5:
     y = std::sqrt(x);
@@ -229,7 +229,7 @@ TEST(Fp64Unary, Validation) {
     EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_D, pd, pa), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, pd, pa),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_C(0), 0, pd, pa), GOC_SUCCESS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0U, 0, pd, pa), GOC_SUCCESS);
     for (auto &reg : d)
       for (uint32_t value : reg)
         EXPECT_EQ(value, 0xdeadbeef);

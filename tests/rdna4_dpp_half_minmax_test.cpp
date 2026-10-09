@@ -31,7 +31,7 @@ namespace {
 uint32_t reference(unsigned op, uint32_t a, uint32_t b, uint32_t c, uint32_t mode, uint32_t old_d) {
   uint32_t value = goc_test::half_minmax_reference(op, a, b, c, mode, false);
   unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  return (old_d & ~(UINT32_C(65535) << shift)) | (value << shift);
+  return (old_d & ~(65535U << shift)) | (value << shift);
 }
 
 void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
@@ -72,13 +72,13 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
 TEST(DppHalfMinmax, HardwareCorpus) {
   const uint32_t values[] = {0x3c00bc00u, 0xc0004000u, 0x38003400u, 0xb800b400u,
                              0x44004200u, 0xc400c200u, 0x3a003600u, 0xba00b600u};
-  hardware_corpus(values, UINT64_C(0xb0dcac9d15c8cc85));
+  hardware_corpus(values, 0xb0dcac9d15c8cc85ULL);
 }
 
 TEST(DppHalfMinmax, HardwareOmodBoundaries) {
   const uint32_t values[] = {0x00018001u, 0x03ff83ffu, 0x04008400u, 0x04018401u,
                              0x08008800u, 0x3c00bc00u, 0x00008000u, 0x7bfffbffu};
-  hardware_corpus(values, UINT64_C(0xc587f06661dd8f15));
+  hardware_corpus(values, 0xc587f06661dd8f15ULL);
 }
 
 TEST(DppHalfMinmax, MasksAliasesAndRandomWords) {
@@ -130,12 +130,12 @@ TEST(DppHalfMinmax, Validation) {
   for (auto fn : goc_test::half_minmax_functions)
     for (uint64_t mode : modes()) {
       EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         EXPECT_EQ(fn(0, mask, mode | (1u << 13), nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(0, mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(UINT64_C(1) << 63, mask, mode, nullptr, nullptr, nullptr, nullptr),
+        EXPECT_EQ(fn(1ULL << 63, mask, mode, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, mode, nullptr,
                      nullptr, nullptr, nullptr),
@@ -172,7 +172,7 @@ TEST(DppHalfMinmax, EveryModifierAndOverflowMode) {
                 uint32_t value = goc_test::half_minmax_reference(
                     op, source < 0 ? 0 : words[0][source], words[1][lane], words[2][lane],
                     uint32_t(mode), saturate);
-                want = (want & ~(UINT32_C(65535) << shift)) | (value << shift);
+                want = (want & ~(65535U << shift)) | (value << shift);
               }
               ASSERT_EQ(goc_test::canonical_half_nan(words[3][lane], uint32_t(mode)),
                         goc_test::canonical_half_nan(want, uint32_t(mode)))

@@ -37,7 +37,7 @@ TEST(DppUnary, HardwareCorpus) {
               hash = goc_test::capture_hash_word(hash, value);
             }
           }
-    EXPECT_EQ(hash, UINT64_C(0x59f5427020212b25));
+    EXPECT_EQ(hash, 0x59f5427020212b25ULL);
   }
 }
 
@@ -91,19 +91,17 @@ TEST(DppUnary, AllModifiersMasksAliasesAndSpecialValues) {
 }
 
 TEST(DppUnary, ValidationBeforeOperandAccess) {
-  const uint64_t bad[] = {GOC_DPP8 | GOC_DPP16,
-                          GOC_DPP_FI,
-                          GOC_DPP8 | GOC_DPP_BOUND_CTRL,
-                          GOC_DPP16 | (UINT64_C(0x110) << GOC_DPP_CTRL_SHIFT),
-                          GOC_DPP16 | (UINT64_C(1) << 63),
-                          GOC_DPP8 | GOC_ALU_NEG_B};
+  const uint64_t bad[] = {
+      GOC_DPP8 | GOC_DPP16,          GOC_DPP_FI,
+      GOC_DPP8 | GOC_DPP_BOUND_CTRL, GOC_DPP16 | (0x110ULL << GOC_DPP_CTRL_SHIFT),
+      GOC_DPP16 | (1ULL << 63),      GOC_DPP8 | GOC_ALU_NEG_B};
   for (auto fn : goc_test::unary_functions)
-    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+    for (uint32_t mask : {0U, UINT32_MAX}) {
       for (uint64_t mode : bad) {
         EXPECT_EQ(fn(0, mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
       }
       for (uint64_t mode : goc_test::dpp_modes) {
-        EXPECT_EQ(fn(UINT64_C(1) << 63, mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(1ULL << 63, mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(
             fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, mode, nullptr, nullptr),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);

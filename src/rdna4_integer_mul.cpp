@@ -53,7 +53,7 @@ int multiply(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
         value = std::clamp(value, int64_t(INT32_MIN), int64_t(INT32_MAX));
       product = uint64_t(value);
     } else {
-      const uint32_t input_mask = Bits == 24 ? UINT32_C(0x00ffffff) : UINT32_MAX;
+      const uint32_t input_mask = Bits == 24 ? 0x00ffffffU : UINT32_MAX;
       product = uint64_t(a[0][lane] & input_mask) * (b[0][lane] & input_mask);
       if (mode & GOC_ALU_CLAMP)
         product = std::min(product, uint64_t(UINT32_MAX));

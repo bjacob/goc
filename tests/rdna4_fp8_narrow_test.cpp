@@ -13,6 +13,7 @@
 #include <cfenv>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
 #include <stdint.h>
 #include <vector>
@@ -191,7 +192,7 @@ TEST(Fp8Narrow, ValidationAndSemanticFallback) {
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
       EXPECT_EQ(functions[op](cpu, 0, known, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      EXPECT_EQ(functions[op](cpu, UINT32_C(0), known, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, 0U, known, nullptr, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, d, a, a),
                 GOC_SUCCESS);
       for (auto word : output)
@@ -259,7 +260,7 @@ TEST(Fp8Narrow, DppHardwareCorpus) {
               for (auto word : output)
                 hash = goc_test::capture_hash_word(hash, word);
             }
-    EXPECT_EQ(hash, UINT64_C(0x2e9896b81273f725)) << cpu;
+    EXPECT_EQ(hash, 0x2e9896b81273f725ULL) << cpu;
   }
 }
 
@@ -267,7 +268,7 @@ TEST(Fp8Narrow, DppValidation) {
   for (auto fn : functions)
     for (auto descriptor : goc_test::dpp_modes) {
       EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_CLAMP)})
+      for (auto invalid : std::initializer_list<uint64_t>{1ULL << 36, uint64_t(GOC_ALU_CLAMP)})
         EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
     }

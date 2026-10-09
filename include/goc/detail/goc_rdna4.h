@@ -66,8 +66,8 @@ static const uint64_t GOC_DPP_BANK_MASK = 0xfULL << 53;
 // PERMLANE flags are a bit field. FI permits reading inactive source lanes.
 // Otherwise BOUND_CTRL selects zero for an inactive source; without it the
 // destination is preserved. Neither flag enables inactive destination lanes.
-static const uint32_t GOC_PERMLANE_FI = UINT32_C(1) << 0;
-static const uint32_t GOC_PERMLANE_BOUND_CTRL = UINT32_C(1) << 1;
+static const uint32_t GOC_PERMLANE_FI = 1U << 0;
+static const uint32_t GOC_PERMLANE_BOUND_CTRL = 1U << 1;
 
 // Wave32 lane permutations support both semantics and preserve all host FP state.
 // Guest FP flags have no effect. Each source index is its low four bits; the
@@ -833,7 +833,7 @@ int goc_rdna4_s_mulk_i32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
                          uint32_t *d, uint16_t immediate);
 
 // RDNA4 WAVE_EXCP_FLAG_USER integer divide-by-zero status bit.
-static const uint32_t GOC_RDNA4_EXCEPTION_INT_DIV0 = UINT32_C(1) << 6;
+static const uint32_t GOC_RDNA4_EXCEPTION_INT_DIV0 = 1U << 6;
 
 // Reciprocal with sticky integer divide-by-zero status. Supports ABS_A, NEG_A,
 // OMOD and CLAMP. Input/output subnormals always flush, independently of guest
@@ -1218,16 +1218,16 @@ int goc_rdna4_v_cmpx_ge_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
                             uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
 
 // Floating-point class-mask bits; any combination may be supplied in B.
-static const uint32_t GOC_CLASS_SNAN = UINT32_C(1) << 0;
-static const uint32_t GOC_CLASS_QNAN = UINT32_C(1) << 1;
-static const uint32_t GOC_CLASS_NEG_INF = UINT32_C(1) << 2;
-static const uint32_t GOC_CLASS_NEG_NORMAL = UINT32_C(1) << 3;
-static const uint32_t GOC_CLASS_NEG_SUBNORMAL = UINT32_C(1) << 4;
-static const uint32_t GOC_CLASS_NEG_ZERO = UINT32_C(1) << 5;
-static const uint32_t GOC_CLASS_POS_ZERO = UINT32_C(1) << 6;
-static const uint32_t GOC_CLASS_POS_SUBNORMAL = UINT32_C(1) << 7;
-static const uint32_t GOC_CLASS_POS_NORMAL = UINT32_C(1) << 8;
-static const uint32_t GOC_CLASS_POS_INF = UINT32_C(1) << 9;
+static const uint32_t GOC_CLASS_SNAN = 1U << 0;
+static const uint32_t GOC_CLASS_QNAN = 1U << 1;
+static const uint32_t GOC_CLASS_NEG_INF = 1U << 2;
+static const uint32_t GOC_CLASS_NEG_NORMAL = 1U << 3;
+static const uint32_t GOC_CLASS_NEG_SUBNORMAL = 1U << 4;
+static const uint32_t GOC_CLASS_NEG_ZERO = 1U << 5;
+static const uint32_t GOC_CLASS_POS_ZERO = 1U << 6;
+static const uint32_t GOC_CLASS_POS_SUBNORMAL = 1U << 7;
+static const uint32_t GOC_CLASS_POS_NORMAL = 1U << 8;
+static const uint32_t GOC_CLASS_POS_INF = 1U << 9;
 
 // Classify A's raw encoding and test the corresponding bit of B's class mask.
 // CMP writes a scalar condition mask to d; CMPX writes the replacement EXEC
@@ -1257,7 +1257,7 @@ int goc_rdna4_v_cmpx_class_f64(uint64_t flags, uint32_t exec_mask, uint64_t inst
 // Interpolation wait-count field (0..7). Accepted for every interpolation
 // instruction; it has no effect on synchronous CPU execution.
 static const uint32_t GOC_INTERP_WAIT_EXP_SHIFT = 13;
-static const uint32_t GOC_INTERP_WAIT_EXP_MASK = UINT32_C(7) << 13;
+static const uint32_t GOC_INTERP_WAIT_EXP_MASK = 7U << 13;
 
 // Quad-local interpolation. For lane L and Q=L&~3, P10 computes
 // fma(A[Q+1],B[L],C[Q]); P2 computes fma(A[Q+2],B[L],C[L]). Source lanes are
@@ -1748,10 +1748,10 @@ int goc_rdna4_v_cvt_pk_u16_f32(uint64_t flags, uint32_t exec_mask, uint64_t inst
 // FP8/BF8 single-result conversion byte selector, an enumeration encoded in
 // instruction_flags bits 16-17. Byte 0 is the least significant byte of A for
 // widening, or of D for stochastic narrowing.
-static const uint32_t GOC_CVT_BYTE_0 = UINT32_C(0) << 16;
-static const uint32_t GOC_CVT_BYTE_1 = UINT32_C(1) << 16;
-static const uint32_t GOC_CVT_BYTE_2 = UINT32_C(2) << 16;
-static const uint32_t GOC_CVT_BYTE_3 = UINT32_C(3) << 16;
+static const uint32_t GOC_CVT_BYTE_0 = 0U << 16;
+static const uint32_t GOC_CVT_BYTE_1 = 1U << 16;
+static const uint32_t GOC_CVT_BYTE_2 = 2U << 16;
+static const uint32_t GOC_CVT_BYTE_3 = 3U << 16;
 
 // Single-result forms support DPP8/DPP16, permuting A before byte selection.
 // Packed two-result forms have no RDNA4 DPP encoding and reject DPP flags.
@@ -2285,44 +2285,44 @@ int goc_rdna4_v_pk_mad_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruct
                            const uint32_t *const *c);
 
 // Packed source negation: independent for the low and high result calculations.
-static const uint32_t GOC_PK_NEG_LO_A = UINT32_C(1) << 0;
-static const uint32_t GOC_PK_NEG_LO_B = UINT32_C(1) << 1;
-static const uint32_t GOC_PK_NEG_LO_C = UINT32_C(1) << 2;
-static const uint32_t GOC_PK_NEG_HI_A = UINT32_C(1) << 3;
-static const uint32_t GOC_PK_NEG_HI_B = UINT32_C(1) << 4;
-static const uint32_t GOC_PK_NEG_HI_C = UINT32_C(1) << 5;
+static const uint32_t GOC_PK_NEG_LO_A = 1U << 0;
+static const uint32_t GOC_PK_NEG_LO_B = 1U << 1;
+static const uint32_t GOC_PK_NEG_LO_C = 1U << 2;
+static const uint32_t GOC_PK_NEG_HI_A = 1U << 3;
+static const uint32_t GOC_PK_NEG_HI_B = 1U << 4;
+static const uint32_t GOC_PK_NEG_HI_C = 1U << 5;
 
 // Packed output clamp: floats to [0, 1], with NaNs and -0 to +0;
 // integer ADD/SUB/MAD saturate to their result range.
-static const uint32_t GOC_PK_CLAMP = UINT32_C(1) << 6;
+static const uint32_t GOC_PK_CLAMP = 1U << 6;
 
 // Packed half selectors flip the default choice for each result calculation.
 // Zero flags use low inputs for the low result and high inputs for the high one.
 // These flags can swap or replicate halves independently for each source.
-static const uint32_t GOC_PK_LO_A_HIGH = UINT32_C(1) << 7;
-static const uint32_t GOC_PK_LO_B_HIGH = UINT32_C(1) << 8;
-static const uint32_t GOC_PK_LO_C_HIGH = UINT32_C(1) << 9;
-static const uint32_t GOC_PK_HI_A_LOW = UINT32_C(1) << 10;
-static const uint32_t GOC_PK_HI_B_LOW = UINT32_C(1) << 11;
-static const uint32_t GOC_PK_HI_C_LOW = UINT32_C(1) << 12;
+static const uint32_t GOC_PK_LO_A_HIGH = 1U << 7;
+static const uint32_t GOC_PK_LO_B_HIGH = 1U << 8;
+static const uint32_t GOC_PK_LO_C_HIGH = 1U << 9;
+static const uint32_t GOC_PK_HI_A_LOW = 1U << 10;
+static const uint32_t GOC_PK_HI_B_LOW = 1U << 11;
+static const uint32_t GOC_PK_HI_C_LOW = 1U << 12;
 
 // Floating ALU source modifiers: ABS precedes NEG.
-static const uint32_t GOC_ALU_NEG_A = UINT32_C(1) << 0;
-static const uint32_t GOC_ALU_NEG_B = UINT32_C(1) << 1;
-static const uint32_t GOC_ALU_NEG_C = UINT32_C(1) << 2;
-static const uint32_t GOC_ALU_ABS_A = UINT32_C(1) << 3;
-static const uint32_t GOC_ALU_ABS_B = UINT32_C(1) << 4;
-static const uint32_t GOC_ALU_ABS_C = UINT32_C(1) << 5;
+static const uint32_t GOC_ALU_NEG_A = 1U << 0;
+static const uint32_t GOC_ALU_NEG_B = 1U << 1;
+static const uint32_t GOC_ALU_NEG_C = 1U << 2;
+static const uint32_t GOC_ALU_ABS_A = 1U << 3;
+static const uint32_t GOC_ALU_ABS_B = 1U << 4;
+static const uint32_t GOC_ALU_ABS_C = 1U << 5;
 
 // Floating ALU output scaling precedes CLAMP. OMOD is a two-bit enumeration:
 // none, multiply by 2, multiply by 4, divide by 2.
-static const uint32_t GOC_ALU_OMOD_2 = UINT32_C(1) << 6;
-static const uint32_t GOC_ALU_OMOD_4 = UINT32_C(2) << 6;
-static const uint32_t GOC_ALU_OMOD_HALF = UINT32_C(3) << 6;
+static const uint32_t GOC_ALU_OMOD_2 = 1U << 6;
+static const uint32_t GOC_ALU_OMOD_4 = 2U << 6;
+static const uint32_t GOC_ALU_OMOD_HALF = 3U << 6;
 
 // Result clamping where supported: floating results to [0,1] (NaNs become zero),
 // integer results to the representable signed/unsigned destination range.
-static const uint32_t GOC_ALU_CLAMP = UINT32_C(1) << 8;
+static const uint32_t GOC_ALU_CLAMP = 1U << 8;
 
 // Binary FP32 arithmetic: one VGPR per operand. OMOD flushes unscaled tiny
 // results to +0; halving a normal result below twice minimum normal gives
@@ -2619,16 +2619,16 @@ int goc_rdna4_v_add3_u32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 
 // True16 source/destination half selectors. Zero selects the low half.
 // DOT2 consumes both A/B halves and accepts only the C and D selectors.
-static const uint32_t GOC_ALU_HIGH_A = UINT32_C(1) << 9;
-static const uint32_t GOC_ALU_HIGH_B = UINT32_C(1) << 10;
-static const uint32_t GOC_ALU_HIGH_C = UINT32_C(1) << 11;
-static const uint32_t GOC_ALU_HIGH_D = UINT32_C(1) << 12;
+static const uint32_t GOC_ALU_HIGH_A = 1U << 9;
+static const uint32_t GOC_ALU_HIGH_B = 1U << 10;
+static const uint32_t GOC_ALU_HIGH_C = 1U << 11;
+static const uint32_t GOC_ALU_HIGH_D = 1U << 12;
 
 // Mixed FMA source formats: unset means FP32; set means FP16 in the half
 // selected by GOC_ALU_HIGH_A/B/C. Half selectors are ignored for FP32 sources.
-static const uint32_t GOC_MIX_F16_A = UINT32_C(1) << 13;
-static const uint32_t GOC_MIX_F16_B = UINT32_C(1) << 14;
-static const uint32_t GOC_MIX_F16_C = UINT32_C(1) << 15;
+static const uint32_t GOC_MIX_F16_A = 1U << 13;
+static const uint32_t GOC_MIX_F16_B = 1U << 14;
+static const uint32_t GOC_MIX_F16_C = 1U << 15;
 
 // Wave32 mixed FMA: one VGPR per operand; supports source ABS/NEG, source
 // format/half selectors, and CLAMP. DPP8/DPP16 permute A before format/half
@@ -2826,18 +2826,18 @@ int goc_rdna4_v_log_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
                         uint32_t *const *d, const uint32_t *const *a);
 
 // Floating DOT2 sign modifiers act after selecting each packed half.
-static const uint32_t GOC_DOT_NEG_LO_A = UINT32_C(1) << 0;
-static const uint32_t GOC_DOT_NEG_LO_B = UINT32_C(1) << 1;
-static const uint32_t GOC_DOT_NEG_C = UINT32_C(1) << 2;
-static const uint32_t GOC_DOT_NEG_HI_A = UINT32_C(1) << 3;
-static const uint32_t GOC_DOT_NEG_HI_B = UINT32_C(1) << 4;
+static const uint32_t GOC_DOT_NEG_LO_A = 1U << 0;
+static const uint32_t GOC_DOT_NEG_LO_B = 1U << 1;
+static const uint32_t GOC_DOT_NEG_C = 1U << 2;
+static const uint32_t GOC_DOT_NEG_HI_A = 1U << 3;
+static const uint32_t GOC_DOT_NEG_HI_B = 1U << 4;
 
 // Floating DOT2 half selection: defaults are low for term 0 and high for term 1.
 // These flags override those defaults; unlike raw op_sel_hi, zero means default.
-static const uint32_t GOC_DOT_LO_A_HIGH = UINT32_C(1) << 7;
-static const uint32_t GOC_DOT_LO_B_HIGH = UINT32_C(1) << 8;
-static const uint32_t GOC_DOT_HI_A_LOW = UINT32_C(1) << 9;
-static const uint32_t GOC_DOT_HI_B_LOW = UINT32_C(1) << 10;
+static const uint32_t GOC_DOT_LO_A_HIGH = 1U << 7;
+static const uint32_t GOC_DOT_LO_B_HIGH = 1U << 8;
+static const uint32_t GOC_DOT_HI_A_LOW = 1U << 9;
+static const uint32_t GOC_DOT_HI_B_LOW = 1U << 10;
 
 // DPP8/DPP16 permute the complete A word before sign and half selection;
 // B/C remain in their original lanes. Supported in loose and exact semantics.
@@ -2855,7 +2855,7 @@ int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint32_t exec_mask, uint64_t instr
 
 // FP8/BF8 DOT4 accepts NEG_C and ABS_C; ABS precedes NEG. A/B modifiers,
 // half selection, output scaling and CLAMP are not supported.
-static const uint32_t GOC_DOT_ABS_C = UINT32_C(1) << 5;
+static const uint32_t GOC_DOT_ABS_C = 1U << 5;
 
 // Wave32 DOT4: one VGPR each for A/B/C/D, four packed bytes per A/B lane;
 // C/D are FP32. FP8 is OCP E4M3FN, BF8 is OCP E5M2. Loose semantics only.
@@ -2878,9 +2878,9 @@ int goc_rdna4_v_dot4_f32_bf8_bf8(uint64_t flags, uint32_t exec_mask, uint64_t in
 // Integer DOT modifiers: SIGNED selects signed factors for I32_IU forms.
 // U32_U forms accept only CLAMP. CLAMP saturates the final accumulator to its
 // signed/unsigned 32-bit range; otherwise arithmetic wraps modulo 2^32.
-static const uint32_t GOC_DOT_SIGNED_A = UINT32_C(1) << 0;
-static const uint32_t GOC_DOT_SIGNED_B = UINT32_C(1) << 1;
-static const uint32_t GOC_DOT_CLAMP = UINT32_C(1) << 6;
+static const uint32_t GOC_DOT_SIGNED_A = 1U << 0;
+static const uint32_t GOC_DOT_SIGNED_B = 1U << 1;
+static const uint32_t GOC_DOT_CLAMP = 1U << 6;
 
 // Integer DOT wave32: one VGPR each for A/B/C/D. A/B contain four packed
 // bytes or eight packed nibbles. C/D are signed for I32_IU, unsigned for U32_U.
@@ -2903,15 +2903,15 @@ int goc_rdna4_v_dot8_u32_u4(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 
 // WMMA modifier layout follows neg_lo[0:2], then neg_hi[0:2]. For C,
 // neg_hi means absolute value, applied before neg_lo negation.
-static const uint32_t GOC_WMMA_NEG_LO_A = UINT32_C(1) << 0;
-static const uint32_t GOC_WMMA_NEG_LO_B = UINT32_C(1) << 1;
-static const uint32_t GOC_WMMA_NEG_C = UINT32_C(1) << 2;
-static const uint32_t GOC_WMMA_NEG_HI_A = UINT32_C(1) << 3;
-static const uint32_t GOC_WMMA_NEG_HI_B = UINT32_C(1) << 4;
-static const uint32_t GOC_WMMA_ABS_C = UINT32_C(1) << 5;
+static const uint32_t GOC_WMMA_NEG_LO_A = 1U << 0;
+static const uint32_t GOC_WMMA_NEG_LO_B = 1U << 1;
+static const uint32_t GOC_WMMA_NEG_C = 1U << 2;
+static const uint32_t GOC_WMMA_NEG_HI_A = 1U << 3;
+static const uint32_t GOC_WMMA_NEG_HI_B = 1U << 4;
+static const uint32_t GOC_WMMA_ABS_C = 1U << 5;
 
 // Sparse WMMA metadata selector. This bit selects the upper half of each index VGPR lane.
-static const uint32_t GOC_SWMMAC_INDEX_KEY_1 = UINT32_C(1) << 7;
+static const uint32_t GOC_SWMMAC_INDEX_KEY_1 = 1U << 7;
 
 // Wave32 16x16x16 WMMA: A/B each contain 4 VGPRs of packed 16-bit
 // elements; C/D each contain 8 VGPRs of FP32 elements. GoC applies exec_mask
@@ -2990,9 +2990,9 @@ int goc_rdna4_v_wmma_f32_16x16x16_bf8_bf8(uint64_t flags, uint32_t exec_mask,
 // Integer WMMA modifiers: NEG[0:1] select signed interpretation of A/B;
 // CLAMP saturates signed accumulation at instruction-specific stage boundaries;
 // without CLAMP, results wrap modulo 2^32.
-static const uint32_t GOC_WMMA_SIGNED_A = UINT32_C(1) << 0;
-static const uint32_t GOC_WMMA_SIGNED_B = UINT32_C(1) << 1;
-static const uint32_t GOC_WMMA_CLAMP = UINT32_C(1) << 6;
+static const uint32_t GOC_WMMA_SIGNED_A = 1U << 0;
+static const uint32_t GOC_WMMA_SIGNED_B = 1U << 1;
+static const uint32_t GOC_WMMA_CLAMP = 1U << 6;
 
 // Wave32 integer WMMA: C/D each hold 8 VGPRs. A/B each hold 2 VGPRs for
 // IU8 and K=32 IU4, or 1 VGPR for K=16 IU4. Supports loose and exact semantics,

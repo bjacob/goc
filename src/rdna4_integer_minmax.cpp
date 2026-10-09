@@ -39,7 +39,7 @@ int minmax(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
   uint32_t result[32];
   // Bias signed values into unsigned ordering, avoiding implementation-defined
   // uint32_t-to-int32_t conversions while preserving the selected input bits.
-  const uint32_t bias = Signed ? UINT32_C(0x80000000) : 0;
+  const uint32_t bias = Signed ? 0x80000000U : 0;
   for (int lane = 0; lane < 32; ++lane) {
     uint32_t x = a[0][lane] ^ bias, y = b[0][lane] ^ bias, z = 0, value;
     if constexpr (!binary)

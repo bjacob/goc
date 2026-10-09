@@ -166,14 +166,13 @@ TEST(Conversion16, ValidationAndSemanticFallback) {
           EXPECT_EQ(functions[op](cpu, 0, uint32_t(1) << bit, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), UINT32_MAX, 0, d, a),
-                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                               UINT32_MAX, 0, d, a),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, 0U, 0, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 1; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16), 0, input));
     }
@@ -304,12 +303,12 @@ TEST(Conversion16, DppHardwareCorpus) {
                   if ((word & 0x7fffffff) > 0x7f800000)
                     word = 0x7fc00000;
                 } else if (op != 2 && op != 3 && ((word >> shift) & 0x7fff) > 0x7c00) {
-                  word = (word & ~(UINT32_C(65535) << shift)) | (UINT32_C(0x7e00) << shift);
+                  word = (word & ~(65535U << shift)) | (0x7e00U << shift);
                 }
                 hash = goc_test::capture_hash_word(hash, word);
               }
             }
-    EXPECT_EQ(hash, UINT64_C(0x6e08f00f982b6b95));
+    EXPECT_EQ(hash, 0x6e08f00f982b6b95ULL);
   }
 }
 
@@ -319,7 +318,7 @@ TEST(Conversion16, DppValidation) {
       EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | (UINT64_C(1) << 36), nullptr, nullptr),
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
                               descriptor, nullptr, nullptr),

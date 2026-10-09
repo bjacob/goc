@@ -17,7 +17,7 @@ inline std::array<uint32_t, 4> sad_reference(int op, uint32_t a_low, uint32_t a_
   const bool packed = op == 5 || op == 6;
   const bool masked = op == 4 || op == 6 || op == 7;
   const int width = op == 3 ? 32 : op == 2 ? 16 : 8;
-  const uint64_t base = UINT64_C(1) << width;
+  const uint64_t base = 1ULL << width;
   const uint64_t a = a_low + (uint64_t(a_high) << 32);
   std::array<uint32_t, 4> result{};
   for (int window = 0; window < (op >= 5 ? 4 : 1); ++window) {

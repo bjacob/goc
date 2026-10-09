@@ -21,7 +21,7 @@ int minmax3(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                               return minmax3<Op, FirstMaximum, SecondMaximum, Propagate>(
                                   flags, effective, uint32_t(mode), d, source, b, c);
                             });
-  if (int error = goc::validate(flags, mode & ~UINT32_C(0x1fff)))
+  if (int error = goc::validate(flags, mode & ~0x1fffU))
     return error;
   if (mask == 0)
     return GOC_SUCCESS;
@@ -51,8 +51,7 @@ int minmax3(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
   }
   for (int lane = 0; lane < 32; ++lane)
     if ((mask >> lane) & 1)
-      d[0][lane] =
-          (d[0][lane] & ~(UINT32_C(0xffff) << d_shift)) | (uint32_t(result[lane]) << d_shift);
+      d[0][lane] = (d[0][lane] & ~(0xffffU << d_shift)) | (uint32_t(result[lane]) << d_shift);
   return GOC_SUCCESS;
 }
 

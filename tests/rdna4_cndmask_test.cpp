@@ -110,7 +110,7 @@ TEST(Cndmask, InvalidFlagsAndHostFpState) {
   ASSERT_TRUE(saved.saved());
   for (unsigned half = 0; half < 2; ++half) {
     uint32_t known = goc_test::cndmask_mode(half ? 127 : 15);
-    EXPECT_EQ(functions[half](0, UINT32_C(0), known, nullptr, nullptr, nullptr, 0), GOC_SUCCESS);
+    EXPECT_EQ(functions[half](0, 0U, known, nullptr, nullptr, nullptr, 0), GOC_SUCCESS);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!(known & (1u << bit))) {
         EXPECT_EQ(functions[half](0, 0, 1u << bit, nullptr, nullptr, nullptr, 0),
@@ -207,7 +207,7 @@ TEST(Cndmask, DppValidation) {
   for (auto fn : functions)
     for (auto descriptor : goc_test::dpp_modes) {
       EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr, UINT32_MAX), GOC_SUCCESS);
-      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 6})
+      for (auto invalid : {1ULL << 36, 1ULL << 6})
         EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, UINT32_MAX),
                   GOC_ERROR_INVALID_FLAGS);
     }
@@ -247,7 +247,7 @@ TEST(Cndmask, DppHardwareCorpusAndHostFpState) {
                 for (auto word : output)
                   hash = goc_test::capture_hash_word(hash, word);
               }
-      EXPECT_EQ(hash, UINT64_C(0x237a7524109b1925)) << cpu;
+      EXPECT_EQ(hash, 0x237a7524109b1925ULL) << cpu;
       EXPECT_EQ(std::fegetround(), rounding);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_DIVBYZERO);
     }

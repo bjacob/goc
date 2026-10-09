@@ -80,7 +80,7 @@ int ternary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
         d[0][lane] = result[lane];
       } else {
         int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-        d[0][lane] = (d[0][lane] & ~(UINT32_C(65535) << shift)) | (result[lane] << shift);
+        d[0][lane] = (d[0][lane] & ~(65535U << shift)) | (result[lane] << shift);
       }
     }
   return GOC_SUCCESS;

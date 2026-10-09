@@ -17,7 +17,7 @@ int execute(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                             [&](uint32_t effective, const uint32_t *const *source) {
                               return execute<Op>(flags, effective, uint32_t(mode), d, source, b, c);
                             });
-  if (int error = goc::validate(flags, mode & ~UINT32_C(0x1ff), true))
+  if (int error = goc::validate(flags, mode & ~0x1ffU, true))
     return error;
   if (!mask)
     return GOC_SUCCESS;

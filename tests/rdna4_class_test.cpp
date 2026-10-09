@@ -11,6 +11,7 @@
 #include <cfenv>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <stdint.h>
 
 #if defined(__x86_64__) || defined(_M_X64)
@@ -84,10 +85,11 @@ TEST(Class, DppValidationAndZeroExec) {
   for (unsigned op = 0; op < 6; ++op)
     for (uint64_t descriptor : goc_test::dpp_modes) {
       uint32_t result = 0xdeadbeef;
-      EXPECT_EQ(functions[op](0, UINT32_C(0), descriptor, &result, nullptr, nullptr),
+      EXPECT_EQ(functions[op](0, 0U, descriptor, &result, nullptr, nullptr),
                 op < 4 ? GOC_SUCCESS : GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(result, op < 4 ? 0u : 0xdeadbeef);
-      for (uint64_t invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_NEG_B)}) {
+      for (uint64_t invalid :
+           std::initializer_list<uint64_t>{1ULL << 36, uint64_t(GOC_ALU_NEG_B)}) {
         result = 0xdeadbeef;
         EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | invalid, &result, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
@@ -106,7 +108,7 @@ TEST(Class, DppHardwareCorpus) {
   const uint32_t masks[] = {UINT32_MAX, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-    for (uint64_t semantics : {UINT64_C(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
+    for (uint64_t semantics : {uint64_t{0}, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
       uint64_t hash = goc_test::capture_hash_seed;
       for (bool flush : {true, false})
         for (unsigned batch = 0; batch < 4; ++batch)
@@ -126,7 +128,7 @@ TEST(Class, DppHardwareCorpus) {
                       GOC_SUCCESS);
                   hash = goc_test::capture_hash_word(hash, result);
                 }
-      EXPECT_EQ(hash, UINT64_C(0xb8f5447c269df6e5)) << cpu << "/" << semantics;
+      EXPECT_EQ(hash, 0xb8f5447c269df6e5ULL) << cpu << "/" << semantics;
     }
 }
 
@@ -231,7 +233,7 @@ TEST(Class, ValidationAndCompleteHostFpState) {
   ASSERT_TRUE(saved.saved());
   for (unsigned op = 0; op < 6; ++op) {
     uint32_t known = goc_test::class_mode(op < 2 ? 15 : 3), result = 1;
-    EXPECT_EQ(functions[op](0, UINT32_C(0), known, &result, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(functions[op](0, 0U, known, &result, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(result, 0u);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!(known & (1u << bit))) {

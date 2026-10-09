@@ -59,7 +59,7 @@ uint64_t expected(bool fp64, uint64_t input, int exponent, uint32_t mode) {
 }
 
 bool nan_bits(bool fp64, uint64_t bits) {
-  return fp64 ? (bits & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000)
+  return fp64 ? (bits & 0x7fffffffffffffffULL) > 0x7ff0000000000000ULL
               : (bits & 0x7fffffff) > 0x7f800000;
 }
 
@@ -69,8 +69,8 @@ TEST(Ldexp, AllModifiersMasksAndAliases) {
   const int aliases[][2] = {{3, 4}, {0, 1}, {2, 0}, {1, 0}, {0, 2}, {2, 1}, {3, 3}};
   for (int fp64 = 0; fp64 < 2; ++fp64) {
     const int width = fp64 ? 52 : 23, bias = fp64 ? 1023 : 127;
-    const uint64_t sign = UINT64_C(1) << (fp64 ? 63 : 31);
-    const uint64_t normal = UINT64_C(1) << width, inf = uint64_t(2 * bias + 1) << width;
+    const uint64_t sign = 1ULL << (fp64 ? 63 : 31);
+    const uint64_t normal = 1ULL << width, inf = uint64_t(2 * bias + 1) << width;
     const uint64_t values[] = {0,
                                sign,
                                1,
@@ -125,10 +125,10 @@ TEST(Ldexp, AllModifiersMasksAndAliases) {
 TEST(Ldexp, EveryExponentBoundaryAndRandomValues) {
   for (int fp64 = 0; fp64 < 2; ++fp64) {
     int width = fp64 ? 52 : 23, bias = fp64 ? 1023 : 127, max_field = 2 * bias + 1;
-    uint64_t sign = UINT64_C(1) << (fp64 ? 63 : 31), fraction = (UINT64_C(1) << width) - 1;
+    uint64_t sign = 1ULL << (fp64 ? 63 : 31), fraction = (1ULL << width) - 1;
     std::vector<std::pair<uint64_t, int>> cases;
     for (int field = 0; field <= max_field; ++field)
-      for (uint64_t tail : {UINT64_C(0), UINT64_C(1), fraction})
+      for (uint64_t tail : std::initializer_list<uint64_t>{0ULL, 1ULL, fraction})
         for (int target : {-width - 1, -width, -1, 0, 1, max_field - 1, max_field}) {
           uint64_t input = (uint64_t(field) << width) | tail;
           cases.emplace_back(input, target - field);
@@ -136,7 +136,7 @@ TEST(Ldexp, EveryExponentBoundaryAndRandomValues) {
         }
     for (int bit = 0; bit < width; ++bit)
       for (int power : {-1, 0, 1, width, bias, 2 * bias, INT32_MIN, INT32_MAX})
-        cases.emplace_back(UINT64_C(1) << bit, power);
+        cases.emplace_back(1ULL << bit, power);
     std::mt19937_64 random(905);
     for (int i = 0; i < 2048; ++i)
       cases.emplace_back(random() & (fp64 ? UINT64_MAX : UINT32_MAX),
@@ -163,7 +163,7 @@ TEST(Ldexp, EveryExponentBoundaryAndRandomValues) {
             uint64_t got = d[0][lane] | (fp64 ? uint64_t(d[1][lane]) << 32 : 0);
             if (nan_bits(fp64, want)) {
               EXPECT_TRUE(nan_bits(fp64, got));
-              EXPECT_NE(got & (UINT64_C(1) << (width - 1)), 0u);
+              EXPECT_NE(got & (1ULL << (width - 1)), 0u);
             } else {
               EXPECT_EQ(got, want);
             }
@@ -214,11 +214,11 @@ TEST(Ldexp, LiteralRoundingAndValidation) {
       }
       for (auto &reg : d)
         std::fill(reg, reg + 32, 0xdeadbeef);
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         for (uint32_t invalid :
-             {GOC_ALU_NEG_B, GOC_ALU_ABS_B, GOC_ALU_NEG_C, GOC_ALU_HIGH_D, UINT32_C(1) << 31})
+             {GOC_ALU_NEG_B, GOC_ALU_ABS_B, GOC_ALU_NEG_C, GOC_ALU_HIGH_D, 1U << 31})
           EXPECT_EQ(functions[fp64](cpu, mask, invalid, pd, pa, &pb), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(functions[fp64](cpu | (UINT64_C(1) << 63), mask, 0, pd, pa, &pb),
+        EXPECT_EQ(functions[fp64](cpu | (1ULL << 63), mask, 0, pd, pa, &pb),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask,
                                   0, pd, pa, &pb),
@@ -267,7 +267,7 @@ TEST(Ldexp, DppHardwareCorpus) {
             hash = goc_test::capture_hash_word(hash, word);
           }
         }
-    EXPECT_EQ(hash, UINT64_C(0x78ec29fe61dad845));
+    EXPECT_EQ(hash, 0x78ec29fe61dad845ULL);
   }
 }
 
@@ -321,9 +321,8 @@ TEST(Ldexp, DppValidation) {
     EXPECT_EQ(functions[0](0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(
-        functions[0](0, UINT32_MAX, descriptor | (UINT64_C(1) << 36), nullptr, nullptr, nullptr),
-        GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(functions[0](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
                            descriptor, nullptr, nullptr, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);

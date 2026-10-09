@@ -57,7 +57,7 @@ TEST(DppInteger16Ternary, HardwareCorpus) {
             hash = goc_test::capture_hash_word(hash, d[lane]);
           }
         }
-    EXPECT_EQ(hash, UINT64_C(0x23356104e21b067d));
+    EXPECT_EQ(hash, 0x23356104e21b067dULL);
   }
 }
 
@@ -107,14 +107,14 @@ TEST(DppInteger16Ternary, ValidationAndHostFpState) {
   for (unsigned op = 0; op < 8; ++op)
     for (uint64_t mode : modes(op)) {
       auto fn = goc_test::integer16_ternary_functions[op];
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         if (op >= 2) {
           EXPECT_EQ(fn(0, mask, mode | GOC_ALU_CLAMP, nullptr, nullptr, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
         }
         EXPECT_EQ(fn(0, mask, mode | GOC_ALU_NEG_A, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(UINT64_C(1) << 63, mask, mode, nullptr, nullptr, nullptr, nullptr),
+        EXPECT_EQ(fn(1ULL << 63, mask, mode, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, mode, nullptr,
                      nullptr, nullptr, nullptr),

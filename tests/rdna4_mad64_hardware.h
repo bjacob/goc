@@ -14,31 +14,31 @@ static const uint32_t mad64_capture_factors[16] = {
     0x00000000, 0x00000001, 0x00000002, 0x00000003, 0x7fffffff, 0x80000000, 0x80000001, 0xfffffffd,
     0xfffffffe, 0xffffffff, 0x00010000, 0x0000ffff, 0x55555555, 0xaaaaaaaa, 0x12345678, 0xfedcba98};
 
-static const uint64_t mad64_capture_addends[16] = {UINT64_C(0x0),
-                                                   UINT64_C(0x1),
-                                                   UINT64_C(0x2),
-                                                   UINT64_C(0x7fffffffffffffff),
-                                                   UINT64_C(0x8000000000000000),
-                                                   UINT64_C(0x8000000000000001),
-                                                   UINT64_C(0xfffffffffffffffd),
-                                                   UINT64_C(0xfffffffffffffffe),
-                                                   UINT64_C(0xffffffffffffffff),
-                                                   UINT64_C(0xffffffff),
-                                                   UINT64_C(0x100000000),
-                                                   UINT64_C(0x3fffffffffffffff),
-                                                   UINT64_C(0x4000000000000000),
-                                                   UINT64_C(0xc000000000000000),
-                                                   UINT64_C(0x123456789abcdef),
-                                                   UINT64_C(0xfedcba9876543210)};
+static const uint64_t mad64_capture_addends[16] = {0x0ULL,
+                                                   0x1ULL,
+                                                   0x2ULL,
+                                                   0x7fffffffffffffffULL,
+                                                   0x8000000000000000ULL,
+                                                   0x8000000000000001ULL,
+                                                   0xfffffffffffffffdULL,
+                                                   0xfffffffffffffffeULL,
+                                                   0xffffffffffffffffULL,
+                                                   0xffffffffULL,
+                                                   0x100000000ULL,
+                                                   0x3fffffffffffffffULL,
+                                                   0x4000000000000000ULL,
+                                                   0xc000000000000000ULL,
+                                                   0x123456789abcdefULL,
+                                                   0xfedcba9876543210ULL};
 
 static const uint64_t mad64_capture_digests[2][2][3] = {
     {
-        {UINT64_C(0x62e0069d77fbd9f5), UINT64_C(0x8c92311ad95ffaa5), UINT64_C(0x38a8f6ad5b220b25)},
-        {UINT64_C(0x3834f2f66712f5d6), UINT64_C(0xe12215bb422ca8a0), UINT64_C(0x38a8f6ad5b220b25)},
+        {0x62e0069d77fbd9f5ULL, 0x8c92311ad95ffaa5ULL, 0x38a8f6ad5b220b25ULL},
+        {0x3834f2f66712f5d6ULL, 0xe12215bb422ca8a0ULL, 0x38a8f6ad5b220b25ULL},
     },
     {
-        {UINT64_C(0xd3e48e222cc97653), UINT64_C(0xc8bb4d206fae18be), UINT64_C(0x38a8f6ad5b220b25)},
-        {UINT64_C(0x8522468f5505e686), UINT64_C(0xd0a1a128efe8be32), UINT64_C(0x38a8f6ad5b220b25)},
+        {0xd3e48e222cc97653ULL, 0xc8bb4d206fae18beULL, 0x38a8f6ad5b220b25ULL},
+        {0x8522468f5505e686ULL, 0xd0a1a128efe8be32ULL, 0x38a8f6ad5b220b25ULL},
     },
 };
 

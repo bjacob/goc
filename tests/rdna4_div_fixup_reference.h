@@ -17,16 +17,15 @@ inline long double fixup_decode(unsigned width, uint64_t raw) {
            bias = width == 16   ? 15
                   : width == 32 ? 127
                                 : 1023;
-  uint64_t sign = UINT64_C(1) << (width - 1), mantissa = raw & ((UINT64_C(1) << fraction) - 1);
+  uint64_t sign = 1ULL << (width - 1), mantissa = raw & ((1ULL << fraction) - 1);
   unsigned exponent = unsigned((raw & (sign - 1)) >> fraction);
   long double value;
   if (exponent == 2 * bias + 1)
     value = mantissa ? std::numeric_limits<long double>::quiet_NaN()
                      : std::numeric_limits<long double>::infinity();
   else
-    value =
-        std::ldexp(static_cast<long double>(mantissa + (exponent ? (UINT64_C(1) << fraction) : 0)),
-                   int(exponent ? exponent : 1) - int(bias) - int(fraction));
+    value = std::ldexp(static_cast<long double>(mantissa + (exponent ? (1ULL << fraction) : 0)),
+                       int(exponent ? exponent : 1) - int(bias) - int(fraction));
   return raw & sign ? -value : value;
 }
 
@@ -39,8 +38,8 @@ inline uint64_t fixup_reference(unsigned width, uint64_t a, uint64_t b, uint64_t
            bias = width == 16   ? 15
                   : width == 32 ? 127
                                 : 1023;
-  uint64_t sign_bit = UINT64_C(1) << (width - 1), infinity = uint64_t(2 * bias + 1) << fraction,
-           quiet = UINT64_C(1) << (fraction - 1);
+  uint64_t sign_bit = 1ULL << (width - 1), infinity = uint64_t(2 * bias + 1) << fraction,
+           quiet = 1ULL << (fraction - 1);
   uint64_t raw[] = {a, b, c};
   for (unsigned i = 0; i < 3; ++i) {
     if (mode & (GOC_ALU_ABS_A << i))
@@ -99,7 +98,7 @@ inline uint64_t fixup_reference(unsigned width, uint64_t a, uint64_t b, uint64_t
           long double mantissa = std::frexp(std::fabs(output), &exponent);
           uint64_t significand = uint64_t(std::ldexp(mantissa, int(fraction) + 1));
           result = output_sign | (uint64_t(exponent + int(bias) - 1) << fraction) |
-                   (significand - (UINT64_C(1) << fraction));
+                   (significand - (1ULL << fraction));
         }
       }
     }

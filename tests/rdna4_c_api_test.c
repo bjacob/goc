@@ -36,12 +36,12 @@ int goc_test_c_api(void) {
                                input_vgprs(&pb), input_vgprs(&pc));
   if (status != GOC_SUCCESS || d[0] != 0x41d00000)
     return 0;
-  status = goc_rdna4_v_fma_f32(GOC_CPU_BASELINE, 1, UINT32_C(1) << 31, &pd, input_vgprs(&pa),
+  status = goc_rdna4_v_fma_f32(GOC_CPU_BASELINE, 1, 1U << 31, &pd, input_vgprs(&pa),
                                input_vgprs(&pb), input_vgprs(&pc));
   if (status != GOC_ERROR_INVALID_FLAGS || d[0] != 0x41d00000)
     return 0;
 
-  status = goc_rdna4_v_fma_f32(0, 1, UINT64_C(1) << 63, &pd, input_vgprs(&pa), input_vgprs(&pb),
+  status = goc_rdna4_v_fma_f32(0, 1, 1ULL << 63, &pd, input_vgprs(&pa), input_vgprs(&pb),
                                input_vgprs(&pc));
   if (status != GOC_ERROR_INVALID_FLAGS || d[0] != 0x41d00000)
     return 0;

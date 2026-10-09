@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
 #include <stdint.h>
 
@@ -76,7 +77,7 @@ TEST(Dpp8, HardwareCorpus) {
                 hash = goc_test::capture_hash_word(hash, d[lane]);
               }
             }
-    EXPECT_EQ(hash, UINT64_C(0x3c27b0cc204f2325));
+    EXPECT_EQ(hash, 0x3c27b0cc204f2325ULL);
   }
 }
 
@@ -136,14 +137,14 @@ TEST(Dpp8, InvalidFlagsAndSemantics) {
     uint32_t d[32];
     std::fill_n(d, 32, 0x12345678);
     uint32_t *pd = d;
-    for (uint64_t mode : {GOC_DPP_FI, GOC_DPP8_SELECT_MASK, GOC_DPP8 | (UINT64_C(1) << 34),
-                          GOC_DPP8 | (UINT64_C(1) << 31)})
+    for (uint64_t mode : std::initializer_list<uint64_t>{
+             GOC_DPP_FI, GOC_DPP8_SELECT_MASK, GOC_DPP8 | (1ULL << 34), GOC_DPP8 | (1ULL << 31)})
       EXPECT_EQ(call(accumulate, 0, UINT32_MAX, mode, &pd, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(call(accumulate, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
                    GOC_DPP8, &pd, nullptr, nullptr, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(call(accumulate, UINT64_C(1) << 63, 0, GOC_DPP8, &pd, nullptr, nullptr, nullptr),
+    EXPECT_EQ(call(accumulate, 1ULL << 63, 0, GOC_DPP8, &pd, nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
     if (accumulate) {
       EXPECT_EQ(call(true, 0, UINT32_MAX, GOC_DPP8 | GOC_ALU_NEG_C, &pd, nullptr, nullptr, nullptr),

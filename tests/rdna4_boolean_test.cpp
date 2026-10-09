@@ -112,13 +112,13 @@ TEST(Boolean, ValidationBeforeEmptyMaskAndUnchangedOutputs) {
       const uint32_t *a[] = {words[0]}, *b[] = {words[1]};
       uint32_t *d[] = {words[2]};
       uint32_t known = goc_test::boolean_mode(op, 7);
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit)
           if (!(known & (uint32_t(1) << bit))) {
             EXPECT_EQ(goc_test::boolean_functions[op](cpu, mask, uint32_t(1) << bit, d, a, b),
                       GOC_ERROR_INVALID_FLAGS);
           }
-        EXPECT_EQ(goc_test::boolean_functions[op](cpu | (UINT64_C(1) << 63), mask, known, d, a, b),
+        EXPECT_EQ(goc_test::boolean_functions[op](cpu | (1ULL << 63), mask, known, d, a, b),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(goc_test::boolean_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
                                                       GOC_SEMANTICS_STRICT,

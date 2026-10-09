@@ -47,7 +47,7 @@ TEST(DppArithmetic, HardwareCorpus) {
               hash = goc_test::capture_hash_word(hash, d[lane]);
             }
           }
-    EXPECT_EQ(hash, UINT64_C(0xc028318d5f87d325));
+    EXPECT_EQ(hash, 0xc028318d5f87d325ULL);
   }
 }
 
@@ -91,7 +91,7 @@ TEST(DppArithmetic, OmodBoundaryHardware) {
               hash = goc_test::capture_hash_word(hash, d[lane]);
             }
           }
-    EXPECT_EQ(hash, UINT64_C(0x3fb5391fac1f8c9e));
+    EXPECT_EQ(hash, 0x3fb5391fac1f8c9eULL);
   }
 }
 
@@ -144,11 +144,11 @@ TEST(DppArithmetic, ModifiersMasksAliasesAndSpecialValues) {
 TEST(DppArithmetic, ValidationBeforeOperandAccess) {
   for (unsigned op = 0; op < 18; ++op)
     for (uint64_t descriptor : goc_test::dpp_modes) {
-      EXPECT_EQ(goc_test::dpp_arithmetic_call(op, 0, UINT32_MAX, descriptor | (UINT64_C(1) << 31),
-                                              nullptr, nullptr, nullptr, nullptr),
+      EXPECT_EQ(goc_test::dpp_arithmetic_call(op, 0, UINT32_MAX, descriptor | (1ULL << 31), nullptr,
+                                              nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(goc_test::dpp_arithmetic_call(op, UINT64_C(1) << 63, UINT32_MAX, descriptor,
-                                              nullptr, nullptr, nullptr, nullptr),
+      EXPECT_EQ(goc_test::dpp_arithmetic_call(op, 1ULL << 63, UINT32_MAX, descriptor, nullptr,
+                                              nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(
           goc_test::dpp_arithmetic_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,

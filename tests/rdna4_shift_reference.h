@@ -18,7 +18,7 @@ inline uint64_t shift_reference(int bits, int op, uint32_t count, uint64_t input
                  : source >= bits && op == 2  ? (input >> (bits - 1)) & 1
                                               : false;
     if (value)
-      result |= UINT64_C(1) << bit;
+      result |= 1ULL << bit;
   }
   return result;
 }

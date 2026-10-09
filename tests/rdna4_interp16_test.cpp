@@ -125,8 +125,7 @@ TEST(Interp16, ValidationAndRestoredHostRounding) {
   std::fesetround(FE_TONEAREST);
   for (unsigned op = 0; op < 4; ++op) {
     uint32_t known = goc_test::interp16_mode(op, 63, 7);
-    EXPECT_EQ(functions[op](0, UINT32_C(0), known, nullptr, nullptr, nullptr, nullptr),
-              GOC_SUCCESS);
+    EXPECT_EQ(functions[op](0, 0U, known, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!(known & (1u << bit))) {
         EXPECT_EQ(functions[op](0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr),

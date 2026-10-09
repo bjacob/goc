@@ -20,7 +20,7 @@ template <bool Bf16, int WaveSize = 32, bool Packed = false>
 int wmma(uint64_t flags, goc::ExecMask<WaveSize> mask, uint32_t instruction_flags,
          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
          const uint32_t *const *c) {
-  if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(63), true))
+  if (int error = goc::validate(flags, instruction_flags & ~63U, true))
     return error;
   if (mask == 0)
     return GOC_SUCCESS;

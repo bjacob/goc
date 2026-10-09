@@ -184,14 +184,13 @@ TEST(Normalized, ValidationAndSemanticFallback) {
           EXPECT_EQ(functions[op](cpu, 0, 1u << bit, nullptr, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), UINT32_MAX, 0, d, a, a),
-                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a, a), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                               UINT32_MAX, 0, d, a, a),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeefu);
-      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, 0U, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 0; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16), 0, input, input));
     }
@@ -260,7 +259,7 @@ TEST(Normalized, DppValidation) {
   for (auto fn : functions)
     for (auto descriptor : goc_test::dpp_modes) {
       EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      EXPECT_EQ(fn(0, 0, descriptor | (UINT64_C(1) << 36), nullptr, nullptr, nullptr),
+      EXPECT_EQ(fn(0, 0, descriptor | (1ULL << 36), nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
     }
 }
@@ -292,6 +291,6 @@ TEST(Normalized, DppHardwareCorpus) {
             for (auto word : output)
               hash = goc_test::capture_hash_word(hash, word);
           }
-    EXPECT_EQ(hash, UINT64_C(0x711fcd0f84aa5615)) << cpu;
+    EXPECT_EQ(hash, 0x711fcd0f84aa5615ULL) << cpu;
   }
 }

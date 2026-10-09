@@ -125,8 +125,7 @@ TEST(Minmax3, Validation) {
     EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_D, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, &pd, &pa, &pa, &pa),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_C(0), 0x1ff, &pd, &pa, &pa, &pa),
-              GOC_SUCCESS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0U, 0x1ff, &pd, &pa, &pa, &pa), GOC_SUCCESS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0xdeadbeef);
   }

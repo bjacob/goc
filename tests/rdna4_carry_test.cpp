@@ -166,8 +166,7 @@ TEST(Carry, ValidationAndZeroExec) {
       EXPECT_EQ(carry, 0x12345678);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(fn(cpu | exact, UINT32_C(0), 0, nullptr, &carry, nullptr, nullptr, UINT32_MAX),
-                GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu | exact, 0U, 0, nullptr, &carry, nullptr, nullptr, UINT32_MAX), GOC_SUCCESS);
       EXPECT_EQ(carry, 0u);
       carry = 0x12345678;
       EXPECT_EQ(
@@ -227,14 +226,13 @@ TEST(Carry, DppValidationAndZeroExec) {
   for (auto fn : goc_test::carry_functions)
     for (auto descriptor : goc_test::dpp_modes) {
       uint32_t carry = 0x12345678;
-      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1)})
-        for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (auto invalid : {1ULL << 36, 1ULL})
+        for (uint32_t mask : {0U, UINT32_MAX}) {
           EXPECT_EQ(fn(0, mask, descriptor | invalid, nullptr, &carry, nullptr, nullptr, 0),
                     GOC_ERROR_INVALID_FLAGS);
           EXPECT_EQ(carry, 0x12345678u);
         }
-      EXPECT_EQ(fn(0, UINT32_C(0), descriptor, nullptr, &carry, nullptr, nullptr, UINT32_MAX),
-                GOC_SUCCESS);
+      EXPECT_EQ(fn(0, 0U, descriptor, nullptr, &carry, nullptr, nullptr, UINT32_MAX), GOC_SUCCESS);
       EXPECT_EQ(carry, 0u);
     }
 }
@@ -274,7 +272,7 @@ TEST(Carry, DppHardwareCorpusAndHostFpState) {
                     hash = goc_test::capture_hash_word(hash, word);
                   hash = goc_test::capture_hash_word(hash, carry);
                 }
-        EXPECT_EQ(hash, UINT64_C(0x8c738ac66b29e6ad)) << cpu << "/" << semantics;
+        EXPECT_EQ(hash, 0x8c738ac66b29e6adULL) << cpu << "/" << semantics;
         EXPECT_EQ(std::fegetround(), rounding);
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
       }

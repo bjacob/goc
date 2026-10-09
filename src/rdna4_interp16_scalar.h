@@ -44,7 +44,7 @@ inline uint16_t interp16_rtz_half(uint32_t a, uint32_t b, uint32_t c, bool clamp
     uint64_t bits = double_bits(interp16_round_odd(a, b, c));
     unsigned exponent = unsigned((bits >> 52) & 2047);
     uint16_t sign = uint16_t((bits >> 48) & 0x8000);
-    uint64_t significand = (bits & UINT64_C(0xfffffffffffff)) | (UINT64_C(1) << 52);
+    uint64_t significand = (bits & 0xfffffffffffffULL) | (1ULL << 52);
     if (exponent < 999)
       result = sign;
     else if (exponent > 1038)

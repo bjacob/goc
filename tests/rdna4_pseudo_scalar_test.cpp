@@ -106,7 +106,7 @@ TEST(PseudoScalar, ValidationSemanticsAndHostRounding) {
                   GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, known, &d, 0),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(d, 0xdeadbeef);
-    EXPECT_EQ(goc_test::pseudo_scalar_functions[op](UINT64_C(1) << 63, 0, known, &d, 0),
+    EXPECT_EQ(goc_test::pseudo_scalar_functions[op](1ULL << 63, 0, known, &d, 0),
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(d, 0xdeadbeef);
     EXPECT_EQ(goc_test::pseudo_scalar_functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, 0, known, &d,

@@ -85,7 +85,7 @@ int binary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
       if constexpr (Packed)
         d[0][lane] = result[lane];
       else
-        d[0][lane] = (d[0][lane] & ~(UINT32_C(0xffff) << d_shift)) | (result[lane] << d_shift);
+        d[0][lane] = (d[0][lane] & ~(0xffffU << d_shift)) | (result[lane] << d_shift);
     }
   return GOC_SUCCESS;
 }

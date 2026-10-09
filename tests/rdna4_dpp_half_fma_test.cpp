@@ -34,7 +34,7 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
   // Gfx1201: 32 operation/modifier combinations x seven DPP descriptors
   // x eight EXEC masks x 32 lanes.
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-    for (uint64_t sem : {UINT64_C(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
+    for (uint64_t sem : {uint64_t{0}, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
       uint64_t hash = goc_test::capture_hash_seed;
       for (uint32_t mask :
            {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
@@ -69,19 +69,19 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
 TEST(DppHalfFma, HardwareCorpus) {
   const uint32_t values[] = {0x3c00bc00u, 0xc0004000u, 0x38003400u, 0xb800b400u,
                              0x44004200u, 0xc400c200u, 0x3a003600u, 0xba00b600u};
-  hardware_corpus(values, UINT64_C(0xdef3376de08ee575));
+  hardware_corpus(values, 0xdef3376de08ee575ULL);
 }
 
 TEST(DppHalfFma, HardwareOmodBoundaries) {
   const uint32_t values[] = {0x00018001u, 0x03ff83ffu, 0x04008400u, 0x04018401u,
                              0x08008800u, 0x3c00bc00u, 0x00008000u, 0x7bfffbffu};
-  hardware_corpus(values, UINT64_C(0xc762700924a242d2));
+  hardware_corpus(values, 0xc762700924a242d2ULL);
 }
 
 TEST(DppHalfFma, MasksAliasesAndRandomWords) {
   const unsigned layouts[][3] = {{0, 1, 2}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-    for (uint64_t sem : {UINT64_C(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
+    for (uint64_t sem : {uint64_t{0}, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
       for (unsigned op = 0; op < 2; ++op)
         for (uint64_t mode : modes(op))
           for (uint32_t mask : rdna4_exec_masks())
@@ -132,7 +132,7 @@ TEST(DppHalfFma, Validation) {
     for (uint64_t mode : modes(op)) {
       auto fn = goc_test::half_fma_functions[op];
       EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         if (op == 1) {
           for (uint32_t invalid : {GOC_ALU_NEG_C, GOC_ALU_ABS_C, GOC_ALU_HIGH_C})
             EXPECT_EQ(fn(0, mask, mode | invalid, nullptr, nullptr, nullptr, nullptr),
@@ -142,18 +142,18 @@ TEST(DppHalfFma, Validation) {
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(0, mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(UINT64_C(1) << 63, mask, mode, nullptr, nullptr, nullptr, nullptr),
+        EXPECT_EQ(fn(1ULL << 63, mask, mode, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn((UINT64_C(2) << 16) | GOC_SEMANTICS_STRICT, mask, mode, nullptr, nullptr,
-                     nullptr, nullptr),
-                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(
+            fn((2ULL << 16) | GOC_SEMANTICS_STRICT, mask, mode, nullptr, nullptr, nullptr, nullptr),
+            GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
     }
 }
 
 TEST(DppHalfFma, EveryModifierAndOverflowMode) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-    for (uint64_t sem : {UINT64_C(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
+    for (uint64_t sem : {uint64_t{0}, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
       for (unsigned op = 0; op < 2; ++op)
         for (bool saturate : {false, true})
           for (unsigned variant = 0; variant < 8192; ++variant)
@@ -206,7 +206,7 @@ TEST(DppHalfFma, ExactPreservesHostEnvironment) {
           for (unsigned lane = 0; lane < 32; ++lane) {
             expected[lane] = words[3][lane];
             int source;
-            if (goc_test::dpp_source(mode, UINT32_C(0xaaaaaaaa), lane, source))
+            if (goc_test::dpp_source(mode, 0xaaaaaaaaU, lane, source))
               expected[lane] =
                   goc_test::half_fma_result(op, source < 0 ? 0 : words[0][source], words[1][lane],
                                             words[2][lane], uint32_t(mode), words[3][lane]);
@@ -215,9 +215,9 @@ TEST(DppHalfFma, ExactPreservesHostEnvironment) {
           ASSERT_EQ(std::fesetround(rounding), 0);
           ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
           ASSERT_EQ(std::feraiseexcept(FE_DIVBYZERO), 0);
-          ASSERT_EQ(goc_test::half_fma_functions[op](
-                        cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                        UINT32_C(0xaaaaaaaa), mode, p + 3, p, p + 1, p + 2),
+          ASSERT_EQ(goc_test::half_fma_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                                         GOC_SEMANTICS_STRICT,
+                                                     0xaaaaaaaaU, mode, p + 3, p, p + 1, p + 2),
                     GOC_SUCCESS);
           EXPECT_EQ(std::fegetround(), rounding);
           EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);

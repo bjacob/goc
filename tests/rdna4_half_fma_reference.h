@@ -27,8 +27,8 @@ inline Number decode(uint16_t bits) {
 inline uint64_t rounded_shift(uint64_t bits, int shift) {
   if (shift <= 0)
     return bits << -shift;
-  uint64_t tail = bits & ((UINT64_C(1) << shift) - 1);
-  uint64_t midpoint = UINT64_C(1) << (shift - 1);
+  uint64_t tail = bits & ((1ULL << shift) - 1);
+  uint64_t midpoint = 1ULL << (shift - 1);
   return (bits >> shift) + (tail > midpoint || (tail == midpoint && ((bits >> shift) & 1)));
 }
 
@@ -91,7 +91,7 @@ inline uint16_t evaluate(uint32_t a, uint32_t b, uint32_t c, uint32_t mode, bool
     unsigned omod = (mode >> 6) & 3;
     if (omod) {
       // Active OMOD flushes before packing at 2^-14 - 2^-26.
-      bool tiny = grid < -26 ? sum.magnitude < (UINT64_C(4095) << (-26 - grid))
+      bool tiny = grid < -26 ? sum.magnitude < (4095ULL << (-26 - grid))
                              : (sum.magnitude << (grid + 26)) < 4095;
       if (tiny)
         result = 0;

@@ -131,7 +131,7 @@ TEST(Interp32, SpecialValuesAndRandomBits) {
 TEST(Interp32, ValidationAndEmptyExec) {
   uint32_t known = goc_test::interp32_mode(15, 7);
   for (Fn fn : functions) {
-    EXPECT_EQ(fn(0, UINT32_C(0), known, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, 0U, known, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!(known & (1u << bit))) {
         EXPECT_EQ(fn(0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);

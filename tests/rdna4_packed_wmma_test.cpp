@@ -68,8 +68,8 @@ TEST(PackedWmma, HardwareMatricesMasksOverlapAndHostState) {
     for (bool bf16 : {false, true})
       for (int fixture = 0; fixture < 7; ++fixture)
         for (int dst : {0, 4, 8, 12})
-          for (uint64_t mask : {UINT64_C(0), UINT64_C(1) << 32, UINT64_C(1) << 63,
-                                UINT64_C(0xa55a0123fedc9876), UINT64_MAX})
+          for (uint64_t mask : std::initializer_list<uint64_t>{0ULL, 1ULL << 32, 1ULL << 63,
+                                                               0xa55a0123fedc9876ULL, UINT64_MAX})
             for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
               Registers r;
               load(r, kPackedInputs[bf16][fixture], width);
@@ -160,7 +160,7 @@ TEST(PackedWmma, EveryModifierCombinationAndValidation) {
         uint32_t old = r.v[12][0];
         EXPECT_EQ(function(width, bf16)(0, UINT64_MAX, 64, r.v + 12, r.v, r.v + 4, r.v + 8),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(function(width, bf16)((UINT64_C(2) << 16) | GOC_SEMANTICS_STRICT, UINT64_MAX, 0,
+        EXPECT_EQ(function(width, bf16)((2ULL << 16) | GOC_SEMANTICS_STRICT, UINT64_MAX, 0,
                                         r.v + 12, r.v, r.v + 4, r.v + 8),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
         EXPECT_EQ(r.v[12][0], old);

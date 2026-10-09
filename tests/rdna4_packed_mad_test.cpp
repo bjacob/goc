@@ -141,7 +141,7 @@ TEST(PackedMad, ValidationAndFloatingEnvironment) {
       words[3][i] = 0x76543210;
     std::memcpy(saved, words[3], sizeof(saved));
     for (uint32_t invalid : {GOC_PK_NEG_LO_A, GOC_PK_NEG_LO_B, GOC_PK_NEG_LO_C, GOC_PK_NEG_HI_A,
-                             GOC_PK_NEG_HI_B, GOC_PK_NEG_HI_C, UINT32_C(0x80000000)}) {
+                             GOC_PK_NEG_HI_B, GOC_PK_NEG_HI_C, 0x80000000U}) {
       EXPECT_EQ(fn(0, UINT32_MAX, invalid, p + 3, p, p + 1, p + 2), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(0, 0, invalid, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
     }
@@ -149,9 +149,8 @@ TEST(PackedMad, ValidationAndFloatingEnvironment) {
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr,
                  nullptr, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(fn(UINT64_C(1) << 63, 0, 0, nullptr, nullptr, nullptr, nullptr),
-              GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(0, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(1ULL << 63, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(0, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
     goc_test::ScopedFpEnvironment environment;
     ASSERT_TRUE(environment.saved());
     std::fesetround(FE_UPWARD);

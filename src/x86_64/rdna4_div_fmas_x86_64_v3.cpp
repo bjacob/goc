@@ -35,9 +35,7 @@ struct Ops {
 
   static Mask gt(V a, V b) { return _mm256_cmpgt_epi64(a, b); }
 
-  static Mask ugt(V a, V b) {
-    return gt(bxor(a, set(UINT64_C(1) << 63)), bxor(b, set(UINT64_C(1) << 63)));
-  }
+  static Mask ugt(V a, V b) { return gt(bxor(a, set(1ULL << 63)), bxor(b, set(1ULL << 63))); }
 
   static Mask both(Mask a, Mask b) { return band(a, b); }
 

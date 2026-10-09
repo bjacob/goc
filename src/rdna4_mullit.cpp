@@ -17,7 +17,7 @@ int goc_rdna4_v_mullit_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
         flags, exec_mask, instruction_flags, a, [&](uint32_t mask, const uint32_t *const *source) {
           return goc_rdna4_v_mullit_f32(flags, mask, uint32_t(instruction_flags), d, source, b, c);
         });
-  if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(0x1ff)))
+  if (int error = goc::validate(flags, instruction_flags & ~0x1ffU))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;

@@ -63,9 +63,9 @@ TEST(ScalarCompare, EveryBitIndexAndModuloCount) {
     for (unsigned bit = 0; bit < width; ++bit)
       for (unsigned index = 0; index < 256; ++index) {
         uint32_t scc;
-        ASSERT_EQ(goc_test::scalar_compare_call(op, 0, 0, 0, &scc, UINT64_C(1) << bit,
-                                                0xffff0000u | index),
-                  GOC_SUCCESS);
+        ASSERT_EQ(
+            goc_test::scalar_compare_call(op, 0, 0, 0, &scc, 1ULL << bit, 0xffff0000u | index),
+            GOC_SUCCESS);
         EXPECT_EQ(scc, unsigned(unsigned(bit == index % width) == wanted));
       }
   }
@@ -86,7 +86,7 @@ TEST(ScalarCompare, NaNsZerosDenormalsAndUnsigned64) {
   EXPECT_EQ(scc, 1u);
   ASSERT_EQ(goc_rdna4_s_cmp_nlg_f32(0, 0, 0, &scc, 0x7f800001, 0), GOC_SUCCESS);
   EXPECT_EQ(scc, 1u);
-  ASSERT_EQ(goc_rdna4_s_cmp_eq_u64(0, 0, 0, &scc, UINT64_C(0x100000000), 0), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cmp_eq_u64(0, 0, 0, &scc, 0x100000000ULL, 0), GOC_SUCCESS);
   EXPECT_EQ(scc, 0u);
   ASSERT_EQ(goc_rdna4_s_cmp_lg_u64(0, 0, 0, &scc, UINT64_MAX, UINT64_MAX), GOC_SUCCESS);
   EXPECT_EQ(scc, 0u);
@@ -105,7 +105,7 @@ TEST(ScalarCompare, ErrorsAndHostFpEnvironment) {
       for (unsigned bit = 0; bit < 32; ++bit)
         EXPECT_EQ(goc_test::scalar_compare_call(op, 0, 0, 1u << bit, &scc, 0, 0),
                   GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(goc_test::scalar_compare_call(op, UINT64_C(1) << 63, 0, 0, &scc, 0, 0),
+      EXPECT_EQ(goc_test::scalar_compare_call(op, 1ULL << 63, 0, 0, &scc, 0, 0),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(scc, 123u);
       EXPECT_EQ(goc_test::scalar_compare_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &scc,

@@ -60,15 +60,15 @@ TEST(Unary, ValidationAndEmptyMask) {
     uint32_t a[32] = {}, d[32];
     std::fill(d, d + 32, 0xdeadbeef);
     auto pa = a, pd = d;
-    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+    for (uint32_t mask : {0U, UINT32_MAX}) {
       EXPECT_EQ(fn(0, mask, GOC_ALU_ABS_B, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(0, mask, 1u << 31, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(UINT64_C(1) << 63, mask, 0, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(1ULL << 63, mask, 0, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &pd, &pa),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &pd, &pa), GOC_SUCCESS);
-    EXPECT_EQ(fn(0, UINT32_C(0), GOC_ALU_NEG_A, &pd, &pa), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, 0U, GOC_ALU_NEG_A, &pd, &pa), GOC_SUCCESS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0xdeadbeef);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &pd, &pa), GOC_SUCCESS);

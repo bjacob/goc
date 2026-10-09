@@ -12,8 +12,8 @@ namespace {
 template <bool Bf16, bool Modified>
 void wmma(uint32_t mask, uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
           const uint32_t *const *b, const uint32_t *const *c) {
-  const uint32_t a_sign = ((modifiers & GOC_WMMA_NEG_LO_A) ? UINT32_C(0x8000) : 0) |
-                          ((modifiers & GOC_WMMA_NEG_HI_A) ? UINT32_C(0x80000000) : 0);
+  const uint32_t a_sign = ((modifiers & GOC_WMMA_NEG_LO_A) ? 0x8000U : 0) |
+                          ((modifiers & GOC_WMMA_NEG_HI_A) ? 0x80000000U : 0);
   // Decode B once for all output rows. Each input word holds two consecutive
   // K elements; columns occupy consecutive lanes within each half-wave.
   alignas(32) float right[16][16];

@@ -502,17 +502,17 @@ bool benchmark_integer_mul(uint64_t cpu, int iterations, int min_ms) {
         r.data[0][lane] = uint32_t(a);
         r.data[4][lane] = uint32_t(b);
         bool signed_op = op == 2 || op == 3 || op == 4;
-        uint64_t modulus = UINT64_C(1) << (op < 3 ? 32 : 24);
+        uint64_t modulus = 1ULL << (op < 3 ? 32 : 24);
         a %= modulus;
         b %= modulus;
         bool na = signed_op && a >= modulus / 2, nb = signed_op && b >= modulus / 2;
         uint64_t product = (na ? modulus - a : a) * (nb ? modulus - b : b);
         if (clamp)
           product =
-              std::min(product, signed_op ? (na != nb ? UINT64_C(0x80000000) : UINT64_C(0x7fffffff))
-                                          : uint64_t(UINT32_MAX));
+              std::min<uint64_t>(product, signed_op ? (na != nb ? 0x80000000ULL : 0x7fffffffULL)
+                                                    : uint64_t(UINT32_MAX));
         if (na != nb)
-          product = UINT64_C(0) - product;
+          product = 0ULL - product;
         bool high = op == 1 || op == 2 || op == 4 || op == 6;
         r.expected[128 * (lane / 16) + lane % 16] = uint32_t(high ? product >> 32 : product);
       }
@@ -565,7 +565,7 @@ bool benchmark_half_binary(uint64_t cpu, int iterations, int min_ms) {
   const uint32_t modified = GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D | GOC_ALU_ABS_A |
                             GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   for (int op = 0; op < 8; ++op)
-    for (uint32_t mode : {UINT32_C(0), modified}) {
+    for (uint32_t mode : {0U, modified}) {
       Registers r;
       r.output_regs = 1;
       for (int lane = 0; lane < 32; ++lane) {
@@ -746,10 +746,10 @@ bool benchmark_ldexp(uint64_t cpu, int iterations, int min_ms) {
   const int powers[] = {-2, -1, 1, 2};
   for (int fp64 = 0; fp64 < 2; ++fp64)
     for (int descriptor : {-1, 0, 5})
-      for (uint32_t low : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+      for (uint32_t low : {0U, GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
         if (fp64 && descriptor >= 0)
           continue;
-        uint64_t mode = low | (descriptor < 0 ? UINT64_C(0) : goc_test::dpp_modes[descriptor]);
+        uint64_t mode = low | (descriptor < 0 ? 0ULL : goc_test::dpp_modes[descriptor]);
         Registers r;
         r.output_regs = fp64 ? 2 : 1;
         for (int lane = 0; lane < 32; ++lane) {
@@ -812,17 +812,16 @@ bool benchmark_ldexp(uint64_t cpu, int iterations, int min_ms) {
 bool benchmark_frexp_exp(uint64_t cpu, int iterations, int min_ms) {
   using Unary = decltype(&goc_rdna4_v_frexp_exp_i32_f32);
   const Unary functions[] = {goc_rdna4_v_frexp_exp_i32_f32, goc_rdna4_v_frexp_exp_i32_f64};
-  const uint64_t inputs[][4] = {{0x3e800000, 0xbf800000, 0x40800000, 0x41800000},
-                                {UINT64_C(0x3fd0000000000000), UINT64_C(0xbff0000000000000),
-                                 UINT64_C(0x4010000000000000), UINT64_C(0x4030000000000000)}};
+  const uint64_t inputs[][4] = {
+      {0x3e800000, 0xbf800000, 0x40800000, 0x41800000},
+      {0x3fd0000000000000ULL, 0xbff0000000000000ULL, 0x4010000000000000ULL, 0x4030000000000000ULL}};
   const int exponents[] = {-1, 1, 3, 5};
   for (int fp64 = 0; fp64 < 2; ++fp64)
     for (int descriptor : {-1, 0, 5})
-      for (uint32_t low :
-           {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+      for (uint32_t low : {0U, GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
         if (fp64 && descriptor >= 0)
           continue;
-        uint64_t mode = low | (descriptor < 0 ? UINT64_C(0) : goc_test::dpp_modes[descriptor]);
+        uint64_t mode = low | (descriptor < 0 ? 0ULL : goc_test::dpp_modes[descriptor]);
         Registers r;
         r.output_regs = 1;
         for (int lane = 0; lane < 32; ++lane) {
@@ -960,8 +959,8 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
                              {2, 1, 0.5f, 0.25f}, {1, 2, 4, 16},       {-2, 0, 2, 4},
                              {0.25f, 0, 0, 0},    {0.5, 0.5, 0.5, 0.5}};
   for (int op = 0; op < 11; ++op)
-    for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D |
-                                                GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+    for (uint32_t modifiers : {0U, GOC_ALU_ABS_A | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D |
+                                       GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
       r.output_regs = 1;
       for (int lane = 0; lane < 32; ++lane) {
@@ -1275,7 +1274,7 @@ bool benchmark_sad(uint64_t cpu, int iterations, int min_ms) {
                          "v_msad_u8", "v_qsad_pk_u16_u8", "v_mqsad_pk_u16_u8", "v_mqsad_u32_u8"};
   for (int op = 0; op < 8; ++op)
     for (int descriptor : {-1, 0, 5})
-      for (uint32_t modifier : {UINT32_C(0), GOC_ALU_CLAMP}) {
+      for (uint32_t modifier : {0U, GOC_ALU_CLAMP}) {
         if (op >= 5 && descriptor >= 0)
           continue;
         uint64_t mode = modifier;
@@ -1338,7 +1337,7 @@ bool benchmark_shift(uint64_t cpu, int iterations, int min_ms) {
     r.output_regs = width / 32;
     std::mt19937 random(861);
     for (int lane = 0; lane < 32; ++lane) {
-      r.data[0][lane] = (random() & ~UINT32_C(63)) | uint32_t((lane * 7) % 64);
+      r.data[0][lane] = (random() & ~63U) | uint32_t((lane * 7) % 64);
       r.data[4][lane] = random();
       r.data[5][lane] = random();
       uint64_t value = r.data[4][lane] | (uint64_t(r.data[5][lane]) << 32);
@@ -1375,8 +1374,8 @@ bool benchmark_half_trig(uint64_t cpu, int iterations, int min_ms) {
   const Unary functions[] = {goc_rdna4_v_sin_f16, goc_rdna4_v_cos_f16};
   const char *names[] = {"v_sin_f16", "v_cos_f16"};
   for (int op = 0; op < 2; ++op)
-    for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D |
-                                                GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP})
+    for (uint32_t modifiers :
+         {0U, GOC_ALU_NEG_A | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP})
       for (int descriptor : {-1, 0, 5}) {
         uint64_t instruction_flags =
             modifiers | (descriptor < 0 ? 0 : goc_test::dpp_modes[descriptor]);
@@ -1438,7 +1437,7 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
   const Unary functions[] = {goc_rdna4_v_sin_f32, goc_rdna4_v_cos_f32};
   const char *names[] = {"v_sin_f32", "v_cos_f32"};
   for (int op = 0; op < 2; ++op)
-    for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP})
+    for (uint32_t modifiers : {0U, GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP})
       for (int descriptor : {-1, 0, 5}) {
         uint64_t instruction_flags =
             modifiers | (descriptor < 0 ? 0 : goc_test::dpp_modes[descriptor]);
@@ -1881,7 +1880,7 @@ bool benchmark_dpp_half_minmax(uint64_t cpu, int iterations, int min_ms) {
                                               r.data[8][lane], uint32_t(mode), false);
           unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
           r.expected[128 * (lane / 16) + lane % 16] =
-              (r.data[16][lane] & ~(UINT32_C(65535) << shift)) | (value << shift);
+              (r.data[16][lane] & ~(65535U << shift)) | (value << shift);
         }
         auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
@@ -1992,7 +1991,7 @@ bool benchmark_dpp_half_unary(uint64_t cpu, int iterations, int min_ms) {
                                                           uint32_t(mode), false);
           unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
           r.expected[128 * (lane / 16) + lane % 16] =
-              (r.data[16][lane] & ~(UINT32_C(65535) << shift)) | (value << shift);
+              (r.data[16][lane] & ~(65535U << shift)) | (value << shift);
         }
         auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
@@ -2047,7 +2046,7 @@ bool benchmark_dpp_half_binary(uint64_t cpu, int iterations, int min_ms) {
                                                            r.data[4][lane], uint32_t(mode), false);
           unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
           r.expected[128 * (lane / 16) + lane % 16] =
-              (r.data[16][lane] & ~(UINT32_C(65535) << shift)) | (value << shift);
+              (r.data[16][lane] & ~(65535U << shift)) | (value << shift);
         }
         auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
@@ -2894,16 +2893,16 @@ bool benchmark_scalar_field(int iterations, int min_ms) {
   };
 
   // GFX1201 capture: input pair 9999, incoming SCC 1.
-  const uint64_t gold[20][2] = {{UINT64_C(0x0), 0u},        {UINT64_C(0x0), 0u},
-                                {UINT64_C(0x0), 0u},        {UINT64_C(0x0), 0u},
-                                {UINT64_C(0xc0000000), 1u}, {UINT64_C(0xc000000000000000), 1u},
-                                {UINT64_C(0x12), 1u},       {UINT64_C(0x23), 1u},
-                                {UINT64_C(0xe), 1u},        {UINT64_C(0x1d), 1u},
-                                {UINT64_C(0x1), 1u},        {UINT64_C(0x1), 1u},
-                                {UINT64_C(0x3), 1u},        {UINT64_C(0x2), 1u},
-                                {UINT64_C(0x3), 1u},        {UINT64_C(0x2), 1u},
-                                {UINT64_C(0x1b842d72), 1u}, {UINT64_C(0x35f600bc1b842d72), 1u},
-                                {UINT64_C(0x5b842d72), 1u}, {UINT64_C(0x75f600bc1b842d72), 1u}};
+  const uint64_t gold[20][2] = {{0x0ULL, 0u},        {0x0ULL, 0u},
+                                {0x0ULL, 0u},        {0x0ULL, 0u},
+                                {0xc0000000ULL, 1u}, {0xc000000000000000ULL, 1u},
+                                {0x12ULL, 1u},       {0x23ULL, 1u},
+                                {0xeULL, 1u},        {0x1dULL, 1u},
+                                {0x1ULL, 1u},        {0x1ULL, 1u},
+                                {0x3ULL, 1u},        {0x2ULL, 1u},
+                                {0x3ULL, 1u},        {0x2ULL, 1u},
+                                {0x1b842d72ULL, 1u}, {0x35f600bc1b842d72ULL, 1u},
+                                {0x5b842d72ULL, 1u}, {0x75f600bc1b842d72ULL, 1u}};
   uint32_t words[4];
   goc_test::scalar_field_inputs(9999, words);
   const uint64_t a = (uint64_t(words[1]) << 32) | words[0];
@@ -2970,17 +2969,17 @@ bool benchmark_scalar_pack(int iterations, int min_ms) {
   };
 
   // GFX1201 capture: input pair 333, incoming SCC 1.
-  const uint64_t gold[11][2] = {{UINT64_C(0xc3cc5f78), 1u},
-                                {UINT64_C(0x6b8c5f78), 1u},
-                                {UINT64_C(0xc3cc6b4e), 1u},
-                                {UINT64_C(0x6b8c6b4e), 1u},
-                                {UINT64_C(0x3ccf30fc33ff3fc0), 1u},
-                                {UINT64_C(0x6b4e5f78), 1u},
-                                {UINT64_C(0xfe3996de6b4e5f78), 1u},
-                                {UINT64_C(0xff), 1u},
-                                {UINT64_C(0xffff), 1u},
-                                {UINT64_C(0xffffffff), 1u},
-                                {UINT64_C(0xffffffffffffffff), 1u}};
+  const uint64_t gold[11][2] = {{0xc3cc5f78ULL, 1u},
+                                {0x6b8c5f78ULL, 1u},
+                                {0xc3cc6b4eULL, 1u},
+                                {0x6b8c6b4eULL, 1u},
+                                {0x3ccf30fc33ff3fc0ULL, 1u},
+                                {0x6b4e5f78ULL, 1u},
+                                {0xfe3996de6b4e5f78ULL, 1u},
+                                {0xffULL, 1u},
+                                {0xffffULL, 1u},
+                                {0xffffffffULL, 1u},
+                                {0xffffffffffffffffULL, 1u}};
   uint32_t words[4];
   goc_test::scalar_integer_inputs(333, words);
   const uint64_t a = (uint64_t(words[1]) << 32) | words[0];
@@ -3018,21 +3017,21 @@ bool benchmark_scalar_bits(int iterations, int min_ms) {
   };
 
   // GFX1201 capture: input pair 333, incoming SCC 1.
-  const uint64_t gold[30][2] = {{UINT64_C(0x6b0c4348), 1u}, {UINT64_C(0x2a3880da6b0c4348), 1u},
-                                {UINT64_C(0x6bcedffc), 1u}, {UINT64_C(0xfefbffde6bcedffc), 1u},
-                                {UINT64_C(0xc29cb4), 1u},   {UINT64_C(0xd4c37f0400c29cb4), 1u},
-                                {UINT64_C(0x94f3bcb7), 1u}, {UINT64_C(0xd5c77f2594f3bcb7), 1u},
-                                {UINT64_C(0x94312003), 1u}, {UINT64_C(0x104002194312003), 1u},
-                                {UINT64_C(0xff3d634b), 1u}, {UINT64_C(0x2b3c80fbff3d634b), 1u},
-                                {UINT64_C(0x421c30), 1u},   {UINT64_C(0xd401160400421c30), 1u},
-                                {UINT64_C(0xff7f7f7b), 1u}, {UINT64_C(0xff3d96ffff7f7f7b), 1u},
-                                {UINT64_C(0x94b1a087), 1u}, {UINT64_C(0x1c6692194b1a087), 1u},
-                                {UINT64_C(0x1efa72d6), 1u}, {UINT64_C(0x1efa72d67b699c7f), 1u},
-                                {UINT64_C(0xe5f78000), 1u}, {UINT64_C(0x996de6b4e5f78000), 1u},
-                                {UINT64_C(0x6b4e5), 1u},    {UINT64_C(0xfe3996de6b4e5), 1u},
-                                {UINT64_C(0x6b4e5), 1u},    {UINT64_C(0xffffe3996de6b4e5), 1u},
-                                {UINT64_C(0x422982bc), 1u}, {UINT64_C(0x18c641ac), 1u},
-                                {UINT64_C(0xc5ffbf8c), 1u}, {UINT64_C(0x2072bb4c), 1u}};
+  const uint64_t gold[30][2] = {{0x6b0c4348ULL, 1u}, {0x2a3880da6b0c4348ULL, 1u},
+                                {0x6bcedffcULL, 1u}, {0xfefbffde6bcedffcULL, 1u},
+                                {0xc29cb4ULL, 1u},   {0xd4c37f0400c29cb4ULL, 1u},
+                                {0x94f3bcb7ULL, 1u}, {0xd5c77f2594f3bcb7ULL, 1u},
+                                {0x94312003ULL, 1u}, {0x104002194312003ULL, 1u},
+                                {0xff3d634bULL, 1u}, {0x2b3c80fbff3d634bULL, 1u},
+                                {0x421c30ULL, 1u},   {0xd401160400421c30ULL, 1u},
+                                {0xff7f7f7bULL, 1u}, {0xff3d96ffff7f7f7bULL, 1u},
+                                {0x94b1a087ULL, 1u}, {0x1c6692194b1a087ULL, 1u},
+                                {0x1efa72d6ULL, 1u}, {0x1efa72d67b699c7fULL, 1u},
+                                {0xe5f78000ULL, 1u}, {0x996de6b4e5f78000ULL, 1u},
+                                {0x6b4e5ULL, 1u},    {0xfe3996de6b4e5ULL, 1u},
+                                {0x6b4e5ULL, 1u},    {0xffffe3996de6b4e5ULL, 1u},
+                                {0x422982bcULL, 1u}, {0x18c641acULL, 1u},
+                                {0xc5ffbf8cULL, 1u}, {0x2072bb4cULL, 1u}};
   uint32_t words[4];
   goc_test::scalar_integer_inputs(333, words);
   const uint64_t a = (uint64_t(words[1]) << 32) | words[0];
@@ -3070,26 +3069,26 @@ bool benchmark_scalar_integer(int iterations, int min_ms) {
   };
 
   // GFX1201 capture: input pair 42, incoming SCC 1, literal -1.
-  const uint64_t gold[20][2] = {{UINT64_C(0x0), 1u},
-                                {UINT64_C(0xfffffffc), 0u},
-                                {UINT64_C(0x0), 0u},
-                                {UINT64_C(0xfffffffc), 0u},
-                                {UINT64_C(0x1), 1u},
-                                {UINT64_C(0xfffffffb), 0u},
-                                {UINT64_C(0x2), 1u},
-                                {UINT64_C(0x4), 1u},
-                                {UINT64_C(0xfffffffe), 1u},
-                                {UINT64_C(0x2), 0u},
-                                {UINT64_C(0x2), 0u},
-                                {UINT64_C(0xfffffffe), 1u},
-                                {UINT64_C(0xfffffffc), 1u},
-                                {UINT64_C(0x1), 1u},
-                                {UINT64_C(0xffffffff), 1u},
-                                {UINT64_C(0x8000000000000000), 1u},
-                                {UINT64_C(0x7ffffffffffffffc), 1u},
-                                {UINT64_C(0xfffffffffffffffc), 1u},
-                                {UINT64_C(0xfffffffd), 0u},
-                                {UINT64_C(0x2), 1u}};
+  const uint64_t gold[20][2] = {{0x0ULL, 1u},
+                                {0xfffffffcULL, 0u},
+                                {0x0ULL, 0u},
+                                {0xfffffffcULL, 0u},
+                                {0x1ULL, 1u},
+                                {0xfffffffbULL, 0u},
+                                {0x2ULL, 1u},
+                                {0x4ULL, 1u},
+                                {0xfffffffeULL, 1u},
+                                {0x2ULL, 0u},
+                                {0x2ULL, 0u},
+                                {0xfffffffeULL, 1u},
+                                {0xfffffffcULL, 1u},
+                                {0x1ULL, 1u},
+                                {0xffffffffULL, 1u},
+                                {0x8000000000000000ULL, 1u},
+                                {0x7ffffffffffffffcULL, 1u},
+                                {0xfffffffffffffffcULL, 1u},
+                                {0xfffffffdULL, 0u},
+                                {0x2ULL, 1u}};
   uint32_t words[4];
   goc_test::scalar_integer_inputs(42, words);
   const uint64_t a = (uint64_t(words[1]) << 32) | words[0];
@@ -3756,7 +3755,7 @@ bool benchmark_mad64(uint64_t cpu, int iterations, int min_ms) {
   };
 
   const uint32_t factors[] = {0, 1, 0x7fffffff, 0x80000000, 0xfffffffe, UINT32_MAX};
-  const uint64_t addends[] = {0, 1, UINT64_MAX >> 1, UINT64_C(1) << 63, UINT64_MAX - 1, UINT64_MAX};
+  const uint64_t addends[] = {0, 1, UINT64_MAX >> 1, 1ULL << 63, UINT64_MAX - 1, UINT64_MAX};
   const uint64_t semantics = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
   for (unsigned op = 0; op < 2; ++op)
     for (bool clamp : {false, true}) {
@@ -3887,16 +3886,15 @@ bool benchmark_div_fmas(uint64_t cpu, int iterations, int min_ms) {
       Registers r;
       r.output_regs = op ? 2 : 1;
       unsigned fraction = op ? 52 : 23, bias = op ? 1023 : 127;
-      uint64_t sign = UINT64_C(1) << (op ? 63 : 31);
+      uint64_t sign = 1ULL << (op ? 63 : 31);
       uint32_t mode = modified ? GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_ABS_B | GOC_ALU_NEG_C |
                                      GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP
                                : 0;
       for (unsigned lane = 0; lane < 32; ++lane)
         for (unsigned operand = 0; operand < 3; ++operand) {
           int exponent = int(bias) + int((lane * 3 + operand * 5) % 19) - 9;
-          uint64_t raw =
-              (uint64_t(exponent) << fraction) |
-              ((UINT64_C(0x123456789ab) * (lane + operand + 1)) & ((UINT64_C(1) << fraction) - 1));
+          uint64_t raw = (uint64_t(exponent) << fraction) |
+                         ((0x123456789abULL * (lane + operand + 1)) & ((1ULL << fraction) - 1));
           if ((lane + operand) & 1)
             raw |= sign;
           r.data[4 * operand][lane] = uint32_t(raw);
@@ -3955,7 +3953,7 @@ bool benchmark_div_scale(uint64_t cpu, int iterations, int min_ms) {
       ScaleRegisters r;
       r.output_regs = op ? 2 : 1;
       unsigned fraction = op ? 52 : 23, bias = op ? 1023 : 127, threshold = op ? 768 : 96;
-      uint64_t sign = UINT64_C(1) << (op ? 63 : 31);
+      uint64_t sign = 1ULL << (op ? 63 : 31);
       unsigned exponents[] = {0,           1,        fraction,         fraction + 1, bias - 1,
                               bias,        bias + 1, bias + threshold, 2 * bias - 1, 2 * bias,
                               2 * bias + 1};
@@ -4030,14 +4028,14 @@ bool benchmark_div_fixup(uint64_t cpu, int iterations, int min_ms) {
           mode |= GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D;
         if (descriptor >= 0)
           mode |= goc_test::dpp_modes[descriptor];
-        uint64_t fp = modified ? GOC_FP16_OVFL : 0, sign = UINT64_C(1) << (widths[op] - 1),
+        uint64_t fp = modified ? GOC_FP16_OVFL : 0, sign = 1ULL << (widths[op] - 1),
                  one = uint64_t(biases[op]) << fractions[op],
                  inf = uint64_t(2 * biases[op] + 1) << fractions[op];
         uint64_t values[] = {0,
                              sign,
                              one,
                              one | sign,
-                             one + (UINT64_C(1) << fractions[op]),
+                             one + (1ULL << fractions[op]),
                              inf - 1,
                              inf,
                              sign | inf,
@@ -4045,9 +4043,9 @@ bool benchmark_div_fixup(uint64_t cpu, int iterations, int min_ms) {
                              inf | 1,
                              one + 1,
                              one - 1,
-                             one + (UINT64_C(1) << (fractions[op] - 1)),
+                             one + (1ULL << (fractions[op] - 1)),
                              sign | 1,
-                             inf - (UINT64_C(1) << fractions[op]),
+                             inf - (1ULL << fractions[op]),
                              inf | sign | 3};
         Registers r;
         r.output_regs = op == 2 ? 2 : 1;
@@ -4859,7 +4857,7 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
                              {2, 1, 0.5f, 0.25f}, {1, 2, 4, 16},       {-2, 0, 2, 4},
                              {0.25f, 0, 0, 0},    {0.5, 0.5, 0.5, 0.5}};
   for (int op = 0; op < 11; ++op)
-    for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+    for (uint32_t modifiers : {0U, GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
       r.output_regs = 1;
       for (int lane = 0; lane < 32; ++lane) {
@@ -4905,8 +4903,7 @@ bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
                          "v_mul_f32",     "v_min_num_f32", "v_max_num_f32",
                          "v_minimum_f32", "v_maximum_f32", "v_mul_dx9_zero_f32"};
   for (int op = 0; op < 9; ++op)
-    for (uint32_t mode :
-         {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+    for (uint32_t mode : {0U, GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
       r.output_regs = 1;
       for (int lane = 0; lane < 32; ++lane) {
@@ -5418,9 +5415,9 @@ bool benchmark_fmac(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_half_fma(uint64_t cpu, int iterations, int min_ms) {
-  for (uint32_t mode : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C |
-                                         GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
-                                         GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D}) {
+  for (uint32_t mode :
+       {0U, GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP |
+                GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D}) {
     Registers r;
     r.output_regs = 1;
     for (int lane = 0; lane < 32; ++lane) {
@@ -5473,9 +5470,9 @@ bool benchmark_half_minmax3(uint64_t cpu, int iterations, int min_ms) {
                          "v_maxmin_num_f16",     "v_minimum3_f16",       "v_maximum3_f16",
                          "v_minimummaximum_f16", "v_maximumminimum_f16", "v_med3_num_f16"};
   for (int op = 0; op < 9; ++op)
-    for (uint32_t mode : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C |
-                                           GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
-                                           GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D}) {
+    for (uint32_t mode :
+         {0U, GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP |
+                  GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D}) {
       Registers r;
       r.output_regs = 1;
       for (int lane = 0; lane < 32; ++lane) {
@@ -5533,8 +5530,8 @@ bool benchmark_minmax3(uint64_t cpu, int iterations, int min_ms) {
                          "v_maxmin_num_f32",     "v_minimum3_f32",       "v_maximum3_f32",
                          "v_minimummaximum_f32", "v_maximumminimum_f32", "v_med3_num_f32"};
   for (int op = 0; op < 9; ++op)
-    for (uint32_t mode : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C |
-                                           GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+    for (uint32_t mode :
+         {0U, GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
       r.output_regs = 1;
       for (int lane = 0; lane < 32; ++lane) {
@@ -5581,8 +5578,7 @@ bool benchmark_fp64(uint64_t cpu, int iterations, int min_ms) {
   const char *names[] = {"v_add_f64",     "v_mul_f64",     "v_fma_f64",    "v_min_num_f64",
                          "v_max_num_f64", "v_minimum_f64", "v_maximum_f64"};
   for (int op = 0; op < 7; ++op)
-    for (uint32_t mode :
-         {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+    for (uint32_t mode : {0U, GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
       r.output_regs = 2;
       for (int lane = 0; lane < 32; ++lane) {
@@ -5659,7 +5655,7 @@ bool benchmark_fp64_unary(uint64_t cpu, int iterations, int min_ms) {
                               {0, 1, 4, 16},        {0.25, 0, 0, 0},   {0.5, 1, 2, 4},
                               {4, 1, 0.25, 0.0625}, {2, 1, 0.5, 0.25}, {0.5, 0.5, 0.5, 0.5}};
   for (int op = 0; op < 9; ++op)
-    for (uint32_t mode : {UINT32_C(0), GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+    for (uint32_t mode : {0U, GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
       Registers r;
       r.output_regs = 2;
       for (int lane = 0; lane < 32; ++lane) {
@@ -5756,7 +5752,7 @@ bool benchmark_fp8_wmma(uint64_t cpu, int iterations, int min_ms) {
   const char *names[] = {"v_wmma_f32_16x16x16_fp8_fp8", "v_wmma_f32_16x16x16_fp8_bf8",
                          "v_wmma_f32_16x16x16_bf8_fp8", "v_wmma_f32_16x16x16_bf8_bf8"};
   for (int format = 0; format < 4; ++format)
-    for (uint32_t modifiers : {UINT32_C(0), GOC_WMMA_NEG_C | GOC_WMMA_ABS_C}) {
+    for (uint32_t modifiers : {0U, GOC_WMMA_NEG_C | GOC_WMMA_ABS_C}) {
       Registers r;
       r.initialize_fp8_wmma(format, modifiers);
       const char *mode = modifiers ? "ABS_C/NEG_C" : "none";
@@ -5786,7 +5782,7 @@ bool benchmark_fp8_dot(uint64_t cpu, int iterations, int min_ms) {
                          "v_dot4_f32_bf8_bf8"};
   const int golden[] = {-6, 2, -3, 7};
   for (int op = 0; op < 4; ++op)
-    for (uint32_t modifiers : {UINT32_C(0), GOC_DOT_NEG_C | GOC_DOT_ABS_C}) {
+    for (uint32_t modifiers : {0U, GOC_DOT_NEG_C | GOC_DOT_ABS_C}) {
       Registers r;
       r.output_regs = 1;
       // A rotates [1,-2,2,-1]; B is [2,1,-2,2].
@@ -5823,8 +5819,7 @@ bool benchmark_fp8_dot(uint64_t cpu, int iterations, int min_ms) {
 bool benchmark_dot2(uint64_t cpu, int iterations, int min_ms) {
   for (bool bf16 : {false, true})
     for (int descriptor : {-1, 0, 5})
-      for (uint32_t modifiers :
-           {UINT32_C(0), GOC_DOT_NEG_LO_A, GOC_DOT_LO_A_HIGH | GOC_DOT_NEG_HI_B}) {
+      for (uint32_t modifiers : {0U, GOC_DOT_NEG_LO_A, GOC_DOT_LO_A_HIGH | GOC_DOT_NEG_HI_B}) {
         uint64_t instruction_flags = modifiers;
         if (descriptor >= 0)
           instruction_flags |= goc_test::dpp_modes[descriptor];
@@ -6072,15 +6067,14 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }
-  for (uint32_t modifiers :
-       {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_NEG_C | GOC_ALU_OMOD_HALF})
+  for (uint32_t modifiers : {0U, GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_NEG_C | GOC_ALU_OMOD_HALF})
     if (!benchmark_fma(cpu, iterations, min_ms, modifiers, false) ||
         !benchmark_fma(cpu, iterations, min_ms, modifiers, true)) {
       std::fprintf(stderr, "FMA benchmark failed: API/result error or iteration overflow.\n");
       return 1;
     }
   for (uint32_t modifiers :
-       {UINT32_C(0), GOC_WMMA_NEG_LO_A,
+       {0U, GOC_WMMA_NEG_LO_A,
         GOC_WMMA_NEG_HI_A | GOC_WMMA_NEG_LO_B | GOC_WMMA_ABS_C | GOC_WMMA_NEG_C})
     if (!benchmark(false, cpu, iterations, min_ms, modifiers) ||
         !benchmark(true, cpu, iterations, min_ms, modifiers)) {

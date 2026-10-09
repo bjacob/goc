@@ -117,17 +117,16 @@ TEST(IntegerMul, ValidationAndFpEnvironment) {
       std::fill(a, a + 32, 0x7f800001);
       std::fill(b, b + 32, 0xffffffff);
       std::fill(d, d + 32, 0xdeadbeef);
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit) {
-          uint32_t mode = UINT32_C(1) << bit;
+          uint32_t mode = 1U << bit;
           if (mode == GOC_ALU_CLAMP && goc_test::integer_mul_can_clamp(op))
             continue;
           EXPECT_EQ(goc_test::integer_mul_functions[op](cpu, mask, mode, &pd, &pa, &pb),
                     GOC_ERROR_INVALID_FLAGS);
         }
-        EXPECT_EQ(
-            goc_test::integer_mul_functions[op](cpu | (UINT64_C(1) << 63), mask, 0, &pd, &pa, &pb),
-            GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(goc_test::integer_mul_functions[op](cpu | (1ULL << 63), mask, 0, &pd, &pa, &pb),
+                  GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(goc_test::integer_mul_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
                                                           GOC_SEMANTICS_STRICT,
                                                       mask, 0, &pd, &pa, &pb),

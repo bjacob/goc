@@ -229,22 +229,19 @@ TEST(PackedFma, ValidationAndZeroMasks) {
     uint32_t words[32];
     std::fill(words, words + 32, 0xfacecafe);
     auto p = words;
-    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+    for (uint32_t mask : {0U, UINT32_MAX}) {
       for (unsigned bit = accumulate ? 0 : 13; bit < 32; ++bit)
-        EXPECT_EQ(call(accumulate, 0, mask, UINT32_C(1) << bit, &p, &p, &p, &p),
-                  GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(call(accumulate, UINT64_C(1) << 63, mask, 0, &p, &p, &p, &p),
-                GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(
-          call(accumulate, (UINT64_C(2) << 16) | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p, &p),
-          GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(call(accumulate, 0, mask, 1U << bit, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(call(accumulate, 1ULL << 63, mask, 0, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(call(accumulate, (2ULL << 16) | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p, &p),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (auto word : words)
       EXPECT_EQ(word, 0xfacecafe);
     EXPECT_EQ(call(accumulate, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr,
                    nullptr, nullptr, nullptr),
               GOC_SUCCESS);
-    EXPECT_EQ(call(accumulate, 0, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(call(accumulate, UINT64_C(2) << 16, UINT32_MAX, 0, &p, &p, &p, &p), GOC_SUCCESS);
+    EXPECT_EQ(call(accumulate, 0, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(call(accumulate, 2ULL << 16, UINT32_MAX, 0, &p, &p, &p, &p), GOC_SUCCESS);
   }
 }

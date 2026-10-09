@@ -11,6 +11,7 @@
 #include <array>
 #include <cfenv>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
 #include <stdint.h>
 #include <vector>
@@ -251,13 +252,13 @@ TEST(Sad, ValidationAndHostFpState) {
         const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2]},
                        *c[] = {words[3], words[4], words[5], words[6]};
         uint32_t *d[] = {words[7], words[8], words[9], words[10]};
-        for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+        for (uint32_t mask : {0U, UINT32_MAX}) {
           for (int bit = 0; bit < 32; ++bit)
             if ((uint32_t(1) << bit) != GOC_ALU_CLAMP) {
               EXPECT_EQ(functions[op](cpu, mask, uint32_t(1) << bit, d, a, b, c),
                         GOC_ERROR_INVALID_FLAGS);
             }
-          EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), mask, 0, d, a, b, c),
+          EXPECT_EQ(functions[op](cpu | (1ULL << 63), mask, 0, d, a, b, c),
                     GOC_ERROR_INVALID_FLAGS);
           EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask,
                                   0, d, a, b, c),
@@ -313,7 +314,8 @@ TEST(Sad, DppValidation) {
   for (auto descriptor : goc_test::dpp_modes) {
     for (unsigned op = 0; op < 5; ++op) {
       EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_NEG_A), uint64_t(GOC_ALU_HIGH_A)})
+      for (auto invalid : std::initializer_list<uint64_t>{1ULL << 36, uint64_t(GOC_ALU_NEG_A),
+                                                          uint64_t(GOC_ALU_HIGH_A)})
         EXPECT_EQ(functions[op](0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
     }
@@ -350,6 +352,6 @@ TEST(Sad, DppHardwareCorpus) {
             for (auto word : output)
               hash = goc_test::capture_hash_word(hash, word);
           }
-    EXPECT_EQ(hash, UINT64_C(0x9a854a2e5f977214)) << cpu;
+    EXPECT_EQ(hash, 0x9a854a2e5f977214ULL) << cpu;
   }
 }

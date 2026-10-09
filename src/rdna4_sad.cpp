@@ -63,7 +63,7 @@ int sad(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const 
       if constexpr (goc::sad_packed(Op)) {
         const unsigned shift = 16 * (window % 2);
         uint32_t value = sum + ((c[window / 2][lane] >> shift) & 0xffff);
-        value = clamp ? std::min(value, UINT32_C(0xffff)) : value & 0xffff;
+        value = clamp ? std::min(value, 0xffffU) : value & 0xffff;
         result[window / 2][lane] |= value << shift;
       } else {
         uint64_t value = uint64_t(sum) + c[window][lane];

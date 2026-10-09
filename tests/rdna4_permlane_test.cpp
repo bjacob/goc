@@ -44,7 +44,7 @@ TEST(Permlane, HardwareCorpus) {
               hash = goc_test::capture_hash_word(hash, d[lane]);
             }
           }
-    EXPECT_EQ(hash, UINT64_C(0xb98b97330147d825));
+    EXPECT_EQ(hash, 0xb98b97330147d825ULL);
   }
 }
 
@@ -104,7 +104,7 @@ TEST(Permlane, FlagsAndHostState) {
         for (unsigned bit = 2; bit < 32; ++bit)
           EXPECT_EQ(goc_test::permlane_call(op, cpu, 0, 1u << bit, &pd, &pa, &pa, 0, 0),
                     GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(goc_test::permlane_call(op, UINT64_C(1) << 63, 0, 0, &pd, &pa, &pa, 0, 0),
+        EXPECT_EQ(goc_test::permlane_call(op, 1ULL << 63, 0, 0, &pd, &pa, &pa, 0, 0),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(d[0], 123u);
         EXPECT_EQ(std::fegetround(), rounding);

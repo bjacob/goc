@@ -11,10 +11,9 @@ namespace goc_test {
 
 // DPP8 reverse with FI off/on; DPP16 row shift with all FI/BOUND pairs;
 // and row XOR with restricted row/bank enables.
-inline const uint64_t dpp_modes[] = {UINT64_C(0x539770100000000), UINT64_C(0x539770300000000),
-                                     UINT64_C(0x1ff010400000000), UINT64_C(0x1ff010c00000000),
-                                     UINT64_C(0x1ff010600000000), UINT64_C(0x1ff010e00000000),
-                                     UINT64_C(0xa3670c00000000)};
+inline const uint64_t dpp_modes[] = {
+    0x539770100000000ULL, 0x539770300000000ULL, 0x1ff010400000000ULL, 0x1ff010c00000000ULL,
+    0x1ff010600000000ULL, 0x1ff010e00000000ULL, 0xa3670c00000000ULL};
 
 inline bool dpp_source(uint64_t mode, uint32_t mask, unsigned lane, int &source) {
   if (mode & GOC_DPP8) {

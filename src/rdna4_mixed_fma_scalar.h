@@ -52,12 +52,12 @@ inline uint16_t mixed_fma_narrow(double value, bool saturate) {
   if (exponent > 1038)
     return sign | (saturate ? 0x7bff : 0x7c00);
   unsigned shift = exponent < 1009 ? unsigned(1051 - exponent) : 42;
-  uint64_t significand = (bits & UINT64_C(0x000fffffffffffff)) | (UINT64_C(1) << 52);
+  uint64_t significand = (bits & 0x000fffffffffffffULL) | (1ULL << 52);
   uint64_t rounded = significand >> shift;
   if (exponent >= 1009)
     rounded += (exponent - 1009) << 10;
-  uint64_t remainder = significand & ((UINT64_C(1) << shift) - 1);
-  uint64_t halfway = UINT64_C(1) << (shift - 1);
+  uint64_t remainder = significand & ((1ULL << shift) - 1);
+  uint64_t halfway = 1ULL << (shift - 1);
   rounded += remainder > halfway || (remainder == halfway && (rounded & 1));
   if (rounded >= 0x7c00)
     rounded = saturate ? 0x7bff : 0x7c00;
@@ -98,8 +98,8 @@ inline uint16_t mixed_fma_half_value(uint32_t a, uint32_t b, uint32_t c, bool cl
     double error = (product - (value - virtual_c)) + (addend - virtual_c);
     uint64_t bits = double_bits(value), error_bits = double_bits(error);
     if (error != 0 && !(bits & 1))
-      bits += ((bits ^ error_bits) >> 63) ? UINT64_MAX : UINT64_C(1);
-    if (!(bits & UINT64_C(0x7fffffffffffffff)))
+      bits += ((bits ^ error_bits) >> 63) ? UINT64_MAX : 1ULL;
+    if (!(bits & 0x7fffffffffffffffULL))
       bits = uint64_t(((a ^ b) & c & 0x80000000) && !(c & 0x7fffffff)) << 63;
     result = mixed_fma_narrow(as_double(bits), saturate);
   }

@@ -19,8 +19,8 @@ TEST(TrigPreop, HardwareEveryExponentSelectorAndModifier) {
         uint32_t words[5][32];
         for (unsigned lane = 0; lane < 32; ++lane) {
           uint32_t i = e * 32 + lane;
-          uint64_t fraction = (uint64_t(i * 0x9e3779b9u) * UINT64_C(0xd1b54a32d192ed03)) &
-                              UINT64_C(0xfffffffffffff);
+          uint64_t fraction =
+              (uint64_t(i * 0x9e3779b9u) * 0xd1b54a32d192ed03ULL) & 0xfffffffffffffULL;
           words[0][lane] = uint32_t(fraction);
           words[1][lane] = (e << 20) | ((lane & 1) << 31) | uint32_t(fraction >> 32);
           words[2][lane] = lane | 0xdeadbee0;
@@ -96,13 +96,13 @@ TEST(TrigPreop, PreservesFpStateAndValidatesFlags) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
       }
   }
-  EXPECT_EQ(goc_rdna4_v_trig_preop_f64(0, UINT32_C(0), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+  EXPECT_EQ(goc_rdna4_v_trig_preop_f64(0, 0U, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
   uint32_t known = goc_test::trig_preop_mode(31);
   for (unsigned bit = 0; bit < 32; ++bit)
     if (!(known & (1u << bit))) {
       EXPECT_EQ(goc_rdna4_v_trig_preop_f64(0, 0, 1u << bit, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
     }
-  EXPECT_EQ(goc_rdna4_v_trig_preop_f64(UINT64_C(1) << 63, 0, 0, nullptr, nullptr, nullptr),
+  EXPECT_EQ(goc_rdna4_v_trig_preop_f64(1ULL << 63, 0, 0, nullptr, nullptr, nullptr),
             GOC_ERROR_INVALID_FLAGS);
 }

@@ -61,7 +61,7 @@ template <unsigned Bits> struct Lanes {
   }
 
   static M lt_unsigned(V a, V b) {
-    auto flip = set(UINT64_C(1) << (Bits == 64 ? 63 : 31));
+    auto flip = set(1ULL << (Bits == 64 ? 63 : 31));
     return gt(bxor(b, flip), bxor(a, flip));
   }
 };
@@ -73,10 +73,10 @@ uint32_t float_compare_x86_64_v3(uint32_t mode, bool flush, const uint32_t *cons
                                  const uint32_t *const *b) {
   using L = Lanes<Bits>;
   constexpr unsigned lanes = 256 / (Bits == 64 ? 64 : 32);
-  constexpr uint64_t sign = UINT64_C(1) << (Bits - 1), magnitude = sign - 1;
+  constexpr uint64_t sign = 1ULL << (Bits - 1), magnitude = sign - 1;
   constexpr uint64_t infinity = Bits == 16   ? 0x7c00
                                 : Bits == 32 ? 0x7f800000
-                                             : UINT64_C(0x7ff0000000000000);
+                                             : 0x7ff0000000000000ULL;
   auto zero = L::set(0), inf = L::set(infinity), mag = L::set(magnitude), sign_bit = L::set(sign);
   uint32_t less = 0, equal = 0, unordered = 0;
   for (unsigned lane = 0; lane < 32; lane += lanes) {

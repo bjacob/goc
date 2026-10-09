@@ -18,7 +18,7 @@ TEST(ScalarBits, HardwareResultsAndScc) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (unsigned seed = 0; seed < 2; ++seed)
-        for (uint32_t mask : {UINT32_C(0), UINT32_MAX, UINT32_C(0xaaaaaaaa)})
+        for (uint32_t mask : {0U, UINT32_MAX, 0xaaaaaaaaU})
           for (unsigned op = 0; op < 30; ++op) {
             uint64_t hash = goc_test::capture_hash_seed;
             for (unsigned i = 0; i < 4096; ++i) {
@@ -44,7 +44,7 @@ TEST(ScalarBits, ExecAndOverlappingScalarOutputs) {
     for (uint32_t mask : rdna4_exec_masks()) {
       uint32_t d = 0, cc = 7;
       uint64_t wide = 0;
-      const uint64_t a = UINT64_C(0x87654321abcdef01), b = UINT64_C(0x1234567800000041);
+      const uint64_t a = 0x87654321abcdef01ULL, b = 0x1234567800000041ULL;
       ASSERT_EQ(goc_test::scalar_bits_call(op, 0, mask, 0, &d, &wide, a, b, &cc), GOC_SUCCESS);
       if (op < 26 && (op & 1)) {
         for (unsigned word = 0; word < 2; ++word) {
@@ -74,7 +74,7 @@ TEST(ScalarBits, ExecAndOverlappingScalarOutputs) {
 }
 
 TEST(ScalarBits, EveryShiftCountAndSign) {
-  for (uint64_t a : {UINT64_C(0), UINT64_C(1), UINT64_C(0x8000000080000000), UINT64_MAX})
+  for (uint64_t a : std::initializer_list<uint64_t>{0ULL, 1ULL, 0x8000000080000000ULL, UINT64_MAX})
     for (uint32_t count = 0; count < 256; ++count) {
       uint32_t d, cc;
       uint64_t d64;
@@ -110,8 +110,8 @@ TEST(ScalarBits, ErrorsDoNotWriteAndHostFpStatePreserved) {
         EXPECT_EQ(goc_test::scalar_bits_call(op, 0, 0, 1u << bit, &d, &wide, 0, 0, &cc),
                   GOC_ERROR_INVALID_FLAGS);
       for (unsigned bit = 32; bit < 64; ++bit)
-        EXPECT_EQ(goc_test::scalar_bits_call(op, 0, 0, UINT64_C(1) << bit, nullptr, nullptr,
-                                             UINT64_MAX, 63, nullptr),
+        EXPECT_EQ(goc_test::scalar_bits_call(op, 0, 0, 1ULL << bit, nullptr, nullptr, UINT64_MAX,
+                                             63, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(d, 123u);
       EXPECT_EQ(cc, 456u);

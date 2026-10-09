@@ -179,7 +179,7 @@ TEST(DivFmas, ValidationAndZeroExec) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(fn(cpu | exact, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr, UINT32_MAX),
+      EXPECT_EQ(fn(cpu | exact, 0U, 0, nullptr, nullptr, nullptr, nullptr, UINT32_MAX),
                 GOC_SUCCESS);
       EXPECT_EQ(
           fn(cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr, nullptr, 0),

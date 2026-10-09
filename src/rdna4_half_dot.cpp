@@ -33,7 +33,7 @@ int dot(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const 
                               return dot<Bf16>(flags, effective, uint32_t(mode), d, source, b, c);
                             });
   // Six ABS/NEG bits, plus C and D half selectors.
-  if (int error = goc::validate(flags, mode & ~(UINT32_C(63) | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D)))
+  if (int error = goc::validate(flags, mode & ~(63U | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D)))
     return error;
   if (mask == 0)
     return GOC_SUCCESS;
@@ -61,8 +61,7 @@ int dot(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const 
   }
   for (int lane = 0; lane < 32; ++lane)
     if ((mask >> lane) & 1)
-      d[0][lane] =
-          (d[0][lane] & ~(UINT32_C(0xffff) << d_shift)) | (uint32_t(result[lane]) << d_shift);
+      d[0][lane] = (d[0][lane] & ~(0xffffU << d_shift)) | (uint32_t(result[lane]) << d_shift);
   return GOC_SUCCESS;
 }
 

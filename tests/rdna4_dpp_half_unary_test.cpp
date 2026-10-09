@@ -27,12 +27,12 @@ std::vector<uint64_t> modes() {
 uint32_t reference(unsigned op, uint32_t a, uint32_t old_d, uint32_t mode) {
   uint32_t value = goc_test::half_unary_reference(op, a, mode, false);
   unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  return (old_d & ~(UINT32_C(65535) << shift)) | (value << shift);
+  return (old_d & ~(65535U << shift)) | (value << shift);
 }
 
 void check(unsigned op, uint32_t got, uint32_t want, uint32_t mode) {
   unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  ASSERT_EQ((got ^ want) & ~(UINT32_C(65535) << shift), 0u);
+  ASSERT_EQ((got ^ want) & ~(65535U << shift), 0u);
   uint16_t x = uint16_t(got >> shift), y = uint16_t(want >> shift);
   if ((y & 0x7fff) > 0x7c00) {
     ASSERT_GT(x & 0x7fff, 0x7c00);
@@ -81,13 +81,13 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
 TEST(DppHalfUnary, HardwareCorpus) {
   const uint32_t values[] = {0x3c00bc00u, 0xc0004000u, 0x38003400u, 0xb800b400u,
                              0x44004200u, 0xc400c200u, 0x3a003600u, 0xba00b600u};
-  hardware_corpus(values, UINT64_C(0x3833b76d19aa40f7));
+  hardware_corpus(values, 0x3833b76d19aa40f7ULL);
 }
 
 TEST(DppHalfUnary, HardwareOmodBoundaries) {
   const uint32_t values[] = {0x00018001u, 0x03ff83ffu, 0x04008400u, 0x04018401u,
                              0x08008800u, 0x3c00bc00u, 0x00008000u, 0x7bfffbffu};
-  hardware_corpus(values, UINT64_C(0xfa080d7a883a740d));
+  hardware_corpus(values, 0xfa080d7a883a740dULL);
 }
 
 TEST(DppHalfUnary, EveryModifierAndOverflowMode) {
@@ -119,7 +119,7 @@ TEST(DppHalfUnary, EveryModifierAndOverflowMode) {
                 unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
                 uint32_t value = goc_test::half_unary_reference(
                     op, source < 0 ? 0 : words[0][source], uint32_t(mode), saturate);
-                want = (want & ~(UINT32_C(65535) << shift)) | (value << shift);
+                want = (want & ~(65535U << shift)) | (value << shift);
               }
               check(op, words[2][lane], want, uint32_t(mode));
             }
@@ -176,10 +176,10 @@ TEST(DppHalfUnary, Validation) {
   for (auto fn : goc_test::half_unary_functions)
     for (uint64_t mode : modes()) {
       EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr), GOC_SUCCESS);
-      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
+      for (uint32_t mask : {0U, UINT32_MAX}) {
         EXPECT_EQ(fn(0, mask, mode | GOC_ALU_NEG_C, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(0, mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(UINT64_C(1) << 63, mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(1ULL << 63, mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(
             fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, mode, nullptr, nullptr),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);

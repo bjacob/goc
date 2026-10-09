@@ -6,11 +6,11 @@
 
 namespace goc_test {
 
-static const uint64_t capture_hash_seed = UINT64_C(14695981039346656037);
+static const uint64_t capture_hash_seed = 14695981039346656037ULL;
 
 // Mix one whole word, as used by word-wise hardware capture digests.
 inline uint64_t capture_hash_word(uint64_t hash, uint64_t word) {
-  return (hash ^ word) * UINT64_C(1099511628211);
+  return (hash ^ word) * 1099511628211ULL;
 }
 
 // Mix the low byte_count bytes in low-to-high order, independent of host endian.

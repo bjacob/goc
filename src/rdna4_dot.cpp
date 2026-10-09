@@ -22,7 +22,7 @@ int dot(uint64_t flags, uint32_t mask, uint64_t instruction_flags, uint32_t *con
           return dot<Bf16>(flags, effective, uint32_t(instruction_flags), d, source, b, c);
         });
   // Bits 0..4: negation; bit 6: CLAMP; bits 7..10: half selection.
-  if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(0x7df), true))
+  if (int error = goc::validate(flags, instruction_flags & ~0x7dfU, true))
     return error;
   if (mask == 0)
     return GOC_SUCCESS;

@@ -32,7 +32,7 @@ void dpp8_source(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *out, co
 }
 
 bool valid_dpp(uint64_t mode) {
-  uint64_t high = mode & ~UINT64_C(0xffffffff);
+  uint64_t high = mode & ~0xffffffffULL;
   if (!high)
     return true;
   if (mode & GOC_DPP8)

@@ -17,7 +17,7 @@ int fma(uint64_t flags, uint32_t exec_mask, uint32_t instruction_flags, uint32_t
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   constexpr uint64_t fp_flags =
       Dx9Zero ? GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS : 0;
-  if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(0x1ff), false, fp_flags))
+  if (int error = goc::validate(flags, instruction_flags & ~0x1ffU, false, fp_flags))
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;

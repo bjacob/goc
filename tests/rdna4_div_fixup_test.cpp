@@ -12,6 +12,7 @@
 #include <cfenv>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <random>
 #include <stdint.h>
 
@@ -111,7 +112,7 @@ TEST(DivFixup, DppHalfHardwareCorpus) {
   const uint32_t masks[] = {UINT32_MAX, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-    for (uint64_t semantics : {UINT64_C(0), exact}) {
+    for (uint64_t semantics : std::initializer_list<uint64_t>{0ULL, exact}) {
       uint64_t hash = goc_test::capture_hash_seed;
       for (uint32_t mask : masks)
         for (unsigned variant = 0; variant < 256; ++variant)
@@ -132,7 +133,7 @@ TEST(DivFixup, DppHalfHardwareCorpus) {
             for (uint32_t word : words[3])
               hash = goc_test::capture_hash_word(hash, word);
           }
-      EXPECT_EQ(hash, UINT64_C(0x55a4cc1f56963f25));
+      EXPECT_EQ(hash, 0x55a4cc1f56963f25ULL);
     }
 }
 
@@ -311,8 +312,7 @@ TEST(DivFixup, ValidationAndFallback) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(functions[op](cpu | exact, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr),
-                GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu | exact, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(functions[op](cpu, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(functions[op](cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, d, a, a, a),
                 GOC_SUCCESS);
