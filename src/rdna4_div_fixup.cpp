@@ -65,7 +65,7 @@ int goc_rdna4_v_div_fixup_f16(uint64_t flags, uint32_t exec_mask, uint64_t instr
                               const uint32_t *const *b, const uint32_t *const *c,
                               uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return goc::execute_dpp(flags, exec_mask, instruction_flags, a,
                             [&](uint32_t exec_mask, const uint32_t *const *source) {
@@ -80,7 +80,7 @@ int goc_rdna4_v_div_fixup_f32(uint64_t flags, uint32_t exec_mask, uint64_t instr
                               const uint32_t *const *b, const uint32_t *const *c,
                               uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run<32>(flags, exec_mask, instruction_flags, d, a, b, c);
@@ -91,7 +91,7 @@ int goc_rdna4_v_div_fixup_f64(uint64_t flags, uint32_t exec_mask, uint64_t instr
                               const uint32_t *const *b, const uint32_t *const *c,
                               uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run<64>(flags, exec_mask, instruction_flags, d, a, b, c);

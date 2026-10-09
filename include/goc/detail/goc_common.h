@@ -49,7 +49,9 @@ static const uint64_t GOC_FP_FLUSH_OUTPUT_DENORMALS = 1ULL << 21;
 static const int GOC_SUCCESS = 0;
 static const int GOC_ERROR_UNSUPPORTED_SEMANTICS = 1;
 static const int GOC_ERROR_INVALID_FLAGS = 2;
-static const int GOC_ERROR_UNSUPPORTED_EXCEPTIONS = 3;
+
+// Faithful updates to a requested implicit architectural register are unavailable.
+static const int GOC_ERROR_UNSUPPORTED_GLOBAL_STATE = 3;
 
 // Returns CPU capability flags for features usable on this machine, accounting
 // for CPU and operating-system support. All non-CPU flag bits are zero.

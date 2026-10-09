@@ -83,7 +83,7 @@ int goc_rdna4_v_ldexp_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uin
                           const uint32_t *const *a, const uint32_t *const *b,
                           uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return run<true>(flags, exec_mask, mode, d, a, b);
 }
 
@@ -91,6 +91,6 @@ int goc_rdna4_v_frexp_exp_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t m
                                   uint32_t *const *d, const uint32_t *const *a,
                                   uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return run<false>(flags, exec_mask, mode, d, a, nullptr);
 }

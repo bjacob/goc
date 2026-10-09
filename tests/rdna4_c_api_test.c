@@ -27,7 +27,7 @@ int goc_test_c_api(void) {
   uint32_t excp_flag_user = 0x80000021U;
   uint32_t before = d[0];
   if (fma(GOC_SEMANTICS_EXACT_EMPIRICAL, 1, 0, &pd, input_vgprs(&pa), input_vgprs(&pb),
-          input_vgprs(&pc), &excp_flag_user) != GOC_ERROR_UNSUPPORTED_EXCEPTIONS ||
+          input_vgprs(&pc), &excp_flag_user) != GOC_ERROR_UNSUPPORTED_GLOBAL_STATE ||
       excp_flag_user != 0x80000021U || d[0] != before)
     return 0;
 

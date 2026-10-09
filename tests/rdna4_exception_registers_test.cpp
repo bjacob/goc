@@ -21,7 +21,7 @@ void check_unsupported(int (*instruction)(Args...), std::index_sequence<I...>) {
   for (uint64_t strict : std::initializer_list<uint64_t>{0, GOC_SEMANTICS_STRICT})
     EXPECT_EQ(instruction(GOC_SEMANTICS_EXACT_EMPIRICAL | strict,
                           std::tuple_element_t<I + 1, Operands>{}..., &excp_flag_user),
-              GOC_ERROR_UNSUPPORTED_EXCEPTIONS);
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(excp_flag_user, 0xa5000041U);
 }
 
@@ -98,13 +98,13 @@ TEST(ExceptionRegisters, UnsupportedLeavesAllOutputsUntouched) {
   uint32_t excp_flag_user = 0x80000021;
   EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, d, nullptr, nullptr,
                                 nullptr, &excp_flag_user),
-            GOC_ERROR_UNSUPPORTED_EXCEPTIONS);
+            GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(data[0], 0xdeadbeefU);
   EXPECT_EQ(excp_flag_user, 0x80000021U);
   uint32_t scc = 1;
   EXPECT_EQ(
       goc_rdna4_s_cmp_eq_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &scc, 0, 0, &excp_flag_user),
-      GOC_ERROR_UNSUPPORTED_EXCEPTIONS);
+      GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(scc, 1U);
   EXPECT_EQ(excp_flag_user, 0x80000021U);
   // Opting out keeps validation and zero-EXEC behavior unchanged.
@@ -114,7 +114,7 @@ TEST(ExceptionRegisters, UnsupportedLeavesAllOutputsUntouched) {
   // Reporting rejection takes precedence over other unsupported options.
   EXPECT_EQ(goc_rdna4_v_fma_f32(UINT64_MAX, 0, UINT64_MAX, nullptr, nullptr, nullptr, nullptr,
                                 &excp_flag_user),
-            GOC_ERROR_UNSUPPORTED_EXCEPTIONS);
+            GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(excp_flag_user, 0x80000021U);
 }
 

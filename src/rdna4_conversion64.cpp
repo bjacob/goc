@@ -103,7 +103,7 @@ int goc_rdna4_v_cvt_i32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion64::DoubleToSigned>(flags, exec_mask, instruction_flags, d, a);
@@ -113,7 +113,7 @@ int goc_rdna4_v_cvt_u32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion64::DoubleToUnsigned>(flags, exec_mask, instruction_flags, d, a);
@@ -123,7 +123,7 @@ int goc_rdna4_v_cvt_f64_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion64::FloatToDouble>(flags, exec_mask, instruction_flags, d, a);
@@ -133,7 +133,7 @@ int goc_rdna4_v_cvt_f32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion64::DoubleToFloat>(flags, exec_mask, instruction_flags, d, a);

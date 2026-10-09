@@ -61,7 +61,7 @@ int goc_rdna4_v_min3_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, 
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return minmax3<goc::Minmax3::Min3Num, false, false, false>(flags, exec_mask, mode, d, a, b, c);
 }
 
@@ -69,7 +69,7 @@ int goc_rdna4_v_max3_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, 
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return minmax3<goc::Minmax3::Max3Num, true, true, false>(flags, exec_mask, mode, d, a, b, c);
 }
 
@@ -78,7 +78,7 @@ int goc_rdna4_v_minmax_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode
                                const uint32_t *const *b, const uint32_t *const *c,
                                uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return minmax3<goc::Minmax3::MinmaxNum, false, true, false>(flags, exec_mask, mode, d, a, b, c);
 }
 
@@ -87,7 +87,7 @@ int goc_rdna4_v_maxmin_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode
                                const uint32_t *const *b, const uint32_t *const *c,
                                uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return minmax3<goc::Minmax3::MaxminNum, true, false, false>(flags, exec_mask, mode, d, a, b, c);
 }
 
@@ -95,7 +95,7 @@ int goc_rdna4_v_minimum3_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, 
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return minmax3<goc::Minmax3::Minimum3, false, false, true>(flags, exec_mask, mode, d, a, b, c);
 }
 
@@ -103,7 +103,7 @@ int goc_rdna4_v_maximum3_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, 
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return minmax3<goc::Minmax3::Maximum3, true, true, true>(flags, exec_mask, mode, d, a, b, c);
 }
 
@@ -112,7 +112,7 @@ int goc_rdna4_v_minimummaximum_f16(uint64_t flags, uint32_t exec_mask, uint64_t 
                                    const uint32_t *const *b, const uint32_t *const *c,
                                    uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return minmax3<goc::Minmax3::MinimumMaximum, false, true, true>(flags, exec_mask, mode, d, a, b,
                                                                   c);
 }
@@ -122,7 +122,7 @@ int goc_rdna4_v_maximumminimum_f16(uint64_t flags, uint32_t exec_mask, uint64_t 
                                    const uint32_t *const *b, const uint32_t *const *c,
                                    uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return minmax3<goc::Minmax3::MaximumMinimum, true, false, true>(flags, exec_mask, mode, d, a, b,
                                                                   c);
 }
@@ -131,6 +131,6 @@ int goc_rdna4_v_med3_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, 
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return minmax3<goc::Minmax3::MedianNum, false, false, false>(flags, exec_mask, mode, d, a, b, c);
 }

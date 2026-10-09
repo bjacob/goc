@@ -361,6 +361,9 @@ register it may update, named after that register in lowercase. Registers alread
 represented by an operand/output parameter are not duplicated. Instructions
 without such side effects gain no parameter. Register updates follow the ISA;
 temporary internal changes restored by the instruction are not extra outputs.
+`GOC_ERROR_UNSUPPORTED_GLOBAL_STATE` indicates that faithful updates to a
+requested implicit architectural register are unavailable. This mechanism applies
+to any such global state, not only exception flags.
 
 `uint32_t *excp_flag_user` represents RDNA4's wave-wide sticky exception register.
 A non-null pointer accumulates newly generated bits with bitwise OR; existing bits
@@ -370,7 +373,7 @@ instruction contract (currently `V_RCP_IFLAG_F32`).
 Every API error preserves every output, including this register. Guest exception
 reporting must never rely on changing or sampling the host FP environment.
 
-Loose semantics never return `GOC_ERROR_UNSUPPORTED_EXCEPTIONS`, even for a
+Loose semantics never return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`, even for a
 non-null pointer. Reporting may be incomplete or inaccurate; callers must not
 rely on hardware-faithful exception state. Unimplemented reporting leaves the
 register unchanged. Any reported bits still accumulate with OR.
@@ -380,7 +383,7 @@ Non-loose semantics require faithful reporting when requested, independently of
 exception behavior. The initial API migration reserves the parameter on
 exception-producing instructions. `V_RCP_IFLAG_F32` retains its implemented
 integer-divide-by-zero reporting. For other affected instructions, non-loose
-semantics with a non-null pointer return `GOC_ERROR_UNSUPPORTED_EXCEPTIONS`
+semantics with a non-null pointer return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`
 before accessing operands, even for empty `exec_mask`, with precedence over
 other validation errors. Null retains existing validation, numerical behavior,
 and SIMD dispatch. Implement and hardware-test exception generation incrementally.

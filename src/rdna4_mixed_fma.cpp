@@ -70,7 +70,7 @@ int goc_rdna4_v_fma_mix_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, u
                             const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return mixed_fma<goc::MixedFma::Float>(flags, exec_mask, mode, d, a, b, c);
 }
 
@@ -78,7 +78,7 @@ int goc_rdna4_v_fma_mixlo_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode,
                               const uint32_t *const *a, const uint32_t *const *b,
                               const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return mixed_fma<goc::MixedFma::Low>(flags, exec_mask, mode, d, a, b, c);
 }
 
@@ -86,6 +86,6 @@ int goc_rdna4_v_fma_mixhi_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode,
                               const uint32_t *const *a, const uint32_t *const *b,
                               const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return mixed_fma<goc::MixedFma::High>(flags, exec_mask, mode, d, a, b, c);
 }

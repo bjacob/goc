@@ -63,7 +63,7 @@ int goc_rdna4_v_trig_preop_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   const uint32_t known =

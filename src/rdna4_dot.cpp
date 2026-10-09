@@ -79,7 +79,7 @@ int goc_rdna4_v_dot2_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instru
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return dot<false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
@@ -88,6 +88,6 @@ int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint32_t exec_mask, uint64_t instr
                               const uint32_t *const *b, const uint32_t *const *c,
                               uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return dot<true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }

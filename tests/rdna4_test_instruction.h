@@ -48,7 +48,7 @@ struct WaveInstruction<int (*)(uint64_t, uint32_t, uint64_t, Operands...)> {
     if (reporting_wave64)
       return reporting_wave64(flags, exec_mask, mode, operands..., excp_flag_user);
     if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-      return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+      return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
     return wave32 ? wave32(flags, uint32_t(exec_mask), mode, operands...)
                   : wave64(flags, exec_mask, mode, operands...);
   }

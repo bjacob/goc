@@ -70,7 +70,7 @@ int goc_rdna4_v_fma_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint3
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return run(flags, exec_mask, mode, d, a, b, c);
 }
 
@@ -78,7 +78,7 @@ int goc_rdna4_v_fmac_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
                          const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return goc::execute_dpp(
         flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
@@ -99,7 +99,7 @@ int goc_rdna4_v_fmamk_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uin
                           const uint32_t *const *a, uint16_t literal, const uint32_t *const *b,
                           uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run<goc::FmaOperands::MultiplyLiteral>(flags, exec_mask, mode, d, a, b, nullptr, literal);
@@ -109,7 +109,7 @@ int goc_rdna4_v_fmaak_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uin
                           const uint32_t *const *a, const uint32_t *const *b, uint16_t literal,
                           uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run<goc::FmaOperands::AddLiteral>(flags, exec_mask, mode, d, a, b, nullptr, literal);

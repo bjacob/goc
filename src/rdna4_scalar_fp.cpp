@@ -70,7 +70,7 @@ int run(uint64_t flags, uint32_t mode, uint32_t *d, uint32_t a, uint32_t b) {
 int goc_rdna4_s_add_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -80,7 +80,7 @@ int goc_rdna4_s_add_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 int goc_rdna4_s_add_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -90,7 +90,7 @@ int goc_rdna4_s_add_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 int goc_rdna4_s_sub_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -100,7 +100,7 @@ int goc_rdna4_s_sub_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 int goc_rdna4_s_sub_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -110,7 +110,7 @@ int goc_rdna4_s_sub_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 int goc_rdna4_s_mul_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -120,7 +120,7 @@ int goc_rdna4_s_mul_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 int goc_rdna4_s_mul_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -130,7 +130,7 @@ int goc_rdna4_s_mul_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 int goc_rdna4_s_min_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -140,7 +140,7 @@ int goc_rdna4_s_min_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_s_min_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -150,7 +150,7 @@ int goc_rdna4_s_min_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_s_max_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -160,7 +160,7 @@ int goc_rdna4_s_max_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_s_max_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -170,7 +170,7 @@ int goc_rdna4_s_max_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_s_minimum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -180,7 +180,7 @@ int goc_rdna4_s_minimum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_s_minimum_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -190,7 +190,7 @@ int goc_rdna4_s_minimum_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_s_maximum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -200,7 +200,7 @@ int goc_rdna4_s_maximum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_s_maximum_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;

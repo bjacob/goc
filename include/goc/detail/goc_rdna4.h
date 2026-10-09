@@ -22,10 +22,10 @@ extern "C" {
 // overlap operand storage unless the instruction explicitly permits it.
 // Errors leave it and all other outputs unchanged.
 // Loose semantics permit incomplete or inaccurate reporting and never return
-// GOC_ERROR_UNSUPPORTED_EXCEPTIONS. Unimplemented reporting leaves the register
+// GOC_ERROR_UNSUPPORTED_GLOBAL_STATE. Unimplemented reporting leaves the register
 // unchanged. Non-loose semantics require faithful reporting when non-NULL,
 // regardless of GOC_SEMANTICS_STRICT. Except for V_RCP_IFLAG_F32, reporting is not
-// yet implemented: such requests return GOC_ERROR_UNSUPPORTED_EXCEPTIONS before
+// yet implemented: such requests return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE before
 // operand access, even for empty EXEC, with precedence over other validation.
 // NULL preserves the existing numerical paths and their validation behavior.
 
