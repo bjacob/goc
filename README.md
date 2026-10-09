@@ -375,6 +375,28 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Division fused post-scaling covers `v_div_fmas_f32` and `v_div_fmas_f64`, with
+loose and empirical exact semantics borrowed from rocjitsu. The API takes the
+implicit wave32 VCC condition mask by value after A/B/C. Set lane bits select
+post-scaling by 2^64 or 2^128 when C's modified encoded exponent exceeds its bias,
+or by the reciprocal power otherwise. Scaling happens before the final rounding,
+avoiding intermediate overflow and double rounding at subnormal boundaries.
+
+All ABS/NEG, OMOD and CLAMP combinations have scalar, v3 and v4 implementations.
+These use integer arithmetic, preserving host FP rounding and exception state.
+V3 evaluates four lanes at a time and v4 eight, in both formats; FP64 products
+retain all 106 bits before alignment and rounding. Every EXEC mask and whole-VGPR
+alias is supported, including FP64 cross-half aliases. Active OMOD rounds at
+normal precision before flushing tiny results, a hardware detail beyond simply
+applying OMOD to rocjitsu's already-rounded result.
+
+Tests retain 262,144 GPU-captured outputs from Cartesian and deterministic random
+corpora, plus literal fused-rounding, overflow and cancellation witnesses. They
+also cover every modifier, mixed condition masks, shared sources, unaligned
+storage, destination aliases and preservation of all host rounding modes. Pinned-core
+Ryzen 9 7950X3D timings measured 2.47–2.81x for v3 and 3.78–4.36x for v4 versus
+scalar, including modified forms (seven samples, each at least 10 ms).
+
 Division pre-scaling covers `v_div_scale_f32` and `v_div_scale_f64`, with loose
 and empirical exact semantics adapted from rocjitsu. B is the denominator, C the
 numerator, and A must equal B or C after source NEG modifiers. The result includes

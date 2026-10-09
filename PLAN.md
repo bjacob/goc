@@ -93,6 +93,9 @@ following the above pattern. Each such function shall take the following functio
     of suitable width. For example, MFMA instructions with `CBSZ`, `ABID`, etc modes.
     Do combine all such flags into a single unsigned integer, rather than passing
     multiple short integers.
+* Implicit scalar inputs are passed by value after the explicit instruction
+  operands. For example, `v_div_fmas_f32` and `v_div_fmas_f64` take a `uint32_t`
+  condition mask representing wave32 `VCC` after their three VGPR inputs.
 * Scalar register outputs use pointers to their raw unsigned integer values, in
   assembly operand order. Wave32 condition outputs use `uint32_t *`. Their EXEC
   behavior follows the instruction: `v_div_scale_f32` and `v_div_scale_f64` clear

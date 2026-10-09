@@ -18,6 +18,27 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Fused division post-scaling: compute A*B+C and apply a power-of-two scale
+// before the single nearest-even rounding. A set lane bit in condition (the
+// implicit wave32 VCC input) selects +64/+128 when C's modified encoded exponent
+// exceeds its bias, and -64/-128 otherwise, for FP32/FP64 respectively.
+// Supports all source ABS/NEG, OMOD and CLAMP, loose and empirical exact semantics.
+// Inputs preserve denormals. Active OMOD rounds at normal precision before
+// flushing tiny results to +0, then applies the output scale and clamp.
+// FP64 operands use low/high VGPR pairs, with D1 winning when D0/D1 alias.
+// Supports every EXEC mask and whole-register alias; zero effective EXEC permits
+// null VGPR pointers. Results are independent of host FP state and preserve it.
+// GOC_FP16_OVFL has no effect.
+GOC_API int goc_rdna4_v_div_fmas_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c,
+                                     uint32_t condition);
+
+GOC_API int goc_rdna4_v_div_fmas_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c,
+                                     uint32_t condition);
+
 // Division pre-scaling. A must equal B (denominator) or C (numerator) after
 // source NEG modifiers. Writes the pre-scaled value to D and the per-lane
 // post-scaling condition to condition (the wave32 SDST operand).

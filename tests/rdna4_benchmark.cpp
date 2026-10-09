@@ -1307,6 +1307,67 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_div_fmas(uint64_t cpu, int iterations, int min_ms) {
+  using Fmas = decltype(&goc_rdna4_v_div_fmas_f32);
+  const Fmas functions[] = {goc_rdna4_v_div_fmas_f32, goc_rdna4_v_div_fmas_f64};
+  const char *names[] = {"v_div_fmas_f32", "v_div_fmas_f64"};
+  const uint64_t semantics = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+  for (unsigned op = 0; op < 2; ++op)
+    for (bool modified : {false, true}) {
+      Registers r;
+      r.output_regs = op ? 2 : 1;
+      unsigned fraction = op ? 52 : 23, bias = op ? 1023 : 127;
+      uint64_t sign = UINT64_C(1) << (op ? 63 : 31);
+      uint32_t mode = modified ? GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_ABS_B | GOC_ALU_NEG_C |
+                                     GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP
+                               : 0;
+      for (unsigned lane = 0; lane < 32; ++lane)
+        for (unsigned operand = 0; operand < 3; ++operand) {
+          int exponent = int(bias) + int((lane * 3 + operand * 5) % 19) - 9;
+          uint64_t raw =
+              (uint64_t(exponent) << fraction) |
+              ((UINT64_C(0x123456789ab) * (lane + operand + 1)) & ((UINT64_C(1) << fraction) - 1));
+          if ((lane + operand) & 1)
+            raw |= sign;
+          r.data[4 * operand][lane] = uint32_t(raw);
+          r.data[4 * operand + 1][lane] = uint32_t(raw >> 32);
+        }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+        return functions[op](flags, mask, modifiers, d, a, b, c, 0xa5a5a5a5);
+      };
+      if (fn(semantics, UINT32_MAX, mode, r.v + 16, r.v, r.v + 4, r.v + 8) != GOC_SUCCESS)
+        return false;
+      for (int reg = 0; reg < r.output_regs; ++reg)
+        for (unsigned lane = 0; lane < 32; ++lane)
+          r.expected[128 * (lane / 16) + 16 * reg + lane % 16] = r.data[16 + reg][lane];
+      const char *label = modified ? "mixed/half/clamp" : "none";
+      double scalar = measure(fn, semantics, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "exact", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, semantics | GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "exact", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, semantics | GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "exact", label, "x86-64-v4", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_div_scale(uint64_t cpu, int iterations, int min_ms) {
   using Scale = decltype(&goc_rdna4_v_div_scale_f32);
   const Scale functions[] = {goc_rdna4_v_div_scale_f32, goc_rdna4_v_div_scale_f64};
@@ -3160,7 +3221,8 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave");
-  if (!benchmark_div_scale(cpu, iterations, min_ms) ||
+  if (!benchmark_div_fmas(cpu, iterations, min_ms) ||
+      !benchmark_div_scale(cpu, iterations, min_ms) ||
       !benchmark_div_fixup(cpu, iterations, min_ms) || !benchmark_cube(cpu, iterations, min_ms) ||
       !benchmark_fp8_narrow(cpu, iterations, min_ms) ||
       !benchmark_byte_pack(cpu, iterations, min_ms) ||
