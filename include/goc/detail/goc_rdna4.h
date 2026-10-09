@@ -18,6 +18,18 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Lighting multiply. After ABS/NEG source modifiers, return -FLT_MAX if B is
+// -FLT_MAX, -infinity or NaN, or C is nonpositive or NaN. Otherwise return +0
+// if either factor is zero, or A*B. OMOD scales the result, flushing tiny
+// unscaled values to +0 and tiny scaled values to signed zero; CLAMP then
+// maps to [0,1], including NaN/-0 to +0. Each operand uses one VGPR.
+// Supports all A/B/C ABS/NEG, OMOD and CLAMP modifiers; loose semantics only.
+// Host nearest-even rounding with denormals enabled is required; exception
+// flags may change. NaN payloads are unspecified.
+GOC_API int goc_rdna4_v_mullit_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, const uint32_t *const *c);
+
 // Saturate both signed I16 halves of A to U8, pack them low byte first, and
 // write the selected half of D, preserving the other half. HIGH_D selects the
 // upper destination half; no other instruction modifiers apply. A/D use one

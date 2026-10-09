@@ -432,6 +432,22 @@ Ryzen 9 7950X3D measurements show 1.39–1.86x for v3 and 1.77–2.34x for v4,
 including signed CLAMP and index-key selection; the accumulator reset is included
 in every path's timing (seven samples, each at least 10 ms).
 
+Lighting multiply (`v_mullit_f32`) supports all 512 combinations of source
+ABS/NEG, output scaling and CLAMP on scalar, eight-lane v3 and sixteen-lane v4.
+After source modifiers, invalid lighting inputs (nonpositive/NaN C, or B equal
+to negative FLT_MAX, negative infinity or NaN) return negative FLT_MAX before
+output modifiers. Otherwise a zero factor produces positive zero, and nonzero
+factors multiply normally. OMOD flushes tiny unscaled results to positive zero,
+while underflow from scaling a normal result retains its sign. CLAMP maps NaN
+and negative zero to positive zero. Loose semantics require host nearest-even
+rounding with denormals enabled; exception flags may change.
+
+Tests check 65,536 GPU-captured special-value results (ignoring NaN payloads),
+plus all 512 modifiers crossed with EXEC masks, unaligned storage and every
+whole-register destination/source alias. Pinned-core Ryzen 9 7950X3D timings
+measured 3.17–3.70x for v3 and 8.02–9.67x for v4 versus scalar, including
+ABS/NEG, scaling and CLAMP (seven samples, each at least 10 ms).
+
 Wide integer MAD covers `v_mad_co_u64_u32` and `v_mad_co_i64_i32`, the RDNA4
 names for unsigned/signed 32x32 multiplication plus a 64-bit accumulator. A/B use
 one VGPR each; C/D use low/high pairs. CLAMP saturates to the corresponding
