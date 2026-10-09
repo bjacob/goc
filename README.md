@@ -1628,8 +1628,7 @@ preserved, including rounding mode and existing exception flags. A GFX1201
 capture checks 19,712 results; independent tests combine all mask patterns,
 source/destination aliases, exceptional bit patterns, and random words. SIMD
 permutation composes with each instruction's existing arithmetic path, including
-AVX-512 Boolean operations. Wave64 counts and 16-bit Boolean DPP forms remain
-pending. Benchmarks cover representative leading/population/masked counts and
+AVX-512 Boolean operations. Wave64 count DPP forms remain pending. Benchmarks cover representative leading/population/masked counts and
 Boolean operations with full EXEC. On the Ryzen 9 7950X3D, these cases measure
 16.8–23.5 ns on x86-64-v3 (1.9–2.4× scalar speed) and 9.1–13.4 ns on
 x86-64-v4 (3.3–4.9×), using seven pinned samples of at least 10 ms each.
@@ -1722,6 +1721,17 @@ operations with default and combined modifiers, both DPP kinds, and full EXEC.
 On the Ryzen 9 7950X3D, these cases measure 18.2–26.2 ns on AVX2 (1.9–3.6×
 scalar speed) and 17.7–24.6 ns with AVX-512 permutation plus AVX2 arithmetic
 (2.0–3.7×), using seven pinned samples of at least 10 ms each.
+
+DPP8/DPP16 also support the 16-bit AND, OR, XOR, and NOT operations with all
+source and destination half selectors. A GFX1201 capture checks 50,176 results
+across all 28 operation/selector combinations. Tests verify the untouched
+destination half, all EXEC patterns, source/destination aliases, random words,
+and host FP-state preservation. The v3 path combines AVX2 permutation with
+baseline Boolean arithmetic; v4 uses AVX-512 arithmetic and permutation.
+Benchmarks cover AND and NOT with low/high selections and full EXEC. On the
+Ryzen 9 7950X3D, these cases measure 12.8–24.2 ns on x86-64-v3 (1.7–2.6× scalar
+speed) and 8.9–12.2 ns on x86-64-v4 (3.0–4.6×), using seven pinned samples of at
+least 10 ms each.
 
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes

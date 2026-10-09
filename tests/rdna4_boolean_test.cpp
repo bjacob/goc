@@ -16,11 +16,6 @@
 
 namespace {
 
-using Fn = decltype(&goc_rdna4_v_and_b32);
-const Fn functions[] = {goc_rdna4_v_and_b32,     goc_rdna4_v_or_b32,      goc_rdna4_v_xor_b32,
-                        goc_test::boolean_not32, goc_rdna4_v_and_b16,     goc_rdna4_v_or_b16,
-                        goc_rdna4_v_xor_b16,     goc_test::boolean_not16, goc_rdna4_v_xnor_b32};
-
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t mode, uint32_t words[3][32]) {
   uint32_t expected[32];
   for (int lane = 0; lane < 32; ++lane)
@@ -28,7 +23,7 @@ const Fn functions[] = {goc_rdna4_v_and_b32,     goc_rdna4_v_or_b32,      goc_rd
         goc_test::boolean_reference(op, words[0][lane], words[1][lane], words[2][lane], mode);
   const uint32_t *a[] = {words[0]}, *b[] = {words[1]};
   uint32_t *d[] = {words[2]};
-  int status = functions[op](flags, UINT32_MAX, mode, d, a, b);
+  int status = goc_test::boolean_functions[op](flags, UINT32_MAX, mode, d, a, b);
   if (status != GOC_SUCCESS)
     return ::testing::AssertionFailure() << "status " << status;
   for (int lane = 0; lane < 32; ++lane)
@@ -100,7 +95,7 @@ TEST(Boolean, MasksAliasesAndUnalignedStorage) {
                       original[target][lane + 1], mode);
               const uint32_t *a[] = {words[0] + 1}, *b[] = {words[breg] + 1};
               uint32_t *d[] = {words[target] + 1};
-              ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
+              ASSERT_EQ(goc_test::boolean_functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
               for (int reg = 0; reg < 3; ++reg)
                 ASSERT_TRUE(std::equal(words[reg], words[reg] + 35, expected[reg]));
             }
@@ -119,13 +114,14 @@ TEST(Boolean, ValidationBeforeEmptyMaskAndUnchangedOutputs) {
       for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
         for (int bit = 0; bit < 32; ++bit)
           if (!(known & (uint32_t(1) << bit))) {
-            EXPECT_EQ(functions[op](cpu, mask, uint32_t(1) << bit, d, a, b),
+            EXPECT_EQ(goc_test::boolean_functions[op](cpu, mask, uint32_t(1) << bit, d, a, b),
                       GOC_ERROR_INVALID_FLAGS);
           }
-        EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), mask, known, d, a, b),
+        EXPECT_EQ(goc_test::boolean_functions[op](cpu | (UINT64_C(1) << 63), mask, known, d, a, b),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask,
-                                known, d, a, b),
+        EXPECT_EQ(goc_test::boolean_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                                      GOC_SEMANTICS_STRICT,
+                                                  mask, known, d, a, b),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (const auto &reg : words)

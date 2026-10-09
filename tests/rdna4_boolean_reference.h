@@ -56,4 +56,13 @@ inline int boolean_not16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t 
   return goc_rdna4_v_not_b16(flags, mask, mode, d, a);
 }
 
+inline const char *const dpp_boolean16_names[] = {"v_and_b16", "v_or_b16", "v_xor_b16",
+                                                  "v_not_b16"};
+
+using BooleanFn = decltype(&goc_rdna4_v_and_b32);
+inline const BooleanFn boolean_functions[] = {
+    goc_rdna4_v_and_b32,     goc_rdna4_v_or_b32,      goc_rdna4_v_xor_b32,
+    goc_test::boolean_not32, goc_rdna4_v_and_b16,     goc_rdna4_v_or_b16,
+    goc_rdna4_v_xor_b16,     goc_test::boolean_not16, goc_rdna4_v_xnor_b32};
+
 } // namespace goc_test
