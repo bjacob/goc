@@ -8,12 +8,13 @@
 
 namespace goc {
 
-// Lane mapping and final-only saturation follow rocjitsu shared/mma_exec.h.
+// Accumulate each hardware stage before applying signed saturation.
 // Widen factors to signed 16 bits, including unsigned bytes (0..255), before
 // pairwise dot products. No intermediate byte-pair saturation is permitted.
-template <int Bits, int K, class Ops>
-void integer_wmma(uint32_t mask, uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
-                  const uint32_t *const *b, const uint32_t *const *c) {
+template <int Bits, int K, bool Clamp, class Ops>
+void integer_wmma_impl(uint32_t mask, uint32_t modifiers, uint32_t *const *d,
+                       const uint32_t *const *a, const uint32_t *const *b,
+                       const uint32_t *const *c) {
   using V = typename Ops::V;
   const int sign_a = (modifiers & GOC_WMMA_SIGNED_A) ? 1 << (Bits - 1) : 0;
   const int sign_b = (modifiers & GOC_WMMA_SIGNED_B) ? 1 << (Bits - 1) : 0;
@@ -44,33 +45,52 @@ void integer_wmma(uint32_t mask, uint32_t modifiers, uint32_t *const *d, const u
   }
 
   uint32_t result[8][32];
+  constexpr bool clamp = Clamp;
+  constexpr int stages = Clamp ? 2 : 1;
   for (int row = 0; row < 16; ++row) {
-    V sums[16 / Ops::width];
-    for (auto &sum : sums)
-      sum = Ops::splat(0);
-    for (int k = 0; k < K; k += 2) {
-      V left = Ops::splat_bits(packed[0][k / 2][row]);
-      for (int chunk = 0; chunk < 16 / Ops::width; ++chunk)
-        sums[chunk] = Ops::dot(sums[chunk], left, Ops::load(packed[1][k / 2] + chunk * Ops::width));
-    }
-    for (int chunk = 0; chunk < 16 / Ops::width; ++chunk) {
-      int lane = 16 * (row / 8) + chunk * Ops::width;
-      V acc = Ops::load(c[row % 8] + lane);
-      V sum = Ops::add(acc, sums[chunk]);
-      // The dot alone fits int32 (at most 16*255*255). Only adding C can
-      // overflow. Detect signed overflow and clamp once, after the entire dot.
-      if (modifiers & GOC_WMMA_CLAMP) {
-        V overflow = Ops::bit_and(Ops::bit_xor(acc, sum), Ops::bit_xor(sums[chunk], sum));
-        V limit = Ops::bit_xor(Ops::sign(acc), Ops::splat(INT32_MAX));
-        sum = Ops::select_negative(overflow, limit, sum);
+    V acc[16 / Ops::width];
+    for (int chunk = 0; chunk < 16 / Ops::width; ++chunk)
+      acc[chunk] = Ops::load(c[row % 8] + 16 * (row / 8) + chunk * Ops::width);
+    for (int stage = 0; stage < stages; ++stage) {
+      V sums[16 / Ops::width];
+      for (auto &sum : sums)
+        sum = Ops::splat(0);
+      for (int local = 0; local < K / stages; local += 2) {
+        int k = clamp ? 16 * (local / 8) + 8 * stage + local % 8 : local;
+        V left = Ops::splat_bits(packed[0][k / 2][row]);
+        for (int chunk = 0; chunk < 16 / Ops::width; ++chunk)
+          sums[chunk] =
+              Ops::dot(sums[chunk], left, Ops::load(packed[1][k / 2] + chunk * Ops::width));
       }
-      Ops::store(result[row % 8] + lane, sum);
+      for (int chunk = 0; chunk < 16 / Ops::width; ++chunk) {
+        V sum = Ops::add(acc[chunk], sums[chunk]);
+        // Each stage's dot fits int32. Saturate its addition to the current
+        // accumulator before starting the next hardware stage.
+        if (clamp) {
+          V overflow = Ops::bit_and(Ops::bit_xor(acc[chunk], sum), Ops::bit_xor(sums[chunk], sum));
+          V limit = Ops::bit_xor(Ops::sign(acc[chunk]), Ops::splat(INT32_MAX));
+          sum = Ops::select_negative(overflow, limit, sum);
+        }
+        acc[chunk] = sum;
+      }
     }
+    for (int chunk = 0; chunk < 16 / Ops::width; ++chunk)
+      Ops::store(result[row % 8] + 16 * (row / 8) + chunk * Ops::width, acc[chunk]);
   }
   // All source reads precede writes, including when D shares A/B/C VGPRs.
   for (int reg = 0; reg < 8; ++reg)
     for (int lane = 0; lane < 32; lane += Ops::width)
       Ops::masked_store(d[reg] + lane, mask >> lane, Ops::load(result[reg] + lane));
+}
+
+// Execute the selected saturation mode with compile-time stage boundaries.
+template <int Bits, int K, class Ops>
+void integer_wmma(uint32_t mask, uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
+                  const uint32_t *const *b, const uint32_t *const *c) {
+  if (modifiers & GOC_WMMA_CLAMP)
+    integer_wmma_impl<Bits, K, true, Ops>(mask, modifiers, d, a, b, c);
+  else
+    integer_wmma_impl<Bits, K, false, Ops>(mask, modifiers, d, a, b, c);
 }
 
 } // namespace goc

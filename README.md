@@ -239,8 +239,15 @@ Integer WMMA uses SIMD in both semantics, for every signedness and CLAMP
 combination.
 Its v3 path uses signed 16-bit pairwise multiply-adds; Zen4 uses AVX-512 VNNI
 word dot products. Unsigned bytes widen to positive 16-bit values, avoiding
-saturating byte-pair operations. Each kernel computes the complete dot before
-adding C and optionally saturating, including cancellation near int32 limits.
+saturating byte-pair operations. With CLAMP, each kernel saturates after the
+products with even `(k / 8)`, then after those with odd `(k / 8)`. For K=32,
+the first stage therefore combines positions 0–7 and 16–23. GPU captures of
+98,304 results verify these boundaries, including cancellation near int32
+limits where final-only saturation gives a different answer. Scalar, v3 and
+VNNI paths use the same staged semantics. Compile-time stage specialization
+keeps CLAMP on fast SIMD paths: pinned-core measurements on the Ryzen 9 7950X3D
+put signed CLAMP at 86–157 ns for v3 and 72–135 ns for VNNI across the three
+shapes (seven samples, each at least 10 ms).
 
 ## Calling convention
 

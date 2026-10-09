@@ -1706,7 +1706,8 @@ GOC_API int goc_rdna4_v_wmma_f32_16x16x16_bf8_bf8(uint64_t flags, uint64_t exec_
                                                   const uint32_t *const *c);
 
 // Integer WMMA modifiers: NEG[0:1] select signed interpretation of A/B;
-// CLAMP saturates the final signed accumulator instead of wrapping modulo 2^32.
+// CLAMP saturates signed accumulation at instruction-specific stage boundaries;
+// without CLAMP, results wrap modulo 2^32.
 static const uint32_t GOC_WMMA_SIGNED_A = (UINT32_C(1) << 0);
 static const uint32_t GOC_WMMA_SIGNED_B = (UINT32_C(1) << 1);
 static const uint32_t GOC_WMMA_CLAMP = (UINT32_C(1) << 6);
@@ -1714,6 +1715,9 @@ static const uint32_t GOC_WMMA_CLAMP = (UINT32_C(1) << 6);
 // Wave32 integer WMMA: C/D each hold 8 VGPRs. A/B each hold 2 VGPRs for
 // IU8 and K=32 IU4, or 1 VGPR for K=16 IU4. Supports loose and exact semantics,
 // signed/unsigned factors, and CLAMP. Accumulators are signed 32-bit integers.
+// CLAMP applies after products with (k / 8) even, then after those with
+// (k / 8) odd: K=16 uses 0..7 then 8..15; K=32 uses 0..7 plus 16..23,
+// then 8..15 plus 24..31.
 GOC_API int goc_rdna4_v_wmma_i32_16x16x16_iu8(uint64_t flags, uint64_t exec_mask,
                                               uint32_t instruction_flags, uint32_t *const *d,
                                               const uint32_t *const *a, const uint32_t *const *b,

@@ -92,11 +92,17 @@ int integer(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *
         continue;
       uint32_t bits = c[reg][lane];
       int64_t acc = int64_t(bits) - ((bits >> 31) ? (INT64_C(1) << 32) : 0);
-      for (int k = 0; k < K; ++k)
-        acc += extend(element<Bits, K>(a, row, k), modifiers & GOC_WMMA_SIGNED_A) *
-               extend(element<Bits, K>(b, col, k), modifiers & GOC_WMMA_SIGNED_B);
-      if (modifiers & GOC_WMMA_CLAMP)
-        acc = std::clamp(acc, -INT64_C(2147483648), INT64_C(2147483647));
+      const bool clamp = modifiers & GOC_WMMA_CLAMP;
+      const int stages = clamp ? 2 : 1;
+      for (int stage = 0; stage < stages; ++stage) {
+        for (int local = 0; local < K / stages; ++local) {
+          int k = clamp ? 16 * (local / 8) + 8 * stage + local % 8 : local;
+          acc += extend(element<Bits, K>(a, row, k), modifiers & GOC_WMMA_SIGNED_A) *
+                 extend(element<Bits, K>(b, col, k), modifiers & GOC_WMMA_SIGNED_B);
+        }
+        if (clamp)
+          acc = std::clamp(acc, -INT64_C(2147483648), INT64_C(2147483647));
+      }
       // Unsigned conversion implements modulo 2^32 without signed overflow.
       result[reg][lane] = uint32_t(acc);
     }

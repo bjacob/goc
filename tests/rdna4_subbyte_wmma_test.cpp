@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_integer_wmma_hardware.h"
 #include "rdna4_subbyte_golden.h"
 
 #include <algorithm>
@@ -284,10 +285,13 @@ TEST(SubbyteWmma, IntegerExtremesAndCancellationAcrossCpuLevels) {
         for (int row = 0; row < 16; ++row)
           for (int col = 0; col < 16; ++col) {
             int64_t acc = accumulators[(row + col) % 8];
-            for (int k = 0; k < k_size; ++k)
-              acc += values[0][row][k] * values[1][col][k];
-            if (mode & 4)
-              acc = std::clamp(acc, int64_t(INT32_MIN), int64_t(INT32_MAX));
+            for (int half = 0; half < 2; ++half) {
+              for (int k = 0; k < k_size; ++k)
+                if ((k / 8) % 2 == half)
+                  acc += values[0][row][k] * values[1][col][k];
+              if (mode & 4)
+                acc = std::clamp(acc, int64_t(INT32_MIN), int64_t(INT32_MAX));
+            }
             golden[row * 16 + col] = uint32_t(acc);
           }
         for (uint64_t cpu : cpu_levels()) {
@@ -310,4 +314,33 @@ TEST(SubbyteWmma, IntegerExtremesAndCancellationAcrossCpuLevels) {
           check(r, 16, UINT64_MAX, golden, before);
         }
       }
+}
+
+TEST(SubbyteWmma, IntegerHardwareStagedClampCorpus) {
+  for (unsigned shape = 0; shape < 3; ++shape)
+    for (uint64_t cpu : cpu_levels())
+      for (unsigned sample = 0; sample < 16; ++sample)
+        for (unsigned mode = 0; mode < 8; ++mode) {
+          uint32_t data[15][32], result[8][32];
+          goc_test::dense_integer_capture_inputs(sample, data);
+          const uint32_t *a[] = {data[0], data[1]}, *b[] = {data[2], data[3]}, *c[8];
+          uint32_t *d[8];
+          for (unsigned reg = 0; reg < 8; ++reg) {
+            c[reg] = data[6 + reg];
+            d[reg] = result[reg];
+          }
+          uint32_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
+          ASSERT_EQ(integer[shape](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                   UINT32_MAX, modifiers, d, a, b, c),
+                    GOC_SUCCESS);
+          uint64_t digest = UINT64_C(14695981039346656037);
+          for (const auto &reg : result)
+            for (uint32_t word : reg)
+              for (unsigned byte = 0; byte < 4; ++byte) {
+                digest ^= (word >> (8 * byte)) & 255;
+                digest *= UINT64_C(1099511628211);
+              }
+          EXPECT_EQ(digest, goc_test::dense_integer_capture_digests[shape][sample][mode])
+              << shape << "/" << cpu << "/" << sample << "/" << mode;
+        }
 }
