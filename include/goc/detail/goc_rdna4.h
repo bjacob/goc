@@ -183,6 +183,19 @@ GOC_API int goc_rdna4_v_pk_ashrrev_i16(uint64_t flags, uint64_t exec_mask,
                                        uint32_t instruction_flags, uint32_t *const *d,
                                        const uint32_t *const *a, const uint32_t *const *b);
 
+// Packed integer multiply-add: two results per lane, one VGPR per operand.
+// All GOC_PK_* half selectors for A/B/C are supported; negation is invalid.
+// CLAMP saturates the full A * B + C result to the signed/unsigned 16-bit range;
+// without it, results wrap. Both halves read original sources before D is written.
+// Loose semantics only; independent of host floating-point state.
+GOC_API int goc_rdna4_v_pk_mad_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_pk_mad_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, const uint32_t *const *c);
+
 // Packed source negation: independent for the low and high result calculations.
 static const uint32_t GOC_PK_NEG_LO_A = (UINT32_C(1) << 0);
 static const uint32_t GOC_PK_NEG_LO_B = (UINT32_C(1) << 1);
@@ -192,7 +205,7 @@ static const uint32_t GOC_PK_NEG_HI_B = (UINT32_C(1) << 4);
 static const uint32_t GOC_PK_NEG_HI_C = (UINT32_C(1) << 5);
 
 // Packed output clamp: floats to [0, 1], with NaNs and -0 to +0;
-// integer ADD/SUB saturate to their result range.
+// integer ADD/SUB/MAD saturate to their result range.
 static const uint32_t GOC_PK_CLAMP = (UINT32_C(1) << 6);
 
 // Packed half selectors flip the default choice for each result calculation.
