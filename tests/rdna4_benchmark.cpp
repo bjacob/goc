@@ -3720,45 +3720,60 @@ bool benchmark_carry(uint64_t cpu, int iterations, int min_ms) {
   const uint32_t values[] = {0, 1, 0x7fffffff, 0x80000000, 0xfffffffe, UINT32_MAX};
   const uint64_t semantics = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
   for (unsigned op = 0; op < 6; ++op)
-    for (bool clamp : {false, true}) {
-      CarryRegisters r;
-      r.output_regs = 1;
-      for (unsigned lane = 0; lane < 32; ++lane) {
-        r.data[0][lane] = values[lane % 6];
-        r.data[4][lane] = values[(lane / 6 + lane) % 6];
-        auto gold = goc_test::carry_reference(op, r.data[0][lane], r.data[4][lane],
-                                              (0xa5a5a5a5 >> lane) & 1, clamp);
-        r.expected[128 * (lane / 16) + lane % 16] = gold.value;
-        r.expected_carry |= uint32_t(gold.carry) << lane;
-      }
-      const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
-                          const uint32_t *const *) {
-        return goc_test::carry_functions[op](flags, mask, modifiers, d, &r.carry, a, b, 0xa5a5a5a5);
-      };
-      uint32_t mode = clamp ? GOC_ALU_CLAMP : 0;
-      const char *label = clamp ? "clamp" : "none";
-      double scalar = measure(fn, semantics, r, iterations, min_ms, mode);
-      if (scalar < 0)
-        return false;
-      print_result(names[op], "exact", label, "scalar", scalar, 1);
-#if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if (cpu >= GOC_CPU_X86_64_V3) {
-        double simd = measure(fn, semantics | GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
-        if (simd < 0)
+    for (bool clamp : {false, true})
+      for (int descriptor : {-1, 0, 5}) {
+        uint64_t mode =
+            (clamp ? GOC_ALU_CLAMP : 0) | (descriptor < 0 ? 0 : goc_test::dpp_modes[descriptor]);
+        CarryRegisters r;
+        r.output_regs = 1;
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          r.data[0][lane] = values[lane % 6];
+          r.data[4][lane] = values[(lane / 6 + lane) % 6];
+        }
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          int source = int(lane);
+          if (descriptor >= 0)
+            goc_test::dpp_source(mode, UINT32_MAX, lane, source);
+          uint32_t av = r.data[0][lane], bv = r.data[4][lane];
+          if (op % 3 == 2)
+            bv = source < 0 ? 0 : r.data[4][source];
+          else
+            av = source < 0 ? 0 : r.data[0][source];
+          auto gold = goc_test::carry_reference(op, av, bv, (0xa5a5a5a5 >> lane) & 1, clamp);
+          r.expected[128 * (lane / 16) + lane % 16] = gold.value;
+          r.expected_carry |= uint32_t(gold.carry) << lane;
+        }
+        const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *) {
+          return goc_test::carry_functions[op](flags, mask, modifiers, d, &r.carry, a, b,
+                                               0xa5a5a5a5);
+        };
+        const char *label = clamp ? "clamp" : "none";
+        if (descriptor >= 0)
+          label =
+              descriptor == 0 ? (clamp ? "DPP8/clamp" : "DPP8") : (clamp ? "DPP16/clamp" : "DPP16");
+        double scalar = measure(fn, semantics, r, iterations, min_ms, mode);
+        if (scalar < 0)
           return false;
-        print_result(names[op], "exact", label, "x86-64-v3", simd, scalar / simd);
-      }
+        print_result(names[op], "exact", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+        if (cpu >= GOC_CPU_X86_64_V3) {
+          double simd = measure(fn, semantics | GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(names[op], "exact", label, "x86-64-v3", simd, scalar / simd);
+        }
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
-      if (cpu >= GOC_CPU_X86_64_V4) {
-        double simd = measure(fn, semantics | GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
-        if (simd < 0)
-          return false;
-        print_result(names[op], "exact", label, "x86-64-v4", simd, scalar / simd);
-      }
+        if (cpu >= GOC_CPU_X86_64_V4) {
+          double simd = measure(fn, semantics | GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(names[op], "exact", label, "x86-64-v4", simd, scalar / simd);
+        }
 #endif
-    }
+      }
   (void)cpu;
   return true;
 }

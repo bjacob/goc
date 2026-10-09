@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_carry_hardware.h"
 #include "rdna4_carry_reference.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <algorithm>
@@ -174,4 +175,110 @@ TEST(Carry, ValidationAndZeroExec) {
           GOC_SUCCESS);
       EXPECT_EQ(carry, 0u);
     }
+}
+
+TEST(Carry, DppMasksModifiersAndScalarVectorAliases) {
+  std::mt19937 random(186397);
+  uint32_t initial[3][34];
+  for (auto &reg : initial)
+    for (auto &word : reg)
+      word = random();
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, exact})
+        for (bool clamp : {false, true})
+          for (auto descriptor : goc_test::dpp_modes)
+            for (auto mask : rdna4_exec_masks())
+              for (unsigned source_b : {0u, 1u})
+                for (unsigned target = 0; target < 3; ++target)
+                  for (bool scalar_alias : {false, true}) {
+                    uint32_t words[3][34], expected[3][34], carry = 0xdeadbeef, wanted_carry = 0;
+                    uint32_t ci = uint32_t(mask) ^ 0xa5a5a5a5;
+                    std::memcpy(words, initial, sizeof(words));
+                    std::memcpy(expected, initial, sizeof(expected));
+                    for (unsigned lane = 0; lane < 32; ++lane) {
+                      int source = 0;
+                      if (!goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+                        continue;
+                      uint32_t av = initial[0][lane + 1], bv = initial[source_b][lane + 1];
+                      if (op % 3 == 2)
+                        bv = source < 0 ? 0 : initial[source_b][source + 1];
+                      else
+                        av = source < 0 ? 0 : initial[0][source + 1];
+                      auto gold = goc_test::carry_reference(op, av, bv, (ci >> lane) & 1, clamp);
+                      expected[target][lane + 1] = gold.value;
+                      wanted_carry |= uint32_t(gold.carry) << lane;
+                    }
+                    if (scalar_alias)
+                      expected[target][14] = wanted_carry;
+                    const uint32_t *a[] = {words[0] + 1}, *b[] = {words[source_b] + 1};
+                    uint32_t *d[] = {words[target] + 1};
+                    ASSERT_EQ(goc_test::carry_functions[op](
+                                  cpu | semantics, mask, descriptor | (clamp ? GOC_ALU_CLAMP : 0),
+                                  d, scalar_alias ? words[target] + 14 : &carry, a, b, ci),
+                              GOC_SUCCESS);
+                    EXPECT_EQ(carry, scalar_alias ? 0xdeadbeef : wanted_carry);
+                    ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0)
+                        << op << "/" << cpu << "/" << mask << "/" << descriptor;
+                  }
+}
+
+TEST(Carry, DppValidationAndZeroExec) {
+  for (auto fn : goc_test::carry_functions)
+    for (auto descriptor : goc_test::dpp_modes) {
+      uint32_t carry = 0x12345678;
+      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1)})
+        for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+          EXPECT_EQ(fn(0, mask, descriptor | invalid, nullptr, &carry, nullptr, nullptr, 0),
+                    GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(carry, 0x12345678u);
+        }
+      EXPECT_EQ(fn(0, UINT64_C(0xffffffff00000000), descriptor, nullptr, &carry, nullptr, nullptr,
+                   UINT32_MAX),
+                GOC_SUCCESS);
+      EXPECT_EQ(carry, 0u);
+    }
+}
+
+// RX 9070: three carry-in masks, eight EXEC masks, six operations, both CLAMP
+// modes and seven DPP descriptors. Each block hashes 32 VGPR words then carry.
+TEST(Carry, DppHardwareCorpusAndHostFpState) {
+  const uint32_t values[] = {0, 1, 2, 0x7ffffffe, 0x7fffffff, 0x80000000, 0xfffffffe, UINT32_MAX};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  std::fenv_t saved;
+  ASSERT_EQ(std::fegetenv(&saved), 0);
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+    std::fesetround(rounding);
+    std::feclearexcept(FE_ALL_EXCEPT);
+    std::feraiseexcept(FE_INVALID | FE_INEXACT);
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, exact}) {
+        uint64_t hash = UINT64_C(14695981039346656037);
+        for (uint32_t ci : {0u, UINT32_MAX, 0xa5a5a5a5u})
+          for (auto mask : masks)
+            for (auto fn : goc_test::carry_functions)
+              for (bool clamp : {false, true})
+                for (auto descriptor : goc_test::dpp_modes) {
+                  uint32_t av[32], bv[32], output[32], carry = 0x96969696;
+                  for (unsigned lane = 0; lane < 32; ++lane) {
+                    av[lane] = values[lane % 8];
+                    bv[lane] = values[(lane + 3) % 8];
+                    output[lane] = 0xdead0000u + lane;
+                  }
+                  const uint32_t *a[] = {av}, *b[] = {bv};
+                  uint32_t *d[] = {output};
+                  EXPECT_EQ(fn(cpu | semantics, mask, descriptor | (clamp ? GOC_ALU_CLAMP : 0), d,
+                               &carry, a, b, ci),
+                            GOC_SUCCESS);
+                  for (auto word : output)
+                    hash = (hash ^ word) * UINT64_C(1099511628211);
+                  hash = (hash ^ carry) * UINT64_C(1099511628211);
+                }
+        EXPECT_EQ(hash, UINT64_C(0x8c738ac66b29e6ad)) << cpu << "/" << semantics;
+        EXPECT_EQ(std::fegetround(), rounding);
+        EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
+      }
+  }
+  std::fesetenv(&saved);
 }

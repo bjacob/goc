@@ -1614,8 +1614,10 @@ GOC_API int goc_rdna4_v_mad_co_i64_i32(uint64_t flags, uint64_t exec_mask,
 // one input carry/borrow bit per lane. SUBREV computes B-A-input_borrow.
 // CLAMP saturates overflow to UINT32_MAX for addition and underflow to zero for
 // subtraction; carry/borrow bits still describe the unsaturated result.
-// Supports CLAMP only, loose and empirical exact semantics, all EXEC masks and
-// whole-register aliases. Inactive scalar output bits are cleared, even at zero
+// Supports CLAMP and DPP8/DPP16: ADD/SUB permute A, SUBREV permutes B. Input
+// carry bits stay in their original lanes. Supports loose and empirical exact
+// semantics, all EXEC masks and whole-register aliases. Inactive and DPP-filtered
+// scalar output bits are cleared, even at zero
 // EXEC. The scalar output must always be writable and is written after VGPR D;
 // zero EXEC permits null VGPR pointers. Errors leave all destinations unchanged.
 // Host FP state is preserved; GOC_FP16_OVFL has no effect.

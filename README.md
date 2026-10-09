@@ -701,6 +701,9 @@ CLAMP saturates the VGPR result while preserving the unsaturated carry/borrow
 indication. Inactive scalar output bits are cleared, including for zero EXEC;
 inactive VGPR lanes remain unchanged. The scalar output is written last and may
 share storage with a VGPR. All paths preserve host FP state.
+DPP8/DPP16 permutes A for ADD/SUB and B for SUBREV; input carry bits stay
+in their original lanes. DPP-filtered lanes preserve D and clear their scalar
+carry bits. All DPP modifiers retain the existing scalar, v3 and v4 paths.
 
 Scalar, v3 (eight lanes), and v4 (sixteen lanes) paths support both semantics,
 CLAMP and all aliases. GPU captures verify full, partial and zero EXEC behavior,
@@ -710,6 +713,12 @@ input-carry mask patterns, check shared sources, unaligned storage, destination
 aliases and scalar-output overlap, and verify host FP-state preservation. Pinned-core
 Ryzen 9 7950X3D measurements show 1.43–2.09x for v3 and 5.36–7.84x for v4 versus
 scalar, including CLAMP (seven samples, each at least 10 ms).
+DPP tests add 66,528 GPU-captured words spanning carry-in masks, EXEC masks,
+all six operations and CLAMP, checking both vector results and scalar carry.
+They also cover scalar/vector output overlap, destination aliases, guard words,
+invalid flags and host FP-state preservation in both semantics.
+Pinned DPP measurements take 18.2–23.9 ns on v3 (2.08–2.76× scalar) and
+11.2–16.9 ns on v4 (2.80–4.77×), including CLAMP and carry-in forms.
 
 Division fused post-scaling covers `v_div_fmas_f32` and `v_div_fmas_f64`, with
 loose and empirical exact semantics borrowed from rocjitsu. The API takes the
