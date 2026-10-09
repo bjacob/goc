@@ -50,6 +50,28 @@ TEST(Cube, HardwareCartesianCorpus) {
     }
 }
 
+TEST(Cube, AxisTiesAtEveryMaskedLaneWithAlias) {
+  // Equal magnitudes select Z before Y before X, including negative faces.
+  const uint32_t inputs[][3] = {{0x3f800000, 0xbf800000, 0x3f800000},
+                                {0xbf800000, 0x3f800000, 0xbf800000},
+                                {0x3f800000, 0xbf800000, 0},
+                                {0xbf800000, 0, 0}};
+  const uint32_t faces[] = {0x40800000, 0x40a00000, 0x40400000, 0x3f800000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned selected = 0; selected < 32; ++selected) {
+      uint32_t words[3][32];
+      for (unsigned lane = 0; lane < 32; ++lane)
+        for (unsigned reg = 0; reg < 3; ++reg)
+          words[reg][lane] = inputs[lane % 4][reg];
+      const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+      uint32_t *d[] = {words[0]};
+      ASSERT_EQ(goc_rdna4_v_cubeid_f32(cpu | exact, UINT32_C(1) << selected, 0, d, a, b, c),
+                GOC_SUCCESS);
+      for (unsigned lane = 0; lane < 32; ++lane)
+        EXPECT_EQ(words[0][lane], lane == selected ? faces[lane % 4] : inputs[lane % 4][0]);
+    }
+}
+
 TEST(Cube, HardwareLiteralCases) {
   for (const auto &capture : goc_test::cube_captures)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)

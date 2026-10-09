@@ -6,15 +6,170 @@
 #include "goc/goc.h"
 #include "rdna4_div_scale.h"
 #include "rdna4_division.h"
-#include "x86_64/rdna4_division_simd.h"
-#include "x86_64/rdna4_division_x86_64_v3.h"
 
 #include <immintrin.h>
 #include <stdint.h>
 
 namespace {
 
-template <bool Wide> using Ops = goc::DivisionOpsV3<Wide>;
+template <bool Wide> struct Ops {
+  using V = __m256i;
+  using Mask = __m256i;
+
+  static V set(uint64_t x) {
+    if constexpr (Wide)
+      return _mm256_set1_epi64x(int64_t(x));
+    else
+      return _mm256_set1_epi32(int32_t(x));
+  }
+
+  static V add(V a, V b) {
+    if constexpr (Wide)
+      return _mm256_add_epi64(a, b);
+    else
+      return _mm256_add_epi32(a, b);
+  }
+
+  static V sub(V a, V b) {
+    if constexpr (Wide)
+      return _mm256_sub_epi64(a, b);
+    else
+      return _mm256_sub_epi32(a, b);
+  }
+
+  static V shr(V a, int count) {
+    if constexpr (Wide)
+      return _mm256_srli_epi64(a, count);
+    else
+      return _mm256_srli_epi32(a, count);
+  }
+
+  static V shl(V a, int count) {
+    if constexpr (Wide)
+      return _mm256_slli_epi64(a, count);
+    else
+      return _mm256_slli_epi32(a, count);
+  }
+
+  static Mask gt(V a, V b) {
+    if constexpr (Wide)
+      return _mm256_cmpgt_epi64(a, b);
+    else
+      return _mm256_cmpgt_epi32(a, b);
+  }
+
+  static Mask eq(V a, V b) {
+    if constexpr (Wide)
+      return _mm256_cmpeq_epi64(a, b);
+    else
+      return _mm256_cmpeq_epi32(a, b);
+  }
+
+  static Mask both(Mask a, Mask b) { return _mm256_and_si256(a, b); }
+
+  static Mask either(Mask a, Mask b) { return _mm256_or_si256(a, b); }
+
+  static Mask inverse(Mask a) { return _mm256_xor_si256(a, _mm256_set1_epi32(-1)); }
+
+  static V select(Mask m, V yes, V no) { return _mm256_blendv_epi8(no, yes, m); }
+};
+
+template <unsigned Width>
+__m256i scale_value(__m256i a, __m256i b, __m256i c, uint32_t mode,
+                    typename Ops<Width == 64>::Mask &post) {
+  using F = goc::DivisionFormat<Width>;
+  using O = Ops<Width == 64>;
+  constexpr int threshold = Width == 32 ? 96 : 768, scale = Width == 32 ? 64 : 128;
+  auto zero = O::set(0), one = O::set(1), inf = O::set(F::infinity), signbit = O::set(F::sign),
+       magmask = O::set(F::sign - 1);
+  auto mag = _mm256_and_si256(a, magmask), bm = _mm256_and_si256(b, magmask),
+       cm = _mm256_and_si256(c, magmask);
+  auto de = O::shr(_mm256_and_si256(b, inf), F::fraction),
+       ne = O::shr(_mm256_and_si256(c, inf), F::fraction);
+  auto delta = O::sub(ne, de);
+  auto denominator = O::eq(a, b);
+  auto large_delta = O::gt(delta, O::set(threshold - 1)),
+       small_delta = O::gt(O::set(uint64_t(-int64_t(threshold) + 1)), delta);
+  post = O::either(large_delta, small_delta);
+  auto adjustment = O::select(O::gt(O::set(F::fraction + 2), ne), O::set(scale), zero);
+  adjustment = O::select(small_delta, O::select(denominator, zero, O::set(scale)), adjustment);
+  auto high_denominator = O::gt(de, O::set(2 * F::bias - 2));
+  adjustment = O::select(high_denominator,
+                         O::select(O::both(small_delta, O::inverse(denominator)), zero,
+                                   O::set(uint64_t(-int64_t(scale)))),
+                         adjustment);
+  adjustment = O::select(O::eq(de, zero), O::set(scale), adjustment);
+  adjustment = O::select(large_delta, O::select(denominator, O::set(scale), zero), adjustment);
+  auto fraction_mask = O::set((uint64_t(1) << F::fraction) - 1),
+       hidden = O::set(uint64_t(1) << F::fraction);
+  auto fraction = _mm256_and_si256(a, fraction_mask);
+  // Encoding 2^fraction + significand then subtracting 2^fraction converts
+  // the integer significand exactly, without touching subnormal FP operands.
+  // The result supplies a normalized mantissa and its leading-bit exponent.
+  auto magic = O::set(uint64_t(F::bias + F::fraction) << F::fraction);
+  auto encoded = _mm256_or_si256(magic, fraction);
+  __m256i normalized;
+  if constexpr (Width == 64)
+    normalized =
+        _mm256_castpd_si256(_mm256_sub_pd(_mm256_castsi256_pd(encoded), _mm256_set1_pd(0x1p52)));
+  else
+    normalized =
+        _mm256_castps_si256(_mm256_sub_ps(_mm256_castsi256_ps(encoded), _mm256_set1_ps(0x1p23f)));
+  auto original_exponent = O::shr(_mm256_and_si256(a, inf), F::fraction);
+  auto subnormal = O::eq(original_exponent, zero);
+  auto small_exponent = O::sub(O::shr(_mm256_and_si256(normalized, inf), F::fraction),
+                               O::set(F::bias + F::fraction - 1));
+  auto exponent = O::add(O::select(subnormal, small_exponent, original_exponent), adjustment);
+  auto mantissa = _mm256_and_si256(O::select(subnormal, normalized, a), fraction_mask);
+  auto sign = _mm256_and_si256(a, signbit);
+  auto result = _mm256_or_si256(sign, _mm256_or_si256(O::shl(exponent, F::fraction), mantissa));
+  auto shift = O::sub(one, exponent);
+  shift = O::select(O::gt(one, shift), one, shift);
+  shift = O::select(O::gt(shift, O::set(F::fraction + 2)), O::set(F::fraction + 2), shift);
+  auto significand = _mm256_or_si256(mantissa, hidden);
+  __m256i half, kept, rounded;
+  if constexpr (Width == 64) {
+    half = _mm256_sllv_epi64(one, O::sub(shift, one));
+    kept = _mm256_srlv_epi64(significand, shift);
+    rounded = _mm256_srlv_epi64(
+        O::add(significand, O::add(O::sub(half, one), _mm256_and_si256(kept, one))), shift);
+  } else {
+    half = _mm256_sllv_epi32(one, O::sub(shift, one));
+    kept = _mm256_srlv_epi32(significand, shift);
+    rounded = _mm256_srlv_epi32(
+        O::add(significand, O::add(O::sub(half, one), _mm256_and_si256(kept, one))), shift);
+  }
+  result = O::select(O::gt(one, exponent), _mm256_or_si256(sign, rounded), result);
+  result = O::select(O::gt(exponent, O::set(2 * F::bias)), _mm256_or_si256(sign, inf), result);
+  auto quiet = O::select(O::gt(mag, inf), O::set(F::quiet), zero);
+  result = O::select(O::either(O::eq(mag, zero), O::inverse(O::gt(inf, mag))),
+                     _mm256_or_si256(a, quiet), result);
+  result = O::select(O::either(O::eq(bm, zero), O::eq(cm, zero)),
+                     O::set(F::sign | F::infinity | F::quiet), result);
+  auto overflow = inf;
+  unsigned omod = (mode >> 6) & 3;
+  if (omod) {
+    auto exponent = _mm256_and_si256(result, inf), output_sign = _mm256_and_si256(result, signbit),
+         step = O::set(uint64_t(1) << F::fraction);
+    __m256i scaled;
+    if (omod == 3)
+      scaled = O::select(O::eq(exponent, step), output_sign, O::sub(result, step));
+    else {
+      auto increment = O::set(uint64_t(omod) << F::fraction);
+      scaled = O::select(O::inverse(O::gt(O::sub(inf, increment), exponent)),
+                         _mm256_or_si256(output_sign, overflow), O::add(result, increment));
+    }
+    result = O::select(O::eq(exponent, inf), result, scaled);
+    result = O::select(O::eq(exponent, zero), zero, result);
+  }
+  if (mode & GOC_ALU_CLAMP) {
+    auto negative = O::inverse(O::eq(_mm256_and_si256(result, signbit), zero));
+    result = O::select(O::either(negative, O::gt(result, inf)), zero, result);
+    auto one = O::set(uint64_t(F::bias) << F::fraction);
+    result = O::select(O::gt(result, one), one, result);
+  }
+  return result;
+}
 
 template <unsigned Width>
 __m256i load(const uint32_t *const *v, unsigned lane, uint32_t mode, unsigned operand) {
@@ -46,9 +201,8 @@ uint32_t div_scale_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d,
   uint32_t staged[2][32], conditions = 0;
   for (unsigned lane = 0; lane < 32; lane += lanes) {
     typename Ops<Width == 64>::Mask post;
-    auto result = division_scale_value<Width, Ops<Width == 64>>(
-        load<Width>(a, lane, mode, 0), load<Width>(b, lane, mode, 1), load<Width>(c, lane, mode, 2),
-        mode, post);
+    auto result = scale_value<Width>(load<Width>(a, lane, mode, 0), load<Width>(b, lane, mode, 1),
+                                     load<Width>(c, lane, mode, 2), mode, post);
     if constexpr (Width == 64)
       conditions |= uint32_t(_mm256_movemask_pd(_mm256_castsi256_pd(post))) << lane;
     else

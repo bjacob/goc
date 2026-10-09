@@ -124,3 +124,28 @@ TEST(IntegerMinmax, ValidationAndFpEnvironment) {
     }
   std::fesetenv(&saved);
 }
+
+TEST(IntegerMinmax, EverySingleLaneAndComplementWithAlias) {
+  for (unsigned op = 0; op < 14; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned bit = 0; bit < 32; ++bit)
+        for (uint32_t mask : {UINT32_C(1) << bit, ~(UINT32_C(1) << bit)}) {
+          uint32_t words[3][32], expected[32];
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            words[0][lane] = UINT32_C(0x80000000) + lane;
+            words[1][lane] = UINT32_C(0x7fffffff) - lane;
+            words[2][lane] = lane & 1 ? UINT32_MAX : 0;
+            expected[lane] = mask & (UINT32_C(1) << lane)
+                                 ? goc_test::integer_minmax_reference(
+                                       op, words[0][lane], words[1][lane], words[2][lane])
+                                 : words[1][lane];
+          }
+          const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+          uint32_t *d[] = {words[1]};
+          ASSERT_EQ(goc_test::integer_minmax_functions[op](cpu, mask, 0, d, a, b,
+                                                           op % 7 < 2 ? nullptr : c),
+                    GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 32; ++lane)
+            EXPECT_EQ(words[1][lane], expected[lane]);
+        }
+}
