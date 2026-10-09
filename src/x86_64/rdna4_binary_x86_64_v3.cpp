@@ -46,8 +46,17 @@ void run(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uin
       value = minmax<false, true>(x, y);
     if constexpr (Op == Binary::Maximum)
       value = minmax<true, true>(x, y);
-    if (mode & GOC_ALU_OMOD_HALF)
+    if (mode & GOC_ALU_OMOD_HALF) {
+      auto magnitude = _mm256_and_si256(_mm256_castps_si256(value), _mm256_set1_epi32(INT32_MAX));
+      auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x00800000), magnitude);
+      value = _mm256_andnot_ps(_mm256_castsi256_ps(tiny), value);
+      if ((mode & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF) {
+        auto underflow = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x01000000), magnitude);
+        auto sign = _mm256_and_ps(value, _mm256_castsi256_ps(_mm256_set1_epi32(INT32_MIN)));
+        value = _mm256_blendv_ps(value, sign, _mm256_castsi256_ps(underflow));
+      }
       value = _mm256_mul_ps(value, scale);
+    }
     if (mode & GOC_ALU_CLAMP)
       value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
     auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),

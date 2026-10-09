@@ -34,4 +34,19 @@ inline float alu_output(float value, uint32_t modifiers) {
   return value;
 }
 
+// FP32 scaling follows rocjitsu's fp_mode::apply_omod_f32. Tiny unscaled
+// results become +0; halving a normal result below twice minimum normal gives
+// signed zero, independently of guest denormal mode.
+inline float alu_output_f32(float value, uint32_t modifiers) {
+  unsigned omod = (modifiers >> 6) & 3;
+  if (omod) {
+    uint32_t raw = as_bits(value), magnitude = raw & 0x7fffffff;
+    if (magnitude < 0x00800000)
+      value = 0.0f;
+    else if (omod == 3 && magnitude < 0x01000000)
+      value = as_float(raw & 0x80000000);
+  }
+  return alu_output(value, modifiers);
+}
+
 } // namespace goc

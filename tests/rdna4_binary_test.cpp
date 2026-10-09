@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_binary_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <algorithm>
@@ -16,38 +17,6 @@ const Fn functions[] = {
     goc_rdna4_v_add_f32,     goc_rdna4_v_sub_f32,     goc_rdna4_v_subrev_f32,
     goc_rdna4_v_mul_f32,     goc_rdna4_v_min_num_f32, goc_rdna4_v_max_num_f32,
     goc_rdna4_v_minimum_f32, goc_rdna4_v_maximum_f32, goc_rdna4_v_mul_dx9_zero_f32};
-
-float reference(int op, float a, float b, uint32_t mode) {
-  double x = a, y = b;
-  if (mode & GOC_ALU_ABS_A)
-    x = std::abs(x);
-  if (mode & GOC_ALU_ABS_B)
-    y = std::abs(y);
-  if (mode & GOC_ALU_NEG_A)
-    x = -x;
-  if (mode & GOC_ALU_NEG_B)
-    y = -y;
-  float value = float(op == 0 ? x + y : op == 1 ? x - y : op == 2 ? y - x : x * y);
-  if (op == 8 && (x == 0 || y == 0))
-    value = 0;
-  if (op >= 4 && op < 8) {
-    bool maximum = op == 5 || op == 7;
-    if (std::isnan(x) || std::isnan(y))
-      value = op >= 6 ? NAN : std::isnan(x) ? y : x;
-    else if (x == 0 && y == 0)
-      value =
-          (maximum ? (std::signbit(x) && std::signbit(y)) : (std::signbit(x) || std::signbit(y)))
-              ? -0.0f
-              : 0.0f;
-    else
-      value = maximum ? std::max(x, y) : std::min(x, y);
-  }
-  const float scales[] = {1, 2, 4, 0.5f};
-  value *= scales[(mode >> 6) & 3];
-  if (mode & GOC_ALU_CLAMP)
-    value = !(value > 0) ? 0 : std::min(value, 1.0f);
-  return value;
-}
 
 } // namespace
 
@@ -81,8 +50,9 @@ TEST(Binary, AllModifiersMasksAliasesAndSpecialValues) {
                 EXPECT_EQ(v[alias][lane], before[lane]);
                 continue;
               }
-              float want = reference(op, goc::as_float(values[lane % 21]),
-                                     goc::as_float(values[(lane * 5 + 3) % 21]), mode);
+              float want =
+                  goc_test::binary_reference(op, goc::as_float(values[lane % 21]),
+                                             goc::as_float(values[(lane * 5 + 3) % 21]), mode);
               if (std::isnan(want)) {
                 EXPECT_TRUE(std::isnan(goc::as_float(v[alias][lane])));
               } else {

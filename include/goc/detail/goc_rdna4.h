@@ -21,8 +21,9 @@ extern "C" {
 // DPP8 permutes source A within each group of eight lanes before arithmetic
 // modifiers. Pack eight 3-bit lane indices into bits 40..63, index 0 first, and
 // set GOC_DPP8. Without FI, an inactive source supplies positive zero; FI reads
-// its stored value. Inactive destinations remain unchanged. Currently supported
-// by v_fma_f32 and v_fmac_f32, including their arithmetic modifiers and aliases.
+// its stored value. Inactive destinations remain unchanged. Supported by FP32
+// FMA/FMAC, ADD/SUB/SUBREV/MUL/MUL_DX9_ZERO, binary min/max, and three-input
+// min/max/median, including their arithmetic modifiers and whole-VGPR aliases.
 static const uint64_t GOC_DPP8 = (UINT64_C(1) << 32);
 static const uint64_t GOC_DPP_FI = (UINT64_C(1) << 33);
 static const uint32_t GOC_DPP8_SELECT_SHIFT = 40;
@@ -37,7 +38,7 @@ static const uint64_t GOC_DPP8_SELECT_MASK = (UINT64_C(0xffffff) << 40);
 // Use both full MASK constants to enable all destinations; zero fields disable
 // writes. FI permits inactive in-range sources. Without a readable source,
 // BOUND_CTRL supplies positive zero; otherwise the destination is preserved.
-// FI does not permit out-of-range sources. FMA/FMAC support all combinations.
+// FI does not permit out-of-range sources. Supports the same instructions as DPP8.
 static const uint64_t GOC_DPP16 = (UINT64_C(1) << 34);
 static const uint64_t GOC_DPP_BOUND_CTRL = (UINT64_C(1) << 35);
 static const uint32_t GOC_DPP_CTRL_SHIFT = 40;
@@ -2443,8 +2444,10 @@ static const uint32_t GOC_ALU_OMOD_HALF = (UINT32_C(3) << 6);
 // integer results to the representable signed/unsigned destination range.
 static const uint32_t GOC_ALU_CLAMP = (UINT32_C(1) << 8);
 
-// Binary FP32 arithmetic: one VGPR per operand. Supports ABS/NEG for A/B,
-// OMOD and CLAMP. Flags for C and half selection are invalid. Loose semantics only.
+// Binary FP32 arithmetic: one VGPR per operand. OMOD flushes unscaled tiny
+// results to +0; halving a normal result below twice minimum normal gives
+// signed zero. Supports ABS/NEG for A/B, OMOD, CLAMP, and DPP8/DPP16.
+// Flags for C and half selection are invalid. Loose semantics only.
 GOC_API int goc_rdna4_v_add_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b);

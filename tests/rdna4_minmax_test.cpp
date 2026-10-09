@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_minmax_reference.h"
 
 #include <algorithm>
 #include <cmath>
@@ -18,65 +19,6 @@ const Fn functions[] = {
     goc_rdna4_v_maxmin_num_f32,     goc_rdna4_v_minimum3_f32,       goc_rdna4_v_maximum3_f32,
     goc_rdna4_v_minimummaximum_f32, goc_rdna4_v_maximumminimum_f32, goc_rdna4_v_med3_num_f32};
 
-bool nan(uint32_t x) { return (x & 0x7fffffff) > 0x7f800000; }
-
-// Sortable integer keys distinguish signed zeros without host min/max rules.
-uint32_t ordered(uint32_t x) { return x & 0x80000000 ? ~x : x ^ 0x80000000; }
-
-uint32_t select(uint32_t a, uint32_t b, bool maximum, bool propagate) {
-  if (propagate) {
-    for (uint32_t x : {a, b})
-      if (nan(x) && !(x & 0x00400000))
-        return x | 0x00400000;
-    for (uint32_t x : {a, b})
-      if (nan(x))
-        return x;
-  } else {
-    if (nan(a) && nan(b))
-      return a | 0x00400000;
-    if (nan(a) || nan(b))
-      return nan(a) ? b : a;
-  }
-  return (maximum ? ordered(a) > ordered(b) : ordered(a) < ordered(b)) ? a : b;
-}
-
-uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t c, uint32_t mode) {
-  uint32_t inputs[] = {a, b, c};
-  for (int i = 0; i < 3; ++i) {
-    if (mode & (GOC_ALU_ABS_A << i))
-      inputs[i] &= 0x7fffffff;
-    if (mode & (GOC_ALU_NEG_A << i))
-      inputs[i] ^= 0x80000000;
-  }
-  bool first_max = op % 4 == 1 || op % 4 == 3;
-  bool second_max = op % 4 == 1 || op % 4 == 2;
-  uint32_t result =
-      select(select(inputs[0], inputs[1], first_max, op >= 4), inputs[2], second_max, op >= 4);
-  if (op == 8) {
-    if (nan(inputs[0]) || nan(inputs[1]) || nan(inputs[2])) {
-      result = select(select(inputs[0], inputs[1], false, false), inputs[2], false, false);
-    } else {
-      // Sorting independently establishes the median for nonzero values. The
-      // ISA's first-maximum removal rule additionally defines signed-zero ties.
-      uint32_t sorted[] = {inputs[0], inputs[1], inputs[2]};
-      std::sort(sorted, sorted + 3, [](uint32_t a, uint32_t b) { return ordered(a) < ordered(b); });
-      result = sorted[1];
-      if ((result & 0x7fffffff) == 0) {
-        float maximum = goc::as_float(sorted[2]);
-        int drop = goc::as_float(inputs[0]) == maximum   ? 0
-                   : goc::as_float(inputs[1]) == maximum ? 1
-                                                         : 2;
-        result = select(inputs[(drop + 1) % 3], inputs[(drop + 2) % 3], true, false);
-      }
-    }
-  }
-  const int exponents[] = {0, 1, 2, -1};
-  float value = std::ldexp(goc::as_float(result), exponents[(mode >> 6) & 3]);
-  if (mode & GOC_ALU_CLAMP)
-    value = !(value > 0) ? 0 : std::min(value, 1.0f);
-  return goc::as_bits(value);
-}
-
 } // namespace
 
 TEST(Minmax3, AllModifiersMasksAliasesAndSpecialValues) {
@@ -90,7 +32,8 @@ TEST(Minmax3, AllModifiersMasksAliasesAndSpecialValues) {
       for (int lane = 0; lane < 32; ++lane) {
         for (int reg = 0; reg < 3; ++reg)
           source[reg][lane] = values[(lane * (2 * reg + 1) + reg * 3) % 23];
-        expected[lane] = reference(op, source[0][lane], source[1][lane], source[2][lane], mode);
+        expected[lane] = goc_test::minmax_reference::reference(op, source[0][lane], source[1][lane],
+                                                               source[2][lane], mode);
       }
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (uint64_t mask : rdna4_exec_masks())
@@ -167,7 +110,8 @@ TEST(Minmax3, RandomBitPatterns) {
         SCOPED_TRACE(::testing::Message() << batch << "/" << cpu << "/" << op);
         ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc), GOC_SUCCESS);
         for (int lane = 0; lane < 32; ++lane)
-          EXPECT_EQ(d[lane], reference(op, a[lane], b[lane], c[lane], 0));
+          EXPECT_EQ(d[lane],
+                    goc_test::minmax_reference::reference(op, a[lane], b[lane], c[lane], 0));
       }
   }
 }

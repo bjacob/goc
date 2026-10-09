@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_arithmetic_reference.h"
 
 #include <cstring>
 #include <gtest/gtest.h>
@@ -14,6 +15,8 @@ void check_high_flags(const char *name,
   SCOPED_TRACE(name);
   bool supports_dpp = std::strcmp(name, "goc_rdna4_v_fma_f32") == 0 ||
                       std::strcmp(name, "goc_rdna4_v_fmac_f32") == 0;
+  for (auto mnemonic : goc_test::dpp_arithmetic_names)
+    supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   for (unsigned bit = 32; bit < 64; ++bit)
     for (uint64_t exec : {UINT64_C(0), UINT64_MAX}) {
       // A DPP enable bit alone is a valid descriptor (zero fields).

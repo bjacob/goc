@@ -1548,8 +1548,24 @@ DPP16 tests cover every control, all row/bank fields, arithmetic modifiers,
 EXEC masks and aliases, plus a 65,536-result GFX1201 hardware corpus. The
 `row_shl:15` benchmark with boundary zeroing measures 22.4–23.6 ns/wave on
 AVX2 (3.9–5.4× scalar) and 11.8–12.0 ns/wave on AVX-512 (7.6–10.2×),
-including FI/NEG/output scaling. DPP support for the other applicable
-arithmetic instructions remains to be implemented.
+including FI/NEG/output scaling.
+
+DPP8/DPP16 also cover all nine binary FP32 arithmetic operations and all nine
+three-input FP32 min/max/median operations. They retain their AVX2 arithmetic
+paths, using AVX-512 source permutation on x86-64-v4 hosts. A shared adapter
+validates each instruction's own flags before reading sources and snapshots
+the permuted input before any destination write. Tests cover every arithmetic
+modifier combination, special values, EXEC patterns, and all operand aliases.
+Two GFX1201 corpora validate 193,536 raw results, including output-scaling
+boundaries. Representative ADD/MUL/min3/median benchmarks measure 1.8–4.8×
+scalar speed on x86-64-v3 and 1.9–4.9× on x86-64-v4 with DPP enabled.
+
+The hardware probes also corrected OMOD behavior in these 18 operations,
+with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
+positive zero; halving a normal magnitude below twice the minimum normal
+produces signed zero. These rules apply independently of guest denormal mode.
+Other FP families still need this OMOD boundary audit, and other applicable
+instructions still need DPP support.
 
 All public instruction entry points take a 64-bit `instruction_flags` value.
 Existing modifier bits keep their meanings. The extra width accommodates the
