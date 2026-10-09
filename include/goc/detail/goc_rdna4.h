@@ -39,7 +39,7 @@ extern "C" {
 // with all modifiers. FP16 FMA/FMAC support DPP in loose and exact semantics.
 // FP16 unary math also supports DPP with all applicable modifiers, as do FP16
 // and FP32 LDEXP/FREXP exponent, all six FP32/integer conversions, and all six
-// FP16 conversions.
+// FP16 conversions, byte/nibble-to-FP32 conversions, and FP32-to-byte packing.
 static const uint64_t GOC_DPP8 = (UINT64_C(1) << 32);
 static const uint64_t GOC_DPP_FI = (UINT64_C(1) << 33);
 static const uint32_t GOC_DPP8_SELECT_SHIFT = 40;
@@ -1774,7 +1774,8 @@ GOC_API int goc_rdna4_v_cvt_off_f32_i4(uint64_t flags, uint64_t exec_mask,
                                        uint64_t instruction_flags, uint32_t *const *d,
                                        const uint32_t *const *a);
 
-// Convert FP32 A to an unsigned byte with nearest-even rounding, saturation
+// DPP8/DPP16 permute A; byte selection B and preserved bytes C stay in their
+// original lanes. Convert FP32 A to an unsigned byte with nearest-even rounding, saturation
 // to [0,255] and NaN-to-zero. Insert it into byte (B & 3) of C and write D;
 // each operand holds one VGPR. Supports A ABS/NEG; CLAMP is accepted without
 // numeric effect. Loose semantics, full EXEC masking and all whole-register

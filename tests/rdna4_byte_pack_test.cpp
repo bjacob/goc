@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_byte_conversion_reference.h"
 #include "rdna4_byte_pack_hardware.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <algorithm>
@@ -186,4 +187,78 @@ TEST(BytePack, ValidationAndSemanticFallback) {
           EXPECT_EQ(word, 0u);
       }
     }
+}
+
+TEST(BytePack, DppModifiersMasksAliasesAndGuards) {
+  std::mt19937 random(449);
+  for (auto descriptor : goc_test::dpp_modes)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < 8; ++variant)
+        for (uint64_t mask : rdna4_exec_masks())
+          for (unsigned breg = 0; breg < 2; ++breg)
+            for (unsigned creg = 0; creg < 3; ++creg)
+              for (unsigned dreg = 0; dreg < 4; ++dreg) {
+                uint32_t storage[4][34], expected[4][34];
+                for (unsigned reg = 0; reg < 4; ++reg)
+                  for (unsigned word = 0; word < 34; ++word)
+                    storage[reg][word] = expected[reg][word] = random();
+                uint64_t flags = descriptor | goc_test::byte_pack_mode(variant);
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  int source = 0;
+                  if (goc_test::dpp_source(flags, uint32_t(mask), lane, source))
+                    expected[dreg][lane + 1] = goc_test::byte_pack_reference(
+                        source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
+                        storage[creg][lane + 1], uint32_t(flags));
+                }
+                const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1},
+                               *c[] = {storage[creg] + 1};
+                uint32_t *d[] = {storage[dreg] + 1};
+                ASSERT_EQ(goc_rdna4_v_cvt_pk_u8_f32(cpu | GOC_FP16_OVFL, mask, flags, d, a, b, c),
+                          GOC_SUCCESS);
+                for (unsigned reg = 0; reg < 4; ++reg)
+                  for (unsigned word = 0; word < 34; ++word)
+                    ASSERT_EQ(storage[reg][word], expected[reg][word])
+                        << descriptor << "/" << cpu << "/" << variant;
+              }
+}
+
+TEST(BytePack, DppValidation) {
+  for (auto descriptor : goc_test::dpp_modes) {
+    EXPECT_EQ(goc_rdna4_v_cvt_pk_u8_f32(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr),
+              GOC_SUCCESS);
+    for (uint64_t invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_OMOD_2), uint64_t(GOC_ALU_HIGH_A)})
+      EXPECT_EQ(
+          goc_rdna4_v_cvt_pk_u8_f32(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr),
+          GOC_ERROR_INVALID_FLAGS);
+  }
+}
+
+// RX 9070 capture: seven DPP descriptors, eight modifiers, eight EXEC masks.
+TEST(BytePack, DppHardwareCorpus) {
+  const uint32_t values[] = {0x3f000000, 0x3fc00000, 0x40200000, 0xbf000000,
+                             0x7f800001, 0xff800000, 0x437e8000, 0x437f8000};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  const uint32_t modifiers[] = {0, 1, 8, 9, 256, 257, 264, 265};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (auto mask : masks)
+      for (auto descriptor : goc_test::dpp_modes)
+        for (auto modifier : modifiers) {
+          uint32_t av[32], bv[32], cv[32], output[32];
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            av[lane] = values[lane % 8];
+            bv[lane] = lane;
+            cv[lane] = 0x01030709u * lane;
+            output[lane] = 0xdead0000u + lane;
+          }
+          const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
+          uint32_t *d[] = {output};
+          ASSERT_EQ(goc_rdna4_v_cvt_pk_u8_f32(cpu, mask, descriptor | modifier, d, a, b, c),
+                    GOC_SUCCESS);
+          for (auto word : output)
+            hash = (hash ^ word) * UINT64_C(1099511628211);
+        }
+    EXPECT_EQ(hash, UINT64_C(0xef165148657501e5)) << cpu;
+  }
 }

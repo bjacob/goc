@@ -110,7 +110,10 @@ int goc_rdna4_v_cvt_pk_u8_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint
                               const uint32_t *const *a, const uint32_t *const *b,
                               const uint32_t *const *c) {
   if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
+    return goc::execute_dpp(
+        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+          return goc_rdna4_v_cvt_pk_u8_f32(flags, effective, uint32_t(mode), d, source, b, c);
+        });
   if (int error = goc::validate(flags, mode & ~(GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_CLAMP)))
     return error;
   if (!uint32_t(mask))

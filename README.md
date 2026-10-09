@@ -917,6 +917,16 @@ output modifiers. Pinned Ryzen 9 7950X3D measurements across these DPP cases
 showed v3 at 18.3–22.8 ns (1.78–3.22x scalar) and v4 at 8.5–11.8 ns
 (3.45–7.20x), using seven samples of at least 10 ms each.
 
+`v_cvt_pk_u8_f32` supports DPP8/DPP16 with ABS/NEG and CLAMP. Only A is
+permuted; B's byte selector and C's preserved bytes come from the destination
+lane. Tests cover every modifier, 85 masks, all whole-register alias layouts,
+unaligned storage and guards, plus 14,336 GPU-captured output words containing
+rounding ties, saturation boundaries and NaNs. Both SIMD paths retain DPP
+and modifier support; full-EXEC benchmarks include DPP8 and DPP16 cases.
+Pinned Ryzen 9 7950X3D measurements put these DPP cases at 19.2–22.5 ns on v3
+(3.83–4.43x scalar) and 12.5–13.0 ns on v4 (6.60–6.79x), with seven samples
+of at least 10 ms each.
+
 Six FP16 conversions cover `v_cvt_f16_i16`, `v_cvt_f16_u16`,
 `v_cvt_i16_f16`, `v_cvt_u16_f16`, `v_cvt_f16_f32`, and `v_cvt_f32_f16`.
 Each operand occupies one VGPR. Half selectors preserve the unused destination
