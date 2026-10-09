@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_div_fmas_hardware.h"
@@ -26,7 +27,7 @@ TEST(DivFmas, HardwareCartesianAndRandomCorpora) {
       for (unsigned corpus = 0; corpus < 2; ++corpus)
         for (unsigned col = 0; col < 16; ++col) {
           uint32_t state = 0x9174ab23;
-          uint64_t digest = UINT64_C(14695981039346656037);
+          uint64_t digest = goc_test::capture_hash_seed;
           for (unsigned start = 0; start < 4096; start += 32) {
             uint32_t data[8][32] = {};
             const uint32_t *a[] = {data[0], data[1]}, *b[] = {data[2], data[3]},
@@ -52,10 +53,7 @@ TEST(DivFmas, HardwareCartesianAndRandomCorpora) {
               uint64_t value = data[6][lane];
               if (op)
                 value |= uint64_t(data[7][lane]) << 32;
-              for (unsigned byte = 0; byte < (op ? 8u : 4u); ++byte) {
-                digest ^= (value >> (byte * 8)) & 255;
-                digest *= UINT64_C(1099511628211);
-              }
+              digest = goc_test::capture_hash_bytes(digest, value, (op ? 8u : 4u));
             }
           }
           ASSERT_EQ(digest, (corpus ? goc_test::fmas_random_digests[op][col]

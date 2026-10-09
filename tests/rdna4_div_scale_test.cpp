@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_div_scale_hardware.h"
@@ -40,7 +41,7 @@ TEST(DivScale, HardwareCartesianCorpus) {
   for (unsigned op = 0; op < 2; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned col = 0; col < 128; ++col) {
-        uint64_t digest = UINT64_C(14695981039346656037);
+        uint64_t digest = goc_test::capture_hash_seed;
         for (unsigned start = 0; start < 576; start += 32) {
           uint32_t data[8][32] = {}, condition = 0;
           const uint32_t *a[] = {data[0], data[1]}, *b[] = {data[2], data[3]},
@@ -58,12 +59,8 @@ TEST(DivScale, HardwareCartesianCorpus) {
             uint64_t value = data[6][lane];
             if (op)
               value |= uint64_t(data[7][lane]) << 32;
-            for (unsigned byte = 0; byte < (op ? 8u : 4u); ++byte) {
-              digest ^= (value >> (byte * 8)) & 255;
-              digest *= UINT64_C(1099511628211);
-            }
-            digest ^= (condition >> lane) & 1;
-            digest *= UINT64_C(1099511628211);
+            digest = goc_test::capture_hash_bytes(digest, value, (op ? 8u : 4u));
+            digest = goc_test::capture_hash_word(digest, (condition >> lane) & 1);
           }
         }
         ASSERT_EQ(digest, goc_test::scale_capture_digests[op][col])

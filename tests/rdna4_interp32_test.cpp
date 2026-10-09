@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_interp32_hardware.h"
@@ -19,10 +20,7 @@ const Fn functions[] = {goc_rdna4_v_interp_p10_f32, goc_rdna4_v_interp_p2_f32};
 
 void hash_words(uint64_t &hash, const uint32_t *words) {
   for (unsigned lane = 0; lane < 32; ++lane)
-    for (unsigned byte = 0; byte < 4; ++byte) {
-      hash ^= (words[lane] >> (8 * byte)) & 255;
-      hash *= UINT64_C(1099511628211);
-    }
+    hash = goc_test::capture_hash_bytes(hash, words[lane], 4);
 }
 
 bool equal_float(uint32_t got, float want) {
@@ -49,7 +47,7 @@ TEST(Interp32, HardwareModifiersAndWaitCounts) {
           uint32_t *d[] = {words[3]};
           ASSERT_EQ(functions[op](cpu, UINT32_MAX, goc_test::interp32_mode(m, wait), d, a, b, c),
                     GOC_SUCCESS);
-          uint64_t digest = UINT64_C(14695981039346656037);
+          uint64_t digest = goc_test::capture_hash_seed;
           hash_words(digest, words[3]);
           EXPECT_EQ(digest, goc_test::interp32_full_digests[(op * 16 + m) * 8 + wait])
               << cpu << "/" << op << "/" << m << "/" << wait;
@@ -61,7 +59,7 @@ TEST(Interp32, HardwareReadsInactiveSourceLanes) {
     for (unsigned mi = 0; mi < 36; ++mi) {
       const uint32_t first[] = {0, UINT32_MAX, 0x55555555, 0xaaaaaaaa};
       uint32_t mask = mi < 4 ? first[mi] : 1u << (mi - 4);
-      uint64_t digest = UINT64_C(14695981039346656037);
+      uint64_t digest = goc_test::capture_hash_seed;
       for (unsigned op = 0; op < 2; ++op)
         for (unsigned m = 0; m < 16; ++m) {
           uint32_t words[4][32];

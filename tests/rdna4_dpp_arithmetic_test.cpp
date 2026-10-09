@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_dpp_arithmetic_reference.h"
@@ -17,7 +18,7 @@ TEST(DppArithmetic, HardwareCorpus) {
   // DPP8/DPP16/FI/BOUND/row/bank descriptors, NEG_A/OMOD combinations and eight EXEC masks: 64512
   // raw words.
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (uint32_t mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned op = 0; op < 18; ++op)
@@ -43,7 +44,7 @@ TEST(DppArithmetic, HardwareCorpus) {
                 want = goc_test::dpp_arithmetic_reference(op, source < 0 ? 0 : a[source], b[lane],
                                                           c[lane], low);
               ASSERT_EQ(d[lane], want) << op << "/" << cpu << "/" << descriptor << "/" << lane;
-              hash = (hash ^ d[lane]) * UINT64_C(1099511628211);
+              hash = goc_test::capture_hash_word(hash, d[lane]);
             }
           }
     EXPECT_EQ(hash, UINT64_C(0xc028318d5f87d325));
@@ -61,7 +62,7 @@ TEST(DppArithmetic, OmodBoundaryHardware) {
   // DPP8/DPP16/FI/BOUND/row/bank descriptors, NEG_A/OMOD combinations and eight EXEC masks: 64512
   // raw words.
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (uint32_t mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned op = 0; op < 18; ++op)
@@ -87,7 +88,7 @@ TEST(DppArithmetic, OmodBoundaryHardware) {
                 want = goc_test::dpp_arithmetic_reference(op, source < 0 ? 0 : a[source], b[lane],
                                                           c[lane], low);
               ASSERT_EQ(d[lane], want) << op << "/" << cpu << "/" << descriptor << "/" << lane;
-              hash = (hash ^ d[lane]) * UINT64_C(1099511628211);
+              hash = goc_test::capture_hash_word(hash, d[lane]);
             }
           }
     EXPECT_EQ(hash, UINT64_C(0x3fb5391fac1f8c9e));

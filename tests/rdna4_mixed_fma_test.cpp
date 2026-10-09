@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
@@ -104,7 +105,7 @@ TEST(MixedFma, DppHardwareCorpus) {
   const uint32_t masks[] = {UINT32_MAX, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (uint32_t mask : masks)
       for (int op = 0; op < 3; ++op)
         for (unsigned variant = 0; variant < 128; ++variant)
@@ -123,7 +124,7 @@ TEST(MixedFma, DppHardwareCorpus) {
             uint32_t *d[] = {words[3]};
             ASSERT_EQ(functions[op](cpu, mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
             for (uint32_t word : words[3])
-              hash = (hash ^ word) * UINT64_C(1099511628211);
+              hash = goc_test::capture_hash_word(hash, word);
           }
     EXPECT_EQ(hash, UINT64_C(0x67b9a4c5cebf1238));
   }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "rdna4_dpp16_reference.h"
 #include "rdna4_exec_masks.h"
@@ -47,7 +48,7 @@ TEST(Dpp16, HardwareCorpus) {
                                0x121, 0x12f, 0x140, 0x141, 0x150, 0x15f, 0x160, 0x16f};
   const unsigned row_bank[][2] = {{15, 15}, {1, 5}, {2, 10}, {0, 15}};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (uint32_t mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned ctrl : controls)
@@ -71,7 +72,7 @@ TEST(Dpp16, HardwareCorpus) {
                 if (goc_test::dpp16_reference(ctrl, fi, bc, rb[0], rb[1], mask, lane, src))
                   want = float(100 + lane + 2 * (src < 0 ? 0 : src + 1));
                 ASSERT_EQ(d[lane], bits(want));
-                hash = (hash ^ d[lane]) * UINT64_C(1099511628211);
+                hash = goc_test::capture_hash_word(hash, d[lane]);
               }
             }
     EXPECT_EQ(hash, UINT64_C(0x72f55867e357a325));

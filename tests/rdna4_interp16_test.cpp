@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
@@ -25,7 +26,7 @@ TEST(Interp16, HardwareModifiersRoundingAndOverflow) {
     for (unsigned op = 0; op < 4; ++op)
       for (unsigned ovfl = 0; ovfl < 2; ++ovfl)
         for (unsigned m = 0; m < 64; ++m) {
-          uint64_t digest = UINT64_C(14695981039346656037);
+          uint64_t digest = goc_test::capture_hash_seed;
           for (unsigned start = 0; start < 1024; start += 32) {
             uint32_t words[4][32];
             goc_test::interp16_capture_inputs(words, start);
@@ -36,10 +37,7 @@ TEST(Interp16, HardwareModifiersRoundingAndOverflow) {
                       GOC_SUCCESS);
             for (uint32_t value : words[3]) {
               value = goc_test::interp16_canonical(op, m, value);
-              for (unsigned byte = 0; byte < 4; ++byte) {
-                digest ^= (value >> (8 * byte)) & 255;
-                digest *= UINT64_C(1099511628211);
-              }
+              digest = goc_test::capture_hash_bytes(digest, value, 4);
             }
           }
           EXPECT_EQ(digest, goc_test::interp16_digests[(op * 2 + ovfl) * 64 + m])

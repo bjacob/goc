@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "internal.h"
@@ -101,7 +102,7 @@ TEST(HalfTrig, EveryEncodingMatchesRocjitsuDigestAndLoosePaths) {
     const auto table = reference_table(op);
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool saturate : {false, true}) {
-        uint64_t digest = UINT64_C(14695981039346656037);
+        uint64_t digest = goc_test::capture_hash_seed;
         for (unsigned start = 0; start < 65536; start += 32) {
           uint32_t a[32], exact[32], loose[32];
           const uint32_t *ap[] = {a};
@@ -119,7 +120,7 @@ TEST(HalfTrig, EveryEncodingMatchesRocjitsuDigestAndLoosePaths) {
             ASSERT_EQ(exact[lane], 0xdead0000u | table[start + lane]);
             EXPECT_EQ(loose[lane] >> 16, 0xdeadu);
             expect_near(uint16_t(loose[lane]), table[start + lane]);
-            digest = (digest ^ uint16_t(exact[lane])) * UINT64_C(1099511628211);
+            digest = goc_test::capture_hash_word(digest, uint16_t(exact[lane]));
             if ((a[lane] & 0x7fff) < 0x7c00) {
               double phase = std::remainder(goc_test::half_value(uint16_t(a[lane])), 1.0);
               double angle = phase * 6.283185307179586476925286766559;
@@ -356,7 +357,7 @@ TEST(HalfTrig, DppHardwareCorpus) {
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
-      uint64_t hash = UINT64_C(14695981039346656037);
+      uint64_t hash = goc_test::capture_hash_seed;
       for (auto mask : masks)
         for (auto fn : functions)
           for (int m = 0; m < 128; ++m)
@@ -370,7 +371,7 @@ TEST(HalfTrig, DppHardwareCorpus) {
               uint32_t *d[] = {output};
               ASSERT_EQ(fn(cpu | semantics, mask, descriptor | modifiers(m), d, a), GOC_SUCCESS);
               for (auto word : output)
-                hash = (hash ^ word) * UINT64_C(1099511628211);
+                hash = goc_test::capture_hash_word(hash, word);
             }
       EXPECT_EQ(hash, UINT64_C(0x622b2df3f3bc9b25)) << cpu << "/" << semantics;
     }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
@@ -18,7 +19,7 @@ TEST(ScalarCompare, HardwareEveryPredicateAndFpState) {
     for (unsigned op = 0; op < 46; ++op)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
         for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-          uint64_t hash = UINT64_C(14695981039346656037);
+          uint64_t hash = goc_test::capture_hash_seed;
           for (unsigned i = 0; i < 4096; ++i) {
             uint32_t w[4], scc = 123;
             goc_test::scalar_compare_inputs(i, op, w);
@@ -28,7 +29,7 @@ TEST(ScalarCompare, HardwareEveryPredicateAndFpState) {
                                                         goc_test::scalar_fp_flags(state),
                                                     UINT32_MAX, 0, &scc, a, b),
                       GOC_SUCCESS);
-            hash = (hash ^ scc) * UINT64_C(1099511628211);
+            hash = goc_test::capture_hash_word(hash, scc);
           }
           ASSERT_EQ(hash, goc_test::scalar_compare_hardware[state][op])
               << state << "/" << op << "/" << semantics << "/" << cpu;

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
@@ -13,7 +14,7 @@
 TEST(TrigPreop, HardwareEveryExponentSelectorAndModifier) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned mode = 0; mode < 32; ++mode) {
-      uint64_t digest = UINT64_C(14695981039346656037);
+      uint64_t digest = goc_test::capture_hash_seed;
       for (unsigned e = 0; e < 2048; ++e) {
         uint32_t words[5][32];
         for (unsigned lane = 0; lane < 32; ++lane) {
@@ -32,10 +33,7 @@ TEST(TrigPreop, HardwareEveryExponentSelectorAndModifier) {
             GOC_SUCCESS);
         for (unsigned lane = 0; lane < 32; ++lane)
           for (unsigned reg = 0; reg < 2; ++reg)
-            for (unsigned byte = 0; byte < 4; ++byte) {
-              digest ^= (d[reg][lane] >> (8 * byte)) & 255;
-              digest *= UINT64_C(1099511628211);
-            }
+            digest = goc_test::capture_hash_bytes(digest, d[reg][lane], 4);
       }
       EXPECT_EQ(digest, goc_test::trig_preop_digests[mode]) << cpu << "/" << mode;
     }

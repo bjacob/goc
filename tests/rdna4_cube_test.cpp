@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_cube_hardware.h"
@@ -27,7 +28,7 @@ const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 TEST(Cube, HardwareCartesianCorpus) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned column = 0; column < 20; ++column) {
-      uint64_t digest = UINT64_C(14695981039346656037);
+      uint64_t digest = goc_test::capture_hash_seed;
       for (unsigned start = 0; start < 4096; start += 32) {
         uint32_t av[32], bv[32], cv[32], dv[32];
         for (unsigned lane = 0; lane < 32; ++lane) {
@@ -42,10 +43,7 @@ TEST(Cube, HardwareCartesianCorpus) {
                                         goc_test::cube_capture_modes[column % 5], d, a, b, c),
                   GOC_SUCCESS);
         for (auto word : dv)
-          for (unsigned shift = 0; shift < 32; shift += 8) {
-            digest ^= (word >> shift) & 255;
-            digest *= UINT64_C(1099511628211);
-          }
+          digest = goc_test::capture_hash_bytes(digest, word, 4);
       }
       EXPECT_EQ(digest, goc_test::cube_capture_digests[column]) << cpu << "/" << column;
     }
@@ -298,7 +296,7 @@ TEST(Cube, DppHardwareCorpusAndHostFpState) {
     std::feraiseexcept(FE_INVALID | FE_INEXACT);
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, exact}) {
-        uint64_t hash = UINT64_C(14695981039346656037);
+        uint64_t hash = goc_test::capture_hash_seed;
         for (auto mask : masks)
           for (auto fn : functions)
             for (unsigned variant = 0; variant < 64; ++variant)
@@ -315,7 +313,7 @@ TEST(Cube, DppHardwareCorpusAndHostFpState) {
                 uint32_t *d[] = {output};
                 EXPECT_EQ(fn(cpu | semantics, mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
                 for (auto word : output)
-                  hash = (hash ^ word) * UINT64_C(1099511628211);
+                  hash = goc_test::capture_hash_word(hash, word);
               }
         EXPECT_EQ(hash, UINT64_C(0xb1d0cbb608c5c005)) << cpu << "/" << semantics;
         EXPECT_EQ(std::fegetround(), rounding);

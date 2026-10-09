@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
@@ -87,7 +88,7 @@ TEST(IntegerCompare, DppHardwareCorpusAndHostFpState) {
     std::feraiseexcept(FE_INVALID | FE_INEXACT);
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
-        uint64_t hash = UINT64_C(14695981039346656037);
+        uint64_t hash = goc_test::capture_hash_seed;
         for (unsigned batch = 0; batch < 4; ++batch)
           for (auto mask : masks)
             for (unsigned op = 0; op < 48; ++op)
@@ -103,7 +104,7 @@ TEST(IntegerCompare, DppHardwareCorpusAndHostFpState) {
                                 cpu | semantics, mask,
                                 descriptor | goc_test::integer_compare_mode(m), &output, a, b),
                             GOC_SUCCESS);
-                  hash = (hash ^ output) * UINT64_C(1099511628211);
+                  hash = goc_test::capture_hash_word(hash, output);
                 }
         EXPECT_EQ(hash, UINT64_C(0xb530b3f6ab40c985)) << cpu << "/" << semantics;
         EXPECT_EQ(std::fegetround(), rounding);
@@ -120,7 +121,7 @@ TEST(IntegerCompare, HardwarePredicatesWidthsModifiersAndExec) {
       unsigned variant = 0;
       for (unsigned op = 0; op < 72; ++op)
         for (unsigned m = 0; m < (op < 24 ? 4u : 1u); ++m, ++variant) {
-          uint64_t digest = UINT64_C(14695981039346656037);
+          uint64_t digest = goc_test::capture_hash_seed;
           for (unsigned start = 0; start < 65536; start += 32) {
             uint32_t words[4][32], d;
             for (unsigned lane = 0; lane < 32; ++lane) {
@@ -134,10 +135,7 @@ TEST(IntegerCompare, HardwarePredicatesWidthsModifiersAndExec) {
                           cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, masks[mi],
                           goc_test::integer_compare_mode(m), &d, a, b),
                       GOC_SUCCESS);
-            for (unsigned byte = 0; byte < 4; ++byte) {
-              digest ^= (d >> (8 * byte)) & 255;
-              digest *= UINT64_C(1099511628211);
-            }
+            digest = goc_test::capture_hash_bytes(digest, d, 4);
           }
           EXPECT_EQ(digest, goc_test::integer_compare_digests[mi * 144 + variant])
               << cpu << "/" << op << "/" << m;

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -204,7 +205,7 @@ TEST(HalfUnary, HardwareExpLogRoundingAndOverflow) {
   const uint32_t modes[] = {0, 1, 8, 9, 64, 128, 192, 256, 512, 4096, 4608, 5065, 576, 640, 704};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (bool saturate : {false, true}) {
-      uint64_t hash = UINT64_C(14695981039346656037);
+      uint64_t hash = goc_test::capture_hash_seed;
       for (uint32_t mask :
            {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
         for (unsigned op : {7u, 8u})
@@ -232,7 +233,7 @@ TEST(HalfUnary, HardwareExpLogRoundingAndOverflow) {
                 uint32_t word = d[lane];
                 if (((word >> shift) & 0x7fff) > 0x7c00)
                   word = (word & ~(UINT32_C(65535) << shift)) | (UINT32_C(0x7e00) << shift);
-                hash = (hash ^ word) * UINT64_C(1099511628211);
+                hash = goc_test::capture_hash_word(hash, word);
               }
             }
       EXPECT_EQ(hash, saturate ? UINT64_C(0x7e3c62853aa82d6c) : UINT64_C(0xdeda4067db286486));

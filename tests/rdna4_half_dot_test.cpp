@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -280,7 +281,7 @@ TEST(HalfDot, DppHardwareCorpus) {
   const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (bool sat : {false, true})
       for (auto mask : masks)
         for (unsigned brain = 0; brain < 2; ++brain)
@@ -299,7 +300,7 @@ TEST(HalfDot, DppHardwareCorpus) {
                                          d, a, b, c),
                         GOC_SUCCESS);
               for (auto word : output)
-                hash = (hash ^ word) * UINT64_C(1099511628211);
+                hash = goc_test::capture_hash_word(hash, word);
             }
     EXPECT_EQ(hash, UINT64_C(0xf79822666bfa7c45)) << cpu;
   }

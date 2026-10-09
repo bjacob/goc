@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
@@ -21,7 +22,7 @@ TEST(RcpIflag, HardwareNumericAndStickyExceptions) {
     for (unsigned si = 0; si < 3; ++si)
       for (unsigned mi = 0; mi < 6; ++mi)
         for (unsigned m = 0; m < 32; ++m) {
-          uint64_t digest = UINT64_C(14695981039346656037),
+          uint64_t digest = goc_test::capture_hash_seed,
                    flags = cpu | (mi & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
                            (mi & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
           for (unsigned wave = 0; wave < 128; ++wave) {
@@ -42,10 +43,7 @@ TEST(RcpIflag, HardwareNumericAndStickyExceptions) {
               else
                 ASSERT_EQ(d[lane], 0xcafebeef);
             }
-            for (unsigned shift = 0; shift < 32; shift += 8) {
-              digest ^= (status >> shift) & 255;
-              digest *= UINT64_C(1099511628211);
-            }
+            digest = goc_test::capture_hash_bytes(digest, status, 4);
           }
           EXPECT_EQ(digest, goc_test::rcp_iflag_status_digests[(si * 6 + mi) * 32 + m])
               << cpu << "/" << si << "/" << mi << "/" << m;
@@ -240,7 +238,7 @@ TEST(RcpIflag, DppHardwareCorpus) {
   const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (uint64_t fp : {GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS, UINT64_C(0)})
       for (uint32_t seed : {0u, 0x15u, 0x55u})
         for (auto mask : masks)
@@ -260,9 +258,9 @@ TEST(RcpIflag, DppHardwareCorpus) {
               for (auto word : output) {
                 if ((word & 0x7fffffff) > 0x7f800000)
                   word = 0x7fc00000;
-                hash = (hash ^ word) * UINT64_C(1099511628211);
+                hash = goc_test::capture_hash_word(hash, word);
               }
-              hash = (hash ^ status) * UINT64_C(1099511628211);
+              hash = goc_test::capture_hash_word(hash, status);
             }
     EXPECT_EQ(hash, UINT64_C(0x0c1abc142a4dc525)) << cpu;
   }

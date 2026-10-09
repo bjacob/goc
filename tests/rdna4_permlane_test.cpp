@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
@@ -15,7 +16,7 @@ TEST(Permlane, HardwareCorpus) {
   // GFX1201 / HIP 7.13: 4 operations, 4 mode combinations, 16 selector
   // patterns, 8 EXEC masks, and all 32 destination lanes (65536 raw results).
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (uint32_t mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned op = 0; op < 4; ++op)
@@ -40,7 +41,7 @@ TEST(Permlane, HardwareCorpus) {
             for (unsigned lane = 0; lane < 32; ++lane) {
               ASSERT_EQ(d[lane], goc_test::permlane_reference(op, mask, mode, lane, a, b,
                                                               0xdef00000u + lane, lo, hi));
-              hash = (hash ^ d[lane]) * UINT64_C(1099511628211);
+              hash = goc_test::capture_hash_word(hash, d[lane]);
             }
           }
     EXPECT_EQ(hash, UINT64_C(0xb98b97330147d825));

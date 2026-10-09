@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_bit_count_reference.h"
@@ -3549,13 +3550,10 @@ bool benchmark_swmmac_integer(uint64_t cpu, int iterations, int min_ms) {
     uint64_t expected;
 
     bool correct() const {
-      uint64_t digest = UINT64_C(14695981039346656037);
+      uint64_t digest = goc_test::capture_hash_seed;
       for (unsigned reg = 0; reg < regs; ++reg)
         for (unsigned lane = 0; lane < 32; ++lane)
-          for (unsigned byte = 0; byte < 4; ++byte) {
-            digest ^= (data[16 + reg][lane] >> (8 * byte)) & 255;
-            digest *= UINT64_C(1099511628211);
-          }
+          digest = goc_test::capture_hash_bytes(digest, data[16 + reg][lane], 4);
       return digest == expected;
     }
   };
@@ -3622,13 +3620,10 @@ bool benchmark_swmmac8(uint64_t cpu, int iterations, int min_ms) {
     uint64_t expected;
 
     bool correct() const {
-      uint64_t digest = UINT64_C(14695981039346656037);
+      uint64_t digest = goc_test::capture_hash_seed;
       for (unsigned reg = 0; reg < regs; ++reg)
         for (unsigned lane = 0; lane < 32; ++lane)
-          for (unsigned byte = 0; byte < 4; ++byte) {
-            digest ^= (data[16 + reg][lane] >> (8 * byte)) & 255;
-            digest *= UINT64_C(1099511628211);
-          }
+          digest = goc_test::capture_hash_bytes(digest, data[16 + reg][lane], 4);
       return digest == expected;
     }
   };
@@ -3694,13 +3689,10 @@ bool benchmark_swmmac16(uint64_t cpu, int iterations, int min_ms) {
     uint64_t expected;
 
     bool correct() const {
-      uint64_t digest = UINT64_C(14695981039346656037);
+      uint64_t digest = goc_test::capture_hash_seed;
       for (unsigned reg = 0; reg < regs; ++reg)
         for (unsigned lane = 0; lane < 32; ++lane)
-          for (unsigned byte = 0; byte < 4; ++byte) {
-            digest ^= (data[16 + reg][lane] >> (8 * byte)) & 255;
-            digest *= UINT64_C(1099511628211);
-          }
+          digest = goc_test::capture_hash_bytes(digest, data[16 + reg][lane], 4);
       return digest == expected;
     }
   };

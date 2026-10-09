@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_div_fixup_hardware.h"
@@ -111,7 +112,7 @@ TEST(DivFixup, DppHalfHardwareCorpus) {
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {UINT64_C(0), exact}) {
-      uint64_t hash = UINT64_C(14695981039346656037);
+      uint64_t hash = goc_test::capture_hash_seed;
       for (uint32_t mask : masks)
         for (unsigned variant = 0; variant < 256; ++variant)
           for (uint64_t descriptor : goc_test::dpp_modes) {
@@ -129,7 +130,7 @@ TEST(DivFixup, DppHalfHardwareCorpus) {
             ASSERT_EQ(functions[0](cpu | semantics, mask, descriptor | mode, d, a, b, c),
                       GOC_SUCCESS);
             for (uint32_t word : words[3])
-              hash = (hash ^ word) * UINT64_C(1099511628211);
+              hash = goc_test::capture_hash_word(hash, word);
           }
       EXPECT_EQ(hash, UINT64_C(0x55a4cc1f56963f25));
     }
@@ -139,7 +140,7 @@ TEST(DivFixup, HardwareCartesianCorpus) {
   for (unsigned op = 0; op < 3; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned col = 0; col < 10; ++col) {
-        uint64_t digest = UINT64_C(14695981039346656037);
+        uint64_t digest = goc_test::capture_hash_seed;
         for (unsigned start = 0; start < 4096; start += 32) {
           uint32_t data[8][32] = {};
           const uint32_t *a[] = {data[0], data[1]}, *b[] = {data[2], data[3]},
@@ -162,10 +163,7 @@ TEST(DivFixup, HardwareCartesianCorpus) {
             uint64_t word = data[6][lane];
             if (op == 2)
               word |= uint64_t(data[7][lane]) << 32;
-            for (unsigned shift = 0; shift < (op == 2 ? 64u : 32u); shift += 8) {
-              digest ^= (word >> shift) & 255;
-              digest *= UINT64_C(1099511628211);
-            }
+            digest = goc_test::capture_hash_bytes(digest, word, op == 2 ? 8 : 4);
           }
         }
         EXPECT_EQ(digest, goc_test::fixup_capture_digests[op][col])

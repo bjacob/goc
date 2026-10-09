@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
@@ -46,7 +47,7 @@ TEST(FloatCompare, HardwarePredicatesModifiersExecAndDenormalModes) {
         for (unsigned op = 0; op < 84; ++op) {
           uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                            GOC_FP_FLUSH_OUTPUT_DENORMALS | (q ? 0 : GOC_FP_FLUSH_INPUT_DENORMALS),
-                   digest = UINT64_C(14695981039346656037);
+                   digest = goc_test::capture_hash_seed;
           for (unsigned m = 0; m < (op < 28 ? 64u : 16u); ++m)
             for (unsigned start = 0; start < 4096; start += 32) {
               uint32_t words[4][32], d;
@@ -55,10 +56,7 @@ TEST(FloatCompare, HardwarePredicatesModifiersExecAndDenormalModes) {
               ASSERT_EQ(goc_test::float_compare_functions[op](
                             flags, masks[mi], goc_test::float_compare_mode(m), &d, a, b),
                         GOC_SUCCESS);
-              for (unsigned byte = 0; byte < 4; ++byte) {
-                digest ^= (d >> (8 * byte)) & 255;
-                digest *= UINT64_C(1099511628211);
-              }
+              digest = goc_test::capture_hash_bytes(digest, d, 4);
             }
           EXPECT_EQ(digest, goc_test::float_compare_digests[(q * 5 + mi) * 84 + op])
               << cpu << "/" << q << "/" << mi << "/" << op;
@@ -291,7 +289,7 @@ TEST(FloatCompare, DppHardwareCorpusAndHostFpState) {
     std::feraiseexcept(FE_INVALID | FE_INEXACT);
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
-        uint64_t hash = UINT64_C(14695981039346656037);
+        uint64_t hash = goc_test::capture_hash_seed;
         for (bool flush : {true, false})
           for (unsigned batch = 0; batch < 4; ++batch)
             for (auto mask : masks)
@@ -309,7 +307,7 @@ TEST(FloatCompare, DppHardwareCorpusAndHostFpState) {
                                   mask, descriptor | goc_test::float_compare_mode(modes[variant]),
                                   &output, a, b),
                               GOC_SUCCESS);
-                    hash = (hash ^ output) * UINT64_C(1099511628211);
+                    hash = goc_test::capture_hash_word(hash, output);
                   }
         EXPECT_EQ(hash, UINT64_C(0xbe15e5a37f47d025)) << cpu << "/" << semantics;
         EXPECT_EQ(std::fegetround(), rounding);

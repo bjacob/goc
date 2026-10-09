@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_bitfield_reference.h"
@@ -231,7 +232,7 @@ TEST(Bitfield, PermuteHardwareAllSelectorBytes) {
   // GFX1201 capture: 65536 pseudorandom source pairs. Each byte position
   // receives every selector 256 times. Digest is FNV-1a, low byte first.
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t digest = UINT64_C(14695981039346656037);
+    uint64_t digest = goc_test::capture_hash_seed;
     for (unsigned start = 0; start < 65536; start += 32) {
       uint32_t words[4][32];
       for (unsigned lane = 0; lane < 32; ++lane) {
@@ -246,10 +247,7 @@ TEST(Bitfield, PermuteHardwareAllSelectorBytes) {
       uint32_t *d[] = {words[3]};
       ASSERT_EQ(goc_rdna4_v_perm_b32(cpu, UINT32_MAX, 0, d, a, b, c), GOC_SUCCESS);
       for (uint32_t value : words[3])
-        for (unsigned byte = 0; byte < 4; ++byte) {
-          digest ^= (value >> (8 * byte)) & 255;
-          digest *= UINT64_C(1099511628211);
-        }
+        digest = goc_test::capture_hash_bytes(digest, value, 4);
     }
     EXPECT_EQ(digest, UINT64_C(0x130dcc447fe090a6)) << cpu;
   }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "rdna4_fp64.h"
 #include "rdna4_fp64_output_hardware.h"
@@ -58,7 +59,7 @@ TEST(Fp64Output, HardwareModifiersAndCrossHalfAliases) {
       for (const auto &alias : aliases) {
         SCOPED_TRACE(::testing::Message()
                      << cpu << '/' << op << '/' << alias[0] << '/' << alias[1]);
-        uint64_t hash = UINT64_C(14695981039346656037);
+        uint64_t hash = goc_test::capture_hash_seed;
         for (unsigned v = 0; v < 16; ++v) {
           uint32_t words[8][32] = {};
           uint32_t *p[8];
@@ -95,7 +96,7 @@ TEST(Fp64Output, HardwareModifiersAndCrossHalfAliases) {
             if ((raw & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000))
               raw = UINT64_C(0x7ff8000000000000);
             for (unsigned shift = 0; shift < 64; shift += 8)
-              hash = (hash ^ ((raw >> shift) & 255)) * UINT64_C(1099511628211);
+              hash = goc_test::capture_hash_word(hash, ((raw >> shift) & 255));
           }
         }
         if (op < 8 || op > 10) {
@@ -113,7 +114,7 @@ TEST(Fp64Output, LdexpHardwareBoundaries) {
       for (const auto &alias : aliases) {
         SCOPED_TRACE(::testing::Message()
                      << cpu << '/' << set << '/' << alias[0] << '/' << alias[1]);
-        uint64_t hash = UINT64_C(14695981039346656037);
+        uint64_t hash = goc_test::capture_hash_seed;
         for (unsigned v = 0; v < 16; ++v) {
           uint32_t words[5][32] = {};
           uint32_t *p[] = {words[0], words[1], words[2], words[3], words[4]};
@@ -131,7 +132,7 @@ TEST(Fp64Output, LdexpHardwareBoundaries) {
             if ((raw & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000))
               raw = UINT64_C(0x7ff8000000000000);
             for (unsigned shift = 0; shift < 64; shift += 8)
-              hash = (hash ^ ((raw >> shift) & 255)) * UINT64_C(1099511628211);
+              hash = goc_test::capture_hash_word(hash, ((raw >> shift) & 255));
           }
         }
         EXPECT_EQ(hash, hashes[set]);

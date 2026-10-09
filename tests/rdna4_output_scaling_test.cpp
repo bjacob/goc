@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "internal.h"
 
@@ -38,7 +39,7 @@ TEST(OutputScaling, LdexpAndConversionsHardwareBoundaries) {
       for (unsigned op = 0; op < 3; ++op)
         for (unsigned alias = 0; alias < 4; ++alias) {
           SCOPED_TRACE(::testing::Message() << cpu << '/' << set << '/' << op << '/' << alias);
-          uint64_t hash = UINT64_C(14695981039346656037);
+          uint64_t hash = goc_test::capture_hash_seed;
           for (uint32_t variant = 0; variant < 32; ++variant) {
             uint32_t words[4][32] = {};
             for (unsigned lane = 0; lane < 32; ++lane) {
@@ -72,7 +73,7 @@ TEST(OutputScaling, LdexpAndConversionsHardwareBoundaries) {
               if ((value & 0x7fffffff) > 0x7f800000)
                 value = 0x7fc00000;
               for (unsigned shift = 0; shift < 32; shift += 8)
-                hash = (hash ^ ((value >> shift) & 255)) * UINT64_C(1099511628211);
+                hash = goc_test::capture_hash_word(hash, ((value >> shift) & 255));
             }
           }
           EXPECT_EQ(hash, hardware_hashes[set][op]);
@@ -93,7 +94,7 @@ TEST(OutputScaling, WideConversionsHardwareBoundaries) {
       for (const auto &alias : aliases) {
         SCOPED_TRACE(::testing::Message()
                      << cpu << '/' << op << '/' << alias[0] << '/' << alias[1]);
-        uint64_t hash = UINT64_C(14695981039346656037);
+        uint64_t hash = goc_test::capture_hash_seed;
         for (unsigned v = 0; v < (op == 0 ? 32u : 8u); ++v) {
           uint32_t words[3][32] = {};
           std::memcpy(words[0], inputs32, sizeof(inputs32));
@@ -107,7 +108,7 @@ TEST(OutputScaling, WideConversionsHardwareBoundaries) {
             if ((raw & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000))
               raw = UINT64_C(0x7ff8000000000000);
             for (unsigned shift = 0; shift < 64; shift += 8)
-              hash = (hash ^ ((raw >> shift) & 255)) * UINT64_C(1099511628211);
+              hash = goc_test::capture_hash_word(hash, ((raw >> shift) & 255));
           }
         }
         EXPECT_EQ(hash, hashes[op]);

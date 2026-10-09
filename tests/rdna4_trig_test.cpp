@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "internal.h"
@@ -279,7 +280,7 @@ TEST(Trig, DppHardwareCorpus) {
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
-      uint64_t hash = UINT64_C(14695981039346656037);
+      uint64_t hash = goc_test::capture_hash_seed;
       for (auto mask : masks)
         for (auto fn : functions)
           for (int m = 0; m < 32; ++m)
@@ -293,7 +294,7 @@ TEST(Trig, DppHardwareCorpus) {
               uint32_t *d[] = {output};
               ASSERT_EQ(fn(cpu | semantics, mask, descriptor | modifiers(m), d, a), GOC_SUCCESS);
               for (auto word : output)
-                hash = (hash ^ word) * UINT64_C(1099511628211);
+                hash = goc_test::capture_hash_word(hash, word);
             }
       EXPECT_EQ(hash, UINT64_C(0xeeebc98ab70cbf25)) << cpu << "/" << semantics;
     }

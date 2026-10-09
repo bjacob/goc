@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
@@ -273,7 +274,7 @@ TEST(Normalized, DppHardwareCorpus) {
   const uint32_t packed_modes[] = {0, 1, 8, 9, 2, 16, 27, 283, 512, 1024, 1536, 1819};
   const uint32_t unary_modes[] = {0, 1, 8, 9, 256, 64, 128, 192, 512, 4096, 4608, 5065};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (auto mask : masks)
       for (unsigned op = 0; op < 6; ++op)
         for (auto descriptor : goc_test::dpp_modes)
@@ -289,7 +290,7 @@ TEST(Normalized, DppHardwareCorpus) {
             auto mode = descriptor | (op < 4 ? packed_modes[variant] : unary_modes[variant]);
             ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
             for (auto word : output)
-              hash = (hash ^ word) * UINT64_C(1099511628211);
+              hash = goc_test::capture_hash_word(hash, word);
           }
     EXPECT_EQ(hash, UINT64_C(0x711fcd0f84aa5615)) << cpu;
   }

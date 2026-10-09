@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
@@ -17,7 +18,7 @@ TEST(ScalarInteger, HardwareResultsAndScc) {
       for (unsigned seed = 0; seed < 2; ++seed)
         for (uint32_t mask : {UINT32_C(0), UINT32_MAX, UINT32_C(0xaaaaaaaa)})
           for (unsigned k = 0; k < 40; ++k) {
-            uint64_t hash = UINT64_C(14695981039346656037);
+            uint64_t hash = goc_test::capture_hash_seed;
             unsigned op = k < 18 ? k : k < 29 ? 18 : 19;
             uint16_t imm = k < 18 ? 0 : goc_test::scalar_integer_literals[(k - 18) % 11];
             for (unsigned i = 0; i < 4096; ++i) {
@@ -32,7 +33,7 @@ TEST(ScalarInteger, HardwareResultsAndScc) {
                         GOC_SUCCESS);
               bool wide = op >= 15 && op <= 17;
               for (uint32_t word : {wide ? uint32_t(d64) : d, wide ? uint32_t(d64 >> 32) : 0u, cc})
-                hash = (hash ^ word) * UINT64_C(1099511628211);
+                hash = goc_test::capture_hash_word(hash, word);
             }
             ASSERT_EQ(hash, goc_test::scalar_integer_hardware[seed][k])
                 << cpu << "/" << semantics << "/" << seed << "/" << mask << "/" << k;
@@ -134,7 +135,7 @@ TEST(ScalarInteger, SignExtendExhaustiveHardware) {
     unsigned modulus = op ? 65536 : 256;
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
-        uint64_t hash = UINT64_C(14695981039346656037);
+        uint64_t hash = goc_test::capture_hash_seed;
         for (unsigned i = 0; i < 65536; ++i) {
           uint32_t a = i | ((i * 0x9e37u) << 16), d;
           ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, &d, a), GOC_SUCCESS);
@@ -142,7 +143,7 @@ TEST(ScalarInteger, SignExtendExhaustiveHardware) {
           if (value >= int(modulus / 2))
             value -= int(modulus);
           ASSERT_EQ(d, uint32_t(value));
-          hash = (hash ^ d) * UINT64_C(1099511628211);
+          hash = goc_test::capture_hash_word(hash, d);
         }
         EXPECT_EQ(hash, hashes[op]);
       }

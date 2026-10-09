@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_swmmac8_hardware.h"
@@ -46,13 +47,10 @@ TEST(Swmmac8, HardwareAllModifiers) {
           Registers r(op, sample);
           ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode(variant), r.d, r.a, r.b, r.index),
                     GOC_SUCCESS);
-          uint64_t digest = UINT64_C(14695981039346656037);
+          uint64_t digest = goc_test::capture_hash_seed;
           for (unsigned reg = 0; reg < 8u; ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
-              for (unsigned byte = 0; byte < 4; ++byte) {
-                digest ^= (r.d[reg][lane] >> (8 * byte)) & 255;
-                digest *= UINT64_C(1099511628211);
-              }
+              digest = goc_test::capture_hash_bytes(digest, r.d[reg][lane], 4);
           ASSERT_EQ(digest, goc_test::swmmac8_capture_digests[op][sample][variant])
               << op << "/" << cpu << "/" << variant;
         }

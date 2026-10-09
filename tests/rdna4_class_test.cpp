@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_class_hardware.h"
@@ -106,7 +107,7 @@ TEST(Class, DppHardwareCorpus) {
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {UINT64_C(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
-      uint64_t hash = UINT64_C(14695981039346656037);
+      uint64_t hash = goc_test::capture_hash_seed;
       for (bool flush : {true, false})
         for (unsigned batch = 0; batch < 4; ++batch)
           for (uint32_t mask : masks)
@@ -123,7 +124,7 @@ TEST(Class, DppHardwareCorpus) {
                       functions[op](cpu | semantics | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0),
                                     mask, descriptor | goc_test::class_mode(m), &result, a, b),
                       GOC_SUCCESS);
-                  hash = (hash ^ result) * UINT64_C(1099511628211);
+                  hash = goc_test::capture_hash_word(hash, result);
                 }
       EXPECT_EQ(hash, UINT64_C(0xb8f5447c269df6e5)) << cpu << "/" << semantics;
     }
@@ -136,7 +137,7 @@ TEST(Class, HardwareFormatsModifiersExecAndCmpx) {
       unsigned variant = 0;
       for (unsigned op = 0; op < 6; ++op)
         for (unsigned m = 0; m < (op < 2 ? 16u : 4u); ++m, ++variant) {
-          uint64_t digest = UINT64_C(14695981039346656037);
+          uint64_t digest = goc_test::capture_hash_seed;
           for (unsigned start = 0; start < 65536; start += 32) {
             uint32_t words[3][32], result = 0x12345678;
             goc_test::class_capture_inputs(op / 2, start, words);
@@ -146,10 +147,7 @@ TEST(Class, HardwareFormatsModifiersExecAndCmpx) {
                                         GOC_FP_FLUSH_INPUT_DENORMALS,
                                     masks[mi], goc_test::class_mode(m), &result, a, b),
                       GOC_SUCCESS);
-            for (unsigned byte = 0; byte < 4; ++byte) {
-              digest ^= (result >> (8 * byte)) & 255;
-              digest *= UINT64_C(1099511628211);
-            }
+            digest = goc_test::capture_hash_bytes(digest, result, 4);
           }
           EXPECT_EQ(digest, goc_test::class_digests[mi * 48 + variant])
               << cpu << "/" << mi << "/" << op << "/" << m;

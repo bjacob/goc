@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_half_minmax_reference.h"
@@ -206,7 +207,7 @@ TEST(HalfMinmax3, ValidationAndSemantics) {
 TEST(HalfMinmax3, HardwareMedianSignedZeroOrdering) {
   const uint32_t values[] = {0, 0x8000, 0x3c00, 0xbc00, 1, 0x8001, 0x7c00, 0xfc00};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (unsigned base = 0; base < 512; base += 32) {
       uint32_t words[4][32];
       for (unsigned lane = 0; lane < 32; ++lane) {
@@ -219,7 +220,7 @@ TEST(HalfMinmax3, HardwareMedianSignedZeroOrdering) {
       uint32_t *p[] = {words[0], words[1], words[2], words[3]};
       ASSERT_EQ(goc_rdna4_v_med3_num_f16(cpu, UINT32_MAX, 0, p + 3, p, p + 1, p + 2), GOC_SUCCESS);
       for (uint32_t word : words[3])
-        hash = (hash ^ word) * UINT64_C(1099511628211);
+        hash = goc_test::capture_hash_word(hash, word);
     }
     EXPECT_EQ(hash, UINT64_C(0x6621dd1b4ac695ed));
   }
@@ -228,7 +229,7 @@ TEST(HalfMinmax3, HardwareMedianSignedZeroOrdering) {
 TEST(HalfMinmax3, HardwareMedianNanRules) {
   const uint32_t values[] = {0, 0x8000, 0x7c01, 0x7e00, 0xfc01, 0xfe00, 0x3c00, 0xbc00};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (unsigned base = 0; base < 512; base += 32) {
       uint32_t words[4][32];
       for (unsigned lane = 0; lane < 32; ++lane) {
@@ -243,7 +244,7 @@ TEST(HalfMinmax3, HardwareMedianNanRules) {
       for (uint32_t word : words[3]) {
         if ((word & 0x7fff) > 0x7c00)
           word = (word & 0xffff0000u) | 0x7e00;
-        hash = (hash ^ word) * UINT64_C(1099511628211);
+        hash = goc_test::capture_hash_word(hash, word);
       }
     }
     EXPECT_EQ(hash, UINT64_C(0x513891779d603325));

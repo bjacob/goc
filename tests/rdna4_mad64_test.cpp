@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
@@ -19,13 +20,6 @@ using Fn = decltype(&goc_rdna4_v_mad_co_u64_u32);
 const Fn functions[] = {goc_rdna4_v_mad_co_u64_u32, goc_rdna4_v_mad_co_i64_i32};
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 
-void digest_word(uint64_t &digest, uint64_t word, unsigned bytes) {
-  for (unsigned byte = 0; byte < bytes; ++byte) {
-    digest ^= (word >> (8 * byte)) & 255;
-    digest *= UINT64_C(1099511628211);
-  }
-}
-
 } // namespace
 
 TEST(Mad64, HardwareCartesianCorpus) {
@@ -34,7 +28,7 @@ TEST(Mad64, HardwareCartesianCorpus) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned clamp = 0; clamp < 2; ++clamp)
         for (unsigned m = 0; m < 3; ++m) {
-          uint64_t digest = UINT64_C(14695981039346656037);
+          uint64_t digest = goc_test::capture_hash_seed;
           for (unsigned start = 0; start < 4096; start += 32) {
             uint32_t data[6][32], carry = 0xa5a5a5a5;
             for (unsigned lane = 0; lane < 32; ++lane) {
@@ -53,8 +47,9 @@ TEST(Mad64, HardwareCartesianCorpus) {
                 functions[op](cpu | exact, masks[m], clamp ? GOC_ALU_CLAMP : 0, d, &carry, a, b, c),
                 GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane)
-              digest_word(digest, data[4][lane] | (uint64_t(data[5][lane]) << 32), 8);
-            digest_word(digest, carry, 4);
+              digest = goc_test::capture_hash_bytes(
+                  digest, data[4][lane] | (uint64_t(data[5][lane]) << 32), 8);
+            digest = goc_test::capture_hash_bytes(digest, carry, 4);
           }
           ASSERT_EQ(digest, goc_test::mad64_capture_digests[op][clamp][m])
               << op << "/" << cpu << "/" << clamp << "/" << m;

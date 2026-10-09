@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
@@ -19,7 +20,7 @@ TEST(ScalarBits, HardwareResultsAndScc) {
       for (unsigned seed = 0; seed < 2; ++seed)
         for (uint32_t mask : {UINT32_C(0), UINT32_MAX, UINT32_C(0xaaaaaaaa)})
           for (unsigned op = 0; op < 30; ++op) {
-            uint64_t hash = UINT64_C(14695981039346656037);
+            uint64_t hash = goc_test::capture_hash_seed;
             for (unsigned i = 0; i < 4096; ++i) {
               uint32_t w[4];
               goc_test::scalar_integer_inputs(i, w);
@@ -31,7 +32,7 @@ TEST(ScalarBits, HardwareResultsAndScc) {
                         GOC_SUCCESS);
               bool wide = op < 26 && (op & 1);
               for (uint32_t word : {wide ? uint32_t(d64) : d, wide ? uint32_t(d64 >> 32) : 0u, cc})
-                hash = (hash ^ word) * UINT64_C(1099511628211);
+                hash = goc_test::capture_hash_word(hash, word);
             }
             ASSERT_EQ(hash, goc_test::scalar_bits_hardware[seed][op])
                 << cpu << "/" << semantics << "/" << seed << "/" << mask << "/" << op;

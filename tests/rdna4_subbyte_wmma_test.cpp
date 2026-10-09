@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_exec_masks.h"
@@ -333,13 +334,10 @@ TEST(SubbyteWmma, IntegerHardwareStagedClampCorpus) {
           ASSERT_EQ(integer[shape](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                                    UINT32_MAX, modifiers, d, a, b, c),
                     GOC_SUCCESS);
-          uint64_t digest = UINT64_C(14695981039346656037);
+          uint64_t digest = goc_test::capture_hash_seed;
           for (const auto &reg : result)
             for (uint32_t word : reg)
-              for (unsigned byte = 0; byte < 4; ++byte) {
-                digest ^= (word >> (8 * byte)) & 255;
-                digest *= UINT64_C(1099511628211);
-              }
+              digest = goc_test::capture_hash_bytes(digest, word, 4);
           EXPECT_EQ(digest, goc_test::dense_integer_capture_digests[shape][sample][mode])
               << shape << "/" << cpu << "/" << sample << "/" << mode;
         }

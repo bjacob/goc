@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_omod_reference.h"
@@ -43,7 +44,7 @@ TEST(Dpp8, HardwareCorpus) {
   // GFX1201/HIP 7.13: FMA and FMAC, FI 0/1, eight selectors, NEG_A/OMOD
   // combinations, eight EXEC masks. All 16384 raw result words matched.
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (uint32_t mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (bool accumulate : {false, true})
@@ -72,7 +73,7 @@ TEST(Dpp8, HardwareCorpus) {
                 if ((mask >> lane) & 1)
                   want = mod ? (want - 2 * value) * 2 : want + 2 * value;
                 ASSERT_EQ(d[lane], bits(float(want)));
-                hash = (hash ^ d[lane]) * UINT64_C(1099511628211);
+                hash = goc_test::capture_hash_word(hash, d[lane]);
               }
             }
     EXPECT_EQ(hash, UINT64_C(0x3c27b0cc204f2325));

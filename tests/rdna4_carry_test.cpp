@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_carry_hardware.h"
@@ -252,7 +253,7 @@ TEST(Carry, DppHardwareCorpusAndHostFpState) {
     std::feraiseexcept(FE_INVALID | FE_INEXACT);
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, exact}) {
-        uint64_t hash = UINT64_C(14695981039346656037);
+        uint64_t hash = goc_test::capture_hash_seed;
         for (uint32_t ci : {0u, UINT32_MAX, 0xa5a5a5a5u})
           for (auto mask : masks)
             for (auto fn : goc_test::carry_functions)
@@ -270,8 +271,8 @@ TEST(Carry, DppHardwareCorpusAndHostFpState) {
                                &carry, a, b, ci),
                             GOC_SUCCESS);
                   for (auto word : output)
-                    hash = (hash ^ word) * UINT64_C(1099511628211);
-                  hash = (hash ^ carry) * UINT64_C(1099511628211);
+                    hash = goc_test::capture_hash_word(hash, word);
+                  hash = goc_test::capture_hash_word(hash, carry);
                 }
         EXPECT_EQ(hash, UINT64_C(0x8c738ac66b29e6ad)) << cpu << "/" << semantics;
         EXPECT_EQ(std::fegetround(), rounding);

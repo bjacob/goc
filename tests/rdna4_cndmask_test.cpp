@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_cndmask_hardware.h"
@@ -27,7 +28,7 @@ TEST(Cndmask, HardwareAllEncodingsAndModifiers) {
       bool half = variant >= 32;
       unsigned m = (half ? variant - 32 : variant) / 2;
       uint32_t condition = variant & 1 ? UINT32_MAX : 0;
-      uint64_t digest = UINT64_C(14695981039346656037);
+      uint64_t digest = goc_test::capture_hash_seed;
       for (unsigned start = 0; start < 65536; start += 32) {
         uint32_t words[3][32];
         for (unsigned lane = 0; lane < 32; ++lane) {
@@ -41,10 +42,7 @@ TEST(Cndmask, HardwareAllEncodingsAndModifiers) {
         ASSERT_EQ(functions[half](cpu, UINT32_MAX, goc_test::cndmask_mode(m), d, a, b, condition),
                   GOC_SUCCESS);
         for (uint32_t value : words[2])
-          for (unsigned byte = 0; byte < 4; ++byte) {
-            digest ^= (value >> (8 * byte)) & 255;
-            digest *= UINT64_C(1099511628211);
-          }
+          digest = goc_test::capture_hash_bytes(digest, value, 4);
       }
       EXPECT_EQ(digest, goc_test::cndmask_digests[variant]) << cpu << "/" << variant;
     }
@@ -229,7 +227,7 @@ TEST(Cndmask, DppHardwareCorpusAndHostFpState) {
     std::feclearexcept(FE_ALL_EXCEPT);
     std::feraiseexcept(FE_INVALID | FE_DIVBYZERO);
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-      uint64_t hash = UINT64_C(14695981039346656037);
+      uint64_t hash = goc_test::capture_hash_seed;
       for (uint32_t condition : {0u, UINT32_MAX, 0x96969696u})
         for (auto mask : masks)
           for (unsigned half = 0; half < 2; ++half)
@@ -247,7 +245,7 @@ TEST(Cndmask, DppHardwareCorpusAndHostFpState) {
                                           b, condition),
                           GOC_SUCCESS);
                 for (auto word : output)
-                  hash = (hash ^ word) * UINT64_C(1099511628211);
+                  hash = goc_test::capture_hash_word(hash, word);
               }
       EXPECT_EQ(hash, UINT64_C(0x237a7524109b1925)) << cpu;
       EXPECT_EQ(std::fegetround(), rounding);

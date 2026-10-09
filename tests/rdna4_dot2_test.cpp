@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_dot_fixtures.h"
@@ -224,7 +225,7 @@ TEST(Dot2, DppHardwareCorpus) {
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
-      uint64_t hash = UINT64_C(14695981039346656037);
+      uint64_t hash = goc_test::capture_hash_seed;
       for (auto mask : masks)
         for (unsigned brain = 0; brain < 2; ++brain)
           for (auto descriptor : goc_test::dpp_modes)
@@ -244,7 +245,7 @@ TEST(Dot2, DppHardwareCorpus) {
               for (auto word : output) {
                 if (semantics == GOC_SEMANTICS_LOOSE && !(word & 0x7fffffff))
                   word = 0;
-                hash = (hash ^ word) * UINT64_C(1099511628211);
+                hash = goc_test::capture_hash_word(hash, word);
               }
             }
       EXPECT_EQ(hash, UINT64_C(0xd46ee8a52b583d85)) << cpu << "/" << semantics;

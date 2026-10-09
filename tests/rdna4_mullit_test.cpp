@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -14,7 +15,7 @@
 TEST(Mullit, HardwareSpecialValuesAndModifiers) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned mode = 0; mode < 16; ++mode) {
-      uint64_t digest = UINT64_C(14695981039346656037);
+      uint64_t digest = goc_test::capture_hash_seed;
       for (unsigned start = 0; start < 4096; start += 32) {
         uint32_t words[4][32];
         for (unsigned lane = 0; lane < 32; ++lane) {
@@ -31,10 +32,7 @@ TEST(Mullit, HardwareSpecialValuesAndModifiers) {
         for (uint32_t word : words[3]) {
           if ((word & 0x7fffffff) > 0x7f800000)
             word = 0x7fc00000;
-          for (unsigned byte = 0; byte < 4; ++byte) {
-            digest ^= (word >> (8 * byte)) & 255;
-            digest *= UINT64_C(1099511628211);
-          }
+          digest = goc_test::capture_hash_bytes(digest, word, 4);
         }
       }
       EXPECT_EQ(digest, goc_test::mullit_capture_digests[mode]) << cpu << "/" << mode;
@@ -137,7 +135,7 @@ TEST(Mullit, DppHardwareCorpus) {
   const uint32_t masks[] = {UINT32_MAX, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (uint32_t mask : masks)
       for (unsigned mode = 0; mode < 512; ++mode)
         for (uint64_t descriptor : goc_test::dpp_modes) {
@@ -154,7 +152,7 @@ TEST(Mullit, DppHardwareCorpus) {
           for (uint32_t word : words[3]) {
             if ((word & 0x7fffffff) > 0x7f800000)
               word = 0x7fc00000;
-            hash = (hash ^ word) * UINT64_C(1099511628211);
+            hash = goc_test::capture_hash_word(hash, word);
           }
         }
     EXPECT_EQ(hash, UINT64_C(0x7d17538d3e94b7a5));

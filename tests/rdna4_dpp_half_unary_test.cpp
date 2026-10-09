@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -53,7 +54,7 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
   // Gfx1201: 132 operation/modifier combinations x 7 DPP descriptors x 8
   // EXEC masks x 32 lanes, retaining the unselected destination half.
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint64_t hash = UINT64_C(14695981039346656037);
+    uint64_t hash = goc_test::capture_hash_seed;
     for (uint32_t mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned op = 0; op < 11; ++op)
@@ -72,7 +73,7 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
               want = reference(op, source < 0 ? 0 : a[source], 0xdead0000u + lane, uint32_t(mode));
             ASSERT_EQ(canonical(d[lane], uint32_t(mode)), canonical(want, uint32_t(mode)))
                 << cpu << '/' << op << '/' << mode << '/' << lane;
-            hash = (hash ^ canonical(d[lane], uint32_t(mode))) * UINT64_C(1099511628211);
+            hash = goc_test::capture_hash_word(hash, canonical(d[lane], uint32_t(mode)));
           }
         }
     EXPECT_EQ(hash, expected_hash);
