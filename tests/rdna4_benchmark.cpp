@@ -1404,7 +1404,7 @@ bool benchmark_dpp_arithmetic(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_dpp_integer(uint64_t cpu, int iterations, int min_ms) {
-  for (unsigned op : {0u, 3u, 4u, 6u, 10u})
+  for (unsigned op : {0u, 3u, 4u, 6u, 10u, 13u})
     for (unsigned descriptor : {0u, 5u}) {
       uint64_t mode = goc_test::dpp_modes[descriptor];
       Registers r;

@@ -1634,6 +1634,16 @@ Boolean operations with full EXEC. On the Ryzen 9 7950X3D, these cases measure
 16.8–23.5 ns on x86-64-v3 (1.9–2.4× scalar speed) and 9.1–13.4 ns on
 x86-64-v4 (3.3–4.9×), using seven pinned samples of at least 10 ms each.
 
+The three 32-bit shifts (`v_lshlrev_b32`, `v_lshrrev_b32`, and `v_ashrrev_i32`)
+also support DPP8/DPP16. Source permutation applies to the shift count; the
+shifted value remains local to the destination lane. A GFX1201 capture checks
+5,376 results, and the integer DPP mask/alias/random-word and host FP-state tests
+cover all three operations. AVX2 arithmetic follows scalar, AVX2, or AVX-512
+source permutation according to the selected CPU level. The benchmark includes
+arithmetic right shift with both DPP kinds and full EXEC. On the Ryzen 9 7950X3D,
+these cases measure 17.7–21.2 ns on x86-64-v3 (2.0–2.3× scalar speed) and
+17.0–19.9 ns with AVX-512 permutation plus AVX2 arithmetic (2.2–2.4×).
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal

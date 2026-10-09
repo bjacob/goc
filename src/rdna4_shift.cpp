@@ -3,14 +3,26 @@
 #include "rdna4_shift.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <stdint.h>
 
 namespace {
 
 template <int Bits, goc::Shift Op>
-int shift(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int shift(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
           const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32) {
+    if constexpr (Bits == 32) {
+      return goc::execute_dpp(
+          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+            return shift<Bits, Op>(flags, effective, uint32_t(mode), d, source, b);
+          });
+    } else {
+      return GOC_ERROR_INVALID_FLAGS;
+    }
+  }
+
   if (int error = goc::validate(flags, mode))
     return error;
   if (!uint32_t(mask))
@@ -53,22 +65,16 @@ int shift(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 int goc_rdna4_v_lshlrev_b32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return shift<32, goc::Shift::Left>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_lshrrev_b32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return shift<32, goc::Shift::LogicalRight>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_ashrrev_i32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return shift<32, goc::Shift::ArithmeticRight>(flags, mask, mode, d, a, b);
 }
 

@@ -44,11 +44,44 @@ TEST(DppInteger, HardwareCorpus) {
   }
 }
 
+TEST(DppInteger, ShiftHardwareCorpus) {
+  // Gfx1201: 3 shift operations x 7 DPP/FI/BOUND/row/bank descriptors x 8
+  // EXEC masks x 32 lanes, permuting the shift count, not the shifted value.
+  const uint32_t values[] = {0,           0xffffffffu, 1,           0x80000000u,
+                             0x7fffffffu, 0xaaaaaaaau, 0x55555555u, 0x01010101u};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (uint32_t mask :
+         {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
+      for (unsigned op = 11; op < 14; ++op)
+        for (uint64_t mode : goc_test::dpp_modes) {
+          uint32_t a[32], b[32], d[32];
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            a[lane] = values[lane % 8] ^ ((lane / 8) * 0x01010101u);
+            b[lane] = 0xffffff00u + lane;
+            d[lane] = 0xdead0000u + lane;
+          }
+          auto pa = a, pb = b, pd = d;
+          ASSERT_EQ(goc_test::dpp_integer_functions[op](cpu, mask, mode, &pd, &pa, &pb),
+                    GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            int source;
+            uint32_t want = 0xdead0000u + lane;
+            if (goc_test::dpp_source(mode, mask, lane, source))
+              want = goc_test::dpp_integer_reference(op, source < 0 ? 0 : a[source], b[lane], lane);
+            ASSERT_EQ(d[lane], want) << cpu << '/' << op << '/' << mode << '/' << lane;
+            hash = (hash ^ d[lane]) * UINT64_C(1099511628211);
+          }
+        }
+    EXPECT_EQ(hash, UINT64_C(0x03caa0b347b9fe02));
+  }
+}
+
 TEST(DppInteger, MasksAliasesAndRandomWords) {
   const unsigned aliases[][3] = {{2, 0, 1}, {0, 0, 1}, {1, 0, 1}, {0, 0, 0}, {2, 0, 0}};
   auto masks = rdna4_exec_masks();
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-    for (unsigned op = 0; op < 11; ++op)
+    for (unsigned op = 0; op < 14; ++op)
       for (uint64_t mode : goc_test::dpp_modes)
         for (uint64_t mask : masks)
           for (const auto &alias : aliases)
