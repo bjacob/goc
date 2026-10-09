@@ -20,6 +20,7 @@
 #include "rdna4_integer_conversion_reference.h"
 #include "rdna4_integer_mad_reference.h"
 #include "rdna4_integer_ternary_reference.h"
+#include "rdna4_mad64_reference.h"
 #include "rdna4_mixed_fma_reference.h"
 #include "rdna4_normalized_reference.h"
 #include "rdna4_packed_conversion_reference.h"
@@ -1301,6 +1302,68 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
         if (simd < 0)
           return false;
         print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_mad64(uint64_t cpu, int iterations, int min_ms) {
+  using Mad = decltype(&goc_rdna4_v_mad_co_u64_u32);
+  const Mad functions[] = {goc_rdna4_v_mad_co_u64_u32, goc_rdna4_v_mad_co_i64_i32};
+  const char *names[] = {"v_mad_co_u64_u32", "v_mad_co_i64_i32"};
+
+  struct MadRegisters : Registers {
+    uint32_t carry = 0, expected_carry = 0;
+
+    bool correct() const { return Registers::correct() && carry == expected_carry; }
+  };
+
+  const uint32_t factors[] = {0, 1, 0x7fffffff, 0x80000000, 0xfffffffe, UINT32_MAX};
+  const uint64_t addends[] = {0, 1, UINT64_MAX >> 1, UINT64_C(1) << 63, UINT64_MAX - 1, UINT64_MAX};
+  const uint64_t semantics = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+  for (unsigned op = 0; op < 2; ++op)
+    for (bool clamp : {false, true}) {
+      MadRegisters r;
+      r.output_regs = 2;
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        uint32_t a = factors[lane % 6], b = factors[(lane / 6 + lane) % 6];
+        uint64_t c = addends[(lane * 5 + 2) % 6];
+        r.data[0][lane] = a;
+        r.data[4][lane] = b;
+        r.data[8][lane] = uint32_t(c);
+        r.data[9][lane] = uint32_t(c >> 32);
+        auto gold = goc_test::mad64_reference(op, a, b, c, clamp);
+        r.expected[128 * (lane / 16) + lane % 16] = uint32_t(gold.value);
+        r.expected[128 * (lane / 16) + 16 + lane % 16] = uint32_t(gold.value >> 32);
+        r.expected_carry |= uint32_t(gold.carry) << lane;
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+        return functions[op](flags, mask, modifiers, d, &r.carry, a, b, c);
+      };
+      uint32_t mode = clamp ? GOC_ALU_CLAMP : 0;
+      const char *label = clamp ? "clamp" : "none";
+      double scalar = measure(fn, semantics, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "exact", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, semantics | GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "exact", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, semantics | GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "exact", label, "x86-64-v4", simd, scalar / simd);
       }
 #endif
     }
@@ -3278,7 +3341,8 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave");
-  if (!benchmark_carry(cpu, iterations, min_ms) || !benchmark_div_fmas(cpu, iterations, min_ms) ||
+  if (!benchmark_mad64(cpu, iterations, min_ms) || !benchmark_carry(cpu, iterations, min_ms) ||
+      !benchmark_div_fmas(cpu, iterations, min_ms) ||
       !benchmark_div_scale(cpu, iterations, min_ms) ||
       !benchmark_div_fixup(cpu, iterations, min_ms) || !benchmark_cube(cpu, iterations, min_ms) ||
       !benchmark_fp8_narrow(cpu, iterations, min_ms) ||

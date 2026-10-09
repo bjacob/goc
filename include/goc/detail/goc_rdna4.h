@@ -18,6 +18,26 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Multiply two 32-bit lanes and add a 64-bit accumulator. A/B use one VGPR;
+// C/D use low/high pairs. The scalar output contains bit 64 of the full sum:
+// unsigned carry for U64, or the sign of the mathematical 65-bit sum for I64.
+// CLAMP saturates to the unsigned/signed 64-bit range without changing that mask.
+// Supports CLAMP only, loose and empirical exact semantics, every EXEC mask and
+// whole-register alias. All inputs are read before D0, then D1, then carry are
+// written; D1 wins if D0/D1 alias. Inactive scalar bits are cleared, even for zero
+// EXEC. carry must always be writable; zero EXEC permits null VGPR pointers.
+// Errors leave all destinations unchanged. Host FP state is preserved and
+// GOC_FP16_OVFL has no effect.
+GOC_API int goc_rdna4_v_mad_co_u64_u32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       uint32_t *carry, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_mad_co_i64_i32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       uint32_t *carry, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *c);
+
 // Unsigned add/subtract with a scalar carry/borrow output. CI forms also consume
 // one input carry/borrow bit per lane. SUBREV computes B-A-input_borrow.
 // CLAMP saturates overflow to UINT32_MAX for addition and underflow to zero for

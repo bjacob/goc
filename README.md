@@ -375,6 +375,24 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Wide integer MAD covers `v_mad_co_u64_u32` and `v_mad_co_i64_i32`, the RDNA4
+names for unsigned/signed 32x32 multiplication plus a 64-bit accumulator. A/B use
+one VGPR each; C/D use low/high pairs. CLAMP saturates to the corresponding
+64-bit integer range. The scalar output contains bit 64 of the full sum. For
+signed MAD this is its extended sign, not a signed-overflow indication; GPU
+captures establish this distinction from rocjitsu's current handler.
+
+Scalar and v3/v4 paths support loose and empirical exact semantics, CLAMP,
+every EXEC mask and all whole-register aliases. V3 processes four lanes and v4
+eight; stores commit D0, D1, then the scalar output after all input reads.
+Inactive scalar bits are cleared, including zero EXEC, while inactive VGPR lanes
+are preserved. Host FP state is untouched. Tests compare 49,152 GPU-captured
+result/mask pairs, use an independent 128-bit reference for random inputs, and
+cover signed-overflow witnesses, all destination-pair aliases, shared sources,
+unaligned storage, scalar-output overlap and host FP-state preservation. Pinned-core
+Ryzen 9 7950X3D timings measured 1.44–2.03x for v3 and 5.76–7.52x for v4 versus
+scalar, including CLAMP (seven samples, each at least 10 ms).
+
 Carry/borrow arithmetic covers `v_add_co_u32`, `v_sub_co_u32`,
 `v_subrev_co_u32`, and their `co_ci` forms. The scalar carry/borrow output follows
 D in assembly operand order; CI forms take the input mask by value after A/B.
