@@ -6,6 +6,7 @@
 #include "rdna4_dpp_half_fma_reference.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_half_reference.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -27,13 +28,6 @@ std::vector<uint64_t> modes(unsigned op) {
     for (unsigned low : low_modes)
       result.push_back(descriptor | low);
   return result;
-}
-
-uint32_t canonical(uint32_t word, uint32_t mode) {
-  unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  if (((word >> shift) & 0x7fff) > 0x7c00)
-    return (word & ~(UINT32_C(65535) << shift)) | (UINT32_C(0x7e00) << shift);
-  return word;
 }
 
 void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
@@ -122,9 +116,10 @@ TEST(DppHalfFma, MasksAliasesAndRandomWords) {
                           op, source < 0 ? 0 : before[layout[0]][source + 1],
                           before[layout[1]][index], before[layout[2]][index], uint32_t(mode), want);
                     if (written) {
-                      ASSERT_EQ(sem ? words[reg][index]
-                                    : canonical(words[reg][index], uint32_t(mode)),
-                                sem ? want : canonical(want, uint32_t(mode)));
+                      ASSERT_EQ(
+                          sem ? words[reg][index]
+                              : goc_test::canonical_half_nan(words[reg][index], uint32_t(mode)),
+                          sem ? want : goc_test::canonical_half_nan(want, uint32_t(mode)));
                     } else {
                       ASSERT_EQ(words[reg][index], want);
                     }
@@ -187,8 +182,9 @@ TEST(DppHalfFma, EveryModifierAndOverflowMode) {
                                                    words[1][lane], words[2][lane], uint32_t(mode),
                                                    old[lane], saturate);
                 }
-                ASSERT_EQ(sem ? words[3][lane] : canonical(words[3][lane], uint32_t(mode)),
-                          sem ? want : canonical(want, uint32_t(mode)))
+                ASSERT_EQ(sem ? words[3][lane]
+                              : goc_test::canonical_half_nan(words[3][lane], uint32_t(mode)),
+                          sem ? want : goc_test::canonical_half_nan(want, uint32_t(mode)))
                     << cpu << '/' << op << '/' << mode << '/' << lane << '/' << saturate;
               }
             }

@@ -28,6 +28,18 @@ void check(uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
 
 } // namespace
 
+TEST(HalfBinary, CanonicalNanPreservesUnselectedHalf) {
+  for (uint32_t bits = 0; bits < 65536; ++bits) {
+    const bool nan = (bits & 0x7c00) == 0x7c00 && (bits & 0x3ff) != 0;
+    const uint32_t expected = nan ? 0x7e00 : bits;
+    // A signaling NaN in the other half must remain untouched.
+    EXPECT_EQ(goc_test::canonical_half_nan(UINT32_C(0xfc010000) | bits, 0),
+              UINT32_C(0xfc010000) | expected);
+    EXPECT_EQ(goc_test::canonical_half_nan((bits << 16) | 0x7c01, GOC_ALU_HIGH_D),
+              (expected << 16) | 0x7c01);
+  }
+}
+
 TEST(HalfBinary, EveryEncodingAndRandomInputs) {
   for (int op = 0; op < 8; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)

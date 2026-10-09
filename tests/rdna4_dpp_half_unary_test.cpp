@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_half_reference.h"
 #include "rdna4_half_unary_reference.h"
 
 #include <algorithm>
@@ -27,13 +28,6 @@ uint32_t reference(unsigned op, uint32_t a, uint32_t old_d, uint32_t mode) {
   uint32_t value = goc_test::half_unary_reference(op, a, mode, false);
   unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
   return (old_d & ~(UINT32_C(65535) << shift)) | (value << shift);
-}
-
-uint32_t canonical(uint32_t word, uint32_t mode) {
-  unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  if (((word >> shift) & 0x7fff) > 0x7c00)
-    return (word & ~(UINT32_C(65535) << shift)) | (UINT32_C(0x7e00) << shift);
-  return word;
 }
 
 void check(unsigned op, uint32_t got, uint32_t want, uint32_t mode) {
@@ -71,9 +65,11 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
             uint32_t want = 0xdead0000u + lane;
             if (goc_test::dpp_source(mode, mask, lane, source))
               want = reference(op, source < 0 ? 0 : a[source], 0xdead0000u + lane, uint32_t(mode));
-            ASSERT_EQ(canonical(d[lane], uint32_t(mode)), canonical(want, uint32_t(mode)))
+            ASSERT_EQ(goc_test::canonical_half_nan(d[lane], uint32_t(mode)),
+                      goc_test::canonical_half_nan(want, uint32_t(mode)))
                 << cpu << '/' << op << '/' << mode << '/' << lane;
-            hash = goc_test::capture_hash_word(hash, canonical(d[lane], uint32_t(mode)));
+            hash = goc_test::capture_hash_word(
+                hash, goc_test::canonical_half_nan(d[lane], uint32_t(mode)));
           }
         }
     EXPECT_EQ(hash, expected_hash);

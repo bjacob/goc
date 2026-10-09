@@ -5,6 +5,7 @@
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_half_minmax_reference.h"
+#include "rdna4_half_reference.h"
 
 #include <algorithm>
 #include <cstring>
@@ -31,13 +32,6 @@ uint32_t reference(unsigned op, uint32_t a, uint32_t b, uint32_t c, uint32_t mod
   uint32_t value = goc_test::half_minmax_reference(op, a, b, c, mode, false);
   unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
   return (old_d & ~(UINT32_C(65535) << shift)) | (value << shift);
-}
-
-uint32_t canonical(uint32_t word, uint32_t mode) {
-  unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  if (((word >> shift) & 0x7fff) > 0x7c00)
-    return (word & ~(UINT32_C(65535) << shift)) | (UINT32_C(0x7e00) << shift);
-  return word;
 }
 
 void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
@@ -123,8 +117,8 @@ TEST(DppHalfMinmax, MasksAliasesAndRandomWords) {
                                      before[layout[1]][index], before[layout[2]][index],
                                      uint32_t(mode), want);
                   if (written) {
-                    ASSERT_EQ(canonical(words[reg][index], uint32_t(mode)),
-                              canonical(want, uint32_t(mode)));
+                    ASSERT_EQ(goc_test::canonical_half_nan(words[reg][index], uint32_t(mode)),
+                              goc_test::canonical_half_nan(want, uint32_t(mode)));
                   } else {
                     ASSERT_EQ(words[reg][index], want);
                   }
@@ -180,7 +174,8 @@ TEST(DppHalfMinmax, EveryModifierAndOverflowMode) {
                     uint32_t(mode), saturate);
                 want = (want & ~(UINT32_C(65535) << shift)) | (value << shift);
               }
-              ASSERT_EQ(canonical(words[3][lane], uint32_t(mode)), canonical(want, uint32_t(mode)))
+              ASSERT_EQ(goc_test::canonical_half_nan(words[3][lane], uint32_t(mode)),
+                        goc_test::canonical_half_nan(want, uint32_t(mode)))
                   << cpu << '/' << op << '/' << mode << '/' << lane << '/' << saturate;
             }
           }
