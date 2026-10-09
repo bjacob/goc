@@ -193,6 +193,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_mbcnt_lo_u32_b32` (wave32 and wave64), `v_mbcnt_hi_u32_b32` (wave64) | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_mbcnt_hi_u32_b32` (wave32) | Scalar, x86-64-v4 | Not implemented |
 | `v_and_b16`, `v_or_b16`, `v_xor_b16`, `v_not_b16` | Scalar, x86-64-v4 | Not implemented |
+| `v_sat_pk_u8_i16`, `v_pack_b32_f16` | Scalar, x86-64-v3, x86-64-v4; all supported modifiers | Not implemented |
 | `v_and_b32`, `v_or_b32`, `v_xor_b32`, `v_not_b32`, `v_xnor_b32` | Scalar, x86-64-v4 | Not implemented |
 | `v_bfe_u32`, `v_bfe_i32`, `v_bfm_b32`, `v_bfrev_b32`, `v_alignbit_b32`, `v_alignbyte_b32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_bfi_b32` | Scalar, x86-64-v4 | Not implemented |
@@ -799,6 +800,21 @@ of `B`; its v3 candidate showed little benefit and was removed. Tests cover ever
 positions, complements, all population counts, accumulator wrapping, sentinel
 results, EXEC masks and aliases, including an in-place LO/HI sequence that
 constructs physical lane numbers under sparse EXEC masks. No modifiers apply.
+
+Packing supports `v_sat_pk_u8_i16` and `v_pack_b32_f16`. The former saturates
+each signed I16 half to U8 and packs the bytes into the selected destination
+half, preserving the other half (`HIGH_D`). The latter selects source halves
+with `HIGH_A/B`, applies `ABS_A/B` before `NEG_A/B`, quiets signaling NaNs, and
+packs A low/B high. Other FP16 bits, including subnormals and NaN payloads,
+are preserved. All modifiers stay on eight-lane v3 and sixteen-lane v4 paths;
+host FP state is unchanged. Only loose semantics are exposed.
+
+Tests retain digests for 4,325,376 GPU results spanning every I16/FP16 encoding
+and modifier combination, plus masks, aliases, unaligned storage and host
+FP-state checks. The GPU corpus establishes both destination-half preservation
+and signaling-NaN quieting. Pinned-core Ryzen 9 7950X3D timings measured
+1.22–1.27x for v3 and 2.77–4.25x for v4 versus scalar, including modifiers
+(seven samples, each at least 10 ms).
 
 AND, OR, XOR, and NOT support 16-bit and 32-bit values; XNOR supports 32-bit values. The 16-bit forms
 select source and destination halves with `HIGH_A`, `HIGH_B` (binary forms),

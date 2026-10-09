@@ -18,6 +18,24 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Saturate both signed I16 halves of A to U8, pack them low byte first, and
+// write the selected half of D, preserving the other half. HIGH_D selects the
+// upper destination half; no other instruction modifiers apply. A/D use one
+// VGPR each. Loose semantics only; all host FP state is preserved.
+GOC_API int goc_rdna4_v_sat_pk_u8_i16(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a);
+
+// Pack selected FP16 bits from A into D's low half and B into its high half.
+// HIGH_A/B select source halves; ABS_A/B clear their sign bits before NEG_A/B
+// toggles them. Signaling NaNs are quieted; other payload bits and subnormals
+// are preserved.
+// No other instruction modifiers apply. Each operand uses one VGPR. Loose
+// semantics only; all host FP state is preserved.
+GOC_API int goc_rdna4_v_pack_b32_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b);
+
 // Bitwise equivalence: D = ~(A ^ B). Each operand uses one VGPR. No
 // instruction modifiers apply; loose semantics only. Host FP state is preserved.
 GOC_API int goc_rdna4_v_xnor_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
