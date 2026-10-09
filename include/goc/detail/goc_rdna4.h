@@ -18,6 +18,27 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Integer widening and saturating packing, with one VGPR per operand. Widening
+// selects the low/high A half with HIGH_A, then sign- or zero-extends to D.
+// Packing saturates each 32-bit source to the signed/unsigned 16-bit range,
+// placing A in D's low half and B in its high half; no flags are accepted.
+// Supports loose semantics, full EXEC masking and whole-register aliases.
+// Preserves all host FP state. GOC_FP16_OVFL has no effect.
+
+GOC_API int goc_rdna4_v_cvt_i32_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_u32_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_pk_i16_i32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_cvt_pk_u16_u32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
 // Normalized conversions scale by 32767 (signed) or 65535 (unsigned), round
 // once to nearest-even, and saturate to [-32767,32767] or [0,65535]. NaNs map
 // to zero. All operands hold one VGPR. Packed forms put A/B in D's low/high

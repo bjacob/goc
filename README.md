@@ -375,6 +375,23 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Integer conversions cover `v_cvt_i32_i16`, `v_cvt_u32_u16`,
+`v_cvt_pk_i16_i32`, and `v_cvt_pk_u16_u32`. Widening selects either source
+half with `GOC_ALU_HIGH_A` and sign- or zero-extends it. Packing follows
+rocjitsu's saturating conversion handlers, placing A/B into the low/high
+result halves; it accepts no numeric modifiers. All four support loose
+semantics, EXEC masking, aliases, and preservation of the host FP environment.
+
+Sixteen-lane v4 paths cover all four operations. Eight-lane v3 paths cover
+packing; widening candidates were slightly slower than baseline and were
+removed. The signed scalar packing path uses an unsigned interval test to
+avoid expensive 64-bit comparisons. Tests cover every half encoding, saturation
+boundaries, full-word inputs, all source/destination alias layouts, 85 masks,
+unaligned storage, validation, and host FP-state preservation. Benchmarks use
+full EXEC and both half selectors where applicable. On the development Ryzen 9
+7950X3D, pinned-core measurements showed 1.21–1.43x for v3 packing and
+3.82–6.14x for v4 versus scalar (seven samples, each at least 10 ms).
+
 Normalized conversions cover `v_cvt_pk_norm_i16_f32`, `v_cvt_pk_norm_u16_f32`,
 `v_cvt_pk_norm_i16_f16`, `v_cvt_pk_norm_u16_f16`, `v_cvt_norm_i16_f16`, and
 `v_cvt_norm_u16_f16`. Signed results scale by 32767 and saturate to
