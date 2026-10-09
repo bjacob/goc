@@ -3,6 +3,8 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_omod_reference.h"
+#include "rdna4_unary_hardware.h"
 
 #include <algorithm>
 #include <cmath>
@@ -25,6 +27,9 @@ float reference(int op, float input, uint32_t flags) {
     x = std::abs(x);
   if (flags & GOC_ALU_NEG_A)
     x = -x;
+  bool flush = op >= 4 && op <= 8;
+  if (flush && std::abs(x) < std::ldexp(1.0, -126))
+    x = std::copysign(0.0, x);
   double y = 0;
   switch (op) {
   case 10: {
@@ -71,8 +76,9 @@ float reference(int op, float input, uint32_t flags) {
     break;
   }
   float result = float(y);
-  const float scales[] = {1, 2, 4, 0.5f};
-  result *= scales[(flags >> 6) & 3];
+  if (flush && std::abs(result) < std::ldexp(1.0f, -126))
+    result = std::copysign(0.0f, result);
+  result = goc_test::omod_f32_reference(result, flags);
   if (flags & GOC_ALU_CLAMP)
     result = std::isnan(result) || result <= 0 ? 0 : std::min(result, 1.0f);
   return result;
@@ -186,4 +192,50 @@ TEST(Unary, MantissaLiteralSubnormalsAndPassthrough) {
       for (uint32_t value : d)
         EXPECT_EQ(value, test[1]);
     }
+}
+
+TEST(Unary, HardwareOmodAndMandatoryFlush) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (int op = 0; op < 11; ++op)
+      for (unsigned omod = 0; omod < 4; ++omod)
+        for (unsigned clamp = 0; clamp < 2; ++clamp)
+          for (unsigned neg = 0; neg < 2; ++neg)
+            for (uint64_t mask : rdna4_exec_masks())
+              for (bool alias : {false, true}) {
+                SCOPED_TRACE(::testing::Message() << cpu << '/' << op << '/' << omod << '/' << clamp
+                                                  << '/' << neg << '/' << mask << '/' << alias);
+                uint32_t a[34], d[34];
+                std::fill(a, a + 34, 0xdeadbeef);
+                std::fill(d, d + 34, 0xdeadbeef);
+                std::copy(goc_test::unary_hardware_inputs, goc_test::unary_hardware_inputs + 32,
+                          a + 1);
+                uint32_t *pa = a + 1, *pd = alias ? a + 1 : d + 1;
+                uint64_t mode = (omod << 6) | (clamp ? GOC_ALU_CLAMP : 0) | neg;
+                ASSERT_EQ(functions[op](cpu, mask, mode, &pd, &pa), GOC_SUCCESS);
+                for (int lane = 0; lane < 32; ++lane) {
+                  if (!((mask >> lane) & 1)) {
+                    EXPECT_EQ(pd[lane],
+                              alias ? goc_test::unary_hardware_inputs[lane] : 0xdeadbeefu);
+                    continue;
+                  }
+                  uint32_t want = goc_test::unary_hardware[op][omod][clamp][neg][lane];
+                  uint32_t magnitude = want & 0x7fffffff;
+                  if (magnitude > 0x7f800000) {
+                    EXPECT_GT(pd[lane] & 0x7fffffff, 0x7f800000u);
+                  } else if (op >= 4 && op <= 8 && magnitude && magnitude < 0x7f800000) {
+                    // Transcendental approximation may differ by a few ULPs.
+                    // Zero, infinity, sign, and denormal classification must agree.
+                    EXPECT_EQ(pd[lane] >> 31, want >> 31);
+                    EXPECT_GE(pd[lane] & 0x7fffffff, 0x00800000u);
+                    EXPECT_LT(pd[lane] & 0x7fffffff, 0x7f800000u);
+                    EXPECT_FLOAT_EQ(goc::as_float(pd[lane]), goc::as_float(want));
+                  } else {
+                    EXPECT_EQ(pd[lane], want);
+                  }
+                }
+                EXPECT_EQ(a[0], 0xdeadbeefu);
+                EXPECT_EQ(a[33], 0xdeadbeefu);
+                EXPECT_EQ(d[0], 0xdeadbeefu);
+                EXPECT_EQ(d[33], 0xdeadbeefu);
+              }
 }

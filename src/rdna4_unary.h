@@ -13,6 +13,10 @@ namespace goc {
 
 enum class Unary { Trunc, Ceil, Rndne, Floor, Sqrt, Rcp, Rsq, Exp, Log, Fract, FrexpMant };
 
+template <Unary Op>
+inline constexpr bool unary_flushes_f32 = Op == Unary::Sqrt || Op == Unary::Rcp ||
+                                          Op == Unary::Rsq || Op == Unary::Exp || Op == Unary::Log;
+
 // Round to an integral FP32 value, ties to even, preserving signed zero and
 // quieting NaNs without depending on the host rounding mode.
 inline float rndne(float value) {

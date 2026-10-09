@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MIT
+// FP32 transcendental flushing follows rocjitsu's shared execution models
+// and is checked against gfx1201 hardware captures.
 
 #include "rdna4_unary.h"
 #include "goc/goc.h"
@@ -26,9 +28,15 @@ int unary(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
   }
 #endif
   uint32_t result[32];
-  for (int lane = 0; lane < 32; ++lane)
-    result[lane] = goc::as_bits(
-        goc::alu_output(goc::unary_value<Op>(goc::alu_input(a[0][lane], modifiers)), modifiers));
+  for (int lane = 0; lane < 32; ++lane) {
+    float value = goc::alu_input(a[0][lane], modifiers);
+    if constexpr (goc::unary_flushes_f32<Op>)
+      value = goc::flush_denorm_f32(value);
+    value = goc::unary_value<Op>(value);
+    if constexpr (goc::unary_flushes_f32<Op>)
+      value = goc::flush_denorm_f32(value);
+    result[lane] = goc::as_bits(goc::alu_output_f32(value, modifiers));
+  }
   for (int lane = 0; lane < 32; ++lane)
     if ((mask >> lane) & 1)
       d[0][lane] = result[lane];

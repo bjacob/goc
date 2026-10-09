@@ -9,6 +9,12 @@
 
 namespace goc {
 
+// Replace FP32 subnormals with zero of the same sign.
+inline float flush_denorm_f32(float value) {
+  uint32_t raw = as_bits(value);
+  return (raw & 0x7fffffff) < 0x00800000 ? as_float(raw & 0x80000000) : value;
+}
+
 inline float alu_input(uint32_t bits, uint32_t modifiers) {
   if (modifiers & GOC_ALU_ABS_A)
     bits &= 0x7fffffff;

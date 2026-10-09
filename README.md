@@ -1343,13 +1343,20 @@ Unary FP32 instructions support `GOC_ALU_ABS_A`, `GOC_ALU_NEG_A`, output
 scaling (`GOC_ALU_OMOD_2`, `GOC_ALU_OMOD_4`, `GOC_ALU_OMOD_HALF`), and
 `GOC_ALU_CLAMP` on both scalar and SIMD paths. ABS precedes NEG; scaling
 precedes CLAMP. CLAMP maps NaNs to positive zero and clamps to [0, 1].
-These loose semantics explicitly apply the requested scaling; GPU FP-state
-rules that conditionally suppress OMOD are not yet modeled.
+OMOD flushes an unscaled subnormal or either zero sign to positive zero;
+halving a normal value below twice minimum normal produces signed zero.
+SQRT, RCP, RSQ, EXP, and LOG additionally flush subnormal inputs and results
+with the original sign, independently of guest denormal mode. The FP16 unary
+paths retain their separate rules. GPU captures cover all eleven FP32 unary
+operations with all OMOD values, NEG, and CLAMP; tests require exact special
+values and signed zeros, allowing a few ULPs for finite transcendental results.
 The scalar ties-to-even helper is adapted from rocjitsu's
 [`rndne_scalar`](https://github.com/ROCm/rocm-systems/blob/develop/emulation/rocjitsu/lib/util/include/util/simd.h).
 Unary tests cross all 32 modifier combinations with 85 masks, both separate and
 aliased output, and all available CPU levels, including signed zeros, subnormals,
-infinities, NaNs, half-integer ties and large integral values.
+infinities, NaNs, half-integer ties and large integral values. With ABS/OMOD/CLAMP
+enabled, the nine AVX2 unary paths measure 3.2–6.5× scalar speed on the
+Ryzen 9 7950X3D; EXP and LOG remain scalar.
 
 GoC applies `exec_mask` to destination writes, including WMMA, as specified by
 its API contract. Inactive destination lanes remain unchanged; source lanes are
@@ -1572,10 +1579,10 @@ On the Ryzen 9 7950X3D, FMA with NEG/ABS/OMOD measures 16.5 ns on AVX2
 and 7.0 ns on AVX-512 (5.3× and 12.6× scalar speed).
 
 Other FP families still need this OMOD boundary audit, and other applicable
-instructions still need DPP support. The audit has also identified pending
-forced-denormal-flush corrections in FP32 transcendental operations and DX9 FMA;
-DX9 additionally needs positive-zero-product addition rather than direct
-selection of the addend.
+instructions still need DPP support. FP32 unary operations now also have the
+OMOD correction and mandatory transcendental denormal flushing described above.
+DX9 FMA still needs forced-denormal-flush corrections and positive-zero-product
+addition rather than direct selection of the addend.
 
 All public instruction entry points take a 64-bit `instruction_flags` value.
 Existing modifier bits keep their meanings. The extra width accommodates the

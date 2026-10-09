@@ -3,6 +3,7 @@
 #include "x86_64/rdna4_unary_x86_64_v3.h"
 #include "goc/goc.h"
 #include "rdna4_unary.h"
+#include "x86_64/rdna4_alu_x86_64_v3.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -19,9 +20,15 @@ template <Unary Op> void run(uint32_t mask, uint32_t modifiers, uint32_t *d, con
     __m256 value = _mm256_castsi256_ps(_mm256_xor_si256(
         _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)), keep),
         flip));
+    if constexpr (unary_flushes_f32<Op>)
+      value = flush_denorm_f32(value);
     value = unary_value<Op>(value);
-    if (modifiers & GOC_ALU_OMOD_HALF)
+    if constexpr (unary_flushes_f32<Op>)
+      value = flush_denorm_f32(value);
+    if (modifiers & GOC_ALU_OMOD_HALF) {
+      value = prepare_omod_f32(value, modifiers);
       value = _mm256_mul_ps(value, scale);
+    }
     if (modifiers & GOC_ALU_CLAMP)
       value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
     __m256i active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
