@@ -1733,6 +1733,20 @@ Ryzen 9 7950X3D, these cases measure 12.8–24.2 ns on x86-64-v3 (1.7–2.6× sc
 speed) and 8.9–12.2 ns on x86-64-v4 (3.0–4.6×), using seven pinned samples of at
 least 10 ms each.
 
+DPP8/DPP16 also support all twelve non-packed 16-bit integer arithmetic forms:
+signed/unsigned ADD_NC, SUB_NC, MIN, MAX, low multiply, and the three reverse
+shifts. All source/destination half selectors and applicable CLAMP settings
+compose with DPP. A GFX1201 capture checks 229,376 results across all 128
+operation/modifier combinations. Independent tests cover all EXEC patterns,
+source/destination aliases, special and random words, untouched destination
+halves, and host FP-state preservation. The AVX2 arithmetic paths remain active
+with every supported modifier, with AVX-512 permutation at the v4 CPU level.
+Benchmarks cover addition, minimum, multiplication, and left shift with default
+and combined selectors/CLAMP, both DPP kinds, and full EXEC. On the Ryzen 9
+7950X3D, these cases measure 18.9–23.8 ns on AVX2 (2.0–3.7× scalar speed) and
+18.4–22.1 ns with AVX-512 permutation plus AVX2 arithmetic (2.2–3.8×), using
+seven pinned samples of at least 10 ms each.
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal

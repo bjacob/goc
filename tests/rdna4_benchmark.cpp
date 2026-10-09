@@ -1669,6 +1669,60 @@ bool benchmark_dpp_integer_minmax(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_dpp_integer16(uint64_t cpu, int iterations, int min_ms) {
+  for (unsigned op : {0u, 4u, 8u, 9u})
+    for (unsigned descriptor : {0u, 5u})
+      for (unsigned modified = 0; modified < 2; ++modified) {
+        uint64_t mode = goc_test::dpp_modes[descriptor] |
+                        (modified ? goc_test::integer16_mode_bits(op < 4 ? 15 : 7) : 0);
+        Registers r;
+        r.output_regs = 1;
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          r.data[0][lane] = 0x9e3779b9u * (lane + 1);
+          r.data[4][lane] = 0x01010101u * (lane * 17 + 1);
+          r.data[16][lane] = 0x12345678;
+        }
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          int src;
+          goc_test::dpp_source(mode, UINT32_MAX, lane, src);
+          r.expected[128 * (lane / 16) + lane % 16] = goc_test::integer16_reference(
+              op, src < 0 ? 0 : r.data[0][src], r.data[4][lane], r.data[16][lane], uint32_t(mode));
+        }
+        auto fn = [op](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+                       const uint32_t *const *a, const uint32_t *const *b,
+                       const uint32_t *const *) {
+          return goc_test::integer16_functions[op](flags, mask, mode, d, a, b);
+        };
+        const char *label =
+            descriptor == 0 ? (modified ? (op < 4 ? "DPP8/HIGH/CLAMP" : "DPP8/HIGH") : "DPP8")
+                            : (modified ? (op < 4 ? "DPP16/HIGH/CLAMP" : "DPP16/HIGH") : "DPP16");
+        double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+        if (scalar < 0)
+          return false;
+        print_result(goc_test::integer16_names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+        if (cpu >= GOC_CPU_X86_64_V3) {
+          double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(goc_test::integer16_names[op], "loose", label, "x86-64-v3", simd,
+                       scalar / simd);
+        }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+        if (cpu >= GOC_CPU_X86_64_V4) {
+          double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(goc_test::integer16_names[op], "loose", label, "x86-64-v4", simd,
+                       scalar / simd);
+        }
+#endif
+      }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_dpp_boolean16(uint64_t cpu, int iterations, int min_ms) {
   for (unsigned op : {4u, 7u})
     for (unsigned descriptor : {0u, 5u})
@@ -5257,6 +5311,7 @@ int main(int argc, char **argv) {
       !benchmark_dpp_integer_mul(cpu, iterations, min_ms) ||
       !benchmark_dpp_integer_mad(cpu, iterations, min_ms) ||
       !benchmark_dpp_boolean16(cpu, iterations, min_ms) ||
+      !benchmark_dpp_integer16(cpu, iterations, min_ms) ||
       !benchmark_dpp16(cpu, iterations, min_ms) || !benchmark_dpp8(cpu, iterations, min_ms) ||
       !benchmark_permlane(cpu, iterations, min_ms) || !benchmark_cndmask(cpu, iterations, min_ms) ||
       !benchmark_trig_preop(cpu, iterations, min_ms) ||

@@ -10,21 +10,6 @@
 #include <random>
 #include <stdint.h>
 
-namespace {
-
-using Fn = decltype(&goc_rdna4_v_add_nc_i16);
-const Fn functions[] = {goc_rdna4_v_add_nc_i16,  goc_rdna4_v_sub_nc_i16,  goc_rdna4_v_add_nc_u16,
-                        goc_rdna4_v_sub_nc_u16,  goc_rdna4_v_min_i16,     goc_rdna4_v_max_i16,
-                        goc_rdna4_v_min_u16,     goc_rdna4_v_max_u16,     goc_rdna4_v_mul_lo_u16,
-                        goc_rdna4_v_lshlrev_b16, goc_rdna4_v_lshrrev_b16, goc_rdna4_v_ashrrev_i16};
-
-uint32_t mode_bits(int mode) {
-  return (mode & 1 ? GOC_ALU_HIGH_A : 0) | (mode & 2 ? GOC_ALU_HIGH_B : 0) |
-         (mode & 4 ? GOC_ALU_HIGH_D : 0) | (mode & 8 ? GOC_ALU_CLAMP : 0);
-}
-
-} // namespace
-
 TEST(Integer16, EveryModifierBoundaryPairsAndRandomInputs) {
   const uint32_t values[] = {0, 1, 2, 0x7ffe, 0x7fff, 0x8000, 0x8001, 0xfffe, 0xffff};
   for (int op = 0; op < 12; ++op)
@@ -42,10 +27,12 @@ TEST(Integer16, EveryModifierBoundaryPairsAndRandomInputs) {
             b[lane] = i < 128 ? values[(i / 9) % 9] | (values[8 - i % 9] << 16) : random();
             d[lane] = 0xfacecafe;
           }
-          ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode_bits(mode), dp, ap, bp), GOC_SUCCESS);
+          ASSERT_EQ(goc_test::integer16_functions[op](
+                        cpu, UINT32_MAX, goc_test::integer16_mode_bits(mode), dp, ap, bp),
+                    GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
             EXPECT_EQ(d[lane], goc_test::integer16_reference(op, a[lane], b[lane], 0xfacecafe,
-                                                             mode_bits(mode)));
+                                                             goc_test::integer16_mode_bits(mode)));
         }
       }
 }
@@ -66,7 +53,8 @@ TEST(Integer16, EveryInputEncoding) {
               words[source][lane] = (start + lane) | ((65535 - start - lane) << 16);
               words[2][lane] = 0x1234abcd;
             }
-            ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, p + 2, p, p + 1), GOC_SUCCESS);
+            ASSERT_EQ(goc_test::integer16_functions[op](cpu, UINT32_MAX, mode, p + 2, p, p + 1),
+                      GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane)
               ASSERT_EQ(words[2][lane], goc_test::integer16_reference(
                                             op, words[0][lane], words[1][lane], 0x1234abcd, mode));
@@ -88,13 +76,15 @@ TEST(Integer16, MasksModifiersAndAllWholeRegisterAliases) {
             std::memcpy(saved, words, sizeof(words));
             const uint32_t *a[] = {words[layout[0]]}, *b[] = {words[layout[1]]};
             uint32_t *d[] = {words[layout[2]]};
-            ASSERT_EQ(functions[op](cpu, mask, mode_bits(mode), d, a, b), GOC_SUCCESS);
+            ASSERT_EQ(goc_test::integer16_functions[op](
+                          cpu, mask, goc_test::integer16_mode_bits(mode), d, a, b),
+                      GOC_SUCCESS);
             for (int r = 0; r < 3; ++r)
               for (int lane = 0; lane < 32; ++lane) {
                 uint32_t expected = r == layout[2] && (mask >> lane & 1)
                                         ? goc_test::integer16_reference(
                                               op, saved[layout[0]][lane], saved[layout[1]][lane],
-                                              saved[r][lane], mode_bits(mode))
+                                              saved[r][lane], goc_test::integer16_mode_bits(mode))
                                         : saved[r][lane];
                 ASSERT_EQ(words[r][lane], expected)
                     << op << "/" << cpu << "/" << mode << "/" << mask;
@@ -133,7 +123,8 @@ TEST(Integer16, LiteralSelectionSaturationAndShiftWitnesses) {
       }
       const uint32_t *ap[] = {a}, *bp[] = {b};
       uint32_t *dp[] = {a};
-      ASSERT_EQ(functions[w.op](cpu, UINT32_MAX, w.mode, dp, ap, bp), GOC_SUCCESS);
+      ASSERT_EQ(goc_test::integer16_functions[w.op](cpu, UINT32_MAX, w.mode, dp, ap, bp),
+                GOC_SUCCESS);
       for (uint32_t value : a)
         EXPECT_EQ(value, w.expected);
     }
@@ -141,7 +132,7 @@ TEST(Integer16, LiteralSelectionSaturationAndShiftWitnesses) {
 
 TEST(Integer16, ValidationAndFloatingEnvironment) {
   for (int op = 0; op < 12; ++op) {
-    Fn fn = functions[op];
+    auto fn = goc_test::integer16_functions[op];
     uint32_t a[32] = {}, b[32] = {}, d[32], saved[32];
     for (int i = 0; i < 32; ++i)
       d[i] = 0x12345678;

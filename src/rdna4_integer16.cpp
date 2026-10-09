@@ -3,6 +3,7 @@
 #include "rdna4_integer16.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <algorithm>
 #include <stdint.h>
@@ -10,8 +11,19 @@
 namespace {
 
 template <goc::Integer16 Op, bool Signed, bool Packed = true>
-int arithmetic(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int arithmetic(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32) {
+    if constexpr (!Packed) {
+      return goc::execute_dpp(
+          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+            return arithmetic<Op, Signed, Packed>(flags, effective, uint32_t(mode), d, source, b);
+          });
+    } else {
+      return GOC_ERROR_INVALID_FLAGS;
+    }
+  }
+
   constexpr bool saturating = Op == goc::Integer16::Add || Op == goc::Integer16::Sub;
   const uint32_t known =
       Packed
@@ -175,68 +187,50 @@ int goc_rdna4_v_pk_ashrrev_i16(uint64_t flags, uint64_t exec_mask, uint64_t inst
 
 int goc_rdna4_v_add_nc_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Add, true, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_sub_nc_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Sub, true, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_add_nc_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Add, false, false>(flags, exec_mask, instruction_flags, d, a,
                                                        b);
 }
 
 int goc_rdna4_v_sub_nc_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Sub, false, false>(flags, exec_mask, instruction_flags, d, a,
                                                        b);
 }
 
 int goc_rdna4_v_min_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Min, true, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_max_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Max, true, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_min_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Min, false, false>(flags, exec_mask, instruction_flags, d, a,
                                                        b);
 }
 
 int goc_rdna4_v_max_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Max, false, false>(flags, exec_mask, instruction_flags, d, a,
                                                        b);
 }
 
 int goc_rdna4_v_mul_lo_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Mul, false, false>(flags, exec_mask, instruction_flags, d, a,
                                                        b);
 }
@@ -244,8 +238,6 @@ int goc_rdna4_v_mul_lo_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruct
 int goc_rdna4_v_lshlrev_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::ShiftLeft, false, false>(flags, exec_mask, instruction_flags, d,
                                                              a, b);
 }
@@ -253,8 +245,6 @@ int goc_rdna4_v_lshlrev_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruc
 int goc_rdna4_v_lshrrev_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::ShiftRight, false, false>(flags, exec_mask, instruction_flags,
                                                               d, a, b);
 }
@@ -262,8 +252,6 @@ int goc_rdna4_v_lshrrev_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruc
 int goc_rdna4_v_ashrrev_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::ShiftRight, true, false>(flags, exec_mask, instruction_flags, d,
                                                              a, b);
 }

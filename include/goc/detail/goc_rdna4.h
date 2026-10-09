@@ -32,7 +32,8 @@ extern "C" {
 // (including CLAMP) and ADD3. SUBREV_NC_U32 permutes B instead of A.
 // Signed/unsigned 24-bit MUL and MUL_HI support DPP, with CLAMP for low results.
 // The four integer MAD forms support DPP with CLAMP and their 16-bit selectors.
-// The 16-bit AND/OR/XOR/NOT forms support DPP with source/destination selectors.
+// The 16-bit AND/OR/XOR/NOT and non-packed integer arithmetic forms support
+// DPP with their source/destination selectors and applicable CLAMP modifiers.
 static const uint64_t GOC_DPP8 = (UINT64_C(1) << 32);
 static const uint64_t GOC_DPP_FI = (UINT64_C(1) << 33);
 static const uint32_t GOC_DPP8_SELECT_SHIFT = 40;
