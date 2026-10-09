@@ -10,6 +10,26 @@ Borrow the license from rocjitsu.
 The CMake build directory should be out-of-tree. Use Ninja (generator).
 Build and test with full CPU parallelism.
 
+Prioritize simplicity and human understanding when refactoring. A reader should
+be able to recognize the algorithm, follow its data flow, and see the important
+semantic and hardware differences without mentally expanding layers of templates
+or jumping through many files. Familiar, explicit code and some local repetition
+are preferable to an abstraction that makes these tasks harder.
+
+Share code when it centralizes a meaningful rule or algorithm and makes its
+current callers easier to understand. Do not introduce adapters, policy types,
+or generic executors merely to remove similar-looking syntax. Justify each new
+abstraction using existing callers, not speculative future reuse. Keep hardware
+intrinsics and instruction-specific behavior visible where they aid understanding.
+
+Before accepting a refactoring, explain what a maintainer now needs to understand
+and change in fewer places, and account for the added concepts, indirection, and
+helper files. Review the resulting code as a whole, not just the deleted lines.
+Source and binary size measurements support this judgment; they are not quotas
+or substitutes for readability. Preserve correctness and the agreed performance
+constraints. Reconsider or remove abstractions that fail this simplicity test,
+including ones introduced earlier in the same project.
+
 Separate file banners, header guards, include groups, and declarations with blank lines.
 
 Within include/, quoted #include paths are relative to the containing header's
