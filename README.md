@@ -432,6 +432,24 @@ Ryzen 9 7950X3D measurements show 1.39–1.86x for v3 and 1.77–2.34x for v4,
 including signed CLAMP and index-key selection; the accumulator reset is included
 in every path's timing (seven samples, each at least 10 ms).
 
+Conditional selection (`v_cndmask_b32` and `v_cndmask_b16`) selects B for set
+bits in a separate wave32 condition mask and A for clear bits. EXEC independently
+controls destination writes. ABS/NEG modify only source sign bits; all payload
+bits, including signaling NaNs, are preserved. The 16-bit form supports every
+source/destination half selector and preserves the unwritten destination half.
+Both forms preserve host FP state and have scalar and sixteen-lane v4 paths
+with all their modifiers. AVX2 candidates did not provide a substantial gain,
+so v3 CPUs use the portable path. OMOD and CLAMP are not supported by these
+instructions.
+
+Tests compare all source-modifier and half-selector combinations against
+18,874,368 GPU-captured outputs, covering every FP16 input encoding and both
+choices of source. Additional tests cross modifiers with EXEC masks, independent
+condition masks, source/destination aliases and unaligned storage. Pinned-core
+Ryzen 9 7950X3D measurements show 4.39–4.50x for B32 and 2.09–2.13x for B16
+on v4 versus scalar, including ABS/NEG and half selection (seven samples, each
+at least 10 ms).
+
 Trigonometric range reduction (`v_trig_preop_f64`) supports scalar, four-lane
 x86-64-v3 and eight-lane x86-64-v4 table lookups, including ABS/NEG, OMOD and
 CLAMP. Both loose and empirical-exact semantics use an integer implementation

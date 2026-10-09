@@ -18,6 +18,19 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Select B where the corresponding condition bit is set, A otherwise. Each
+// operand uses one VGPR. ABS_A/B clear source sign bits, then NEG_A/B toggle
+// them; all other payload bits, including signaling NaNs, are preserved.
+// The B16 form also supports HIGH_A/B/D: selected source halves are written to
+// the selected destination half, preserving the other half. No OMOD or CLAMP.
+// Loose semantics only; all host FP state is preserved.
+GOC_API int goc_rdna4_v_cndmask_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, uint32_t condition);
+GOC_API int goc_rdna4_v_cndmask_b16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, uint32_t condition);
+
 // Select each output byte using the corresponding byte of C. Selectors 0..7
 // select bytes of the concatenation A:B (B supplies the low four bytes).
 // Selectors 8..11 replicate the sign bit of its four 16-bit halves; 12 selects

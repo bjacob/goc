@@ -6,6 +6,7 @@
 #include "rdna4_boolean_reference.h"
 #include "rdna4_byte_conversion_reference.h"
 #include "rdna4_carry_reference.h"
+#include "rdna4_cndmask_reference.h"
 #include "rdna4_conversion16_reference.h"
 #include "rdna4_conversion32_reference.h"
 #include "rdna4_conversion64_reference.h"
@@ -1314,6 +1315,47 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
         if (simd < 0)
           return false;
         print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_cndmask(uint64_t cpu, int iterations, int min_ms) {
+  for (bool half : {false, true})
+    for (bool modified : {false, true}) {
+      unsigned compact = modified ? (half ? 119 : 7) : 0;
+      uint32_t mode = goc_test::cndmask_mode(compact);
+      Registers r;
+      r.output_regs = 1;
+      const uint32_t condition = 0x96969696;
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        r.data[0][lane] = (lane * 0x7395a831u) ^ 0xa7925163u;
+        r.data[4][lane] = (lane * 0x83a1459du) ^ 0x5389d241u;
+        r.expected[128 * (lane / 16) + lane % 16] =
+            goc_test::cndmask_reference(half, r.data[0][lane], r.data[4][lane], r.data[16][lane],
+                                        compact, (condition >> lane) & 1);
+      }
+      auto fn = [half](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                       const uint32_t *const *a, const uint32_t *const *b,
+                       const uint32_t *const *) {
+        return (half ? goc_rdna4_v_cndmask_b16 : goc_rdna4_v_cndmask_b32)(flags, mask, mode, d, a,
+                                                                          b, condition);
+      };
+      const char *name = half ? "v_cndmask_b16" : "v_cndmask_b32";
+      const char *label = modified ? (half ? "ABS/NEG/high" : "ABS/NEG") : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(name, "loose", label, "scalar", scalar, 1);
+
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "loose", label, "x86-64-v4", simd, scalar / simd);
       }
 #endif
     }
@@ -3697,7 +3739,8 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave");
-  if (!benchmark_trig_preop(cpu, iterations, min_ms) ||
+  if (!benchmark_cndmask(cpu, iterations, min_ms) ||
+      !benchmark_trig_preop(cpu, iterations, min_ms) ||
       !benchmark_mullit(cpu, iterations, min_ms) || !benchmark_pack(cpu, iterations, min_ms) ||
       !benchmark_swmmac_integer(cpu, iterations, min_ms) ||
       !benchmark_swmmac8(cpu, iterations, min_ms) || !benchmark_swmmac16(cpu, iterations, min_ms) ||
