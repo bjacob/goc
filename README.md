@@ -1344,12 +1344,25 @@ rounding modes.
 Both instructions preserve the unselected D half and support whole-register
 aliases. Tests cover all half encodings, every signed 16-bit exponent, all
 modifier combinations, all mask patterns, aliases and literal boundaries.
+Both instructions support DPP8/DPP16 on A, including FI, boundary behavior,
+row/bank filtering, and all existing low modifiers, without leaving SIMD.
+A GFX1201 capture checks 43,008 DPP results; additional tests combine every
+low modifier with each DPP form and exercise masked aliases and preserved halves.
+LDEXP tests tininess before rounding when OMOD is enabled, then rounds to
+FP16 before output scaling. Thus finite overflow cannot be recovered by halving;
+`GOC_FP16_OVFL` saturates that intermediate half instead. An exhaustive GPU
+capture checks 2,621,440 results across all half inputs, five exponent adjustments,
+all four OMOD settings, and both overflow modes.
+Full-EXEC DPP benchmarks on a Ryzen 9 7950X3D measure 20.1–33.2 ns on AVX2
+(2.9–10.3× scalar speed) and 19.6–32.5 ns with AVX-512 permutation plus AVX2
+arithmetic (3.0–10.2×), including combined modifiers. Measurements use seven
+pinned-core samples of at least 10 ms each.
 
 Unary FP16 operations use the same selected-half storage and output-modifier
 rules as binary FP16. Rounding, reciprocal, square root, reciprocal square root,
 fraction and mantissa extraction have eight-lane x86-64-v3 paths for all 128
 combinations of source ABS/NEG, output scaling/clamp and A/D half selection.
-Base-two EXP/LOG use scalar libm paths. FRACT caps its result at the largest
+Base-two EXP/LOG also have eight-lane AVX2 paths; their scalar paths use libm. FRACT caps its result at the largest
 half below one before output modifiers; finite EXP overflow honors
 `GOC_FP16_OVFL`, even when the mathematical result exceeds FP32's range.
 Tests cover all 65,536 half encodings, both overflow policies, every modifier

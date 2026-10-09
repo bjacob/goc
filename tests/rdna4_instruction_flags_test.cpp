@@ -30,7 +30,9 @@ void check_high_flags(const char *name,
   bool supports_dpp = std::strcmp(name, "goc_rdna4_v_fma_f32") == 0 ||
                       std::strcmp(name, "goc_rdna4_v_fmac_f32") == 0 ||
                       std::strcmp(name, "goc_rdna4_v_fma_f16") == 0 ||
-                      std::strcmp(name, "goc_rdna4_v_fmac_f16") == 0;
+                      std::strcmp(name, "goc_rdna4_v_fmac_f16") == 0 ||
+                      std::strcmp(name, "goc_rdna4_v_ldexp_f16") == 0 ||
+                      std::strcmp(name, "goc_rdna4_v_frexp_exp_i16_f16") == 0;
   for (auto mnemonic : goc_test::dpp_arithmetic_names)
     supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   for (auto mnemonic : goc_test::unary_names)

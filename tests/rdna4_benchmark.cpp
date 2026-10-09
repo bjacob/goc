@@ -814,53 +814,72 @@ bool benchmark_half_exponent(uint64_t cpu, int iterations, int min_ms) {
   const int adjustments[] = {-2, -1, 0, 1, 24, 0, -1, 32767};
   const int exponents[] = {-1, 1, 3, 5, -23, -14, 16, 0};
   for (bool ldexp : {false, true})
-    for (bool modified : {false, true}) {
-      uint32_t mode = modified
-                          ? GOC_ALU_ABS_A | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | GOC_ALU_OMOD_HALF |
-                                GOC_ALU_CLAMP | (ldexp ? GOC_ALU_HIGH_B : 0)
-                          : 0;
-      Registers r;
-      r.output_regs = 1;
-      for (int lane = 0; lane < 32; ++lane) {
-        auto half = inputs[lane % 8];
-        int exponent = adjustments[lane % 8];
-        r.data[0][lane] = uint32_t(half) | (uint32_t(half ^ 0x8000) << 16);
-        r.data[4][lane] = uint16_t(exponent) | (uint32_t(uint16_t(exponent)) << 16);
-        r.data[16][lane] = 0xfacecafe;
-        uint32_t result = uint16_t(exponents[lane % 8]);
-        if (ldexp) {
-          double x = goc_test::half_value(half);
-          if (modified)
-            x = std::abs(x);
-          double value = std::ldexp(x, exponent);
-          if (modified)
-            value = !(value > 0) ? 0 : std::min(value * 0.5, 1.0);
-          result = goc_test::half_bits(value);
+    for (int descriptor : {-1, 0, 5})
+      for (bool modified : {false, true}) {
+        uint64_t mode = modified
+                            ? GOC_ALU_ABS_A | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | GOC_ALU_OMOD_HALF |
+                                  GOC_ALU_CLAMP | (ldexp ? GOC_ALU_HIGH_B : 0)
+                            : 0;
+        if (descriptor >= 0)
+          mode |= goc_test::dpp_modes[descriptor];
+        Registers r;
+        r.output_regs = 1;
+        for (int lane = 0; lane < 32; ++lane) {
+          auto half = inputs[lane % 8];
+          int exponent = adjustments[lane % 8];
+          r.data[0][lane] = uint32_t(half) | (uint32_t(half ^ 0x8000) << 16);
+          r.data[4][lane] = uint16_t(exponent) | (uint32_t(uint16_t(exponent)) << 16);
+          r.data[16][lane] = 0xfacecafe;
+          int source = lane;
+          if (descriptor >= 0)
+            goc_test::dpp_source(mode, UINT32_MAX, lane, source);
+          half = source < 0 ? 0 : inputs[source % 8];
+          uint32_t result = source < 0 ? 0 : uint16_t(exponents[source % 8]);
+          if (ldexp) {
+            double x = goc_test::half_value(half);
+            if (modified)
+              x = std::abs(x);
+            double value = std::ldexp(x, exponent);
+            if (modified && std::abs(value) < 0x1p-13)
+              value = 0;
+            if (modified)
+              value = !(value > 0) ? 0 : std::min(value * 0.5, 1.0);
+            result = goc_test::half_bits(value);
+          }
+          r.expected[128 * (lane / 16) + lane % 16] =
+              modified ? (result << 16) | 0xcafe : 0xface0000 | result;
         }
-        r.expected[128 * (lane / 16) + lane % 16] =
-            modified ? (result << 16) | 0xcafe : 0xface0000 | result;
-      }
-      const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
-                          const uint32_t *const *) {
-        return ldexp ? goc_rdna4_v_ldexp_f16(flags, mask, modifiers, d, a, b)
-                     : goc_rdna4_v_frexp_exp_i16_f16(flags, mask, modifiers, d, a);
-      };
-      const char *name = ldexp ? "v_ldexp_f16" : "v_frexp_exp_i16_f16";
-      const char *label = modified ? "ABS/hi/half/clamp" : "none";
-      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
-      if (scalar < 0)
-        return false;
-      print_result(name, "loose", label, "scalar", scalar, 1);
-#if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if (cpu >= GOC_CPU_X86_64_V3) {
-        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
-        if (simd < 0)
+        const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *) {
+          return ldexp ? goc_rdna4_v_ldexp_f16(flags, mask, modifiers, d, a, b)
+                       : goc_rdna4_v_frexp_exp_i16_f16(flags, mask, modifiers, d, a);
+        };
+        const char *name = ldexp ? "v_ldexp_f16" : "v_frexp_exp_i16_f16";
+        const char *label = descriptor < 0    ? (modified ? "ABS/hi/half/clamp" : "none")
+                            : descriptor == 0 ? (modified ? "DPP8/modifiers" : "DPP8")
+                                              : (modified ? "DPP16/modifiers" : "DPP16");
+        double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+        if (scalar < 0)
           return false;
-        print_result(name, "loose", label, "x86-64-v3", simd, scalar / simd);
-      }
+        print_result(name, "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+        if (cpu >= GOC_CPU_X86_64_V3) {
+          double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(name, "loose", label, "x86-64-v3", simd, scalar / simd);
+        }
 #endif
-    }
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+        if (descriptor >= 0 && cpu >= GOC_CPU_X86_64_V4) {
+          double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(name, "loose", label, "x86-64-v4", simd, scalar / simd);
+        }
+#endif
+      }
   (void)cpu;
   return true;
 }

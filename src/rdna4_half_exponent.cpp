@@ -5,6 +5,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_alu.h"
+#include "rdna4_dpp.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,8 +14,13 @@
 namespace {
 
 template <bool Ldexp>
-int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b) {
+  if (mode >> 32)
+    return goc::execute_dpp(flags, mask, mode, a,
+                            [&](uint32_t effective, const uint32_t *const *source) {
+                              return run<Ldexp>(flags, effective, uint32_t(mode), d, source, b);
+                            });
   const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP |
                          GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | (Ldexp ? GOC_ALU_HIGH_B : 0);
   if (int error = goc::validate(flags, mode & ~known))
@@ -41,7 +47,13 @@ int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
       // every FP16 rounding outcome, including output scaling and saturation.
       float value = std::ldexp(goc::alu_input(goc::as_bits(goc::f16_to_float(bits)), mode),
                                std::clamp(exponent, -64, 64));
-      result[lane] = goc::float_to_f16(goc::alu_output(value, mode), flags & GOC_FP16_OVFL);
+      if (mode & GOC_ALU_OMOD_HALF) {
+        // Test tininess before rounding; finite overflow is rounded before OMOD.
+        value = std::abs(value) < 0x1p-14f
+                    ? 0.0f
+                    : goc::f16_to_float(goc::float_to_f16(value, flags & GOC_FP16_OVFL));
+      }
+      result[lane] = goc::float_to_f16(goc::alu_output_f16(value, mode), flags & GOC_FP16_OVFL);
     } else {
       // Sign modifiers do not affect the exponent; OMOD is ignored for integer
       // results and all FP16 exponents fit int16_t, so CLAMP has no effect.
@@ -70,14 +82,10 @@ int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
 
 int goc_rdna4_v_ldexp_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<true>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_frexp_exp_i16_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                   const uint32_t *const *a) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<false>(flags, mask, mode, d, a, nullptr);
 }

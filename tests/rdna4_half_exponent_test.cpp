@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_half_reference.h"
 
@@ -44,6 +45,14 @@ uint16_t reference(int op, uint32_t a, uint32_t b, uint32_t mode, bool saturate)
   if (std::isfinite(x) && std::abs(result) > 1e100)
     result = std::copysign(1e100, result);
   const double scales[] = {1, 2, 4, 0.5};
+  if (mode & GOC_ALU_OMOD_HALF) {
+    if (std::abs(result) < 0x1p-14)
+      result = 0;
+    else if ((mode & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF && std::abs(result) < 0x1p-13)
+      result = std::copysign(0.0, result);
+  }
+  if (mode & GOC_ALU_OMOD_HALF)
+    result = goc_test::half_value(goc_test::half_bits(result, saturate));
   result *= scales[(mode >> 6) & 3];
   if (mode & GOC_ALU_CLAMP)
     result = !(result > 0) ? 0 : std::min(result, 1.0);
@@ -185,11 +194,11 @@ TEST(HalfExponent, LiteralRoundingAndOverflow) {
                         {1, 24, 0x3c00, 0, false},
                         {0x3c00, uint16_t(-24), 1, 0, false},
                         {0x3c00, uint16_t(-25), 0, 0, false},
-                        {0x3c00, uint16_t(-25), 1, GOC_ALU_OMOD_2, false},
+                        {0x3c00, uint16_t(-25), 0, GOC_ALU_OMOD_2, false},
                         {0x7bff, 1, 0x7c00, 0, false},
                         {0x7bff, 1, 0x7bff, 0, true},
                         {0xfbff, 0x7fff, 0xfbff, 0, true},
-                        {0x7bff, 1, 0x7bff, GOC_ALU_OMOD_HALF, false},
+                        {0x7bff, 1, 0x7c00, GOC_ALU_OMOD_HALF, false},
                         {0x7c00, 0x8000, 0x7c00, 0, true},
                         {0x8000, 0x7fff, 0x8000, 0, false},
                         {0x7c01, 0x8000, 0, GOC_ALU_CLAMP, false}};
@@ -270,4 +279,149 @@ TEST(HalfExponent, ValidationAndSemantics) {
       EXPECT_EQ(word, 0xdeadbeef);
     EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &p, &p, &p), GOC_SUCCESS);
   }
+}
+
+TEST(HalfExponent, DppMasksAndAliases) {
+  const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3800, 0xb800,
+                             0x3bff, 0x3c00, 0x3e00, 0xbe00, 0x4100, 0xc100, 0x4200, 0x4400,
+                             0x4c00, 0xcc00, 0x7bff, 0xfbff, 0x7c00, 0xfc00, 0x7c01, 0xfe00};
+  const int exponents[] = {-32768, -65, -25, -24, -15, -1, 0, 1, 15, 24, 25, 32767};
+  for (int op = 0; op < 2; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant : {0u, 127u, op == 0 ? 255u : 73u})
+        for (uint64_t descriptor : goc_test::dpp_modes)
+          for (bool saturate : {false, true})
+            for (uint64_t mask : rdna4_exec_masks())
+              for (int layout = 0; layout < (op == 0 ? 5 : 2); ++layout) {
+                auto mode = modifiers(variant);
+                SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << mode << '/'
+                                                  << saturate << '/' << mask << '/' << layout);
+                uint32_t words[3][34], before[3][34];
+                for (int reg = 0; reg < 3; ++reg) {
+                  std::fill(words[reg], words[reg] + 34, 0xdeadbeef);
+                  for (int lane = 1; lane <= 32; ++lane)
+                    words[reg][lane] =
+                        reg == 1 ? uint16_t(exponents[lane % 12]) |
+                                       (uint32_t(uint16_t(exponents[(lane + 5) % 12])) << 16)
+                                 : values[(lane + reg * 5) % 24] |
+                                       (uint32_t(values[(lane * 7 + reg) % 24]) << 16);
+                }
+                std::memcpy(before, words, sizeof(words));
+                int dest = layout % 3 == 0 ? 2 : layout % 3 - 1;
+                int b = layout >= 3 ? 0 : 1;
+                uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
+                ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), mask,
+                                        descriptor | mode, p + dest, p, p + b),
+                          GOC_SUCCESS);
+                for (int reg = 0; reg < 3; ++reg)
+                  for (int lane = 0; lane < 34; ++lane) {
+                    int source = -1;
+                    if (reg == dest && lane >= 1 && lane <= 32 &&
+                        goc_test::dpp_source(descriptor, uint32_t(mask), lane - 1, source)) {
+                      check(op, words[reg][lane], before[reg][lane],
+                            reference(op, source < 0 ? 0 : before[0][source + 1], before[b][lane],
+                                      mode, saturate),
+                            mode);
+                    } else {
+                      EXPECT_EQ(words[reg][lane], before[reg][lane]);
+                    }
+                  }
+              }
+}
+
+TEST(HalfExponent, HardwareRoundingCorpus) {
+  // GFX1201: every FP16 encoding, five exponents, four OMOD values, both
+  // overflow settings. Canonicalize NaN payloads, preserving the other half.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (bool saturate : {false, true})
+      for (int exponent : {-25, -1, 0, 1, 24})
+        for (unsigned omod = 0; omod < 4; ++omod)
+          for (unsigned base = 0; base < 65536; base += 32) {
+            uint32_t a[32], b[32], d[32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              a[lane] = base + lane;
+              b[lane] = uint16_t(exponent);
+              d[lane] = 0xdeadbeef;
+            }
+            auto pa = a, pb = b, pd = d;
+            ASSERT_EQ(goc_rdna4_v_ldexp_f16(cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
+                                            omod << 6, &pd, &pa, &pb),
+                      GOC_SUCCESS);
+            for (uint32_t word : d) {
+              if ((word & 0x7fff) > 0x7c00)
+                word = (word & 0xffff0000u) | 0x7e00;
+              hash = (hash ^ word) * UINT64_C(1099511628211);
+            }
+          }
+    EXPECT_EQ(hash, UINT64_C(0x62b2fe854d088725));
+  }
+}
+
+TEST(HalfExponent, DppHardwareCorpus) {
+  const uint32_t values[] = {0x00018001, 0x03ff83ff, 0x04008400, 0x04018401,
+                             0x08008800, 0x3c00bc00, 0x00008000, 0x7bfffbff};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (uint32_t mask :
+         {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
+      for (unsigned op = 0; op < 2; ++op)
+        for (uint64_t descriptor : goc_test::dpp_modes)
+          for (uint32_t mode : {0u, 1u, 8u, 9u, 64u, 128u, 192u, 256u, 512u, 4096u, 4608u, 5065u}) {
+            uint32_t a[32], b[32], d[32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              a[lane] = values[lane % 8];
+              b[lane] = lane % 5 - 2;
+              d[lane] = 0xdead0000u + lane;
+            }
+            auto pa = a, pb = b, pd = d;
+            ASSERT_EQ(functions[op](cpu, mask, descriptor | mode, &pd, &pa, &pb), GOC_SUCCESS);
+            for (auto word : d)
+              hash = (hash ^ word) * UINT64_C(1099511628211);
+          }
+    EXPECT_EQ(hash, UINT64_C(0x1af7c9e0f5f41bf6));
+  }
+}
+
+TEST(HalfExponent, DppEveryModifier) {
+  for (unsigned op = 0; op < 2; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < (op == 0 ? 256u : 128u); ++variant)
+        for (uint64_t descriptor : goc_test::dpp_modes)
+          for (bool saturate : {false, true}) {
+            uint32_t a[32], b[32], d[32];
+            auto mode = modifiers(variant);
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              a[lane] = (lane * 2039u) | ((65535u - lane * 2039u) << 16);
+              b[lane] = uint16_t(int(lane) - 16) | (uint32_t(uint16_t(16 - int(lane))) << 16);
+              d[lane] = 0xdeadbeef;
+            }
+            auto pa = a, pb = b, pd = d;
+            ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
+                                    descriptor | mode, &pd, &pa, &pb),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              int source;
+              if (goc_test::dpp_source(descriptor, UINT32_MAX, lane, source))
+                check(op, d[lane], 0xdeadbeef,
+                      reference(op, source < 0 ? 0 : a[source], b[lane], mode, saturate), mode);
+              else
+                EXPECT_EQ(d[lane], 0xdeadbeef);
+            }
+          }
+}
+
+TEST(HalfExponent, DppValidation) {
+  for (unsigned op = 0; op < 2; ++op)
+    for (uint64_t descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(
+          functions[op](0, UINT32_MAX, descriptor | (UINT64_C(1) << 36), nullptr, nullptr, nullptr),
+          GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
+                              descriptor, nullptr, nullptr, nullptr),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    }
 }

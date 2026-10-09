@@ -29,12 +29,15 @@ void half_exponent_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32
       exponent = _mm256_min_epi32(_mm256_max_epi32(exponent, _mm256_set1_epi32(-64)),
                                   _mm256_set1_epi32(64));
       // Every nonzero half widened to FP32, and every product with this power
-      // of two, is normal and exact. Only the final narrowing can round.
+      // of two, is normal and exact. The architectural FP16 rounding precedes OMOD.
       auto factor = _mm256_castsi256_ps(
           _mm256_slli_epi32(_mm256_add_epi32(exponent, _mm256_set1_epi32(127)), 23));
       auto value = _mm256_mul_ps(x, factor);
-      if (mode & GOC_ALU_OMOD_HALF)
+      if (mode & GOC_ALU_OMOD_HALF) {
+        value = prepare_omod_f16(value, mode);
+        value = half_input<false>(half_narrow<false>(value, saturate), 0, 0);
         value = _mm256_mul_ps(value, scale);
+      }
       if (mode & GOC_ALU_CLAMP)
         value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
       result = half_narrow<false>(value, saturate);
