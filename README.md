@@ -474,6 +474,31 @@ Ryzen 9 7950X3D measurements show 5.76–5.96x for P10, 11.99–12.38x for RTZ
 P10, and 3.78–4.10x for the P2 forms versus scalar, including modifiers
 (seven samples, each at least 10 ms).
 
+`v_rcp_iflag_f32` computes a reciprocal and returns sticky guest exception
+status through a separate scalar output. Active signed-zero and subnormal inputs
+raise `GOC_RDNA4_EXCEPTION_INT_DIV0`; CLAMP suppresses a new cause but preserves
+any pre-existing status bit. Other status bits survive unchanged. The scalar
+status is written after VGPR stores, taking precedence if its storage aliases
+an input or output word. Empty EXEC leaves VGPRs untouched and copies the incoming
+status to the scalar output.
+
+The scalar, eight-lane v3 and sixteen-lane v4 paths support every ABS/NEG/OMOD/
+CLAMP combination. Input/output subnormals always flush, independently of guest
+FP-mode settings. Numeric results use loose semantics; host nearest-even rounding
+and enabled denormals are required, and host exception flags may change.
+The status rules correct two details in rocjitsu's classifier: flushed subnormal
+inputs also raise INT_DIV0, and CLAMP suppresses the new cause.
+
+Tests use GPU captures of 4,718,592 lane results and 147,456 exact status values,
+covering modifiers, full/empty/partial EXEC, denormal modes and initial sticky
+flags. Further tests cover every single active/inactive lane, numeric special
+values, unaligned storage, source/destination/status aliases, invalid flags and
+strict-semantics rejection. The full capture also matches the compiled API
+across every available CPU level within two numeric ULPs, with exact zeros,
+infinities and status bits. Pinned-core Ryzen 9 7950X3D timings show 1.47–2.30x
+for v3 and 3.78–5.30x for v4 versus scalar, including modifiers and CLAMP
+(seven samples, each at least 10 ms).
+
 Pseudo-scalar math supports `v_s_exp_f16/f32`, `v_s_log_f16/f32`,
 `v_s_rcp_f16/f32`, `v_s_rsq_f16/f32` and `v_s_sqrt_f16/f32`. These instructions
 read one SGPR value and write one SGPR result. They execute regardless of EXEC,
@@ -1407,5 +1432,7 @@ CPU detection follows the CPUID/XCR0 gating approach in
 `hrx-system/runtime/src/iree/base/internal/cpu_x86_64.c`, with GoC's coarse
 feature bundles. Formatting and the MIT license are borrowed from rocjitsu.
 
-Still pending: other GPU architectures, additional instructions/formats,
-further GPU FP-mode flags, and wider performance tuning.
+RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
+forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
+name coverage alone does not establish complete architectural support. Other GPU
+architectures and further performance tuning also remain future work.

@@ -18,6 +18,24 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// RDNA4 WAVE_EXCP_FLAG_USER integer divide-by-zero status bit.
+static const uint32_t GOC_RDNA4_EXCEPTION_INT_DIV0 = (UINT32_C(1) << 6);
+
+// Reciprocal with sticky integer divide-by-zero status. Supports ABS_A, NEG_A,
+// OMOD and CLAMP. Input/output subnormals always flush, independently of guest
+// flush flags. Active zero or subnormal inputs set INT_DIV0 unless CLAMP is set.
+// Other input_exception_flags bits, including a pre-existing INT_DIV0, survive.
+// exception_flags is written after VGPR stores and may alias any input/output
+// word. Its scalar write takes precedence on overlap. Zero EXEC leaves VGPRs
+// untouched, permits null VGPR pointers, and still writes input_exception_flags
+// to the required scalar output. Errors leave all outputs unchanged. Loose
+// semantics only. Requires host nearest-even rounding and enabled denormals;
+// host rounding is preserved, but exception flags may change.
+GOC_API int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, uint32_t *exception_flags,
+                                      uint32_t input_exception_flags);
+
 // Pseudo-scalar transcendental math on raw SGPR values. Executes once regardless
 // of exec_mask, including zero. a is a scalar value; d must always be writable.
 // FP16 reads a's low half, ignores its high half, and zeros d's upper half.
