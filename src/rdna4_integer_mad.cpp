@@ -4,6 +4,7 @@
 #include "rdna4_integer_mad.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <algorithm>
 #include <stdint.h>
@@ -16,8 +17,14 @@ template <int Bits, bool Signed> int64_t input(uint32_t bits) {
 }
 
 template <int Bits, bool Signed>
-int mad(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+int mad(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *c) {
+  if (mode >> 32)
+    return goc::execute_dpp(
+        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+          return mad<Bits, Signed>(flags, effective, uint32_t(mode), d, source, b, c);
+        });
+
   const uint32_t known = GOC_ALU_CLAMP | (Bits == 16 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0);
   if (int error = goc::validate(flags, mode & ~known))
     return error;
@@ -51,31 +58,23 @@ int mad(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
 int goc_rdna4_v_mad_u32_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return mad<16, false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
 int goc_rdna4_v_mad_i32_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return mad<16, true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
 int goc_rdna4_v_mad_u32_u24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return mad<24, false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
 int goc_rdna4_v_mad_i32_i24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return mad<24, true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }

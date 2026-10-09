@@ -11,19 +11,6 @@
 #include <random>
 #include <stdint.h>
 
-namespace {
-
-using Fn = decltype(&goc_rdna4_v_mad_u32_u16);
-const Fn functions[] = {goc_rdna4_v_mad_u32_u16, goc_rdna4_v_mad_i32_i16, goc_rdna4_v_mad_u32_u24,
-                        goc_rdna4_v_mad_i32_i24};
-
-uint32_t mode_bits(int mode) {
-  return (mode & 1 ? GOC_ALU_CLAMP : 0) | (mode & 2 ? GOC_ALU_HIGH_A : 0) |
-         (mode & 4 ? GOC_ALU_HIGH_B : 0);
-}
-
-} // namespace
-
 TEST(IntegerMad, BoundaryTriplesAndRandomInputsWithEveryModifier) {
   const uint32_t edge[] = {0,          1,          2,          0x7fff,    0x8000,    0xffff,
                            0x10000,    0x7fffff,   0x800000,   0xffffff,  0x1000000, 0x7ffffffe,
@@ -43,12 +30,14 @@ TEST(IntegerMad, BoundaryTriplesAndRandomInputsWithEveryModifier) {
               index /= 16;
             }
           }
-          ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode_bits(mode), p + 3, p, p + 1, p + 2),
+          ASSERT_EQ(goc_test::integer_mad_functions[op](cpu, UINT32_MAX,
+                                                        goc_test::integer_mad_mode_bits(mode),
+                                                        p + 3, p, p + 1, p + 2),
                     GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
-            EXPECT_EQ(words[3][lane],
-                      goc_test::integer_mad_reference(op, words[0][lane], words[1][lane],
-                                                      words[2][lane], mode_bits(mode)));
+            EXPECT_EQ(words[3][lane], goc_test::integer_mad_reference(
+                                          op, words[0][lane], words[1][lane], words[2][lane],
+                                          goc_test::integer_mad_mode_bits(mode)));
         }
       }
 }
@@ -67,12 +56,14 @@ TEST(IntegerMad, Every16BitFactorEncoding) {
                 words[reg][lane] = random();
               words[source][lane] = (start + lane) | ((65535 - start - lane) << 16);
             }
-            ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode_bits(mode), p + 3, p, p + 1, p + 2),
+            ASSERT_EQ(goc_test::integer_mad_functions[op](cpu, UINT32_MAX,
+                                                          goc_test::integer_mad_mode_bits(mode),
+                                                          p + 3, p, p + 1, p + 2),
                       GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane)
-              ASSERT_EQ(words[3][lane],
-                        goc_test::integer_mad_reference(op, words[0][lane], words[1][lane],
-                                                        words[2][lane], mode_bits(mode)));
+              ASSERT_EQ(words[3][lane], goc_test::integer_mad_reference(
+                                            op, words[0][lane], words[1][lane], words[2][lane],
+                                            goc_test::integer_mad_mode_bits(mode)));
           }
         }
 }
@@ -93,7 +84,9 @@ TEST(IntegerMad, DiscardedUpperBytes) {
             words[0][lane] = a | ((pair & 255) << 24);
             words[1][lane] = b | ((pair >> 8) << 24);
           }
-          ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, p + 3, p, p + 1, p + 2), GOC_SUCCESS);
+          ASSERT_EQ(
+              goc_test::integer_mad_functions[op](cpu, UINT32_MAX, mode, p + 3, p, p + 1, p + 2),
+              GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
             EXPECT_EQ(words[3][lane], expected[lane]);
         }
@@ -113,14 +106,17 @@ TEST(IntegerMad, MasksModifiersAndAllWholeRegisterAliases) {
                   for (int lane = 0; lane < 32; ++lane)
                     words[reg][lane] = 0x7af551d3u * (lane + reg * 32 + 1);
                 std::memcpy(saved, words, sizeof(words));
-                ASSERT_EQ(functions[op](cpu, mask, mode_bits(mode), p + di, p, p + bi, p + ci),
+                ASSERT_EQ(goc_test::integer_mad_functions[op](cpu, mask,
+                                                              goc_test::integer_mad_mode_bits(mode),
+                                                              p + di, p, p + bi, p + ci),
                           GOC_SUCCESS);
                 for (int reg = 0; reg < 4; ++reg)
                   for (int lane = 0; lane < 32; ++lane) {
                     uint32_t expected =
                         reg == di && (mask >> lane & 1)
                             ? goc_test::integer_mad_reference(op, saved[0][lane], saved[bi][lane],
-                                                              saved[ci][lane], mode_bits(mode))
+                                                              saved[ci][lane],
+                                                              goc_test::integer_mad_mode_bits(mode))
                             : saved[reg][lane];
                     ASSERT_EQ(words[reg][lane], expected)
                         << op << "/" << cpu << "/" << mode << "/" << mask;
@@ -161,7 +157,9 @@ TEST(IntegerMad, LiteralOverflowCancellationAndSelection) {
         words[1][lane] = w.b;
         words[2][lane] = w.c;
       }
-      ASSERT_EQ(functions[w.op](cpu, UINT32_MAX, w.mode, p + 2, p, p + 1, p + 2), GOC_SUCCESS);
+      ASSERT_EQ(
+          goc_test::integer_mad_functions[w.op](cpu, UINT32_MAX, w.mode, p + 2, p, p + 1, p + 2),
+          GOC_SUCCESS);
       for (uint32_t value : words[2])
         EXPECT_EQ(value, w.expected);
     }
@@ -169,7 +167,7 @@ TEST(IntegerMad, LiteralOverflowCancellationAndSelection) {
 
 TEST(IntegerMad, ValidationAndFloatingEnvironment) {
   for (int op = 0; op < 4; ++op) {
-    Fn fn = functions[op];
+    auto fn = goc_test::integer_mad_functions[op];
     uint32_t words[4][32] = {}, saved[32];
     uint32_t *p[] = {words[0], words[1], words[2], words[3]};
     for (int i = 0; i < 32; ++i)

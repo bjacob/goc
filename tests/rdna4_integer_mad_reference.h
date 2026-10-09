@@ -8,6 +8,19 @@
 
 namespace goc_test {
 
+inline const char *const integer_mad_names[] = {"v_mad_u32_u16", "v_mad_i32_i16", "v_mad_u32_u24",
+                                                "v_mad_i32_i24"};
+
+using IntegerMadFn = decltype(&goc_rdna4_v_mad_u32_u16);
+inline const IntegerMadFn integer_mad_functions[] = {
+    goc_rdna4_v_mad_u32_u16, goc_rdna4_v_mad_i32_i16, goc_rdna4_v_mad_u32_u24,
+    goc_rdna4_v_mad_i32_i24};
+
+inline uint32_t integer_mad_mode_bits(int mode) {
+  return (mode & 1 ? GOC_ALU_CLAMP : 0) | (mode & 2 ? GOC_ALU_HIGH_A : 0) |
+         (mode & 4 ? GOC_ALU_HIGH_B : 0);
+}
+
 inline uint32_t integer_mad_reference(int op, uint32_t a, uint32_t b, uint32_t c, uint32_t mode) {
   const int bits = op < 2 ? 16 : 24;
   const int64_t range = INT64_C(1) << bits;
