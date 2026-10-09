@@ -40,6 +40,7 @@
 #include "rdna4_sad_reference.h"
 #include "rdna4_scalar_bits_reference.h"
 #include "rdna4_scalar_field_reference.h"
+#include "rdna4_scalar_fma_reference.h"
 #include "rdna4_scalar_fp_reference.h"
 #include "rdna4_scalar_integer_reference.h"
 #include "rdna4_shift_reference.h"
@@ -1513,6 +1514,51 @@ bool benchmark_rcp_iflag(uint64_t cpu, int iterations, int min_ms) {
 #endif
   }
   (void)cpu;
+  return true;
+}
+
+bool benchmark_scalar_fma(int iterations, int min_ms) {
+  struct ScalarRegisters : Registers {
+    uint32_t result = 0, want = 0;
+    bool half = false;
+
+    ScalarRegisters() { output_regs = 0; }
+
+    bool correct() const {
+      return goc_test::scalar_fp_canonical(result, half) ==
+             goc_test::scalar_fp_canonical(want, half);
+    }
+  };
+
+  // GFX1201 capture: input pair 3001, preserve / flush both + OVFL / flush output.
+  const uint32_t gold[4][3] = {{0x53af5ff5u, 0x53af5ff5u, 0x53af5ff5u},
+                               {0x00007fd8u, 0x00007fd8u, 0x00007fd8u},
+                               {0x3f800001u, 0x3f800001u, 0x3f800001u},
+                               {0x52f2f70cu, 0x52f2f70cu, 0x52f2f70cu}};
+  const unsigned states[] = {3, 4, 1};
+  for (unsigned op = 0; op < 4; ++op)
+    for (unsigned variant = 0; variant < 3; ++variant) {
+      ScalarRegisters r;
+      r.half = op == 1;
+      r.want = gold[op][variant];
+      uint32_t w[3];
+      goc_test::scalar_fma_inputs(3001, op == 1, w);
+      auto fn = [&r, op, &w](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *,
+                             const uint32_t *const *, const uint32_t *const *,
+                             const uint32_t *const *) {
+        r.result = w[2];
+        unsigned k = op < 2 ? op : op == 2 ? 8 : 20;
+        return goc_test::scalar_fma_call(k, flags, mask, mode, &r.result, w[0], w[1]);
+      };
+      double scalar =
+          measure(fn, goc_test::scalar_fp_flags(states[variant]), r, iterations, min_ms, 0);
+      if (scalar < 0)
+        return false;
+      print_result(goc_test::scalar_fma_names[op], "loose", "none", "scalar", scalar, 1, 32,
+                   variant == 0   ? "none"
+                   : variant == 1 ? "flush-io-ovfl"
+                                  : "flush-output");
+    }
   return true;
 }
 
@@ -4330,9 +4376,9 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave", "FP state");
-  if (!benchmark_rcp_iflag(cpu, iterations, min_ms) || !benchmark_scalar_fp(iterations, min_ms) ||
-      !benchmark_scalar_field(iterations, min_ms) || !benchmark_scalar_bits(iterations, min_ms) ||
-      !benchmark_scalar_integer(iterations, min_ms) ||
+  if (!benchmark_rcp_iflag(cpu, iterations, min_ms) || !benchmark_scalar_fma(iterations, min_ms) ||
+      !benchmark_scalar_fp(iterations, min_ms) || !benchmark_scalar_field(iterations, min_ms) ||
+      !benchmark_scalar_bits(iterations, min_ms) || !benchmark_scalar_integer(iterations, min_ms) ||
       !benchmark_pseudo_scalar(iterations, min_ms) ||
       !benchmark_float_compare(cpu, iterations, min_ms) ||
       !benchmark_integer_compare(cpu, iterations, min_ms) ||

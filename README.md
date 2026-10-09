@@ -1466,6 +1466,14 @@ ignores output flushing. Multiplication tininess detection precedes destination
 subnormal rounding; tests cover values that otherwise round up to normal.
 All 14 instructions have scalar benchmarks, including nondefault FP states.
 
+Scalar fused multiply-add includes FP16/FP32 FMAC and FP32 FMAAK/FMAMK literal
+forms. These preserve fusion and SCC, support guest input/output flushing and
+FP16 overflow saturation, and snapshot accumulator inputs before writing.
+Tests cover 2,555,904 GFX1201 result/SCC pairs, twelve literal bit patterns,
+all eight FP states, cancellation, tininess boundaries, EXEC and aliases.
+Loose semantics require host nearest-even rounding and enabled denormals.
+All four instructions have benchmarks with default and nondefault FP settings.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU

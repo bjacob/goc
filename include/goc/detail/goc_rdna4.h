@@ -18,6 +18,31 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Scalar fused multiply-add ignores EXEC, including zero EXEC; d is required.
+// Operands and literals are raw IEEE bits. FP16 reads low halves and writes a
+// zero upper half. Rounds once to the destination format. SCC is unchanged.
+// instruction_flags must be zero. Loose semantics only; NaN signs/payloads are
+// unspecified. Guest input/output flushing and FP16_OVFL are supported, with
+// tininess detected before destination subnormal rounding. Requires host nearest-
+// even rounding and enabled denormals; preserves rounding but may change host
+// exception flags. Errors leave d unchanged. Inputs may come from d storage.
+
+// Fused a * b + old *d.
+GOC_API int goc_rdna4_s_fmac_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *d, uint32_t a, uint32_t b);
+
+// Fused a * b + old *d.
+GOC_API int goc_rdna4_s_fmac_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *d, uint32_t a, uint32_t b);
+
+// Fused a * b + literal.
+GOC_API int goc_rdna4_s_fmaak_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a, uint32_t b, uint32_t literal);
+
+// Fused a * literal + c.
+GOC_API int goc_rdna4_s_fmamk_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a, uint32_t literal, uint32_t c);
+
 // Scalar FP16/FP32 binary arithmetic executes once per wave and ignores EXEC,
 // including zero EXEC; d is required. Inputs are raw IEEE bits. FP16 reads the
 // low halves and writes a zero upper half. instruction_flags must be zero.
