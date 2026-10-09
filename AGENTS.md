@@ -44,9 +44,12 @@ The umbrella directly includes every component header. Detail headers and their
 standalone compile checks may include detail headers directly. Otherwise include
 internal and standard-library dependencies directly rather than transitively.
 
-GPU-architecture-specific implementation files, internal headers, tests and
-fixtures must name the GPU architecture in their filenames (for example rdna4_).
-CPU-specific implementations also retain their CPU feature suffix.
+Use architecture-neutral names for shared implementations, headers, tests and
+benchmarks. Public instruction APIs use goc_<mnemonic>, with _wave64 appended
+for dedicated Wave64 variants. If a newer architecture changes an existing
+mnemonic's semantics, append its architecture suffix before _wave64 (if present);
+no current API needs an architecture suffix. Keep hardware provenance in fixture
+comments. CPU-specific implementations retain their CPU feature suffix.
 
 Closing braces for namespaces and extern "C" blocks must carry a comment naming
 what they close (for example, } // namespace goc or } // extern "C"). This does

@@ -4,6 +4,6 @@
 #define GOC_H_
 
 #include "detail/goc_common.h"
-#include "detail/goc_rdna4.h"
+#include "detail/goc_instructions.h"
 
 #endif

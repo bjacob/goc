@@ -49,13 +49,15 @@ required for these names. If that becomes necessary, consider moving to C23.
 
 GoC entry point names follow the pattern
 
-`goc_<architecture>_<mnemonic>`
+`goc_<mnemonic>`
 
 Where:
 
-* `<architecture>` is the architecture name like `rdna4`, `cdna3`, etc. Each
-  architecture implies its own default wave size, e.g. `rdna4` implies wave32.
-  - Note: see "What about Wave64 variants on Wave32-native architecture?" below.
+* Shared instruction semantics use the same entry point across architectures.
+  If a newer architecture changes the semantics of an existing mnemonic, its
+  variant gets an architecture suffix, such as `_rdna4`. No current entry point
+  needs an architecture suffix. Wave32 is the default; dedicated Wave64 variants
+  append `_wave64` after the mnemonic (and after any architecture suffix).
 * `<mnemonic>` is the instruction mnemonic like `v_wmma_f32_16x16x16_f16`. We follow
   instruction mnemonics, not intrinsic names, because the API model here really
   is much closer to the instructions than it is to the intrinsics: see how
@@ -63,11 +65,11 @@ Where:
 
 Example:
 
-`goc_rdna4_v_wmma_f32_16x16x16_f16`
+`goc_v_wmma_f32_16x16x16_f16`
 
 The API shall provide an umbrella C header, [`goc/goc.h`](https://github.com/bjacob/goc/blob/main/include/goc/goc.h), directly including
 [`goc/detail/goc_common.h`](https://github.com/bjacob/goc/blob/main/include/goc/detail/goc_common.h) for common flags, error codes and CPU initialization, and
-[`goc/detail/goc_rdna4.h`](https://github.com/bjacob/goc/blob/main/include/goc/detail/goc_rdna4.h) for RDNA4 instruction declarations and modifiers.
+[`goc/detail/goc_instructions.h`](https://github.com/bjacob/goc/blob/main/include/goc/detail/goc_instructions.h) for instruction declarations and modifiers.
 
 API users, including implementations and tests, shall include [`goc/goc.h`](https://github.com/bjacob/goc/blob/main/include/goc/goc.h). It is the
 only header directly under [`include/goc/`](https://github.com/bjacob/goc/tree/main/include/goc); component headers live under
@@ -129,7 +131,7 @@ validation must happen before computation.
 Example:
 
 ```c
-int goc_rdna4_v_wmma_f32_16x16x16_f16(
+int goc_v_wmma_f32_16x16x16_f16(
   uint64_t flags,
   uint64_t instruction_flags,  // NEG and NEG_HI bits go here.
   uint32_t *const * vgpr_d,
@@ -144,8 +146,8 @@ Notes:
 * What about Wave64 variants on Wave32-native architecture?
   - Typical lane-wise instructions can just use two calls to the wave32 function.
   - For instructions like WMMA or lane-index-dependent `MBCNT`, we may have a
-    separate dedicated wave64 entry point. In that case, we will append a `w64`
-    suffix to the architecture name, e.g. `goc_rdna4w64_...` .
+    separate dedicated wave64 entry point with a `_wave64` suffix, e.g.
+    `goc_v_wmma_f32_16x16x16_f16_wave64`.
 * For instructions that obey EXEC, why make `exec_mask` part of GoC instead of letting the caller handle it?
   - For the caller to handle it correctly w.r.t. input-output aliasing, they
     would need to save destination registers before calling GoC.
@@ -222,7 +224,7 @@ modulo 2^N is explicitly intended.
 | [`CMakeLists.txt`](https://github.com/bjacob/goc/blob/main/CMakeLists.txt) | Root CMake configuration. |
 | [`include/goc/goc.h`](https://github.com/bjacob/goc/blob/main/include/goc/goc.h) | Umbrella API header. |
 | [`include/goc/detail/goc_common.h`](https://github.com/bjacob/goc/blob/main/include/goc/detail/goc_common.h) | Common API definitions. |
-| [`include/goc/detail/goc_rdna4.h`](https://github.com/bjacob/goc/blob/main/include/goc/detail/goc_rdna4.h) | RDNA4 instruction API. |
+| [`include/goc/detail/goc_instructions.h`](https://github.com/bjacob/goc/blob/main/include/goc/detail/goc_instructions.h) | Shared instruction API. |
 | [`src/`](https://github.com/bjacob/goc/tree/main/src) | Implementation; architecture-agnostic files directly here. |
 | [`src/CMakeLists.txt`](https://github.com/bjacob/goc/blob/main/src/CMakeLists.txt) | Library build configuration. |
 | [`src/x86_64/`](https://github.com/bjacob/goc/tree/main/src/x86_64) | x86-64-specific code paths (AVX etc). No further subdirectories for now. |
@@ -237,7 +239,7 @@ We don't know outright what specific ISA features (e.g. AVX-512 features) we wil
 When implementation code needs to use a feature:
 
 * The code path actually using the feature needs to be in an source file with the feature name part of its leaf file name,
-  e.g. [`rdna4_wmma_avx512bf16.cpp`](https://github.com/bjacob/goc/blob/main/src/x86_64/rdna4_wmma_avx512bf16.cpp) (use the lowercase CPU feature string names from GCC/Clang feature enablement strings, as in the GCC/Clang `-march=` flag, just without the prefix + sign).
+  e.g. [`wmma_avx512bf16.cpp`](https://github.com/bjacob/goc/blob/main/src/x86_64/wmma_avx512bf16.cpp) (use the lowercase CPU feature string names from GCC/Clang feature enablement strings, as in the GCC/Clang `-march=` flag, just without the prefix + sign).
 * These code paths must be located in an architecture-specific subdir, e.g. [`src/x86_64/`](https://github.com/bjacob/goc/tree/main/src/x86_64).
 * The functions actually using the feature also must have the same lowercase GCC-Clang-compatible feature name as a suffix
   in their identifier names.

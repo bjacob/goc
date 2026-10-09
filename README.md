@@ -3,11 +3,11 @@
 GoC implements whole-wave GPU arithmetic through a synchronous C API. The public
 header is `include/goc/goc.h`, usable from C99 and C++17. It directly includes
 `goc/detail/goc_common.h` (flags, status codes, CPU detection) and
-`goc/detail/goc_rdna4.h` (RDNA4 instructions and modifiers). API users include
+`goc/detail/goc_instructions.h` (instruction declarations and modifiers). API users include
 `goc/goc.h`; detail headers are still checked for self-containment. This is an
 initial RDNA4 implementation; `PLAN.md` describes the broader intended coverage.
 GPU-specific implementation, test, and fixture filenames carry the architecture
-name, such as `rdna4_wmma.cpp` and `rdna4_wmma_test.cpp`.
+name, such as `wmma.cpp` and `wmma_test.cpp`.
 
 ## Build and test
 
@@ -21,7 +21,7 @@ GoC builds only a static library (`libgoc.a` on Linux). CMake consumers link
 `goc`. The library is position-independent and has hidden visibility so that
 embedding it in a consumer shared library does not export GoC symbols.
 
-Each `*_test.cpp` has its own executable, such as `tests/goc_rdna4_wmma_test`.
+Each `*_test.cpp` has its own executable, such as `tests/goc_wmma_test`.
 Public headers are compiled independently as C and C++, without linking.
 Private CPU decoding is tested separately. On Linux, an embedding test checks
 that a consumer shared library exports only its own API. `tests/cpuinfo` prints
@@ -40,7 +40,7 @@ After the Release build above, run these commands from the source directory:
 ../goc-build/tests/cpuinfo
 ctest --test-dir ../goc-build --output-on-failure \
   -R 'HardwareCapturedExactResults|HardwareIntermediateOverflowState|Fp16V3|Bf16V3|Bf16CpuLevels|SubbyteWmma|Arithmetic'
-../goc-build/tests/goc_rdna4_benchmark
+../goc-build/tests/goc_benchmark
 ```
 
 The selected tests demonstrate FP32 unary arithmetic, FMA, WMMA numeric formats, hardware-captured
@@ -79,7 +79,7 @@ numeric speedup ratios (empty when unavailable). Explanatory text goes to stderr
 For example:
 
 ```sh
-../goc-build/tests/goc_rdna4_benchmark --csv > results.csv
+../goc-build/tests/goc_benchmark --csv > results.csv
 ```
 
 `--csv` and `--min-ms` can appear before or after the optional initial iteration count.
@@ -90,7 +90,7 @@ positional argument) and doubles the count until the timed batch takes at least
 10 ms. Shorter batches are discarded. Subsequent samples retain that count and
 double again if necessary, so every accepted sample meets the minimum duration.
 Pass `--min-ms` with a nonnegative integer to override the minimum milliseconds,
-for example `../goc-build/tests/goc_rdna4_benchmark --min-ms 50`.
+for example `../goc-build/tests/goc_benchmark --min-ms 50`.
 Benchmark controls are command-line arguments; no environment variables are read.
 CTest uses a 0 ms minimum and starts at one call per sample for its correctness
 smoke check, with no speedup assertion. Zero disables the minimum-duration
@@ -137,9 +137,11 @@ system load; the scalar reference is intentionally simple.
 
 ## Implemented instructions
 
-The entry points below use RDNA4 wave32. Names have the `goc_rdna4_` prefix.
+Entry points use `goc_<mnemonic>` with Wave32 as the default. Shared semantics
+share one API across architectures; a future semantic variant gets an architecture
+suffix only when needed. Current implementations are validated against RDNA4.
 The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
-`goc_rdna4w64_...`, supporting loose and empirical exact modes.
+`goc_<mnemonic>_wave64`, supporting loose and empirical exact modes.
 
 | Mnemonic | Loose semantics | Empirical exact semantics |
 | --- | --- | --- |
@@ -253,7 +255,7 @@ but must never claim unavailable capabilities. Dispatch also respects which
 implementations were compiled.
 
 Each VGPR pointer addresses 32 contiguous `uint32_t` lane words (64 for
-`rdna4w64`). A multi-VGPR
+`_wave64` entry points). A multi-VGPR
 operand is an array of these pointers; the backing arrays need not be adjacent
 or SIMD-aligned. FP8/BF8 and INT8 A/B use two VGPRs each. INT4 A/B
 use one each for K=16, or two for K=32; all these forms use eight C/D VGPRs.
@@ -505,7 +507,7 @@ P10, and 3.78–4.10x for the P2 forms versus scalar, including modifiers
 
 `v_rcp_iflag_f32` computes a reciprocal and returns sticky guest exception
 status through a separate scalar output. Active signed-zero and subnormal inputs
-raise `GOC_RDNA4_EXCEPTION_INT_DIV0`; CLAMP suppresses a new cause but preserves
+raise `GOC_EXCEPTION_INT_DIV0`; CLAMP suppresses a new cause but preserves
 any pre-existing status bit. Other status bits survive unchanged. The scalar
 status is written after VGPR stores, taking precedence if its storage aliases
 an input or output word. Empty EXEC leaves all outputs untouched. A null
@@ -1207,7 +1209,7 @@ count. All host FP state is preserved, including exception flags.
 `MBCNT_LO` counts source bits below the physical lane index, capped at 32;
 `MBCNT_HI` counts source bits below the lane index minus 32, or zero for lanes
 0–31. Both add `B` with wrapping. The lane index does not depend on EXEC.
-Dedicated `goc_rdna4w64_` forms take 64 words per VGPR because two wave32 calls
+Dedicated `_wave64` forms take 64 words per VGPR because two wave32 calls
 cannot reproduce the upper-half lane indices. Wave32 MBCNT_HI is a masked copy
 of `B`; its v3 candidate showed little benefit and was removed. Tests cover every pair of bit
 positions, complements, all population counts, accumulator wrapping, sentinel
@@ -1690,9 +1692,9 @@ Tests exercise the C ABI, CPU/OS feature gating, forced usable CPU levels,
 unaligned and noncontiguous backing storage, masks, operand overlap, strict
 errors, sign modifiers, and deterministic dense matrix golden outputs.
 
-The empirical RDNA4 DOT/WMMA model in `src/rdna4_dot.h` is adapted from
+The empirical RDNA4 DOT/WMMA model in `src/dot.h` is adapted from
 rocjitsu's `isa/arch/amdgpu/shared/gfx12_dot.h`. The hardware fixtures in
-`tests/rdna4_dot_fixtures.h` and `tests/rdna4_wmma_fixtures.h` come from rocjitsu's
+`tests/dot_fixtures.h` and `tests/wmma_fixtures.h` come from rocjitsu's
 `tests/fixtures/float_dot/gfx1201_cases.h`: Radeon AI Pro R9700 (`gfx1201`),
 TheRock `10.2.0a20260916`. They contain 121 DOT and 24 WMMA captures. No new
 GPU measurements or reverse engineering were performed for this implementation.
@@ -2147,14 +2149,14 @@ and input-denormal flags in exact mode. They do not raise inexact when discardin
 a fractional part. Another 6,291,456 RX 9070 captures cover all FP16 encodings,
 65,536 FP32 patterns, every rounding instruction, denormal mode, and three EXEC
 masks. Capture probes can be regenerated with
-[the HIP probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_fp_exceptions.py).
+[the HIP probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_fp_exceptions.py).
 
 Division-fixup reporting is also implemented for FP16/32/64,
 including invalid, input-denormal, floating-divide-by-zero, overflow, underflow,
 and inexact flags. `CLAMP` suppresses all flags; output scaling suppresses
 underflow/inexact flags. Its 786,432 RX 9070 flag captures cover edge/random triples,
 source/output modifiers, and both FP16 saturation settings; regenerate them with
-[the arithmetic probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_arithmetic_exceptions.py).
+[the arithmetic probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_arithmetic_exceptions.py).
 
 FP16 `v_fma`, `v_fmac`, `v_fmamk`, `v_fmaak`,
 `v_pk_fma`, and `v_pk_fmac` also report exceptions. The existing integer FMA

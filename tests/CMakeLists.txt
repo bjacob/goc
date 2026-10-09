@@ -31,45 +31,45 @@ target_link_libraries(goc_capture_hash_test PRIVATE GTest::gtest_main)
 goc_test_warnings(goc_capture_hash_test)
 gtest_discover_tests(goc_capture_hash_test TEST_PREFIX "internal.")
 
-# Exercise every public RDNA4 entry point, including future additions.
+# Exercise every public instruction entry point, including future additions.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-  "${PROJECT_SOURCE_DIR}/include/goc/detail/goc_rdna4.h")
-file(STRINGS "${PROJECT_SOURCE_DIR}/include/goc/detail/goc_rdna4.h"
-  goc_rdna4_declarations REGEX "^int goc_rdna4(w64)?_")
-set(goc_rdna4_api_list "")
-foreach(declaration IN LISTS goc_rdna4_declarations)
-  string(REGEX MATCH "goc_rdna4(w64)?_[a-zA-Z0-9_]+" symbol "${declaration}")
-  string(APPEND goc_rdna4_api_list "GOC_RDNA4_API(${symbol})\n")
+  "${PROJECT_SOURCE_DIR}/include/goc/detail/goc_instructions.h")
+file(STRINGS "${PROJECT_SOURCE_DIR}/include/goc/detail/goc_instructions.h"
+  goc_declarations REGEX "^int goc_")
+set(goc_api_list "")
+foreach(declaration IN LISTS goc_declarations)
+  string(REGEX MATCH "goc_[a-zA-Z0-9_]+" symbol "${declaration}")
+  string(APPEND goc_api_list "GOC_API(${symbol})\n")
 endforeach()
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/rdna4_api_symbols.inc" "${goc_rdna4_api_list}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/api_symbols.inc" "${goc_api_list}")
 
 # Keep exception-contract coverage exhaustive as public signatures grow.
-file(READ "${PROJECT_SOURCE_DIR}/include/goc/detail/goc_rdna4.h" goc_rdna4_header)
-string(REGEX MATCHALL "int goc_rdna4[a-zA-Z0-9_]*\\([^;]*excp_flag_user\\)"
-  goc_rdna4_reporting_declarations "${goc_rdna4_header}")
-set(goc_rdna4_reporting_list "")
-foreach(declaration IN LISTS goc_rdna4_reporting_declarations)
-  string(REGEX MATCH "goc_rdna4[a-zA-Z0-9_]*" symbol "${declaration}")
-  if(symbol STREQUAL "goc_rdna4_v_rcp_iflag_f32" OR
-     symbol MATCHES "^goc_rdna4_(s_cmp|v_cmpx?)_[a-z]+_f(16|32|64)$" OR
-     symbol MATCHES "^goc_rdna4_v_(fma|fmac|fmamk|fmaak|pk_fma|pk_fmac)_f16$" OR
-     symbol MATCHES "^goc_rdna4_v_(sin|cos)_f(16|32)$" OR
-     symbol MATCHES "^goc_rdna4_v_dot2_f32_(f16|bf16)$" OR
-     symbol MATCHES "^goc_rdna4_v_fma_mix(lo|hi)_f16$" OR
-     symbol MATCHES "^goc_rdna4_v_div_fmas_f(32|64)$" OR
-     symbol MATCHES "^goc_rdna4_v_div_fixup_f(16|32|64)$" OR
-     symbol MATCHES "^goc_rdna4_s_(ceil|floor|trunc|rndne)_f(16|32)$")
+file(READ "${PROJECT_SOURCE_DIR}/include/goc/detail/goc_instructions.h" goc_header)
+string(REGEX MATCHALL "int goc_[a-zA-Z0-9_]*\\([^;]*excp_flag_user\\)"
+  goc_reporting_declarations "${goc_header}")
+set(goc_reporting_list "")
+foreach(declaration IN LISTS goc_reporting_declarations)
+  string(REGEX MATCH "goc_[a-zA-Z0-9_]*" symbol "${declaration}")
+  if(symbol STREQUAL "goc_v_rcp_iflag_f32" OR
+     symbol MATCHES "^goc_(s_cmp|v_cmpx?)_[a-z]+_f(16|32|64)$" OR
+     symbol MATCHES "^goc_v_(fma|fmac|fmamk|fmaak|pk_fma|pk_fmac)_f16$" OR
+     symbol MATCHES "^goc_v_(sin|cos)_f(16|32)$" OR
+     symbol MATCHES "^goc_v_dot2_f32_(f16|bf16)$" OR
+     symbol MATCHES "^goc_v_fma_mix(lo|hi)_f16$" OR
+     symbol MATCHES "^goc_v_div_fmas_f(32|64)$" OR
+     symbol MATCHES "^goc_v_div_fixup_f(16|32|64)$" OR
+     symbol MATCHES "^goc_s_(ceil|floor|trunc|rndne)_f(16|32)$")
     continue() # Already implements accumulation; covered by its hardware corpus.
   endif()
-  string(APPEND goc_rdna4_reporting_list "GOC_RDNA4_REPORTING_API(${symbol})\n")
+  string(APPEND goc_reporting_list "GOC_REPORTING_API(${symbol})\n")
 endforeach()
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/rdna4_reporting_symbols.inc" "${goc_rdna4_reporting_list}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/reporting_symbols.inc" "${goc_reporting_list}")
 
-foreach(test IN ITEMS rdna4_fma_rounding_exceptions rdna4_trig_exceptions rdna4_arithmetic_exceptions rdna4_compare_exceptions rdna4_exception_registers rdna4_dpp_half_unary rdna4_dpp_half_fma rdna4_dpp_half_minmax rdna4_dpp_half_binary rdna4_dpp_integer16_ternary rdna4_dpp_integer16 rdna4_dpp_boolean16 rdna4_dpp_integer_mad rdna4_dpp_integer_mul rdna4_dpp_integer_add rdna4_dpp_bitfield rdna4_dpp_integer_ternary rdna4_dpp_integer_minmax rdna4_dpp_integer rdna4_dpp_unary rdna4_fp64_output rdna4_output_scaling rdna4_dpp_arithmetic rdna4_dpp16 rdna4_dpp8 rdna4_instruction_flags rdna4_permlane rdna4_scalar_pack rdna4_scalar_compare rdna4_scalar_convert rdna4_scalar_round rdna4_scalar_fma rdna4_scalar_fp rdna4_scalar_field rdna4_scalar_bits rdna4_scalar_integer rdna4_rcp_iflag rdna4_pseudo_scalar rdna4_float_compare rdna4_integer_compare rdna4_class rdna4_interp16 rdna4_interp32 rdna4_cndmask rdna4_trig_preop rdna4_mullit rdna4_pack rdna4_swmmac_integer rdna4_swmmac8 rdna4_swmmac16 rdna4_mad64 rdna4_carry rdna4_div_fmas rdna4_div_scale rdna4_div_fixup rdna4_cube rdna4_fp8_narrow rdna4_byte_pack rdna4_integer_conversion rdna4_normalized rdna4_packed_conversion rdna4_fp8_conversion rdna4_byte_conversion rdna4_conversion16 rdna4_conversion64 rdna4_conversion32 rdna4_mixed_fma rdna4_bit_count rdna4_boolean rdna4_bitfield rdna4_integer_ternary rdna4_sad rdna4_shift rdna4_half_trig rdna4_trig rdna4_integer_mad rdna4_integer16_ternary rdna4_integer16 rdna4_packed_mad rdna4_packed_integer rdna4_packed_binary rdna4_packed_fma rdna4_literal_fma rdna4_fmac rdna4_half_fma rdna4_half_minmax rdna4_half_exponent rdna4_half_unary rdna4_half_binary rdna4_integer_add rdna4_integer_mul rdna4_integer_minmax rdna4_ldexp rdna4_frexp_exp rdna4_fp64_unary rdna4_fp64 rdna4_minmax rdna4_binary rdna4_half_dot rdna4_fp8_dot rdna4_dot2 rdna4_integer_dot rdna4_arithmetic rdna4_unary rdna4_exec_mask cpu rdna4_wmma rdna4_packed_wmma rdna4_subbyte_wmma)
+foreach(test IN ITEMS fma_rounding_exceptions trig_exceptions arithmetic_exceptions compare_exceptions exception_registers dpp_half_unary dpp_half_fma dpp_half_minmax dpp_half_binary dpp_integer16_ternary dpp_integer16 dpp_boolean16 dpp_integer_mad dpp_integer_mul dpp_integer_add dpp_bitfield dpp_integer_ternary dpp_integer_minmax dpp_integer dpp_unary fp64_output output_scaling dpp_arithmetic dpp16 dpp8 instruction_flags permlane scalar_pack scalar_compare scalar_convert scalar_round scalar_fma scalar_fp scalar_field scalar_bits scalar_integer rcp_iflag pseudo_scalar float_compare integer_compare class interp16 interp32 cndmask trig_preop mullit pack swmmac_integer swmmac8 swmmac16 mad64 carry div_fmas div_scale div_fixup cube fp8_narrow byte_pack integer_conversion normalized packed_conversion fp8_conversion byte_conversion conversion16 conversion64 conversion32 mixed_fma bit_count boolean bitfield integer_ternary sad shift half_trig trig integer_mad integer16_ternary integer16 packed_mad packed_integer packed_binary packed_fma literal_fma fmac half_fma half_minmax half_exponent half_unary half_binary integer_add integer_mul integer_minmax ldexp frexp_exp fp64_unary fp64 minmax binary half_dot fp8_dot dot2 integer_dot arithmetic unary exec_mask cpu wmma packed_wmma subbyte_wmma)
   set(target "goc_${test}_test")
   add_executable(${target} "${test}_test.cpp")
-  if(test STREQUAL "rdna4_arithmetic")
-    target_sources(${target} PRIVATE rdna4_c_api_test.c)
+  if(test STREQUAL "arithmetic")
+    target_sources(${target} PRIVATE c_api_test.c)
   endif()
   target_include_directories(${target} PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tests ${CMAKE_CURRENT_BINARY_DIR})
   target_link_libraries(${target} PRIVATE goc GTest::gtest_main)
@@ -77,8 +77,8 @@ foreach(test IN ITEMS rdna4_fma_rounding_exceptions rdna4_trig_exceptions rdna4_
   gtest_discover_tests(${target})
 endforeach()
 
-set(benchmark "goc_rdna4_benchmark")
-add_executable(${benchmark} rdna4_benchmark.cpp)
+set(benchmark "goc_benchmark")
+add_executable(${benchmark} benchmark.cpp)
 target_include_directories(${benchmark} PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tests ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(${benchmark} PRIVATE goc)
 goc_test_warnings(${benchmark})
@@ -95,10 +95,10 @@ if(GOC_ENABLE_X86_64 AND GOC_COMPILER_AVX512VNNI)
   target_compile_definitions(${benchmark} PRIVATE GOC_BENCH_HAVE_AVX512VNNI=1)
 endif()
 # Smoke-test correctness and execution, with no timing/speedup assertions.
-add_test(NAME rdna4_benchmark COMMAND ${benchmark} --min-ms 0 1)
-add_test(NAME rdna4_benchmark_output
+add_test(NAME benchmark COMMAND ${benchmark} --min-ms 0 1)
+add_test(NAME benchmark_output
   COMMAND ${CMAKE_COMMAND} -DBENCHMARK=$<TARGET_FILE:${benchmark}>
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/check_rdna4_benchmark_output.cmake)
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/check_benchmark_output.cmake)
 
 add_executable(cpuinfo cpuinfo.c)
 target_link_libraries(cpuinfo PRIVATE goc)
@@ -107,7 +107,7 @@ add_test(NAME cpuinfo COMMAND cpuinfo)
 
 # Compile the umbrella and each detail header independently as C and C++.
 # Absolute includes and no GoC include path verify header-relative dependencies.
-foreach(header IN ITEMS common rdna4 rdna4_umbrella)
+foreach(header IN ITEMS common instructions umbrella)
   foreach(extension IN ITEMS c cpp)
     set(source "${CMAKE_CURRENT_BINARY_DIR}/${header}_header_test.${extension}")
     configure_file("headers/${header}.c" "${source}" @ONLY)

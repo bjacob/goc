@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: MIT
+
+#include "div_fmas.h"
+#include "division.h"
+#include "goc/goc.h"
+#include "internal.h"
+
+#include <stdint.h>
+
+namespace {
+
+template <unsigned Width>
+int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+        const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+        uint32_t condition, uint32_t *excp_flag_user) {
+  if (int error = goc::validate(flags, mode & ~511u, true))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  bool report = excp_flag_user && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
+  uint32_t exceptions = 0;
+#if defined(GOC_HAVE_X86_64_V4)
+  if (!report && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
+    goc::div_fmas_x86_64_v4<Width>(exec_mask, mode, d, a, b, c, condition);
+    return GOC_SUCCESS;
+  }
+#endif
+#if defined(GOC_HAVE_X86_64_V3)
+  if (!report && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::div_fmas_x86_64_v3<Width>(exec_mask, mode, d, a, b, c, condition);
+    return GOC_SUCCESS;
+  }
+#endif
+  using T = typename goc::DivisionFormat<Width>::Bits;
+  T result[32];
+  for (unsigned lane = 0; lane < 32; ++lane) {
+    T av = a[0][lane], bv = b[0][lane], cv = c[0][lane];
+    if constexpr (Width == 64) {
+      av |= T(a[1][lane]) << 32;
+      bv |= T(b[1][lane]) << 32;
+      cv |= T(c[1][lane]) << 32;
+    }
+    result[lane] =
+        goc::division_fmas<Width>(av, bv, cv, (condition >> lane) & 1, mode,
+                                  report && ((exec_mask >> lane) & 1) ? &exceptions : nullptr);
+  }
+  for (unsigned reg = 0; reg < (Width == 64 ? 2u : 1u); ++reg)
+    for (unsigned lane = 0; lane < 32; ++lane)
+      if ((exec_mask >> lane) & 1)
+        d[reg][lane] = uint32_t(result[lane] >> (Width == 64 ? 32 * reg : 0));
+  if (report)
+    *excp_flag_user |= exceptions;
+  return GOC_SUCCESS;
+}
+
+} // namespace
+
+int goc_v_div_fmas_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                       const uint32_t *const *c, uint32_t condition, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run<32>(flags, exec_mask, instruction_flags, d, a, b, c, condition, excp_flag_user);
+}
+
+int goc_v_div_fmas_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                       const uint32_t *const *c, uint32_t condition, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run<64>(flags, exec_mask, instruction_flags, d, a, b, c, condition, excp_flag_user);
+}

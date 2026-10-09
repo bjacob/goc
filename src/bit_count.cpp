@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: MIT
+
+#include "bit_count.h"
+#include "bits.h"
+#include "dpp.h"
+#include "goc/goc.h"
+#include "internal.h"
+
+#include <stdint.h>
+
+namespace {
+
+// Low-bit masks for widths 0 through 32. A table also avoids Clang's SSE2
+// vectorization of variable shifts through float-to-integer conversions,
+// which can spuriously raise host FP exceptions for out-of-range counts.
+static const uint32_t prefix_masks[] = {
+    0x0u,       0x1u,        0x3u,        0x7u,        0xfu,       0x1fu,      0x3fu,
+    0x7fu,      0xffu,       0x1ffu,      0x3ffu,      0x7ffu,     0xfffu,     0x1fffu,
+    0x3fffu,    0x7fffu,     0xffffu,     0x1ffffu,    0x3ffffu,   0x7ffffu,   0xfffffu,
+    0x1fffffu,  0x3fffffu,   0x7fffffu,   0xffffffu,   0x1ffffffu, 0x3ffffffu, 0x7ffffffu,
+    0xfffffffu, 0x1fffffffu, 0x3fffffffu, 0x7fffffffu, 0xffffffffu};
+
+template <goc::BitCount Op> uint32_t evaluate(uint32_t a, uint32_t b, unsigned lane) {
+  if constexpr (Op == goc::BitCount::Sign)
+    a ^= 0u - (a >> 31);
+  if constexpr (Op == goc::BitCount::Leading || Op == goc::BitCount::Sign ||
+                Op == goc::BitCount::Trailing) {
+    return goc::bit_count_zero<Op == goc::BitCount::Trailing>(a);
+  }
+  if constexpr (Op == goc::BitCount::MaskedLow)
+    a &= prefix_masks[lane < 32 ? lane : 32];
+  if constexpr (Op == goc::BitCount::MaskedHigh)
+    a &= prefix_masks[lane < 32 ? 0 : lane - 32];
+  return goc::bit_population(a) + b;
+}
+
+template <goc::BitCount Op, int Lanes>
+int bit_count(uint64_t flags, goc::ExecMask<Lanes> exec_mask, uint64_t mode, uint32_t *const *d,
+              const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32) {
+    if constexpr (Lanes == 32) {
+      return goc::execute_dpp(
+          flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+            return bit_count<Op, Lanes>(flags, exec_mask, uint32_t(mode), d, source, b);
+          });
+    } else {
+      return GOC_ERROR_INVALID_FLAGS;
+    }
+  }
+
+  if (int error = goc::validate(flags, mode))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  const uint32_t *bp = nullptr;
+  if constexpr (Op == goc::BitCount::Population || Op == goc::BitCount::MaskedLow ||
+                Op == goc::BitCount::MaskedHigh)
+    bp = b[0];
+#if defined(GOC_HAVE_X86_64_V4)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
+    goc::bit_count_x86_64_v4<Op, Lanes>(exec_mask, d[0], a[0], bp);
+    return GOC_SUCCESS;
+  }
+#endif
+#if defined(GOC_HAVE_X86_64_V3)
+  // Wave32 MBCNT_HI only copies B; AVX2 showed no substantial gain there.
+  if constexpr (Op != goc::BitCount::MaskedHigh || Lanes != 32) {
+    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+      goc::bit_count_x86_64_v3<Op, Lanes>(exec_mask, d[0], a[0], bp);
+      return GOC_SUCCESS;
+    }
+  }
+#endif
+  uint32_t result[Lanes];
+  for (int lane = 0; lane < Lanes; ++lane)
+    result[lane] = evaluate<Op>(a[0][lane], bp ? bp[lane] : 0, unsigned(lane));
+  for (int lane = 0; lane < Lanes; ++lane)
+    if ((exec_mask >> lane) & 1)
+      d[0][lane] = result[lane];
+  return GOC_SUCCESS;
+}
+
+} // namespace
+
+int goc_v_clz_i32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, const uint32_t *const *a) {
+  return bit_count<goc::BitCount::Leading, 32>(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_ctz_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, const uint32_t *const *a) {
+  return bit_count<goc::BitCount::Trailing, 32>(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_cls_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                  uint32_t *const *d, const uint32_t *const *a) {
+  return bit_count<goc::BitCount::Sign, 32>(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_bcnt_u32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return bit_count<goc::BitCount::Population, 32>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_mbcnt_lo_u32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return bit_count<goc::BitCount::MaskedLow, 32>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_mbcnt_hi_u32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return bit_count<goc::BitCount::MaskedHigh, 32>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_mbcnt_lo_u32_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return bit_count<goc::BitCount::MaskedLow, 64>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_mbcnt_hi_u32_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return bit_count<goc::BitCount::MaskedHigh, 64>(flags, exec_mask, instruction_flags, d, a, b);
+}
