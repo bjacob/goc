@@ -1432,6 +1432,16 @@ CPU detection follows the CPUID/XCR0 gating approach in
 `hrx-system/runtime/src/iree/base/internal/cpu_x86_64.c`, with GoC's coarse
 feature bundles. Formatting and the MIT license are borrowed from rocjitsu.
 
+Scalar integer arithmetic includes 32-bit add/subtract with carry, borrow or
+signed-overflow SCC; ABS/ABSDIFF; signed/unsigned MIN/MAX; low/high multiply;
+64-bit modular add/subtract/multiply; and signed 16-bit immediate add/multiply.
+These scalar-register instructions execute once per wave regardless of EXEC,
+including empty EXEC. They use a scalar path on every CPU level because they
+produce only one result per call. Exact models follow rocjitsu with a
+hardware-verified correction: `s_absdiff_i32` wraps subtraction before ABS.
+Tests cover 983,040 GFX1201 result/SCC triples, every signed immediate, aliasing,
+and host FP-state preservation. Benchmarks include all 20 instructions.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU

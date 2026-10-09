@@ -18,6 +18,96 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Scalar-register integer arithmetic executes once per wave and ignores EXEC,
+// including zero EXEC. Scalar output pointers are required. Both loose and
+// empirical exact semantics are supported; instruction_flags must be zero.
+// All host FP state is preserved. Results wrap to the destination width.
+// SCC outputs contain 0 or 1 and are written after d; if they alias, SCC wins.
+// Errors leave all outputs unchanged. Inputs passed by value may originate
+// from destination storage. Instructions without SCC outputs leave SCC alone.
+
+// Unsigned sum; SCC is carry-out.
+GOC_API int goc_rdna4_s_add_co_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// Unsigned difference; SCC is borrow-out.
+GOC_API int goc_rdna4_s_sub_co_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// Signed sum; SCC is signed overflow.
+GOC_API int goc_rdna4_s_add_co_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// Signed difference; SCC is signed overflow.
+GOC_API int goc_rdna4_s_sub_co_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// Unsigned sum with input_scc bit 0; SCC is carry-out.
+GOC_API int goc_rdna4_s_add_co_ci_u32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                      uint32_t b, uint32_t *scc, uint32_t input_scc);
+
+// Unsigned difference minus input_scc bit 0; SCC is borrow-out.
+GOC_API int goc_rdna4_s_sub_co_ci_u32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                      uint32_t b, uint32_t *scc, uint32_t input_scc);
+
+// Absolute value modulo 2^32; SCC is result != 0.
+GOC_API int goc_rdna4_s_abs_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t *scc);
+
+// Absolute value of the wrapped 32-bit difference; SCC is result != 0.
+GOC_API int goc_rdna4_s_absdiff_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// Signed minimum; SCC is a < b.
+GOC_API int goc_rdna4_s_min_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// Unsigned minimum; SCC is a < b.
+GOC_API int goc_rdna4_s_min_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// Signed maximum; SCC is a > b.
+GOC_API int goc_rdna4_s_max_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// Unsigned maximum; SCC is a > b.
+GOC_API int goc_rdna4_s_max_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// Low 32 bits of the product.
+GOC_API int goc_rdna4_s_mul_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b);
+
+// High 32 bits of the unsigned product.
+GOC_API int goc_rdna4_s_mul_hi_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, uint32_t a, uint32_t b);
+
+// High 32 bits of the signed product.
+GOC_API int goc_rdna4_s_mul_hi_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, uint32_t a, uint32_t b);
+
+// Sum modulo 2^64.
+GOC_API int goc_rdna4_s_add_nc_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint64_t *d, uint64_t a, uint64_t b);
+
+// Difference modulo 2^64.
+GOC_API int goc_rdna4_s_sub_nc_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint64_t *d, uint64_t a, uint64_t b);
+
+// Product modulo 2^64.
+GOC_API int goc_rdna4_s_mul_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint64_t *d, uint64_t a, uint64_t b);
+
+// Add sign-extended immediate to old *d; SCC is signed overflow.
+GOC_API int goc_rdna4_s_addk_co_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint16_t immediate, uint32_t *scc);
+
+// Multiply old *d by sign-extended immediate, modulo 2^32.
+GOC_API int goc_rdna4_s_mulk_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *d, uint16_t immediate);
+
 // RDNA4 WAVE_EXCP_FLAG_USER integer divide-by-zero status bit.
 static const uint32_t GOC_RDNA4_EXCEPTION_INT_DIV0 = (UINT32_C(1) << 6);
 
