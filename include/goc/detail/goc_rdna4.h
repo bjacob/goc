@@ -1452,7 +1452,8 @@ GOC_API int goc_rdna4_v_mullit_f32(uint64_t flags, uint64_t exec_mask, uint64_t 
 
 // Saturate both signed I16 halves of A to U8, pack them low byte first, and
 // write the selected half of D, preserving the other half. HIGH_D selects the
-// upper destination half; no other instruction modifiers apply. A/D use one
+// upper destination half. DPP8/DPP16 permutes A before saturation; no other
+// instruction modifiers apply. A/D use one
 // VGPR each. Loose semantics only; all host FP state is preserved.
 GOC_API int goc_rdna4_v_sat_pk_u8_i16(uint64_t flags, uint64_t exec_mask,
                                       uint64_t instruction_flags, uint32_t *const *d,
@@ -1462,6 +1463,7 @@ GOC_API int goc_rdna4_v_sat_pk_u8_i16(uint64_t flags, uint64_t exec_mask,
 // HIGH_A/B select source halves; ABS_A/B clear their sign bits before NEG_A/B
 // toggles them. Signaling NaNs are quieted; other payload bits and subnormals
 // are preserved.
+// DPP8/DPP16 permutes A before half selection; B stays in its original lane.
 // No other instruction modifiers apply. Each operand uses one VGPR. Loose
 // semantics only; all host FP state is preserved.
 GOC_API int goc_rdna4_v_pack_b32_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,

@@ -1136,6 +1136,12 @@ with `HIGH_A/B`, applies `ABS_A/B` before `NEG_A/B`, quiets signaling NaNs, and
 packs A low/B high. Other FP16 bits, including subnormals and NaN payloads,
 are preserved. All modifiers stay on eight-lane v3 and sixteen-lane v4 paths;
 host FP state is unchanged. Only loose semantics are exposed.
+Both instructions also support DPP8/DPP16 on A before saturation or half
+selection, retaining SIMD with every modifier. DPP tests cover all 66 packing
+modes, EXEC masks, destination aliases and guard words, plus 118,272 GPU
+results including signaling NaNs and destination-half preservation.
+Pinned DPP measurements take 18.8–24.6 ns on v3 (1.90–2.18× scalar) and
+8.8–13.3 ns on v4 (3.44–4.67×), including modified instructions.
 
 Tests retain digests for 4,325,376 GPU results spanning every I16/FP16 encoding
 and modifier combination, plus masks, aliases, unaligned storage and host

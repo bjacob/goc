@@ -3,6 +3,7 @@
 #include "rdna4_pack.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <algorithm>
 #include <stdint.h>
@@ -10,8 +11,13 @@
 namespace {
 
 template <bool Saturate>
-int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b) {
+  if (mode >> 32)
+    return goc::execute_dpp(flags, mask, mode, a,
+                            [&](uint32_t effective, const uint32_t *const *source) {
+                              return run<Saturate>(flags, effective, uint32_t(mode), d, source, b);
+                            });
   const uint32_t known = Saturate ? GOC_ALU_HIGH_D
                                   : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_ABS_A |
                                         GOC_ALU_ABS_B | GOC_ALU_NEG_A | GOC_ALU_NEG_B;
@@ -73,15 +79,11 @@ int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
 
 int goc_rdna4_v_sat_pk_u8_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<true>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
 int goc_rdna4_v_pack_b32_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a,
                              const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<false>(flags, exec_mask, instruction_flags, d, a, b);
 }

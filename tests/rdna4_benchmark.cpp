@@ -3343,45 +3343,55 @@ bool benchmark_mullit(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_pack(uint64_t cpu, int iterations, int min_ms) {
-  for (unsigned variant : {0u, 1u, 2u, 65u}) {
-    Registers r;
-    r.output_regs = 1;
-    for (unsigned lane = 0; lane < 32; ++lane) {
-      r.data[0][lane] = lane * 0x397fa113u;
-      r.data[4][lane] = lane * 0x159bc385u + 0xfc017c01u;
-      r.data[16][lane] = 0xcafebeef;
-      r.expected[128 * (lane / 16) + lane % 16] =
-          goc_test::pack_reference(variant, r.data[0][lane], r.data[4][lane], r.data[16][lane]);
-    }
-    const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
-                        const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *) {
-      return goc_test::pack_call(variant, flags, mask, mode, d, a, b);
-    };
-    uint32_t mode = goc_test::pack_mode(variant);
-    const char *name = variant < 2 ? "v_sat_pk_u8_i16" : "v_pack_b32_f16";
-    const char *label = variant == 1 ? "high" : variant == 65 ? "ABS/NEG/high" : "none";
-    double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
-    if (scalar < 0)
-      return false;
-    print_result(name, "loose", label, "scalar", scalar, 1);
-#if defined(GOC_BENCH_HAVE_X86_64_V3)
-    if (cpu >= GOC_CPU_X86_64_V3) {
-      double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
-      if (simd < 0)
+  for (unsigned variant : {0u, 1u, 2u, 65u})
+    for (int descriptor : {-1, 0, 5}) {
+      uint64_t mode =
+          goc_test::pack_mode(variant) | (descriptor < 0 ? 0 : goc_test::dpp_modes[descriptor]);
+      Registers r;
+      r.output_regs = 1;
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        r.data[0][lane] = lane * 0x397fa113u;
+        r.data[4][lane] = lane * 0x159bc385u + 0xfc017c01u;
+        r.data[16][lane] = 0xcafebeef;
+      }
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        int source = int(lane);
+        if (descriptor >= 0)
+          goc_test::dpp_source(mode, UINT32_MAX, lane, source);
+        r.expected[128 * (lane / 16) + lane % 16] = goc_test::pack_reference(
+            variant, source < 0 ? 0 : r.data[0][source], r.data[4][lane], r.data[16][lane]);
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *) {
+        return goc_test::pack_call(variant, flags, mask, mode, d, a, b);
+      };
+      const char *name = variant < 2 ? "v_sat_pk_u8_i16" : "v_pack_b32_f16";
+      const char *label = variant == 1 ? "high" : variant == 65 ? "ABS/NEG/high" : "none";
+      if (descriptor >= 0)
+        label = descriptor == 0 ? (goc_test::pack_mode(variant) ? "DPP8/modified" : "DPP8")
+                                : (goc_test::pack_mode(variant) ? "DPP16/modified" : "DPP16");
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
         return false;
-      print_result(name, "loose", label, "x86-64-v3", simd, scalar / simd);
-    }
+      print_result(name, "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
-    if (cpu >= GOC_CPU_X86_64_V4) {
-      double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
-      if (simd < 0)
-        return false;
-      print_result(name, "loose", label, "x86-64-v4", simd, scalar / simd);
-    }
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "loose", label, "x86-64-v4", simd, scalar / simd);
+      }
 #endif
-  }
+    }
   (void)cpu;
   return true;
 }
