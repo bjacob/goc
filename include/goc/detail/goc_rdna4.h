@@ -2136,6 +2136,7 @@ GOC_API int goc_rdna4_v_ashrrev_i64(uint64_t flags, uint64_t exec_mask, uint64_t
 // rounding, followed by CLAMP. Active OMOD flushes subnormal outputs and both
 // signed zeros to +0. Loose SIMD semantics approximate the captured polynomial
 // and require host nearest-even rounding with denormals enabled.
+// DPP8/DPP16 permutes A before source modifiers.
 GOC_API int goc_rdna4_v_sin_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
 GOC_API int goc_rdna4_v_cos_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
@@ -2148,6 +2149,7 @@ GOC_API int goc_rdna4_v_cos_f32(uint64_t flags, uint64_t exec_mask, uint64_t ins
 // preserved; all host floating-point state is preserved.
 // Loose SIMD semantics require host nearest-even rounding with denormals enabled.
 // GOC_FP16_OVFL is accepted and has no effect on the bounded finite results.
+// DPP8/DPP16 permutes A before source modifiers and half selection.
 GOC_API int goc_rdna4_v_sin_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
 GOC_API int goc_rdna4_v_cos_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,

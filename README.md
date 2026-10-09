@@ -1115,6 +1115,14 @@ all modifiers, half selectors, aliases, masks, host FP settings, and literal
 OMOD underflow boundaries. `GOC_FP16_OVFL` is accepted but has no effect because
 finite trig outputs and their permitted scaling cannot overflow FP16.
 
+Both widths support DPP8/DPP16 before source modifiers and half selection,
+in loose and borrowed exact semantics. Tests cross DPP with every modifier,
+random raw inputs, EXEC masks, aliases and guards; 573,440 GPU-captured
+quarter-turn results match bitwise in both semantics. Full-EXEC benchmarks
+include DPP8/DPP16 with negation, scaling, clamp and FP16 half selection.
+Pinned Ryzen 9 7950X3D v3 timings are 56.8–70.0 ns for FP32
+(6.54–8.29× scalar) and 70.6–82.2 ns for FP16 (6.70–7.94×).
+
 Bit-count instructions implement leading zeros (`CLZ`), trailing zeros (`CTZ`),
 leading sign bits (`CLS`), and population count plus a wrapping accumulator
 (`BCNT`). CLZ/CTZ return `0xffffffff` for zero; CLS counts the sign bit itself

@@ -95,6 +95,8 @@ void check_high_flags(const char *name,
     supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   for (auto mnemonic : {"v_cndmask_b32", "v_cndmask_b16"})
     supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
+  for (auto mnemonic : {"v_sin_f32", "v_cos_f32", "v_sin_f16", "v_cos_f16"})
+    supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   for (unsigned bit = 32; bit < 64; ++bit)
     for (uint64_t exec : {UINT64_C(0), UINT64_MAX}) {
       // A DPP enable bit alone is a valid descriptor (zero fields).

@@ -1334,47 +1334,59 @@ bool benchmark_half_trig(uint64_t cpu, int iterations, int min_ms) {
   const char *names[] = {"v_sin_f16", "v_cos_f16"};
   for (int op = 0; op < 2; ++op)
     for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D |
-                                                GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
-      Registers r;
-      r.output_regs = 1;
-      for (int lane = 0; lane < 32; ++lane) {
-        double input = double(lane * 37 - 600) / 512;
-        uint16_t code = goc_test::half_bits(input);
-        r.data[0][lane] = modifiers ? (uint32_t(code) << 16) | 0x7c01 : 0x7c010000 | code;
-        r.data[16][lane] = 0xfacecafe;
-        double phase = std::remainder(modifiers ? -input : input, 1.0);
-        double angle = phase * 6.283185307179586476925286766559;
-        uint16_t want = goc_test::half_bits(op ? std::cos(angle) : std::sin(angle));
-        if (modifiers) {
-          double rounded = goc_test::half_value(want);
-          rounded = std::abs(rounded) < 0x1p-14 ? 0 : rounded * 0.5;
-          want = goc_test::half_bits(rounded);
-          if ((want & 0x7fff) < 0x400)
-            want = 0;
-          want = goc_test::half_bits(std::min(1.0, std::max(0.0, goc_test::half_value(want))));
+                                                GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP})
+      for (int descriptor : {-1, 0, 5}) {
+        uint64_t instruction_flags =
+            modifiers | (descriptor < 0 ? 0 : goc_test::dpp_modes[descriptor]);
+        Registers r;
+        r.output_regs = 1;
+        for (int lane = 0; lane < 32; ++lane) {
+          double input = double(lane * 37 - 600) / 512;
+          uint16_t code = goc_test::half_bits(input);
+          r.data[0][lane] = modifiers ? (uint32_t(code) << 16) | 0x7c01 : 0x7c010000 | code;
+          r.data[16][lane] = 0xfacecafe;
         }
-        r.expected[128 * (lane / 16) + lane % 16] =
-            modifiers ? (uint32_t(want) << 16) | 0xcafe : 0xface0000 | want;
-      }
-      const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *,
-                          const uint32_t *const *) {
-        return functions[op](flags, mask, mode, d, a);
-      };
-      const char *mode = modifiers ? "NEG/hi/half/clamp" : "none";
-      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
-      if (scalar < 0)
-        return false;
-      print_result(names[op], "loose", mode, "scalar", scalar, 1);
-#if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if (cpu >= GOC_CPU_X86_64_V3) {
-        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
-        if (simd < 0)
+        for (int lane = 0; lane < 32; ++lane) {
+          int source = lane;
+          if (descriptor >= 0)
+            goc_test::dpp_source(instruction_flags, UINT32_MAX, lane, source);
+          double input = source < 0 ? 0 : double(source * 37 - 600) / 512;
+          double phase = std::remainder(modifiers ? -input : input, 1.0);
+          double angle = phase * 6.283185307179586476925286766559;
+          uint16_t want = goc_test::half_bits(op ? std::cos(angle) : std::sin(angle));
+          if (modifiers) {
+            double rounded = goc_test::half_value(want);
+            rounded = std::abs(rounded) < 0x1p-14 ? 0 : rounded * 0.5;
+            want = goc_test::half_bits(rounded);
+            if ((want & 0x7fff) < 0x400)
+              want = 0;
+            want = goc_test::half_bits(std::min(1.0, std::max(0.0, goc_test::half_value(want))));
+          }
+          r.expected[128 * (lane / 16) + lane % 16] =
+              modifiers ? (uint32_t(want) << 16) | 0xcafe : 0xface0000 | want;
+        }
+        const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *,
+                            const uint32_t *const *) {
+          return functions[op](flags, mask, mode, d, a);
+        };
+        const char *mode = modifiers ? "NEG/hi/half/clamp" : "none";
+        if (descriptor >= 0)
+          mode = descriptor == 0 ? (modifiers ? "DPP8/modified" : "DPP8")
+                                 : (modifiers ? "DPP16/modified" : "DPP16");
+        double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, instruction_flags);
+        if (scalar < 0)
           return false;
-        print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
-      }
+        print_result(names[op], "loose", mode, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+        if (cpu >= GOC_CPU_X86_64_V3) {
+          double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, instruction_flags);
+          if (simd < 0)
+            return false;
+          print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+        }
 #endif
-    }
+      }
   (void)cpu;
   return true;
 }
@@ -1384,39 +1396,51 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
   const Unary functions[] = {goc_rdna4_v_sin_f32, goc_rdna4_v_cos_f32};
   const char *names[] = {"v_sin_f32", "v_cos_f32"};
   for (int op = 0; op < 2; ++op)
-    for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
-      Registers r;
-      r.output_regs = 1;
-      r.absolute_tolerance = 3e-7f;
-      for (int lane = 0; lane < 32; ++lane) {
-        float input = float(lane * 193 - 3021) / 1024;
-        r.data[0][lane] = bits(input);
-        double phase = std::remainder(double(modifiers ? -input : input), 1.0);
-        double angle = phase * 6.283185307179586476925286766559;
-        double want = op ? std::cos(angle) : std::sin(angle);
-        if (modifiers)
-          want = std::min(1.0, std::max(0.0, want * 0.5));
-        r.expected[128 * (lane / 16) + lane % 16] = bits(float(want));
-      }
-      const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *,
-                          const uint32_t *const *) {
-        return functions[op](flags, mask, mode, d, a);
-      };
-      const char *mode = modifiers ? "NEG_A / half/clamp" : "none";
-      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
-      if (scalar < 0)
-        return false;
-      print_result(names[op], "loose", mode, "scalar", scalar, 1);
-#if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if (cpu >= GOC_CPU_X86_64_V3) {
-        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
-        if (simd < 0)
+    for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP})
+      for (int descriptor : {-1, 0, 5}) {
+        uint64_t instruction_flags =
+            modifiers | (descriptor < 0 ? 0 : goc_test::dpp_modes[descriptor]);
+        Registers r;
+        r.output_regs = 1;
+        r.absolute_tolerance = 3e-7f;
+        for (int lane = 0; lane < 32; ++lane) {
+          float input = float(lane * 193 - 3021) / 1024;
+          r.data[0][lane] = bits(input);
+        }
+        for (int lane = 0; lane < 32; ++lane) {
+          int source = lane;
+          if (descriptor >= 0)
+            goc_test::dpp_source(instruction_flags, UINT32_MAX, lane, source);
+          float input = source < 0 ? 0 : float(source * 193 - 3021) / 1024;
+          double phase = std::remainder(double(modifiers ? -input : input), 1.0);
+          double angle = phase * 6.283185307179586476925286766559;
+          double want = op ? std::cos(angle) : std::sin(angle);
+          if (modifiers)
+            want = std::min(1.0, std::max(0.0, want * 0.5));
+          r.expected[128 * (lane / 16) + lane % 16] = bits(float(want));
+        }
+        const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *,
+                            const uint32_t *const *) {
+          return functions[op](flags, mask, mode, d, a);
+        };
+        const char *mode = modifiers ? "NEG_A / half/clamp" : "none";
+        if (descriptor >= 0)
+          mode = descriptor == 0 ? (modifiers ? "DPP8/modified" : "DPP8")
+                                 : (modifiers ? "DPP16/modified" : "DPP16");
+        double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, instruction_flags);
+        if (scalar < 0)
           return false;
-        print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
-      }
+        print_result(names[op], "loose", mode, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+        if (cpu >= GOC_CPU_X86_64_V3) {
+          double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, instruction_flags);
+          if (simd < 0)
+            return false;
+          print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+        }
 #endif
-    }
+      }
   (void)cpu;
   return true;
 }

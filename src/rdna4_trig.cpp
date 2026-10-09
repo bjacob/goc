@@ -3,6 +3,7 @@
 #include "rdna4_trig.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 #include "rdna4_trig_model.h"
 
 #include <stdint.h>
@@ -36,8 +37,13 @@ uint32_t output(uint32_t bits, uint32_t mode) {
 }
 
 template <bool Cosine>
-int trig(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int trig(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a) {
+  if (mode >> 32)
+    return goc::execute_dpp(flags, mask, mode, a,
+                            [&](uint32_t effective, const uint32_t *const *source) {
+                              return trig<Cosine>(flags, effective, uint32_t(mode), d, source);
+                            });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;
@@ -69,14 +75,10 @@ int trig(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 int goc_rdna4_v_sin_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return trig<false>(flags, mask, mode, d, a);
 }
 
 int goc_rdna4_v_cos_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return trig<true>(flags, mask, mode, d, a);
 }

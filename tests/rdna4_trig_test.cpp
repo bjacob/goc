@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_trig_golden.h"
 
@@ -11,6 +12,7 @@
 #include <gtest/gtest.h>
 #include <random>
 #include <stdint.h>
+#include <vector>
 
 #if defined(__x86_64__) || defined(_M_X64)
 #include <immintrin.h>
@@ -222,4 +224,83 @@ TEST(Trig, InvalidFlagsAndReservedSemanticsPreserveDestination) {
       EXPECT_EQ(value, 0xdeadbeef);
     EXPECT_EQ(fn(GOC_SEMANTICS_MASK, UINT32_MAX, 0, dp, ap), GOC_SUCCESS);
   }
+}
+
+TEST(Trig, DppModifiersMasksAliasesAndGuards) {
+  std::mt19937 random(987173);
+  uint32_t initial[2][34];
+  for (auto &reg : initial)
+    for (auto &word : reg)
+      word = random();
+  for (auto fn : functions)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (int m = 0; m < 32; ++m)
+          for (auto descriptor : goc_test::dpp_modes) {
+            auto masks =
+                (m == 0 || m == 32 - 1) ? rdna4_exec_masks() : std::vector<uint64_t>{UINT32_MAX};
+            for (auto mask : masks)
+              for (unsigned target = 0; target < 2; ++target) {
+                uint32_t words[2][34], expected[2][34], permuted[32] = {};
+                for (unsigned reg = 0; reg < 2; ++reg) {
+                  std::copy_n(initial[reg], 34, words[reg]);
+                  std::copy_n(initial[reg], 34, expected[reg]);
+                }
+                uint32_t effective = 0;
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  int source = 0;
+                  if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source)) {
+                    effective |= uint32_t(1) << lane;
+                    permuted[lane] = source < 0 ? 0 : initial[0][source + 1];
+                  }
+                }
+                const uint32_t *a[] = {words[0] + 1}, *reference_a[] = {permuted};
+                uint32_t *d[] = {words[target] + 1}, *reference_d[] = {expected[target] + 1};
+                ASSERT_EQ(fn(cpu | semantics, effective, modifiers(m), reference_d, reference_a),
+                          GOC_SUCCESS);
+                ASSERT_EQ(fn(cpu | semantics, mask, descriptor | modifiers(m), d, a), GOC_SUCCESS);
+                for (unsigned reg = 0; reg < 2; ++reg)
+                  for (unsigned word = 0; word < 34; ++word)
+                    ASSERT_EQ(words[reg][word], expected[reg][word])
+                        << cpu << "/" << semantics << "/" << m << "/" << descriptor << "/" << mask;
+              }
+          }
+}
+
+TEST(Trig, DppValidation) {
+  for (auto fn : functions)
+    for (auto descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
+      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 1})
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    }
+}
+
+// RX 9070 quarter-turn inputs: both operations, all modifiers, seven DPP
+// descriptors and eight EXEC masks. Includes zeros and large integral turns.
+TEST(Trig, DppHardwareCorpus) {
+  const uint32_t values[] = {0,          0x80000000, 0x3e800000, 0xbe800000,
+                             0x3f000000, 0xbf000000, 0x3f400000, 0x4b000000};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+      uint64_t hash = UINT64_C(14695981039346656037);
+      for (auto mask : masks)
+        for (auto fn : functions)
+          for (int m = 0; m < 32; ++m)
+            for (auto descriptor : goc_test::dpp_modes) {
+              uint32_t av[32], output[32];
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                av[lane] = values[lane % 8];
+                output[lane] = 0xdead0000u + lane;
+              }
+              const uint32_t *a[] = {av};
+              uint32_t *d[] = {output};
+              ASSERT_EQ(fn(cpu | semantics, mask, descriptor | modifiers(m), d, a), GOC_SUCCESS);
+              for (auto word : output)
+                hash = (hash ^ word) * UINT64_C(1099511628211);
+            }
+      EXPECT_EQ(hash, UINT64_C(0xeeebc98ab70cbf25)) << cpu << "/" << semantics;
+    }
 }
