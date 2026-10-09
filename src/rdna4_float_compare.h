@@ -3,11 +3,34 @@
 #ifndef GOC_RDNA4_FLOAT_COMPARE_H_
 #define GOC_RDNA4_FLOAT_COMPARE_H_
 
+#include "goc/goc.h"
 #include "rdna4_integer_compare.h"
 
 #include <stdint.h>
 
 namespace goc {
+
+// GFX1201 comparisons: nonfinite operands suppress denormal reporting for the pair.
+// Signaling NaNs raise invalid; CLAMP makes quiet NaNs signal too. Input flushing suppresses
+// input-denormal reporting. Sign modifiers do not affect this classification.
+template <unsigned Bits>
+uint32_t float_compare_exceptions(uint64_t a, uint64_t b, bool flush, bool signaling = false) {
+  constexpr uint64_t magnitude = (1ULL << (Bits - 1)) - 1;
+  constexpr uint64_t infinity = Bits == 16   ? 0x7c00
+                                : Bits == 32 ? 0x7f800000
+                                             : 0x7ff0000000000000ULL;
+  constexpr uint64_t quiet = Bits == 16 ? 0x200 : Bits == 32 ? 0x400000 : 0x8000000000000ULL;
+  a &= magnitude;
+  b &= magnitude;
+  if (a >= infinity || b >= infinity)
+    return ((a > infinity && (signaling || !(a & quiet))) ||
+            (b > infinity && (signaling || !(b & quiet))))
+               ? GOC_RDNA4_EXCEPTION_INVALID
+               : 0;
+  return !flush && ((a && !(a & infinity)) || (b && !(b & infinity)))
+             ? GOC_RDNA4_EXCEPTION_INPUT_DENORM
+             : 0;
+}
 
 template <unsigned Predicate>
 uint32_t float_compare_result(uint32_t less, uint32_t equal, uint32_t ordered) {

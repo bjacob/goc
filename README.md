@@ -2128,9 +2128,19 @@ exception bits into this wave-wide register, preserving prior bits. Instructions
 that do not report exceptions have no such parameter; existing register outputs
 are not duplicated.
 
-**Only `v_rcp_iflag_f32` currently implements exception generation.** It
-accumulates integer-divide-by-zero flags on all CPU paths. In loose mode, other
-affected instructions execute normally and leave the register unchanged. Loose
+**Implemented reporting:** `v_rcp_iflag_f32` accumulates integer-divide-by-zero
+flags on all CPU paths. All 112 floating comparisons implement invalid and
+input-denormal flags in exact mode with a non-null pointer. Signaling NaNs raise
+invalid; vector CLAMP also signals on quiet NaNs without changing the condition
+result. Nonfinite operand pairs suppress input-denormal reporting. Subnormals
+raise input-denormal only when input flushing is disabled. Scalar comparisons
+execute regardless of EXEC; vector comparisons reduce only participating lanes
+after DPP. Exact comparison reporting uses integer classification on the scalar
+path; loose mode and null-output calls retain their SIMD paths. A 338,688-case
+RX 9070 capture validates the reporting rules across predicates, formats, masks,
+and denormal modes.
+
+In loose mode, other affected instructions leave the register unchanged. Loose
 semantics require no optional global-state output, even with a non-null pointer.
 SIMD paths are expected to skip reporting to preserve performance. Loose arithmetic
 need not match hardware, so its exception flags cannot be relied on to match

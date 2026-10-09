@@ -102,9 +102,8 @@ TEST(ExceptionRegisters, UnsupportedLeavesAllOutputsUntouched) {
   EXPECT_EQ(data[0], 0xdeadbeefU);
   EXPECT_EQ(excp_flag_user, 0x80000021U);
   uint32_t scc = 1;
-  EXPECT_EQ(
-      goc_rdna4_s_cmp_eq_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &scc, 0, 0, &excp_flag_user),
-      GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+  EXPECT_EQ(goc_rdna4_s_add_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &scc, 0, 0, &excp_flag_user),
+            GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(scc, 1U);
   EXPECT_EQ(excp_flag_user, 0x80000021U);
   // Opting out keeps validation and zero-EXEC behavior unchanged.

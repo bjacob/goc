@@ -42,9 +42,13 @@ int bit(uint64_t flags, uint32_t mode, uint32_t *scc, T a, uint32_t b) {
 }
 
 template <unsigned Bits, unsigned Predicate>
-int floating(uint64_t flags, uint32_t mode, uint32_t *scc, uint32_t a, uint32_t b) {
+int floating(uint64_t flags, uint32_t mode, uint32_t *scc, uint32_t a, uint32_t b,
+             uint32_t *excp_flag_user) {
   if (int error = validate(flags, mode))
     return error;
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
+    *excp_flag_user |=
+        goc::float_compare_exceptions<Bits>(a, b, flags & GOC_FP_FLUSH_INPUT_DENORMALS);
   constexpr uint32_t sign = 1u << (Bits - 1), magnitude = sign - 1,
                      infinity = Bits == 16 ? 0x7c00 : 0x7f800000;
   if constexpr (Bits == 16) {
@@ -216,280 +220,280 @@ int goc_rdna4_s_cmp_lg_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 
 int goc_rdna4_s_cmp_lt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 1>(flags, instruction_flags, scc, a, b);
+  return floating<32, 1>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_lt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 1>(flags, instruction_flags, scc, a, b);
+  return floating<16, 1>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_eq_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 2>(flags, instruction_flags, scc, a, b);
+  return floating<32, 2>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_eq_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 2>(flags, instruction_flags, scc, a, b);
+  return floating<16, 2>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_le_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 3>(flags, instruction_flags, scc, a, b);
+  return floating<32, 3>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_le_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 3>(flags, instruction_flags, scc, a, b);
+  return floating<16, 3>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_gt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 4>(flags, instruction_flags, scc, a, b);
+  return floating<32, 4>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_gt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 4>(flags, instruction_flags, scc, a, b);
+  return floating<16, 4>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_lg_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 5>(flags, instruction_flags, scc, a, b);
+  return floating<32, 5>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_lg_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 5>(flags, instruction_flags, scc, a, b);
+  return floating<16, 5>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_ge_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 6>(flags, instruction_flags, scc, a, b);
+  return floating<32, 6>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_ge_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 6>(flags, instruction_flags, scc, a, b);
+  return floating<16, 6>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_o_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 7>(flags, instruction_flags, scc, a, b);
+  return floating<32, 7>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_o_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 7>(flags, instruction_flags, scc, a, b);
+  return floating<16, 7>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_u_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 8>(flags, instruction_flags, scc, a, b);
+  return floating<32, 8>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_u_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 8>(flags, instruction_flags, scc, a, b);
+  return floating<16, 8>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_nge_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 9>(flags, instruction_flags, scc, a, b);
+  return floating<32, 9>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_nge_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 9>(flags, instruction_flags, scc, a, b);
+  return floating<16, 9>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_nlg_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 10>(flags, instruction_flags, scc, a, b);
+  return floating<32, 10>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_nlg_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 10>(flags, instruction_flags, scc, a, b);
+  return floating<16, 10>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_ngt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 11>(flags, instruction_flags, scc, a, b);
+  return floating<32, 11>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_ngt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 11>(flags, instruction_flags, scc, a, b);
+  return floating<16, 11>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_nle_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 12>(flags, instruction_flags, scc, a, b);
+  return floating<32, 12>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_nle_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 12>(flags, instruction_flags, scc, a, b);
+  return floating<16, 12>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_neq_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 13>(flags, instruction_flags, scc, a, b);
+  return floating<32, 13>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_neq_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 13>(flags, instruction_flags, scc, a, b);
+  return floating<16, 13>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_nlt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<32, 14>(flags, instruction_flags, scc, a, b);
+  return floating<32, 14>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
 
 int goc_rdna4_s_cmp_nlt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  return floating<16, 14>(flags, instruction_flags, scc, a, b);
+  return floating<16, 14>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }

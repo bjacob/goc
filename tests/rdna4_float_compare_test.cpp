@@ -168,7 +168,7 @@ TEST(FloatCompare, ValidationAndCompleteHostFpState) {
             GOC_ERROR_INVALID_FLAGS);
   EXPECT_EQ(result, 0xdeadbeef);
   for (unsigned op = 0; op < 84; ++op) {
-    uint32_t known = goc_test::float_compare_mode(op < 28 ? 63 : 15), d = 1;
+    uint32_t known = goc_test::float_compare_mode(op < 28 ? 63 : 15) | GOC_ALU_CLAMP, d = 1;
     EXPECT_EQ(goc_test::float_compare_functions[op](GOC_FP_FLUSH_INPUT_DENORMALS, 0U, known, &d,
                                                     nullptr, nullptr, nullptr),
               GOC_SUCCESS);

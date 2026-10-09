@@ -29,9 +29,9 @@ extern "C" {
 // Any loose reporting is not guaranteed complete or accurate; loose arithmetic
 // need not match hardware, so its exception flags need not match hardware either.
 // Loose mode never returns GOC_ERROR_UNSUPPORTED_GLOBAL_STATE.
-// Except for V_RCP_IFLAG_F32, reporting is not yet implemented: non-loose requests
-// with a non-NULL pointer return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE before operand
-// access, even for empty EXEC, with precedence over other validation. NULL opts
+// Reporting is implemented for floating comparisons and V_RCP_IFLAG_F32. Other
+// non-loose requests with a non-NULL pointer return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE
+// before operand access, even for empty EXEC, before other validation. NULL opts
 // out of reporting in every mode and preserves numerical paths and validation.
 
 // DPP8 permutes source A within each group of eight lanes before arithmetic
@@ -173,6 +173,9 @@ int goc_rdna4_s_wqm_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 // input flushing. Output flushing and FP16_OVFL have no effect; integer/bit tests
 // also ignore input flushing. Ordered predicates are false for either NaN;
 // negated predicates are their logical complements, including for NaNs.
+// In exact mode with non-NULL excp_flag_user, signaling NaNs accumulate INVALID.
+// Finite operand pairs accumulate INPUT_DENORM if either input is subnormal and
+// input flushing is disabled. Loose mode leaves excp_flag_user unchanged.
 
 // SCC is a == b (signed).
 int goc_rdna4_s_cmp_eq_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -852,7 +855,9 @@ int goc_rdna4_s_addk_co_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_s_mulk_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *d, uint16_t immediate);
 
-// RDNA4 WAVE_EXCP_FLAG_USER integer divide-by-zero status bit.
+// RDNA4 WAVE_EXCP_FLAG_USER status bits currently produced by GoC.
+static const uint32_t GOC_RDNA4_EXCEPTION_INVALID = 1U << 0;
+static const uint32_t GOC_RDNA4_EXCEPTION_INPUT_DENORM = 1U << 1;
 static const uint32_t GOC_RDNA4_EXCEPTION_INT_DIV0 = 1U << 6;
 
 // Reciprocal with sticky integer divide-by-zero status. Supports ABS_A, NEG_A,
@@ -914,6 +919,11 @@ int goc_rdna4_v_s_sqrt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 // flushes input subnormals to signed zero after modifiers; otherwise they are
 // preserved. Signed zeros compare equal. NaNs make ordered relations false and
 // their negations true. O/U test ordered/unordered. All host FP state is preserved.
+// CLAMP selects signaling comparison: any NaN raises INVALID when reporting.
+// Without CLAMP, only signaling NaNs raise INVALID. Comparison results are unchanged.
+// Exact reporting accumulates INPUT_DENORM for
+// finite operand pairs containing a preserved subnormal. Only participating
+// lanes contribute, after DPP filtering. Loose mode leaves excp_flag_user unchanged.
 int goc_rdna4_v_cmp_lt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *d, const uint32_t *const *a, const uint32_t *const *b,
                            uint32_t *excp_flag_user);

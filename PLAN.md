@@ -395,7 +395,10 @@ Any exception bits that are reported still accumulate with OR.
 For bit-exact semantics with a non-null pointer, unavailable faithful updates
 return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`; they must not silently fall back to
 loose reporting. Currently, `V_RCP_IFLAG_F32` retains its implemented
-integer-divide-by-zero reporting. Other affected instructions reject requested
+integer-divide-by-zero reporting. Floating comparisons also implement exact
+invalid/input-denormal reporting, validated against RX 9070 captures. Their exact
+reporting path uses integer classification; loose and null-output paths keep SIMD
+dispatch without that work. Other affected instructions reject requested
 reporting in non-loose modes before accessing operands, even for empty
 `exec_mask`, with precedence over other validation errors. Null retains existing
 validation, numerical behavior, and SIMD dispatch. Implement and hardware-test
