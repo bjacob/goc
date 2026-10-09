@@ -30,7 +30,7 @@ TEST(DppUnary, HardwareCorpus) {
             }
             auto pa = a, pd = d;
             uint64_t mode = descriptor | (modified ? GOC_ALU_NEG_A | GOC_ALU_OMOD_2 : 0);
-            ASSERT_EQ(fn(cpu, exec_mask, mode, &pd, &pa), GOC_SUCCESS);
+            ASSERT_EQ(fn(cpu, exec_mask, mode, &pd, &pa, nullptr), GOC_SUCCESS);
             for (uint32_t value : d) {
               if ((value & 0x7fffffff) > 0x7f800000)
                 value = 0x7fc00000;
@@ -64,7 +64,8 @@ TEST(DppUnary, AllModifiersMasksAliasesAndSpecialValues) {
               uint32_t *pa = a + 1, *pd = alias ? a + 1 : d + 1;
               uint32_t low = (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
                              ((variant >> 2 & 3) << 6) | (variant & 16 ? GOC_ALU_CLAMP : 0);
-              ASSERT_EQ(goc_test::unary_functions[op](cpu, exec_mask, descriptor | low, &pd, &pa),
+              ASSERT_EQ(goc_test::unary_functions[op](cpu, exec_mask, descriptor | low, &pd, &pa,
+                                                      nullptr),
                         GOC_SUCCESS);
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source;
@@ -98,14 +99,15 @@ TEST(DppUnary, ValidationBeforeOperandAccess) {
   for (auto fn : goc_test::unary_functions)
     for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (uint64_t mode : bad) {
-        EXPECT_EQ(fn(0, exec_mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(0, exec_mask, mode, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
       }
       for (uint64_t mode : goc_test::dpp_modes) {
-        EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, mode, nullptr,
-                     nullptr),
+                     nullptr, nullptr),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
-        EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr), GOC_SUCCESS);
+        EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr, nullptr), GOC_SUCCESS);
       }
     }
 }

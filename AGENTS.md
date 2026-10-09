@@ -76,3 +76,12 @@ modes, exception masks, denormal controls, or exception flags, and do not use
 save/modify/restore guards or helpers for that purpose. Ordinary arithmetic may
 raise sticky exception flags. Tests may modify the FP environment to verify
 behavior under different host settings.
+
+Append implicit architectural register outputs to instruction API parameter
+lists, exactly one pointer per register the instruction may write. Use the
+lowercase ISA register name and its native-width unsigned integer type. A null
+pointer opts out. Apply the register's specified update semantics: in particular,
+EXCP_FLAG_USER is a wave-wide uint32_t accumulated with bitwise OR, not cleared
+or overwritten. Only participating lanes contribute. Leave all outputs unchanged
+on API errors. Never silently omit requested exception reporting; return an
+explicit unsupported error when it is unavailable.

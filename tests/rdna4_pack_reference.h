@@ -71,7 +71,7 @@ inline uint32_t pack_reference(unsigned variant, uint32_t a, uint32_t b, uint32_
 inline int pack_call(unsigned variant, uint64_t flags, uint32_t exec_mask, uint64_t mode,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return variant < 2 ? goc_rdna4_v_sat_pk_u8_i16(flags, exec_mask, mode, d, a)
-                     : goc_rdna4_v_pack_b32_f16(flags, exec_mask, mode, d, a, b);
+                     : goc_rdna4_v_pack_b32_f16(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
 } // namespace goc_test

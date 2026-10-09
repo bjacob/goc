@@ -75,7 +75,10 @@ int ldexp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
 } // namespace
 
 int goc_rdna4_v_ldexp_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b) {
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return goc::execute_dpp(flags, exec_mask, mode, a,
                             [&](uint32_t exec_mask, const uint32_t *const *source) {
@@ -85,7 +88,10 @@ int goc_rdna4_v_ldexp_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uin
 }
 
 int goc_rdna4_v_ldexp_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b) {
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return ldexp<true>(flags, exec_mask, mode, d, a, b);

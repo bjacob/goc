@@ -61,7 +61,9 @@ constexpr std::array<uint64_t, 2370> trig_preop_table = make_table();
 
 int goc_rdna4_v_trig_preop_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode,
                                uint32_t *const *d, const uint32_t *const *a,
-                               const uint32_t *const *b) {
+                               const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   const uint32_t known =

@@ -48,9 +48,9 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
               d[lane] = values[(lane + 1) % 8];
             }
             auto pa = a, pb = b, pc = c, pd = d;
-            ASSERT_EQ(
-                goc_test::half_fma_functions[op](cpu | sem, exec_mask, mode, &pd, &pa, &pb, &pc),
-                GOC_SUCCESS);
+            ASSERT_EQ(goc_test::half_fma_functions[op](cpu | sem, exec_mask, mode, &pd, &pa, &pb,
+                                                       &pc, nullptr),
+                      GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
               uint32_t want = values[(lane + 1) % 8];
@@ -104,7 +104,7 @@ TEST(DppHalfFma, MasksAliasesAndRandomWords) {
                 uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1, words[3] + 1};
                 ASSERT_EQ(goc_test::half_fma_functions[op](cpu | sem, exec_mask, mode, p + dest,
                                                            p + layout[0], p + layout[1],
-                                                           p + layout[2]),
+                                                           p + layout[2], nullptr),
                           GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 4; ++reg)
                   for (unsigned index = 0; index < 34; ++index) {
@@ -132,21 +132,22 @@ TEST(DppHalfFma, Validation) {
   for (unsigned op = 0; op < 2; ++op)
     for (uint64_t mode : modes(op)) {
       auto fn = goc_test::half_fma_functions[op];
-      EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
       for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         if (op == 1) {
           for (uint32_t invalid : {GOC_ALU_NEG_C, GOC_ALU_ABS_C, GOC_ALU_HIGH_C})
-            EXPECT_EQ(fn(0, exec_mask, mode | invalid, nullptr, nullptr, nullptr, nullptr),
+            EXPECT_EQ(fn(0, exec_mask, mode | invalid, nullptr, nullptr, nullptr, nullptr, nullptr),
                       GOC_ERROR_INVALID_FLAGS);
         }
-        EXPECT_EQ(fn(0, exec_mask, mode | (1u << 13), nullptr, nullptr, nullptr, nullptr),
+        EXPECT_EQ(fn(0, exec_mask, mode | (1u << 13), nullptr, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(0, exec_mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr, nullptr),
-                  GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr, nullptr, nullptr),
+        EXPECT_EQ(
+            fn(0, exec_mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr, nullptr, nullptr),
+            GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, mode, nullptr, nullptr,
-                     nullptr, nullptr),
+                     nullptr, nullptr, nullptr),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
     }
@@ -173,7 +174,8 @@ TEST(DppHalfFma, EveryModifierAndOverflowMode) {
               std::memcpy(old, words[3], sizeof(old));
               uint32_t *p[] = {words[0], words[1], words[2], words[3]};
               ASSERT_EQ(goc_test::half_fma_functions[op](cpu | sem | (saturate ? GOC_FP16_OVFL : 0),
-                                                         UINT32_MAX, mode, p + 3, p, p + 1, p + 2),
+                                                         UINT32_MAX, mode, p + 3, p, p + 1, p + 2,
+                                                         nullptr),
                         GOC_SUCCESS);
               for (unsigned lane = 0; lane < 32; ++lane) {
                 uint32_t want = old[lane];
@@ -216,9 +218,9 @@ TEST(DppHalfFma, ExactPreservesHostEnvironment) {
           ASSERT_EQ(std::fesetround(rounding), 0);
           ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
           ASSERT_EQ(std::feraiseexcept(FE_DIVBYZERO), 0);
-          ASSERT_EQ(goc_test::half_fma_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
-                                                         GOC_SEMANTICS_STRICT,
-                                                     0xaaaaaaaaU, mode, p + 3, p, p + 1, p + 2),
+          ASSERT_EQ(goc_test::half_fma_functions[op](
+                        cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0xaaaaaaaaU,
+                        mode, p + 3, p, p + 1, p + 2, nullptr),
                     GOC_SUCCESS);
           EXPECT_EQ(std::fegetround(), rounding);
           EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);

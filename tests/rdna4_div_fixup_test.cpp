@@ -88,7 +88,7 @@ TEST(DivFixup, DppHalfModifiersMasksAndAliases) {
                              *c[] = {words[shared ? 0 : 2] + 1};
               uint32_t *d[] = {words[target] + 1};
               ASSERT_EQ(functions[0](cpu | (mode & 1 ? GOC_FP16_OVFL : 0) | (shared ? exact : 0),
-                                     exec_mask, descriptor | mode, d, a, b, c),
+                                     exec_mask, descriptor | mode, d, a, b, c, nullptr),
                         GOC_SUCCESS);
               for (unsigned reg = 0; reg < 4; ++reg)
                 for (unsigned lane = 0; lane < 34; ++lane)
@@ -128,8 +128,9 @@ TEST(DivFixup, DppHalfHardwareCorpus) {
                             (variant & 128 ? 256 : 0) | (((variant >> 3) & 15) << 9);
             const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
             uint32_t *d[] = {words[3]};
-            ASSERT_EQ(functions[0](cpu | semantics, exec_mask, descriptor | mode, d, a, b, c),
-                      GOC_SUCCESS);
+            ASSERT_EQ(
+                functions[0](cpu | semantics, exec_mask, descriptor | mode, d, a, b, c, nullptr),
+                GOC_SUCCESS);
             for (uint32_t word : words[3])
               hash = goc_test::capture_hash_word(hash, word);
           }
@@ -158,7 +159,7 @@ TEST(DivFixup, HardwareCartesianCorpus) {
             data[6][lane] = 0x12345678;
           }
           ASSERT_EQ(functions[op](cpu | exact | (col >= 5 ? GOC_FP16_OVFL : 0), UINT32_MAX,
-                                  goc_test::fixup_capture_modes[col % 5], d, a, b, c),
+                                  goc_test::fixup_capture_modes[col % 5], d, a, b, c, nullptr),
                     GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             uint64_t word = data[6][lane];
@@ -207,9 +208,9 @@ TEST(DivFixup, EveryModifierHalfSelectorAndRandomBits) {
                                           load(widths[op], b, lane, mode, 1),
                                           load(widths[op], c, lane, mode, 2), mode, sat));
         for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-          ASSERT_EQ(
-              functions[op](cpu | exact | (sat ? GOC_FP16_OVFL : 0), UINT32_MAX, mode, d, a, b, c),
-              GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu | exact | (sat ? GOC_FP16_OVFL : 0), UINT32_MAX, mode, d, a,
+                                  b, c, nullptr),
+                    GOC_SUCCESS);
           for (unsigned reg = 0; reg < (op == 2 ? 2u : 1u); ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
               ASSERT_EQ(d[reg][lane], expected[reg][lane])
@@ -246,7 +247,7 @@ TEST(DivFixup, MasksAndCrossRegisterAliases) {
                                                   load(widths[op], c, lane, mode, 2), mode,
                                                   variant & 1));
               ASSERT_EQ(functions[op](cpu | (variant & 1 ? GOC_FP16_OVFL | exact : 0), exec_mask,
-                                      mode, d, a, b, c),
+                                      mode, d, a, b, c, nullptr),
                         GOC_SUCCESS);
               for (unsigned reg = 0; reg < 8; ++reg)
                 for (unsigned word = 0; word < 34; ++word)
@@ -282,8 +283,9 @@ TEST(DivFixup, SharedSourcesAndHostEnvironment) {
           EXPECT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
           EXPECT_EQ(std::feraiseexcept(FE_INEXACT | FE_INVALID), 0);
           int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
-          EXPECT_EQ(functions[op](cpu | exact | GOC_FP16_OVFL, UINT32_MAX, mode, d, a, a, a),
-                    GOC_SUCCESS);
+          EXPECT_EQ(
+              functions[op](cpu | exact | GOC_FP16_OVFL, UINT32_MAX, mode, d, a, a, a, nullptr),
+              GOC_SUCCESS);
           EXPECT_EQ(std::fegetround(), rounding);
           EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
           for (unsigned reg = 0; reg < (op == 2 ? 2u : 1u); ++reg)
@@ -301,20 +303,23 @@ TEST(DivFixup, ValidationAndFallback) {
       const uint32_t *a[] = {input, input};
       uint32_t *d[] = {output, output};
       for (unsigned bit = op == 0 ? 13 : 9; bit < 32; ++bit) {
-        EXPECT_EQ(functions[op](cpu, UINT32_MAX, 1u << bit, d, a, a, a), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(functions[op](cpu, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr),
+        EXPECT_EQ(functions[op](cpu, UINT32_MAX, 1u << bit, d, a, a, a, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(functions[op](cpu, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
       }
-      EXPECT_EQ(functions[op](cpu | (1ull << 63), UINT32_MAX, 0, d, a, a, a),
+      EXPECT_EQ(functions[op](cpu | (1ull << 63), UINT32_MAX, 0, d, a, a, a, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                              UINT32_MAX, 0, d, a, a, a),
+                              UINT32_MAX, 0, d, a, a, a, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(functions[op](cpu | exact, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      EXPECT_EQ(functions[op](cpu, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      EXPECT_EQ(functions[op](cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, d, a, a, a),
+      EXPECT_EQ(functions[op](cpu | exact, 0U, 0, nullptr, nullptr, nullptr, nullptr, nullptr),
+                GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, d, a, a, a,
+                              nullptr),
                 GOC_SUCCESS);
       for (auto word : output)
         EXPECT_EQ(word, op == 0 ? 0xdeadfe00 : op == 1 ? 0xffc00000 : 0xfff80000);

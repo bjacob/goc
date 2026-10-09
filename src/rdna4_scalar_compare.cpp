@@ -215,7 +215,9 @@ int goc_rdna4_s_cmp_lg_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_lt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -223,7 +225,9 @@ int goc_rdna4_s_cmp_lt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_lt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -231,7 +235,9 @@ int goc_rdna4_s_cmp_lt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_eq_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -239,7 +245,9 @@ int goc_rdna4_s_cmp_eq_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_eq_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -247,7 +255,9 @@ int goc_rdna4_s_cmp_eq_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_le_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -255,7 +265,9 @@ int goc_rdna4_s_cmp_le_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_le_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -263,7 +275,9 @@ int goc_rdna4_s_cmp_le_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_gt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -271,7 +285,9 @@ int goc_rdna4_s_cmp_gt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_gt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -279,7 +295,9 @@ int goc_rdna4_s_cmp_gt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_lg_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -287,7 +305,9 @@ int goc_rdna4_s_cmp_lg_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_lg_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -295,7 +315,9 @@ int goc_rdna4_s_cmp_lg_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_ge_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -303,7 +325,9 @@ int goc_rdna4_s_cmp_ge_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_ge_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b) {
+                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -311,7 +335,9 @@ int goc_rdna4_s_cmp_ge_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 }
 
 int goc_rdna4_s_cmp_o_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *scc, uint32_t a, uint32_t b) {
+                          uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -319,7 +345,9 @@ int goc_rdna4_s_cmp_o_f32(uint64_t flags, uint32_t exec_mask, uint64_t instructi
 }
 
 int goc_rdna4_s_cmp_o_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *scc, uint32_t a, uint32_t b) {
+                          uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -327,7 +355,9 @@ int goc_rdna4_s_cmp_o_f16(uint64_t flags, uint32_t exec_mask, uint64_t instructi
 }
 
 int goc_rdna4_s_cmp_u_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *scc, uint32_t a, uint32_t b) {
+                          uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -335,7 +365,9 @@ int goc_rdna4_s_cmp_u_f32(uint64_t flags, uint32_t exec_mask, uint64_t instructi
 }
 
 int goc_rdna4_s_cmp_u_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *scc, uint32_t a, uint32_t b) {
+                          uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -343,7 +375,9 @@ int goc_rdna4_s_cmp_u_f16(uint64_t flags, uint32_t exec_mask, uint64_t instructi
 }
 
 int goc_rdna4_s_cmp_nge_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -351,7 +385,9 @@ int goc_rdna4_s_cmp_nge_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 }
 
 int goc_rdna4_s_cmp_nge_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -359,7 +395,9 @@ int goc_rdna4_s_cmp_nge_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 }
 
 int goc_rdna4_s_cmp_nlg_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -367,7 +405,9 @@ int goc_rdna4_s_cmp_nlg_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 }
 
 int goc_rdna4_s_cmp_nlg_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -375,7 +415,9 @@ int goc_rdna4_s_cmp_nlg_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 }
 
 int goc_rdna4_s_cmp_ngt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -383,7 +425,9 @@ int goc_rdna4_s_cmp_ngt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 }
 
 int goc_rdna4_s_cmp_ngt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -391,7 +435,9 @@ int goc_rdna4_s_cmp_ngt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 }
 
 int goc_rdna4_s_cmp_nle_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -399,7 +445,9 @@ int goc_rdna4_s_cmp_nle_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 }
 
 int goc_rdna4_s_cmp_nle_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -407,7 +455,9 @@ int goc_rdna4_s_cmp_nle_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 }
 
 int goc_rdna4_s_cmp_neq_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -415,7 +465,9 @@ int goc_rdna4_s_cmp_neq_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 }
 
 int goc_rdna4_s_cmp_neq_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -423,7 +475,9 @@ int goc_rdna4_s_cmp_neq_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 }
 
 int goc_rdna4_s_cmp_nlt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
@@ -431,7 +485,9 @@ int goc_rdna4_s_cmp_nlt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 }
 
 int goc_rdna4_s_cmp_nlt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b) {
+                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;

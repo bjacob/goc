@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "rdna4_conversion64_reference.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_test_instruction.h"
 
 #include <algorithm>
 #include <array>
@@ -14,7 +15,7 @@
 
 namespace {
 
-using Fn = decltype(&goc_rdna4_v_cvt_f64_i32);
+using Fn = goc_test::WaveInstruction<decltype(&goc_rdna4_v_cvt_u32_u16)>;
 const Fn functions[] = {goc_rdna4_v_cvt_f64_i32, goc_rdna4_v_cvt_f64_u32, goc_rdna4_v_cvt_i32_f64,
                         goc_rdna4_v_cvt_u32_f64, goc_rdna4_v_cvt_f64_f32, goc_rdna4_v_cvt_f32_f64};
 

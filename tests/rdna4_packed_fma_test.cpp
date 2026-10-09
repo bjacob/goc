@@ -21,8 +21,8 @@ const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3c0
 
 int call(bool accumulate, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  return accumulate ? goc_rdna4_v_pk_fmac_f16(flags, exec_mask, mode, d, a, b)
-                    : goc_rdna4_v_pk_fma_f16(flags, exec_mask, mode, d, a, b, c);
+  return accumulate ? goc_rdna4_v_pk_fmac_f16(flags, exec_mask, mode, d, a, b, nullptr)
+                    : goc_rdna4_v_pk_fma_f16(flags, exec_mask, mode, d, a, b, c, nullptr);
 }
 
 uint32_t reference(uint32_t a, uint32_t b, uint32_t c, uint32_t mode, bool saturate) {
@@ -182,8 +182,9 @@ TEST(PackedFma, BothResultsReadOriginalHalves) {
         std::fill(words[1], words[1] + 32, 0x44004200);
         std::fill(words[2], words[2] + 32, 0x48004500);
         std::fill(words[3], words[3] + 32, 0xfacecafe);
-        ASSERT_EQ(goc_rdna4_v_pk_fma_f16(cpu, UINT32_MAX, test.mode, p + d, p, p + 1, p + 2),
-                  GOC_SUCCESS);
+        ASSERT_EQ(
+            goc_rdna4_v_pk_fma_f16(cpu, UINT32_MAX, test.mode, p + d, p, p + 1, p + 2, nullptr),
+            GOC_SUCCESS);
         for (auto word : words[d])
           EXPECT_EQ(word, test.want);
       }

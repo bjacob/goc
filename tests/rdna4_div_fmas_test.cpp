@@ -47,7 +47,7 @@ TEST(DivFmas, HardwareCartesianAndRandomCorpora) {
               }
             }
             ASSERT_EQ(functions[op](cpu | exact, UINT32_MAX, goc_test::fmas_capture_modes[col % 8],
-                                    d, a, b, c, col / 8 ? UINT32_MAX : 0),
+                                    d, a, b, c, col / 8 ? UINT32_MAX : 0, nullptr),
                       GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
               uint64_t value = data[6][lane];
@@ -82,11 +82,12 @@ TEST(DivFmas, AllModifiersRandomBitsAndConditionMasks) {
         const uint32_t *a[] = {data[0], data[1]}, *b[] = {data[2], data[3]},
                        *c[] = {data[4], data[5]};
         uint32_t *d[] = {data[6], data[7]}, *gold[] = {expected[0], expected[1]};
-        ASSERT_EQ(functions[op](exact, UINT32_MAX, mode, gold, a, b, c, condition), GOC_SUCCESS);
+        ASSERT_EQ(functions[op](exact, UINT32_MAX, mode, gold, a, b, c, condition, nullptr),
+                  GOC_SUCCESS);
         for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-          ASSERT_EQ(
-              functions[op](cpu | exact | GOC_FP16_OVFL, UINT32_MAX, mode, d, a, b, c, condition),
-              GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu | exact | GOC_FP16_OVFL, UINT32_MAX, mode, d, a, b, c,
+                                  condition, nullptr),
+                    GOC_SUCCESS);
           for (unsigned reg = 0; reg < (op ? 2u : 1u); ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
               ASSERT_EQ(d[reg][lane], expected[reg][lane])
@@ -112,7 +113,7 @@ TEST(DivFmas, MasksAndCrossRegisterAliases) {
               const uint32_t *a[] = {data[0] + 1, data[1] + 1}, *b[] = {data[2] + 1, data[3] + 1},
                              *c[] = {data[4] + 1, data[5] + 1};
               uint32_t *d[] = {data[first] + 1, data[second] + 1}, *gold[] = {result[0], result[1]};
-              ASSERT_EQ(functions[op](exact, UINT32_MAX, mode, gold, a, b, c, condition),
+              ASSERT_EQ(functions[op](exact, UINT32_MAX, mode, gold, a, b, c, condition, nullptr),
                         GOC_SUCCESS);
               unsigned dest[] = {first, second};
               for (unsigned reg = 0; reg < (op ? 2u : 1u); ++reg)
@@ -120,7 +121,7 @@ TEST(DivFmas, MasksAndCrossRegisterAliases) {
                   if ((exec_mask >> lane) & 1)
                     expected[dest[reg]][lane + 1] = result[reg][lane];
               ASSERT_EQ(functions[op](cpu | (variant & 1 ? exact : 0), exec_mask, mode, d, a, b, c,
-                                      condition),
+                                      condition, nullptr),
                         GOC_SUCCESS);
               ASSERT_EQ(std::memcmp(data, expected, sizeof(data)), 0)
                   << op << "/" << cpu << "/" << variant << "/" << first << "/" << second;
@@ -140,7 +141,8 @@ TEST(DivFmas, SharedSourcesAndHostEnvironment) {
       }
       const uint32_t *a[] = {data[0], data[1]};
       uint32_t *d[] = {data[2], data[3]}, *gold[] = {expected[0], expected[1]};
-      ASSERT_EQ(functions[op](exact, UINT32_MAX, mode, gold, a, a, a, 0xa5a5a5a5), GOC_SUCCESS);
+      ASSERT_EQ(functions[op](exact, UINT32_MAX, mode, gold, a, a, a, 0xa5a5a5a5, nullptr),
+                GOC_SUCCESS);
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
           EXPECT_EQ(std::fesetround(rounding), 0);
@@ -149,7 +151,7 @@ TEST(DivFmas, SharedSourcesAndHostEnvironment) {
             EXPECT_EQ(std::feraiseexcept(FE_INVALID | FE_INEXACT), 0);
           }
           int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
-          EXPECT_EQ(functions[op](cpu | exact, UINT32_MAX, mode, d, a, a, a, 0xa5a5a5a5),
+          EXPECT_EQ(functions[op](cpu | exact, UINT32_MAX, mode, d, a, a, a, 0xa5a5a5a5, nullptr),
                     GOC_SUCCESS);
           EXPECT_EQ(std::fegetround(), rounding);
           EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
@@ -167,23 +169,23 @@ TEST(DivFmas, ValidationAndZeroExec) {
       std::fill_n(output, 32, 0xdeadbeef);
       uint32_t *d[] = {output, output};
       for (unsigned bit = 9; bit < 32; ++bit) {
-        EXPECT_EQ(fn(cpu, UINT32_MAX, 1u << bit, d, nullptr, nullptr, nullptr, UINT32_MAX),
+        EXPECT_EQ(fn(cpu, UINT32_MAX, 1u << bit, d, nullptr, nullptr, nullptr, UINT32_MAX, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(cpu, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr, UINT32_MAX),
+        EXPECT_EQ(fn(cpu, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr, UINT32_MAX, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
       }
-      EXPECT_EQ(fn(cpu | (1ull << 63), UINT32_MAX, 0, d, nullptr, nullptr, nullptr, 0),
+      EXPECT_EQ(fn(cpu | (1ull << 63), UINT32_MAX, 0, d, nullptr, nullptr, nullptr, 0, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, d,
-                   nullptr, nullptr, nullptr, 0),
+                   nullptr, nullptr, nullptr, 0, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(fn(cpu | exact, 0U, 0, nullptr, nullptr, nullptr, nullptr, UINT32_MAX),
+      EXPECT_EQ(fn(cpu | exact, 0U, 0, nullptr, nullptr, nullptr, nullptr, UINT32_MAX, nullptr),
                 GOC_SUCCESS);
-      EXPECT_EQ(
-          fn(cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr, nullptr, 0),
-          GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr,
+                   nullptr, 0, nullptr),
+                GOC_SUCCESS);
     }
 }
 
@@ -202,7 +204,7 @@ TEST(DivFmas, FusedRoundingAndOutputModifierBoundaries) {
             data[operand * 2 + 1][lane] = uint32_t(value >> 32);
           }
         ASSERT_EQ(functions[op](cpu | exact, UINT32_MAX, goc_test::fmas_capture_modes[col % 8], d,
-                                a, b, c, col / 8 ? UINT32_MAX : 0),
+                                a, b, c, col / 8 ? UINT32_MAX : 0, nullptr),
                   GOC_SUCCESS);
         for (unsigned lane = 0; lane < 32; ++lane) {
           uint64_t result = data[6][lane];

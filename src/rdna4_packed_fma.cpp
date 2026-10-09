@@ -46,14 +46,19 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
 
 int goc_rdna4_v_pk_fma_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b,
-                           const uint32_t *const *c) {
+                           const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run(flags, exec_mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_pk_fmac_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b) {
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   if (int error = goc::validate(flags, mode, true))

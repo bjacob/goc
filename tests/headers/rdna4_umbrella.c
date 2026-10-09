@@ -6,12 +6,13 @@
 // Repeated inclusion must be harmless.
 #include "@PROJECT_SOURCE_DIR@/include/goc/goc.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 int main(void) {
   uint32_t words[32] = {0};
   uint32_t *vgpr = words;
   const uint32_t *input = words;
-  return goc_rdna4_v_fma_f32(goc_init_cpu_flags(), 1, 0, &vgpr, &input, &input, &input) !=
+  return goc_rdna4_v_fma_f32(goc_init_cpu_flags(), 1, 0, &vgpr, &input, &input, &input, NULL) !=
          GOC_SUCCESS;
 }

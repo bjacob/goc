@@ -55,7 +55,7 @@ TEST(HalfBinary, EveryEncodingAndRandomInputs) {
             words[2][lane] = 0xdeadbeef;
           }
           ASSERT_EQ(goc_test::half_binary_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0),
-                                                        UINT32_MAX, 0, p + 2, p, p + 1),
+                                                        UINT32_MAX, 0, p + 2, p, p + 1, nullptr),
                     GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
             check(words[2][lane], 0xdeadbeef,
@@ -84,7 +84,8 @@ TEST(HalfBinary, AllModifiersAndHalfSelectors) {
           uint32_t exec_mask = UINT32_MAX;
           uint32_t *p[] = {words[0], words[1], words[2]};
           ASSERT_EQ(goc_test::half_binary_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0),
-                                                        exec_mask, mode, p + dest, p, p + 1),
+                                                        exec_mask, mode, p + dest, p, p + 1,
+                                                        nullptr),
                     GOC_SUCCESS);
           for (int reg = 0; reg < 3; ++reg)
             for (int lane = 0; lane < 32; ++lane) {
@@ -120,9 +121,9 @@ TEST(HalfBinary, MasksAliasesAndUntouchedHalves) {
                     word = random();
                 std::memcpy(before, words, sizeof(words));
                 uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
-                ASSERT_EQ(
-                    goc_test::half_binary_functions[op](cpu, exec_mask, mode, p + dest, p, p + b),
-                    GOC_SUCCESS);
+                ASSERT_EQ(goc_test::half_binary_functions[op](cpu, exec_mask, mode, p + dest, p,
+                                                              p + b, nullptr),
+                          GOC_SUCCESS);
                 for (int reg = 0; reg < 3; ++reg)
                   for (int lane = 0; lane < 34; ++lane) {
                     if (reg == dest && lane >= 1 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
@@ -174,7 +175,8 @@ TEST(HalfBinary, LiteralRoundingOverflowAndNanRules) {
       std::fill(words[1], words[1] + 32, test.b);
       std::fill(words[2], words[2] + 32, 0xdeadbeef);
       ASSERT_EQ(goc_test::half_binary_functions[test.op](cpu | (test.saturate ? GOC_FP16_OVFL : 0),
-                                                         UINT32_MAX, test.mode, p + 2, p, p + 1),
+                                                         UINT32_MAX, test.mode, p + 2, p, p + 1,
+                                                         nullptr),
                 GOC_SUCCESS);
       for (auto word : words[2])
         check(word, 0xdeadbeef, test.result, test.mode);
@@ -189,14 +191,15 @@ TEST(HalfBinary, ValidationAndSemantics) {
     for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit)
         if (!(goc_test::half_binary_known & (1U << bit))) {
-          EXPECT_EQ(fn(0, exec_mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(fn(0, exec_mask, 1U << bit, &p, &p, &p, nullptr), GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p),
+      EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, &p, nullptr), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p,
+                   nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (auto word : data)
       EXPECT_EQ(word, 0xdeadbeef);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &p, &p, &p), GOC_SUCCESS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &p, &p, &p, nullptr), GOC_SUCCESS);
   }
 }

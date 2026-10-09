@@ -108,12 +108,15 @@ int goc_rdna4_v_cvt_off_f32_i4(uint64_t flags, uint32_t exec_mask, uint64_t mode
 
 int goc_rdna4_v_cvt_pk_u8_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, const uint32_t *const *b,
-                              const uint32_t *const *c) {
+                              const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
-    return goc::execute_dpp(
-        flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
-          return goc_rdna4_v_cvt_pk_u8_f32(flags, exec_mask, uint32_t(mode), d, source, b, c);
-        });
+    return goc::execute_dpp(flags, exec_mask, mode, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return goc_rdna4_v_cvt_pk_u8_f32(flags, exec_mask, uint32_t(mode), d,
+                                                               source, b, c, nullptr);
+                            });
   if (int error = goc::validate(flags, mode & ~(GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_CLAMP)))
     return error;
   if (!exec_mask)

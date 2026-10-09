@@ -62,7 +62,7 @@ TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
                   }
                   std::copy(v[alias], v[alias] + 32, before);
                   ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode, &v[alias],
-                               &v[0], &v[1], &v[2]),
+                               &v[0], &v[1], &v[2], nullptr),
                             GOC_SUCCESS);
                   for (int lane = 0; lane < 32; ++lane)
                     EXPECT_EQ(v[alias][lane],
@@ -100,7 +100,7 @@ TEST(Dot2, ExactModifiersRecoverHardwareGoldens) {
           std::fill(c, c + 32, f.c ^ (neg & 4 ? 0x80000000 : 0));
           auto pa = a, pb = b, pc = c, pd = d;
           ASSERT_EQ(fn(goc_init_cpu_flags() | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                       UINT32_MAX, mode, &pd, &pa, &pb, &pc),
+                       UINT32_MAX, mode, &pd, &pa, &pb, &pc, nullptr),
                     GOC_SUCCESS);
           for (auto word : d)
             EXPECT_EQ(word, f.expected);
@@ -129,8 +129,9 @@ TEST(Dot2, SimdSpecialValuesAndEveryExecMask) {
             ref[i] = d[i] = 0xdeadbeef;
           }
           auto pa = a, pb = b, pc = c, pr = ref, pd = d;
-          ASSERT_EQ(fn(GOC_CPU_BASELINE, exec_mask, mode, &pr, &pa, &pb, &pc), GOC_SUCCESS);
-          ASSERT_EQ(fn(cpu, exec_mask, mode, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+          ASSERT_EQ(fn(GOC_CPU_BASELINE, exec_mask, mode, &pr, &pa, &pb, &pc, nullptr),
+                    GOC_SUCCESS);
+          ASSERT_EQ(fn(cpu, exec_mask, mode, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
           for (int i = 0; i < 32; ++i) {
             if (std::isnan(goc::as_float(ref[i]))) {
               EXPECT_TRUE(std::isnan(goc::as_float(d[i])));
@@ -195,7 +196,7 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
                                *c[] = {storage[2] + 1};
                 uint32_t *d[] = {storage[alias] + 1};
                 auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
-                ASSERT_EQ(fn(cpu | semantics, exec_mask, mode, d, a, b, c), GOC_SUCCESS);
+                ASSERT_EQ(fn(cpu | semantics, exec_mask, mode, d, a, b, c, nullptr), GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 4; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
                     ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -207,9 +208,9 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
 TEST(Dot2, DppValidation) {
   for (auto fn : {goc_rdna4_v_dot2_f32_f16, goc_rdna4_v_dot2_f32_bf16})
     for (auto descriptor : goc_test::dpp_modes) {
-      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
       for (auto invalid : {1ULL << 36, 1ULL << 5})
-        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr),
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
     }
 }
@@ -242,7 +243,8 @@ TEST(Dot2, DppHardwareCorpus) {
               const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
               uint32_t *d[] = {output};
               auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
-              ASSERT_EQ(fn(cpu | semantics, exec_mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
+              ASSERT_EQ(fn(cpu | semantics, exec_mask, descriptor | mode, d, a, b, c, nullptr),
+                        GOC_SUCCESS);
               for (auto word : output) {
                 if (semantics == GOC_SEMANTICS_LOOSE && !(word & 0x7fffffff))
                   word = 0;

@@ -12,18 +12,18 @@
 
 namespace {
 
-using Instruction = goc_test::WaveInstruction<decltype(&goc_rdna4_v_fma_f32)>;
+using Instruction = goc_test::WaveInstruction<decltype(&goc_rdna4_v_mad_u32_u24)>;
 
 template <auto Fn>
 int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
           const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
-  return Fn(flags, exec_mask, modifiers, d, a);
+  return goc_test::without_exceptions(Fn, flags, exec_mask, modifiers, d, a);
 }
 
 template <auto Fn>
 int binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
            const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
-  return Fn(flags, exec_mask, mode, d, a, b);
+  return goc_test::without_exceptions(Fn, flags, exec_mask, mode, d, a, b);
 }
 
 template <bool Half, bool Multiply>
@@ -31,12 +31,12 @@ int literal_fma(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *con
                 const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
   if constexpr (Half) {
     if constexpr (Multiply)
-      return goc_rdna4_v_fmamk_f16(flags, exec_mask, mode, d, a, 0x3800, b);
-    return goc_rdna4_v_fmaak_f16(flags, exec_mask, mode, d, a, b, 0x3800);
+      return goc_rdna4_v_fmamk_f16(flags, exec_mask, mode, d, a, 0x3800, b, nullptr);
+    return goc_rdna4_v_fmaak_f16(flags, exec_mask, mode, d, a, b, 0x3800, nullptr);
   } else {
     if constexpr (Multiply)
-      return goc_rdna4_v_fmamk_f32(flags, exec_mask, mode, d, a, 0x3f000000, b);
-    return goc_rdna4_v_fmaak_f32(flags, exec_mask, mode, d, a, b, 0x3f000000);
+      return goc_rdna4_v_fmamk_f32(flags, exec_mask, mode, d, a, 0x3f000000, b, nullptr);
+    return goc_rdna4_v_fmaak_f32(flags, exec_mask, mode, d, a, b, 0x3f000000, nullptr);
   }
 }
 

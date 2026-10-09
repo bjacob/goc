@@ -26,7 +26,7 @@ TEST(PseudoScalar, HardwareEveryModifierAndFpState) {
                                               op & 1, goc_test::pseudo_scalar_samples[sample]);
             ASSERT_EQ(goc_test::pseudo_scalar_functions[op](
                           cpu | goc_test::pseudo_scalar_flags(state), UINT32_MAX,
-                          goc_test::pseudo_scalar_mode(m), &result, a),
+                          goc_test::pseudo_scalar_mode(m), &result, a, nullptr),
                       GOC_SUCCESS);
             ASSERT_TRUE(goc_test::pseudo_scalar_close(result, gold[sample], op & 1))
                 << state << "/" << op << "/" << m << "/" << sample << "/" << cpu << std::hex
@@ -52,7 +52,7 @@ TEST(PseudoScalar, ExecIsIgnoredAndScalarStorageMayAlias) {
                   0x87654321};
               ASSERT_EQ(goc_test::pseudo_scalar_functions[op](
                             cpu | goc_test::pseudo_scalar_flags(state), exec_mask,
-                            goc_test::pseudo_scalar_mode(m), words + 1, words[1]),
+                            goc_test::pseudo_scalar_mode(m), words + 1, words[1], nullptr),
                         GOC_SUCCESS);
               ASSERT_TRUE(goc_test::pseudo_scalar_close(words[1], gold[sample], op & 1))
                   << state << "/" << op << "/" << m << "/" << sample << "/" << cpu;
@@ -65,26 +65,27 @@ TEST(PseudoScalar, ExecIsIgnoredAndScalarStorageMayAlias) {
 TEST(PseudoScalar, DenormalStagesZerosAndOverflow) {
   uint32_t d;
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    ASSERT_EQ(goc_rdna4_v_s_sqrt_f16(cpu, 0, 0, &d, 0xabcd0001), GOC_SUCCESS);
+    ASSERT_EQ(goc_rdna4_v_s_sqrt_f16(cpu, 0, 0, &d, 0xabcd0001, nullptr), GOC_SUCCESS);
     EXPECT_EQ(d, 0x0c00u);
-    ASSERT_EQ(goc_rdna4_v_s_sqrt_f16(cpu | GOC_FP_FLUSH_INPUT_DENORMALS, 0, 0, &d, 1), GOC_SUCCESS);
-    EXPECT_EQ(d, 0u);
-    ASSERT_EQ(goc_rdna4_v_s_rcp_f16(cpu, 0, 0, &d, 0x7bff), GOC_SUCCESS);
-    EXPECT_EQ(d, 0x0100u);
-    ASSERT_EQ(goc_rdna4_v_s_rcp_f16(cpu | GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, 0, &d, 0x7bff),
+    ASSERT_EQ(goc_rdna4_v_s_sqrt_f16(cpu | GOC_FP_FLUSH_INPUT_DENORMALS, 0, 0, &d, 1, nullptr),
               GOC_SUCCESS);
     EXPECT_EQ(d, 0u);
-    ASSERT_EQ(goc_rdna4_v_s_rcp_f16(cpu, 0, GOC_ALU_OMOD_HALF, &d, 0xf00f), GOC_SUCCESS);
-    EXPECT_EQ(d, 0x8000u);
-    ASSERT_EQ(goc_rdna4_v_s_sqrt_f16(cpu, 0, GOC_ALU_OMOD_HALF, &d, 0x8000), GOC_SUCCESS);
+    ASSERT_EQ(goc_rdna4_v_s_rcp_f16(cpu, 0, 0, &d, 0x7bff, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(d, 0x0100u);
+    ASSERT_EQ(goc_rdna4_v_s_rcp_f16(cpu | GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, 0, &d, 0x7bff, nullptr),
+              GOC_SUCCESS);
     EXPECT_EQ(d, 0u);
-    ASSERT_EQ(goc_rdna4_v_s_rcp_f16(cpu | GOC_FP16_OVFL, 0, 0, &d, 0x8000), GOC_SUCCESS);
+    ASSERT_EQ(goc_rdna4_v_s_rcp_f16(cpu, 0, GOC_ALU_OMOD_HALF, &d, 0xf00f, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(d, 0x8000u);
+    ASSERT_EQ(goc_rdna4_v_s_sqrt_f16(cpu, 0, GOC_ALU_OMOD_HALF, &d, 0x8000, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(d, 0u);
+    ASSERT_EQ(goc_rdna4_v_s_rcp_f16(cpu | GOC_FP16_OVFL, 0, 0, &d, 0x8000, nullptr), GOC_SUCCESS);
     EXPECT_EQ(d, 0xfbffu);
-    ASSERT_EQ(goc_rdna4_v_s_exp_f16(cpu | GOC_FP16_OVFL, 0, 0, &d, 0x7c00), GOC_SUCCESS);
+    ASSERT_EQ(goc_rdna4_v_s_exp_f16(cpu | GOC_FP16_OVFL, 0, 0, &d, 0x7c00, nullptr), GOC_SUCCESS);
     EXPECT_EQ(d, 0x7c00u);
-    ASSERT_EQ(goc_rdna4_v_s_rcp_f32(cpu, 0, 0, &d, 1), GOC_SUCCESS);
+    ASSERT_EQ(goc_rdna4_v_s_rcp_f32(cpu, 0, 0, &d, 1, nullptr), GOC_SUCCESS);
     EXPECT_EQ(d, 0x7f800000u);
-    ASSERT_EQ(goc_rdna4_v_s_rcp_f32(cpu, 0, 0, &d, 0x7f7fffff), GOC_SUCCESS);
+    ASSERT_EQ(goc_rdna4_v_s_rcp_f32(cpu, 0, 0, &d, 0x7f7fffff, nullptr), GOC_SUCCESS);
     EXPECT_EQ(d, 0u);
   }
 }
@@ -98,19 +99,20 @@ TEST(PseudoScalar, ValidationSemanticsAndHostRounding) {
     uint32_t d = 0xdeadbeef;
     for (unsigned bit = 0; bit < 32; ++bit)
       if (!(known & (1u << bit))) {
-        EXPECT_EQ(goc_test::pseudo_scalar_functions[op](0, 0, 1u << bit, &d, 0),
+        EXPECT_EQ(goc_test::pseudo_scalar_functions[op](0, 0, 1u << bit, &d, 0, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(d, 0xdeadbeef);
       }
     EXPECT_EQ(goc_test::pseudo_scalar_functions[op](
-                  GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, known, &d, 0),
+                  GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, known, &d, 0, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(d, 0xdeadbeef);
-    EXPECT_EQ(goc_test::pseudo_scalar_functions[op](1ULL << 63, 0, known, &d, 0),
+    EXPECT_EQ(goc_test::pseudo_scalar_functions[op](1ULL << 63, 0, known, &d, 0, nullptr),
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(d, 0xdeadbeef);
     EXPECT_EQ(goc_test::pseudo_scalar_functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, 0, known, &d,
-                                                    goc_test::pseudo_scalar_input(op & 1, 8)),
+                                                    goc_test::pseudo_scalar_input(op & 1, 8),
+                                                    nullptr),
               GOC_SUCCESS);
     EXPECT_EQ(std::fegetround(), FE_TONEAREST);
   }

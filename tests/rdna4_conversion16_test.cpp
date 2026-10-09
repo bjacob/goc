@@ -26,7 +26,7 @@ const Fn functions[] = {goc_rdna4_v_cvt_f16_i16, goc_rdna4_v_cvt_f16_u16, goc_rd
   std::fill_n(output, 32, 0xa5a55a5a);
   const uint32_t *a[] = {input};
   uint32_t *d[] = {output};
-  int status = functions[op](flags, UINT32_MAX, mode, d, a);
+  int status = functions[op](flags, UINT32_MAX, mode, d, a, nullptr);
   if (status != GOC_SUCCESS)
     return ::testing::AssertionFailure() << "status " << status;
   for (int lane = 0; lane < 32; ++lane) {
@@ -61,7 +61,8 @@ TEST(Conversion16, HardwareCapturedRoundingOverflowAndModifiers) {
           const uint32_t *a[] = {input};
           uint32_t *d[] = {output};
           int op = column < 6 ? 4 : column == 6 ? 1 : 0;
-          ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), UINT32_MAX, modes[column], d, a),
+          ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), UINT32_MAX, modes[column], d, a,
+                                  nullptr),
                     GOC_SUCCESS);
           for (auto actual : output)
             ASSERT_EQ(actual, 0xa5a50000u | capture.expected[sat][column])
@@ -132,8 +133,9 @@ TEST(Conversion16, EveryModifierMasksAliasesAndUnalignedStorage) {
               uint32_t mode = goc_test::conversion16_mode(op, variant);
               const uint32_t *a[] = {storage[0] + 1};
               uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
-              ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), exec_mask, mode, d, a),
-                        GOC_SUCCESS);
+              ASSERT_EQ(
+                  functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), exec_mask, mode, d, a, nullptr),
+                  GOC_SUCCESS);
               for (int reg = 0; reg < 2; ++reg)
                 for (int word = 0; word < 34; ++word) {
                   uint32_t expected = original[reg][word];
@@ -161,18 +163,19 @@ TEST(Conversion16, ValidationAndSemanticFallback) {
       uint32_t known = goc_test::conversion16_mode(op, goc_test::conversion16_modes(op) - 1);
       for (unsigned bit = 0; bit < 32; ++bit)
         if (!(known & (uint32_t(1) << bit))) {
-          EXPECT_EQ(functions[op](cpu, UINT32_MAX, uint32_t(1) << bit, d, a),
+          EXPECT_EQ(functions[op](cpu, UINT32_MAX, uint32_t(1) << bit, d, a, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
-          EXPECT_EQ(functions[op](cpu, 0, uint32_t(1) << bit, nullptr, nullptr),
+          EXPECT_EQ(functions[op](cpu, 0, uint32_t(1) << bit, nullptr, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                              UINT32_MAX, 0, d, a),
+                              UINT32_MAX, 0, d, a, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(functions[op](cpu, 0U, 0, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, 0U, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 1; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16), 0, input));
     }
@@ -213,7 +216,7 @@ TEST(Conversion16, DppMasksAliasesAndUnalignedStorage) {
                 const uint32_t *a[] = {storage[0] + 1};
                 uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
                 ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), exec_mask,
-                                        descriptor | mode, d, a),
+                                        descriptor | mode, d, a, nullptr),
                           GOC_SUCCESS);
                 for (int reg = 0; reg < 2; ++reg)
                   for (int word = 0; word < 34; ++word) {
@@ -248,7 +251,7 @@ TEST(Conversion16, DppEveryModifier) {
             }
             auto pa = a, pd = d;
             ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
-                                    descriptor | mode, &pd, &pa),
+                                    descriptor | mode, &pd, &pa, nullptr),
                       GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
@@ -285,7 +288,7 @@ TEST(Conversion16, DppHardwareCorpus) {
               }
               auto pa = a, pd = d;
               ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask,
-                                      descriptor | mode, &pd, &pa),
+                                      descriptor | mode, &pd, &pa, nullptr),
                         GOC_SUCCESS);
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source;
@@ -315,13 +318,13 @@ TEST(Conversion16, DppHardwareCorpus) {
 TEST(Conversion16, DppValidation) {
   for (unsigned op = 0; op < 6; ++op)
     for (uint64_t descriptor : goc_test::dpp_modes) {
-      EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
-      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr),
+      EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr),
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
-                              descriptor, nullptr, nullptr),
+                              descriptor, nullptr, nullptr, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
 }

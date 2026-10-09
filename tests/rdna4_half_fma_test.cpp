@@ -38,7 +38,8 @@ void run(uint64_t flags, uint32_t mode, uint32_t (&words)[4][32]) {
   uint32_t before[4][32];
   std::memcpy(before, words, sizeof(before));
   uint32_t *p[] = {words[0], words[1], words[2], words[3]};
-  ASSERT_EQ(goc_rdna4_v_fma_f16(flags, UINT32_MAX, mode, p + 3, p, p + 1, p + 2), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_v_fma_f16(flags, UINT32_MAX, mode, p + 3, p, p + 1, p + 2, nullptr),
+            GOC_SUCCESS);
   for (int lane = 0; lane < 32; ++lane) {
     SCOPED_TRACE(lane);
     check(words[3][lane], before[3][lane],
@@ -115,7 +116,7 @@ TEST(HalfFma, MasksAndAllWholeRegisterAliases) {
               std::memcpy(before, words, sizeof(before));
               uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1, words[3] + 1};
               ASSERT_EQ(goc_rdna4_v_fma_f16(cpu | sem, exec_mask, mode, p + dest, p + layout[0],
-                                            p + layout[1], p + layout[2]),
+                                            p + layout[1], p + layout[2], nullptr),
                         GOC_SUCCESS);
               for (int reg = 0; reg < 4; ++reg)
                 for (int lane = 0; lane < 34; ++lane) {
@@ -165,7 +166,7 @@ TEST(HalfFma, RocjitsuHardwareWitnesses) {
           if (clamp)
             want = nan(want) || (want & 0x8000) ? 0 : std::min<uint16_t>(want, 0x3c00);
           ASSERT_EQ(goc_rdna4_v_fma_f16(cpu | sem | (test.saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
-                                        mode, p + 3, p, p + 1, p + 2),
+                                        mode, p + 3, p, p + 1, p + 2, nullptr),
                     GOC_SUCCESS);
           for (auto word : words[3])
             check(word, 0xdeadbeef, want, mode, sem != 0);
@@ -203,8 +204,9 @@ TEST(HalfFma, DoubleRoundingAndTininessBoundaries) {
         std::fill(words[3], words[3] + 32, 0xdeadbeef);
         ASSERT_EQ(goc_test::half_fma_reference::evaluate(test.a, test.b, test.c, test.mode, false),
                   test.want);
-        ASSERT_EQ(goc_rdna4_v_fma_f16(cpu | sem, UINT32_MAX, test.mode, p + 3, p, p + 1, p + 2),
-                  GOC_SUCCESS);
+        ASSERT_EQ(
+            goc_rdna4_v_fma_f16(cpu | sem, UINT32_MAX, test.mode, p + 3, p, p + 1, p + 2, nullptr),
+            GOC_SUCCESS);
         for (auto word : words[3])
           check(word, 0xdeadbeef, test.want, test.mode, true);
       }
@@ -234,18 +236,18 @@ TEST(HalfFma, ValidationAndSemantics) {
   auto p = data;
   for (uint32_t exec_mask : {0U, UINT32_MAX}) {
     for (int bit = 13; bit < 32; ++bit)
-      EXPECT_EQ(goc_rdna4_v_fma_f16(0, exec_mask, 1U << bit, &p, &p, &p, &p),
+      EXPECT_EQ(goc_rdna4_v_fma_f16(0, exec_mask, 1U << bit, &p, &p, &p, &p, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(goc_rdna4_v_fma_f16(1ULL << 63, exec_mask, 0, &p, &p, &p, &p),
+    EXPECT_EQ(goc_rdna4_v_fma_f16(1ULL << 63, exec_mask, 0, &p, &p, &p, &p, nullptr),
               GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(
-        goc_rdna4_v_fma_f16((2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p, &p),
-        GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(goc_rdna4_v_fma_f16((2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p, &p,
+                                  nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
   }
   for (auto word : data)
     EXPECT_EQ(word, 0xdeadbeef);
   EXPECT_EQ(goc_rdna4_v_fma_f16(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr,
-                                nullptr, nullptr, nullptr),
+                                nullptr, nullptr, nullptr, nullptr),
             GOC_SUCCESS);
-  EXPECT_EQ(goc_rdna4_v_fma_f16(2ULL << 16, UINT32_MAX, 0, &p, &p, &p, &p), GOC_SUCCESS);
+  EXPECT_EQ(goc_rdna4_v_fma_f16(2ULL << 16, UINT32_MAX, 0, &p, &p, &p, &p, nullptr), GOC_SUCCESS);
 }

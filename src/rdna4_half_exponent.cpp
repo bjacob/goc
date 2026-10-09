@@ -80,11 +80,17 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
 } // namespace
 
 int goc_rdna4_v_ldexp_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b) {
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return run<true>(flags, exec_mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_frexp_exp_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode,
-                                  uint32_t *const *d, const uint32_t *const *a) {
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return run<false>(flags, exec_mask, mode, d, a, nullptr);
 }

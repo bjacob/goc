@@ -95,7 +95,7 @@ void run(bool half, uint64_t flags, uint32_t exec_mask, uint64_t mode, int a, in
   uint32_t before[3][34];
   std::memcpy(before, words, sizeof(before));
   uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
-  ASSERT_EQ(functions[half](flags, exec_mask, mode, p + d, p + a, p + b), GOC_SUCCESS);
+  ASSERT_EQ(functions[half](flags, exec_mask, mode, p + d, p + a, p + b, nullptr), GOC_SUCCESS);
   for (int reg = 0; reg < 3; ++reg)
     for (int lane = 0; lane < 34; ++lane) {
       if (reg == d && lane >= 1 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
@@ -183,7 +183,7 @@ TEST(Fmac, HalfEveryEncodingAndFusedRounding) {
     std::fill(words[0], words[0] + 32, 0x3f800001);
     std::fill(words[1], words[1] + 32, 0x3f7ffffe);
     std::fill(words[2], words[2] + 32, 0xbf800000);
-    ASSERT_EQ(goc_rdna4_v_fmac_f32(cpu, UINT32_MAX, 0, p + 2, p, p + 1), GOC_SUCCESS);
+    ASSERT_EQ(goc_rdna4_v_fmac_f32(cpu, UINT32_MAX, 0, p + 2, p, p + 1, nullptr), GOC_SUCCESS);
     for (auto word : words[2])
       EXPECT_EQ(word, 0xa8800000u);
   }
@@ -218,7 +218,7 @@ TEST(Fmac, HalfHardwareWitnessesAndHostEnvironment) {
           uint32_t mode =
               GOC_ALU_OMOD_HALF | (high ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D : 0);
           EXPECT_EQ(goc_rdna4_v_fmac_f16(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                         UINT32_MAX, mode, p + 2, p, p + 1),
+                                         UINT32_MAX, mode, p + 2, p, p + 1, nullptr),
                     GOC_SUCCESS);
           for (auto word : words[2])
             EXPECT_EQ(word,
@@ -237,21 +237,21 @@ TEST(Fmac, ValidationAndZeroMasks) {
     for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (unsigned bit = 0; bit < 32; ++bit)
         if ((1U << bit) & ~(half ? known16 : known32)) {
-          EXPECT_EQ(fn(0, exec_mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(fn(0, exec_mask, 1U << bit, &p, &p, &p, nullptr), GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p),
+      EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, &p, nullptr), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       if (!half) {
-        EXPECT_EQ(
-            fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p),
-            GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p,
+                     nullptr),
+                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
     }
     for (auto word : words)
       EXPECT_EQ(word, 0xfacecafe);
-    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(fn(0, 0U, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(fn(2ULL << 16, UINT32_MAX, 0, &p, &p, &p), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(2ULL << 16, UINT32_MAX, 0, &p, &p, &p, nullptr), GOC_SUCCESS);
   }
 }

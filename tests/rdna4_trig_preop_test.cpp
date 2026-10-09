@@ -27,10 +27,10 @@ TEST(TrigPreop, HardwareEveryExponentSelectorAndModifier) {
         }
         const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2]};
         uint32_t *d[] = {words[3], words[4]};
-        ASSERT_EQ(
-            goc_rdna4_v_trig_preop_f64(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                       UINT32_MAX, goc_test::trig_preop_mode(mode), d, a, b),
-            GOC_SUCCESS);
+        ASSERT_EQ(goc_rdna4_v_trig_preop_f64(
+                      cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
+                      goc_test::trig_preop_mode(mode), d, a, b, nullptr),
+                  GOC_SUCCESS);
         for (unsigned lane = 0; lane < 32; ++lane)
           for (unsigned reg = 0; reg < 2; ++reg)
             digest = goc_test::capture_hash_bytes(digest, d[reg][lane], 4);
@@ -56,9 +56,9 @@ TEST(TrigPreop, MasksAliasesAndUnalignedStorage) {
           std::memcpy(words, initial, sizeof(words));
           const uint32_t *a[] = {words[0] + 1, words[1] + 1}, *b[] = {words[2] + 1};
           uint32_t *d[] = {words[target / 5] + 1, words[target % 5] + 1};
-          ASSERT_EQ(
-              goc_rdna4_v_trig_preop_f64(cpu, exec_mask, goc_test::trig_preop_mode(mode), d, a, b),
-              GOC_SUCCESS);
+          ASSERT_EQ(goc_rdna4_v_trig_preop_f64(cpu, exec_mask, goc_test::trig_preop_mode(mode), d,
+                                               a, b, nullptr),
+                    GOC_SUCCESS);
           for (unsigned reg = 0; reg < 5; ++reg)
             for (unsigned lane = 0; lane < 35; ++lane) {
               uint32_t want = initial[reg][lane];
@@ -90,20 +90,20 @@ TEST(TrigPreop, PreservesFpStateAndValidatesFlags) {
         std::feclearexcept(FE_ALL_EXCEPT);
         std::feraiseexcept(FE_INVALID | FE_INEXACT);
         int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
-        EXPECT_EQ(
-            goc_rdna4_v_trig_preop_f64(cpu, UINT32_MAX, goc_test::trig_preop_mode(31), d, a, b),
-            GOC_SUCCESS);
+        EXPECT_EQ(goc_rdna4_v_trig_preop_f64(cpu, UINT32_MAX, goc_test::trig_preop_mode(31), d, a,
+                                             b, nullptr),
+                  GOC_SUCCESS);
         EXPECT_EQ(std::fegetround(), rounding);
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
       }
   }
-  EXPECT_EQ(goc_rdna4_v_trig_preop_f64(0, 0U, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+  EXPECT_EQ(goc_rdna4_v_trig_preop_f64(0, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
   uint32_t known = goc_test::trig_preop_mode(31);
   for (unsigned bit = 0; bit < 32; ++bit)
     if (!(known & (1u << bit))) {
-      EXPECT_EQ(goc_rdna4_v_trig_preop_f64(0, 0, 1u << bit, nullptr, nullptr, nullptr),
+      EXPECT_EQ(goc_rdna4_v_trig_preop_f64(0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
     }
-  EXPECT_EQ(goc_rdna4_v_trig_preop_f64(1ULL << 63, 0, 0, nullptr, nullptr, nullptr),
+  EXPECT_EQ(goc_rdna4_v_trig_preop_f64(1ULL << 63, 0, 0, nullptr, nullptr, nullptr, nullptr),
             GOC_ERROR_INVALID_FLAGS);
 }

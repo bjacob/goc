@@ -44,7 +44,8 @@ TEST(Binary, AllModifiersMasksAliasesAndSpecialValues) {
               v[1][lane] = values[(lane * 5 + 3) % 21];
               before[lane] = v[alias][lane];
             }
-            ASSERT_EQ(functions[op](cpu, exec_mask, mode, &v[alias], &v[0], &v[1]), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, mode, &v[alias], &v[0], &v[1], nullptr),
+                      GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane) {
               if (!((exec_mask >> lane) & 1)) {
                 EXPECT_EQ(v[alias][lane], before[lane]);
@@ -72,11 +73,12 @@ TEST(Binary, Validation) {
     uint32_t a[32] = {}, d[32];
     std::fill(d, d + 32, 0xdeadbeef);
     auto pa = a, pd = d;
-    EXPECT_EQ(fn(0, UINT32_MAX, GOC_ALU_NEG_C, &pd, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_C, &pd, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, &pd, &pa, &pa),
-              GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0U, 0, &pd, &pa, &pa), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT32_MAX, GOC_ALU_NEG_C, &pd, &pa, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_C, &pd, &pa, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(
+        fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, &pd, &pa, &pa, nullptr),
+        GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0U, 0, &pd, &pa, &pa, nullptr), GOC_SUCCESS);
     for (auto value : d)
       EXPECT_EQ(value, 0xdeadbeef);
   }
@@ -106,7 +108,7 @@ TEST(Binary, MinMaxLiteralNaNsAndSignedZeros) {
         std::fill(a, a + 32, test[0]);
         std::fill(b, b + 32, test[1]);
         auto pa = a, pb = b, pd = d;
-        ASSERT_EQ(functions[op + 4](cpu, UINT32_MAX, 0, &pd, &pa, &pb), GOC_SUCCESS);
+        ASSERT_EQ(functions[op + 4](cpu, UINT32_MAX, 0, &pd, &pa, &pb, nullptr), GOC_SUCCESS);
         for (uint32_t value : d)
           EXPECT_EQ(value, test[op + 2]);
       }
@@ -127,7 +129,7 @@ TEST(Binary, Dx9ZeroOverridesEveryOtherOperand) {
             b[lane] = reverse ? zero : values[lane % 14];
           }
           auto pa = a, pb = b, pd = d;
-          ASSERT_EQ(goc_rdna4_v_mul_dx9_zero_f32(cpu, UINT32_MAX, mode, &pd, &pa, &pb),
+          ASSERT_EQ(goc_rdna4_v_mul_dx9_zero_f32(cpu, UINT32_MAX, mode, &pd, &pa, &pb, nullptr),
                     GOC_SUCCESS);
           for (uint32_t value : d)
             EXPECT_EQ(value, 0u) << cpu << "/" << mode << "/" << zero << "/" << reverse;
@@ -140,7 +142,8 @@ TEST(Binary, Dx9NonzeroUnderflowRetainsSign) {
   std::fill(b, b + 32, 1);
   auto pa = a, pb = b, pd = d;
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    ASSERT_EQ(goc_rdna4_v_mul_dx9_zero_f32(cpu, UINT32_MAX, 0, &pd, &pa, &pb), GOC_SUCCESS);
+    ASSERT_EQ(goc_rdna4_v_mul_dx9_zero_f32(cpu, UINT32_MAX, 0, &pd, &pa, &pb, nullptr),
+              GOC_SUCCESS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0x80000000);
   }

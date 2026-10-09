@@ -12,18 +12,15 @@
 #include <stdint.h>
 
 int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                              const uint32_t *const *a, uint32_t *exception_flags,
-                              uint32_t input_exception_flags) {
+                              const uint32_t *const *a, uint32_t *excp_flag_user) {
   if ((mode >> 32) && (!(mode & (GOC_DPP8 | GOC_DPP16)) || !goc::valid_dpp(mode)))
     return GOC_ERROR_INVALID_FLAGS;
   const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, uint32_t(mode) & ~known, false,
                                 GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
-  if (!exec_mask) {
-    *exception_flags = input_exception_flags;
+  if (!exec_mask)
     return GOC_SUCCESS;
-  }
   if (mode >> 32) {
     uint32_t permuted[32];
     const uint32_t *source = permuted;
@@ -31,20 +28,22 @@ int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode,
       goc::dpp8_source(flags, exec_mask, mode, permuted, a[0]);
     else
       exec_mask = goc::dpp16_source(flags, exec_mask, mode, permuted, a[0]);
-    return goc_rdna4_v_rcp_iflag_f32(flags, exec_mask, uint32_t(mode), d, &source, exception_flags,
-                                     input_exception_flags);
+    return goc_rdna4_v_rcp_iflag_f32(flags, exec_mask, uint32_t(mode), d, &source, excp_flag_user);
   }
+  const uint32_t prior_exceptions = excp_flag_user ? *excp_flag_user : 0;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    *exception_flags =
-        input_exception_flags | goc::rcp_iflag_x86_64_v4(exec_mask, mode, d[0], a[0]);
+    uint32_t generated = goc::rcp_iflag_x86_64_v4(exec_mask, mode, d[0], a[0]);
+    if (excp_flag_user)
+      *excp_flag_user = prior_exceptions | generated;
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    *exception_flags =
-        input_exception_flags | goc::rcp_iflag_x86_64_v3(exec_mask, mode, d[0], a[0]);
+    uint32_t generated = goc::rcp_iflag_x86_64_v3(exec_mask, mode, d[0], a[0]);
+    if (excp_flag_user)
+      *excp_flag_user = prior_exceptions | generated;
     return GOC_SUCCESS;
   }
 #endif
@@ -80,8 +79,9 @@ int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode,
   for (unsigned lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
-  *exception_flags =
-      input_exception_flags |
-      ((zeros & exec_mask) && !(mode & GOC_ALU_CLAMP) ? GOC_RDNA4_EXCEPTION_INT_DIV0 : 0);
+  if (excp_flag_user)
+    *excp_flag_user =
+        prior_exceptions |
+        ((zeros & exec_mask) && !(mode & GOC_ALU_CLAMP) ? GOC_RDNA4_EXCEPTION_INT_DIV0 : 0);
   return GOC_SUCCESS;
 }

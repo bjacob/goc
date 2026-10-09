@@ -15,37 +15,37 @@ int call(unsigned op, uint64_t cpu, uint64_t mode, uint32_t *const *d, const uin
          const uint32_t *const *b, const uint32_t *const *c) {
   switch (op) {
   case 0:
-    return goc_rdna4_v_add_f64(cpu, UINT32_MAX, mode, d, a, b);
+    return goc_rdna4_v_add_f64(cpu, UINT32_MAX, mode, d, a, b, nullptr);
   case 1:
-    return goc_rdna4_v_mul_f64(cpu, UINT32_MAX, mode, d, a, b);
+    return goc_rdna4_v_mul_f64(cpu, UINT32_MAX, mode, d, a, b, nullptr);
   case 2:
-    return goc_rdna4_v_fma_f64(cpu, UINT32_MAX, mode, d, a, b, c);
+    return goc_rdna4_v_fma_f64(cpu, UINT32_MAX, mode, d, a, b, c, nullptr);
   case 3:
-    return goc_rdna4_v_trunc_f64(cpu, UINT32_MAX, mode, d, a);
+    return goc_rdna4_v_trunc_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 4:
-    return goc_rdna4_v_ceil_f64(cpu, UINT32_MAX, mode, d, a);
+    return goc_rdna4_v_ceil_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 5:
-    return goc_rdna4_v_rndne_f64(cpu, UINT32_MAX, mode, d, a);
+    return goc_rdna4_v_rndne_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 6:
-    return goc_rdna4_v_floor_f64(cpu, UINT32_MAX, mode, d, a);
+    return goc_rdna4_v_floor_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 7:
-    return goc_rdna4_v_fract_f64(cpu, UINT32_MAX, mode, d, a);
+    return goc_rdna4_v_fract_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 8:
-    return goc_rdna4_v_sqrt_f64(cpu, UINT32_MAX, mode, d, a);
+    return goc_rdna4_v_sqrt_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 9:
-    return goc_rdna4_v_rcp_f64(cpu, UINT32_MAX, mode, d, a);
+    return goc_rdna4_v_rcp_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 10:
-    return goc_rdna4_v_rsq_f64(cpu, UINT32_MAX, mode, d, a);
+    return goc_rdna4_v_rsq_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 11:
-    return goc_rdna4_v_min_num_f64(cpu, UINT32_MAX, mode, d, a, b);
+    return goc_rdna4_v_min_num_f64(cpu, UINT32_MAX, mode, d, a, b, nullptr);
   case 12:
-    return goc_rdna4_v_max_num_f64(cpu, UINT32_MAX, mode, d, a, b);
+    return goc_rdna4_v_max_num_f64(cpu, UINT32_MAX, mode, d, a, b, nullptr);
   case 13:
-    return goc_rdna4_v_minimum_f64(cpu, UINT32_MAX, mode, d, a, b);
+    return goc_rdna4_v_minimum_f64(cpu, UINT32_MAX, mode, d, a, b, nullptr);
   case 14:
-    return goc_rdna4_v_maximum_f64(cpu, UINT32_MAX, mode, d, a, b);
+    return goc_rdna4_v_maximum_f64(cpu, UINT32_MAX, mode, d, a, b, nullptr);
   case 15:
-    return goc_rdna4_v_frexp_mant_f64(cpu, UINT32_MAX, mode, d, a);
+    return goc_rdna4_v_frexp_mant_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
   }
   return GOC_ERROR_INVALID_FLAGS;
 }
@@ -126,7 +126,8 @@ TEST(Fp64Output, LdexpHardwareBoundaries) {
             words[2][lane] = set ? UINT32_MAX : 0;
           }
           uint64_t mode = ((v >> 2) << 6) | (v & 2 ? GOC_ALU_CLAMP : 0) | (v & 1);
-          ASSERT_EQ(goc_rdna4_v_ldexp_f64(cpu, UINT32_MAX, mode, d, p, p + 2), GOC_SUCCESS);
+          ASSERT_EQ(goc_rdna4_v_ldexp_f64(cpu, UINT32_MAX, mode, d, p, p + 2, nullptr),
+                    GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             uint64_t raw = d[0][lane] | (uint64_t(d[1][lane]) << 32);
             if ((raw & 0x7fffffffffffffffULL) > 0x7ff0000000000000ULL)

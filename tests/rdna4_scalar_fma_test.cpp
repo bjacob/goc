@@ -62,27 +62,31 @@ TEST(ScalarFma, ExecAndAllScalarAliases) {
 
 TEST(ScalarFma, TrueFusionAndGuestFpStages) {
   uint32_t d = 0xbf800000;
-  ASSERT_EQ(goc_rdna4_s_fmac_f32(0, 0, 0, &d, 0x3f800001, 0x3f7ffffe), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_fmac_f32(0, 0, 0, &d, 0x3f800001, 0x3f7ffffe, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0xa8800000u);
   d = 0xabcdbc00;
-  ASSERT_EQ(goc_rdna4_s_fmac_f16(0, 0, 0, &d, 0x3c01, 0x3bfe), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_fmac_f16(0, 0, 0, &d, 0x3c01, 0x3bfe, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x8010u);
   d = 0;
-  ASSERT_EQ(goc_rdna4_s_fmac_f32(GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, 0, &d, 0x00800000, 0x3f7fffff),
+  ASSERT_EQ(goc_rdna4_s_fmac_f32(GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, 0, &d, 0x00800000, 0x3f7fffff,
+                                 nullptr),
             GOC_SUCCESS);
   EXPECT_EQ(d, 0u);
   d = 0;
-  ASSERT_EQ(goc_rdna4_s_fmac_f32(0, 0, 0, &d, 0x00800000, 0x3f7fffff), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_fmac_f32(0, 0, 0, &d, 0x00800000, 0x3f7fffff, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x00800000u);
   d = 1;
-  ASSERT_EQ(goc_rdna4_s_fmac_f16(GOC_FP_FLUSH_INPUT_DENORMALS, 0, 0, &d, 0x3c00, 0), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_fmac_f16(GOC_FP_FLUSH_INPUT_DENORMALS, 0, 0, &d, 0x3c00, 0, nullptr),
+            GOC_SUCCESS);
   EXPECT_EQ(d, 0u);
   d = 0;
-  ASSERT_EQ(goc_rdna4_s_fmac_f16(GOC_FP16_OVFL, 0, 0, &d, 0x7bff, 0x4000), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_fmac_f16(GOC_FP16_OVFL, 0, 0, &d, 0x7bff, 0x4000, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x7bffu);
-  ASSERT_EQ(goc_rdna4_s_fmaak_f32(0, 0, 0, &d, 0x3f800001, 0x3f7ffffe, 0xbf800000), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_fmaak_f32(0, 0, 0, &d, 0x3f800001, 0x3f7ffffe, 0xbf800000, nullptr),
+            GOC_SUCCESS);
   EXPECT_EQ(d, 0xa8800000u);
-  ASSERT_EQ(goc_rdna4_s_fmamk_f32(0, 0, 0, &d, 0x3f800001, 0x3f7ffffe, 0xbf800000), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_fmamk_f32(0, 0, 0, &d, 0x3f800001, 0x3f7ffffe, 0xbf800000, nullptr),
+            GOC_SUCCESS);
   EXPECT_EQ(d, 0xa8800000u);
 }
 

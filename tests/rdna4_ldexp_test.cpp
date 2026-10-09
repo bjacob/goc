@@ -114,7 +114,8 @@ TEST(Ldexp, AllModifiersMasksAndAliases) {
               for (int lane = 0; lane < 32; ++lane)
                 if (exec_mask >> lane & 1)
                   want[alias[reg]][lane + 1] = uint32_t(results[lane] >> (32 * reg));
-            ASSERT_EQ(functions[fp64](cpu, exec_mask, modifiers(variant), d, a, &b), GOC_SUCCESS);
+            ASSERT_EQ(functions[fp64](cpu, exec_mask, modifiers(variant), d, a, &b, nullptr),
+                      GOC_SUCCESS);
             for (int reg = 0; reg < 5; ++reg)
               for (int lane = 0; lane < 34; ++lane)
                 EXPECT_EQ(storage[reg][lane], want[reg][lane]);
@@ -156,7 +157,8 @@ TEST(Ldexp, EveryExponentBoundaryAndRandomValues) {
             a[1][lane] = uint32_t(test.first >> 32);
             b[lane] = uint32_t(test.second);
           }
-          ASSERT_EQ(functions[fp64](cpu, UINT32_MAX, modifiers(variant), pd, pa, &pb), GOC_SUCCESS);
+          ASSERT_EQ(functions[fp64](cpu, UINT32_MAX, modifiers(variant), pd, pa, &pb, nullptr),
+                    GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane) {
             const auto &test = cases[(start + lane) % cases.size()];
             uint64_t want = expected(fp64, test.first, test.second, modifiers(variant));
@@ -205,7 +207,7 @@ TEST(Ldexp, LiteralRoundingAndValidation) {
         a[1][lane] = uint32_t(test.input >> 32);
         b[lane] = uint32_t(test.power);
       }
-      ASSERT_EQ(functions[fp64](cpu, UINT32_MAX, 0, pd, pa, &pb), GOC_SUCCESS);
+      ASSERT_EQ(functions[fp64](cpu, UINT32_MAX, 0, pd, pa, &pb, nullptr), GOC_SUCCESS);
       for (int lane = 0; lane < 32; ++lane) {
         EXPECT_EQ(d[0][lane], uint32_t(cases[fp64][lane % 8].output));
         if (fp64) {
@@ -217,18 +219,20 @@ TEST(Ldexp, LiteralRoundingAndValidation) {
       for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         for (uint32_t invalid :
              {GOC_ALU_NEG_B, GOC_ALU_ABS_B, GOC_ALU_NEG_C, GOC_ALU_HIGH_D, 1U << 31})
-          EXPECT_EQ(functions[fp64](cpu, exec_mask, invalid, pd, pa, &pb), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(functions[fp64](cpu | (1ULL << 63), exec_mask, 0, pd, pa, &pb),
+          EXPECT_EQ(functions[fp64](cpu, exec_mask, invalid, pd, pa, &pb, nullptr),
+                    GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(functions[fp64](cpu | (1ULL << 63), exec_mask, 0, pd, pa, &pb, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                  exec_mask, 0, pd, pa, &pb),
+                                  exec_mask, 0, pd, pa, &pb, nullptr),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (auto &reg : d)
         for (uint32_t value : reg)
           EXPECT_EQ(value, 0xdeadbeef);
-      EXPECT_EQ(functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, pd, pa, &pb),
-                GOC_SUCCESS);
+      EXPECT_EQ(
+          functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, pd, pa, &pb, nullptr),
+          GOC_SUCCESS);
     }
 }
 
@@ -248,8 +252,9 @@ TEST(Ldexp, DppHardwareCorpus) {
             d[lane] = 0xdead0000u + lane;
           }
           auto pa = a, pb = b, pd = d;
-          ASSERT_EQ(functions[0](cpu, exec_mask, descriptor | modifiers(variant), &pd, &pa, &pb),
-                    GOC_SUCCESS);
+          ASSERT_EQ(
+              functions[0](cpu, exec_mask, descriptor | modifiers(variant), &pd, &pa, &pb, nullptr),
+              GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             int source;
             uint32_t want = 0xdead0000u + lane;
@@ -294,8 +299,9 @@ TEST(Ldexp, DppModifiersMasksAliasesAndRandomWords) {
             unsigned dest = layout % 3 == 0 ? 2 : layout % 3 - 1;
             unsigned breg = layout >= 3 ? 0 : 1;
             auto a = words[0] + 1, b = words[breg] + 1, d = words[dest] + 1;
-            ASSERT_EQ(functions[0](cpu, exec_mask, descriptor | modifiers(variant), &d, &a, &b),
-                      GOC_SUCCESS);
+            ASSERT_EQ(
+                functions[0](cpu, exec_mask, descriptor | modifiers(variant), &d, &a, &b, nullptr),
+                GOC_SUCCESS);
             for (unsigned reg = 0; reg < 3; ++reg)
               for (unsigned lane = 0; lane < 34; ++lane) {
                 int source;
@@ -318,13 +324,15 @@ TEST(Ldexp, DppModifiersMasksAliasesAndRandomWords) {
 
 TEST(Ldexp, DppValidation) {
   for (uint64_t descriptor : goc_test::dpp_modes) {
-    EXPECT_EQ(functions[0](0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr, nullptr),
-              GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr, nullptr),
-              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(functions[0](0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(
+        functions[0](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr, nullptr, nullptr),
+        GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(
+        functions[0](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr, nullptr, nullptr),
+        GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(functions[0](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
-                           descriptor, nullptr, nullptr, nullptr),
+                           descriptor, nullptr, nullptr, nullptr, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
   }
 }

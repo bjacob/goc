@@ -7,6 +7,7 @@
 #include "rdna4_byte_pack_hardware.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_test_instruction.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -18,11 +19,11 @@
 
 namespace {
 
-using Fn = decltype(&goc_rdna4_v_cvt_pk_u8_f32);
+using Fn = goc_test::WaveInstruction<decltype(&goc_rdna4_v_mad_u32_u24)>;
 const Fn functions[] = {
-    [](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
-       const uint32_t *const *,
-       const uint32_t *const *) { return goc_rdna4_v_cvt_off_f32_i4(f, exec_mask, i, d, a); },
+    +[](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+        const uint32_t *const *,
+        const uint32_t *const *) { return goc_rdna4_v_cvt_off_f32_i4(f, exec_mask, i, d, a); },
     goc_rdna4_v_cvt_pk_u8_f32};
 
 uint32_t mode(unsigned op, unsigned variant) {
@@ -49,8 +50,9 @@ TEST(BytePack, HardwareCapturedRoundingAndModifiers) {
         std::fill_n(cv, 32, 0x12345678);
         const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
         uint32_t *d[] = {output};
-        ASSERT_EQ(functions[column < 4 ? 1 : 0](cpu, UINT32_MAX, modes[column], d, a, b, c),
-                  GOC_SUCCESS);
+        ASSERT_EQ(
+            functions[column < 4 ? 1 : 0](cpu, UINT32_MAX, modes[column], d, a, b, c, nullptr),
+            GOC_SUCCESS);
         for (auto word : output)
           ASSERT_EQ(word, capture.expected[column]) << row << "/" << column << "/" << cpu;
       }
@@ -76,7 +78,7 @@ TEST(BytePack, EveryRoundingBoundaryAndBytePosition) {
           const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
           uint32_t *d[] = {output};
           uint32_t flags = mode(1, variant);
-          ASSERT_EQ(functions[1](cpu, UINT32_MAX, flags, d, a, b, c), GOC_SUCCESS);
+          ASSERT_EQ(functions[1](cpu, UINT32_MAX, flags, d, a, b, c, nullptr), GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane)
             ASSERT_EQ(output[lane], reference(1, av[lane], bv[lane], cv[lane], flags));
         }
@@ -92,7 +94,8 @@ TEST(BytePack, EveryNibbleModifierAndUnselectedBit) {
         const uint32_t *a[] = {av};
         uint32_t *d[] = {output};
         uint32_t flags = mode(0, variant);
-        ASSERT_EQ(functions[0](cpu, UINT32_MAX, flags, d, a, nullptr, nullptr), GOC_SUCCESS);
+        ASSERT_EQ(functions[0](cpu, UINT32_MAX, flags, d, a, nullptr, nullptr, nullptr),
+                  GOC_SUCCESS);
         for (unsigned lane = 0; lane < 32; ++lane)
           ASSERT_EQ(output[lane], reference(0, av[lane], 0, 0, flags));
       }
@@ -120,7 +123,7 @@ TEST(BytePack, EveryModifierMaskAndWholeRegisterAlias) {
                 const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1},
                                *c[] = {storage[creg] + 1};
                 uint32_t *d[] = {storage[dreg] + 1};
-                ASSERT_EQ(functions[op](cpu | GOC_FP16_OVFL, exec_mask, flags, d, a, b, c),
+                ASSERT_EQ(functions[op](cpu | GOC_FP16_OVFL, exec_mask, flags, d, a, b, c, nullptr),
                           GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 4; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
@@ -148,7 +151,7 @@ TEST(BytePack, HostRoundingAndOffsetEnvironment) {
           EXPECT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
           EXPECT_EQ(std::feraiseexcept(FE_INEXACT), 0);
           int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
-          EXPECT_EQ(functions[op](cpu, UINT32_MAX, 0, d, a, b, c), GOC_SUCCESS);
+          EXPECT_EQ(functions[op](cpu, UINT32_MAX, 0, d, a, b, c, nullptr), GOC_SUCCESS);
           if (!op) {
             EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
           }
@@ -169,20 +172,22 @@ TEST(BytePack, ValidationAndSemanticFallback) {
       uint32_t known = mode(op, 7);
       for (unsigned bit = 0; bit < 32; ++bit)
         if (!(known & (1u << bit))) {
-          EXPECT_EQ(functions[op](cpu, UINT32_MAX, 1u << bit, d, a, a, a), GOC_ERROR_INVALID_FLAGS);
-          EXPECT_EQ(functions[op](cpu, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr),
+          EXPECT_EQ(functions[op](cpu, UINT32_MAX, 1u << bit, d, a, a, a, nullptr),
+                    GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(functions[op](cpu, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a, a, a),
+      EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a, a, a, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                              UINT32_MAX, 0, d, a, a, a),
+                              UINT32_MAX, 0, d, a, a, a, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeefu);
-      EXPECT_EQ(functions[op](cpu, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, 0U, 0, nullptr, nullptr, nullptr, nullptr, nullptr),
+                GOC_SUCCESS);
       for (unsigned sem = 0; sem < 4; ++sem) {
-        EXPECT_EQ(functions[op](cpu | (uint64_t(sem) << 16), UINT32_MAX, 0, d, a, a, a),
+        EXPECT_EQ(functions[op](cpu | (uint64_t(sem) << 16), UINT32_MAX, 0, d, a, a, a, nullptr),
                   GOC_SUCCESS);
         for (auto word : output)
           EXPECT_EQ(word, 0u);
@@ -214,9 +219,9 @@ TEST(BytePack, DppModifiersMasksAliasesAndGuards) {
                 const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1},
                                *c[] = {storage[creg] + 1};
                 uint32_t *d[] = {storage[dreg] + 1};
-                ASSERT_EQ(
-                    goc_rdna4_v_cvt_pk_u8_f32(cpu | GOC_FP16_OVFL, exec_mask, flags, d, a, b, c),
-                    GOC_SUCCESS);
+                ASSERT_EQ(goc_rdna4_v_cvt_pk_u8_f32(cpu | GOC_FP16_OVFL, exec_mask, flags, d, a, b,
+                                                    c, nullptr),
+                          GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 4; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
                     ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -226,13 +231,14 @@ TEST(BytePack, DppModifiersMasksAliasesAndGuards) {
 
 TEST(BytePack, DppValidation) {
   for (auto descriptor : goc_test::dpp_modes) {
-    EXPECT_EQ(goc_rdna4_v_cvt_pk_u8_f32(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr),
-              GOC_SUCCESS);
+    EXPECT_EQ(
+        goc_rdna4_v_cvt_pk_u8_f32(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr, nullptr),
+        GOC_SUCCESS);
     for (uint64_t invalid : std::initializer_list<uint64_t>{1ULL << 36, uint64_t(GOC_ALU_OMOD_2),
                                                             uint64_t(GOC_ALU_HIGH_A)})
-      EXPECT_EQ(
-          goc_rdna4_v_cvt_pk_u8_f32(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr),
-          GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(goc_rdna4_v_cvt_pk_u8_f32(0, 0, descriptor | invalid, nullptr, nullptr, nullptr,
+                                          nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
   }
 }
 
@@ -257,8 +263,9 @@ TEST(BytePack, DppHardwareCorpus) {
           }
           const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
           uint32_t *d[] = {output};
-          ASSERT_EQ(goc_rdna4_v_cvt_pk_u8_f32(cpu, exec_mask, descriptor | modifier, d, a, b, c),
-                    GOC_SUCCESS);
+          ASSERT_EQ(
+              goc_rdna4_v_cvt_pk_u8_f32(cpu, exec_mask, descriptor | modifier, d, a, b, c, nullptr),
+              GOC_SUCCESS);
           for (auto word : output)
             hash = goc_test::capture_hash_word(hash, word);
         }

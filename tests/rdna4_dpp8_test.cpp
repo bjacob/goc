@@ -28,8 +28,8 @@ float number(uint32_t u) {
 
 int call(bool accumulate, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  return accumulate ? goc_rdna4_v_fmac_f32(flags, exec_mask, mode, d, a, b)
-                    : goc_rdna4_v_fma_f32(flags, exec_mask, mode, d, a, b, c);
+  return accumulate ? goc_rdna4_v_fmac_f32(flags, exec_mask, mode, d, a, b, nullptr)
+                    : goc_rdna4_v_fma_f32(flags, exec_mask, mode, d, a, b, c, nullptr);
 }
 
 float modify(uint32_t raw, uint32_t mode, unsigned operand) {

@@ -27,18 +27,18 @@ double number(uint64_t value) {
 int call(int op, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (op == 0)
-    return goc_rdna4_v_add_f64(flags, exec_mask, mode, d, a, b);
+    return goc_rdna4_v_add_f64(flags, exec_mask, mode, d, a, b, nullptr);
   if (op == 1)
-    return goc_rdna4_v_mul_f64(flags, exec_mask, mode, d, a, b);
+    return goc_rdna4_v_mul_f64(flags, exec_mask, mode, d, a, b, nullptr);
   if (op == 3)
-    return goc_rdna4_v_min_num_f64(flags, exec_mask, mode, d, a, b);
+    return goc_rdna4_v_min_num_f64(flags, exec_mask, mode, d, a, b, nullptr);
   if (op == 4)
-    return goc_rdna4_v_max_num_f64(flags, exec_mask, mode, d, a, b);
+    return goc_rdna4_v_max_num_f64(flags, exec_mask, mode, d, a, b, nullptr);
   if (op == 5)
-    return goc_rdna4_v_minimum_f64(flags, exec_mask, mode, d, a, b);
+    return goc_rdna4_v_minimum_f64(flags, exec_mask, mode, d, a, b, nullptr);
   if (op == 6)
-    return goc_rdna4_v_maximum_f64(flags, exec_mask, mode, d, a, b);
-  return goc_rdna4_v_fma_f64(flags, exec_mask, mode, d, a, b, c);
+    return goc_rdna4_v_maximum_f64(flags, exec_mask, mode, d, a, b, nullptr);
+  return goc_rdna4_v_fma_f64(flags, exec_mask, mode, d, a, b, c, nullptr);
 }
 
 } // namespace
@@ -334,7 +334,7 @@ TEST(Fp64, MinmaxNaNPriorityAcrossPrecisions) {
             }
           const uint32_t *pa[] = {a[0], a[1]}, *pb[] = {b[0], b[1]};
           uint32_t *pd[] = {output[0], output[1]};
-          ASSERT_EQ(instructions[format][op](cpu, UINT32_MAX, 0, pd, pa, pb), GOC_SUCCESS);
+          ASSERT_EQ(instructions[format][op](cpu, UINT32_MAX, 0, pd, pa, pb, nullptr), GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             uint64_t actual = output[0][lane] | (uint64_t(output[1][lane]) << 32);
             EXPECT_EQ(actual, sample[op < 2 ? 2 : 3]) << format << '/' << cpu << '/' << op;

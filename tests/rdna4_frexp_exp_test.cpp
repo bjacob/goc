@@ -99,7 +99,7 @@ TEST(FrexpExp, AllModifiersMasksAndAliases) {
             }
             std::array<uint32_t, 32> before;
             std::copy(d, d + 32, before.begin());
-            ASSERT_EQ(functions[fp64](cpu, exec_mask, mode(variant), &d, a), GOC_SUCCESS);
+            ASSERT_EQ(functions[fp64](cpu, exec_mask, mode(variant), &d, a, nullptr), GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane)
               EXPECT_EQ(d[lane],
                         (exec_mask >> lane & 1) ? reference(inputs[lane], fp64) : before[lane]);
@@ -143,7 +143,7 @@ TEST(FrexpExp, EveryExponentAndSubnormalLeadingBit) {
             a[0][lane] = uint32_t(value);
             a[1][lane] = uint32_t(value >> 32);
           }
-          ASSERT_EQ(functions[fp64](cpu, UINT32_MAX, mode(variant), &pd, pa), GOC_SUCCESS);
+          ASSERT_EQ(functions[fp64](cpu, UINT32_MAX, mode(variant), &pd, pa, nullptr), GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
             EXPECT_EQ(d[lane], reference(inputs[(start + lane) % inputs.size()], fp64));
         }
@@ -165,23 +165,25 @@ TEST(FrexpExp, LiteralValuesAndValidation) {
         a[0][lane] = uint32_t(inputs[fp64][lane % 8]);
         a[1][lane] = uint32_t(inputs[fp64][lane % 8] >> 32);
       }
-      ASSERT_EQ(functions[fp64](cpu, UINT32_MAX, 0, &pd, pa), GOC_SUCCESS);
+      ASSERT_EQ(functions[fp64](cpu, UINT32_MAX, 0, &pd, pa, nullptr), GOC_SUCCESS);
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(d[lane], uint32_t(expected[fp64][lane % 8]));
       std::fill(d, d + 32, 0xdeadbeef);
       for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         for (uint32_t invalid : {GOC_ALU_NEG_B, GOC_ALU_ABS_B, GOC_ALU_HIGH_D, 1U << 31})
-          EXPECT_EQ(functions[fp64](cpu, exec_mask, invalid, &pd, pa), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(functions[fp64](cpu | (1ULL << 63), exec_mask, 0, &pd, pa),
+          EXPECT_EQ(functions[fp64](cpu, exec_mask, invalid, &pd, pa, nullptr),
+                    GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(functions[fp64](cpu | (1ULL << 63), exec_mask, 0, &pd, pa, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                  exec_mask, 0, &pd, pa),
+                                  exec_mask, 0, &pd, pa, nullptr),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (uint32_t value : d)
         EXPECT_EQ(value, 0xdeadbeef);
-      EXPECT_EQ(functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &pd, pa),
-                GOC_SUCCESS);
+      EXPECT_EQ(
+          functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &pd, pa, nullptr),
+          GOC_SUCCESS);
     }
 }
 
@@ -200,7 +202,7 @@ TEST(FrexpExp, DppHardwareCorpus) {
             d[lane] = 0xdead0000u + lane;
           }
           auto pa = a, pd = d;
-          ASSERT_EQ(functions[0](cpu, exec_mask, descriptor | low, &pd, &pa), GOC_SUCCESS);
+          ASSERT_EQ(functions[0](cpu, exec_mask, descriptor | low, &pd, &pa, nullptr), GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             int source;
             uint32_t want = 0xdead0000u + lane;
@@ -227,7 +229,7 @@ TEST(FrexpExp, DppModifiersMasksAliasesAndRandomWords) {
                 word = random();
             std::memcpy(before, words, sizeof(words));
             auto a = words[0] + 1, d = words[alias ? 0 : 1] + 1;
-            ASSERT_EQ(functions[0](cpu, exec_mask, descriptor | mode(variant), &d, &a),
+            ASSERT_EQ(functions[0](cpu, exec_mask, descriptor | mode(variant), &d, &a, nullptr),
                       GOC_SUCCESS);
             for (unsigned reg = 0; reg < 2; ++reg)
               for (unsigned lane = 0; lane < 34; ++lane) {
@@ -260,7 +262,8 @@ TEST(FrexpExp, Fp32PreservesHostEnvironment) {
           std::fesetround(rounding);
           std::feclearexcept(FE_ALL_EXCEPT);
           std::feraiseexcept(FE_DIVBYZERO);
-          EXPECT_EQ(functions[0](cpu, 0xaaaaaaaau, flags | mode(variant), &pd, &pa), GOC_SUCCESS);
+          EXPECT_EQ(functions[0](cpu, 0xaaaaaaaau, flags | mode(variant), &pd, &pa, nullptr),
+                    GOC_SUCCESS);
           EXPECT_EQ(std::fegetround(), rounding);
           EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
           for (unsigned lane = 0; lane < 32; ++lane) {
@@ -274,13 +277,13 @@ TEST(FrexpExp, Fp32PreservesHostEnvironment) {
 
 TEST(FrexpExp, DppValidation) {
   for (uint64_t descriptor : goc_test::dpp_modes) {
-    EXPECT_EQ(functions[0](0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | GOC_ALU_HIGH_A, nullptr, nullptr),
+    EXPECT_EQ(functions[0](0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | GOC_ALU_HIGH_A, nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr),
+    EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(functions[0](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
-                           descriptor, nullptr, nullptr),
+                           descriptor, nullptr, nullptr, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
   }
 }

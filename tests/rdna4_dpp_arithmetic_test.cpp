@@ -178,7 +178,7 @@ TEST(DppArithmetic, OmodWithoutPermutation) {
         a[lane] = inputs[lane % 8];
       const uint32_t *pa = a, *pb = b;
       uint32_t *pd = d;
-      ASSERT_EQ(goc_rdna4_v_add_f32(cpu, UINT32_MAX, uint64_t(scale) << 6, &pd, &pa, &pb),
+      ASSERT_EQ(goc_rdna4_v_add_f32(cpu, UINT32_MAX, uint64_t(scale) << 6, &pd, &pa, &pb, nullptr),
                 GOC_SUCCESS);
       for (unsigned lane = 0; lane < 32; ++lane)
         EXPECT_EQ(d[lane], scale == 1 ? doubled[lane % 8] : halved[lane % 8]);

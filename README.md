@@ -504,8 +504,8 @@ status through a separate scalar output. Active signed-zero and subnormal inputs
 raise `GOC_RDNA4_EXCEPTION_INT_DIV0`; CLAMP suppresses a new cause but preserves
 any pre-existing status bit. Other status bits survive unchanged. The scalar
 status is written after VGPR stores, taking precedence if its storage aliases
-an input or output word. Empty EXEC leaves VGPRs untouched and copies the incoming
-status to the scalar output.
+an input or output word. Empty EXEC leaves all outputs untouched. A null
+`excp_flag_user` opts out of status accumulation.
 DPP8/DPP16 permutes A before the source modifiers. Filtered-out destination
 lanes add no guest exception, while active lanes receiving a DPP zero can raise
 INT_DIV0. Existing status bits survive all DPP and CLAMP combinations.
@@ -2117,3 +2117,21 @@ RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU
 architectures and further performance tuning also remain future work.
+
+
+## Architectural exception outputs
+
+Exception-producing RDNA4 entry points append `uint32_t *excp_flag_user`.
+Pass `NULL` in C or `nullptr` in C++ to retain existing behavior and opt out of
+reporting. The reporting contract is to OR the instruction's generated
+exception bits into this wave-wide register, preserving prior bits. Instructions
+that do not report exceptions have no such parameter; existing register outputs
+are not duplicated.
+
+**Only `v_rcp_iflag_f32` currently implements exception generation.** It
+accumulates integer-divide-by-zero flags on all CPU paths. For other affected
+instructions, a non-null pointer returns
+`GOC_ERROR_UNSUPPORTED_EXCEPTIONS` before any operand access or other validation,
+leaving all outputs unchanged, including for empty EXEC. This applies to both
+loose and empirical-exact semantics. The host FP environment is not used to
+collect guest exception state. See the [design plan](https://github.com/bjacob/goc/blob/main/PLAN.md#implicit-architectural-register-outputs).

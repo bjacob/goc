@@ -3,6 +3,7 @@
 #include "capture_hash.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_test_instruction.h"
 
 #include <cstring>
 #include <gtest/gtest.h>
@@ -65,9 +66,10 @@ TEST(OutputScaling, LdexpAndConversionsHardwareBoundaries) {
             uint32_t *p[] = {words[0], words[1], words[2], words[3]};
             uint64_t mode = (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
                             ((variant >> 2 & 3) << 6) | (variant & 16 ? GOC_ALU_CLAMP : 0);
-            int error = op == 0 ? goc_rdna4_v_ldexp_f32(cpu, UINT32_MAX, mode, &p[alias], p, p + 2)
-                        : op == 1 ? goc_rdna4_v_cvt_f32_f16(cpu, UINT32_MAX, mode, &p[alias], p)
-                                  : goc_rdna4_v_cvt_f32_f64(cpu, UINT32_MAX, mode, &p[alias], p);
+            int error =
+                op == 0 ? goc_rdna4_v_ldexp_f32(cpu, UINT32_MAX, mode, &p[alias], p, p + 2, nullptr)
+                : op == 1 ? goc_rdna4_v_cvt_f32_f16(cpu, UINT32_MAX, mode, &p[alias], p, nullptr)
+                          : goc_rdna4_v_cvt_f32_f64(cpu, UINT32_MAX, mode, &p[alias], p, nullptr);
             ASSERT_EQ(error, GOC_SUCCESS);
             for (uint32_t value : words[alias]) {
               if ((value & 0x7fffffff) > 0x7f800000)
@@ -84,7 +86,7 @@ TEST(OutputScaling, WideConversionsHardwareBoundaries) {
   // RX 9070, gfx1201, MODE=0xf0. Same input words as inputs32.
   // FP32 widening covers ABS/NEG; integer widening only encodes OMOD/CLAMP.
   const uint64_t hashes[] = {0xe618186b9bac389dULL, 0xf8126ee2eef77260ULL, 0xab3308cda26a2808ULL};
-  using Fn = decltype(&goc_rdna4_v_cvt_f64_f32);
+  using Fn = goc_test::WaveInstruction<decltype(&goc_rdna4_v_cvt_u32_u16)>;
   const Fn functions[] = {goc_rdna4_v_cvt_f64_f32, goc_rdna4_v_cvt_f64_i32,
                           goc_rdna4_v_cvt_f64_u32};
   const unsigned aliases[][2] = {{1, 2}, {0, 1}, {1, 0}};
@@ -101,7 +103,7 @@ TEST(OutputScaling, WideConversionsHardwareBoundaries) {
           uint32_t *d[] = {p[alias[0]], p[alias[1]]};
           uint64_t mode = op == 0 ? (v & 1) | ((v & 2) << 2) | ((v & 12) << 4) | ((v & 16) << 4)
                                   : ((v >> 1) << 6) | ((v & 1) << 8);
-          ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, d, p), GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, d, p, nullptr), GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             uint64_t raw = d[0][lane] | (uint64_t(d[1][lane]) << 32);
             if ((raw & 0x7fffffffffffffffULL) > 0x7ff0000000000000ULL)

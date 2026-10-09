@@ -63,7 +63,7 @@ TEST(Trig, CapturedResultsWithEveryModifier) {
           const uint32_t *ap[] = {a};
           uint32_t *dp[] = {d};
           ASSERT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                  UINT32_MAX, modifiers(mode), dp, ap),
+                                  UINT32_MAX, modifiers(mode), dp, ap, nullptr),
                     GOC_SUCCESS);
           uint32_t expected = scale_reference(golden[op + 1], mode);
           for (uint32_t value : d)
@@ -84,7 +84,7 @@ TEST(Trig, FullRangeRandomInputsAndIntervalBoundaries) {
           a[lane] = index < 1024 ? goc::as_bits(float(index / 8) / 128) + index % 8 - 4
                                  : uint32_t(random());
         }
-        ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, dp, ap), GOC_SUCCESS);
+        ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, dp, ap, nullptr), GOC_SUCCESS);
         for (int lane = 0; lane < 32; ++lane) {
           uint32_t magnitude = a[lane] & 0x7fffffff;
           if (magnitude >= 0x7f800000) {
@@ -112,10 +112,10 @@ TEST(Trig, LooseMatchesScalarWithEveryModifier) {
             a[lane] = start == 0 ? goc_test::trig_golden[lane][0] : uint32_t(random());
           const uint32_t *ap[] = {a};
           uint32_t *rp[] = {reference}, *dp[] = {actual};
-          ASSERT_EQ(
-              functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, modifiers(mode), rp, ap),
-              GOC_SUCCESS);
-          ASSERT_EQ(functions[op](cpu, UINT32_MAX, modifiers(mode), dp, ap), GOC_SUCCESS);
+          ASSERT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, modifiers(mode), rp,
+                                  ap, nullptr),
+                    GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu, UINT32_MAX, modifiers(mode), dp, ap, nullptr), GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane) {
             uint32_t magnitude = reference[lane] & 0x7fffffff;
             if (!magnitude || magnitude >= 0x7f800000) {
@@ -140,7 +140,7 @@ TEST(Trig, EveryMaskAliasesAndModifier) {
           source[lane] = goc_test::trig_golden[lane][0];
         const uint32_t *ap[] = {source};
         uint32_t *fp[] = {full};
-        ASSERT_EQ(functions[op](cpu, UINT32_MAX, modifiers(mode), fp, ap), GOC_SUCCESS);
+        ASSERT_EQ(functions[op](cpu, UINT32_MAX, modifiers(mode), fp, ap, nullptr), GOC_SUCCESS);
         for (uint32_t exec_mask : rdna4_exec_masks())
           for (bool alias : {false, true}) {
             uint32_t a[32], d[32];
@@ -148,7 +148,8 @@ TEST(Trig, EveryMaskAliasesAndModifier) {
             std::fill_n(d, 32, 0xdeadbeef);
             const uint32_t *input[] = {a};
             uint32_t *output[] = {alias ? a : d};
-            ASSERT_EQ(functions[op](cpu, exec_mask, modifiers(mode), output, input), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, modifiers(mode), output, input, nullptr),
+                      GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane)
               ASSERT_EQ(output[0][lane], (exec_mask >> lane) & 1 ? full[lane]
                                          : alias                 ? source[lane]
@@ -166,7 +167,7 @@ TEST(Trig, ExactPreservesHostEnvironment) {
     for (int mode = 0; mode < 32; ++mode) {
       uint32_t *destination[] = {expected[op][mode]};
       ASSERT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, modifiers(mode),
-                              destination, source_pointer),
+                              destination, source_pointer, nullptr),
                 GOC_SUCCESS);
     }
   goc_test::ScopedFpEnvironment saved;
@@ -186,7 +187,7 @@ TEST(Trig, ExactPreservesHostEnvironment) {
           uint32_t *dp[] = {d};
           EXPECT_EQ(functions[op](goc_init_cpu_flags() | GOC_SEMANTICS_EXACT_EMPIRICAL |
                                       GOC_SEMANTICS_STRICT,
-                                  UINT32_MAX, modifiers(mode), dp, source_pointer),
+                                  UINT32_MAX, modifiers(mode), dp, source_pointer, nullptr),
                     GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
             EXPECT_EQ(d[lane], expected[op][mode][lane]);
@@ -210,14 +211,14 @@ TEST(Trig, InvalidFlagsAndReservedSemanticsPreserveDestination) {
       if (mode & (GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP))
         continue;
       for (uint32_t exec_mask : {0U, UINT32_MAX})
-        EXPECT_EQ(fn(0, exec_mask, mode, dp, ap), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(0, exec_mask, mode, dp, ap, nullptr), GOC_ERROR_INVALID_FLAGS);
     }
-    EXPECT_EQ(fn(1ULL << 63, 0, 0, dp, ap), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT, 0, 0, dp, ap),
+    EXPECT_EQ(fn(1ULL << 63, 0, 0, dp, ap, nullptr), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT, 0, 0, dp, ap, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0xdeadbeef);
-    EXPECT_EQ(fn(GOC_SEMANTICS_MASK, UINT32_MAX, 0, dp, ap), GOC_SUCCESS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_MASK, UINT32_MAX, 0, dp, ap, nullptr), GOC_SUCCESS);
   }
 }
 
@@ -252,9 +253,9 @@ TEST(Trig, DppModifiersMasksAliasesAndGuards) {
                 const uint32_t *a[] = {words[0] + 1}, *reference_a[] = {permuted};
                 uint32_t *d[] = {words[target] + 1}, *reference_d[] = {expected[target] + 1};
                 ASSERT_EQ(fn(cpu | semantics, reference_exec_mask, modifiers(m), reference_d,
-                             reference_a),
+                             reference_a, nullptr),
                           GOC_SUCCESS);
-                ASSERT_EQ(fn(cpu | semantics, exec_mask, descriptor | modifiers(m), d, a),
+                ASSERT_EQ(fn(cpu | semantics, exec_mask, descriptor | modifiers(m), d, a, nullptr),
                           GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 2; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
@@ -268,9 +269,10 @@ TEST(Trig, DppModifiersMasksAliasesAndGuards) {
 TEST(Trig, DppValidation) {
   for (auto fn : functions)
     for (auto descriptor : goc_test::dpp_modes) {
-      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
       for (auto invalid : {1ULL << 36, 1ULL << 1})
-        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
     }
 }
 
@@ -295,7 +297,7 @@ TEST(Trig, DppHardwareCorpus) {
               }
               const uint32_t *a[] = {av};
               uint32_t *d[] = {output};
-              ASSERT_EQ(fn(cpu | semantics, exec_mask, descriptor | modifiers(m), d, a),
+              ASSERT_EQ(fn(cpu | semantics, exec_mask, descriptor | modifiers(m), d, a, nullptr),
                         GOC_SUCCESS);
               for (auto word : output)
                 hash = goc_test::capture_hash_word(hash, word);

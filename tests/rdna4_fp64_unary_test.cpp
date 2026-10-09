@@ -134,7 +134,7 @@ TEST(Fp64Unary, AllModifiersMasksAndCrossHalfAliases) {
           source[0][lane] = uint32_t(inputs[lane]);
           source[1][lane] = uint32_t(inputs[lane] >> 32);
         }
-        ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, pd, pa), GOC_SUCCESS);
+        ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, pd, pa, nullptr), GOC_SUCCESS);
         for (uint32_t exec_mask : rdna4_exec_masks())
           for (const auto &alias : aliases) {
             SCOPED_TRACE(::testing::Message() << op << "/" << mode << "/" << cpu << "/" << exec_mask
@@ -150,7 +150,7 @@ TEST(Fp64Unary, AllModifiersMasksAndCrossHalfAliases) {
             uint32_t *d[] = {v[alias[0]], v[alias[1]]};
             for (int reg = 0; reg < 2; ++reg)
               std::copy(d[reg], d[reg] + 32, before[reg]);
-            ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, v), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, v, nullptr), GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane) {
               if (!((exec_mask >> lane) & 1)) {
                 EXPECT_EQ(d[0][lane], before[0][lane]);
@@ -212,7 +212,7 @@ TEST(Fp64Unary, LiteralBoundaries) {
       uint32_t *pa[] = {a[0], a[1]}, *pd[] = {d[0], d[1]};
       std::fill(a[0], a[0] + 32, uint32_t(test.input));
       std::fill(a[1], a[1] + 32, uint32_t(test.input >> 32));
-      ASSERT_EQ(functions[test.op](cpu, UINT32_MAX, 0, pd, pa), GOC_SUCCESS);
+      ASSERT_EQ(functions[test.op](cpu, UINT32_MAX, 0, pd, pa, nullptr), GOC_SUCCESS);
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(d[0][lane] | (uint64_t(d[1][lane]) << 32), test.want)
             << cpu << "/" << test.op << "/" << test.input;
@@ -225,11 +225,12 @@ TEST(Fp64Unary, Validation) {
   for (auto fn : functions) {
     for (auto &reg : d)
       std::fill(reg, reg + 32, 0xdeadbeef);
-    EXPECT_EQ(fn(0, UINT32_MAX, GOC_ALU_NEG_B, pd, pa), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_D, pd, pa), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, pd, pa),
-              GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0U, 0, pd, pa), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT32_MAX, GOC_ALU_NEG_B, pd, pa, nullptr), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_D, pd, pa, nullptr), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(
+        fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, pd, pa, nullptr),
+        GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0U, 0, pd, pa, nullptr), GOC_SUCCESS);
     for (auto &reg : d)
       for (uint32_t value : reg)
         EXPECT_EQ(value, 0xdeadbeef);
@@ -254,7 +255,7 @@ TEST(Fp64Unary, MantissaLiteralSubnormalsAndPassthrough) {
       uint32_t *pa[] = {a[0], a[1]}, *pd[] = {d[0], d[1]};
       std::fill(a[0], a[0] + 32, uint32_t(test[0]));
       std::fill(a[1], a[1] + 32, uint32_t(test[0] >> 32));
-      ASSERT_EQ(goc_rdna4_v_frexp_mant_f64(cpu, UINT32_MAX, 0, pd, pa), GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_v_frexp_mant_f64(cpu, UINT32_MAX, 0, pd, pa, nullptr), GOC_SUCCESS);
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(d[0][lane] | (uint64_t(d[1][lane]) << 32), test[1]);
     }

@@ -73,18 +73,19 @@ TEST(ScalarCompare, EveryBitIndexAndModuloCount) {
 
 TEST(ScalarCompare, NaNsZerosDenormalsAndUnsigned64) {
   uint32_t scc;
-  ASSERT_EQ(goc_rdna4_s_cmp_lt_f32(0, 0, 0, &scc, 0x80000001, 0), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cmp_lt_f32(0, 0, 0, &scc, 0x80000001, 0, nullptr), GOC_SUCCESS);
   EXPECT_EQ(scc, 1u);
-  ASSERT_EQ(goc_rdna4_s_cmp_lt_f32(GOC_FP_FLUSH_INPUT_DENORMALS, 0, 0, &scc, 0x80000001, 0),
-            GOC_SUCCESS);
+  ASSERT_EQ(
+      goc_rdna4_s_cmp_lt_f32(GOC_FP_FLUSH_INPUT_DENORMALS, 0, 0, &scc, 0x80000001, 0, nullptr),
+      GOC_SUCCESS);
   EXPECT_EQ(scc, 0u);
-  ASSERT_EQ(goc_rdna4_s_cmp_eq_f16(0, 0, 0, &scc, 0xabcd8000, 0x12340000), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cmp_eq_f16(0, 0, 0, &scc, 0xabcd8000, 0x12340000, nullptr), GOC_SUCCESS);
   EXPECT_EQ(scc, 1u);
-  ASSERT_EQ(goc_rdna4_s_cmp_lg_f32(0, 0, 0, &scc, 0x7f800001, 0), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cmp_lg_f32(0, 0, 0, &scc, 0x7f800001, 0, nullptr), GOC_SUCCESS);
   EXPECT_EQ(scc, 0u);
-  ASSERT_EQ(goc_rdna4_s_cmp_neq_f32(0, 0, 0, &scc, 0x7f800001, 0), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cmp_neq_f32(0, 0, 0, &scc, 0x7f800001, 0, nullptr), GOC_SUCCESS);
   EXPECT_EQ(scc, 1u);
-  ASSERT_EQ(goc_rdna4_s_cmp_nlg_f32(0, 0, 0, &scc, 0x7f800001, 0), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cmp_nlg_f32(0, 0, 0, &scc, 0x7f800001, 0, nullptr), GOC_SUCCESS);
   EXPECT_EQ(scc, 1u);
   ASSERT_EQ(goc_rdna4_s_cmp_eq_u64(0, 0, 0, &scc, 0x100000000ULL, 0), GOC_SUCCESS);
   EXPECT_EQ(scc, 0u);

@@ -56,38 +56,40 @@ TEST(ScalarConvert, ExecAndAliasing) {
 
 TEST(ScalarConvert, SaturationNaNsRoundingAndHalfSelection) {
   uint32_t d;
-  ASSERT_EQ(goc_rdna4_s_cvt_f32_i32(0, 0, 0, &d, 0xffffffff), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_f32_i32(0, 0, 0, &d, 0xffffffff, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0xbf800000u);
-  ASSERT_EQ(goc_rdna4_s_cvt_f32_u32(0, 0, 0, &d, 0x01000001), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_f32_u32(0, 0, 0, &d, 0x01000001, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x4b800000u);
-  ASSERT_EQ(goc_rdna4_s_cvt_f32_u32(0, 0, 0, &d, 0x01000003), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_f32_u32(0, 0, 0, &d, 0x01000003, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x4b800002u);
-  ASSERT_EQ(goc_rdna4_s_cvt_i32_f32(0, 0, 0, &d, 0x7f800000), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_i32_f32(0, 0, 0, &d, 0x7f800000, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x7fffffffu);
-  ASSERT_EQ(goc_rdna4_s_cvt_i32_f32(0, 0, 0, &d, 0xff800000), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_i32_f32(0, 0, 0, &d, 0xff800000, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x80000000u);
-  ASSERT_EQ(goc_rdna4_s_cvt_i32_f32(0, 0, 0, &d, 0xff800001), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_i32_f32(0, 0, 0, &d, 0xff800001, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0u);
-  ASSERT_EQ(goc_rdna4_s_cvt_u32_f32(0, 0, 0, &d, 0xbf800000), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_u32_f32(0, 0, 0, &d, 0xbf800000, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0u);
-  ASSERT_EQ(goc_rdna4_s_cvt_u32_f32(0, 0, 0, &d, 0x4f800000), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_u32_f32(0, 0, 0, &d, 0x4f800000, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, UINT32_MAX);
-  ASSERT_EQ(goc_rdna4_s_cvt_f32_f16(0, 0, 0, &d, 0x3c00bc00), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_f32_f16(0, 0, 0, &d, 0x3c00bc00, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0xbf800000u);
-  ASSERT_EQ(goc_rdna4_s_cvt_hi_f32_f16(0, 0, 0, &d, 0x3c00bc00), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_hi_f32_f16(0, 0, 0, &d, 0x3c00bc00, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x3f800000u);
-  ASSERT_EQ(goc_rdna4_s_cvt_f16_f32(0, 0, 0, &d, 0x7f800001), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_f16_f32(0, 0, 0, &d, 0x7f800001, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x7e00u);
-  ASSERT_EQ(goc_rdna4_s_cvt_f16_f32(GOC_FP16_OVFL, 0, 0, &d, 0x47800000), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_f16_f32(GOC_FP16_OVFL, 0, 0, &d, 0x47800000, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x7bffu);
-  ASSERT_EQ(goc_rdna4_s_cvt_pk_rtz_f16_f32(0, 0, 0, &d, 0x47800000, 0xff800000), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_pk_rtz_f16_f32(0, 0, 0, &d, 0x47800000, 0xff800000, nullptr),
+            GOC_SUCCESS);
   EXPECT_EQ(d, 0xfc007bffu);
-  ASSERT_EQ(goc_rdna4_s_cvt_f16_f32(GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, 0, &d, 0x387fe000),
+  ASSERT_EQ(goc_rdna4_s_cvt_f16_f32(GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, 0, &d, 0x387fe000, nullptr),
             GOC_SUCCESS);
   EXPECT_EQ(d, 0u);
-  ASSERT_EQ(goc_rdna4_s_cvt_f16_f32(0, 0, 0, &d, 0x387fe000), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_f16_f32(0, 0, 0, &d, 0x387fe000, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x400u);
-  ASSERT_EQ(goc_rdna4_s_cvt_f32_f16(GOC_FP_FLUSH_INPUT_DENORMALS, 0, 0, &d, 0x8001), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_cvt_f32_f16(GOC_FP_FLUSH_INPUT_DENORMALS, 0, 0, &d, 0x8001, nullptr),
+            GOC_SUCCESS);
   EXPECT_EQ(d, 0x80000000u);
 }
 
@@ -129,14 +131,14 @@ TEST(ScalarConvert, TruncationBoundariesAcrossScalarAndVector) {
         word = sample[0];
       const uint32_t *a = input;
       uint32_t *d = output;
-      ASSERT_EQ(goc_rdna4_s_cvt_i32_f32(cpu, 0, 0, &scalar, sample[0]), GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_s_cvt_i32_f32(cpu, 0, 0, &scalar, sample[0], nullptr), GOC_SUCCESS);
       EXPECT_EQ(scalar, sample[1]);
-      ASSERT_EQ(goc_rdna4_v_cvt_i32_f32(cpu, UINT32_MAX, 0, &d, &a), GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_v_cvt_i32_f32(cpu, UINT32_MAX, 0, &d, &a, nullptr), GOC_SUCCESS);
       for (uint32_t word : output)
         EXPECT_EQ(word, sample[1]);
-      ASSERT_EQ(goc_rdna4_s_cvt_u32_f32(cpu, 0, 0, &scalar, sample[0]), GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_s_cvt_u32_f32(cpu, 0, 0, &scalar, sample[0], nullptr), GOC_SUCCESS);
       EXPECT_EQ(scalar, sample[2]);
-      ASSERT_EQ(goc_rdna4_v_cvt_u32_f32(cpu, UINT32_MAX, 0, &d, &a), GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_v_cvt_u32_f32(cpu, UINT32_MAX, 0, &d, &a, nullptr), GOC_SUCCESS);
       for (uint32_t word : output)
         EXPECT_EQ(word, sample[2]);
     }

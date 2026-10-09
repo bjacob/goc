@@ -27,7 +27,7 @@ TEST(Mullit, HardwareSpecialValuesAndModifiers) {
         const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
         uint32_t *d[] = {words[3]};
         ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, UINT32_MAX, goc_test::mullit_capture_modes[mode], d,
-                                         a, b, c),
+                                         a, b, c, nullptr),
                   GOC_SUCCESS);
         for (uint32_t word : words[3]) {
           if ((word & 0x7fffffff) > 0x7f800000)
@@ -56,7 +56,7 @@ TEST(Mullit, AllModifiersMasksAndAliases) {
           std::memcpy(words, initial, sizeof(words));
           const uint32_t *a[] = {words[0] + 1}, *b[] = {words[1] + 1}, *c[] = {words[2] + 1};
           uint32_t *d[] = {words[target] + 1};
-          ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, exec_mask, mode, d, a, b, c), GOC_SUCCESS);
+          ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, exec_mask, mode, d, a, b, c, nullptr), GOC_SUCCESS);
           for (unsigned reg = 0; reg < 4; ++reg)
             for (unsigned lane = 0; lane < 35; ++lane) {
               uint32_t want = initial[reg][lane], got = words[reg][lane];
@@ -72,12 +72,13 @@ TEST(Mullit, AllModifiersMasksAndAliases) {
 }
 
 TEST(Mullit, InvalidFlagsAndEmptyExec) {
-  EXPECT_EQ(goc_rdna4_v_mullit_f32(0, 0U, 511, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+  EXPECT_EQ(goc_rdna4_v_mullit_f32(0, 0U, 511, nullptr, nullptr, nullptr, nullptr, nullptr),
+            GOC_SUCCESS);
   for (unsigned bit = 9; bit < 32; ++bit)
-    EXPECT_EQ(goc_rdna4_v_mullit_f32(0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr),
+    EXPECT_EQ(goc_rdna4_v_mullit_f32(0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
   EXPECT_EQ(goc_rdna4_v_mullit_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0,
-                                   nullptr, nullptr, nullptr, nullptr),
+                                   nullptr, nullptr, nullptr, nullptr, nullptr),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
 }
 
@@ -109,8 +110,9 @@ TEST(Mullit, DppModifiersMasksAliasesAndGuards) {
               const uint32_t *a[] = {words[0] + 1}, *b[] = {words[shared ? 0 : 1] + 1},
                              *c[] = {words[shared ? 0 : 2] + 1};
               uint32_t *d[] = {words[target] + 1};
-              ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, exec_mask, descriptor | mode, d, a, b, c),
-                        GOC_SUCCESS);
+              ASSERT_EQ(
+                  goc_rdna4_v_mullit_f32(cpu, exec_mask, descriptor | mode, d, a, b, c, nullptr),
+                  GOC_SUCCESS);
               for (unsigned reg = 0; reg < 4; ++reg)
                 for (unsigned lane = 0; lane < 34; ++lane) {
                   uint32_t want = initial[reg][lane], got = words[reg][lane];
@@ -147,7 +149,7 @@ TEST(Mullit, DppHardwareCorpus) {
           }
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
-          ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, exec_mask, descriptor | mode, d, a, b, c),
+          ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, exec_mask, descriptor | mode, d, a, b, c, nullptr),
                     GOC_SUCCESS);
           for (uint32_t word : words[3]) {
             if ((word & 0x7fffffff) > 0x7f800000)

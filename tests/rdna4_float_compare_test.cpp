@@ -54,7 +54,7 @@ TEST(FloatCompare, HardwarePredicatesModifiersExecAndDenormalModes) {
               inputs(op, start, words);
               const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]};
               ASSERT_EQ(goc_test::float_compare_functions[op](
-                            flags, masks[mi], goc_test::float_compare_mode(m), &d, a, b),
+                            flags, masks[mi], goc_test::float_compare_mode(m), &d, a, b, nullptr),
                         GOC_SUCCESS);
               digest = goc_test::capture_hash_bytes(digest, d, 4);
             }
@@ -78,7 +78,7 @@ TEST(FloatCompare, IndependentBoundariesAndEveryModifier) {
             uint32_t d;
             ASSERT_EQ(goc_test::float_compare_functions[op](
                           cpu | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), UINT32_MAX,
-                          goc_test::float_compare_mode(m), &d, a, b),
+                          goc_test::float_compare_mode(m), &d, a, b, nullptr),
                       GOC_SUCCESS);
             ASSERT_EQ(d, want) << op << "/" << m << "/" << flush << "/" << start << "/" << cpu;
           }
@@ -103,7 +103,7 @@ TEST(FloatCompare, EveryFp16EncodingAndPredicate) {
             uint32_t d;
             ASSERT_EQ(goc_test::float_compare_functions[op](
                           cpu | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), UINT32_MAX,
-                          goc_test::float_compare_mode(m), &d, a, b),
+                          goc_test::float_compare_mode(m), &d, a, b, nullptr),
                       GOC_SUCCESS);
             ASSERT_EQ(d, want) << op << "/" << m << "/" << flush << "/" << start << "/" << cpu;
           }
@@ -150,7 +150,7 @@ TEST(FloatCompare, ScalarOutputAliasesSourcesUnalignedAndMasks) {
                                                                           1};
                 ASSERT_EQ(goc_test::float_compare_functions[op](
                               cpu | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), exec_mask,
-                              goc_test::float_compare_mode(m), d, a, b),
+                              goc_test::float_compare_mode(m), d, a, b, nullptr),
                           GOC_SUCCESS);
                 ASSERT_EQ(*d, want & exec_mask)
                     << op << "/" << m << "/" << flush << "/" << alias << "/" << cpu;
@@ -170,14 +170,15 @@ TEST(FloatCompare, ValidationAndCompleteHostFpState) {
   for (unsigned op = 0; op < 84; ++op) {
     uint32_t known = goc_test::float_compare_mode(op < 28 ? 63 : 15), d = 1;
     EXPECT_EQ(goc_test::float_compare_functions[op](GOC_FP_FLUSH_INPUT_DENORMALS, 0U, known, &d,
-                                                    nullptr, nullptr),
+                                                    nullptr, nullptr, nullptr),
               GOC_SUCCESS);
     EXPECT_EQ(d, 0u);
     for (unsigned bit = 0; bit < 32; ++bit)
       if (!(known & (1u << bit))) {
         d = 0xdeadbeef;
-        EXPECT_EQ(goc_test::float_compare_functions[op](0, 0, 1u << bit, &d, nullptr, nullptr),
-                  GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(
+            goc_test::float_compare_functions[op](0, 0, 1u << bit, &d, nullptr, nullptr, nullptr),
+            GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(d, 0xdeadbeef);
       }
     for (unsigned flush = 0; flush < 2; ++flush)
@@ -196,10 +197,10 @@ TEST(FloatCompare, ValidationAndCompleteHostFpState) {
 #endif
           int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
           for (uint64_t cpu = 0; cpu <= max_cpu; ++cpu) {
-            EXPECT_EQ(
-                goc_test::float_compare_functions[op](
-                    cpu | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), UINT32_MAX, known, &d, a, b),
-                GOC_SUCCESS);
+            EXPECT_EQ(goc_test::float_compare_functions[op](
+                          cpu | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), UINT32_MAX, known, &d,
+                          a, b, nullptr),
+                      GOC_SUCCESS);
             EXPECT_EQ(d, want);
           }
           EXPECT_EQ(std::fegetround(), round);
@@ -248,7 +249,8 @@ TEST(FloatCompare, DppPredicatesSelectorsMasksAndAliases) {
                       op & 1 ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0;
                   ASSERT_EQ(goc_test::float_compare_functions[op](
                                 cpu | semantics | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0),
-                                exec_mask, descriptor | goc_test::float_compare_mode(m), d, a, b),
+                                exec_mask, descriptor | goc_test::float_compare_mode(m), d, a, b,
+                                nullptr),
                             GOC_SUCCESS);
                   ASSERT_EQ(*d, want)
                       << op << "/" << m << "/" << cpu << "/" << descriptor << "/" << exec_mask;
@@ -262,10 +264,11 @@ TEST(FloatCompare, DppValidationAndZeroExec) {
       uint32_t d = 0xdeadbeef;
       auto fn = goc_test::float_compare_functions[op];
       for (auto invalid : {1ULL << 36, 1ULL << 2}) {
-        EXPECT_EQ(fn(0, 0, descriptor | invalid, &d, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, &d, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(d, 0xdeadbeefu);
       }
-      EXPECT_EQ(fn(0, 0U, descriptor, &d, nullptr, nullptr),
+      EXPECT_EQ(fn(0, 0U, descriptor, &d, nullptr, nullptr, nullptr),
                 op < 56 ? GOC_SUCCESS : GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(d, op < 56 ? 0u : 0xdeadbeefu);
     }
@@ -306,7 +309,7 @@ TEST(FloatCompare, DppHardwareCorpusAndHostFpState) {
                                   cpu | semantics | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0),
                                   exec_mask,
                                   descriptor | goc_test::float_compare_mode(modes[variant]),
-                                  &output, a, b),
+                                  &output, a, b, nullptr),
                               GOC_SUCCESS);
                     hash = goc_test::capture_hash_word(hash, output);
                   }

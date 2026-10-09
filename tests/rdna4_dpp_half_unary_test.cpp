@@ -59,7 +59,7 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
             d[lane] = 0xdead0000u + lane;
           }
           auto pa = a, pd = d;
-          ASSERT_EQ(goc_test::half_unary_functions[op](cpu, exec_mask, mode, &pd, &pa),
+          ASSERT_EQ(goc_test::half_unary_functions[op](cpu, exec_mask, mode, &pd, &pa, nullptr),
                     GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             int source;
@@ -111,7 +111,7 @@ TEST(DppHalfUnary, EveryModifierAndOverflowMode) {
             std::memcpy(old, words[2], sizeof(old));
             uint32_t *p[] = {words[0], words[1], words[2]};
             ASSERT_EQ(goc_test::half_unary_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0),
-                                                         UINT32_MAX, mode, p + 2, p),
+                                                         UINT32_MAX, mode, p + 2, p, nullptr),
                       GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
               uint32_t want = old[lane];
@@ -153,7 +153,7 @@ TEST(DppHalfUnary, MasksAliasesAndRandomWords) {
               std::memcpy(before, words, sizeof(words));
               uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
               ASSERT_EQ(goc_test::half_unary_functions[op](cpu, exec_mask, mode, p + alias[0],
-                                                           p + alias[1]),
+                                                           p + alias[1], nullptr),
                         GOC_SUCCESS);
               for (unsigned reg = 0; reg < 3; ++reg)
                 for (unsigned index = 0; index < 34; ++index) {
@@ -176,15 +176,16 @@ TEST(DppHalfUnary, MasksAliasesAndRandomWords) {
 TEST(DppHalfUnary, Validation) {
   for (auto fn : goc_test::half_unary_functions)
     for (uint64_t mode : modes()) {
-      EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr, nullptr), GOC_SUCCESS);
       for (uint32_t exec_mask : {0U, UINT32_MAX}) {
-        EXPECT_EQ(fn(0, exec_mask, mode | GOC_ALU_NEG_C, nullptr, nullptr),
+        EXPECT_EQ(fn(0, exec_mask, mode | GOC_ALU_NEG_C, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(0, exec_mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr),
+        EXPECT_EQ(fn(0, exec_mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, mode, nullptr,
-                     nullptr),
+                     nullptr, nullptr),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
     }

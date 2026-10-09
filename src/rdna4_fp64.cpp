@@ -88,14 +88,20 @@ int arithmetic(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *cons
 } // namespace
 
 int goc_rdna4_v_add_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                        const uint32_t *const *a, const uint32_t *const *b) {
+                        const uint32_t *const *a, const uint32_t *const *b,
+                        uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Add>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
 int goc_rdna4_v_mul_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                        const uint32_t *const *a, const uint32_t *const *b) {
+                        const uint32_t *const *a, const uint32_t *const *b,
+                        uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Mul>(flags, exec_mask, mode, d, a, b, nullptr);
@@ -103,98 +109,131 @@ int goc_rdna4_v_mul_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint3
 
 int goc_rdna4_v_fma_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c) {
+                        const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Fma>(flags, exec_mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_trunc_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                          const uint32_t *const *a) {
+                          const uint32_t *const *a, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Trunc>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
 int goc_rdna4_v_ceil_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                         const uint32_t *const *a) {
+                         const uint32_t *const *a, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Ceil>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
 int goc_rdna4_v_rndne_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                          const uint32_t *const *a) {
+                          const uint32_t *const *a, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Rndne>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
 int goc_rdna4_v_floor_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                          const uint32_t *const *a) {
+                          const uint32_t *const *a, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Floor>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
 int goc_rdna4_v_fract_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                          const uint32_t *const *a) {
+                          const uint32_t *const *a, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Fract>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
 int goc_rdna4_v_sqrt_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                         const uint32_t *const *a) {
+                         const uint32_t *const *a, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Sqrt>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
 int goc_rdna4_v_rcp_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                        const uint32_t *const *a) {
+                        const uint32_t *const *a, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Rcp>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
 int goc_rdna4_v_rsq_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                        const uint32_t *const *a) {
+                        const uint32_t *const *a, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Rsq>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
 int goc_rdna4_v_min_num_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b) {
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::MinNum>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
 int goc_rdna4_v_max_num_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b) {
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::MaxNum>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
 int goc_rdna4_v_minimum_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b) {
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Minimum>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
 int goc_rdna4_v_maximum_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b) {
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::Maximum>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
 int goc_rdna4_v_frexp_mant_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode,
-                               uint32_t *const *d, const uint32_t *const *a) {
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::FrexpMant>(flags, exec_mask, mode, d, a, nullptr, nullptr);

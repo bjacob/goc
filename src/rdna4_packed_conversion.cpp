@@ -71,18 +71,24 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
 
 int goc_rdna4_v_cvt_pk_rtz_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                    uint32_t *const *d, const uint32_t *const *a,
-                                   const uint32_t *const *b) {
+                                   const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<goc::PackedConversion::HalfRtz>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_cvt_pk_i16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
-                               const uint32_t *const *b) {
+                               const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<goc::PackedConversion::Signed>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_cvt_pk_u16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
-                               const uint32_t *const *b) {
+                               const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user)
+    return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<goc::PackedConversion::Unsigned>(flags, exec_mask, instruction_flags, d, a, b);
 }

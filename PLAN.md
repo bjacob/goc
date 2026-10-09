@@ -352,3 +352,40 @@ For instructions that have flags (e.g. `NEG` on RDNA4 WMMA), focus at first on t
 #### Dimension 5: floating-point environment
 
 The default loose testing mode shouldn't be too sensitive to this anyway. When you get to bit-exact mode, that will presumably be very sensitive to the floating-point environment, so testing will need to scale accordingly.
+
+
+## Implicit architectural register outputs
+
+An instruction API appends one nullable pointer per implicit architectural
+register it may update, named after that register in lowercase. Registers already
+represented by an operand/output parameter are not duplicated. Instructions
+without such side effects gain no parameter. Register updates follow the ISA;
+temporary internal changes restored by the instruction are not extra outputs.
+
+`uint32_t *excp_flag_user` represents RDNA4's wave-wide sticky exception register.
+A non-null pointer accumulates newly generated bits with bitwise OR; existing bits
+are never cleared. Only participating lanes contribute, following each
+instruction's execution rules. `NULL` opts out. Storage must not overlap operands, except where explicitly permitted by an
+instruction contract (currently `V_RCP_IFLAG_F32`).
+Every API error preserves every output, including this register. Guest exception
+reporting must never rely on changing or sampling the host FP environment.
+
+The initial API migration reserves this parameter on exception-producing
+instructions. `V_RCP_IFLAG_F32` retains its implemented integer-divide-by-zero
+reporting, consolidated into this accumulating parameter. For all other affected
+instructions, reporting is not implemented yet: any non-null pointer returns
+`GOC_ERROR_UNSUPPORTED_EXCEPTIONS` before accessing operands, even for empty
+`exec_mask`, with precedence over other validation errors. Null retains existing
+validation, numerical behavior, and SIMD dispatch. Implement and hardware-test
+exception generation incrementally; never silently ignore a requested report.
+
+The classification uses the [RDNA4 ISA reference](https://www.amd.com/content/dam/amd/en/documents/radeon-tech-docs/instruction-set-architectures/rdna4-instruction-set-architecture.pdf)
+(§3.4.10, §6.8, §7.7, §7.11, §12.3 and instruction descriptions), cross-checked
+against LLVM AMDGPU instruction metadata. LLVM metadata alone is insufficient:
+for example, the ISA explicitly supports exceptions for floating min/max and
+explicitly excludes FP8 dot products. `V_RCP_IFLAG_F32` reports integer
+divide-by-zero through the same register. Matrix instructions, interpolation,
+CLASS comparisons, cube operations, FP8 conversions/dots, and other non-reporting
+conversion variants retain their existing signatures. The parameter is present
+if an instruction can report exceptions in any supported ISA mode, even when a
+particular invocation or currently accepted modifier cannot produce them.

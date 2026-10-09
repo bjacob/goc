@@ -6,6 +6,7 @@
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_half_reference.h"
+#include "rdna4_test_instruction.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -17,11 +18,11 @@
 
 namespace {
 
-using Fn = decltype(&goc_rdna4_v_ldexp_f16);
+using Fn = goc_test::WaveInstruction<decltype(&goc_rdna4_v_min_u32)>;
 
 int frexp_exp(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
               const uint32_t *const *a, const uint32_t *const *) {
-  return goc_rdna4_v_frexp_exp_i16_f16(flags, exec_mask, mode, d, a);
+  return goc_rdna4_v_frexp_exp_i16_f16(flags, exec_mask, mode, d, a, nullptr);
 }
 
 const Fn functions[] = {goc_rdna4_v_ldexp_f16, frexp_exp};
@@ -105,7 +106,7 @@ TEST(HalfExponent, EveryHalfEncodingAndBoundaryExponents) {
                 words[2][lane] = 0xdeadbeef;
               }
               ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX, mode, p + 2,
-                                      p, p + 1),
+                                      p, p + 1, nullptr),
                         GOC_SUCCESS);
               for (int lane = 0; lane < 32; ++lane)
                 check(op, words[2][lane], 0xdeadbeef,
@@ -131,7 +132,7 @@ TEST(HalfExponent, EverySignedExponent) {
             words[2][lane] = 0xdeadbeef;
           }
           ASSERT_EQ(goc_rdna4_v_ldexp_f16(cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX, mode,
-                                          p + 2, p, p + 1),
+                                          p + 2, p, p + 1, nullptr),
                     GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
             check(0, words[2][lane], 0xdeadbeef,
@@ -169,7 +170,7 @@ TEST(HalfExponent, AllModifiersMasksAndAliases) {
               int b = layout >= 3 ? 0 : 1;
               uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
               ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask, mode,
-                                      p + dest, p, p + b),
+                                      p + dest, p, p + b, nullptr),
                         GOC_SUCCESS);
               for (int reg = 0; reg < 3; ++reg)
                 for (int lane = 0; lane < 34; ++lane) {
@@ -215,7 +216,7 @@ TEST(HalfExponent, LiteralRoundingAndOverflow) {
       std::fill(words[1], words[1] + 32, test.b);
       std::fill(words[2], words[2] + 32, 0xdeadbeef);
       ASSERT_EQ(goc_rdna4_v_ldexp_f16(cpu | (test.saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
-                                      test.mode, p + 2, p, p + 1),
+                                      test.mode, p + 2, p, p + 1, nullptr),
                 GOC_SUCCESS);
       for (auto word : words[2])
         EXPECT_EQ(word, 0xdead0000U | test.result);
@@ -225,7 +226,7 @@ TEST(HalfExponent, LiteralRoundingAndOverflow) {
       std::fill(a, a + 32, test[0]);
       std::fill(d, d + 32, 0xdeadbeef);
       auto pa = a, pd = d;
-      ASSERT_EQ(goc_rdna4_v_frexp_exp_i16_f16(cpu, UINT32_MAX, 0, &pd, &pa), GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_v_frexp_exp_i16_f16(cpu, UINT32_MAX, 0, &pd, &pa, nullptr), GOC_SUCCESS);
       for (auto word : d)
         EXPECT_EQ(word, 0xdead0000U | test[1]);
     }
@@ -248,9 +249,9 @@ TEST(HalfExponent, FrexpPreservesFpEnvironment) {
       std::fesetround(rounding);
       std::feclearexcept(FE_ALL_EXCEPT);
       std::feraiseexcept(FE_DIVBYZERO);
-      EXPECT_EQ(
-          goc_rdna4_v_frexp_exp_i16_f16(cpu | GOC_FP16_OVFL, UINT32_MAX, common_modes, &d, &a),
-          GOC_SUCCESS);
+      EXPECT_EQ(goc_rdna4_v_frexp_exp_i16_f16(cpu | GOC_FP16_OVFL, UINT32_MAX, common_modes, &d, &a,
+                                              nullptr),
+                GOC_SUCCESS);
       EXPECT_EQ(std::fegetround(), rounding);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
       for (int lane = 0; lane < 32; ++lane)
@@ -267,17 +268,20 @@ TEST(HalfExponent, ValidationAndSemantics) {
     for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit) {
         if (!(known & (1U << bit))) {
-          EXPECT_EQ(functions[op](0, exec_mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(functions[op](0, exec_mask, 1U << bit, &p, &p, &p, nullptr),
+                    GOC_ERROR_INVALID_FLAGS);
         }
       }
-      EXPECT_EQ(functions[op](1ULL << 63, exec_mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](1ULL << 63, exec_mask, 0, &p, &p, &p, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0,
-                              &p, &p, &p),
+                              &p, &p, &p, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (auto word : data)
       EXPECT_EQ(word, 0xdeadbeef);
-    EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &p, &p, &p), GOC_SUCCESS);
+    EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &p, &p, &p, nullptr),
+              GOC_SUCCESS);
   }
 }
 
@@ -311,7 +315,7 @@ TEST(HalfExponent, DppMasksAndAliases) {
                 int b = layout >= 3 ? 0 : 1;
                 uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
                 ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask,
-                                        descriptor | mode, p + dest, p, p + b),
+                                        descriptor | mode, p + dest, p, p + b, nullptr),
                           GOC_SUCCESS);
                 for (int reg = 0; reg < 3; ++reg)
                   for (int lane = 0; lane < 34; ++lane) {
@@ -346,7 +350,7 @@ TEST(HalfExponent, HardwareRoundingCorpus) {
             }
             auto pa = a, pb = b, pd = d;
             ASSERT_EQ(goc_rdna4_v_ldexp_f16(cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
-                                            omod << 6, &pd, &pa, &pb),
+                                            omod << 6, &pd, &pa, &pb, nullptr),
                       GOC_SUCCESS);
             for (uint32_t word : d) {
               if ((word & 0x7fff) > 0x7c00)
@@ -375,7 +379,8 @@ TEST(HalfExponent, DppHardwareCorpus) {
               d[lane] = 0xdead0000u + lane;
             }
             auto pa = a, pb = b, pd = d;
-            ASSERT_EQ(functions[op](cpu, exec_mask, descriptor | mode, &pd, &pa, &pb), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, descriptor | mode, &pd, &pa, &pb, nullptr),
+                      GOC_SUCCESS);
             for (auto word : d)
               hash = goc_test::capture_hash_word(hash, word);
           }
@@ -398,7 +403,7 @@ TEST(HalfExponent, DppEveryModifier) {
             }
             auto pa = a, pb = b, pd = d;
             ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
-                                    descriptor | mode, &pd, &pa, &pb),
+                                    descriptor | mode, &pd, &pa, &pb, nullptr),
                       GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
@@ -414,13 +419,15 @@ TEST(HalfExponent, DppEveryModifier) {
 TEST(HalfExponent, DppValidation) {
   for (unsigned op = 0; op < 2; ++op)
     for (uint64_t descriptor : goc_test::dpp_modes) {
-      EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr, nullptr),
+      EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr, nullptr,
+                              nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr, nullptr),
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr, nullptr,
+                              nullptr),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
-                              descriptor, nullptr, nullptr, nullptr),
+                              descriptor, nullptr, nullptr, nullptr, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
 }

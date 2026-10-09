@@ -7,6 +7,7 @@
 #include "rdna4_dot.h"
 #include "rdna4_dot_fixtures.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_test_instruction.h"
 #include "rdna4_wmma_fixtures.h"
 
 #include <algorithm>
@@ -20,7 +21,7 @@
 
 namespace {
 
-using Wmma = decltype(&goc_rdna4_v_wmma_f32_16x16x16_f16);
+using Wmma = goc_test::WaveInstruction<decltype(&goc_rdna4_v_wmma_f32_16x16x16_f16)>;
 
 // Each logical VGPR is deliberately separated by padding and allocated in
 // reverse order, exercising the API's array-of-pointers contract.
@@ -312,11 +313,11 @@ TEST(Rdna4Dot, LooseAndFallbackIntegerGolden) {
         r.v[2][lane] = 0xbf800000;
       }
       auto fn = bf16 ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
-      ASSERT_EQ(fn(semantics, UINT32_MAX, 0, r.v + 2, r.v, r.v + 1, r.v + 2), 0);
+      ASSERT_EQ(fn(semantics, UINT32_MAX, 0, r.v + 2, r.v, r.v + 1, r.v + 2, nullptr), 0);
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(r.v[2][lane], 0x41200000u); // 1*3+2*4-1=10
       EXPECT_EQ(fn(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, r.v + 2, r.v, r.v + 1,
-                   r.v + 2),
+                   r.v + 2, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(r.v[2][lane], 0x41200000u);

@@ -49,7 +49,7 @@ TEST(Minmax3, AllModifiersMasksAliasesAndSpecialValues) {
                 std::copy(source[reg], source[reg] + 32, v[reg]);
             }
             std::copy(v[alias], v[alias] + 32, before);
-            ASSERT_EQ(functions[op](cpu, exec_mask, mode, &v[alias], &v[0], &v[1], &v[2]),
+            ASSERT_EQ(functions[op](cpu, exec_mask, mode, &v[alias], &v[0], &v[1], &v[2], nullptr),
                       GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane) {
               uint32_t want = (exec_mask >> lane) & 1 ? expected[lane] : before[lane];
@@ -90,7 +90,7 @@ TEST(Minmax3, LiteralOrderNaNsAndSignedZeros) {
         std::fill(b, b + 32, test[1]);
         std::fill(c, c + 32, test[2]);
         auto pa = a, pb = b, pc = c, pd = d;
-        ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+        ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
         for (uint32_t value : d)
           EXPECT_EQ(value, test[op + 3]);
       }
@@ -109,7 +109,7 @@ TEST(Minmax3, RandomBitPatterns) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int op = 0; op < 9; ++op) {
         SCOPED_TRACE(::testing::Message() << batch << "/" << cpu << "/" << op);
-        ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+        ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
         for (int lane = 0; lane < 32; ++lane)
           EXPECT_EQ(d[lane],
                     goc_test::minmax_reference::reference(op, a[lane], b[lane], c[lane], 0));
@@ -122,11 +122,14 @@ TEST(Minmax3, Validation) {
     uint32_t a[32] = {}, d[32];
     std::fill(d, d + 32, 0xdeadbeef);
     auto pa = a, pd = d;
-    EXPECT_EQ(fn(0, UINT32_MAX, GOC_ALU_HIGH_C, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_D, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, &pd, &pa, &pa, &pa),
-              GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0U, 0x1ff, &pd, &pa, &pa, &pa), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT32_MAX, GOC_ALU_HIGH_C, &pd, &pa, &pa, &pa, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_D, &pd, &pa, &pa, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(
+        fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, &pd, &pa, &pa, &pa, nullptr),
+        GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0U, 0x1ff, &pd, &pa, &pa, &pa, nullptr),
+              GOC_SUCCESS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0xdeadbeef);
   }
@@ -154,7 +157,8 @@ TEST(Minmax3, MedianLiteralNaNsAndZeroTies) {
       std::fill(b, b + 32, test[1]);
       std::fill(c, c + 32, test[2]);
       auto pa = a, pb = b, pc = c, pd = d;
-      ASSERT_EQ(goc_rdna4_v_med3_num_f32(cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_v_med3_num_f32(cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc, nullptr),
+                GOC_SUCCESS);
       for (uint32_t value : d)
         EXPECT_EQ(value, test[3]) << cpu << "/" << test[0] << "/" << test[1] << "/" << test[2];
     }

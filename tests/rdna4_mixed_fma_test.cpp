@@ -45,7 +45,7 @@ bool equal(int op, uint32_t got, uint32_t want, bool exact) {
   std::copy_n(input[3], 32, out);
   const uint32_t *a[] = {input[0]}, *b[] = {input[1]}, *c[] = {input[2]};
   uint32_t *d[] = {out};
-  int status = functions[op](flags, UINT32_MAX, mode, d, a, b, c);
+  int status = functions[op](flags, UINT32_MAX, mode, d, a, b, c, nullptr);
   if (status != GOC_SUCCESS)
     return ::testing::AssertionFailure() << "status " << status;
   for (int lane = 0; lane < 32; ++lane) {
@@ -88,7 +88,7 @@ TEST(MixedFma, DppAllModifiers) {
           uint32_t *d[] = {output};
           const uint32_t *a[] = {input[0]}, *b[] = {input[1]}, *c[] = {input[2]};
           ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
-                                  descriptor | mode, d, a, b, c),
+                                  descriptor | mode, d, a, b, c, nullptr),
                     GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane)
             ASSERT_TRUE(equal(op, output[lane], want[lane], false))
@@ -122,7 +122,8 @@ TEST(MixedFma, DppHardwareCorpus) {
                             ((variant & 7) << 13);
             const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
             uint32_t *d[] = {words[3]};
-            ASSERT_EQ(functions[op](cpu, exec_mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, descriptor | mode, d, a, b, c, nullptr),
+                      GOC_SUCCESS);
             for (uint32_t word : words[3])
               hash = goc_test::capture_hash_word(hash, word);
           }
@@ -160,7 +161,7 @@ TEST(MixedFma, DppMasksAliasesAndGuards) {
                 uint64_t flags = cpu | GOC_FP16_OVFL;
                 if (op && shared)
                   flags |= GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
-                ASSERT_EQ(functions[op](flags, exec_mask, descriptor | mode, d, a, b, c),
+                ASSERT_EQ(functions[op](flags, exec_mask, descriptor | mode, d, a, b, c, nullptr),
                           GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 4; ++reg)
                   for (unsigned lane = 0; lane < 34; ++lane) {
@@ -274,7 +275,7 @@ TEST(MixedFma, CapturedAndSingleRoundingWitnesses) {
           std::fill_n(words[3], 32, 0xfacecafe);
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
-          ASSERT_EQ(functions[op](cpu | sem, UINT32_MAX, 0, d, a, b, c), GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu | sem, UINT32_MAX, 0, d, a, b, c, nullptr), GOC_SUCCESS);
           uint32_t want = op == 1 ? 0xface0000 | item[3] : 0xcafe | (item[3] << 16);
           for (uint32_t value : words[3])
             EXPECT_EQ(value, want);
@@ -312,7 +313,7 @@ TEST(MixedFma, CapturedFp32FusedCancellation) {
       std::fill_n(words[reg], 32, input[reg]);
     const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
     uint32_t *d[] = {words[3]};
-    ASSERT_EQ(functions[0](cpu, UINT32_MAX, 0, d, a, b, c), GOC_SUCCESS);
+    ASSERT_EQ(functions[0](cpu, UINT32_MAX, 0, d, a, b, c, nullptr), GOC_SUCCESS);
     for (uint32_t value : words[3])
       EXPECT_EQ(value, 0xa8800000);
   }
@@ -346,7 +347,7 @@ TEST(MixedFma, MasksUnalignedBuffersAndAllWholeAliases) {
                     functions[op](
                         cpu | GOC_FP16_OVFL |
                             (semantics ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0),
-                        exec_mask, mode, d, a, b, c),
+                        exec_mask, mode, d, a, b, c, nullptr),
                     GOC_SUCCESS);
                 for (int reg = 0; reg < 4; ++reg)
                   for (int lane = 0; lane < 34; ++lane) {
@@ -384,22 +385,22 @@ TEST(MixedFma, ExactPreservesHostStateAndErrorsPrecedeEmptyMask) {
           for (uint32_t exec_mask : {0U, UINT32_MAX}) {
             for (int bit = 0; bit < 32; ++bit)
               if (!(known & (uint32_t(1) << bit))) {
-                EXPECT_EQ(functions[op](cpu, exec_mask, uint32_t(1) << bit, d, a, b, c),
+                EXPECT_EQ(functions[op](cpu, exec_mask, uint32_t(1) << bit, d, a, b, c, nullptr),
                           GOC_ERROR_INVALID_FLAGS);
               }
-            EXPECT_EQ(functions[op](cpu | (1ULL << 63), exec_mask, 0, d, a, b, c),
+            EXPECT_EQ(functions[op](cpu | (1ULL << 63), exec_mask, 0, d, a, b, c, nullptr),
                       GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(
-                functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, d, a, b, c),
-                GOC_ERROR_UNSUPPORTED_SEMANTICS);
+            EXPECT_EQ(functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, d, a,
+                                    b, c, nullptr),
+                      GOC_ERROR_UNSUPPORTED_SEMANTICS);
             if (!op) {
               EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                      exec_mask, 0, d, a, b, c),
+                                      exec_mask, 0, d, a, b, c, nullptr),
                         GOC_ERROR_UNSUPPORTED_SEMANTICS);
             }
           }
           EXPECT_TRUE(std::equal(words[3], words[3] + 32, original));
-          EXPECT_EQ(functions[op](cpu, 0U, known, d, a, b, c), GOC_SUCCESS);
+          EXPECT_EQ(functions[op](cpu, 0U, known, d, a, b, c, nullptr), GOC_SUCCESS);
           EXPECT_TRUE(std::equal(words[3], words[3] + 32, original));
           if (op) {
             for (uint32_t mode : {0U, known, GOC_MIX_F16_A | GOC_ALU_HIGH_A})
@@ -440,7 +441,7 @@ TEST(MixedFma, AlternatingDestinationHalvesPreservePriorWrites) {
         if ((exec_mask >> lane) & 1)
           expected[lane] = (expected[lane] & ~(65535u << shift)) | (half << shift);
       auto instruction = high ? goc_rdna4_v_fma_mixhi_f16 : goc_rdna4_v_fma_mixlo_f16;
-      ASSERT_EQ(instruction(cpu, exec_mask, mode, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+      ASSERT_EQ(instruction(cpu, exec_mask, mode, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
       for (unsigned lane = 0; lane < 32; ++lane)
         ASSERT_EQ(output[lane], expected[lane]) << cpu << '/' << step << '/' << lane;
     }

@@ -56,9 +56,9 @@ TEST(HalfMinmax3, BoundaryCartesianProductsAndEveryEncoding) {
             }
             words[3][lane] = 0xdeadbeef;
           }
-          ASSERT_EQ(
-              goc_test::half_minmax_functions[op](cpu, UINT32_MAX, mode, p + 3, p, p + 1, p + 2),
-              GOC_SUCCESS);
+          ASSERT_EQ(goc_test::half_minmax_functions[op](cpu, UINT32_MAX, mode, p + 3, p, p + 1,
+                                                        p + 2, nullptr),
+                    GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
             check(words[3][lane], 0xdeadbeef,
                   goc_test::half_minmax_reference(op, words[0][lane], words[1][lane],
@@ -83,8 +83,8 @@ TEST(HalfMinmax3, AllModifiersAndHalfSelectors) {
           int dest = mode % 4;
           uint32_t *p[] = {words[0], words[1], words[2], words[3]};
           ASSERT_EQ(goc_test::half_minmax_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0),
-                                                        UINT32_MAX, mode, p + dest, p, p + 1,
-                                                        p + 2),
+                                                        UINT32_MAX, mode, p + dest, p, p + 1, p + 2,
+                                                        nullptr),
                     GOC_SUCCESS);
           for (int reg = 0; reg < 4; ++reg)
             for (int lane = 0; lane < 32; ++lane) {
@@ -126,7 +126,7 @@ TEST(HalfMinmax3, MasksAndAllWholeRegisterAliases) {
               uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1, words[3] + 1};
               ASSERT_EQ(goc_test::half_minmax_functions[op](cpu, exec_mask, mode, p + dest,
                                                             p + layout[0], p + layout[1],
-                                                            p + layout[2]),
+                                                            p + layout[2], nullptr),
                         GOC_SUCCESS);
               for (int reg = 0; reg < 4; ++reg)
                 for (int lane = 0; lane < 34; ++lane) {
@@ -180,7 +180,8 @@ TEST(HalfMinmax3, LiteralOrderNanAndSignedZeroRules) {
         std::fill(words[1], words[1] + 32, test.b);
         std::fill(words[2], words[2] + 32, test.c);
         std::fill(words[3], words[3] + 32, 0xdeadbeef);
-        ASSERT_EQ(goc_test::half_minmax_functions[op](cpu, UINT32_MAX, 0, p + 3, p, p + 1, p + 2),
+        ASSERT_EQ(goc_test::half_minmax_functions[op](cpu, UINT32_MAX, 0, p + 3, p, p + 1, p + 2,
+                                                      nullptr),
                   GOC_SUCCESS);
         for (auto word : words[3])
           check(word, 0xdeadbeef, test.expected[op], 0);
@@ -194,15 +195,16 @@ TEST(HalfMinmax3, ValidationAndSemantics) {
     auto p = data;
     for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (int bit = 13; bit < 32; ++bit)
-        EXPECT_EQ(fn(0, exec_mask, 1U << bit, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(
-          fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p, &p),
-          GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(fn(0, exec_mask, 1U << bit, &p, &p, &p, &p, nullptr), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, &p, &p, nullptr), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p,
+                   &p, nullptr),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (auto word : data)
       EXPECT_EQ(word, 0xdeadbeef);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &p, &p, &p, &p), GOC_SUCCESS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &p, &p, &p, &p, nullptr),
+              GOC_SUCCESS);
   }
 }
 
@@ -220,7 +222,8 @@ TEST(HalfMinmax3, HardwareMedianSignedZeroOrdering) {
         words[3][lane] = 0xdead0000u + lane;
       }
       uint32_t *p[] = {words[0], words[1], words[2], words[3]};
-      ASSERT_EQ(goc_rdna4_v_med3_num_f16(cpu, UINT32_MAX, 0, p + 3, p, p + 1, p + 2), GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_v_med3_num_f16(cpu, UINT32_MAX, 0, p + 3, p, p + 1, p + 2, nullptr),
+                GOC_SUCCESS);
       for (uint32_t word : words[3])
         hash = goc_test::capture_hash_word(hash, word);
     }
@@ -242,7 +245,8 @@ TEST(HalfMinmax3, HardwareMedianNanRules) {
         words[3][lane] = 0xdead0000u + lane;
       }
       uint32_t *p[] = {words[0], words[1], words[2], words[3]};
-      ASSERT_EQ(goc_rdna4_v_med3_num_f16(cpu, UINT32_MAX, 0, p + 3, p, p + 1, p + 2), GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_v_med3_num_f16(cpu, UINT32_MAX, 0, p + 3, p, p + 1, p + 2, nullptr),
+                GOC_SUCCESS);
       for (uint32_t word : words[3]) {
         if ((word & 0x7fff) > 0x7c00)
           word = (word & 0xffff0000u) | 0x7e00;

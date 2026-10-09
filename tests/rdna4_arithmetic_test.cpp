@@ -8,6 +8,7 @@
 #include "rdna4_exec_masks.h"
 #include "rdna4_fma_omod_hardware.h"
 #include "rdna4_omod_reference.h"
+#include "rdna4_test_instruction.h"
 
 #include <algorithm>
 #include <array>
@@ -26,7 +27,7 @@ TEST(Arithmetic, ConstInputs) {
   const uint32_t *const pa = a, *const pb = b, *const pc = c;
   uint32_t d[32] = {};
   uint32_t *pd = d;
-  ASSERT_EQ(goc_rdna4_v_fma_f32(0, 1, 0, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_v_fma_f32(0, 1, 0, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d[0], 0x41200000u);
 }
 
@@ -43,7 +44,7 @@ TEST(Arithmetic, DeterministicFmaMaskAndAliasing) {
   }
   const auto original = a;
   auto pa = a.data(), pb = b.data(), pc = c.data();
-  ASSERT_EQ(goc_rdna4_v_fma_f32(0, 0xaaaaaaaa, 0, &pa, &pa, &pb, &pc), 0);
+  ASSERT_EQ(goc_rdna4_v_fma_f32(0, 0xaaaaaaaa, 0, &pa, &pa, &pb, &pc, nullptr), 0);
   for (int i = 0; i < 32; ++i)
     EXPECT_EQ(a[i], (i % 2) ? expected[i] : original[i]);
 }
@@ -54,13 +55,16 @@ TEST(Arithmetic, ErrorsPreserveDestination) {
   for (auto &v : d)
     v = 0xdeadbeef;
   EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0,
-                                &pd, &pa, &pa, &pa),
+                                &pd, &pa, &pa, &pa, nullptr),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
-  EXPECT_EQ(goc_rdna4_v_log_f32(0, UINT32_MAX, GOC_ALU_NEG_B, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
-  EXPECT_EQ(goc_rdna4_v_log_f32(1ULL << 63, UINT32_MAX, 0, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
+  EXPECT_EQ(goc_rdna4_v_log_f32(0, UINT32_MAX, GOC_ALU_NEG_B, &pd, &pa, nullptr),
+            GOC_ERROR_INVALID_FLAGS);
+  EXPECT_EQ(goc_rdna4_v_log_f32(1ULL << 63, UINT32_MAX, 0, &pd, &pa, nullptr),
+            GOC_ERROR_INVALID_FLAGS);
   for (auto v : d)
     EXPECT_EQ(v, 0xdeadbeef);
-  EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &pd, &pa, &pa, &pa), 0);
+  EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &pd, &pa, &pa, &pa, nullptr),
+            0);
   for (auto v : d)
     EXPECT_EQ(v, 0xdeadbeef);
 }
@@ -70,9 +74,9 @@ TEST(Arithmetic, LogPowersOfTwoAndEmptyMask) {
   for (int i = 0; i < 32; ++i)
     a[i] = goc::as_bits(std::ldexp(1.0f, i - 16));
   auto pa = a;
-  ASSERT_EQ(goc_rdna4_v_log_f32(0, 0U, 0, &pa, &pa), 0);
+  ASSERT_EQ(goc_rdna4_v_log_f32(0, 0U, 0, &pa, &pa, nullptr), 0);
   EXPECT_EQ(a[0], goc::as_bits(std::ldexp(1.0f, -16)));
-  ASSERT_EQ(goc_rdna4_v_log_f32(0, UINT32_MAX, 0, &pa, &pa), 0);
+  ASSERT_EQ(goc_rdna4_v_log_f32(0, UINT32_MAX, 0, &pa, &pa, nullptr), 0);
   for (int i = 0; i < 32; ++i)
     EXPECT_EQ(a[i], goc::as_bits(float(i - 16)));
 }
@@ -107,9 +111,9 @@ TEST(Arithmetic, AllCpuLevelsFmaGoldenAndAliasing) {
         }
         std::array<uint32_t, 32> before;
         std::copy(ptrs[alias], ptrs[alias] + 32, before.begin());
-        ASSERT_EQ(
-            goc_rdna4_v_fma_f32(level, exec_mask, 0, &ptrs[alias], &ptrs[0], &ptrs[1], &ptrs[2]),
-            0);
+        ASSERT_EQ(goc_rdna4_v_fma_f32(level, exec_mask, 0, &ptrs[alias], &ptrs[0], &ptrs[1],
+                                      &ptrs[2], nullptr),
+                  0);
         for (int i = 0; i < 32; ++i)
           EXPECT_EQ(ptrs[alias][i], ((exec_mask >> i) & 1) ? golden[i % 8] : before[i]);
         for (int j = 0; j < 4; ++j) {
@@ -122,7 +126,8 @@ TEST(Arithmetic, AllCpuLevelsFmaGoldenAndAliasing) {
 namespace {
 
 void check_fma_modifiers(bool dx9) {
-  auto fn = dx9 ? goc_rdna4_v_fma_dx9_zero_f32 : goc_rdna4_v_fma_f32;
+  using Fn = goc_test::WaveInstruction<decltype(&goc_rdna4_v_mad_u32_u24)>;
+  Fn fn = dx9 ? Fn(goc_rdna4_v_fma_dx9_zero_f32) : Fn(goc_rdna4_v_fma_f32);
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint32_t modifiers = 0; modifiers < 512; ++modifiers)
       for (uint32_t exec_mask : rdna4_exec_masks())
@@ -188,7 +193,8 @@ TEST(Arithmetic, FmaModifierSpecialValues) {
       std::fill(b, b + 32, b_bits[test]);
       std::fill(c, c + 32, c_bits[test]);
       auto pa = a, pb = b, pc = c, pd = d;
-      ASSERT_EQ(goc_rdna4_v_fma_f32(cpu, UINT32_MAX, modes[test], &pd, &pa, &pb, &pc), GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_v_fma_f32(cpu, UINT32_MAX, modes[test], &pd, &pa, &pb, &pc, nullptr),
+                GOC_SUCCESS);
       for (uint32_t value : d)
         EXPECT_EQ(value, golden[test]);
     }
@@ -287,10 +293,10 @@ TEST(Arithmetic, FmaAndFmacOmodHardwareBoundaries) {
                 uint32_t before[32];
                 std::copy(p[alias], p[alias] + 32, before);
                 uint64_t mode = (omod << 6) | (clamp ? GOC_ALU_CLAMP : 0) | neg;
-                int error =
-                    fmac
-                        ? goc_rdna4_v_fmac_f32(cpu, exec_mask, mode, &p[alias], &p[1], &p[2])
-                        : goc_rdna4_v_fma_f32(cpu, exec_mask, mode, &p[alias], &p[1], &p[2], &p[3]);
+                int error = fmac ? goc_rdna4_v_fmac_f32(cpu, exec_mask, mode, &p[alias], &p[1],
+                                                        &p[2], nullptr)
+                                 : goc_rdna4_v_fma_f32(cpu, exec_mask, mode, &p[alias], &p[1],
+                                                       &p[2], &p[3], nullptr);
                 ASSERT_EQ(error, GOC_SUCCESS);
                 for (int lane = 0; lane < 32; ++lane) {
                   uint32_t want = (exec_mask >> lane) & 1

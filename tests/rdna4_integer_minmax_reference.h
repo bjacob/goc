@@ -14,7 +14,7 @@ inline const char *const integer_minmax_names[] = {
     "v_maxmin_i32", "v_med3_i32",   "v_min_u32",    "v_max_u32",  "v_min3_u32",
     "v_max3_u32",   "v_minmax_u32", "v_maxmin_u32", "v_med3_u32"};
 
-using IntegerMinmaxFn = decltype(&goc_rdna4_v_fma_f32);
+using IntegerMinmaxFn = decltype(&goc_rdna4_v_min3_i32);
 
 template <auto Function>
 int integer_minmax_binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,

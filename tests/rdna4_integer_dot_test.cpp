@@ -13,7 +13,7 @@
 
 namespace {
 
-using Fn = decltype(&goc_rdna4_v_fma_f32);
+using Fn = decltype(&goc_rdna4_v_mad_u32_u24);
 const Fn functions[] = {goc_rdna4_v_dot4_i32_iu8, goc_rdna4_v_dot4_u32_u8, goc_rdna4_v_dot8_i32_iu4,
                         goc_rdna4_v_dot8_u32_u4};
 

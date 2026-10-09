@@ -10,8 +10,9 @@
 namespace goc_test {
 
 inline int half_fmac(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
-  return goc_rdna4_v_fmac_f16(flags, exec_mask, mode, d, a, b);
+                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *,
+                     uint32_t *excp_flag_user) {
+  return goc_rdna4_v_fmac_f16(flags, exec_mask, mode, d, a, b, excp_flag_user);
 }
 
 using HalfFmaFn = decltype(&goc_rdna4_v_fma_f16);
