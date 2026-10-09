@@ -18,6 +18,200 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Scalar comparisons execute once per wave and ignore EXEC, including zero.
+// scc is required and receives 0 or 1. Inputs are passed by value and may come
+// from output storage, including a word within uint64_t storage. Both loose and
+// empirical exact semantics are supported. instruction_flags must be zero.
+// Preserves all host FP state independently of rounding; errors leave scc unchanged.
+// FP16 reads low halves. Floating comparisons equate signed zeros and apply guest
+// input flushing. Output flushing and FP16_OVFL have no effect; integer/bit tests
+// also ignore input flushing. Ordered predicates are false for either NaN;
+// negated predicates are their logical complements, including for NaNs.
+
+// SCC is a == b (signed).
+GOC_API int goc_rdna4_s_cmp_eq_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a != b (signed).
+GOC_API int goc_rdna4_s_cmp_lg_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a > b (signed).
+GOC_API int goc_rdna4_s_cmp_gt_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a >= b (signed).
+GOC_API int goc_rdna4_s_cmp_ge_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a < b (signed).
+GOC_API int goc_rdna4_s_cmp_lt_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a <= b (signed).
+GOC_API int goc_rdna4_s_cmp_le_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a == b (unsigned).
+GOC_API int goc_rdna4_s_cmp_eq_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a != b (unsigned).
+GOC_API int goc_rdna4_s_cmp_lg_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a > b (unsigned).
+GOC_API int goc_rdna4_s_cmp_gt_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a >= b (unsigned).
+GOC_API int goc_rdna4_s_cmp_ge_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a < b (unsigned).
+GOC_API int goc_rdna4_s_cmp_lt_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a <= b (unsigned).
+GOC_API int goc_rdna4_s_cmp_le_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is 1 when bit (b modulo 32) of a equals 0.
+GOC_API int goc_rdna4_s_bitcmp0_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is 1 when bit (b modulo 32) of a equals 1.
+GOC_API int goc_rdna4_s_bitcmp1_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is 1 when bit (b modulo 64) of a equals 0.
+GOC_API int goc_rdna4_s_bitcmp0_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint64_t a, uint32_t b);
+
+// SCC is 1 when bit (b modulo 64) of a equals 1.
+GOC_API int goc_rdna4_s_bitcmp1_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint64_t a, uint32_t b);
+
+// SCC is a == b (unsigned).
+GOC_API int goc_rdna4_s_cmp_eq_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint64_t a, uint64_t b);
+
+// SCC is a != b (unsigned).
+GOC_API int goc_rdna4_s_cmp_lg_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint64_t a, uint64_t b);
+
+// SCC is a < b.
+GOC_API int goc_rdna4_s_cmp_lt_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a < b.
+GOC_API int goc_rdna4_s_cmp_lt_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a == b.
+GOC_API int goc_rdna4_s_cmp_eq_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a == b.
+GOC_API int goc_rdna4_s_cmp_eq_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a <= b.
+GOC_API int goc_rdna4_s_cmp_le_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a <= b.
+GOC_API int goc_rdna4_s_cmp_le_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a > b.
+GOC_API int goc_rdna4_s_cmp_gt_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a > b.
+GOC_API int goc_rdna4_s_cmp_gt_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a != b.
+GOC_API int goc_rdna4_s_cmp_lg_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a != b.
+GOC_API int goc_rdna4_s_cmp_lg_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a >= b.
+GOC_API int goc_rdna4_s_cmp_ge_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is a >= b.
+GOC_API int goc_rdna4_s_cmp_ge_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is both operands are numbers.
+GOC_API int goc_rdna4_s_cmp_o_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is both operands are numbers.
+GOC_API int goc_rdna4_s_cmp_o_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is either operand is NaN.
+GOC_API int goc_rdna4_s_cmp_u_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is either operand is NaN.
+GOC_API int goc_rdna4_s_cmp_u_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is not (a >= b).
+GOC_API int goc_rdna4_s_cmp_nge_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is not (a >= b).
+GOC_API int goc_rdna4_s_cmp_nge_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is 1 if either operand is NaN or a == b.
+GOC_API int goc_rdna4_s_cmp_nlg_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is 1 if either operand is NaN or a == b.
+GOC_API int goc_rdna4_s_cmp_nlg_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is not (a > b).
+GOC_API int goc_rdna4_s_cmp_ngt_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is not (a > b).
+GOC_API int goc_rdna4_s_cmp_ngt_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is not (a <= b).
+GOC_API int goc_rdna4_s_cmp_nle_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is not (a <= b).
+GOC_API int goc_rdna4_s_cmp_nle_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is not (a == b).
+GOC_API int goc_rdna4_s_cmp_neq_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is not (a == b).
+GOC_API int goc_rdna4_s_cmp_neq_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is not (a < b).
+GOC_API int goc_rdna4_s_cmp_nlt_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
+// SCC is not (a < b).
+GOC_API int goc_rdna4_s_cmp_nlt_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *scc, uint32_t a, uint32_t b);
+
 // Scalar conversions execute once per wave and ignore EXEC, including zero;
 // d is required and SCC is unchanged. Operands are raw register bits. Sources
 // may originate from d storage. instruction_flags must be zero; loose semantics

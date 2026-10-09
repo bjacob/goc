@@ -8,6 +8,52 @@ if(VARIANT STREQUAL "static")
   set(expected consumer_cpu_flags)
 else()
   set(expected
+    goc_rdna4_s_cmp_eq_i32
+    goc_rdna4_s_cmp_lg_i32
+    goc_rdna4_s_cmp_gt_i32
+    goc_rdna4_s_cmp_ge_i32
+    goc_rdna4_s_cmp_lt_i32
+    goc_rdna4_s_cmp_le_i32
+    goc_rdna4_s_cmp_eq_u32
+    goc_rdna4_s_cmp_lg_u32
+    goc_rdna4_s_cmp_gt_u32
+    goc_rdna4_s_cmp_ge_u32
+    goc_rdna4_s_cmp_lt_u32
+    goc_rdna4_s_cmp_le_u32
+    goc_rdna4_s_bitcmp0_b32
+    goc_rdna4_s_bitcmp1_b32
+    goc_rdna4_s_bitcmp0_b64
+    goc_rdna4_s_bitcmp1_b64
+    goc_rdna4_s_cmp_eq_u64
+    goc_rdna4_s_cmp_lg_u64
+    goc_rdna4_s_cmp_lt_f32
+    goc_rdna4_s_cmp_lt_f16
+    goc_rdna4_s_cmp_eq_f32
+    goc_rdna4_s_cmp_eq_f16
+    goc_rdna4_s_cmp_le_f32
+    goc_rdna4_s_cmp_le_f16
+    goc_rdna4_s_cmp_gt_f32
+    goc_rdna4_s_cmp_gt_f16
+    goc_rdna4_s_cmp_lg_f32
+    goc_rdna4_s_cmp_lg_f16
+    goc_rdna4_s_cmp_ge_f32
+    goc_rdna4_s_cmp_ge_f16
+    goc_rdna4_s_cmp_o_f32
+    goc_rdna4_s_cmp_o_f16
+    goc_rdna4_s_cmp_u_f32
+    goc_rdna4_s_cmp_u_f16
+    goc_rdna4_s_cmp_nge_f32
+    goc_rdna4_s_cmp_nge_f16
+    goc_rdna4_s_cmp_nlg_f32
+    goc_rdna4_s_cmp_nlg_f16
+    goc_rdna4_s_cmp_ngt_f32
+    goc_rdna4_s_cmp_ngt_f16
+    goc_rdna4_s_cmp_nle_f32
+    goc_rdna4_s_cmp_nle_f16
+    goc_rdna4_s_cmp_neq_f32
+    goc_rdna4_s_cmp_neq_f16
+    goc_rdna4_s_cmp_nlt_f32
+    goc_rdna4_s_cmp_nlt_f16
     goc_rdna4_s_cvt_f32_i32
     goc_rdna4_s_cvt_f32_u32
     goc_rdna4_s_cvt_i32_f32

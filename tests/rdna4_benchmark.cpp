@@ -39,6 +39,7 @@
 #include "rdna4_rcp_iflag_reference.h"
 #include "rdna4_sad_reference.h"
 #include "rdna4_scalar_bits_reference.h"
+#include "rdna4_scalar_compare_reference.h"
 #include "rdna4_scalar_convert_reference.h"
 #include "rdna4_scalar_field_reference.h"
 #include "rdna4_scalar_fma_reference.h"
@@ -1596,6 +1597,46 @@ bool benchmark_scalar_fma(int iterations, int min_ms) {
                    variant == 0   ? "none"
                    : variant == 1 ? "flush-io-ovfl"
                                   : "flush-output");
+    }
+  return true;
+}
+
+bool benchmark_scalar_compare(int iterations, int min_ms) {
+  struct ScalarRegisters : Registers {
+    uint32_t result = 0, want = 0;
+
+    ScalarRegisters() { output_regs = 0; }
+
+    bool correct() const { return result == want; }
+  };
+
+  // GFX1201 capture: integer pair 333 / floating pair 3, preserve / flush input.
+  const uint32_t gold[46][2] = {
+      {0u, 0u}, {1u, 1u}, {0u, 0u}, {0u, 0u}, {1u, 1u}, {1u, 1u}, {0u, 0u}, {1u, 1u},
+      {0u, 0u}, {0u, 0u}, {1u, 1u}, {1u, 1u}, {0u, 0u}, {1u, 1u}, {0u, 0u}, {1u, 1u},
+      {0u, 0u}, {1u, 1u}, {1u, 0u}, {1u, 0u}, {0u, 1u}, {0u, 1u}, {1u, 1u}, {1u, 1u},
+      {0u, 0u}, {0u, 0u}, {1u, 0u}, {1u, 0u}, {0u, 1u}, {0u, 1u}, {1u, 1u}, {1u, 1u},
+      {0u, 0u}, {0u, 0u}, {1u, 0u}, {1u, 0u}, {0u, 1u}, {0u, 1u}, {1u, 1u}, {1u, 1u},
+      {0u, 0u}, {0u, 0u}, {1u, 0u}, {1u, 0u}, {0u, 1u}, {0u, 1u}};
+  for (unsigned op = 0; op < 46; ++op)
+    for (unsigned state = 0; state < (op < 18 ? 1u : 2u); ++state) {
+      ScalarRegisters r;
+      r.want = gold[op][state];
+      uint32_t w[4];
+      goc_test::scalar_compare_inputs(op < 18 ? 333 : 3, op, w);
+      uint64_t a = (uint64_t(w[1]) << 32) | w[0], b = (uint64_t(w[3]) << 32) | w[2];
+      auto fn = [&r, op, a, b](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *,
+                               const uint32_t *const *, const uint32_t *const *,
+                               const uint32_t *const *) {
+        return goc_test::scalar_compare_call(op, flags, mask, mode, &r.result, a, b);
+      };
+      double scalar =
+          measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL | (state ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), r,
+                  iterations, min_ms, 0);
+      if (scalar < 0)
+        return false;
+      print_result(goc_test::scalar_compare_names[op], "exact", "none", "scalar", scalar, 1, 32,
+                   state ? "flush-input" : "none");
     }
   return true;
 }
@@ -4455,6 +4496,7 @@ int main(int argc, char **argv) {
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave", "FP state");
   if (!benchmark_rcp_iflag(cpu, iterations, min_ms) ||
+      !benchmark_scalar_compare(iterations, min_ms) ||
       !benchmark_scalar_convert(iterations, min_ms) ||
       !benchmark_scalar_round(iterations, min_ms) || !benchmark_scalar_fma(iterations, min_ms) ||
       !benchmark_scalar_fp(iterations, min_ms) || !benchmark_scalar_field(iterations, min_ms) ||

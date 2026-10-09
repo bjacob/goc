@@ -1490,6 +1490,14 @@ saturation, NaNs, ties, underflow, packed ordering, aliases, and EXEC. The packe
 RTZ helper is shared with vector conversions. Benchmarks include all eight
 instructions with default and nondefault FP settings; semantics are loose.
 
+All 46 scalar comparison instructions are implemented: signed/unsigned integer
+predicates, 32/64-bit bit tests, and all FP16/FP32 predicates. They return one SCC
+bit, ignore EXEC, and preserve all host FP state. Both semantics use raw-integer
+models borrowed from rocjitsu and share predicate helpers with vector comparisons.
+Tests match 4,521,984 GFX1201 SCC results across guest FP states and cover NaNs,
+signed zeros, bit-index masking, source/output overlap, and host rounding modes.
+Benchmarks cover each instruction and floating input-flush variants.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU
