@@ -24,7 +24,8 @@ extern "C" {
 // its stored value. Inactive destinations remain unchanged. Supported by FP32
 // FMA/FMAC, ADD/SUB/SUBREV/MUL/MUL_DX9_ZERO, binary min/max, and three-input
 // min/max/median, and FP32 unary math (rounding, SQRT/RCP/RSQ/EXP/LOG, FRACT,
-// FREXP mantissa), including arithmetic modifiers and whole-VGPR aliases.
+// FREXP mantissa), and wave32 CLZ/CTZ/CLS/BCNT/MBCNT and 32-bit Boolean
+// AND/OR/XOR/XNOR/NOT, including their supported modifiers and whole-VGPR aliases.
 static const uint64_t GOC_DPP8 = (UINT64_C(1) << 32);
 static const uint64_t GOC_DPP_FI = (UINT64_C(1) << 33);
 static const uint32_t GOC_DPP8_SELECT_SHIFT = 40;

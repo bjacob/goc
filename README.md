@@ -1621,6 +1621,19 @@ with full EXEC and both DPP kinds. On the Ryzen 9 7950X3D, these paths measure
 18.6–25.2 ns on AVX2 (1.9–4.9× scalar speed) and 17.9–24.1 ns with AVX-512
 permutation plus AVX2 arithmetic (2.0–5.1×).
 
+DPP8/DPP16 also support wave32 CLZ, CTZ, CLS, BCNT, MBCNT_LO, MBCNT_HI,
+and 32-bit AND, OR, XOR, XNOR, NOT. MBCNT's bit range remains determined by
+the destination lane after source permutation. Integer host FP state is
+preserved, including rounding mode and existing exception flags. A GFX1201
+capture checks 19,712 results; independent tests combine all mask patterns,
+source/destination aliases, exceptional bit patterns, and random words. SIMD
+permutation composes with each instruction's existing arithmetic path, including
+AVX-512 Boolean operations. Wave64 counts and 16-bit Boolean DPP forms remain
+pending. Benchmarks cover representative leading/population/masked counts and
+Boolean operations with full EXEC. On the Ryzen 9 7950X3D, these cases measure
+16.8–23.5 ns on x86-64-v3 (1.9–2.4× scalar speed) and 9.1–13.4 ns on
+x86-64-v4 (3.3–4.9×), using seven pinned samples of at least 10 ms each.
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal

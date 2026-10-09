@@ -3,14 +3,26 @@
 #include "rdna4_boolean.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <stdint.h>
 
 namespace {
 
 template <goc::Boolean Op, bool Half>
-int boolean(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int boolean(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32) {
+    if constexpr (!Half) {
+      return goc::execute_dpp(
+          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+            return boolean<Op, Half>(flags, effective, uint32_t(mode), d, source, b);
+          });
+    } else {
+      return GOC_ERROR_INVALID_FLAGS;
+    }
+  }
+
   const uint32_t known =
       Half ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | (Op == goc::Boolean::Not ? 0 : GOC_ALU_HIGH_B) : 0;
   if (int error = goc::validate(flags, mode & ~known))
@@ -58,29 +70,21 @@ int boolean(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 int goc_rdna4_v_and_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return boolean<goc::Boolean::And, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_or_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return boolean<goc::Boolean::Or, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_xor_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return boolean<goc::Boolean::Xor, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_not_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return boolean<goc::Boolean::Not, false>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
@@ -114,7 +118,5 @@ int goc_rdna4_v_not_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction
 
 int goc_rdna4_v_xnor_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return boolean<goc::Boolean::Xnor, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
