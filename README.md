@@ -883,6 +883,15 @@ NaNs to zero. RTZ borrows rocjitsu's `f32_to_f16_rtz` integer conversion,
 quieting source NaNs to match RDNA4; finite overflow saturates regardless of
 `GOC_FP16_OVFL`. All three expose loose semantics independent of host rounding.
 
+All three also support DPP8/DPP16, permuting A before conversion and modifiers
+while keeping B in its original lane. All modifier combinations match a
+344,064-word RX 9070 capture (with FP16 NaNs canonicalized); mask/alias tests
+cover seven descriptors, 85 EXEC masks, unaligned storage and guard words.
+DPP8 reversal and DPP16 row shift are included in the full-EXEC benchmarks.
+Pinned Ryzen 9 7950X3D measurements across these DPP cases showed v3 at
+20.5–23.9 ns (1.82–4.07x scalar) and v4 at 9.6–13.0 ns (3.35–8.68x),
+using seven samples of at least 10 ms each.
+
 Sixteen literal input pairs captured on the RX 9070 (`gfx1201`) verify nine
 opcode/modifier combinations with `FP16_OVFL` both clear and set. Tests also
 cover every FP32 exponent, every FP16 boundary and adjacent FP32 values,

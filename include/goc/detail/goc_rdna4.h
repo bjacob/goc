@@ -1843,7 +1843,8 @@ GOC_API int goc_rdna4_v_cvt_norm_u16_f16(uint64_t flags, uint64_t exec_mask,
                                          uint64_t instruction_flags, uint32_t *const *d,
                                          const uint32_t *const *a);
 
-// Pack two FP32 source VGPRs into one 16-bit-pair destination: A goes to the
+// DPP8/DPP16 permute A before conversion and modifiers; B stays in its
+// original lane. Pack two FP32 source VGPRs into one 16-bit-pair destination: A goes to the
 // low half, B to the high half. Supports ABS/NEG on A/B, full EXEC masking and
 // whole-register aliases. Loose semantics only. CLAMP is accepted without
 // numeric effect. The FP16 RTZ form also accepts and ignores OMOD, truncates

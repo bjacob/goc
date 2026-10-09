@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_conversion64_reference.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_packed_conversion_hardware.h"
 #include "rdna4_packed_conversion_reference.h"
@@ -189,5 +190,88 @@ TEST(PackedConversion, ValidationAndSemanticFallback) {
                 GOC_SUCCESS);
       for (unsigned sem = 0; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16), 0, input, input));
+    }
+}
+
+TEST(PackedConversion, DppMasksAliasesAndGuards) {
+  std::mt19937 random(1447);
+  for (auto descriptor : goc_test::dpp_modes)
+    for (unsigned op = 0; op < 3; ++op)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned variant : {0u, goc_test::packed_conversion_modes(op) / 2,
+                                 goc_test::packed_conversion_modes(op) - 1})
+          for (uint64_t mask : rdna4_exec_masks())
+            for (unsigned breg = 0; breg < 2; ++breg)
+              for (unsigned dreg = 0; dreg < 3; ++dreg) {
+                uint32_t storage[3][34], expected[3][34];
+                for (unsigned reg = 0; reg < 3; ++reg)
+                  for (unsigned word = 0; word < 34; ++word)
+                    storage[reg][word] = expected[reg][word] = random();
+                uint64_t mode = descriptor | goc_test::packed_conversion_mode(op, variant);
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  int source = 0;
+                  if (goc_test::dpp_source(mode, uint32_t(mask), lane, source))
+                    expected[dreg][lane + 1] = goc_test::packed_conversion_reference(
+                        op, source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
+                        uint32_t(mode));
+                }
+                const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1};
+                uint32_t *d[] = {storage[dreg] + 1};
+                ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
+                for (unsigned reg = 0; reg < 3; ++reg)
+                  for (unsigned word = 0; word < 34; ++word)
+                    ASSERT_EQ(storage[reg][word], expected[reg][word])
+                        << op << "/" << cpu << "/" << variant;
+              }
+}
+
+// RX 9070: all modifiers for all three forms, seven descriptors and eight masks.
+// Canonicalize FP16 NaNs only; integer results retain all bits.
+TEST(PackedConversion, DppHardwareCorpus) {
+  const uint32_t values[] = {0x387fffff, 0x80000001, 0x477ff000, 0xc7000080,
+                             0x7f800001, 0xff800000, 0x3fc00000, 0x47800000};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (auto mask : masks)
+      for (unsigned op = 0; op < 3; ++op)
+        for (auto descriptor : goc_test::dpp_modes)
+          for (unsigned variant = 0; variant < goc_test::packed_conversion_modes(op); ++variant) {
+            uint32_t av[32], bv[32], output[32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              av[lane] = values[lane % 8];
+              bv[lane] = values[(lane + 3) % 8];
+              output[lane] = 0xdead0000u + lane;
+            }
+            const uint32_t *a[] = {av}, *b[] = {bv};
+            uint32_t *d[] = {output};
+            ASSERT_EQ(functions[op](cpu, mask,
+                                    descriptor | goc_test::packed_conversion_mode(op, variant), d,
+                                    a, b),
+                      GOC_SUCCESS);
+            for (auto word : output) {
+              if (op == 0) {
+                uint32_t low = word & 65535, high = word >> 16;
+                if ((low & 0x7fff) > 0x7c00)
+                  low = 0x7e00;
+                if ((high & 0x7fff) > 0x7c00)
+                  high = 0x7e00;
+                word = low | (high << 16);
+              }
+              hash = (hash ^ word) * UINT64_C(1099511628211);
+            }
+          }
+    EXPECT_EQ(hash, UINT64_C(0xa70566992e7f5ce5)) << cpu;
+  }
+}
+
+TEST(PackedConversion, DppValidation) {
+  for (auto fn : functions)
+    for (auto descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_HIGH_A)})
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
     }
 }
