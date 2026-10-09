@@ -28,6 +28,25 @@ static const uint64_t GOC_DPP_FI = (UINT64_C(1) << 33);
 static const uint32_t GOC_DPP8_SELECT_SHIFT = 40;
 static const uint64_t GOC_DPP8_SELECT_MASK = (UINT64_C(0xffffff) << 40);
 
+// DPP16 permutes A within 16-lane rows before arithmetic modifiers. Select
+// exactly one of GOC_DPP8/GOC_DPP16. DPP16 control is the architectural 9-bit
+// encoding: quad_perm 0x000..0x0ff; row_shl 0x101..0x10f; row_shr 0x111..0x11f;
+// row_ror 0x121..0x12f; row_mirror 0x140; row_half_mirror 0x141;
+// row_share 0x150..0x15f; row_xmask 0x160..0x16f. Other controls are invalid.
+// Row/bank fields enable destination rows of 16 lanes and banks of four lanes.
+// Use both full MASK constants to enable all destinations; zero fields disable
+// writes. FI permits inactive in-range sources. Without a readable source,
+// BOUND_CTRL supplies positive zero; otherwise the destination is preserved.
+// FI does not permit out-of-range sources. FMA/FMAC support all combinations.
+static const uint64_t GOC_DPP16 = (UINT64_C(1) << 34);
+static const uint64_t GOC_DPP_BOUND_CTRL = (UINT64_C(1) << 35);
+static const uint32_t GOC_DPP_CTRL_SHIFT = 40;
+static const uint64_t GOC_DPP_CTRL_MASK = (UINT64_C(0x1ff) << 40);
+static const uint32_t GOC_DPP_ROW_SHIFT = 49;
+static const uint64_t GOC_DPP_ROW_MASK = (UINT64_C(0xf) << 49);
+static const uint32_t GOC_DPP_BANK_SHIFT = 53;
+static const uint64_t GOC_DPP_BANK_MASK = (UINT64_C(0xf) << 53);
+
 // PERMLANE flags are a bit field. FI permits reading inactive source lanes.
 // Otherwise BOUND_CTRL selects zero for an inactive source; without it the
 // destination is preserved. Neither flag enables inactive destination lanes.

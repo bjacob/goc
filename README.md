@@ -1533,8 +1533,23 @@ DPP8 tests include a 16,384-result GFX1201 FMA/FMAC capture, all arithmetic
 modifier combinations, random selectors, EXEC patterns, and aliases. Pinned
 CPU-8 measurements on the Ryzen 9 7950X3D (seven samples of at least 10 ms)
 measure 16.5–17.4 ns/wave for AVX2 (5.3–6.9× scalar) and 7.3 ns/wave for
-AVX-512 (12.7–15.8×), including FI/NEG/output scaling. DPP16 and DPP support
-for the other applicable arithmetic instructions remain to be implemented.
+AVX-512 (12.7–15.8×), including FI/NEG/output scaling.
+
+The same FMA/FMAC entry points support DPP16 via `GOC_DPP16`, with all 335
+valid RDNA4 controls: quad permutations, row shifts/rotations, mirrors,
+broadcasts, and XOR permutations. Row/bank fields filter destination writes;
+`GOC_DPP_BOUND_CTRL` selects zero-input arithmetic instead of preserving a
+write with an unreadable source. FI enables inactive in-range sources and
+never overrides an out-of-range boundary. Set `GOC_DPP_ROW_MASK` and
+`GOC_DPP_BANK_MASK` for full row/bank coverage; zero fields disable writes.
+DPP8 and DPP16 are mutually exclusive.
+
+DPP16 tests cover every control, all row/bank fields, arithmetic modifiers,
+EXEC masks and aliases, plus a 65,536-result GFX1201 hardware corpus. The
+`row_shl:15` benchmark with boundary zeroing measures 22.4–23.6 ns/wave on
+AVX2 (3.9–5.4× scalar) and 11.8–12.0 ns/wave on AVX-512 (7.6–10.2×),
+including FI/NEG/output scaling. DPP support for the other applicable
+arithmetic instructions remains to be implemented.
 
 All public instruction entry points take a 64-bit `instruction_flags` value.
 Existing modifier bits keep their meanings. The extra width accommodates the

@@ -12,14 +12,14 @@ template <typename... Operands>
 void check_high_flags(const char *name,
                       int (*instruction)(uint64_t, uint64_t, uint64_t, Operands...)) {
   SCOPED_TRACE(name);
-  bool supports_dpp8 = std::strcmp(name, "goc_rdna4_v_fma_f32") == 0 ||
-                       std::strcmp(name, "goc_rdna4_v_fmac_f32") == 0;
+  bool supports_dpp = std::strcmp(name, "goc_rdna4_v_fma_f32") == 0 ||
+                      std::strcmp(name, "goc_rdna4_v_fmac_f32") == 0;
   for (unsigned bit = 32; bit < 64; ++bit)
     for (uint64_t exec : {UINT64_C(0), UINT64_MAX}) {
-      // DPP8 with eight zero selectors is valid for these instructions.
-      if (supports_dpp8 && bit == 32) {
+      // A DPP enable bit alone is a valid descriptor (zero fields).
+      if (supports_dpp && (bit == 32 || bit == 34)) {
         if (exec == 0) {
-          EXPECT_EQ(instruction(0, exec, GOC_DPP8, Operands{}...), GOC_SUCCESS);
+          EXPECT_EQ(instruction(0, exec, UINT64_C(1) << bit, Operands{}...), GOC_SUCCESS);
         }
         continue;
       }

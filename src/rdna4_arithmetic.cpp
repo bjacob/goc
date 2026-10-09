@@ -63,19 +63,19 @@ int fma(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags, uint32_t
 int fma_with_dpp(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                  const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
                  uint32_t known) {
-  const uint64_t dpp_bits = GOC_DPP8 | GOC_DPP_FI | GOC_DPP8_SELECT_MASK;
-  if (mode & ~(uint64_t(known) | dpp_bits))
-    return GOC_ERROR_INVALID_FLAGS;
-  if ((mode >> 32) && !(mode & GOC_DPP8))
+  if ((uint32_t(mode) & ~known) || ((mode >> 32) && !goc::valid_dpp(mode)))
     return GOC_ERROR_INVALID_FLAGS;
   if (int error = goc::validate(flags, 0))
     return error;
   if (!uint32_t(mask))
     return GOC_SUCCESS;
-  if (mode & GOC_DPP8) {
+  if (mode & (GOC_DPP8 | GOC_DPP16)) {
     uint32_t permuted[32];
     const uint32_t *source = permuted;
-    goc::dpp8_source(flags, uint32_t(mask), mode, permuted, a[0]);
+    if (mode & GOC_DPP8)
+      goc::dpp8_source(flags, uint32_t(mask), mode, permuted, a[0]);
+    else
+      mask = goc::dpp16_source(flags, uint32_t(mask), mode, permuted, a[0]);
     return fma<false>(flags, mask, uint32_t(mode), d, &source, b, c);
   }
   return fma<false>(flags, mask, uint32_t(mode), d, a, b, c);
