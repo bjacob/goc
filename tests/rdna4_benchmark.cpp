@@ -39,6 +39,7 @@
 #include "rdna4_rcp_iflag_reference.h"
 #include "rdna4_sad_reference.h"
 #include "rdna4_scalar_bits_reference.h"
+#include "rdna4_scalar_field_reference.h"
 #include "rdna4_scalar_integer_reference.h"
 #include "rdna4_shift_reference.h"
 #include "rdna4_subbyte_golden.h"
@@ -1511,6 +1512,54 @@ bool benchmark_rcp_iflag(uint64_t cpu, int iterations, int min_ms) {
 #endif
   }
   (void)cpu;
+  return true;
+}
+
+bool benchmark_scalar_field(int iterations, int min_ms) {
+  struct ScalarRegisters : Registers {
+    uint32_t result = 0, cc = 1;
+    uint64_t wide = 0, want = 0;
+    uint32_t want_cc = 0;
+    bool is_wide = false;
+
+    ScalarRegisters() { output_regs = 0; }
+
+    bool correct() const { return (is_wide ? wide : result) == want && cc == want_cc; }
+  };
+
+  // GFX1201 capture: input pair 9999, incoming SCC 1.
+  const uint64_t gold[20][2] = {{UINT64_C(0x0), 0u},        {UINT64_C(0x0), 0u},
+                                {UINT64_C(0x0), 0u},        {UINT64_C(0x0), 0u},
+                                {UINT64_C(0xc0000000), 1u}, {UINT64_C(0xc000000000000000), 1u},
+                                {UINT64_C(0x12), 1u},       {UINT64_C(0x23), 1u},
+                                {UINT64_C(0xe), 1u},        {UINT64_C(0x1d), 1u},
+                                {UINT64_C(0x1), 1u},        {UINT64_C(0x1), 1u},
+                                {UINT64_C(0x3), 1u},        {UINT64_C(0x2), 1u},
+                                {UINT64_C(0x3), 1u},        {UINT64_C(0x2), 1u},
+                                {UINT64_C(0x1b842d72), 1u}, {UINT64_C(0x35f600bc1b842d72), 1u},
+                                {UINT64_C(0x5b842d72), 1u}, {UINT64_C(0x75f600bc1b842d72), 1u}};
+  uint32_t words[4];
+  goc_test::scalar_field_inputs(9999, words);
+  const uint64_t a = (uint64_t(words[1]) << 32) | words[0];
+  const uint64_t b = (uint64_t(words[3]) << 32) | words[2];
+  for (unsigned op = 0; op < 20; ++op) {
+    ScalarRegisters r;
+    r.want = gold[op][0];
+    r.want_cc = uint32_t(gold[op][1]);
+    r.is_wide = op == 2 || op == 3 || op == 5 || op == 17 || op == 19;
+    auto fn = [&r, op, a, b](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *,
+                             const uint32_t *const *, const uint32_t *const *,
+                             const uint32_t *const *) {
+      r.result = uint32_t(a);
+      r.wide = a;
+      r.cc = 1;
+      return goc_test::scalar_field_call(op, flags, mask, mode, &r.result, &r.wide, a, b, &r.cc);
+    };
+    double scalar = measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL, r, iterations, min_ms, 0);
+    if (scalar < 0)
+      return false;
+    print_result(goc_test::scalar_field_names[op], "exact", "none", "scalar", scalar, 1);
+  }
   return true;
 }
 
@@ -4233,7 +4282,8 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave", "FP state");
-  if (!benchmark_rcp_iflag(cpu, iterations, min_ms) || !benchmark_scalar_bits(iterations, min_ms) ||
+  if (!benchmark_rcp_iflag(cpu, iterations, min_ms) ||
+      !benchmark_scalar_field(iterations, min_ms) || !benchmark_scalar_bits(iterations, min_ms) ||
       !benchmark_scalar_integer(iterations, min_ms) ||
       !benchmark_pseudo_scalar(iterations, min_ms) ||
       !benchmark_float_compare(cpu, iterations, min_ms) ||

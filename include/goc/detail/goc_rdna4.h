@@ -18,6 +18,102 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Scalar bitfields and counts ignore EXEC, including zero EXEC; output pointers
+// are required. Both loose and empirical exact semantics are supported, and
+// instruction_flags must be zero. All host FP state is preserved. SCC outputs
+// are written after d and win on overlap, including within a 64-bit destination.
+// Errors leave all outputs unchanged. Instructions without SCC outputs preserve SCC.
+
+// Extract unsigned field: offset=b[4:0], width=b[22:16].
+// Width clips at bit 32; zero width yields zero. SCC is result != 0.
+GOC_API int goc_rdna4_s_bfe_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// Extract signed field: offset=b[4:0], width=b[22:16].
+// Width clips at bit 32; zero width yields zero. SCC is result != 0.
+GOC_API int goc_rdna4_s_bfe_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// Extract unsigned field: offset=b[5:0], width=b[22:16].
+// Width clips at bit 64; zero width yields zero. SCC is result != 0.
+GOC_API int goc_rdna4_s_bfe_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint64_t *d, uint64_t a, uint32_t b, uint32_t *scc);
+
+// Extract signed field: offset=b[5:0], width=b[22:16].
+// Width clips at bit 64; zero width yields zero. SCC is result != 0.
+GOC_API int goc_rdna4_s_bfe_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint64_t *d, uint64_t a, uint32_t b, uint32_t *scc);
+
+// Low 32 bits of ((1 << (a modulo 32)) - 1) << (b modulo 32).
+GOC_API int goc_rdna4_s_bfm_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b);
+
+// Low 64 bits of ((1 << (a modulo 64)) - 1) << (b modulo 64).
+GOC_API int goc_rdna4_s_bfm_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint64_t *d, uint32_t a, uint32_t b);
+
+// Count zero bits in 32-bit a; SCC is result != 0.
+GOC_API int goc_rdna4_s_bcnt0_i32_b32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                      uint32_t *scc);
+
+// Count zero bits in 64-bit a; SCC is result != 0.
+GOC_API int goc_rdna4_s_bcnt0_i32_b64(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d, uint64_t a,
+                                      uint32_t *scc);
+
+// Count one bits in 32-bit a; SCC is result != 0.
+GOC_API int goc_rdna4_s_bcnt1_i32_b32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                      uint32_t *scc);
+
+// Count one bits in 64-bit a; SCC is result != 0.
+GOC_API int goc_rdna4_s_bcnt1_i32_b64(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d, uint64_t a,
+                                      uint32_t *scc);
+
+// Count trailing zero bits in 32-bit a; return UINT32_MAX for zero.
+GOC_API int goc_rdna4_s_ctz_i32_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a);
+
+// Count trailing zero bits in 64-bit a; return UINT32_MAX for zero.
+GOC_API int goc_rdna4_s_ctz_i32_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint64_t a);
+
+// Count leading zero bits in 32-bit a; return UINT32_MAX for zero.
+GOC_API int goc_rdna4_s_clz_i32_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a);
+
+// Count leading zero bits in 64-bit a; return UINT32_MAX for zero.
+GOC_API int goc_rdna4_s_clz_i32_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint64_t a);
+
+// Count leading sign bits in 32-bit a, including the sign bit;
+// return UINT32_MAX for zero or all-ones input.
+GOC_API int goc_rdna4_s_cls_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a);
+
+// Count leading sign bits in 64-bit a, including the sign bit;
+// return UINT32_MAX for zero or all-ones input.
+GOC_API int goc_rdna4_s_cls_i32_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint64_t a);
+
+// Clear bit b modulo 32 in old *d.
+GOC_API int goc_rdna4_s_bitset0_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t b);
+
+// Clear bit b modulo 64 in old *d.
+GOC_API int goc_rdna4_s_bitset0_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint64_t *d, uint32_t b);
+
+// Set bit b modulo 32 in old *d.
+GOC_API int goc_rdna4_s_bitset1_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t b);
+
+// Set bit b modulo 64 in old *d.
+GOC_API int goc_rdna4_s_bitset1_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint64_t *d, uint32_t b);
+
 // Scalar bitwise and shift instructions ignore EXEC, including zero EXEC.
 // Output pointers are required; all host FP state is preserved. Both loose and
 // empirical exact semantics are supported. instruction_flags must be zero.

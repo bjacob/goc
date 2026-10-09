@@ -1450,6 +1450,13 @@ SCC unchanged. Tests cover overlapping scalar outputs, empty EXEC, every shift
 count, and host FP-state preservation. These single-result operations use scalar
 paths on all CPU levels and are included in the benchmark.
 
+Scalar bitfield support covers signed/unsigned extraction, mask construction,
+bit clear/set, population counts, and leading/trailing/sign-bit counts in 32 and
+64 bits. Models borrowed from rocjitsu match 1,966,080 GFX1201 result/SCC triples.
+Extraction clips widths at the operand boundary; count sentinels, SCC effects,
+empty EXEC, and overlapping outputs are tested. All 20 instructions have scalar
+benchmarks; each produces one scalar result per wave.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU
