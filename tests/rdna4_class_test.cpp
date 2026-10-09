@@ -34,6 +34,7 @@ TEST(Class, HardwareFormatsModifiersExecAndCmpx) {
             goc_test::class_capture_inputs(op / 2, start, words);
             const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2]};
             ASSERT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                                        GOC_FP_FLUSH_OUTPUT_DENORMALS |
                                         GOC_FP_FLUSH_INPUT_DENORMALS,
                                     UINT64_C(0xffffffff00000000) | masks[mi],
                                     goc_test::class_mode(m), &result, a, b),

@@ -16,7 +16,8 @@ int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *d, const ui
         const uint32_t *const *b) {
   const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_ABS_B | GOC_ALU_NEG_A | GOC_ALU_NEG_B |
                          (Bits == 16 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0);
-  if (int error = goc::validate(flags, mode & ~known, true, GOC_FP_FLUSH_INPUT_DENORMALS))
+  if (int error = goc::validate(flags, mode & ~known, true,
+                                GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   const uint32_t mask = uint32_t(exec_mask);
   if (!mask) {

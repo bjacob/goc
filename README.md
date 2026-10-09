@@ -81,7 +81,8 @@ The `Instruction` column uses standard instruction mnemonics, including operand 
 The `Wave` column distinguishes wave32 and wave64 workloads.
 The `FP state` column records guest FP settings separately from instruction
 modifiers; `flush-input` selects `GOC_FP_FLUSH_INPUT_DENORMALS`, and
-`fp16-ovfl` selects `GOC_FP16_OVFL`.
+`fp16-ovfl` selects `GOC_FP16_OVFL`. `flush-io-ovfl` combines input/output
+flushing and FP16 overflow saturation.
 Pass `--csv` for comma-separated output on stdout, with one header row and
 numeric speedup ratios (empty when unavailable). Explanatory text goes to stderr.
 For example:
@@ -473,6 +474,35 @@ Ryzen 9 7950X3D measurements show 5.76–5.96x for P10, 11.99–12.38x for RTZ
 P10, and 3.78–4.10x for the P2 forms versus scalar, including modifiers
 (seven samples, each at least 10 ms).
 
+Pseudo-scalar math supports `v_s_exp_f16/f32`, `v_s_log_f16/f32`,
+`v_s_rcp_f16/f32`, `v_s_rsq_f16/f32` and `v_s_sqrt_f16/f32`. These instructions
+read one SGPR value and write one SGPR result. They execute regardless of EXEC,
+including empty EXEC. FP16 reads the low input half and clears the destination's
+upper half. ABS/NEG, OMOD, CLAMP and FP16 overflow saturation are supported;
+source/destination half selectors are not part of these instructions.
+
+These loose implementations borrow stage ordering and narrowing machinery from
+rocjitsu. FP32 always flushes input/output subnormals. FP16 obeys
+`GOC_FP_FLUSH_INPUT_DENORMALS` and `GOC_FP_FLUSH_OUTPUT_DENORMALS`, with both
+clear by default. Rounding to the result format happens before OMOD. Nonzero
+OMOD flushes tiny values before and after scaling; a pre-existing zero becomes
+positive, while newly created negative underflow retains its sign. The latter
+behavior corrects rocjitsu's half finalization based on GFX1201 captures.
+Host nearest-even rounding and enabled denormals are required; rounding is
+preserved, but arithmetic exception flags may change. Strict empirical-exact
+requests are rejected.
+
+The compiled API matches 10,485,760 distinct GPU outputs within one FP16 or two
+FP32 ULPs, requiring exact zeros and infinities and allowing NaN payload variation.
+The 31,457,280-result capture also verifies identical full, empty and partial
+EXEC behavior. Committed fixtures retain boundary and random samples across every
+modifier and FP-state combination; further tests cover scalar aliasing, ignored
+EXEC, invalid flags, strict semantics, denormal stages and overflow. Each call
+has only one scalar result, so all CPU levels use the same implementation. The
+benchmark measures these scalar calls with default and modified FP settings.
+Pinned-core Ryzen 9 7950X3D timings for those workloads range from 2.2 to
+14.1 ns per scalar instruction (seven samples, each at least 10 ms).
+
 Floating-point comparison supports all 14 RDNA4 predicates for FP16/FP32/FP64,
 including CMP and CMPX (84 entry points). CMP returns a scalar condition mask;
 CMPX returns replacement EXEC. Both clear inactive bits, and their scalar output
@@ -485,8 +515,9 @@ unordered behavior for every NaN, including signaling NaNs.
 after source modifiers. Its default value preserves them. This setting is
 independent of host DAZ/FTZ and rounding, and these comparisons preserve the
 complete host FP environment. CLASS also accepts the flag but still classifies
-raw encodings. Other instructions reject it until their flushing behavior is
-implemented. GPU output-denormal controls do not affect scalar comparison masks.
+raw encodings. Pseudo-scalar math also accepts input/output flushing settings;
+other instructions reject settings whose behavior is not yet implemented.
+`GOC_FP_FLUSH_OUTPUT_DENORMALS` has no effect on comparison masks.
 
 The v3 path processes eight FP16/FP32 or four FP64 lanes; v4 processes sixteen
 or eight respectively. Tests check 6,881,280 GPU-captured masks covering every

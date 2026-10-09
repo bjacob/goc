@@ -34,6 +34,8 @@
 #include "rdna4_packed_conversion_reference.h"
 #include "rdna4_packed_integer_reference.h"
 #include "rdna4_packed_mad_reference.h"
+#include "rdna4_pseudo_scalar_hardware.h"
+#include "rdna4_pseudo_scalar_reference.h"
 #include "rdna4_sad_reference.h"
 #include "rdna4_shift_reference.h"
 #include "rdna4_subbyte_golden.h"
@@ -1452,6 +1454,52 @@ bool benchmark_interp32(uint64_t cpu, int iterations, int min_ms) {
 #endif
     }
   (void)cpu;
+  return true;
+}
+
+bool benchmark_pseudo_scalar(int iterations, int min_ms) {
+  struct ScalarRegisters : Registers {
+    uint32_t result = 0, want = 0;
+    bool half = false;
+
+    ScalarRegisters() { output_regs = 0; }
+
+    bool correct() const { return goc_test::pseudo_scalar_close(result, want, half); }
+  };
+
+  for (unsigned op = 0; op < 10; ++op)
+    for (unsigned variant = 0; variant < 3; ++variant) {
+      unsigned state = variant == 0   ? 3
+                       : variant == 1 ? 7
+                                      : 4,
+               m = variant == 0   ? 0
+                   : variant == 1 ? 7
+                                  : 31,
+               sample = 42;
+      ScalarRegisters r;
+      r.half = op & 1;
+      r.data[0][0] = goc_test::pseudo_scalar_input(op & 1, goc_test::pseudo_scalar_samples[sample]);
+      r.want =
+          goc_test::pseudo_scalar_outputs[goc_test::pseudo_scalar_blocks[(state * 10 + op) * 32 +
+                                                                         m]][sample];
+      auto fn = [&r, op](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *,
+                         const uint32_t *const *a, const uint32_t *const *,
+                         const uint32_t *const *) {
+        return goc_test::pseudo_scalar_functions[op](flags, mask, mode, &r.result, a[0][0]);
+      };
+      double scalar = measure(fn, goc_test::pseudo_scalar_flags(state), r, iterations, min_ms,
+                              goc_test::pseudo_scalar_mode(m));
+      if (scalar < 0)
+        return false;
+      print_result(goc_test::pseudo_scalar_names[op], "loose",
+                   variant == 0   ? "none"
+                   : variant == 1 ? "ABS/NEG/mul2"
+                                  : "ABS/NEG/half/clamp",
+                   "scalar", scalar, 1, 32,
+                   variant == 0   ? "none"
+                   : variant == 1 ? "fp16-ovfl"
+                                  : "flush-io-ovfl");
+    }
   return true;
 }
 
@@ -4018,7 +4066,8 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave", "FP state");
-  if (!benchmark_float_compare(cpu, iterations, min_ms) ||
+  if (!benchmark_pseudo_scalar(iterations, min_ms) ||
+      !benchmark_float_compare(cpu, iterations, min_ms) ||
       !benchmark_integer_compare(cpu, iterations, min_ms) ||
       !benchmark_class(cpu, iterations, min_ms) || !benchmark_interp16(cpu, iterations, min_ms) ||
       !benchmark_interp32(cpu, iterations, min_ms) || !benchmark_cndmask(cpu, iterations, min_ms) ||

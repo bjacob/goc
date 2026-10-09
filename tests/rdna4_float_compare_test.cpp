@@ -42,7 +42,7 @@ TEST(FloatCompare, HardwarePredicatesModifiersExecAndDenormalModes) {
       for (unsigned mi = 0; mi < 5; ++mi)
         for (unsigned op = 0; op < 84; ++op) {
           uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
-                           (q ? 0 : GOC_FP_FLUSH_INPUT_DENORMALS),
+                           GOC_FP_FLUSH_OUTPUT_DENORMALS | (q ? 0 : GOC_FP_FLUSH_INPUT_DENORMALS),
                    digest = UINT64_C(14695981039346656037);
           for (unsigned m = 0; m < (op < 28 ? 64u : 16u); ++m)
             for (unsigned start = 0; start < 4096; start += 32) {

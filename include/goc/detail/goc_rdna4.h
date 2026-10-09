@@ -18,6 +18,38 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Pseudo-scalar transcendental math on raw SGPR values. Executes once regardless
+// of exec_mask, including zero. a is a scalar value; d must always be writable.
+// FP16 reads a's low half, ignores its high half, and zeros d's upper half.
+// Supports ABS_A, NEG_A, OMOD and CLAMP, with ABS before NEG. No half selectors.
+// Loose semantics only; strict empirical-exact requests fail without writing d.
+// FP32 always flushes input/output denormals. FP16 follows the guest input/output
+// flush flags and FP16_OVFL. Rounding precedes OMOD; nonzero OMOD flushes tiny
+// values before and after scaling. A zero created by negative underflow retains
+// its sign; pre-existing zero becomes positive with OMOD. CLAMP maps NaN and
+// negative results to zero. Requires host nearest-even rounding and enabled
+// denormals. Host rounding is preserved; exception flags may change.
+GOC_API int goc_rdna4_v_s_exp_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+GOC_API int goc_rdna4_v_s_exp_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+GOC_API int goc_rdna4_v_s_log_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+GOC_API int goc_rdna4_v_s_log_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+GOC_API int goc_rdna4_v_s_rcp_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+GOC_API int goc_rdna4_v_s_rcp_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+GOC_API int goc_rdna4_v_s_rsq_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+GOC_API int goc_rdna4_v_s_rsq_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+GOC_API int goc_rdna4_v_s_sqrt_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, uint32_t a);
+GOC_API int goc_rdna4_v_s_sqrt_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, uint32_t a);
+
 // Floating comparisons write a scalar condition mask (CMP) or replacement EXEC
 // mask (CMPX) to d. Inactive bits are zero, including for empty EXEC; d must
 // always be writable and may alias any input word. Zero EXEC permits null VGPR
