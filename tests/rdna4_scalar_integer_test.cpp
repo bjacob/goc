@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_scalar_integer_hardware.h"
@@ -103,8 +104,8 @@ TEST(ScalarInteger, ErrorsDoNotWrite) {
 }
 
 TEST(ScalarInteger, HostFpStatePreserved) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     std::fesetround(rounding);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -120,7 +121,6 @@ TEST(ScalarInteger, HostFpStatePreserved) {
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
     }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(ScalarInteger, SignExtendExhaustiveHardware) {
@@ -151,8 +151,8 @@ TEST(ScalarInteger, SignExtendExhaustiveHardware) {
 }
 
 TEST(ScalarInteger, SignExtendExecAliasesFlagsAndHostState) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     ASSERT_EQ(std::fesetround(rounding), 0);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -175,7 +175,6 @@ TEST(ScalarInteger, SignExtendExecAliasesFlagsAndHostState) {
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
     }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(ScalarInteger, VectorSigned24DiscardsEveryUpperByte) {

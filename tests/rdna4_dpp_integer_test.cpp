@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_integer_reference.h"
 #include "rdna4_dpp_reference.h"
@@ -120,13 +121,8 @@ TEST(DppInteger, MasksAliasesAndRandomWords) {
 }
 
 TEST(DppInteger, ValidationAndHostFpState) {
-  struct Restore {
-    std::fenv_t saved;
-
-    Restore() { std::fegetenv(&saved); }
-
-    ~Restore() { std::fesetenv(&saved); }
-  } restore;
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
 
   for (auto fn : goc_test::dpp_integer_functions)
     for (uint64_t mode : goc_test::dpp_modes) {

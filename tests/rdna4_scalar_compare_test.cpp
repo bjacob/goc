@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_scalar_compare_hardware.h"
@@ -91,8 +92,8 @@ TEST(ScalarCompare, NaNsZerosDenormalsAndUnsigned64) {
 }
 
 TEST(ScalarCompare, ErrorsAndHostFpEnvironment) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     ASSERT_EQ(std::fesetround(rounding), 0);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -113,5 +114,4 @@ TEST(ScalarCompare, ErrorsAndHostFpEnvironment) {
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
     }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }

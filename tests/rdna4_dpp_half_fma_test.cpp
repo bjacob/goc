@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_half_fma_reference.h"
 #include "rdna4_dpp_reference.h"
@@ -193,13 +194,8 @@ TEST(DppHalfFma, EveryModifierAndOverflowMode) {
 }
 
 TEST(DppHalfFma, ExactPreservesHostEnvironment) {
-  struct Restore {
-    std::fenv_t saved;
-
-    Restore() { std::fegetenv(&saved); }
-
-    ~Restore() { std::fesetenv(&saved); }
-  } restore;
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
 
   const uint32_t values[] = {0x7c017c01, 0x3c010001, 0x80008000, 0x7bfffbff};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)

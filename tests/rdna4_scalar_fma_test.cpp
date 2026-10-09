@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_scalar_fma_hardware.h"
@@ -85,8 +86,8 @@ TEST(ScalarFma, TrueFusionAndGuestFpStages) {
 }
 
 TEST(ScalarFma, ErrorsAndHostRounding) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
   ASSERT_EQ(std::fesetround(FE_TONEAREST), 0);
   for (unsigned k = 0; k < 26; ++k) {
     uint32_t d = 123;
@@ -101,5 +102,4 @@ TEST(ScalarFma, ErrorsAndHostRounding) {
     EXPECT_EQ(goc_test::scalar_fma_call(k, 0, 0, 0, &d, 0, 0), GOC_SUCCESS);
     EXPECT_EQ(std::fegetround(), FE_TONEAREST);
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }

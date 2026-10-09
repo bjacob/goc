@@ -21,6 +21,11 @@ target_link_libraries(goc_cpu_decode_test PRIVATE GTest::gtest_main)
 goc_test_warnings(goc_cpu_decode_test)
 gtest_discover_tests(goc_cpu_decode_test TEST_PREFIX "internal.")
 
+add_executable(goc_fp_environment_test fp_environment_test.cpp)
+target_link_libraries(goc_fp_environment_test PRIVATE GTest::gtest_main)
+goc_test_warnings(goc_fp_environment_test)
+gtest_discover_tests(goc_fp_environment_test TEST_PREFIX "internal.")
+
 # Exercise every public RDNA4 entry point, including future additions.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
   "${PROJECT_SOURCE_DIR}/include/goc/detail/goc_rdna4.h")

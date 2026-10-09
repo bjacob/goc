@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_bitfield_reference.h"
 #include "rdna4_dpp_reference.h"
@@ -85,13 +86,8 @@ TEST(DppBitfield, MasksAliasesAndRandomWords) {
 }
 
 TEST(DppBitfield, ValidationAndHostFpState) {
-  struct Restore {
-    std::fenv_t saved;
-
-    Restore() { std::fegetenv(&saved); }
-
-    ~Restore() { std::fesetenv(&saved); }
-  } restore;
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
 
   for (unsigned op = 0; op < 8; ++op)
     for (uint64_t mode : goc_test::dpp_modes) {

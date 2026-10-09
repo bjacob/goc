@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_scalar_fp_reference.h"
@@ -52,8 +53,8 @@ TEST(ScalarRound, ExecAndAliasing) {
 }
 
 TEST(ScalarRound, HostFpStatePreservedForEveryRoundingMode) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     ASSERT_EQ(std::fesetround(rounding), 0);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -73,7 +74,6 @@ TEST(ScalarRound, HostFpStatePreservedForEveryRoundingMode) {
     EXPECT_EQ(goc_rdna4_s_rndne_f16(0, 0, 0, &d, 0x4100), GOC_SUCCESS);
     EXPECT_EQ(d, 0x4000u);
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(ScalarRound, NaNsZerosAndInputFlushing) {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_scalar_fp_hardware.h"
@@ -80,8 +81,8 @@ TEST(ScalarFp, DenormalStagesAndFiniteOverflow) {
 }
 
 TEST(ScalarFp, ErrorsLeaveOutputUntouchedAndRoundingPreserved) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
   ASSERT_EQ(std::fesetround(FE_TONEAREST), 0);
   for (unsigned op = 0; op < 14; ++op) {
     uint32_t d = 123;
@@ -97,5 +98,4 @@ TEST(ScalarFp, ErrorsLeaveOutputUntouchedAndRoundingPreserved) {
     EXPECT_EQ(goc_test::scalar_fp_functions[op](0, 0, 0, &d, 0, 0), GOC_SUCCESS);
     EXPECT_EQ(std::fegetround(), FE_TONEAREST);
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
