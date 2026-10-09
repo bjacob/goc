@@ -11,19 +11,6 @@
 #include <random>
 #include <stdint.h>
 
-namespace {
-
-using Fn = decltype(&goc_rdna4_v_mad_i16);
-const Fn functions[] = {goc_rdna4_v_mad_u16,  goc_rdna4_v_mad_i16,  goc_rdna4_v_min3_u16,
-                        goc_rdna4_v_min3_i16, goc_rdna4_v_max3_u16, goc_rdna4_v_max3_i16,
-                        goc_rdna4_v_med3_u16, goc_rdna4_v_med3_i16};
-
-uint32_t mode_bits(int mode) {
-  return (uint32_t(mode & 15) << 9) | (mode & 16 ? GOC_ALU_CLAMP : 0);
-}
-
-} // namespace
-
 TEST(Integer16Ternary, EveryModifierBoundaryTriplesAndRandomInputs) {
   const uint32_t edge[] = {0, 1, 2, 0x7fff, 0x8000, 0x8001, 0xfffe, 0xffff};
   for (int op = 0; op < 8; ++op)
@@ -43,12 +30,14 @@ TEST(Integer16Ternary, EveryModifierBoundaryTriplesAndRandomInputs) {
               index /= 8;
             }
           }
-          ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode_bits(mode), p + 3, p, p + 1, p + 2),
+          ASSERT_EQ(goc_test::integer16_ternary_functions[op](
+                        cpu, UINT32_MAX, goc_test::integer16_ternary_mode_bits(mode), p + 3, p,
+                        p + 1, p + 2),
                     GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
-            EXPECT_EQ(words[3][lane],
-                      goc_test::integer16_ternary_reference(op, words[0][lane], words[1][lane],
-                                                            words[2][lane], mode_bits(mode)));
+            EXPECT_EQ(words[3][lane], goc_test::integer16_ternary_reference(
+                                          op, words[0][lane], words[1][lane], words[2][lane],
+                                          goc_test::integer16_ternary_mode_bits(mode)));
         }
       }
 }
@@ -69,7 +58,9 @@ TEST(Integer16Ternary, EverySourceEncoding) {
               words[source][lane] = (start + lane) | ((65535 - start - lane) << 16);
               words[3][lane] = 0xfacecafe;
             }
-            ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, p + 3, p, p + 1, p + 2), GOC_SUCCESS);
+            ASSERT_EQ(goc_test::integer16_ternary_functions[op](cpu, UINT32_MAX, mode, p + 3, p,
+                                                                p + 1, p + 2),
+                      GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane)
               ASSERT_EQ(words[3][lane],
                         goc_test::integer16_ternary_reference(op, words[0][lane], words[1][lane],
@@ -93,15 +84,18 @@ TEST(Integer16Ternary, AllMasksModifiersAndWholeRegisterAliases) {
                   for (int lane = 0; lane < 32; ++lane)
                     words[reg][lane] = 0x7af551d3u * (lane + reg * 32 + 1);
                 std::memcpy(saved, words, sizeof(words));
-                ASSERT_EQ(functions[op](cpu, mask, mode_bits(mode), p + di, p, p + bi, p + ci),
+                ASSERT_EQ(goc_test::integer16_ternary_functions[op](
+                              cpu, mask, goc_test::integer16_ternary_mode_bits(mode), p + di, p,
+                              p + bi, p + ci),
                           GOC_SUCCESS);
                 for (int reg = 0; reg < 4; ++reg)
                   for (int lane = 0; lane < 32; ++lane) {
-                    uint32_t expected = reg == di && (mask >> lane & 1)
-                                            ? goc_test::integer16_ternary_reference(
-                                                  op, saved[0][lane], saved[bi][lane],
-                                                  saved[ci][lane], mode_bits(mode), saved[di][lane])
-                                            : saved[reg][lane];
+                    uint32_t expected =
+                        reg == di && (mask >> lane & 1)
+                            ? goc_test::integer16_ternary_reference(
+                                  op, saved[0][lane], saved[bi][lane], saved[ci][lane],
+                                  goc_test::integer16_ternary_mode_bits(mode), saved[di][lane])
+                            : saved[reg][lane];
                     ASSERT_EQ(words[reg][lane], expected)
                         << op << "/" << cpu << "/" << mode << "/" << mask;
                   }
@@ -146,7 +140,9 @@ TEST(Integer16Ternary, LiteralSaturationSelectionAndPreservedHalf) {
         words[1][lane] = w.b;
         words[2][lane] = w.c;
       }
-      ASSERT_EQ(functions[w.op](cpu, UINT32_MAX, w.mode, p, p, p + 1, p + 2), GOC_SUCCESS);
+      ASSERT_EQ(
+          goc_test::integer16_ternary_functions[w.op](cpu, UINT32_MAX, w.mode, p, p, p + 1, p + 2),
+          GOC_SUCCESS);
       for (uint32_t value : words[0])
         EXPECT_EQ(value, w.expected);
     }
@@ -154,7 +150,7 @@ TEST(Integer16Ternary, LiteralSaturationSelectionAndPreservedHalf) {
 
 TEST(Integer16Ternary, ValidationAndFloatingEnvironment) {
   for (int op = 0; op < 8; ++op) {
-    Fn fn = functions[op];
+    auto fn = goc_test::integer16_ternary_functions[op];
     uint32_t words[4][32] = {}, saved[32];
     uint32_t *p[] = {words[0], words[1], words[2], words[3]};
     for (int i = 0; i < 32; ++i)

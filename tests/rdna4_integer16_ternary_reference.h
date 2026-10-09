@@ -8,6 +8,18 @@
 
 namespace goc_test {
 
+using Integer16TernaryFn = decltype(&goc_rdna4_v_mad_i16);
+const Integer16TernaryFn integer16_ternary_functions[] = {
+    goc_rdna4_v_mad_u16,  goc_rdna4_v_mad_i16,  goc_rdna4_v_min3_u16, goc_rdna4_v_min3_i16,
+    goc_rdna4_v_max3_u16, goc_rdna4_v_max3_i16, goc_rdna4_v_med3_u16, goc_rdna4_v_med3_i16};
+const char *const integer16_ternary_names[] = {"v_mad_u16",  "v_mad_i16",  "v_min3_u16",
+                                               "v_min3_i16", "v_max3_u16", "v_max3_i16",
+                                               "v_med3_u16", "v_med3_i16"};
+
+inline uint32_t integer16_ternary_mode_bits(int mode) {
+  return (uint32_t(mode & 15) << 9) | (mode & 16 ? GOC_ALU_CLAMP : 0);
+}
+
 inline uint32_t integer16_ternary_reference(int op, uint32_t a, uint32_t b, uint32_t c,
                                             uint32_t mode, uint32_t d = 0xfacecafe) {
   const uint32_t words[] = {a, b, c};

@@ -1747,6 +1747,19 @@ and combined selectors/CLAMP, both DPP kinds, and full EXEC. On the Ryzen 9
 18.4–22.1 ns with AVX-512 permutation plus AVX2 arithmetic (2.2–3.8×), using
 seven pinned samples of at least 10 ms each.
 
+The eight non-packed 16-bit MAD/MIN3/MAX3/MED3 forms also support DPP8/DPP16,
+including all four source/destination half selectors and MAD saturation.
+A GFX1201 capture checks 286,720 results covering all 160 operation/modifier
+combinations, seven DPP descriptors, and eight EXEC masks. Independent tests
+combine every modifier with EXEC patterns, whole-register aliases, guarded
+buffers, preserved destination halves, and host FP-state checks. AVX2 arithmetic
+remains active with all modifiers; v4 uses AVX-512 permutation with AVX2 arithmetic.
+The benchmark covers signed/unsigned MAD and MED3 with both DPP kinds and
+combined selectors/saturation, using full EXEC. On the Ryzen 9 7950X3D, these
+cases measure 20.0–25.5 ns on AVX2 (2.1–4.3× scalar speed) and
+19.4–24.8 ns with AVX-512 permutation plus AVX2 arithmetic (2.2–4.5×), using
+seven pinned samples of at least 10 ms each.
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal
