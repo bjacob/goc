@@ -27,7 +27,8 @@ extern "C" {
 // FREXP mantissa), and wave32 CLZ/CTZ/CLS/BCNT/MBCNT, 32-bit shifts, and 32-bit Boolean
 // AND/OR/XOR/XNOR/NOT, and 32-bit integer min/max/median (two or three inputs),
 // plus LSHL_ADD/ADD_LSHL/LSHL_OR/AND_OR/OR3/XOR3/XAD/LERP. Each supports its
-// applicable modifiers and whole-VGPR aliases.
+// applicable modifiers and whole-VGPR aliases. BFE/BFI/BFM/BFREV, ALIGNBIT,
+// ALIGNBYTE, and PERM also support DPP.
 static const uint64_t GOC_DPP8 = (UINT64_C(1) << 32);
 static const uint64_t GOC_DPP_FI = (UINT64_C(1) << 33);
 static const uint32_t GOC_DPP8_SELECT_SHIFT = 40;

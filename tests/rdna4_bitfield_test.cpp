@@ -16,12 +16,6 @@
 
 namespace {
 
-using Fn = decltype(&goc_rdna4_v_bfe_u32);
-const Fn functions[] = {goc_rdna4_v_bfe_u32,        goc_rdna4_v_bfe_i32,
-                        goc_rdna4_v_bfi_b32,        goc_test::bitfield_mask,
-                        goc_test::bitfield_reverse, goc_rdna4_v_alignbit_b32,
-                        goc_rdna4_v_alignbyte_b32,  goc_rdna4_v_perm_b32};
-
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t words[4][32]) {
   uint32_t expected[32];
   for (int lane = 0; lane < 32; ++lane)
@@ -29,7 +23,7 @@ const Fn functions[] = {goc_rdna4_v_bfe_u32,        goc_rdna4_v_bfe_i32,
         goc_test::bitfield_reference(op, words[0][lane], words[1][lane], words[2][lane]);
   const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
   uint32_t *d[] = {words[3]};
-  int status = functions[op](flags, UINT32_MAX, 0, d, a, b, c);
+  int status = goc_test::bitfield_functions[op](flags, UINT32_MAX, 0, d, a, b, c);
   if (status != GOC_SUCCESS)
     return ::testing::AssertionFailure() << "status " << status;
   for (int lane = 0; lane < 32; ++lane)
@@ -113,7 +107,7 @@ TEST(Bitfield, LiteralBoundaryResults) {
         std::fill_n(words[reg], 32, item[reg + 1]);
       const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
       uint32_t *d[] = {words[3]};
-      ASSERT_EQ(functions[item[0]](cpu, UINT32_MAX, 0, d, a, b, c), GOC_SUCCESS);
+      ASSERT_EQ(goc_test::bitfield_functions[item[0]](cpu, UINT32_MAX, 0, d, a, b, c), GOC_SUCCESS);
       for (uint32_t value : words[3])
         EXPECT_EQ(value, item[4]);
     }
@@ -148,7 +142,7 @@ TEST(Bitfield, MasksAndWholeRegisterAliases) {
             const uint32_t *a[] = {words[source[0]]}, *b[] = {words[source[1]]},
                            *c[] = {words[source[2]]};
             uint32_t *d[] = {words[target]};
-            ASSERT_EQ(functions[op](cpu, mask, 0, d, a, b, c), GOC_SUCCESS);
+            ASSERT_EQ(goc_test::bitfield_functions[op](cpu, mask, 0, d, a, b, c), GOC_SUCCESS);
             for (int reg = 0; reg < 4; ++reg)
               ASSERT_TRUE(std::equal(words[reg], words[reg] + 32, expected[reg]));
           }
@@ -179,12 +173,14 @@ TEST(Bitfield, ValidationAndHostFpState) {
           uint32_t *d[] = {words[3]};
           for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
             for (int bit = 0; bit < 32; ++bit)
-              EXPECT_EQ(functions[op](cpu, mask, uint32_t(1) << bit, d, a, b, c),
+              EXPECT_EQ(goc_test::bitfield_functions[op](cpu, mask, uint32_t(1) << bit, d, a, b, c),
                         GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), mask, 0, d, a, b, c),
-                      GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                    mask, 0, d, a, b, c),
+            EXPECT_EQ(
+                goc_test::bitfield_functions[op](cpu | (UINT64_C(1) << 63), mask, 0, d, a, b, c),
+                GOC_ERROR_INVALID_FLAGS);
+            EXPECT_EQ(goc_test::bitfield_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                                           GOC_SEMANTICS_STRICT,
+                                                       mask, 0, d, a, b, c),
                       GOC_ERROR_UNSUPPORTED_SEMANTICS);
           }
           for (const auto &reg : words)
@@ -268,9 +264,9 @@ TEST(Bitfield, PermuteHardwareAllSelectorBytes) {
 TEST(Bitfield, UnalignedStorageAndEmptyExec) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 8; ++op) {
-      EXPECT_EQ(
-          functions[op](cpu, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr, nullptr),
-          GOC_SUCCESS);
+      EXPECT_EQ(goc_test::bitfield_functions[op](cpu, UINT64_C(0xffffffff00000000), 0, nullptr,
+                                                 nullptr, nullptr, nullptr),
+                GOC_SUCCESS);
       for (unsigned target = 0; target < 4; ++target)
         for (uint64_t mask : rdna4_exec_masks()) {
           uint32_t words[4][35], expected[4][35];
@@ -287,10 +283,40 @@ TEST(Bitfield, UnalignedStorageAndEmptyExec) {
                   op, words[0][lane + 1], words[1][lane + 1], words[2][lane + 1]);
           const uint32_t *a[] = {words[0] + 1}, *b[] = {words[1] + 1}, *c[] = {words[2] + 1};
           uint32_t *d[] = {words[target] + 1};
-          ASSERT_EQ(functions[op](cpu, mask, 0, d, a, b, c), GOC_SUCCESS);
+          ASSERT_EQ(goc_test::bitfield_functions[op](cpu, mask, 0, d, a, b, c), GOC_SUCCESS);
           for (unsigned reg = 0; reg < 4; ++reg)
             for (unsigned lane = 0; lane < 35; ++lane)
               ASSERT_EQ(words[reg][lane], expected[reg][lane]) << op << "/" << cpu << "/" << lane;
         }
     }
+}
+
+TEST(Bitfield, EveryShiftPreservesFpState) {
+  struct Restore {
+    std::fenv_t saved;
+
+    Restore() { std::fegetenv(&saved); }
+
+    ~Restore() { std::fesetenv(&saved); }
+  } restore;
+
+  for (unsigned op = 0; op < 8; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+        SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << rounding);
+        uint32_t a[32], b[32], c[32], d[32];
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          a[lane] = 0xffffffe0u | lane;
+          b[lane] = lane;
+          c[lane] = 31 - lane;
+        }
+        auto pa = a, pb = b, pc = c, pd = d;
+        ASSERT_EQ(std::fesetround(rounding), 0);
+        ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
+        ASSERT_EQ(std::feraiseexcept(FE_DIVBYZERO), 0);
+        ASSERT_EQ(goc_test::bitfield_functions[op](cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc),
+                  GOC_SUCCESS);
+        EXPECT_EQ(std::fegetround(), rounding);
+        EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
+      }
 }

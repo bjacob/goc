@@ -56,6 +56,15 @@ inline int bitfield_reverse(uint64_t flags, uint64_t mask, uint64_t mode, uint32
   return goc_rdna4_v_bfrev_b32(flags, mask, mode, d, a);
 }
 
+inline const char *const bitfield_names[] = {"v_bfe_u32",       "v_bfe_i32",   "v_bfi_b32",
+                                             "v_bfm_b32",       "v_bfrev_b32", "v_alignbit_b32",
+                                             "v_alignbyte_b32", "v_perm_b32"};
+
+using BitfieldFn = decltype(&goc_rdna4_v_bfe_u32);
+inline const BitfieldFn bitfield_functions[] = {
+    goc_rdna4_v_bfe_u32, goc_rdna4_v_bfe_i32,      goc_rdna4_v_bfi_b32,       bitfield_mask,
+    bitfield_reverse,    goc_rdna4_v_alignbit_b32, goc_rdna4_v_alignbyte_b32, goc_rdna4_v_perm_b32};
+
 } // namespace goc_test
 
 #endif

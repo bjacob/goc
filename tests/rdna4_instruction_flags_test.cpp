@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_bitfield_reference.h"
 #include "rdna4_dpp_arithmetic_reference.h"
 #include "rdna4_dpp_integer_reference.h"
 #include "rdna4_integer_minmax_reference.h"
@@ -28,6 +29,8 @@ void check_high_flags(const char *name,
   for (auto mnemonic : goc_test::integer_minmax_names)
     supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   for (auto mnemonic : goc_test::integer_ternary_names)
+    supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
+  for (auto mnemonic : goc_test::bitfield_names)
     supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   for (unsigned bit = 32; bit < 64; ++bit)
     for (uint64_t exec : {UINT64_C(0), UINT64_MAX}) {

@@ -1668,6 +1668,19 @@ without DPP. On the Ryzen 9 7950X3D, the DPP benchmark cases measure
 17.8–21.9 ns on x86-64-v3 (1.9–2.8× scalar speed) and 8.2–11.5 ns on
 x86-64-v4 (3.7–6.4×), using seven pinned samples of at least 10 ms each.
 
+DPP8/DPP16 also cover signed/unsigned BFE, BFI, BFM, BFREV, ALIGNBIT, ALIGNBYTE,
+and PERM. Source A is permuted before bitfield extraction, selection, or byte
+permutation; the other operands remain local to the destination lane. A GFX1201
+capture checks 14,336 results, supplemented by independent mask/alias/boundary
+and random-word tests. AVX2 and AVX-512 paths compose with DPP (BFI retains its
+baseline arithmetic at the v3 CPU level). Baseline BFE explicitly prevents
+Clang's FP-based vector shift lowering from raising host `FE_INVALID` for width
+31; regression tests check every width/offset without DPP and the boundary with
+DPP. Benchmarks cover signed BFE, BFM, and PERM with full EXEC. On the Ryzen 9
+7950X3D, these cases measure 17.9–23.6 ns on x86-64-v3 (2.3–4.3× scalar speed)
+and 9.1–12.6 ns on x86-64-v4 (4.3–8.8×), using seven pinned samples of at least
+10 ms each.
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal
