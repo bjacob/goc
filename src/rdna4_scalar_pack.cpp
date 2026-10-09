@@ -11,8 +11,10 @@
 
 namespace {
 
-int validate(uint64_t flags, uint32_t mode) {
-  return goc::validate(flags, mode, true,
+int validate(uint64_t flags, uint64_t mode) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return goc::validate(flags, uint32_t(mode), true,
                        GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS);
 }
 
@@ -30,60 +32,61 @@ template <typename T, bool Compress> T quad(T a) {
   return a;
 }
 
+template <bool HighA, bool HighB>
+int pack(uint64_t flags, uint64_t mode, uint32_t *d, uint32_t a, uint32_t b) {
+  if (int error = validate(flags, mode))
+    return error;
+  *d = ((a >> (HighA ? 16 : 0)) & 65535) | ((b >> (HighB ? 16 : 0)) << 16);
+  return GOC_SUCCESS;
+}
+
+template <typename T>
+int select(uint64_t flags, uint64_t mode, T *d, T a, T b, uint32_t input_scc) {
+  if (int error = validate(flags, mode))
+    return error;
+  *d = input_scc & 1 ? a : b;
+  return GOC_SUCCESS;
+}
+
+template <bool Compress, typename T>
+int quad_write(uint64_t flags, uint64_t mode, T *d, T a, uint32_t *scc) {
+  if (int error = validate(flags, mode))
+    return error;
+  T result = quad<T, Compress>(a);
+  *d = result;
+  uint32_t cc = result != 0;
+  std::memcpy(scc, &cc, sizeof(cc));
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_rdna4_s_pack_ll_b32_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *d, uint32_t a, uint32_t b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = validate(flags, instruction_flags))
-    return error;
-  uint32_t result = ((a >> 0) & 65535) | ((b >> 0) << 16);
-  *d = result;
-  return GOC_SUCCESS;
+  return pack<false, false>(flags, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_s_pack_lh_b32_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *d, uint32_t a, uint32_t b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = validate(flags, instruction_flags))
-    return error;
-  uint32_t result = ((a >> 0) & 65535) | ((b >> 16) << 16);
-  *d = result;
-  return GOC_SUCCESS;
+  return pack<false, true>(flags, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_s_pack_hl_b32_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *d, uint32_t a, uint32_t b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = validate(flags, instruction_flags))
-    return error;
-  uint32_t result = ((a >> 16) & 65535) | ((b >> 0) << 16);
-  *d = result;
-  return GOC_SUCCESS;
+  return pack<true, false>(flags, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_s_pack_hh_b32_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *d, uint32_t a, uint32_t b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = validate(flags, instruction_flags))
-    return error;
-  uint32_t result = ((a >> 16) & 65535) | ((b >> 16) << 16);
-  *d = result;
-  return GOC_SUCCESS;
+  return pack<true, true>(flags, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_s_bitreplicate_b64_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                      uint64_t *d, uint32_t a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
   if (int error = validate(flags, instruction_flags))
     return error;
@@ -100,80 +103,36 @@ int goc_rdna4_s_bitreplicate_b64_b32(uint64_t flags, uint32_t exec_mask, uint64_
 
 int goc_rdna4_s_cselect_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *d, uint32_t a, uint32_t b, uint32_t input_scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = validate(flags, instruction_flags))
-    return error;
-  uint32_t result = (input_scc & 1) ? a : b;
-  *d = result;
-  return GOC_SUCCESS;
+  return select(flags, instruction_flags, d, a, b, input_scc);
 }
 
 int goc_rdna4_s_cselect_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint64_t *d, uint64_t a, uint64_t b, uint32_t input_scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = validate(flags, instruction_flags))
-    return error;
-  uint64_t result = (input_scc & 1) ? a : b;
-  *d = result;
-  return GOC_SUCCESS;
+  return select(flags, instruction_flags, d, a, b, input_scc);
 }
 
 int goc_rdna4_s_quadmask_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                              uint32_t *d, uint32_t a, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = validate(flags, instruction_flags))
-    return error;
-  uint32_t result = quad<uint32_t, true>(a);
-  *d = result;
-  uint32_t cc = result != 0;
-  std::memcpy(scc, &cc, sizeof(cc));
-  return GOC_SUCCESS;
+  return quad_write<true>(flags, instruction_flags, d, a, scc);
 }
 
 int goc_rdna4_s_quadmask_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                              uint64_t *d, uint64_t a, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = validate(flags, instruction_flags))
-    return error;
-  uint64_t result = quad<uint64_t, true>(a);
-  *d = result;
-  uint32_t cc = result != 0;
-  std::memcpy(scc, &cc, sizeof(cc));
-  return GOC_SUCCESS;
+  return quad_write<true>(flags, instruction_flags, d, a, scc);
 }
 
 int goc_rdna4_s_wqm_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = validate(flags, instruction_flags))
-    return error;
-  uint32_t result = quad<uint32_t, false>(a);
-  *d = result;
-  uint32_t cc = result != 0;
-  std::memcpy(scc, &cc, sizeof(cc));
-  return GOC_SUCCESS;
+  return quad_write<false>(flags, instruction_flags, d, a, scc);
 }
 
 int goc_rdna4_s_wqm_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
                         uint64_t a, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = validate(flags, instruction_flags))
-    return error;
-  uint64_t result = quad<uint64_t, false>(a);
-  *d = result;
-  uint32_t cc = result != 0;
-  std::memcpy(scc, &cc, sizeof(cc));
-  return GOC_SUCCESS;
+  return quad_write<false>(flags, instruction_flags, d, a, scc);
 }

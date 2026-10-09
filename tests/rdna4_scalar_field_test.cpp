@@ -145,6 +145,10 @@ TEST(ScalarField, ErrorsDoNotWriteAndHostFpStatePreserved) {
       for (unsigned bit = 0; bit < 32; ++bit)
         EXPECT_EQ(goc_test::scalar_field_call(op, 0, 0, 1u << bit, &d, &wide, 0, 0, &cc),
                   GOC_ERROR_INVALID_FLAGS);
+      for (unsigned bit = 32; bit < 64; ++bit)
+        EXPECT_EQ(goc_test::scalar_field_call(op, 0, 0, UINT64_C(1) << bit, nullptr, nullptr,
+                                              UINT64_MAX, 63, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(d, 123u);
       EXPECT_EQ(cc, 456u);
       EXPECT_EQ(wide, 789u);

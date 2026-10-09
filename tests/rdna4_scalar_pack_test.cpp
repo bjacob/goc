@@ -125,6 +125,10 @@ TEST(ScalarPack, ErrorsAndHostFpState) {
                   GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(goc_test::scalar_pack_call(op, UINT64_C(1) << 63, 0, 0, &d, &d64, 0, 0, &cc, 0),
                 GOC_ERROR_INVALID_FLAGS);
+      for (unsigned bit = 32; bit < 64; ++bit)
+        EXPECT_EQ(goc_test::scalar_pack_call(op, 0, 0, UINT64_C(1) << bit, nullptr, nullptr,
+                                             UINT64_MAX, 0, nullptr, 0),
+                  GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(d, 123u);
       EXPECT_EQ(d64, 789u);
       EXPECT_EQ(cc, 456u);

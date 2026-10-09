@@ -8,166 +8,130 @@
 
 #include <stdint.h>
 
-int goc_rdna4_s_add_co_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc) {
-  if (instruction_flags >> 32)
+namespace {
+
+int validate(uint64_t flags, uint64_t mode) {
+  if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
+  return goc::validate(flags, uint32_t(mode), true);
+}
+
+template <bool Subtract, bool Signed, bool CarryIn = false>
+int carry(uint64_t flags, uint64_t mode, uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc,
+          uint32_t input_scc = 0) {
+  if (int error = validate(flags, mode))
     return error;
-  uint64_t wide = uint64_t(a) + b;
-  uint32_t result = uint32_t(wide), cc = wide >> 32;
+  uint32_t result, cc;
+  if constexpr (Signed) {
+    result = Subtract ? a - b : a + b;
+    cc = ((Subtract ? a ^ b : ~(a ^ b)) & (a ^ result)) >> 31;
+  } else {
+    uint64_t right = uint64_t(b) + (CarryIn ? input_scc & 1 : 0);
+    uint64_t wide = Subtract ? uint64_t(a) - right : uint64_t(a) + right;
+    result = uint32_t(wide);
+    cc = Subtract ? uint64_t(a) < right : wide >> 32;
+  }
   *d = result;
   *scc = cc;
   return GOC_SUCCESS;
+}
+
+template <bool Difference>
+int absolute(uint64_t flags, uint64_t mode, uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc) {
+  if (int error = validate(flags, mode))
+    return error;
+  uint32_t value = Difference ? a - b : a;
+  uint32_t result = value & 0x80000000u ? 0u - value : value, cc = result != 0;
+  *d = result;
+  *scc = cc;
+  return GOC_SUCCESS;
+}
+
+template <bool Maximum, bool Signed>
+int minmax(uint64_t flags, uint64_t mode, uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc) {
+  if (int error = validate(flags, mode))
+    return error;
+  uint32_t x = a ^ (Signed ? 0x80000000u : 0), y = b ^ (Signed ? 0x80000000u : 0);
+  uint32_t cc = Maximum ? x > y : x < y, result = cc ? a : b;
+  *d = result;
+  *scc = cc;
+  return GOC_SUCCESS;
+}
+
+} // namespace
+
+int goc_rdna4_s_add_co_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc) {
+  (void)exec_mask;
+  return carry<false, false>(flags, instruction_flags, d, a, b, scc);
 }
 
 int goc_rdna4_s_sub_co_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
-    return error;
-  uint32_t result = a - b, cc = a < b;
-  *d = result;
-  *scc = cc;
-  return GOC_SUCCESS;
+  return carry<true, false>(flags, instruction_flags, d, a, b, scc);
 }
 
 int goc_rdna4_s_add_co_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
-    return error;
-  uint32_t result = a + b, cc = (~(a ^ b) & (a ^ result)) >> 31;
-  *d = result;
-  *scc = cc;
-  return GOC_SUCCESS;
+  return carry<false, true>(flags, instruction_flags, d, a, b, scc);
 }
 
 int goc_rdna4_s_sub_co_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
-    return error;
-  uint32_t result = a - b, cc = ((a ^ b) & (a ^ result)) >> 31;
-  *d = result;
-  *scc = cc;
-  return GOC_SUCCESS;
+  return carry<true, true>(flags, instruction_flags, d, a, b, scc);
 }
 
 int goc_rdna4_s_add_co_ci_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc,
                               uint32_t input_scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
-    return error;
-  uint64_t wide = uint64_t(a) + b + (input_scc & 1);
-  uint32_t result = uint32_t(wide), cc = wide >> 32;
-  *d = result;
-  *scc = cc;
-  return GOC_SUCCESS;
+  return carry<false, false, true>(flags, instruction_flags, d, a, b, scc, input_scc);
 }
 
 int goc_rdna4_s_sub_co_ci_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc,
                               uint32_t input_scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
-    return error;
-  uint64_t subtrahend = uint64_t(b) + (input_scc & 1);
-  uint32_t result = a - uint32_t(subtrahend), cc = uint64_t(a) < subtrahend;
-  *d = result;
-  *scc = cc;
-  return GOC_SUCCESS;
+  return carry<true, false, true>(flags, instruction_flags, d, a, b, scc, input_scc);
 }
 
 int goc_rdna4_s_abs_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
-    return error;
-  uint32_t result = a & 0x80000000u ? 0u - a : a, cc = result != 0;
-  *d = result;
-  *scc = cc;
-  return GOC_SUCCESS;
+  return absolute<false>(flags, instruction_flags, d, a, 0, scc);
 }
 
 int goc_rdna4_s_absdiff_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
-    return error;
-  uint32_t difference = a - b;
-  uint32_t result = difference & 0x80000000u ? 0u - difference : difference, cc = result != 0;
-  *d = result;
-  *scc = cc;
-  return GOC_SUCCESS;
+  return absolute<true>(flags, instruction_flags, d, a, b, scc);
 }
 
 int goc_rdna4_s_min_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t b, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
-    return error;
-  uint32_t cc = (a ^ 0x80000000u) < (b ^ 0x80000000u), result = cc ? a : b;
-  *d = result;
-  *scc = cc;
-  return GOC_SUCCESS;
+  return minmax<false, true>(flags, instruction_flags, d, a, b, scc);
 }
 
 int goc_rdna4_s_min_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t b, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
-    return error;
-  uint32_t cc = a < b, result = cc ? a : b;
-  *d = result;
-  *scc = cc;
-  return GOC_SUCCESS;
+  return minmax<false, false>(flags, instruction_flags, d, a, b, scc);
 }
 
 int goc_rdna4_s_max_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t b, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
-    return error;
-  uint32_t cc = (a ^ 0x80000000u) > (b ^ 0x80000000u), result = cc ? a : b;
-  *d = result;
-  *scc = cc;
-  return GOC_SUCCESS;
+  return minmax<true, true>(flags, instruction_flags, d, a, b, scc);
 }
 
 int goc_rdna4_s_max_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t b, uint32_t *scc) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   (void)exec_mask;
-  if (int error = goc::validate(flags, instruction_flags, true))
-    return error;
-  uint32_t cc = a > b, result = cc ? a : b;
-  *d = result;
-  *scc = cc;
-  return GOC_SUCCESS;
+  return minmax<true, false>(flags, instruction_flags, d, a, b, scc);
 }
 
 int goc_rdna4_s_mul_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,

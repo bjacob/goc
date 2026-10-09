@@ -92,6 +92,10 @@ TEST(ScalarInteger, ErrorsDoNotWrite) {
     EXPECT_EQ(
         goc_test::scalar_integer_call(op, UINT64_C(1) << 63, 0, 0, &d, &wide, 0, 0, &cc, 0, 0),
         GOC_ERROR_INVALID_FLAGS);
+    for (unsigned bit = 32; bit < 64; ++bit)
+      EXPECT_EQ(goc_test::scalar_integer_call(op, 0, 0, UINT64_C(1) << bit, nullptr, nullptr,
+                                              UINT64_MAX, UINT64_MAX, nullptr, 1, 0xffff),
+                GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(d, 123u);
     EXPECT_EQ(cc, 456u);
     EXPECT_EQ(wide, 789u);
