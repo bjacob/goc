@@ -3,6 +3,7 @@
 #include "rdna4_integer_minmax.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <algorithm>
 #include <stdint.h>
@@ -10,8 +11,14 @@
 namespace {
 
 template <goc::IntegerMinmax Op, bool Signed>
-int minmax(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int minmax(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
            const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (mode >> 32)
+    return goc::execute_dpp(
+        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+          return minmax<Op, Signed>(flags, effective, uint32_t(mode), d, source, b, c);
+        });
+
   if (int error = goc::validate(flags, mode))
     return error;
   if (uint32_t(mask) == 0)
@@ -67,108 +74,80 @@ int minmax(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 int goc_rdna4_v_min_i32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Min, true>(flags, mask, mode, d, a, b, nullptr);
 }
 
 int goc_rdna4_v_max_i32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Max, true>(flags, mask, mode, d, a, b, nullptr);
 }
 
 int goc_rdna4_v_min3_i32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Min3, true>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_max3_i32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Max3, true>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_minmax_i32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Minmax, true>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_maxmin_i32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Maxmin, true>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_med3_i32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Median, true>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_min_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Min, false>(flags, mask, mode, d, a, b, nullptr);
 }
 
 int goc_rdna4_v_max_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Max, false>(flags, mask, mode, d, a, b, nullptr);
 }
 
 int goc_rdna4_v_min3_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Min3, false>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_max3_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Max3, false>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_minmax_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Minmax, false>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_maxmin_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Maxmin, false>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_med3_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return minmax<goc::IntegerMinmax::Median, false>(flags, mask, mode, d, a, b, c);
 }

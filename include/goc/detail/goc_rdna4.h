@@ -25,7 +25,8 @@ extern "C" {
 // FMA/FMAC, ADD/SUB/SUBREV/MUL/MUL_DX9_ZERO, binary min/max, and three-input
 // min/max/median, and FP32 unary math (rounding, SQRT/RCP/RSQ/EXP/LOG, FRACT,
 // FREXP mantissa), and wave32 CLZ/CTZ/CLS/BCNT/MBCNT, 32-bit shifts, and 32-bit Boolean
-// AND/OR/XOR/XNOR/NOT, including their supported modifiers and whole-VGPR aliases.
+// AND/OR/XOR/XNOR/NOT, and 32-bit integer min/max/median (two or three inputs),
+// including their supported modifiers and whole-VGPR aliases.
 static const uint64_t GOC_DPP8 = (UINT64_C(1) << 32);
 static const uint64_t GOC_DPP_FI = (UINT64_C(1) << 33);
 static const uint32_t GOC_DPP8_SELECT_SHIFT = 40;

@@ -1644,6 +1644,16 @@ arithmetic right shift with both DPP kinds and full EXEC. On the Ryzen 9 7950X3D
 these cases measure 17.7–21.2 ns on x86-64-v3 (2.0–2.3× scalar speed) and
 17.0–19.9 ns with AVX-512 permutation plus AVX2 arithmetic (2.2–2.4×).
 
+DPP8/DPP16 also cover all fourteen 32-bit signed and unsigned integer min/max
+operations: MIN, MAX, MIN3, MAX3, MINMAX, MAXMIN, and MED3. A GFX1201 capture
+checks 25,088 results across seven descriptors and eight EXEC masks. Independent
+tests cover all source-equality patterns, destination aliases, signed boundaries,
+random words, all EXEC patterns, and host FP-state preservation. Both AVX2 and
+AVX-512 arithmetic paths remain available with DPP; benchmarks include signed
+and unsigned binary MIN and ternary MED3 with full EXEC. On the Ryzen 9 7950X3D,
+these cases measure 17.7–22.2 ns on AVX2 (1.9–2.4× scalar speed) and 8.0–11.2 ns
+on AVX-512 (3.7–5.2×), using seven pinned samples of at least 10 ms each.
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal
