@@ -43,20 +43,8 @@ struct Ops {
 
   static V dot(V sum, V a, V b) { return _mm256_add_epi32(sum, _mm256_madd_epi16(a, b)); }
 
-  static V select_negative(V exec_mask, V yes, V no) {
-    return _mm256_blendv_epi8(no, yes, sign(exec_mask));
-  }
-
-  static void masked_store(uint32_t *p, uint32_t exec_mask, V v) {
-    if ((exec_mask & 255) == 255) {
-      store(p, v);
-      return;
-    }
-    V lane_exec_mask = _mm256_setr_epi32(-int(exec_mask & 1), -int((exec_mask >> 1) & 1),
-                                         -int((exec_mask >> 2) & 1), -int((exec_mask >> 3) & 1),
-                                         -int((exec_mask >> 4) & 1), -int((exec_mask >> 5) & 1),
-                                         -int((exec_mask >> 6) & 1), -int((exec_mask >> 7) & 1));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(p), lane_exec_mask, v);
+  static V select_negative(V condition, V yes, V no) {
+    return _mm256_blendv_epi8(no, yes, sign(condition));
   }
 };
 
@@ -64,15 +52,15 @@ struct Ops {
 
 namespace goc {
 
-void integer_wmma_x86_64_v3(int bits, int k, uint32_t exec_mask, uint32_t modifiers,
-                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+void integer_wmma_x86_64_v3(int bits, int k, uint32_t modifiers, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
   if (bits == 8)
-    integer_wmma<8, 16, Ops>(exec_mask, modifiers, d, a, b, c);
+    integer_wmma<8, 16, Ops>(modifiers, d, a, b, c);
   else if (k == 16)
-    integer_wmma<4, 16, Ops>(exec_mask, modifiers, d, a, b, c);
+    integer_wmma<4, 16, Ops>(modifiers, d, a, b, c);
   else
-    integer_wmma<4, 32, Ops>(exec_mask, modifiers, d, a, b, c);
+    integer_wmma<4, 32, Ops>(modifiers, d, a, b, c);
 }
 
 } // namespace goc

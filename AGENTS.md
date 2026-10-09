@@ -63,6 +63,10 @@ group from neighboring material to which the comment does not apply.
 Use C++17 [[...]] syntax for C++ attributes, with a gnu:: namespace where needed,
 rather than __attribute__((...)).
 
+Only instructions whose behavior depends on EXEC take exec_mask. Scalar,
+pseudo-scalar, WMMA and SWMMAC APIs omit it; matrix instructions read and write
+all lanes even when architectural EXEC is zero.
+
 Improving sparse exec_mask performance is a non-goal. Aim for mask-independent
 performance by computing full results and masking destination stores. Do not add
 mask-density checks, active-lane iteration, or sparse-mask specializations:

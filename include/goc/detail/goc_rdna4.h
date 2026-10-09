@@ -9,7 +9,9 @@
 extern "C" {
 #endif
 
-// Wave32 entry points use a 32-bit exec_mask. Each pointer names 32
+// EXEC-dependent Wave32 entry points use a 32-bit exec_mask (Wave64 uses 64 bits).
+// Scalar, pseudo-scalar, WMMA and SWMMAC instructions ignore EXEC and omit exec_mask.
+// Matrix instructions read and write all lanes. Each Wave32 VGPR pointer names 32
 // contiguous uint32_t lane words. Pointer arrays and backing storage must be valid.
 // Whole VGPRs may alias; distinct VGPR addresses must not overlap. Sources are
 // conceptually read before writes. Inactive destination lanes and all destinations
@@ -124,48 +126,48 @@ int goc_rdna4_v_permlanex16_var_b32(uint64_t flags, uint32_t exec_mask, uint64_t
 // preserve SCC. Conditional selection reads only input_scc bit 0.
 
 // Pack low A and low B into low/high destination halves.
-int goc_rdna4_s_pack_ll_b32_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                                uint32_t *d, uint32_t a, uint32_t b);
+int goc_rdna4_s_pack_ll_b32_b16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                                uint32_t b);
 
 // Pack low A and high B into low/high destination halves.
-int goc_rdna4_s_pack_lh_b32_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                                uint32_t *d, uint32_t a, uint32_t b);
+int goc_rdna4_s_pack_lh_b32_b16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                                uint32_t b);
 
 // Pack high A and low B into low/high destination halves.
-int goc_rdna4_s_pack_hl_b32_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                                uint32_t *d, uint32_t a, uint32_t b);
+int goc_rdna4_s_pack_hl_b32_b16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                                uint32_t b);
 
 // Pack high A and high B into low/high destination halves.
-int goc_rdna4_s_pack_hh_b32_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                                uint32_t *d, uint32_t a, uint32_t b);
+int goc_rdna4_s_pack_hh_b32_b16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                                uint32_t b);
 
 // Replicate each input bit i into output bits 2*i and 2*i+1.
-int goc_rdna4_s_bitreplicate_b64_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                                     uint64_t *d, uint32_t a);
+int goc_rdna4_s_bitreplicate_b64_b32(uint64_t flags, uint64_t instruction_flags, uint64_t *d,
+                                     uint32_t a);
 
 // Select a when input_scc bit 0 is 1, otherwise b.
-int goc_rdna4_s_cselect_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t b, uint32_t input_scc);
+int goc_rdna4_s_cselect_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t b, uint32_t input_scc);
 
 // Select a when input_scc bit 0 is 1, otherwise b.
-int goc_rdna4_s_cselect_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint64_t *d, uint64_t a, uint64_t b, uint32_t input_scc);
+int goc_rdna4_s_cselect_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                            uint64_t b, uint32_t input_scc);
 
 // Set output bit i when input nibble i is nonzero; upper 24 bits are zero. SCC is result != 0.
-int goc_rdna4_s_quadmask_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                             uint32_t *d, uint32_t a, uint32_t *scc);
+int goc_rdna4_s_quadmask_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                             uint32_t *scc);
 
 // Set output bit i when input nibble i is nonzero; upper 48 bits are zero. SCC is result != 0.
-int goc_rdna4_s_quadmask_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                             uint64_t *d, uint64_t a, uint32_t *scc);
+int goc_rdna4_s_quadmask_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                             uint32_t *scc);
 
 // Replace each nonzero input nibble with 0xf. SCC is result != 0.
-int goc_rdna4_s_wqm_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t *scc);
+int goc_rdna4_s_wqm_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t *scc);
 
 // Replace each nonzero input nibble with 0xf. SCC is result != 0.
-int goc_rdna4_s_wqm_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint64_t a, uint32_t *scc);
+int goc_rdna4_s_wqm_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                        uint32_t *scc);
 
 // Scalar comparisons execute once per wave and ignore EXEC, including zero.
 // scc is required and receives 0 or 1. Inputs are passed by value and may come
@@ -181,188 +183,188 @@ int goc_rdna4_s_wqm_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 // input flushing is disabled. Loose mode leaves excp_flag_user unchanged.
 
 // SCC is a == b (signed).
-int goc_rdna4_s_cmp_eq_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_eq_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is a != b (signed).
-int goc_rdna4_s_cmp_lg_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_lg_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is a > b (signed).
-int goc_rdna4_s_cmp_gt_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_gt_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is a >= b (signed).
-int goc_rdna4_s_cmp_ge_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_ge_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is a < b (signed).
-int goc_rdna4_s_cmp_lt_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_lt_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is a <= b (signed).
-int goc_rdna4_s_cmp_le_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_le_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is a == b (unsigned).
-int goc_rdna4_s_cmp_eq_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_eq_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is a != b (unsigned).
-int goc_rdna4_s_cmp_lg_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_lg_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is a > b (unsigned).
-int goc_rdna4_s_cmp_gt_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_gt_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is a >= b (unsigned).
-int goc_rdna4_s_cmp_ge_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_ge_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is a < b (unsigned).
-int goc_rdna4_s_cmp_lt_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_lt_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is a <= b (unsigned).
-int goc_rdna4_s_cmp_le_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_cmp_le_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b);
 
 // SCC is 1 when bit (b modulo 32) of a equals 0.
-int goc_rdna4_s_bitcmp0_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_bitcmp0_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b);
 
 // SCC is 1 when bit (b modulo 32) of a equals 1.
-int goc_rdna4_s_bitcmp1_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b);
+int goc_rdna4_s_bitcmp1_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b);
 
 // SCC is 1 when bit (b modulo 64) of a equals 0.
-int goc_rdna4_s_bitcmp0_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint64_t a, uint32_t b);
+int goc_rdna4_s_bitcmp0_b64(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint64_t a,
+                            uint32_t b);
 
 // SCC is 1 when bit (b modulo 64) of a equals 1.
-int goc_rdna4_s_bitcmp1_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint64_t a, uint32_t b);
+int goc_rdna4_s_bitcmp1_b64(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint64_t a,
+                            uint32_t b);
 
 // SCC is a == b (unsigned).
-int goc_rdna4_s_cmp_eq_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint64_t a, uint64_t b);
+int goc_rdna4_s_cmp_eq_u64(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint64_t a,
+                           uint64_t b);
 
 // SCC is a != b (unsigned).
-int goc_rdna4_s_cmp_lg_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint64_t a, uint64_t b);
+int goc_rdna4_s_cmp_lg_u64(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint64_t a,
+                           uint64_t b);
 
 // SCC is a < b.
-int goc_rdna4_s_cmp_lt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_lt_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is a < b.
-int goc_rdna4_s_cmp_lt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_lt_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is a == b.
-int goc_rdna4_s_cmp_eq_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_eq_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is a == b.
-int goc_rdna4_s_cmp_eq_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_eq_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is a <= b.
-int goc_rdna4_s_cmp_le_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_le_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is a <= b.
-int goc_rdna4_s_cmp_le_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_le_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is a > b.
-int goc_rdna4_s_cmp_gt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_gt_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is a > b.
-int goc_rdna4_s_cmp_gt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_gt_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is a != b.
-int goc_rdna4_s_cmp_lg_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_lg_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is a != b.
-int goc_rdna4_s_cmp_lg_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_lg_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is a >= b.
-int goc_rdna4_s_cmp_ge_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_ge_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is a >= b.
-int goc_rdna4_s_cmp_ge_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_ge_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                           uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is both operands are numbers.
-int goc_rdna4_s_cmp_o_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_o_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                          uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is both operands are numbers.
-int goc_rdna4_s_cmp_o_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_o_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                          uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is either operand is NaN.
-int goc_rdna4_s_cmp_u_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_u_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                          uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is either operand is NaN.
-int goc_rdna4_s_cmp_u_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_u_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                          uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is not (a >= b).
-int goc_rdna4_s_cmp_nge_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_nge_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is not (a >= b).
-int goc_rdna4_s_cmp_nge_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_nge_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is 1 if either operand is NaN or a == b.
-int goc_rdna4_s_cmp_nlg_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_nlg_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is 1 if either operand is NaN or a == b.
-int goc_rdna4_s_cmp_nlg_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_nlg_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is not (a > b).
-int goc_rdna4_s_cmp_ngt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_ngt_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is not (a > b).
-int goc_rdna4_s_cmp_ngt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_ngt_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is not (a <= b).
-int goc_rdna4_s_cmp_nle_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_nle_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is not (a <= b).
-int goc_rdna4_s_cmp_nle_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_nle_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is not (a == b).
-int goc_rdna4_s_cmp_neq_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_neq_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is not (a == b).
-int goc_rdna4_s_cmp_neq_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_neq_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is not (a < b).
-int goc_rdna4_s_cmp_nlt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_nlt_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // SCC is not (a < b).
-int goc_rdna4_s_cmp_nlt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *scc, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cmp_nlt_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // Scalar conversions execute once per wave and ignore EXEC, including zero;
 // d is required and SCC is unchanged. Operands are raw register bits. Sources
@@ -376,37 +378,37 @@ int goc_rdna4_s_cmp_nlt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 // or integer inputs. Floating conversions quiet signaling NaNs.
 
 // Signed 32-bit integer to FP32, nearest-even.
-int goc_rdna4_s_cvt_f32_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_cvt_f32_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t *excp_flag_user);
 
 // Unsigned 32-bit integer to FP32, nearest-even.
-int goc_rdna4_s_cvt_f32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_cvt_f32_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t *excp_flag_user);
 
 // FP32 to signed 32-bit integer, truncating and saturating; NaNs yield zero.
-int goc_rdna4_s_cvt_i32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_cvt_i32_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t *excp_flag_user);
 
 // FP32 to unsigned 32-bit integer, truncating and saturating; NaNs/negatives yield zero.
-int goc_rdna4_s_cvt_u32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_cvt_u32_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t *excp_flag_user);
 
 // FP32 to FP16, nearest-even; writes a zero upper half.
-int goc_rdna4_s_cvt_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_cvt_f16_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t *excp_flag_user);
 
 // Low FP16 half to FP32.
-int goc_rdna4_s_cvt_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_cvt_f32_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t *excp_flag_user);
 
 // High FP16 half to FP32.
-int goc_rdna4_s_cvt_hi_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                               uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_cvt_hi_f32_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                               uint32_t *excp_flag_user);
 
 // Two FP32 values to low/high FP16 halves, truncating toward zero.
 // Finite overflow saturates to the largest finite half; infinities remain infinite.
-int goc_rdna4_s_cvt_pk_rtz_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                                   uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_cvt_pk_rtz_f16_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d,
+                                   uint32_t a, uint32_t b, uint32_t *excp_flag_user);
 
 // Scalar rounding ignores EXEC, including zero EXEC; d is required. Inputs and
 // outputs are raw IEEE bits. FP16 reads the low half and writes a zero upper
@@ -420,36 +422,36 @@ int goc_rdna4_s_cvt_pk_rtz_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t 
 // not raise INEXACT. Loose mode leaves excp_flag_user unchanged.
 
 // Round to an integral value toward positive infinity.
-int goc_rdna4_s_ceil_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_ceil_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                         uint32_t *excp_flag_user);
 
 // Round to an integral value toward positive infinity.
-int goc_rdna4_s_ceil_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_ceil_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                         uint32_t *excp_flag_user);
 
 // Round to an integral value toward negative infinity.
-int goc_rdna4_s_floor_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_floor_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
 
 // Round to an integral value toward negative infinity.
-int goc_rdna4_s_floor_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_floor_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
 
 // Round to an integral value toward zero.
-int goc_rdna4_s_trunc_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_trunc_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
 
 // Round to an integral value toward zero.
-int goc_rdna4_s_trunc_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_trunc_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
 
 // Round to an integral value to nearest, with ties to even.
-int goc_rdna4_s_rndne_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_rndne_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
 
 // Round to an integral value to nearest, with ties to even.
-int goc_rdna4_s_rndne_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_s_rndne_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
 
 // Scalar fused multiply-add ignores EXEC, including zero EXEC; d is required.
 // Operands and literals are raw IEEE bits. FP16 reads low halves and writes a
@@ -461,22 +463,20 @@ int goc_rdna4_s_rndne_f16(uint64_t flags, uint32_t exec_mask, uint64_t instructi
 // exception flags. Errors leave d unchanged. Inputs may come from d storage.
 
 // Fused a * b + old *d.
-int goc_rdna4_s_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_fmac_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                         uint32_t b, uint32_t *excp_flag_user);
 
 // Fused a * b + old *d.
-int goc_rdna4_s_fmac_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_fmac_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                         uint32_t b, uint32_t *excp_flag_user);
 
 // Fused a * b + literal.
-int goc_rdna4_s_fmaak_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t b, uint32_t literal,
-                          uint32_t *excp_flag_user);
+int goc_rdna4_s_fmaak_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t b, uint32_t literal, uint32_t *excp_flag_user);
 
 // Fused a * literal + c.
-int goc_rdna4_s_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t literal, uint32_t c,
-                          uint32_t *excp_flag_user);
+int goc_rdna4_s_fmamk_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t literal, uint32_t c, uint32_t *excp_flag_user);
 
 // Scalar FP16/FP32 binary arithmetic executes once per wave and ignores EXEC,
 // including zero EXEC; d is required. Inputs are raw IEEE bits. FP16 reads the
@@ -490,60 +490,60 @@ int goc_rdna4_s_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t instructi
 // rounding, so a value that would round up to the smallest normal may flush.
 
 // Sum of a and b.
-int goc_rdna4_s_add_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_add_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *excp_flag_user);
 
 // Sum of a and b.
-int goc_rdna4_s_add_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_add_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *excp_flag_user);
 
 // Difference a - b.
-int goc_rdna4_s_sub_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_sub_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *excp_flag_user);
 
 // Difference a - b.
-int goc_rdna4_s_sub_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_sub_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *excp_flag_user);
 
 // Product of a and b.
-int goc_rdna4_s_mul_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_mul_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *excp_flag_user);
 
 // Product of a and b.
-int goc_rdna4_s_mul_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_mul_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *excp_flag_user);
 
 // Minimum; a single NaN selects the numeric operand; -0 sorts below +0.
-int goc_rdna4_s_min_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_min_num_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // Minimum; a single NaN selects the numeric operand; -0 sorts below +0.
-int goc_rdna4_s_min_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_min_num_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // Maximum; a single NaN selects the numeric operand; -0 sorts below +0.
-int goc_rdna4_s_max_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_max_num_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // Maximum; a single NaN selects the numeric operand; -0 sorts below +0.
-int goc_rdna4_s_max_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_max_num_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // Minimum; either NaN yields NaN; -0 sorts below +0.
-int goc_rdna4_s_minimum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_minimum_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // Minimum; either NaN yields NaN; -0 sorts below +0.
-int goc_rdna4_s_minimum_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_minimum_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // Maximum; either NaN yields NaN; -0 sorts below +0.
-int goc_rdna4_s_maximum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_maximum_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // Maximum; either NaN yields NaN; -0 sorts below +0.
-int goc_rdna4_s_maximum_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *excp_flag_user);
+int goc_rdna4_s_maximum_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t b, uint32_t *excp_flag_user);
 
 // Scalar bitfields and counts ignore EXEC, including zero EXEC; output pointers
 // are required. Both loose and empirical exact semantics are supported, and
@@ -553,89 +553,79 @@ int goc_rdna4_s_maximum_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 
 // Extract unsigned field: offset=b[4:0], width=b[22:16].
 // Width clips at bit 32; zero width yields zero. SCC is result != 0.
-int goc_rdna4_s_bfe_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_bfe_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *scc);
 
 // Extract signed field: offset=b[4:0], width=b[22:16].
 // Width clips at bit 32; zero width yields zero. SCC is result != 0.
-int goc_rdna4_s_bfe_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_bfe_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *scc);
 
 // Extract unsigned field: offset=b[5:0], width=b[22:16].
 // Width clips at bit 64; zero width yields zero. SCC is result != 0.
-int goc_rdna4_s_bfe_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint64_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_bfe_u64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                        uint32_t b, uint32_t *scc);
 
 // Extract signed field: offset=b[5:0], width=b[22:16].
 // Width clips at bit 64; zero width yields zero. SCC is result != 0.
-int goc_rdna4_s_bfe_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint64_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_bfe_i64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                        uint32_t b, uint32_t *scc);
 
 // Low 32 bits of ((1 << (a modulo 32)) - 1) << (b modulo 32).
-int goc_rdna4_s_bfm_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b);
+int goc_rdna4_s_bfm_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b);
 
 // Low 64 bits of ((1 << (a modulo 64)) - 1) << (b modulo 64).
-int goc_rdna4_s_bfm_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint32_t a, uint32_t b);
+int goc_rdna4_s_bfm_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint32_t a,
+                        uint32_t b);
 
 // Count zero bits in 32-bit a; SCC is result != 0.
-int goc_rdna4_s_bcnt0_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint32_t a, uint32_t *scc);
+int goc_rdna4_s_bcnt0_i32_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t *scc);
 
 // Count zero bits in 64-bit a; SCC is result != 0.
-int goc_rdna4_s_bcnt0_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint64_t a, uint32_t *scc);
+int goc_rdna4_s_bcnt0_i32_b64(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint64_t a,
+                              uint32_t *scc);
 
 // Count one bits in 32-bit a; SCC is result != 0.
-int goc_rdna4_s_bcnt1_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint32_t a, uint32_t *scc);
+int goc_rdna4_s_bcnt1_i32_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t *scc);
 
 // Count one bits in 64-bit a; SCC is result != 0.
-int goc_rdna4_s_bcnt1_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint64_t a, uint32_t *scc);
+int goc_rdna4_s_bcnt1_i32_b64(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint64_t a,
+                              uint32_t *scc);
 
 // Count trailing zero bits in 32-bit a; return UINT32_MAX for zero.
-int goc_rdna4_s_ctz_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a);
+int goc_rdna4_s_ctz_i32_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a);
 
 // Count trailing zero bits in 64-bit a; return UINT32_MAX for zero.
-int goc_rdna4_s_ctz_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint64_t a);
+int goc_rdna4_s_ctz_i32_b64(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint64_t a);
 
 // Count leading zero bits in 32-bit a; return UINT32_MAX for zero.
-int goc_rdna4_s_clz_i32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a);
+int goc_rdna4_s_clz_i32_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a);
 
 // Count leading zero bits in 64-bit a; return UINT32_MAX for zero.
-int goc_rdna4_s_clz_i32_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint64_t a);
+int goc_rdna4_s_clz_i32_u64(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint64_t a);
 
 // Count leading sign bits in 32-bit a, including the sign bit;
 // return UINT32_MAX for zero or all-ones input.
-int goc_rdna4_s_cls_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a);
+int goc_rdna4_s_cls_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a);
 
 // Count leading sign bits in 64-bit a, including the sign bit;
 // return UINT32_MAX for zero or all-ones input.
-int goc_rdna4_s_cls_i32_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint64_t a);
+int goc_rdna4_s_cls_i32_i64(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint64_t a);
 
 // Clear bit b modulo 32 in old *d.
-int goc_rdna4_s_bitset0_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t b);
+int goc_rdna4_s_bitset0_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t b);
 
 // Clear bit b modulo 64 in old *d.
-int goc_rdna4_s_bitset0_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint64_t *d, uint32_t b);
+int goc_rdna4_s_bitset0_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint32_t b);
 
 // Set bit b modulo 32 in old *d.
-int goc_rdna4_s_bitset1_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t b);
+int goc_rdna4_s_bitset1_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t b);
 
 // Set bit b modulo 64 in old *d.
-int goc_rdna4_s_bitset1_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint64_t *d, uint32_t b);
+int goc_rdna4_s_bitset1_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint32_t b);
 
 // Scalar bitwise and shift instructions ignore EXEC, including zero EXEC.
 // Output pointers are required; all host FP state is preserved. Both loose and
@@ -644,124 +634,122 @@ int goc_rdna4_s_bitset1_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 // a 32-bit word within a 64-bit destination. Errors leave all outputs unchanged.
 
 // 32-bit and; SCC is result != 0.
-int goc_rdna4_s_and_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_and_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *scc);
 
 // 64-bit and; SCC is result != 0.
-int goc_rdna4_s_and_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint64_t a, uint64_t b, uint32_t *scc);
+int goc_rdna4_s_and_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                        uint64_t b, uint32_t *scc);
 
 // 32-bit or; SCC is result != 0.
-int goc_rdna4_s_or_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                       uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_or_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                       uint32_t b, uint32_t *scc);
 
 // 64-bit or; SCC is result != 0.
-int goc_rdna4_s_or_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                       uint64_t a, uint64_t b, uint32_t *scc);
+int goc_rdna4_s_or_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                       uint64_t b, uint32_t *scc);
 
 // 32-bit xor; SCC is result != 0.
-int goc_rdna4_s_xor_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_xor_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *scc);
 
 // 64-bit xor; SCC is result != 0.
-int goc_rdna4_s_xor_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint64_t a, uint64_t b, uint32_t *scc);
+int goc_rdna4_s_xor_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                        uint64_t b, uint32_t *scc);
 
 // 32-bit nand; SCC is result != 0.
-int goc_rdna4_s_nand_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_nand_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                         uint32_t b, uint32_t *scc);
 
 // 64-bit nand; SCC is result != 0.
-int goc_rdna4_s_nand_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+int goc_rdna4_s_nand_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                         uint64_t b, uint32_t *scc);
 
 // 32-bit nor; SCC is result != 0.
-int goc_rdna4_s_nor_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_nor_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *scc);
 
 // 64-bit nor; SCC is result != 0.
-int goc_rdna4_s_nor_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint64_t a, uint64_t b, uint32_t *scc);
+int goc_rdna4_s_nor_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                        uint64_t b, uint32_t *scc);
 
 // 32-bit xnor; SCC is result != 0.
-int goc_rdna4_s_xnor_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_xnor_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                         uint32_t b, uint32_t *scc);
 
 // 64-bit xnor; SCC is result != 0.
-int goc_rdna4_s_xnor_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+int goc_rdna4_s_xnor_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                         uint64_t b, uint32_t *scc);
 
 // 32-bit and_not1; SCC is result != 0.
-int goc_rdna4_s_and_not1_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                             uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_and_not1_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                             uint32_t b, uint32_t *scc);
 
 // 64-bit and_not1; SCC is result != 0.
-int goc_rdna4_s_and_not1_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                             uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+int goc_rdna4_s_and_not1_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                             uint64_t b, uint32_t *scc);
 
 // 32-bit or_not1; SCC is result != 0.
-int goc_rdna4_s_or_not1_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_or_not1_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t b, uint32_t *scc);
 
 // 64-bit or_not1; SCC is result != 0.
-int goc_rdna4_s_or_not1_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+int goc_rdna4_s_or_not1_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                            uint64_t b, uint32_t *scc);
 
 // 32-bit not; SCC is result != 0.
-int goc_rdna4_s_not_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t *scc);
+int goc_rdna4_s_not_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t *scc);
 
 // 64-bit not; SCC is result != 0.
-int goc_rdna4_s_not_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint64_t a, uint32_t *scc);
+int goc_rdna4_s_not_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                        uint32_t *scc);
 
 // 32-bit bit reversal; leaves SCC unchanged.
-int goc_rdna4_s_brev_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a);
+int goc_rdna4_s_brev_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a);
 
 // 64-bit bit reversal; leaves SCC unchanged.
-int goc_rdna4_s_brev_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint64_t *d, uint64_t a);
+int goc_rdna4_s_brev_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a);
 
 // 32-bit left shift by b modulo 32; SCC is result != 0.
-int goc_rdna4_s_lshl_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_lshl_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                         uint32_t b, uint32_t *scc);
 
 // 64-bit left shift by b modulo 64; SCC is result != 0.
-int goc_rdna4_s_lshl_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint64_t *d, uint64_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_lshl_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                         uint32_t b, uint32_t *scc);
 
 // 32-bit logical right shift by b modulo 32; SCC is result != 0.
-int goc_rdna4_s_lshr_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_lshr_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                         uint32_t b, uint32_t *scc);
 
 // 64-bit logical right shift by b modulo 64; SCC is result != 0.
-int goc_rdna4_s_lshr_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint64_t *d, uint64_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_lshr_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                         uint32_t b, uint32_t *scc);
 
 // 32-bit arithmetic right shift by b modulo 32; SCC is result != 0.
-int goc_rdna4_s_ashr_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_ashr_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                         uint32_t b, uint32_t *scc);
 
 // 64-bit arithmetic right shift by b modulo 64; SCC is result != 0.
-int goc_rdna4_s_ashr_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint64_t *d, uint64_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_ashr_i64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                         uint32_t b, uint32_t *scc);
 
 // Low 32 bits of (a << 1) + b; SCC indicates that the full sum exceeds UINT32_MAX.
-int goc_rdna4_s_lshl1_add_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_lshl1_add_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t b, uint32_t *scc);
 
 // Low 32 bits of (a << 2) + b; SCC indicates that the full sum exceeds UINT32_MAX.
-int goc_rdna4_s_lshl2_add_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_lshl2_add_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t b, uint32_t *scc);
 
 // Low 32 bits of (a << 3) + b; SCC indicates that the full sum exceeds UINT32_MAX.
-int goc_rdna4_s_lshl3_add_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_lshl3_add_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t b, uint32_t *scc);
 
 // Low 32 bits of (a << 4) + b; SCC indicates that the full sum exceeds UINT32_MAX.
-int goc_rdna4_s_lshl4_add_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_lshl4_add_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t b, uint32_t *scc);
 
 // Scalar-register integer arithmetic executes once per wave and ignores EXEC,
 // including zero EXEC. Scalar output pointers are required. Both loose and
@@ -772,94 +760,90 @@ int goc_rdna4_s_lshl4_add_u32(uint64_t flags, uint32_t exec_mask, uint64_t instr
 // from destination storage. Instructions without SCC outputs leave SCC alone.
 
 // Unsigned sum; SCC is carry-out.
-int goc_rdna4_s_add_co_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_add_co_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                           uint32_t b, uint32_t *scc);
 
 // Unsigned difference; SCC is borrow-out.
-int goc_rdna4_s_sub_co_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_sub_co_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                           uint32_t b, uint32_t *scc);
 
 // Signed sum; SCC is signed overflow.
-int goc_rdna4_s_add_co_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_add_co_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                           uint32_t b, uint32_t *scc);
 
 // Signed difference; SCC is signed overflow.
-int goc_rdna4_s_sub_co_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_sub_co_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                           uint32_t b, uint32_t *scc);
 
 // Unsigned sum with input_scc bit 0; SCC is carry-out.
-int goc_rdna4_s_add_co_ci_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc,
-                              uint32_t input_scc);
+int goc_rdna4_s_add_co_ci_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t b, uint32_t *scc, uint32_t input_scc);
 
 // Unsigned difference minus input_scc bit 0; SCC is borrow-out.
-int goc_rdna4_s_sub_co_ci_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc,
-                              uint32_t input_scc);
+int goc_rdna4_s_sub_co_ci_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t b, uint32_t *scc, uint32_t input_scc);
 
 // Sign-extend the low 8 bits to 32 bits; preserves SCC.
-int goc_rdna4_s_sext_i32_i8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a);
+int goc_rdna4_s_sext_i32_i8(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a);
 
 // Sign-extend the low 16 bits to 32 bits; preserves SCC.
-int goc_rdna4_s_sext_i32_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                             uint32_t *d, uint32_t a);
+int goc_rdna4_s_sext_i32_i16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a);
 
 // Absolute value modulo 2^32; SCC is result != 0.
-int goc_rdna4_s_abs_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t *scc);
+int goc_rdna4_s_abs_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t *scc);
 
 // Absolute value of the wrapped 32-bit difference; SCC is result != 0.
-int goc_rdna4_s_absdiff_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_absdiff_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t b, uint32_t *scc);
 
 // Signed minimum; SCC is a < b.
-int goc_rdna4_s_min_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_min_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *scc);
 
 // Unsigned minimum; SCC is a < b.
-int goc_rdna4_s_min_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_min_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *scc);
 
 // Signed maximum; SCC is a > b.
-int goc_rdna4_s_max_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_max_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *scc);
 
 // Unsigned maximum; SCC is a > b.
-int goc_rdna4_s_max_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *scc);
+int goc_rdna4_s_max_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *scc);
 
 // Low 32 bits of the product.
-int goc_rdna4_s_mul_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b);
+int goc_rdna4_s_mul_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b);
 
 // High 32 bits of the unsigned product.
-int goc_rdna4_s_mul_hi_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *d, uint32_t a, uint32_t b);
+int goc_rdna4_s_mul_hi_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                           uint32_t b);
 
 // High 32 bits of the signed product.
-int goc_rdna4_s_mul_hi_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *d, uint32_t a, uint32_t b);
+int goc_rdna4_s_mul_hi_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                           uint32_t b);
 
 // Sum modulo 2^64.
-int goc_rdna4_s_add_nc_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint64_t *d, uint64_t a, uint64_t b);
+int goc_rdna4_s_add_nc_u64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                           uint64_t b);
 
 // Difference modulo 2^64.
-int goc_rdna4_s_sub_nc_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint64_t *d, uint64_t a, uint64_t b);
+int goc_rdna4_s_sub_nc_u64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                           uint64_t b);
 
 // Product modulo 2^64.
-int goc_rdna4_s_mul_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint64_t a, uint64_t b);
+int goc_rdna4_s_mul_u64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                        uint64_t b);
 
 // Add sign-extended immediate to old *d; SCC is signed overflow.
-int goc_rdna4_s_addk_co_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint16_t immediate, uint32_t *scc);
+int goc_rdna4_s_addk_co_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d,
+                            uint16_t immediate, uint32_t *scc);
 
 // Multiply old *d by sign-extended immediate, modulo 2^32.
-int goc_rdna4_s_mulk_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint16_t immediate);
+int goc_rdna4_s_mulk_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d,
+                         uint16_t immediate);
 
 // RDNA4 WAVE_EXCP_FLAG_USER status bits currently produced by GoC.
 static const uint32_t GOC_RDNA4_EXCEPTION_INVALID = 1U << 0;
@@ -887,7 +871,7 @@ int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t instr
                               uint32_t *excp_flag_user);
 
 // Pseudo-scalar transcendental math on raw SGPR values. Executes once regardless
-// of exec_mask, including zero. a is a scalar value; d must always be writable.
+// of EXEC, including zero. a is a scalar value; d must always be writable.
 // FP16 reads a's low half, ignores its high half, and zeros d's upper half.
 // Supports ABS_A, NEG_A, OMOD and CLAMP, with ABS before NEG. No half selectors.
 // Loose semantics only; strict empirical-exact requests fail without writing d.
@@ -897,26 +881,26 @@ int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t instr
 // its sign; pre-existing zero becomes positive with OMOD. CLAMP maps NaN and
 // negative results to zero. Requires host nearest-even rounding and enabled
 // denormals. Host rounding is preserved; exception flags may change.
-int goc_rdna4_v_s_exp_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
-int goc_rdna4_v_s_exp_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
-int goc_rdna4_v_s_log_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
-int goc_rdna4_v_s_log_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
-int goc_rdna4_v_s_rcp_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
-int goc_rdna4_v_s_rcp_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
-int goc_rdna4_v_s_rsq_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
-int goc_rdna4_v_s_rsq_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
-int goc_rdna4_v_s_sqrt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
-int goc_rdna4_v_s_sqrt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *d, uint32_t a, uint32_t *excp_flag_user);
+int goc_rdna4_v_s_exp_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
+int goc_rdna4_v_s_exp_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
+int goc_rdna4_v_s_log_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
+int goc_rdna4_v_s_log_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
+int goc_rdna4_v_s_rcp_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
+int goc_rdna4_v_s_rcp_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
+int goc_rdna4_v_s_rsq_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
+int goc_rdna4_v_s_rsq_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user);
+int goc_rdna4_v_s_sqrt_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                           uint32_t *excp_flag_user);
+int goc_rdna4_v_s_sqrt_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                           uint32_t *excp_flag_user);
 
 // Floating comparisons write a scalar condition mask (CMP) or replacement EXEC
 // mask (CMPX) to d. Inactive bits are zero, including for empty EXEC; d must
@@ -1516,23 +1500,20 @@ int goc_rdna4_v_alignbyte_b32(uint64_t flags, uint32_t exec_mask, uint64_t instr
 // K=32 accepts GOC_SWMMAC_INDEX_KEY_1; K=64 consumes all 32 metadata bits and
 // rejects it. Supports loose and empirical exact semantics; host FP state is
 // preserved. GOC_FP16_OVFL has no effect. All inputs and D are read before
-// ascending destination-register stores; last store wins aliases. EXEC masks
-// only stores. Zero effective EXEC permits null pointers.
+// ascending destination-register stores; last store wins aliases. EXEC is ignored;
+// every lane is read and written, and operand pointers must be valid.
 // Errors leave destinations unchanged.
-int goc_rdna4_v_swmmac_i32_16x16x32_iu8(uint64_t flags, uint32_t exec_mask,
-                                        uint64_t instruction_flags, uint32_t *const *d,
-                                        const uint32_t *const *a, const uint32_t *const *b,
-                                        const uint32_t *const *index);
+int goc_rdna4_v_swmmac_i32_16x16x32_iu8(uint64_t flags, uint64_t instruction_flags,
+                                        uint32_t *const *d, const uint32_t *const *a,
+                                        const uint32_t *const *b, const uint32_t *const *index);
 
-int goc_rdna4_v_swmmac_i32_16x16x32_iu4(uint64_t flags, uint32_t exec_mask,
-                                        uint64_t instruction_flags, uint32_t *const *d,
-                                        const uint32_t *const *a, const uint32_t *const *b,
-                                        const uint32_t *const *index);
+int goc_rdna4_v_swmmac_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags,
+                                        uint32_t *const *d, const uint32_t *const *a,
+                                        const uint32_t *const *b, const uint32_t *const *index);
 
-int goc_rdna4_v_swmmac_i32_16x16x64_iu4(uint64_t flags, uint32_t exec_mask,
-                                        uint64_t instruction_flags, uint32_t *const *d,
-                                        const uint32_t *const *a, const uint32_t *const *b,
-                                        const uint32_t *const *index);
+int goc_rdna4_v_swmmac_i32_16x16x64_iu4(uint64_t flags, uint64_t instruction_flags,
+                                        uint32_t *const *d, const uint32_t *const *a,
+                                        const uint32_t *const *b, const uint32_t *const *index);
 
 // Sparse FP8/BF8 2:4 matrix multiply-accumulate into FP32 D. A uses two
 // VGPRs, B four, index one, and in/out D eight. FP8 is E4M3FN; BF8 is E5M2.
@@ -1542,27 +1523,23 @@ int goc_rdna4_v_swmmac_i32_16x16x64_iu4(uint64_t flags, uint32_t exec_mask,
 // host nearest-even rounding and denormals enabled. Exception flags may change.
 // Exact semantics are unsupported; GOC_FP16_OVFL has no effect. All inputs and
 // D are read before ascending destination-register stores; last store wins
-// aliases. EXEC masks only stores. Zero effective
-// EXEC permits null pointers. Errors leave destinations unchanged.
-int goc_rdna4_v_swmmac_f32_16x16x32_fp8_fp8(uint64_t flags, uint32_t exec_mask,
-                                            uint64_t instruction_flags, uint32_t *const *d,
-                                            const uint32_t *const *a, const uint32_t *const *b,
-                                            const uint32_t *const *index);
+// aliases. EXEC is ignored; every lane is read and written, and operand pointers
+// must be valid. Errors leave destinations unchanged.
+int goc_rdna4_v_swmmac_f32_16x16x32_fp8_fp8(uint64_t flags, uint64_t instruction_flags,
+                                            uint32_t *const *d, const uint32_t *const *a,
+                                            const uint32_t *const *b, const uint32_t *const *index);
 
-int goc_rdna4_v_swmmac_f32_16x16x32_fp8_bf8(uint64_t flags, uint32_t exec_mask,
-                                            uint64_t instruction_flags, uint32_t *const *d,
-                                            const uint32_t *const *a, const uint32_t *const *b,
-                                            const uint32_t *const *index);
+int goc_rdna4_v_swmmac_f32_16x16x32_fp8_bf8(uint64_t flags, uint64_t instruction_flags,
+                                            uint32_t *const *d, const uint32_t *const *a,
+                                            const uint32_t *const *b, const uint32_t *const *index);
 
-int goc_rdna4_v_swmmac_f32_16x16x32_bf8_fp8(uint64_t flags, uint32_t exec_mask,
-                                            uint64_t instruction_flags, uint32_t *const *d,
-                                            const uint32_t *const *a, const uint32_t *const *b,
-                                            const uint32_t *const *index);
+int goc_rdna4_v_swmmac_f32_16x16x32_bf8_fp8(uint64_t flags, uint64_t instruction_flags,
+                                            uint32_t *const *d, const uint32_t *const *a,
+                                            const uint32_t *const *b, const uint32_t *const *index);
 
-int goc_rdna4_v_swmmac_f32_16x16x32_bf8_bf8(uint64_t flags, uint32_t exec_mask,
-                                            uint64_t instruction_flags, uint32_t *const *d,
-                                            const uint32_t *const *a, const uint32_t *const *b,
-                                            const uint32_t *const *index);
+int goc_rdna4_v_swmmac_f32_16x16x32_bf8_bf8(uint64_t flags, uint64_t instruction_flags,
+                                            uint32_t *const *d, const uint32_t *const *a,
+                                            const uint32_t *const *b, const uint32_t *const *index);
 
 // Sparse 2:4 matrix multiply-accumulate. D is both the initial accumulator and
 // destination; A holds 16 compressed elements per row, B the dense 32x16 matrix,
@@ -1578,27 +1555,23 @@ int goc_rdna4_v_swmmac_f32_16x16x32_bf8_bf8(uint64_t flags, uint32_t exec_mask,
 // GOC_FP16_OVFL saturates finite overflow when narrowing to FP16; otherwise it
 // has no effect. Exact semantics are unsupported. All inputs and D are read
 // before ascending destination-register stores; the last store wins aliases.
-// EXEC masks only destination stores; every lane's source data may be read.
-// Zero effective EXEC permits null pointers. Errors leave all destinations unchanged.
-int goc_rdna4_v_swmmac_f32_16x16x32_f16(uint64_t flags, uint32_t exec_mask,
-                                        uint64_t instruction_flags, uint32_t *const *d,
-                                        const uint32_t *const *a, const uint32_t *const *b,
-                                        const uint32_t *const *index);
+// EXEC is ignored; every lane is read and written, and operand pointers must
+// be valid. Errors leave all destinations unchanged.
+int goc_rdna4_v_swmmac_f32_16x16x32_f16(uint64_t flags, uint64_t instruction_flags,
+                                        uint32_t *const *d, const uint32_t *const *a,
+                                        const uint32_t *const *b, const uint32_t *const *index);
 
-int goc_rdna4_v_swmmac_f32_16x16x32_bf16(uint64_t flags, uint32_t exec_mask,
-                                         uint64_t instruction_flags, uint32_t *const *d,
-                                         const uint32_t *const *a, const uint32_t *const *b,
-                                         const uint32_t *const *index);
+int goc_rdna4_v_swmmac_f32_16x16x32_bf16(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *index);
 
-int goc_rdna4_v_swmmac_f16_16x16x32_f16(uint64_t flags, uint32_t exec_mask,
-                                        uint64_t instruction_flags, uint32_t *const *d,
-                                        const uint32_t *const *a, const uint32_t *const *b,
-                                        const uint32_t *const *index);
+int goc_rdna4_v_swmmac_f16_16x16x32_f16(uint64_t flags, uint64_t instruction_flags,
+                                        uint32_t *const *d, const uint32_t *const *a,
+                                        const uint32_t *const *b, const uint32_t *const *index);
 
-int goc_rdna4_v_swmmac_bf16_16x16x32_bf16(uint64_t flags, uint32_t exec_mask,
-                                          uint64_t instruction_flags, uint32_t *const *d,
-                                          const uint32_t *const *a, const uint32_t *const *b,
-                                          const uint32_t *const *index);
+int goc_rdna4_v_swmmac_bf16_16x16x32_bf16(uint64_t flags, uint64_t instruction_flags,
+                                          uint32_t *const *d, const uint32_t *const *a,
+                                          const uint32_t *const *b, const uint32_t *const *index);
 
 // Multiply two 32-bit lanes and add a 64-bit accumulator. A/B use one VGPR;
 // C/D use low/high pairs. The scalar output contains bit 64 of the full sum:
@@ -3092,78 +3065,66 @@ static const uint32_t GOC_WMMA_ABS_C = 1U << 5;
 static const uint32_t GOC_SWMMAC_INDEX_KEY_1 = 1U << 7;
 
 // Wave32 16x16x16 WMMA: A/B each contain 4 VGPRs of packed 16-bit
-// elements; C/D each contain 8 VGPRs of FP32 elements. GoC applies exec_mask
-// to destination writes, including WMMA. All source lanes remain readable.
+// elements; C/D each contain 8 VGPRs of FP32 elements. WMMA and SWMMAC ignore
+// architectural EXEC, including zero, and write every destination lane.
 // Both loose and empirical exact semantics are supported for these WMMA forms.
-int goc_rdna4_v_wmma_f32_16x16x16_f16(uint64_t flags, uint32_t exec_mask,
-                                      uint64_t instruction_flags, uint32_t *const *d,
-                                      const uint32_t *const *a, const uint32_t *const *b,
-                                      const uint32_t *const *c);
+int goc_rdna4_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_rdna4_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint32_t exec_mask,
-                                       uint64_t instruction_flags, uint32_t *const *d,
-                                       const uint32_t *const *a, const uint32_t *const *b,
-                                       const uint32_t *const *c);
+int goc_rdna4_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags,
+                                       uint32_t *const *d, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *c);
 
 // Wave64 variants: 64 words per VGPR; 2 VGPRs for A/B, 4 for C/D.
 // Both semantics and all WMMA modifiers are supported through scalar paths.
-int goc_rdna4w64_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t exec_mask,
-                                         uint64_t instruction_flags, uint32_t *const *d,
-                                         const uint32_t *const *a, const uint32_t *const *b,
-                                         const uint32_t *const *c);
+int goc_rdna4w64_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_rdna4w64_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t exec_mask,
-                                          uint64_t instruction_flags, uint32_t *const *d,
-                                          const uint32_t *const *a, const uint32_t *const *b,
-                                          const uint32_t *const *c);
+int goc_rdna4w64_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags,
+                                          uint32_t *const *d, const uint32_t *const *a,
+                                          const uint32_t *const *b, const uint32_t *const *c);
 
 // Packed-output WMMA: A/B hold 4 VGPRs (wave32) or 2 (wave64);
 // C/D hold 4 or 2 VGPRs respectively, with adjacent rows in low/high halves.
 // Both semantics and all six floating WMMA modifiers are supported. Packed
 // results narrow after each four-product step; GOC_FP16_OVFL controls FP16 overflow.
-int goc_rdna4_v_wmma_f16_16x16x16_f16(uint64_t flags, uint32_t exec_mask,
-                                      uint64_t instruction_flags, uint32_t *const *d,
-                                      const uint32_t *const *a, const uint32_t *const *b,
-                                      const uint32_t *const *c);
+int goc_rdna4_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_rdna4_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint32_t exec_mask,
-                                        uint64_t instruction_flags, uint32_t *const *d,
-                                        const uint32_t *const *a, const uint32_t *const *b,
-                                        const uint32_t *const *c);
+int goc_rdna4_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags,
+                                        uint32_t *const *d, const uint32_t *const *a,
+                                        const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_rdna4w64_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t exec_mask,
-                                         uint64_t instruction_flags, uint32_t *const *d,
-                                         const uint32_t *const *a, const uint32_t *const *b,
-                                         const uint32_t *const *c);
+int goc_rdna4w64_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_rdna4w64_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t exec_mask,
-                                           uint64_t instruction_flags, uint32_t *const *d,
-                                           const uint32_t *const *a, const uint32_t *const *b,
-                                           const uint32_t *const *c);
+int goc_rdna4w64_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags,
+                                           uint32_t *const *d, const uint32_t *const *a,
+                                           const uint32_t *const *b, const uint32_t *const *c);
 
 // Wave32 FP8/BF8 WMMA: A/B each hold 2 VGPRs, C/D each hold 8.
 // FP8 is OCP E4M3FN; BF8 is OCP E5M2. Only loose semantics are implemented;
 // strict exact requests return GOC_ERROR_UNSUPPORTED_SEMANTICS. Supported
 // modifiers are GOC_WMMA_NEG_C and GOC_WMMA_ABS_C.
-int goc_rdna4_v_wmma_f32_16x16x16_fp8_fp8(uint64_t flags, uint32_t exec_mask,
-                                          uint64_t instruction_flags, uint32_t *const *d,
-                                          const uint32_t *const *a, const uint32_t *const *b,
-                                          const uint32_t *const *c);
+int goc_rdna4_v_wmma_f32_16x16x16_fp8_fp8(uint64_t flags, uint64_t instruction_flags,
+                                          uint32_t *const *d, const uint32_t *const *a,
+                                          const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_rdna4_v_wmma_f32_16x16x16_fp8_bf8(uint64_t flags, uint32_t exec_mask,
-                                          uint64_t instruction_flags, uint32_t *const *d,
-                                          const uint32_t *const *a, const uint32_t *const *b,
-                                          const uint32_t *const *c);
+int goc_rdna4_v_wmma_f32_16x16x16_fp8_bf8(uint64_t flags, uint64_t instruction_flags,
+                                          uint32_t *const *d, const uint32_t *const *a,
+                                          const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_rdna4_v_wmma_f32_16x16x16_bf8_fp8(uint64_t flags, uint32_t exec_mask,
-                                          uint64_t instruction_flags, uint32_t *const *d,
-                                          const uint32_t *const *a, const uint32_t *const *b,
-                                          const uint32_t *const *c);
+int goc_rdna4_v_wmma_f32_16x16x16_bf8_fp8(uint64_t flags, uint64_t instruction_flags,
+                                          uint32_t *const *d, const uint32_t *const *a,
+                                          const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_rdna4_v_wmma_f32_16x16x16_bf8_bf8(uint64_t flags, uint32_t exec_mask,
-                                          uint64_t instruction_flags, uint32_t *const *d,
-                                          const uint32_t *const *a, const uint32_t *const *b,
-                                          const uint32_t *const *c);
+int goc_rdna4_v_wmma_f32_16x16x16_bf8_bf8(uint64_t flags, uint64_t instruction_flags,
+                                          uint32_t *const *d, const uint32_t *const *a,
+                                          const uint32_t *const *b, const uint32_t *const *c);
 
 // Integer WMMA modifiers: NEG[0:1] select signed interpretation of A/B;
 // CLAMP saturates signed accumulation at instruction-specific stage boundaries;
@@ -3178,20 +3139,17 @@ static const uint32_t GOC_WMMA_CLAMP = 1U << 6;
 // CLAMP applies after products with (k / 8) even, then after those with
 // (k / 8) odd: K=16 uses 0..7 then 8..15; K=32 uses 0..7 plus 16..23,
 // then 8..15 plus 24..31.
-int goc_rdna4_v_wmma_i32_16x16x16_iu8(uint64_t flags, uint32_t exec_mask,
-                                      uint64_t instruction_flags, uint32_t *const *d,
-                                      const uint32_t *const *a, const uint32_t *const *b,
-                                      const uint32_t *const *c);
+int goc_rdna4_v_wmma_i32_16x16x16_iu8(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_rdna4_v_wmma_i32_16x16x16_iu4(uint64_t flags, uint32_t exec_mask,
-                                      uint64_t instruction_flags, uint32_t *const *d,
-                                      const uint32_t *const *a, const uint32_t *const *b,
-                                      const uint32_t *const *c);
+int goc_rdna4_v_wmma_i32_16x16x16_iu4(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_rdna4_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint32_t exec_mask,
-                                      uint64_t instruction_flags, uint32_t *const *d,
-                                      const uint32_t *const *a, const uint32_t *const *b,
-                                      const uint32_t *const *c);
+int goc_rdna4_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c);
 
 // Bit counts: every operand holds one VGPR. CLZ/CTZ return 0xffffffff for zero;
 // CLS counts leading sign bits (including the sign bit) and returns 0xffffffff

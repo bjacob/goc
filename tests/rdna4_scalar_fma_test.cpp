@@ -3,7 +3,6 @@
 #include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
-#include "rdna4_exec_masks.h"
 #include "rdna4_scalar_fma_hardware.h"
 #include "rdna4_scalar_fma_reference.h"
 #include "rdna4_scalar_fp_reference.h"
@@ -22,8 +21,8 @@ TEST(ScalarFma, HardwareEveryFpStateAndLiteral) {
           uint32_t w[3];
           goc_test::scalar_fma_inputs(i, k == 1, w);
           uint32_t d = w[2];
-          ASSERT_EQ(goc_test::scalar_fma_call(k, cpu | goc_test::scalar_fp_flags(state), UINT32_MAX,
-                                              0, &d, w[0], w[1]),
+          ASSERT_EQ(goc_test::scalar_fma_call(k, cpu | goc_test::scalar_fp_flags(state), 0, &d,
+                                              w[0], w[1]),
                     GOC_SUCCESS);
           hash = goc_test::capture_hash_word(hash, goc_test::scalar_fp_canonical(d, k == 1));
         }
@@ -31,7 +30,7 @@ TEST(ScalarFma, HardwareEveryFpStateAndLiteral) {
       }
 }
 
-TEST(ScalarFma, ExecAndAllScalarAliases) {
+TEST(ScalarFma, AllScalarAliases) {
   for (unsigned state = 0; state < 8; ++state)
     for (unsigned k = 0; k < 26; ++k)
       for (unsigned sample : {0u, 6u, 18u, 1023u, 3001u}) {
@@ -40,12 +39,10 @@ TEST(ScalarFma, ExecAndAllScalarAliases) {
         auto flags = goc_test::scalar_fp_flags(state);
         for (unsigned alias = 0; alias < 3; ++alias) {
           uint32_t expected = w[alias];
-          ASSERT_EQ(goc_test::scalar_fma_call(k, flags, UINT32_MAX, 0, &expected, w[0], w[1]),
-                    GOC_SUCCESS);
-          for (uint32_t exec_mask : rdna4_exec_masks()) {
+          ASSERT_EQ(goc_test::scalar_fma_call(k, flags, 0, &expected, w[0], w[1]), GOC_SUCCESS);
+          {
             uint32_t words[] = {123, w[0], w[1], w[2], 456};
-            ASSERT_EQ(goc_test::scalar_fma_call(k, flags, exec_mask, 0, words + 1 + alias, words[1],
-                                                words[2]),
+            ASSERT_EQ(goc_test::scalar_fma_call(k, flags, 0, words + 1 + alias, words[1], words[2]),
                       GOC_SUCCESS);
             EXPECT_EQ(goc_test::scalar_fp_canonical(words[1 + alias], k == 1),
                       goc_test::scalar_fp_canonical(expected, k == 1));
@@ -62,30 +59,30 @@ TEST(ScalarFma, ExecAndAllScalarAliases) {
 
 TEST(ScalarFma, TrueFusionAndGuestFpStages) {
   uint32_t d = 0xbf800000;
-  ASSERT_EQ(goc_rdna4_s_fmac_f32(0, 0, 0, &d, 0x3f800001, 0x3f7ffffe, nullptr), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_fmac_f32(0, 0, &d, 0x3f800001, 0x3f7ffffe, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0xa8800000u);
   d = 0xabcdbc00;
-  ASSERT_EQ(goc_rdna4_s_fmac_f16(0, 0, 0, &d, 0x3c01, 0x3bfe, nullptr), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_fmac_f16(0, 0, &d, 0x3c01, 0x3bfe, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x8010u);
   d = 0;
-  ASSERT_EQ(goc_rdna4_s_fmac_f32(GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, 0, &d, 0x00800000, 0x3f7fffff,
-                                 nullptr),
-            GOC_SUCCESS);
+  ASSERT_EQ(
+      goc_rdna4_s_fmac_f32(GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, &d, 0x00800000, 0x3f7fffff, nullptr),
+      GOC_SUCCESS);
   EXPECT_EQ(d, 0u);
   d = 0;
-  ASSERT_EQ(goc_rdna4_s_fmac_f32(0, 0, 0, &d, 0x00800000, 0x3f7fffff, nullptr), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_fmac_f32(0, 0, &d, 0x00800000, 0x3f7fffff, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x00800000u);
   d = 1;
-  ASSERT_EQ(goc_rdna4_s_fmac_f16(GOC_FP_FLUSH_INPUT_DENORMALS, 0, 0, &d, 0x3c00, 0, nullptr),
+  ASSERT_EQ(goc_rdna4_s_fmac_f16(GOC_FP_FLUSH_INPUT_DENORMALS, 0, &d, 0x3c00, 0, nullptr),
             GOC_SUCCESS);
   EXPECT_EQ(d, 0u);
   d = 0;
-  ASSERT_EQ(goc_rdna4_s_fmac_f16(GOC_FP16_OVFL, 0, 0, &d, 0x7bff, 0x4000, nullptr), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_fmac_f16(GOC_FP16_OVFL, 0, &d, 0x7bff, 0x4000, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x7bffu);
-  ASSERT_EQ(goc_rdna4_s_fmaak_f32(0, 0, 0, &d, 0x3f800001, 0x3f7ffffe, 0xbf800000, nullptr),
+  ASSERT_EQ(goc_rdna4_s_fmaak_f32(0, 0, &d, 0x3f800001, 0x3f7ffffe, 0xbf800000, nullptr),
             GOC_SUCCESS);
   EXPECT_EQ(d, 0xa8800000u);
-  ASSERT_EQ(goc_rdna4_s_fmamk_f32(0, 0, 0, &d, 0x3f800001, 0x3f7ffffe, 0xbf800000, nullptr),
+  ASSERT_EQ(goc_rdna4_s_fmamk_f32(0, 0, &d, 0x3f800001, 0x3f7ffffe, 0xbf800000, nullptr),
             GOC_SUCCESS);
   EXPECT_EQ(d, 0xa8800000u);
 }
@@ -97,13 +94,13 @@ TEST(ScalarFma, ErrorsAndHostRounding) {
   for (unsigned k = 0; k < 26; ++k) {
     uint32_t d = 123;
     for (unsigned bit = 0; bit < 32; ++bit)
-      EXPECT_EQ(goc_test::scalar_fma_call(k, 0, 0, 1u << bit, &d, 0, 0), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(goc_test::scalar_fma_call(k, 1ULL << 63, 0, 0, &d, 0, 0), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(goc_test::scalar_fma_call(k, 0, 1u << bit, &d, 0, 0), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(goc_test::scalar_fma_call(k, 1ULL << 63, 0, &d, 0, 0), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(goc_test::scalar_fma_call(k, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
-                                        0, &d, 0, 0),
+                                        &d, 0, 0),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(d, 123u);
-    EXPECT_EQ(goc_test::scalar_fma_call(k, 0, 0, 0, &d, 0, 0), GOC_SUCCESS);
+    EXPECT_EQ(goc_test::scalar_fma_call(k, 0, 0, &d, 0, 0), GOC_SUCCESS);
     EXPECT_EQ(std::fegetround(), FE_TONEAREST);
   }
 }

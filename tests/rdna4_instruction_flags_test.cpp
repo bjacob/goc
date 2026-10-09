@@ -28,6 +28,17 @@
 
 namespace {
 
+// EXEC-independent instructions place instruction_flags immediately after flags.
+template <typename Output, typename... Operands>
+void check_high_flags(const char *name,
+                      int (*instruction)(uint64_t, uint64_t, Output *, Operands...)) {
+  SCOPED_TRACE(name);
+  for (unsigned bit = 32; bit < 64; ++bit)
+    EXPECT_EQ(instruction(0, 1ULL << bit, static_cast<Output *>(nullptr), Operands{}...),
+              GOC_ERROR_INVALID_FLAGS)
+        << bit;
+}
+
 template <typename Mask, typename... Operands>
 void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint64_t, Operands...)) {
   SCOPED_TRACE(name);

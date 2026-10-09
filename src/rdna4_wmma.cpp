@@ -17,13 +17,10 @@ namespace {
 // eight (wave32) or four (wave64) consecutive K elements. Output lanes select
 // columns and row groups.
 template <bool Bf16, int WaveSize = 32, bool Packed = false>
-int wmma(uint64_t flags, goc::ExecMask<WaveSize> exec_mask, uint32_t instruction_flags,
-         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-         const uint32_t *const *c) {
+int wmma(uint64_t flags, uint32_t instruction_flags, uint32_t *const *d, const uint32_t *const *a,
+         const uint32_t *const *b, const uint32_t *const *c) {
   if (int error = goc::validate(flags, instruction_flags & ~63U, true))
     return error;
-  if (exec_mask == 0)
-    return GOC_SUCCESS;
 
 #if defined(GOC_HAVE_AVX512BF16)
   if constexpr (Bf16 && WaveSize == 32 && !Packed) {
@@ -33,7 +30,7 @@ int wmma(uint64_t flags, goc::ExecMask<WaveSize> exec_mask, uint32_t instruction
       // with SIMD before using it; rejected inputs fall through to v3/scalar.
       // NEG/ABS only change sign bits, so eligibility is modifier-independent.
       if (goc::wmma_inputs_avx512bf16(a, b, c)) {
-        goc::wmma_avx512bf16(static_cast<uint32_t>(exec_mask), instruction_flags, d, a, b, c);
+        goc::wmma_avx512bf16(instruction_flags, d, a, b, c);
         return GOC_SUCCESS;
       }
     }
@@ -45,9 +42,9 @@ int wmma(uint64_t flags, goc::ExecMask<WaveSize> exec_mask, uint32_t instruction
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
         (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL) {
       if constexpr (Bf16)
-        goc::wmma_bf16_x86_64_v3(static_cast<uint32_t>(exec_mask), instruction_flags, d, a, b, c);
+        goc::wmma_bf16_x86_64_v3(instruction_flags, d, a, b, c);
       else
-        goc::wmma_f16_x86_64_v3(static_cast<uint32_t>(exec_mask), instruction_flags, d, a, b, c);
+        goc::wmma_f16_x86_64_v3(instruction_flags, d, a, b, c);
       return GOC_SUCCESS;
     }
   }
@@ -68,8 +65,6 @@ int wmma(uint64_t flags, goc::ExecMask<WaveSize> exec_mask, uint32_t instruction
     for (int col = 0; col < 16; ++col) {
       int lane = col + 16 * (row / 8) + (WaveSize == 64 ? 32 * ((row / 4) % 2) : 0);
       int reg = row % OutputRegs;
-      if (!((exec_mask >> lane) & 1))
-        continue;
       uint32_t c_bits = c[Packed ? reg / 2 : reg][lane];
       if constexpr (Packed)
         c_bits = (c_bits >> (16 * (reg % 2))) & 0xffff;
@@ -115,81 +110,72 @@ int wmma(uint64_t flags, goc::ExecMask<WaveSize> exec_mask, uint32_t instruction
   // destination may overwrite sources consumed by a different output lane.
   for (int reg = 0; reg < DestinationRegs; ++reg)
     for (int lane = 0; lane < WaveSize; ++lane)
-      if ((exec_mask >> lane) & 1)
-        d[reg][lane] = result[reg][lane];
+      d[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
 }
 
 } // namespace
 
-int goc_rdna4_v_wmma_f32_16x16x16_f16(uint64_t flags, uint32_t exec_mask,
-                                      uint64_t instruction_flags, uint32_t *const *d,
-                                      const uint32_t *const *a, const uint32_t *const *b,
-                                      const uint32_t *const *c) {
+int goc_rdna4_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return wmma<false>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return wmma<false>(flags, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint32_t exec_mask,
-                                       uint64_t instruction_flags, uint32_t *const *d,
-                                       const uint32_t *const *a, const uint32_t *const *b,
-                                       const uint32_t *const *c) {
+int goc_rdna4_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags,
+                                       uint32_t *const *d, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return wmma<true>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return wmma<true>(flags, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4w64_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t exec_mask,
-                                         uint64_t instruction_flags, uint32_t *const *d,
-                                         const uint32_t *const *a, const uint32_t *const *b,
-                                         const uint32_t *const *c) {
+int goc_rdna4w64_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return wmma<false, 64>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return wmma<false, 64>(flags, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4w64_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t exec_mask,
-                                          uint64_t instruction_flags, uint32_t *const *d,
-                                          const uint32_t *const *a, const uint32_t *const *b,
-                                          const uint32_t *const *c) {
+int goc_rdna4w64_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags,
+                                          uint32_t *const *d, const uint32_t *const *a,
+                                          const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return wmma<true, 64>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return wmma<true, 64>(flags, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_wmma_f16_16x16x16_f16(uint64_t flags, uint32_t exec_mask,
-                                      uint64_t instruction_flags, uint32_t *const *d,
-                                      const uint32_t *const *a, const uint32_t *const *b,
-                                      const uint32_t *const *c) {
+int goc_rdna4_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return wmma<false, 32, true>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return wmma<false, 32, true>(flags, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint32_t exec_mask,
-                                        uint64_t instruction_flags, uint32_t *const *d,
-                                        const uint32_t *const *a, const uint32_t *const *b,
-                                        const uint32_t *const *c) {
+int goc_rdna4_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags,
+                                        uint32_t *const *d, const uint32_t *const *a,
+                                        const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return wmma<true, 32, true>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return wmma<true, 32, true>(flags, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4w64_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t exec_mask,
-                                         uint64_t instruction_flags, uint32_t *const *d,
-                                         const uint32_t *const *a, const uint32_t *const *b,
-                                         const uint32_t *const *c) {
+int goc_rdna4w64_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return wmma<false, 64, true>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return wmma<false, 64, true>(flags, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4w64_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t exec_mask,
-                                           uint64_t instruction_flags, uint32_t *const *d,
-                                           const uint32_t *const *a, const uint32_t *const *b,
-                                           const uint32_t *const *c) {
+int goc_rdna4w64_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags,
+                                           uint32_t *const *d, const uint32_t *const *a,
+                                           const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return wmma<true, 64, true>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return wmma<true, 64, true>(flags, instruction_flags, d, a, b, c);
 }

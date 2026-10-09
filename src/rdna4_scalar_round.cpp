@@ -65,82 +65,74 @@ int run(uint64_t flags, uint32_t mode, uint32_t *d, uint32_t a, uint32_t *excp_f
 
 } // namespace
 
-int goc_rdna4_s_ceil_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a, uint32_t *excp_flag_user) {
+int goc_rdna4_s_ceil_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                         uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   return run<Round::Ceil, false>(flags, instruction_flags, d, a, excp_flag_user);
 }
 
-int goc_rdna4_s_ceil_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *d, uint32_t a, uint32_t *excp_flag_user) {
+int goc_rdna4_s_ceil_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                         uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   return run<Round::Ceil, true>(flags, instruction_flags, d, a, excp_flag_user);
 }
 
-int goc_rdna4_s_floor_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user) {
+int goc_rdna4_s_floor_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   return run<Round::Floor, false>(flags, instruction_flags, d, a, excp_flag_user);
 }
 
-int goc_rdna4_s_floor_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user) {
+int goc_rdna4_s_floor_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   return run<Round::Floor, true>(flags, instruction_flags, d, a, excp_flag_user);
 }
 
-int goc_rdna4_s_trunc_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user) {
+int goc_rdna4_s_trunc_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   return run<Round::Trunc, false>(flags, instruction_flags, d, a, excp_flag_user);
 }
 
-int goc_rdna4_s_trunc_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user) {
+int goc_rdna4_s_trunc_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   return run<Round::Trunc, true>(flags, instruction_flags, d, a, excp_flag_user);
 }
 
-int goc_rdna4_s_rndne_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user) {
+int goc_rdna4_s_rndne_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   return run<Round::Nearest, false>(flags, instruction_flags, d, a, excp_flag_user);
 }
 
-int goc_rdna4_s_rndne_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *d, uint32_t a, uint32_t *excp_flag_user) {
+int goc_rdna4_s_rndne_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   return run<Round::Nearest, true>(flags, instruction_flags, d, a, excp_flag_user);
 }

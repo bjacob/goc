@@ -79,11 +79,11 @@ inline void swmmac_float_pack(uint32_t (&result)[Packed ? 4 : 8][32], const floa
 }
 
 template <bool Bf16, bool Packed>
-void swmmac_float_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
-                            SwmmacFloatInputs &input, bool saturate);
+void swmmac_float_x86_64_v3(uint32_t mode, uint32_t *const *d, SwmmacFloatInputs &input,
+                            bool saturate);
 
 template <bool Bf16, bool Packed>
-void swmmac_float_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
-                            SwmmacFloatInputs &input, bool saturate);
+void swmmac_float_x86_64_v4(uint32_t mode, uint32_t *const *d, SwmmacFloatInputs &input,
+                            bool saturate);
 
 } // namespace goc

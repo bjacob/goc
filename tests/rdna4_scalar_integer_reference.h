@@ -50,52 +50,50 @@ inline void scalar_integer_inputs(unsigned i, uint32_t *w) {
   w[3] = uint32_t(b >> 32);
 }
 
-inline int scalar_integer_call(unsigned op, uint64_t flags, uint32_t exec_mask, uint64_t mode,
-                               uint32_t *d, uint64_t *d64, uint64_t a, uint64_t b, uint32_t *scc,
-                               uint32_t seed, uint16_t immediate) {
+inline int scalar_integer_call(unsigned op, uint64_t flags, uint64_t mode, uint32_t *d,
+                               uint64_t *d64, uint64_t a, uint64_t b, uint32_t *scc, uint32_t seed,
+                               uint16_t immediate) {
   switch (op) {
   case 0:
-    return goc_rdna4_s_add_co_u32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b), scc);
+    return goc_rdna4_s_add_co_u32(flags, mode, d, uint32_t(a), uint32_t(b), scc);
   case 1:
-    return goc_rdna4_s_sub_co_u32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b), scc);
+    return goc_rdna4_s_sub_co_u32(flags, mode, d, uint32_t(a), uint32_t(b), scc);
   case 2:
-    return goc_rdna4_s_add_co_i32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b), scc);
+    return goc_rdna4_s_add_co_i32(flags, mode, d, uint32_t(a), uint32_t(b), scc);
   case 3:
-    return goc_rdna4_s_sub_co_i32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b), scc);
+    return goc_rdna4_s_sub_co_i32(flags, mode, d, uint32_t(a), uint32_t(b), scc);
   case 4:
-    return goc_rdna4_s_add_co_ci_u32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b), scc,
-                                     seed);
+    return goc_rdna4_s_add_co_ci_u32(flags, mode, d, uint32_t(a), uint32_t(b), scc, seed);
   case 5:
-    return goc_rdna4_s_sub_co_ci_u32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b), scc,
-                                     seed);
+    return goc_rdna4_s_sub_co_ci_u32(flags, mode, d, uint32_t(a), uint32_t(b), scc, seed);
   case 6:
-    return goc_rdna4_s_abs_i32(flags, exec_mask, mode, d, uint32_t(a), scc);
+    return goc_rdna4_s_abs_i32(flags, mode, d, uint32_t(a), scc);
   case 7:
-    return goc_rdna4_s_absdiff_i32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b), scc);
+    return goc_rdna4_s_absdiff_i32(flags, mode, d, uint32_t(a), uint32_t(b), scc);
   case 8:
-    return goc_rdna4_s_min_i32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b), scc);
+    return goc_rdna4_s_min_i32(flags, mode, d, uint32_t(a), uint32_t(b), scc);
   case 9:
-    return goc_rdna4_s_min_u32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b), scc);
+    return goc_rdna4_s_min_u32(flags, mode, d, uint32_t(a), uint32_t(b), scc);
   case 10:
-    return goc_rdna4_s_max_i32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b), scc);
+    return goc_rdna4_s_max_i32(flags, mode, d, uint32_t(a), uint32_t(b), scc);
   case 11:
-    return goc_rdna4_s_max_u32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b), scc);
+    return goc_rdna4_s_max_u32(flags, mode, d, uint32_t(a), uint32_t(b), scc);
   case 12:
-    return goc_rdna4_s_mul_i32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b));
+    return goc_rdna4_s_mul_i32(flags, mode, d, uint32_t(a), uint32_t(b));
   case 13:
-    return goc_rdna4_s_mul_hi_u32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b));
+    return goc_rdna4_s_mul_hi_u32(flags, mode, d, uint32_t(a), uint32_t(b));
   case 14:
-    return goc_rdna4_s_mul_hi_i32(flags, exec_mask, mode, d, uint32_t(a), uint32_t(b));
+    return goc_rdna4_s_mul_hi_i32(flags, mode, d, uint32_t(a), uint32_t(b));
   case 15:
-    return goc_rdna4_s_add_nc_u64(flags, exec_mask, mode, d64, a, b);
+    return goc_rdna4_s_add_nc_u64(flags, mode, d64, a, b);
   case 16:
-    return goc_rdna4_s_sub_nc_u64(flags, exec_mask, mode, d64, a, b);
+    return goc_rdna4_s_sub_nc_u64(flags, mode, d64, a, b);
   case 17:
-    return goc_rdna4_s_mul_u64(flags, exec_mask, mode, d64, a, b);
+    return goc_rdna4_s_mul_u64(flags, mode, d64, a, b);
   case 18:
-    return goc_rdna4_s_addk_co_i32(flags, exec_mask, mode, d, immediate, scc);
+    return goc_rdna4_s_addk_co_i32(flags, mode, d, immediate, scc);
   case 19:
-    return goc_rdna4_s_mulk_i32(flags, exec_mask, mode, d, immediate);
+    return goc_rdna4_s_mulk_i32(flags, mode, d, immediate);
   }
   return GOC_ERROR_INVALID_FLAGS;
 }

@@ -2,7 +2,6 @@
 
 #include "capture_hash.h"
 #include "goc/goc.h"
-#include "rdna4_exec_masks.h"
 #include "rdna4_swmmac16_hardware.h"
 
 #include <cstring>
@@ -43,8 +42,7 @@ TEST(Swmmac16, HardwareAllModifiers) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 32; ++variant) {
         Registers r(op);
-        ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode(variant), r.d, r.a, r.b, r.index),
-                  GOC_SUCCESS);
+        ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
         uint64_t digest = goc_test::capture_hash_seed;
         for (unsigned reg = 0; reg < (op >= 2 ? 4u : 8u); ++reg)
           for (unsigned lane = 0; lane < 32; ++lane)
@@ -54,23 +52,18 @@ TEST(Swmmac16, HardwareAllModifiers) {
       }
 }
 
-TEST(Swmmac16, EveryExecLaneAndModifier) {
+TEST(Swmmac16, EveryLaneAndModifier) {
   for (unsigned op = 0; op < 4; ++op)
     for (unsigned variant = 0; variant < 32; ++variant) {
-      Registers full(op), initial(op);
-      ASSERT_EQ(functions[op](0, UINT32_MAX, mode(variant), full.d, full.a, full.b, full.index),
-                GOC_SUCCESS);
-      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint32_t exec_mask : rdna4_exec_masks()) {
-          Registers r(op);
-          ASSERT_EQ(functions[op](cpu, exec_mask, mode(variant), r.d, r.a, r.b, r.index),
-                    GOC_SUCCESS);
-          for (unsigned reg = 0; reg < (op >= 2 ? 4u : 8u); ++reg)
-            for (unsigned lane = 0; lane < 32; ++lane)
-              ASSERT_EQ(r.d[reg][lane],
-                        ((exec_mask >> lane) & 1) ? full.d[reg][lane] : initial.d[reg][lane])
-                  << op << "/" << cpu << "/" << variant << "/" << exec_mask;
-        }
+      Registers full(op);
+      ASSERT_EQ(functions[op](0, mode(variant), full.d, full.a, full.b, full.index), GOC_SUCCESS);
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+        Registers r(op);
+        ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
+        for (unsigned reg = 0; reg < (op >= 2 ? 4u : 8u); ++reg)
+          for (unsigned lane = 0; lane < 32; ++lane)
+            ASSERT_EQ(r.d[reg][lane], full.d[reg][lane]) << op << "/" << cpu << "/" << variant;
+      }
     }
 }
 
@@ -87,34 +80,30 @@ TEST(Swmmac16, OverlappingSourcesAndDuplicateDestinations) {
             r.d[reg] = r.data[offsets[reg]];
             std::memcpy(reference.d[reg], r.d[reg], 32 * sizeof(uint32_t));
           }
-          const uint32_t exec_mask = 0xa35ac69d;
-          ASSERT_EQ(functions[op](0, exec_mask, mode(variant), reference.d, reference.a,
-                                  reference.b, reference.index),
+
+          ASSERT_EQ(functions[op](0, mode(variant), reference.d, reference.a, reference.b,
+                                  reference.index),
                     GOC_SUCCESS);
           uint32_t expected[21][32];
           std::memcpy(expected, r.data, sizeof(expected));
           for (unsigned reg = 0; reg < regs; ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
-              if ((exec_mask >> lane) & 1)
-                expected[offsets[reg]][lane] = reference.d[reg][lane];
-          ASSERT_EQ(functions[op](cpu, exec_mask, mode(variant), r.d, r.a, r.b, r.index),
-                    GOC_SUCCESS);
+
+              expected[offsets[reg]][lane] = reference.d[reg][lane];
+          ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
           ASSERT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0)
               << op << "/" << cpu << "/" << variant << "/" << alias;
         }
 }
 
-TEST(Swmmac16, ValidationAndEmptyExec) {
+TEST(Swmmac16, Validation) {
   for (Fn fn : functions) {
-    EXPECT_EQ(fn(0, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr, nullptr),
-              GOC_SUCCESS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr,
-                 nullptr, nullptr),
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, nullptr, nullptr, nullptr,
+                 nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     for (unsigned bit = 0; bit < 32; ++bit)
       if (!((1u << bit) & mode(31))) {
-        EXPECT_EQ(fn(0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(0, 1u << bit, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
       }
   }
 }
@@ -137,7 +126,7 @@ TEST(Swmmac16, PackedNearestEvenMidpoints) {
         for (unsigned reg = 12; reg < 16; ++reg)
           for (auto &word : r.data[reg])
             word = c | (c << 16);
-        ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, r.d, r.a, r.b, r.index), GOC_SUCCESS);
+        ASSERT_EQ(functions[op](cpu, 0, r.d, r.a, r.b, r.index), GOC_SUCCESS);
         uint32_t want = one + 2 * odd;
         for (unsigned reg = 0; reg < 4; ++reg)
           for (unsigned lane = 0; lane < 32; ++lane)
@@ -163,9 +152,9 @@ TEST(Swmmac16, FiniteOverflowAndInfinity) {
             for (auto &word : r.data[reg])
               word = 0;
           uint32_t modifiers = negative ? GOC_WMMA_NEG_LO_A | GOC_WMMA_NEG_HI_A : 0;
-          ASSERT_EQ(functions[2](cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX, modifiers, r.d,
-                                 r.a, r.b, r.index),
-                    GOC_SUCCESS);
+          ASSERT_EQ(
+              functions[2](cpu | (saturate ? GOC_FP16_OVFL : 0), modifiers, r.d, r.a, r.b, r.index),
+              GOC_SUCCESS);
           uint32_t want = (saturate && !infinity ? 0x7bff : 0x7c00) | (negative ? 0x8000 : 0);
           for (unsigned reg = 0; reg < 4; ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
@@ -190,7 +179,7 @@ TEST(Swmmac16, AccumulatorAndPairNegationAcrossOutputFormats) {
         uint32_t flags = variant == 0   ? 0
                          : variant == 1 ? GOC_WMMA_NEG_LO_B
                                         : GOC_WMMA_NEG_LO_B | GOC_WMMA_NEG_HI_B;
-        ASSERT_EQ(functions[op](cpu, UINT32_MAX, flags, r.d, r.a, r.b, r.index), GOC_SUCCESS);
+        ASSERT_EQ(functions[op](cpu, flags, r.d, r.a, r.b, r.index), GOC_SUCCESS);
         // Sixteen products of one: 2+16, 2+8-8, or 2-16.
         const uint32_t fp32[] = {0x41900000, 0x40000000, 0xc1600000};
         const uint32_t fp16[] = {0x4c80, 0x4000, 0xcb00};

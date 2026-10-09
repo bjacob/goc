@@ -46,25 +46,21 @@ struct Ops {
   static V select_negative(V mask, V yes, V no) {
     return _mm512_mask_mov_epi32(no, _mm512_cmp_epi32_mask(mask, splat(0), _MM_CMPINT_LT), yes);
   }
-
-  static void masked_store(uint32_t *p, uint32_t exec_mask, V v) {
-    _mm512_mask_storeu_epi32(p, static_cast<__mmask16>(exec_mask), v);
-  }
 };
 
 } // namespace
 
 namespace goc {
 
-void integer_wmma_avx512vnni(int bits, int k, uint32_t exec_mask, uint32_t modifiers,
-                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+void integer_wmma_avx512vnni(int bits, int k, uint32_t modifiers, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
   if (bits == 8)
-    integer_wmma<8, 16, Ops>(exec_mask, modifiers, d, a, b, c);
+    integer_wmma<8, 16, Ops>(modifiers, d, a, b, c);
   else if (k == 16)
-    integer_wmma<4, 16, Ops>(exec_mask, modifiers, d, a, b, c);
+    integer_wmma<4, 16, Ops>(modifiers, d, a, b, c);
   else
-    integer_wmma<4, 32, Ops>(exec_mask, modifiers, d, a, b, c);
+    integer_wmma<4, 32, Ops>(modifiers, d, a, b, c);
 }
 
 } // namespace goc

@@ -12,9 +12,8 @@ namespace goc {
 // Widen factors to signed 16 bits, including unsigned bytes (0..255), before
 // pairwise dot products. No intermediate byte-pair saturation is permitted.
 template <int Bits, int K, bool Clamp, class Ops>
-void integer_wmma_impl(uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d,
-                       const uint32_t *const *a, const uint32_t *const *b,
-                       const uint32_t *const *c) {
+void integer_wmma_impl(uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
+                       const uint32_t *const *b, const uint32_t *const *c) {
   using V = typename Ops::V;
   const int sign_a = (modifiers & GOC_WMMA_SIGNED_A) ? 1 << (Bits - 1) : 0;
   const int sign_b = (modifiers & GOC_WMMA_SIGNED_B) ? 1 << (Bits - 1) : 0;
@@ -80,17 +79,17 @@ void integer_wmma_impl(uint32_t exec_mask, uint32_t modifiers, uint32_t *const *
   // All source reads precede writes, including when D shares A/B/C VGPRs.
   for (int reg = 0; reg < 8; ++reg)
     for (int lane = 0; lane < 32; lane += Ops::width)
-      Ops::masked_store(d[reg] + lane, exec_mask >> lane, Ops::load(result[reg] + lane));
+      Ops::store(d[reg] + lane, Ops::load(result[reg] + lane));
 }
 
 // Execute the selected saturation mode with compile-time stage boundaries.
 template <int Bits, int K, class Ops>
-void integer_wmma(uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d,
-                  const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+void integer_wmma(uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
+                  const uint32_t *const *b, const uint32_t *const *c) {
   if (modifiers & GOC_WMMA_CLAMP)
-    integer_wmma_impl<Bits, K, true, Ops>(exec_mask, modifiers, d, a, b, c);
+    integer_wmma_impl<Bits, K, true, Ops>(modifiers, d, a, b, c);
   else
-    integer_wmma_impl<Bits, K, false, Ops>(exec_mask, modifiers, d, a, b, c);
+    integer_wmma_impl<Bits, K, false, Ops>(modifiers, d, a, b, c);
 }
 
 } // namespace goc

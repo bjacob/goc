@@ -102,7 +102,7 @@ TEST(ExceptionRegisters, UnsupportedLeavesAllOutputsUntouched) {
   EXPECT_EQ(data[0], 0xdeadbeefU);
   EXPECT_EQ(excp_flag_user, 0x80000021U);
   uint32_t scc = 1;
-  EXPECT_EQ(goc_rdna4_s_add_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &scc, 0, 0, &excp_flag_user),
+  EXPECT_EQ(goc_rdna4_s_add_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, &scc, 0, 0, &excp_flag_user),
             GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(scc, 1U);
   EXPECT_EQ(excp_flag_user, 0x80000021U);
@@ -122,7 +122,9 @@ TEST(ExceptionRegisters, NonReportingInstructionsKeepTheirSignatures) {
   using Ternary = int (*)(uint64_t, uint32_t, uint64_t, uint32_t *const *, const uint32_t *const *,
                           const uint32_t *const *, const uint32_t *const *);
   static_assert(std::is_same_v<decltype(&goc_rdna4_v_cvt_f32_ubyte0), Unary>);
-  static_assert(std::is_same_v<decltype(&goc_rdna4_v_wmma_f32_16x16x16_f16), Ternary>);
+  using Matrix = int (*)(uint64_t, uint64_t, uint32_t *const *, const uint32_t *const *,
+                         const uint32_t *const *, const uint32_t *const *);
+  static_assert(std::is_same_v<decltype(&goc_rdna4_v_wmma_f32_16x16x16_f16), Matrix>);
   static_assert(std::is_same_v<decltype(&goc_rdna4_v_dot4_f32_fp8_fp8), Ternary>);
   static_assert(std::is_same_v<decltype(&goc_rdna4_v_interp_p10_f32), Ternary>);
 }

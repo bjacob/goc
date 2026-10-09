@@ -6,7 +6,6 @@
 #include "rdna4_dense_golden.h"
 #include "rdna4_dot.h"
 #include "rdna4_dot_fixtures.h"
-#include "rdna4_exec_masks.h"
 #include "rdna4_test_instruction.h"
 #include "rdna4_wmma_fixtures.h"
 
@@ -20,8 +19,6 @@
 #include <vector>
 
 namespace {
-
-using Wmma = goc_test::WaveInstruction<decltype(&goc_rdna4_v_wmma_f32_16x16x16_f16)>;
 
 // Each logical VGPR is deliberately separated by padding and allocated in
 // reverse order, exercising the API's array-of-pointers contract.
@@ -74,7 +71,7 @@ TEST(Wmma, HardwareCapturedLooseResults) {
             }
           for (int reg = 0; reg < 8; ++reg)
             std::fill(r.v[8 + reg], r.v[8 + reg] + 32, f.c);
-          ASSERT_EQ(fn(level, UINT32_MAX, 0, r.v + dst, r.v, r.v + 4, r.v + 8), 0);
+          ASSERT_EQ(fn(level, 0, r.v + dst, r.v, r.v + 4, r.v + 8), 0);
           for (int reg = 0; reg < 8; ++reg)
             for (int lane = 0; lane < 32; ++lane)
               EXPECT_TRUE(fuzzy(goc::as_float(r.v[dst + reg][lane]), goc::as_float(f.expected32)));
@@ -83,38 +80,32 @@ TEST(Wmma, HardwareCapturedLooseResults) {
     }
 }
 
-TEST(Wmma, LaneMappingMaskAndPartialOperandOverlap) {
+TEST(Wmma, LaneMappingAndPartialOperandOverlap) {
   for (uint64_t level = 0; level <= goc_init_cpu_flags(); ++level)
-    for (bool bf16 : {false, true})
-      for (uint32_t exec_mask : {0u, 1u, 0xaaaaaaaa, 0xffffffff}) {
-        Registers r;
-        const uint16_t one = bf16 ? 0x3f80 : 0x3c00;
+    for (bool bf16 : {false, true}) {
+      Registers r;
+      const uint16_t one = bf16 ? 0x3f80 : 0x3c00;
 
-        // A is identity. B encodes a row/column-dependent power of two so that
-        // every D coordinate has an independently known, exactly representable value.
-        for (int row = 0; row < 16; ++row)
-          for (int k = 0; k < 16; ++k)
-            set16(r.v, row, k, row == k ? one : 0);
-        for (int col = 0; col < 16; ++col)
-          for (int k = 0; k < 16; ++k)
-            set16(r.v + 4, col, k, uint16_t(one + ((k + col) % 8) * (bf16 ? 128 : 1024)));
+      // A is identity. B encodes a row/column-dependent power of two so that
+      // every D coordinate has an independently known, exactly representable value.
+      for (int row = 0; row < 16; ++row)
+        for (int k = 0; k < 16; ++k)
+          set16(r.v, row, k, row == k ? one : 0);
+      for (int col = 0; col < 16; ++col)
+        for (int k = 0; k < 16; ++k)
+          set16(r.v + 4, col, k, uint16_t(one + ((k + col) % 8) * (bf16 ? 128 : 1024)));
 
-        // D starts at register 2, so it shares only some VGPRs with A, B and C.
-        std::array<std::array<uint32_t, 32>, 8> old;
-        for (int reg = 0; reg < 8; ++reg)
-          std::copy(r.v[2 + reg], r.v[2 + reg] + 32, old[reg].begin());
-        auto fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
-        ASSERT_EQ(fn(level, exec_mask, 0, r.v + 2, r.v, r.v + 4, r.v + 8), 0);
-        for (int lane = 0; lane < 32; ++lane)
-          for (int reg = 0; reg < 8; ++reg) {
-            int row = reg + 8 * (lane / 16), col = lane % 16;
-            uint32_t expected = ((exec_mask >> lane) & 1)
-                                    ? goc::as_bits(std::ldexp(1.0f, (row + col) % 8))
-                                    : old[reg][lane];
-            EXPECT_EQ(r.v[2 + reg][lane], expected) << "lane=" << lane << " reg=" << reg;
-          }
-        r.guards();
-      }
+      // D starts at register 2, so it shares only some VGPRs with A, B and C.
+      auto fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
+      ASSERT_EQ(fn(level, 0, r.v + 2, r.v, r.v + 4, r.v + 8), 0);
+      for (int lane = 0; lane < 32; ++lane)
+        for (int reg = 0; reg < 8; ++reg) {
+          int row = reg + 8 * (lane / 16), col = lane % 16;
+          uint32_t expected = goc::as_bits(std::ldexp(1.0f, (row + col) % 8));
+          EXPECT_EQ(r.v[2 + reg][lane], expected) << "lane=" << lane << " reg=" << reg;
+        }
+      r.guards();
+    }
 }
 
 TEST(Wmma, UnsupportedSemanticsPreserveAllRegisters) {
@@ -122,8 +113,8 @@ TEST(Wmma, UnsupportedSemanticsPreserveAllRegisters) {
   for (auto &reg : r.storage)
     for (auto &x : reg)
       x = 0xdeadbeef;
-  EXPECT_EQ(goc_rdna4_v_wmma_f32_16x16x16_f16(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT, UINT32_MAX,
-                                              0, r.v, r.v, r.v, r.v),
+  EXPECT_EQ(goc_rdna4_v_wmma_f32_16x16x16_f16(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT, 0, r.v,
+                                              r.v, r.v, r.v),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
   for (auto &reg : r.storage)
     for (auto x : reg)
@@ -144,28 +135,23 @@ TEST(Wmma, HardwareCapturedExactResults) {
       auto fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
       const auto &fixtures = bf16 ? kGfx12WmmaBF16Cases : kGfx12WmmaF16Cases;
       for (const auto &f : fixtures)
-        for (int dst : {0, 4, 8, 16})
-          for (uint32_t exec_mask : {0u, 0x55555555u, 0xffffffffu}) {
-            Registers r;
-            for (int i = 0; i < 16; ++i)
-              for (int k = 0; k < 16; ++k) {
-                set16(r.v, i, k, f.a[k]);
-                set16(r.v + 4, i, k, f.b[k]);
-              }
-            for (int reg = 0; reg < 8; ++reg)
-              std::fill(r.v[8 + reg], r.v[8 + reg] + 32, f.c);
-            std::array<std::array<uint32_t, 32>, 8> old;
-            for (int reg = 0; reg < 8; ++reg)
-              std::copy(r.v[dst + reg], r.v[dst + reg] + 32, old[reg].begin());
-            ASSERT_EQ(fn(level | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0,
-                         r.v + dst, r.v, r.v + 4, r.v + 8),
-                      0);
-            for (int reg = 0; reg < 8; ++reg)
-              for (int lane = 0; lane < 32; ++lane)
-                EXPECT_EQ(r.v[dst + reg][lane],
-                          ((exec_mask >> lane) & 1) ? f.expected32 : old[reg][lane]);
-            r.guards();
-          }
+        for (int dst : {0, 4, 8, 16}) {
+          Registers r;
+          for (int i = 0; i < 16; ++i)
+            for (int k = 0; k < 16; ++k) {
+              set16(r.v, i, k, f.a[k]);
+              set16(r.v + 4, i, k, f.b[k]);
+            }
+          for (int reg = 0; reg < 8; ++reg)
+            std::fill(r.v[8 + reg], r.v[8 + reg] + 32, f.c);
+          ASSERT_EQ(fn(level | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, r.v + dst,
+                       r.v, r.v + 4, r.v + 8),
+                    0);
+          for (int reg = 0; reg < 8; ++reg)
+            for (int lane = 0; lane < 32; ++lane)
+              EXPECT_EQ(r.v[dst + reg][lane], f.expected32);
+          r.guards();
+        }
     }
 }
 
@@ -183,7 +169,7 @@ TEST(Rdna4Dot, HardwareCapturedSpecialValuesAndRounding) {
 }
 
 TEST(Rdna4Dot, PublicApiHardwareFixturesMaskAndOverlap) {
-  const auto check = [](const auto &cases, Wmma fn) {
+  const auto check = [](const auto &cases, auto fn) {
     for (const auto &f : cases)
       for (int dst : {0, 1, 2, 3}) {
         Registers r;
@@ -194,8 +180,9 @@ TEST(Rdna4Dot, PublicApiHardwareFixturesMaskAndOverlap) {
         }
         std::array<uint32_t, 32> old;
         std::copy(r.v[dst], r.v[dst] + 32, old.begin());
-        ASSERT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0xaaaaaaaa, 0, r.v + dst,
-                     r.v, r.v + 1, r.v + 2),
+        ASSERT_EQ(goc_test::without_exceptions(fn,
+                                               GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                               0xaaaaaaaa, 0, r.v + dst, r.v, r.v + 1, r.v + 2),
                   0);
         for (int lane = 0; lane < 32; ++lane)
           EXPECT_EQ(r.v[dst][lane], lane % 2 ? f.expected : old[lane]);
@@ -222,8 +209,7 @@ TEST(Wmma, AllModifierCombinations) {
         if (modifiers & GOC_WMMA_NEG_C)
           c = -c;
         auto fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
-        ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, UINT32_MAX, modifiers, r.v + 8, r.v, r.v + 4,
-                     r.v + 8),
+        ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, modifiers, r.v + 8, r.v, r.v + 4, r.v + 8),
                   0);
         for (int reg = 8; reg < 16; ++reg)
           for (int lane = 0; lane < 32; ++lane)
@@ -243,11 +229,10 @@ TEST(Wmma, Bf16FastPathSubnormalFallback) {
     }
   for (int reg = 8; reg < 16; ++reg)
     std::fill(r.v[reg], r.v[reg] + 32, 1u);
-  ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(0, UINT32_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8),
-            0);
-  ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(goc_init_cpu_flags(), UINT32_MAX, 0, r.v + 8, r.v,
-                                               r.v + 4, r.v + 8),
-            0);
+  ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(0, 0, r.v + 16, r.v, r.v + 4, r.v + 8), 0);
+  ASSERT_EQ(
+      goc_rdna4_v_wmma_f32_16x16x16_bf16(goc_init_cpu_flags(), 0, r.v + 8, r.v, r.v + 4, r.v + 8),
+      0);
   for (int reg = 0; reg < 8; ++reg)
     for (int lane = 0; lane < 32; ++lane)
       EXPECT_EQ(r.v[8 + reg][lane], r.v[16 + reg][lane]);
@@ -260,9 +245,9 @@ TEST(Wmma, NormalBf16FactorsWithSubnormalProducts) {
       r.v[reg][lane] = 0x00800080;
       r.v[4 + reg][lane] = 0x3f003f00;
     }
-  ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(goc_init_cpu_flags(), UINT32_MAX, 0, r.v + 16, r.v,
-                                               r.v + 4, r.v + 8),
-            0);
+  ASSERT_EQ(
+      goc_rdna4_v_wmma_f32_16x16x16_bf16(goc_init_cpu_flags(), 0, r.v + 16, r.v, r.v + 4, r.v + 8),
+      0);
   for (int reg = 16; reg < 24; ++reg)
     for (int lane = 0; lane < 32; ++lane)
       EXPECT_EQ(r.v[reg][lane], 0x02000000u);
@@ -288,9 +273,8 @@ TEST(Wmma, DeterministicDenseIntegerGolden) {
             for (int col = 0; col < 16; ++col)
               r.v[8 + row % 8][col + 16 * (row / 8)] = goc::as_bits(float(int(rng() % 5) - 2));
           auto fn = bf16 ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
-          ASSERT_EQ(fn(level | semantics | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, r.v + dst, r.v,
-                       r.v + 4, r.v + 8),
-                    0);
+          ASSERT_EQ(
+              fn(level | semantics | GOC_SEMANTICS_STRICT, 0, r.v + dst, r.v, r.v + 4, r.v + 8), 0);
           for (int row = 0; row < 16; ++row)
             for (int col = 0; col < 16; ++col)
               EXPECT_EQ(r.v[dst + row % 8][col + 16 * (row / 8)],
@@ -324,43 +308,34 @@ TEST(Rdna4Dot, LooseAndFallbackIntegerGolden) {
     }
 }
 
-TEST(WmmaWave64, CapturedGoldensMasksAndOverlap) {
+TEST(WmmaWave64, CapturedGoldensAndOverlap) {
   for (bool bf16 : {false, true})
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
       auto fn = bf16 ? goc_rdna4w64_v_wmma_f32_16x16x16_bf16 : goc_rdna4w64_v_wmma_f32_16x16x16_f16;
       const auto &cases = bf16 ? kGfx12WmmaBF16Cases : kGfx12WmmaF16Cases;
       for (const auto &f : cases)
-        for (int dst : {0, 1, 2, 4, 8})
-          for (uint64_t exec_mask : std::initializer_list<uint64_t>{
-                   0ULL, 1ULL << 32, 1ULL << 63, 0xaaaaaaaa55555555ULL, UINT64_MAX}) {
-            uint32_t data[12][64] = {};
-            uint32_t *v[12];
-            for (int i = 0; i < 12; ++i)
-              v[i] = data[11 - i];
-            for (int reg = 0; reg < 2; ++reg)
-              for (int lane = 0; lane < 64; ++lane) {
-                int k = 4 * (lane / 16) + 2 * reg;
-                v[reg][lane] = f.a[k] | (uint32_t(f.a[k + 1]) << 16);
-                v[2 + reg][lane] = f.b[k] | (uint32_t(f.b[k + 1]) << 16);
-              }
-            for (int reg = 4; reg < 8; ++reg)
-              std::fill(v[reg], v[reg] + 64, f.c);
-            uint32_t old[4][64];
-            for (int reg = 0; reg < 4; ++reg)
-              std::copy(v[dst + reg], v[dst + reg] + 64, old[reg]);
-            ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, exec_mask, 0, v + dst, v, v + 2, v + 4),
-                      0);
-            for (int reg = 0; reg < 4; ++reg)
-              for (int lane = 0; lane < 64; ++lane) {
-                if (!((exec_mask >> lane) & 1))
-                  EXPECT_EQ(v[dst + reg][lane], old[reg][lane]);
-                else if (semantics == GOC_SEMANTICS_EXACT_EMPIRICAL)
-                  EXPECT_EQ(v[dst + reg][lane], f.expected64);
-                else
-                  EXPECT_TRUE(
-                      fuzzy(goc::as_float(v[dst + reg][lane]), goc::as_float(f.expected64)));
-              }
-          }
+        for (int dst : {0, 1, 2, 4, 8}) {
+          uint32_t data[12][64] = {};
+          uint32_t *v[12];
+          for (int i = 0; i < 12; ++i)
+            v[i] = data[11 - i];
+          for (int reg = 0; reg < 2; ++reg)
+            for (int lane = 0; lane < 64; ++lane) {
+              int k = 4 * (lane / 16) + 2 * reg;
+              v[reg][lane] = f.a[k] | (uint32_t(f.a[k + 1]) << 16);
+              v[2 + reg][lane] = f.b[k] | (uint32_t(f.b[k + 1]) << 16);
+            }
+          for (int reg = 4; reg < 8; ++reg)
+            std::fill(v[reg], v[reg] + 64, f.c);
+          ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, 0, v + dst, v, v + 2, v + 4), 0);
+          for (int reg = 0; reg < 4; ++reg)
+            for (int lane = 0; lane < 64; ++lane) {
+              if (semantics == GOC_SEMANTICS_EXACT_EMPIRICAL)
+                EXPECT_EQ(v[dst + reg][lane], f.expected64);
+              else
+                EXPECT_TRUE(fuzzy(goc::as_float(v[dst + reg][lane]), goc::as_float(f.expected64)));
+            }
+        }
     }
 }
 
@@ -386,7 +361,7 @@ TEST(WmmaWave64, DenseLaneMapping) {
           v[4 + row % 4][col + 16 * (row / 8) + 32 * ((row / 4) % 2)] =
               goc::as_bits(float(int(rng() % 5) - 2));
       auto fn = bf16 ? goc_rdna4w64_v_wmma_f32_16x16x16_bf16 : goc_rdna4w64_v_wmma_f32_16x16x16_f16;
-      ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, v + 8, v, v + 2, v + 4), 0);
+      ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, 0, v + 8, v, v + 2, v + 4), 0);
       for (int row = 0; row < 16; ++row)
         for (int col = 0; col < 16; ++col)
           EXPECT_EQ(v[8 + row % 4][col + 16 * (row / 8) + 32 * ((row / 4) % 2)],
@@ -409,7 +384,7 @@ TEST(WmmaWave64, ModifiersAndErrorsPreserveState) {
           std::fill(v[reg], v[reg] + 64, 0xc0400000u);
         auto fn =
             bf16 ? goc_rdna4w64_v_wmma_f32_16x16x16_bf16 : goc_rdna4w64_v_wmma_f32_16x16x16_f16;
-        ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, UINT64_MAX, 64, v + 4, v, v + 2, v + 4),
+        ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, 64, v + 4, v, v + 2, v + 4),
                   GOC_ERROR_INVALID_FLAGS);
         for (int reg = 4; reg < 8; ++reg)
           for (int lane = 0; lane < 64; ++lane)
@@ -419,8 +394,7 @@ TEST(WmmaWave64, ModifiersAndErrorsPreserveState) {
         int c = (modifiers & GOC_WMMA_ABS_C) ? 3 : -3;
         if (modifiers & GOC_WMMA_NEG_C)
           c = -c;
-        ASSERT_EQ(
-            fn(semantics | GOC_SEMANTICS_STRICT, UINT64_MAX, modifiers, v + 4, v, v + 2, v + 4), 0);
+        ASSERT_EQ(fn(semantics | GOC_SEMANTICS_STRICT, modifiers, v + 4, v, v + 2, v + 4), 0);
         for (int reg = 4; reg < 8; ++reg)
           for (int lane = 0; lane < 64; ++lane)
             EXPECT_EQ(v[reg][lane], goc::as_bits(float(low + high + c)));
@@ -432,47 +406,44 @@ TEST(Wmma, Fp16V3FiniteAndExceptionalInputsMatchScalar) {
     GTEST_SKIP() << "Host does not support x86-64-v3";
   for (bool exceptional : {false, true})
     for (int trial = 0; trial < 8; ++trial)
-      for (int dst : {0, 2, 4, 8, 16})
-        for (uint32_t exec_mask : {0U, 0x91234567U, UINT32_MAX}) {
-          Registers reference, actual;
-          std::minstd_rand random(73 + trial);
-          for (int reg = 0; reg < 24; ++reg)
-            for (int lane = 0; lane < 32; ++lane) {
-              uint32_t bits = uint32_t(random()) ^ (uint32_t(random()) << 16);
-              if (reg < 8) {
-                // Both signs and the full finite exponent range, including
-                // FP16 subnormals. Separate trials inject NaNs and infinities.
-                bits &= 0xfbfffbff;
-                if (exceptional && lane == 3 && reg == 0)
-                  bits = 0x7c00fc00;
-                if (exceptional && lane == 11 && reg == 5)
-                  bits = 0x7e557d23;
-              } else {
-                bits &= 0xff7fffff;
-              }
-              reference.v[reg][lane] = actual.v[reg][lane] = bits;
+      for (int dst : {0, 2, 4, 8, 16}) {
+        Registers reference, actual;
+        std::minstd_rand random(73 + trial);
+        for (int reg = 0; reg < 24; ++reg)
+          for (int lane = 0; lane < 32; ++lane) {
+            uint32_t bits = uint32_t(random()) ^ (uint32_t(random()) << 16);
+            if (reg < 8) {
+              // Both signs and the full finite exponent range, including
+              // FP16 subnormals. Separate trials inject NaNs and infinities.
+              bits &= 0xfbfffbff;
+              if (exceptional && lane == 3 && reg == 0)
+                bits = 0x7c00fc00;
+              if (exceptional && lane == 11 && reg == 5)
+                bits = 0x7e557d23;
+            } else {
+              bits &= 0xff7fffff;
             }
-          ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_f16(GOC_CPU_BASELINE, exec_mask, 0,
-                                                      reference.v + dst, reference.v,
-                                                      reference.v + 4, reference.v + 8),
-                    GOC_SUCCESS);
-          ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_f16(GOC_CPU_X86_64_V3, exec_mask, 0,
-                                                      actual.v + dst, actual.v, actual.v + 4,
-                                                      actual.v + 8),
-                    GOC_SUCCESS);
-          // Finite values use the same K order and FMA operations. Loose NaN
-          // payloads may differ between the CPU converter and scalar widening.
-          for (int reg = 0; reg < 24; ++reg)
-            for (int lane = 0; lane < 32; ++lane) {
-              bool written = reg >= dst && reg < dst + 8 && ((exec_mask >> lane) & 1);
-              if (written && std::isnan(goc::as_float(reference.v[reg][lane])))
-                EXPECT_TRUE(std::isnan(goc::as_float(actual.v[reg][lane])));
-              else
-                EXPECT_EQ(actual.v[reg][lane], reference.v[reg][lane]);
-            }
-          reference.guards();
-          actual.guards();
-        }
+            reference.v[reg][lane] = actual.v[reg][lane] = bits;
+          }
+        ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_f16(GOC_CPU_BASELINE, 0, reference.v + dst,
+                                                    reference.v, reference.v + 4, reference.v + 8),
+                  GOC_SUCCESS);
+        ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_f16(GOC_CPU_X86_64_V3, 0, actual.v + dst, actual.v,
+                                                    actual.v + 4, actual.v + 8),
+                  GOC_SUCCESS);
+        // Finite values use the same K order and FMA operations. Loose NaN
+        // payloads may differ between the CPU converter and scalar widening.
+        for (int reg = 0; reg < 24; ++reg)
+          for (int lane = 0; lane < 32; ++lane) {
+            bool written = reg >= dst && reg < dst + 8;
+            if (written && std::isnan(goc::as_float(reference.v[reg][lane])))
+              EXPECT_TRUE(std::isnan(goc::as_float(actual.v[reg][lane])));
+            else
+              EXPECT_EQ(actual.v[reg][lane], reference.v[reg][lane]);
+          }
+        reference.guards();
+        actual.guards();
+      }
 }
 
 TEST(Wmma, Bf16V3AndZen4FallbackMatchScalar) {
@@ -480,47 +451,45 @@ TEST(Wmma, Bf16V3AndZen4FallbackMatchScalar) {
     GTEST_SKIP() << "Host does not support x86-64-v3";
   for (uint64_t level = GOC_CPU_X86_64_V3; level <= goc_init_cpu_flags(); ++level)
     for (int trial = 0; trial < 8; ++trial)
-      for (int dst : {0, 2, 4, 8, 16})
-        for (uint32_t exec_mask : {0U, 0x91234567U, UINT32_MAX}) {
-          Registers reference, actual;
-          std::minstd_rand random(107 + trial);
-          for (int reg = 0; reg < 24; ++reg)
-            for (int lane = 0; lane < 32; ++lane) {
-              uint32_t bits = uint32_t(random()) ^ (uint32_t(random()) << 16);
-              if (reg < 8) {
-                // Alternate moderate finite inputs with the full BF16 range.
-                if (trial % 2 == 0)
-                  bits = (bits & 0x807f807f) | 0x3f003f00;
-                if (trial == 3 && reg == 0 && lane == 3)
-                  bits = 0x7f80ff80;
-                if (trial == 5 && reg == 5 && lane == 11)
-                  bits = 0x7fc57f83;
-                // A subnormal forces Zen4 to reject DPBF16 and use its fallback.
-                if (reg == 0 && lane == 0)
-                  bits = 0x00010001;
-              } else {
-                bits &= 0xff7fffff;
-              }
-              reference.v[reg][lane] = actual.v[reg][lane] = bits;
+      for (int dst : {0, 2, 4, 8, 16}) {
+        Registers reference, actual;
+        std::minstd_rand random(107 + trial);
+        for (int reg = 0; reg < 24; ++reg)
+          for (int lane = 0; lane < 32; ++lane) {
+            uint32_t bits = uint32_t(random()) ^ (uint32_t(random()) << 16);
+            if (reg < 8) {
+              // Alternate moderate finite inputs with the full BF16 range.
+              if (trial % 2 == 0)
+                bits = (bits & 0x807f807f) | 0x3f003f00;
+              if (trial == 3 && reg == 0 && lane == 3)
+                bits = 0x7f80ff80;
+              if (trial == 5 && reg == 5 && lane == 11)
+                bits = 0x7fc57f83;
+              // A subnormal forces Zen4 to reject DPBF16 and use its fallback.
+              if (reg == 0 && lane == 0)
+                bits = 0x00010001;
+            } else {
+              bits &= 0xff7fffff;
             }
-          ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_BASELINE, exec_mask, 0,
-                                                       reference.v + dst, reference.v,
-                                                       reference.v + 4, reference.v + 8),
-                    GOC_SUCCESS);
-          ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(level, exec_mask, 0, actual.v + dst,
-                                                       actual.v, actual.v + 4, actual.v + 8),
-                    GOC_SUCCESS);
-          for (int reg = 0; reg < 24; ++reg)
-            for (int lane = 0; lane < 32; ++lane) {
-              bool written = reg >= dst && reg < dst + 8 && ((exec_mask >> lane) & 1);
-              if (written && std::isnan(goc::as_float(reference.v[reg][lane])))
-                EXPECT_TRUE(std::isnan(goc::as_float(actual.v[reg][lane])));
-              else
-                EXPECT_EQ(actual.v[reg][lane], reference.v[reg][lane]);
-            }
-          reference.guards();
-          actual.guards();
-        }
+            reference.v[reg][lane] = actual.v[reg][lane] = bits;
+          }
+        ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_BASELINE, 0, reference.v + dst,
+                                                     reference.v, reference.v + 4, reference.v + 8),
+                  GOC_SUCCESS);
+        ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(level, 0, actual.v + dst, actual.v,
+                                                     actual.v + 4, actual.v + 8),
+                  GOC_SUCCESS);
+        for (int reg = 0; reg < 24; ++reg)
+          for (int lane = 0; lane < 32; ++lane) {
+            bool written = reg >= dst && reg < dst + 8;
+            if (written && std::isnan(goc::as_float(reference.v[reg][lane])))
+              EXPECT_TRUE(std::isnan(goc::as_float(actual.v[reg][lane])));
+            else
+              EXPECT_EQ(actual.v[reg][lane], reference.v[reg][lane]);
+          }
+        reference.guards();
+        actual.guards();
+      }
 }
 
 TEST(Wmma, Bf16V3BoundaryGoldens) {
@@ -551,9 +520,8 @@ TEST(Wmma, Bf16V3BoundaryGoldens) {
           }
           r.v[8 + reg][lane] = f.c;
         }
-      ASSERT_EQ(
-          goc_rdna4_v_wmma_f32_16x16x16_bf16(level, UINT32_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8),
-          GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(level, 0, r.v + 16, r.v, r.v + 4, r.v + 8),
+                GOC_SUCCESS);
       for (int reg = 16; reg < 24; ++reg)
         for (int lane = 0; lane < 32; ++lane)
           EXPECT_EQ(r.v[reg][lane], f.expected);
@@ -577,9 +545,9 @@ TEST(Wmma, Bf16CpuLevelsRespectModifiers) {
       int c = (modifiers & GOC_WMMA_ABS_C) ? 5 : -5;
       if (modifiers & GOC_WMMA_NEG_C)
         c = -c;
-      ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(level, UINT32_MAX, modifiers, r.v + 8, r.v,
-                                                   r.v + 4, r.v + 8),
-                GOC_SUCCESS);
+      ASSERT_EQ(
+          goc_rdna4_v_wmma_f32_16x16x16_bf16(level, modifiers, r.v + 8, r.v, r.v + 4, r.v + 8),
+          GOC_SUCCESS);
       for (int reg = 8; reg < 16; ++reg)
         for (int lane = 0; lane < 32; ++lane)
           EXPECT_EQ(r.v[reg][lane], goc::as_bits(float(low + high + c)));
@@ -610,12 +578,12 @@ TEST(Wmma, Bf16Zen4EligibilityChecksEveryPackedElement) {
               }
             reference.v[4 * operand + reg][lane] = uint32_t(f.value) << (16 * half);
             actual.v[4 * operand + reg][lane] = uint32_t(f.value) << (16 * half);
-            ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_BASELINE, UINT32_MAX, 0,
-                                                         reference.v + 16, reference.v,
-                                                         reference.v + 4, reference.v + 8),
+            ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_BASELINE, 0, reference.v + 16,
+                                                         reference.v, reference.v + 4,
+                                                         reference.v + 8),
                       GOC_SUCCESS);
-            ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_ZEN4, UINT32_MAX, 0, actual.v + 16,
-                                                         actual.v, actual.v + 4, actual.v + 8),
+            ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_ZEN4, 0, actual.v + 16, actual.v,
+                                                         actual.v + 4, actual.v + 8),
                       GOC_SUCCESS);
             // All other products are zero, so the selected subnormal product
             // survives in the output. An incorrect DPBF16 selection flushes it.
@@ -638,9 +606,9 @@ TEST(Wmma, Bf16Zen4EligibilityChecksEveryAccumulator) {
       for (uint32_t bits : {1u, 0x80000001u, 0x7f800000u, 0x7fc12345u}) {
         Registers r;
         r.v[8 + reg][lane] = bits;
-        ASSERT_EQ(goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_ZEN4, UINT32_MAX, 0, r.v + 16, r.v,
-                                                     r.v + 4, r.v + 8),
-                  GOC_SUCCESS);
+        ASSERT_EQ(
+            goc_rdna4_v_wmma_f32_16x16x16_bf16(GOC_CPU_ZEN4, 0, r.v + 16, r.v, r.v + 4, r.v + 8),
+            GOC_SUCCESS);
         for (int out_reg = 0; out_reg < 8; ++out_reg)
           for (int out_lane = 0; out_lane < 32; ++out_lane) {
             uint32_t expected = out_reg == reg && out_lane == lane ? bits : 0;
@@ -652,67 +620,61 @@ TEST(Wmma, Bf16Zen4EligibilityChecksEveryAccumulator) {
       }
 }
 
-TEST(Wmma, SimdModifiersDenseReferenceMasksAndOverlap) {
+TEST(Wmma, SimdModifiersDenseReferenceAndOverlap) {
   const uint16_t fp16[] = {0xc000, 0xbc00, 0, 0x3c00, 0x4000};
   const uint16_t bf16[] = {0xc000, 0xbf80, 0, 0x3f80, 0x4000};
   for (bool bf : {false, true})
     for (uint32_t modifiers = 0; modifiers < 64; ++modifiers)
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (int dst : {0, 2, 4, 8, 16})
-          for (uint32_t exec_mask : (modifiers == 0 || modifiers == GOC_WMMA_NEG_LO_A ||
-                                     modifiers == (GOC_WMMA_NEG_HI_A | GOC_WMMA_NEG_LO_B |
-                                                   GOC_WMMA_ABS_C | GOC_WMMA_NEG_C))
-                                        ? rdna4_exec_masks()
-                                        : std::vector<uint32_t>{0, 0x91234567U, UINT32_MAX}) {
-            SCOPED_TRACE(::testing::Message()
-                         << "bf16=" << bf << " modifiers=" << modifiers << " cpu=" << cpu
-                         << " dst=" << dst << " mask=" << exec_mask);
-            Registers r;
-            int a[16][16], b[16][16], c[16][16];
-            std::minstd_rand random(87);
-            for (int row = 0; row < 16; ++row)
+        for (int dst : {0, 2, 4, 8, 16}) {
+          SCOPED_TRACE(::testing::Message() << "bf16=" << bf << " modifiers=" << modifiers
+                                            << " cpu=" << cpu << " dst=" << dst);
+          Registers r;
+          int a[16][16], b[16][16], c[16][16];
+          std::minstd_rand random(87);
+          for (int row = 0; row < 16; ++row)
+            for (int k = 0; k < 16; ++k) {
+              int ai = random() % 5, bi = random() % 5;
+              a[row][k] = ai - 2;
+              b[row][k] = bi - 2;
+              set16(r.v, row, k, bf ? bf16[ai] : fp16[ai]);
+              set16(r.v + 4, row, k, bf ? bf16[bi] : fp16[bi]);
+            }
+          for (int row = 0; row < 16; ++row)
+            for (int col = 0; col < 16; ++col) {
+              c[row][col] = int(random() % 9) - 4;
+              r.v[8 + row % 8][col + 16 * (row / 8)] = goc::as_bits(float(c[row][col]));
+            }
+          uint32_t before[24][32];
+          for (int reg = 0; reg < 24; ++reg)
+            std::copy(r.v[reg], r.v[reg] + 32, before[reg]);
+          auto fn = bf ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
+          ASSERT_EQ(fn(cpu, modifiers, r.v + dst, r.v, r.v + 4, r.v + 8), GOC_SUCCESS);
+          for (int row = 0; row < 16; ++row)
+            for (int col = 0; col < 16; ++col) {
+              int acc = (modifiers & GOC_WMMA_ABS_C) ? std::abs(c[row][col]) : c[row][col];
+              if (modifiers & GOC_WMMA_NEG_C)
+                acc = -acc;
               for (int k = 0; k < 16; ++k) {
-                int ai = random() % 5, bi = random() % 5;
-                a[row][k] = ai - 2;
-                b[row][k] = bi - 2;
-                set16(r.v, row, k, bf ? bf16[ai] : fp16[ai]);
-                set16(r.v + 4, row, k, bf ? bf16[bi] : fp16[bi]);
+                int left = a[row][k], right = b[col][k];
+                if (modifiers & (k % 2 ? GOC_WMMA_NEG_HI_A : GOC_WMMA_NEG_LO_A))
+                  left = -left;
+                if (modifiers & (k % 2 ? GOC_WMMA_NEG_HI_B : GOC_WMMA_NEG_LO_B))
+                  right = -right;
+                acc += left * right;
               }
-            for (int row = 0; row < 16; ++row)
-              for (int col = 0; col < 16; ++col) {
-                c[row][col] = int(random() % 9) - 4;
-                r.v[8 + row % 8][col + 16 * (row / 8)] = goc::as_bits(float(c[row][col]));
+              int reg = dst + row % 8, lane = col + 16 * (row / 8);
+              {
+                EXPECT_EQ(goc::as_float(r.v[reg][lane]), float(acc));
               }
-            uint32_t before[24][32];
-            for (int reg = 0; reg < 24; ++reg)
-              std::copy(r.v[reg], r.v[reg] + 32, before[reg]);
-            auto fn = bf ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
-            ASSERT_EQ(fn(cpu, exec_mask, modifiers, r.v + dst, r.v, r.v + 4, r.v + 8), GOC_SUCCESS);
-            for (int row = 0; row < 16; ++row)
-              for (int col = 0; col < 16; ++col) {
-                int acc = (modifiers & GOC_WMMA_ABS_C) ? std::abs(c[row][col]) : c[row][col];
-                if (modifiers & GOC_WMMA_NEG_C)
-                  acc = -acc;
-                for (int k = 0; k < 16; ++k) {
-                  int left = a[row][k], right = b[col][k];
-                  if (modifiers & (k % 2 ? GOC_WMMA_NEG_HI_A : GOC_WMMA_NEG_LO_A))
-                    left = -left;
-                  if (modifiers & (k % 2 ? GOC_WMMA_NEG_HI_B : GOC_WMMA_NEG_LO_B))
-                    right = -right;
-                  acc += left * right;
-                }
-                int reg = dst + row % 8, lane = col + 16 * (row / 8);
-                if ((exec_mask >> lane) & 1) {
-                  EXPECT_EQ(goc::as_float(r.v[reg][lane]), float(acc));
-                }
+            }
+          for (int reg = 0; reg < 24; ++reg)
+            for (int lane = 0; lane < 32; ++lane)
+              if (reg < dst || reg >= dst + 8) {
+                EXPECT_EQ(r.v[reg][lane], before[reg][lane]);
               }
-            for (int reg = 0; reg < 24; ++reg)
-              for (int lane = 0; lane < 32; ++lane)
-                if (reg < dst || reg >= dst + 8 || !((exec_mask >> lane) & 1)) {
-                  EXPECT_EQ(r.v[reg][lane], before[reg][lane]);
-                }
-            r.guards();
-          }
+          r.guards();
+        }
 }
 
 TEST(Wmma, SimdModifiersSpecialValuesAndFallback) {
@@ -751,17 +713,16 @@ TEST(Wmma, SimdModifiersSpecialValuesAndFallback) {
         };
         fill(reference);
         auto fn = bf ? goc_rdna4_v_wmma_f32_16x16x16_bf16 : goc_rdna4_v_wmma_f32_16x16x16_f16;
-        ASSERT_EQ(fn(GOC_CPU_BASELINE, UINT32_MAX, modifiers, reference.v + 16, reference.v,
-                     reference.v + 4, reference.v + 8),
+        ASSERT_EQ(fn(GOC_CPU_BASELINE, modifiers, reference.v + 16, reference.v, reference.v + 4,
+                     reference.v + 8),
                   GOC_SUCCESS);
         for (uint64_t cpu = GOC_CPU_X86_64_V3; cpu <= goc_init_cpu_flags(); ++cpu) {
           SCOPED_TRACE(::testing::Message() << "bf16=" << bf << " modifiers=" << modifiers
                                             << " cpu=" << cpu << " a=" << f.bf16_a << " c=" << f.c);
           Registers actual;
           fill(actual);
-          ASSERT_EQ(
-              fn(cpu, UINT32_MAX, modifiers, actual.v + 8, actual.v, actual.v + 4, actual.v + 8),
-              GOC_SUCCESS);
+          ASSERT_EQ(fn(cpu, modifiers, actual.v + 8, actual.v, actual.v + 4, actual.v + 8),
+                    GOC_SUCCESS);
           for (int reg = 0; reg < 8; ++reg)
             for (int lane = 0; lane < 32; ++lane) {
               float want = goc::as_float(reference.v[16 + reg][lane]);

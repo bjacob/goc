@@ -3,7 +3,6 @@
 #include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
-#include "rdna4_exec_masks.h"
 #include "rdna4_scalar_fp_reference.h"
 #include "rdna4_scalar_round_exceptions_hardware.h"
 #include "rdna4_scalar_round_hardware.h"
@@ -25,7 +24,7 @@ TEST(ScalarRound, HardwareAllHalfPatternsAndFpStates) {
             goc_test::scalar_round_inputs(i, op & 1, w);
             ASSERT_EQ(goc_test::scalar_round_functions[op](cpu | semantics | GOC_SEMANTICS_STRICT |
                                                                goc_test::scalar_fp_flags(state),
-                                                           UINT32_MAX, 0, &d, w[0], nullptr),
+                                                           0, &d, w[0], nullptr),
                       GOC_SUCCESS);
             hash = goc_test::capture_hash_word(hash, d);
           }
@@ -34,20 +33,18 @@ TEST(ScalarRound, HardwareAllHalfPatternsAndFpStates) {
         }
 }
 
-TEST(ScalarRound, ExecAndAliasing) {
+TEST(ScalarRound, Aliasing) {
   for (unsigned state = 0; state < 8; ++state)
     for (unsigned op = 0; op < 8; ++op)
       for (unsigned i : {0u, 1u, 8u, 10u, 12u, 30u, 0x7c01u, 0x7e01u, 0x8001u, 0xffffu}) {
         uint32_t w[2], expected;
         goc_test::scalar_round_inputs(i, op & 1, w);
         uint64_t flags = goc_test::scalar_fp_flags(state);
-        ASSERT_EQ(
-            goc_test::scalar_round_functions[op](flags, UINT32_MAX, 0, &expected, w[0], nullptr),
-            GOC_SUCCESS);
-        for (uint32_t exec_mask : rdna4_exec_masks()) {
+        ASSERT_EQ(goc_test::scalar_round_functions[op](flags, 0, &expected, w[0], nullptr),
+                  GOC_SUCCESS);
+        {
           uint32_t words[] = {123, w[0], 456};
-          ASSERT_EQ(goc_test::scalar_round_functions[op](flags, exec_mask, 0, words + 1, words[1],
-                                                         nullptr),
+          ASSERT_EQ(goc_test::scalar_round_functions[op](flags, 0, words + 1, words[1], nullptr),
                     GOC_SUCCESS);
           EXPECT_EQ(words[1], expected);
           EXPECT_EQ(words[0], 123u);
@@ -67,34 +64,34 @@ TEST(ScalarRound, HostFpStatePreservedForEveryRoundingMode) {
     for (unsigned op = 0; op < 8; ++op)
       for (uint32_t a : {0u, 1u, 0x80000001u, 0x3fc00000u, 0x7f800001u, 0x7c01u, 0x3e00u}) {
         uint32_t d;
-        EXPECT_EQ(goc_test::scalar_round_functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &d, a,
-                                                       nullptr),
-                  GOC_SUCCESS);
+        EXPECT_EQ(
+            goc_test::scalar_round_functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, 0, &d, a, nullptr),
+            GOC_SUCCESS);
         EXPECT_EQ(std::fegetround(), rounding);
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
       }
     uint32_t d;
-    EXPECT_EQ(goc_rdna4_s_rndne_f32(0, 0, 0, &d, 0x3fc00000, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(goc_rdna4_s_rndne_f32(0, 0, &d, 0x3fc00000, nullptr), GOC_SUCCESS);
     EXPECT_EQ(d, 0x40000000u);
-    EXPECT_EQ(goc_rdna4_s_rndne_f16(0, 0, 0, &d, 0x4100, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(goc_rdna4_s_rndne_f16(0, 0, &d, 0x4100, nullptr), GOC_SUCCESS);
     EXPECT_EQ(d, 0x4000u);
   }
 }
 
 TEST(ScalarRound, NaNsZerosAndInputFlushing) {
   uint32_t d;
-  ASSERT_EQ(goc_rdna4_s_ceil_f32(0, 0, 0, &d, 0xff800123, nullptr), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_ceil_f32(0, 0, &d, 0xff800123, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0xffc00123u);
-  ASSERT_EQ(goc_rdna4_s_floor_f16(0, 0, 0, &d, 0xabcdfc01, nullptr), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_floor_f16(0, 0, &d, 0xabcdfc01, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0xfe01u);
-  ASSERT_EQ(goc_rdna4_s_ceil_f32(0, 0, 0, &d, 0x80000001, nullptr), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_ceil_f32(0, 0, &d, 0x80000001, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x80000000u);
-  ASSERT_EQ(goc_rdna4_s_floor_f16(0, 0, 0, &d, 0x8001, nullptr), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_floor_f16(0, 0, &d, 0x8001, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0xbc00u);
-  ASSERT_EQ(goc_rdna4_s_floor_f16(GOC_FP_FLUSH_INPUT_DENORMALS, 0, 0, &d, 0x8001, nullptr),
+  ASSERT_EQ(goc_rdna4_s_floor_f16(GOC_FP_FLUSH_INPUT_DENORMALS, 0, &d, 0x8001, nullptr),
             GOC_SUCCESS);
   EXPECT_EQ(d, 0x8000u);
-  ASSERT_EQ(goc_rdna4_s_ceil_f32(GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, 0, &d, 1, nullptr), GOC_SUCCESS);
+  ASSERT_EQ(goc_rdna4_s_ceil_f32(GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, &d, 1, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d, 0x3f800000u);
 }
 
@@ -102,9 +99,9 @@ TEST(ScalarRound, ErrorsDoNotWrite) {
   for (unsigned op = 0; op < 8; ++op) {
     uint32_t d = 123;
     for (unsigned bit = 0; bit < 32; ++bit)
-      EXPECT_EQ(goc_test::scalar_round_functions[op](0, 0, 1u << bit, &d, 0, nullptr),
+      EXPECT_EQ(goc_test::scalar_round_functions[op](0, 1u << bit, &d, 0, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(goc_test::scalar_round_functions[op](1ULL << 63, 0, 0, &d, 0, nullptr),
+    EXPECT_EQ(goc_test::scalar_round_functions[op](1ULL << 63, 0, &d, 0, nullptr),
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(d, 123u);
   }
@@ -123,8 +120,7 @@ TEST(ScalarRound, HardwareExceptionFlags) {
                            (denorm & 1 ? 0 : GOC_FP_FLUSH_INPUT_DENORMALS) |
                            (denorm & 2 ? 0 : GOC_FP_FLUSH_OUTPUT_DENORMALS);
           uint32_t d = 0, excp_flag_user = 0xa5000040;
-          ASSERT_EQ(goc_test::scalar_round_functions[op](flags, i & 1 ? 0 : UINT32_MAX, 0, &d, a,
-                                                         &excp_flag_user),
+          ASSERT_EQ(goc_test::scalar_round_functions[op](flags, 0, &d, a, &excp_flag_user),
                     GOC_SUCCESS);
           ASSERT_EQ(excp_flag_user & ~3U, 0xa5000040U);
           hash = goc_test::capture_hash_word(hash, excp_flag_user & 3);
@@ -144,13 +140,13 @@ TEST(ScalarRound, ReportingContractAndHostState) {
       int host_exceptions = std::fetestexcept(FE_ALL_EXCEPT);
       uint32_t d = 0xdeadbeef, excp_flag_user = 0x80000040;
       auto fn = goc_test::scalar_round_functions[op];
-      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 1, &d, a, &excp_flag_user),
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 1, &d, a, &excp_flag_user),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(d, 0xdeadbeefU);
       EXPECT_EQ(excp_flag_user, 0x80000040U);
-      EXPECT_EQ(fn(GOC_SEMANTICS_LOOSE, 0, 0, &d, a, &excp_flag_user), GOC_SUCCESS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_LOOSE, 0, &d, a, &excp_flag_user), GOC_SUCCESS);
       EXPECT_EQ(excp_flag_user, 0x80000040U);
-      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &d, a, &excp_flag_user), GOC_SUCCESS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, &d, a, &excp_flag_user), GOC_SUCCESS);
       EXPECT_EQ(excp_flag_user, 0x80000040U | GOC_RDNA4_EXCEPTION_INVALID);
       EXPECT_EQ(std::fegetround(), rounding);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), host_exceptions);

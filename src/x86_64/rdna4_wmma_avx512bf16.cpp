@@ -70,9 +70,8 @@ bool wmma_inputs_avx512bf16(const uint32_t *const *a, const uint32_t *const *b,
 }
 
 template <bool Modified>
-static void wmma_bf16(uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d,
-                      const uint32_t *const *a, const uint32_t *const *b,
-                      const uint32_t *const *c) {
+static void wmma_bf16(uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
+                      const uint32_t *const *b, const uint32_t *const *c) {
   const uint32_t a_sign = ((modifiers & GOC_WMMA_NEG_LO_A) ? 0x8000U : 0) |
                           ((modifiers & GOC_WMMA_NEG_HI_A) ? 0x80000000U : 0);
   const __m512i b_sign = _mm512_set1_epi32(((modifiers & GOC_WMMA_NEG_LO_B) ? 0x8000 : 0) |
@@ -104,17 +103,15 @@ static void wmma_bf16(uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d
   }
   for (int reg = 0; reg < 8; ++reg)
     for (int group = 0; group < 2; ++group)
-      _mm512_mask_storeu_epi32(d[reg] + 16 * group,
-                               static_cast<__mmask16>(exec_mask >> (16 * group)),
-                               _mm512_loadu_si512(result[reg] + 16 * group));
+      _mm512_storeu_si512(d[reg] + 16 * group, _mm512_loadu_si512(result[reg] + 16 * group));
 }
 
-void wmma_avx512bf16(uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d,
-                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+void wmma_avx512bf16(uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
+                     const uint32_t *const *b, const uint32_t *const *c) {
   if (modifiers)
-    wmma_bf16<true>(exec_mask, modifiers, d, a, b, c);
+    wmma_bf16<true>(modifiers, d, a, b, c);
   else
-    wmma_bf16<false>(exec_mask, 0, d, a, b, c);
+    wmma_bf16<false>(0, d, a, b, c);
 }
 
 } // namespace goc

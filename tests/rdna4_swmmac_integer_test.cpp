@@ -2,7 +2,6 @@
 
 #include "capture_hash.h"
 #include "goc/goc.h"
-#include "rdna4_exec_masks.h"
 #include "rdna4_integer_wmma_capture.h"
 #include "rdna4_swmmac_integer_hardware.h"
 
@@ -60,9 +59,8 @@ TEST(SwmmacInteger, HardwareAllModifiers) {
           for (uint64_t semantics :
                {uint64_t{0}, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
             Registers r(op, sample);
-            ASSERT_EQ(
-                functions[op](cpu | semantics, UINT32_MAX, mode(variant), r.d, r.a, r.b, r.index),
-                GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu | semantics, mode(variant), r.d, r.a, r.b, r.index),
+                      GOC_SUCCESS);
             uint64_t digest = goc_test::capture_hash_seed;
             for (unsigned reg = 0; reg < 8u; ++reg)
               for (unsigned lane = 0; lane < 32; ++lane)
@@ -72,23 +70,18 @@ TEST(SwmmacInteger, HardwareAllModifiers) {
           }
 }
 
-TEST(SwmmacInteger, EveryExecLaneAndModifier) {
+TEST(SwmmacInteger, EveryLaneAndModifier) {
   for (unsigned op = 0; op < 3; ++op)
     for (unsigned variant = 0; variant < (op == 2 ? 8u : 16u); ++variant) {
-      Registers full(op), initial(op);
-      ASSERT_EQ(functions[op](0, UINT32_MAX, mode(variant), full.d, full.a, full.b, full.index),
-                GOC_SUCCESS);
-      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint32_t exec_mask : rdna4_exec_masks()) {
-          Registers r(op);
-          ASSERT_EQ(functions[op](cpu, exec_mask, mode(variant), r.d, r.a, r.b, r.index),
-                    GOC_SUCCESS);
-          for (unsigned reg = 0; reg < 8u; ++reg)
-            for (unsigned lane = 0; lane < 32; ++lane)
-              ASSERT_EQ(r.d[reg][lane],
-                        ((exec_mask >> lane) & 1) ? full.d[reg][lane] : initial.d[reg][lane])
-                  << op << "/" << cpu << "/" << variant << "/" << exec_mask;
-        }
+      Registers full(op);
+      ASSERT_EQ(functions[op](0, mode(variant), full.d, full.a, full.b, full.index), GOC_SUCCESS);
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+        Registers r(op);
+        ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
+        for (unsigned reg = 0; reg < 8u; ++reg)
+          for (unsigned lane = 0; lane < 32; ++lane)
+            ASSERT_EQ(r.d[reg][lane], full.d[reg][lane]) << op << "/" << cpu << "/" << variant;
+      }
     }
 }
 
@@ -105,33 +98,28 @@ TEST(SwmmacInteger, OverlappingSourcesAndDuplicateDestinations) {
             r.d[reg] = r.data[offsets[reg]];
             std::memcpy(reference.d[reg], r.d[reg], 32 * sizeof(uint32_t));
           }
-          const uint32_t exec_mask = 0xa35ac69d;
-          ASSERT_EQ(functions[op](0, exec_mask, mode(variant), reference.d, reference.a,
-                                  reference.b, reference.index),
+
+          ASSERT_EQ(functions[op](0, mode(variant), reference.d, reference.a, reference.b,
+                                  reference.index),
                     GOC_SUCCESS);
           uint32_t expected[15][32];
           std::memcpy(expected, r.data, sizeof(expected));
           for (unsigned reg = 0; reg < regs; ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
-              if ((exec_mask >> lane) & 1)
-                expected[offsets[reg]][lane] = reference.d[reg][lane];
-          ASSERT_EQ(functions[op](cpu, exec_mask, mode(variant), r.d, r.a, r.b, r.index),
-                    GOC_SUCCESS);
+
+              expected[offsets[reg]][lane] = reference.d[reg][lane];
+          ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
           ASSERT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0)
               << op << "/" << cpu << "/" << variant << "/" << alias;
         }
 }
 
-TEST(SwmmacInteger, ValidationAndEmptyExec) {
+TEST(SwmmacInteger, Validation) {
   for (unsigned op = 0; op < 3; ++op) {
     Fn fn = functions[op];
-    EXPECT_EQ(fn(0, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr,
-                 nullptr, nullptr),
-              GOC_SUCCESS);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!((1u << bit) & mode(op == 2 ? 7 : 15))) {
-        EXPECT_EQ(fn(0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(0, 1u << bit, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
       }
     }
   }
@@ -157,7 +145,7 @@ TEST(SwmmacInteger, ClampSaturatesEachHardwareStage) {
             for (auto &word : r.data[reg])
               word = initial;
           uint32_t modifiers = GOC_WMMA_SIGNED_A | (clamp ? GOC_WMMA_CLAMP : 0);
-          ASSERT_EQ(functions[op](cpu, UINT32_MAX, modifiers, r.d, r.a, r.b, r.index), GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu, modifiers, r.d, r.a, r.b, r.index), GOC_SUCCESS);
           unsigned stage_products = op == 2 ? 16 : 8;
           uint32_t want = initial;
           if (clamp)

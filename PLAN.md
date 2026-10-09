@@ -83,6 +83,9 @@ following the above pattern. Each such function shall take the following functio
 * `uint64_t flags`, a bit-field described below.
 * `uint32_t exec_mask` for Wave32 and `uint64_t exec_mask` for Wave64, with the
   same semantics as in the GPU architectures, each bit enabling a lane in the destination VGPRs.
+  Omit this parameter for instructions that ignore EXEC: scalar, pseudo-scalar,
+  WMMA and SWMMAC. Matrix instructions read and write all lanes, even when
+  architectural EXEC is zero.
 * Scalars/literals can be passed by value as function parameters of suitable C type.
   - Default to unsigned integer C types, meaning "raw bits", unless a standard C
     type exists with exactly the right semantics, e.g. a signed integer or
@@ -128,7 +131,6 @@ Example:
 ```c
 int goc_rdna4_v_wmma_f32_16x16x16_f16(
   uint64_t flags,
-  uint32_t exec_mask,
   uint64_t instruction_flags,  // NEG and NEG_HI bits go here.
   uint32_t *const * vgpr_d,
   const uint32_t *const * vgpr_a,
@@ -144,7 +146,7 @@ Notes:
   - For instructions like WMMA or lane-index-dependent `MBCNT`, we may have a
     separate dedicated wave64 entry point. In that case, we will append a `w64`
     suffix to the architecture name, e.g. `goc_rdna4w64_...` .
-* Why make `exec_mask` part of GoC instead of letting the caller handle it?
+* For instructions that obey EXEC, why make `exec_mask` part of GoC instead of letting the caller handle it?
   - For the caller to handle it correctly w.r.t. input-output aliasing, they
     would need to save destination registers before calling GoC.
   - x86-64 masked stores are exactly the CPU ISA feature making this simpler

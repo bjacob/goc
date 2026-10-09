@@ -28,11 +28,10 @@ template <typename T, bool Signed> T extract(T a, uint32_t field) {
 
 } // namespace
 
-int goc_rdna4_s_bfe_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *scc) {
+int goc_rdna4_s_bfe_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *scc) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = extract<uint32_t, false>(a, b);
@@ -42,11 +41,10 @@ int goc_rdna4_s_bfe_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bfe_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b, uint32_t *scc) {
+int goc_rdna4_s_bfe_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b, uint32_t *scc) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = extract<uint32_t, true>(a, b);
@@ -56,11 +54,10 @@ int goc_rdna4_s_bfe_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bfe_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint64_t a, uint32_t b, uint32_t *scc) {
+int goc_rdna4_s_bfe_u64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                        uint32_t b, uint32_t *scc) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint64_t result = extract<uint64_t, false>(a, b);
@@ -70,11 +67,10 @@ int goc_rdna4_s_bfe_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bfe_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint64_t a, uint32_t b, uint32_t *scc) {
+int goc_rdna4_s_bfe_i64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                        uint32_t b, uint32_t *scc) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint64_t result = extract<uint64_t, true>(a, b);
@@ -84,11 +80,10 @@ int goc_rdna4_s_bfe_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bfm_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a, uint32_t b) {
+int goc_rdna4_s_bfm_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                        uint32_t b) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   unsigned width = a & 31, offset = b & 31;
@@ -97,11 +92,10 @@ int goc_rdna4_s_bfm_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bfm_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint64_t *d,
-                        uint32_t a, uint32_t b) {
+int goc_rdna4_s_bfm_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint32_t a,
+                        uint32_t b) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   unsigned width = a & 63, offset = b & 63;
@@ -110,11 +104,10 @@ int goc_rdna4_s_bfm_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bcnt0_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint32_t a, uint32_t *scc) {
+int goc_rdna4_s_bcnt0_i32_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t *scc) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = goc::bit_population(uint32_t(~a));
@@ -124,11 +117,10 @@ int goc_rdna4_s_bcnt0_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instr
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bcnt0_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint64_t a, uint32_t *scc) {
+int goc_rdna4_s_bcnt0_i32_b64(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint64_t a,
+                              uint32_t *scc) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = goc::bit_population(uint64_t(~a));
@@ -138,11 +130,10 @@ int goc_rdna4_s_bcnt0_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instr
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bcnt1_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint32_t a, uint32_t *scc) {
+int goc_rdna4_s_bcnt1_i32_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t *scc) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = goc::bit_population(uint32_t(a));
@@ -152,11 +143,10 @@ int goc_rdna4_s_bcnt1_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instr
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bcnt1_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *d, uint64_t a, uint32_t *scc) {
+int goc_rdna4_s_bcnt1_i32_b64(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint64_t a,
+                              uint32_t *scc) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = goc::bit_population(uint64_t(a));
@@ -166,11 +156,9 @@ int goc_rdna4_s_bcnt1_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instr
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_ctz_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a) {
+int goc_rdna4_s_ctz_i32_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = goc::bit_count_zero<true>(a);
@@ -178,11 +166,9 @@ int goc_rdna4_s_ctz_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_ctz_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint64_t a) {
+int goc_rdna4_s_ctz_i32_b64(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint64_t a) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = goc::bit_count_zero<true>(a);
@@ -190,11 +176,9 @@ int goc_rdna4_s_ctz_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_clz_i32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t a) {
+int goc_rdna4_s_clz_i32_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = goc::bit_count_zero<false>(a);
@@ -202,11 +186,9 @@ int goc_rdna4_s_clz_i32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_clz_i32_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint64_t a) {
+int goc_rdna4_s_clz_i32_u64(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint64_t a) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = goc::bit_count_zero<false>(a);
@@ -214,11 +196,9 @@ int goc_rdna4_s_clz_i32_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_cls_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                        uint32_t a) {
+int goc_rdna4_s_cls_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   a ^= uint32_t(0) - (a >> 31);
@@ -227,11 +207,9 @@ int goc_rdna4_s_cls_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_cls_i32_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint64_t a) {
+int goc_rdna4_s_cls_i32_i64(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint64_t a) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   a ^= uint64_t(0) - (a >> 63);
@@ -240,11 +218,9 @@ int goc_rdna4_s_cls_i32_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bitset0_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t b) {
+int goc_rdna4_s_bitset0_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t b) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = *d & ~(uint32_t(1) << (b & 31));
@@ -252,11 +228,9 @@ int goc_rdna4_s_bitset0_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bitset0_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint64_t *d, uint32_t b) {
+int goc_rdna4_s_bitset0_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint32_t b) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint64_t result = *d & ~(uint64_t(1) << (b & 63));
@@ -264,11 +238,9 @@ int goc_rdna4_s_bitset0_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bitset1_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *d, uint32_t b) {
+int goc_rdna4_s_bitset1_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t b) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint32_t result = *d | (uint32_t(1) << (b & 31));
@@ -276,11 +248,9 @@ int goc_rdna4_s_bitset1_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_s_bitset1_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint64_t *d, uint32_t b) {
+int goc_rdna4_s_bitset1_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint32_t b) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   uint64_t result = *d | (uint64_t(1) << (b & 63));

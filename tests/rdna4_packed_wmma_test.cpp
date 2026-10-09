@@ -14,7 +14,7 @@
 
 namespace {
 
-using Wmma = goc_test::WaveInstruction<decltype(&goc_rdna4_v_wmma_f16_16x16x16_f16)>;
+using Wmma = decltype(&goc_rdna4_v_wmma_f16_16x16x16_f16);
 
 Wmma function(int width, bool bf16) {
   if (width == 64)
@@ -61,42 +61,36 @@ void load(Registers &r, const PackedWmmaInput &input, int width) {
 
 } // namespace
 
-TEST(PackedWmma, HardwareMatricesMasksOverlapAndHostState) {
+TEST(PackedWmma, HardwareMatricesOverlapAndHostState) {
   goc_test::ScopedFpEnvironment restore;
   ASSERT_TRUE(restore.saved());
   for (int width : {32, 64})
     for (bool bf16 : {false, true})
       for (int fixture = 0; fixture < 7; ++fixture)
         for (int dst : {0, 4, 8, 12})
-          for (uint64_t exec_mask : std::initializer_list<uint64_t>{
-                   0ULL, 1ULL << 32, 1ULL << 63, 0xa55a0123fedc9876ULL, UINT64_MAX})
-            for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
-              Registers r;
-              load(r, kPackedInputs[bf16][fixture], width);
-              uint32_t before[4][64];
-              for (int reg = 0; reg < 128 / width; ++reg)
-                std::copy(r.v[dst + reg], r.v[dst + reg] + width, before[reg]);
-              std::fesetround(rounding);
-              std::feclearexcept(FE_ALL_EXCEPT);
-              std::feraiseexcept(FE_INEXACT);
-              ASSERT_EQ(function(width, bf16)(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                              exec_mask, 0, r.v + dst, r.v, r.v + 4, r.v + 8),
-                        GOC_SUCCESS);
-              EXPECT_EQ(std::fegetround(), rounding);
-              EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
-              for (int row = 0; row < 16; ++row)
-                for (int col = 0; col < 16; ++col) {
-                  int lane = col + 16 * (row / 8) + (width == 64 ? 32 * ((row / 4) % 2) : 0);
-                  int reg = (row % (256 / width)) / 2, shift = 16 * (row % 2);
-                  uint32_t want = (exec_mask >> lane) & 1
-                                      ? kPackedExpected[width == 64][bf16][fixture][row * 16 + col]
-                                      : ((before[reg][lane] >> shift) & 65535);
-                  EXPECT_EQ((r.v[dst + reg][lane] >> shift) & 65535, want)
-                      << "width=" << width << " bf16=" << bf16 << " fixture=" << fixture
-                      << " row=" << row << " col=" << col;
-                }
-              r.guards(width);
-            }
+
+          for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
+            Registers r;
+            load(r, kPackedInputs[bf16][fixture], width);
+            std::fesetround(rounding);
+            std::feclearexcept(FE_ALL_EXCEPT);
+            std::feraiseexcept(FE_INEXACT);
+            ASSERT_EQ(function(width, bf16)(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
+                                            r.v + dst, r.v, r.v + 4, r.v + 8),
+                      GOC_SUCCESS);
+            EXPECT_EQ(std::fegetround(), rounding);
+            EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
+            for (int row = 0; row < 16; ++row)
+              for (int col = 0; col < 16; ++col) {
+                int lane = col + 16 * (row / 8) + (width == 64 ? 32 * ((row / 4) % 2) : 0);
+                int reg = (row % (256 / width)) / 2, shift = 16 * (row % 2);
+                uint32_t want = kPackedExpected[width == 64][bf16][fixture][row * 16 + col];
+                EXPECT_EQ((r.v[dst + reg][lane] >> shift) & 65535, want)
+                    << "width=" << width << " bf16=" << bf16 << " fixture=" << fixture
+                    << " row=" << row << " col=" << col;
+              }
+            r.guards(width);
+          }
 }
 
 TEST(PackedWmma, OverflowStateAndModifiers) {
@@ -115,8 +109,8 @@ TEST(PackedWmma, OverflowStateAndModifiers) {
             }
             load(r, input, width);
             auto flags = semantics | GOC_SEMANTICS_STRICT | (saturate ? GOC_FP16_OVFL : 0);
-            ASSERT_EQ(function(width, false)(flags, UINT64_MAX, negative ? GOC_WMMA_NEG_LO_A : 0,
-                                             r.v + 12, r.v, r.v + 4, r.v + 8),
+            ASSERT_EQ(function(width, false)(flags, negative ? GOC_WMMA_NEG_LO_A : 0, r.v + 12, r.v,
+                                             r.v + 4, r.v + 8),
                       0);
             uint32_t want = (saturate && !infinite ? 0x7bff : 0x7c00) | (negative ? 0x8000 : 0);
             for (int reg = 0; reg < 128 / width; ++reg)
@@ -138,7 +132,7 @@ TEST(PackedWmma, EveryModifierCombinationAndValidation) {
         }
         load(r, input, width);
         ASSERT_EQ(function(width, bf16)(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                        UINT64_MAX, modifiers, r.v + 12, r.v, r.v + 4, r.v + 8),
+                                        modifiers, r.v + 12, r.v, r.v + 4, r.v + 8),
                   0);
         int sum = 8 * ((bool(modifiers & 1) != bool(modifiers & 2)) ? -1 : 1) +
                   8 * ((bool(modifiers & 8) != bool(modifiers & 16)) ? -1 : 1);
@@ -158,10 +152,10 @@ TEST(PackedWmma, EveryModifierCombinationAndValidation) {
           for (int lane = 0; lane < width; ++lane)
             EXPECT_EQ(r.v[12 + reg][lane], want | (want << 16));
         uint32_t old = r.v[12][0];
-        EXPECT_EQ(function(width, bf16)(0, UINT64_MAX, 64, r.v + 12, r.v, r.v + 4, r.v + 8),
+        EXPECT_EQ(function(width, bf16)(0, 64, r.v + 12, r.v, r.v + 4, r.v + 8),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(function(width, bf16)((2ULL << 16) | GOC_SEMANTICS_STRICT, UINT64_MAX, 0,
-                                        r.v + 12, r.v, r.v + 4, r.v + 8),
+        EXPECT_EQ(function(width, bf16)((2ULL << 16) | GOC_SEMANTICS_STRICT, 0, r.v + 12, r.v,
+                                        r.v + 4, r.v + 8),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
         EXPECT_EQ(r.v[12][0], old);
       }
@@ -178,7 +172,7 @@ TEST(PackedWmma, HardwareModifierCaptures) {
           r.v[8 + reg][lane] = f.c;
         }
       ASSERT_EQ(function(width, f.bf16)(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                        UINT64_MAX, f.modifiers, r.v + 12, r.v, r.v + 4, r.v + 8),
+                                        f.modifiers, r.v + 12, r.v, r.v + 4, r.v + 8),
                 0);
       for (int reg = 0; reg < 128 / width; ++reg)
         for (int lane = 0; lane < width; ++lane)
@@ -220,8 +214,7 @@ TEST(PackedWmma, HardwareIntermediateOverflowState) {
             std::feraiseexcept(FE_INEXACT);
             uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                              (saturate ? GOC_FP16_OVFL : 0);
-            ASSERT_EQ(function(width, bf16)(flags, UINT64_MAX, 0, r.v + 12, r.v, r.v + 4, r.v + 8),
-                      0);
+            ASSERT_EQ(function(width, bf16)(flags, 0, r.v + 12, r.v, r.v + 4, r.v + 8), 0);
             EXPECT_EQ(std::fegetround(), rounding);
             EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
             uint32_t expected = infinity | (pattern == 2 ? 0x8000 : 0);

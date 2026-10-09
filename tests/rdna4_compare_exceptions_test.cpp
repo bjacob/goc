@@ -52,10 +52,10 @@ TEST(CompareExceptions, HardwareOperandPairs) {
               uint32_t result = 0, no_report_result = 0, exceptions = 0xa5000040;
               int status, no_report_status;
               if (op < 28) {
-                status = scalar_functions[op](flags, exec_mask, 0, &result, uint32_t(av),
-                                              uint32_t(bv), &exceptions);
-                no_report_status = scalar_functions[op](flags, exec_mask, 0, &no_report_result,
-                                                        uint32_t(av), uint32_t(bv), nullptr);
+                status = scalar_functions[op](flags, 0, &result, uint32_t(av), uint32_t(bv),
+                                              &exceptions);
+                no_report_status = scalar_functions[op](flags, 0, &no_report_result, uint32_t(av),
+                                                        uint32_t(bv), nullptr);
               } else {
                 auto fn = goc_test::float_compare_functions[op - 28];
                 status =

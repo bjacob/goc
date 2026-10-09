@@ -8,7 +8,7 @@
 
 namespace goc {
 
-void swmmac_integer_x86_64_v4(unsigned k, uint32_t exec_mask, bool clamp, uint32_t *const *d,
+void swmmac_integer_x86_64_v4(unsigned k, bool clamp, uint32_t *const *d,
                               const SwmmacIntegerInputs &input) {
   uint32_t result[8][32];
   for (unsigned row = 0; row < 16; ++row)
@@ -32,7 +32,7 @@ void swmmac_integer_x86_64_v4(unsigned k, uint32_t exec_mask, bool clamp, uint32
   for (unsigned reg = 0; reg < 8; ++reg)
     for (unsigned lane = 0; lane < 32; lane += 16) {
       auto value = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(result[reg] + lane));
-      _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(exec_mask >> lane), value);
+      _mm512_storeu_si512(d[reg] + lane, value);
     }
 }
 

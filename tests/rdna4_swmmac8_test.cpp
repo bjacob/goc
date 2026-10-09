@@ -2,7 +2,6 @@
 
 #include "capture_hash.h"
 #include "goc/goc.h"
-#include "rdna4_exec_masks.h"
 #include "rdna4_swmmac8_hardware.h"
 
 #include <cmath>
@@ -45,8 +44,7 @@ TEST(Swmmac8, HardwareAllModifiers) {
       for (unsigned variant = 0; variant < 2; ++variant)
         for (unsigned sample = 0; sample < 16; ++sample) {
           Registers r(op, sample);
-          ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode(variant), r.d, r.a, r.b, r.index),
-                    GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
           uint64_t digest = goc_test::capture_hash_seed;
           for (unsigned reg = 0; reg < 8u; ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
@@ -56,23 +54,18 @@ TEST(Swmmac8, HardwareAllModifiers) {
         }
 }
 
-TEST(Swmmac8, EveryExecLaneAndModifier) {
+TEST(Swmmac8, EveryLaneAndModifier) {
   for (unsigned op = 0; op < 4; ++op)
     for (unsigned variant = 0; variant < 2; ++variant) {
-      Registers full(op), initial(op);
-      ASSERT_EQ(functions[op](0, UINT32_MAX, mode(variant), full.d, full.a, full.b, full.index),
-                GOC_SUCCESS);
-      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint32_t exec_mask : rdna4_exec_masks()) {
-          Registers r(op);
-          ASSERT_EQ(functions[op](cpu, exec_mask, mode(variant), r.d, r.a, r.b, r.index),
-                    GOC_SUCCESS);
-          for (unsigned reg = 0; reg < 8u; ++reg)
-            for (unsigned lane = 0; lane < 32; ++lane)
-              ASSERT_EQ(r.d[reg][lane],
-                        ((exec_mask >> lane) & 1) ? full.d[reg][lane] : initial.d[reg][lane])
-                  << op << "/" << cpu << "/" << variant << "/" << exec_mask;
-        }
+      Registers full(op);
+      ASSERT_EQ(functions[op](0, mode(variant), full.d, full.a, full.b, full.index), GOC_SUCCESS);
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+        Registers r(op);
+        ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
+        for (unsigned reg = 0; reg < 8u; ++reg)
+          for (unsigned lane = 0; lane < 32; ++lane)
+            ASSERT_EQ(r.d[reg][lane], full.d[reg][lane]) << op << "/" << cpu << "/" << variant;
+      }
     }
 }
 
@@ -89,34 +82,30 @@ TEST(Swmmac8, OverlappingSourcesAndDuplicateDestinations) {
             r.d[reg] = r.data[offsets[reg]];
             std::memcpy(reference.d[reg], r.d[reg], 32 * sizeof(uint32_t));
           }
-          const uint32_t exec_mask = 0xa35ac69d;
-          ASSERT_EQ(functions[op](0, exec_mask, mode(variant), reference.d, reference.a,
-                                  reference.b, reference.index),
+
+          ASSERT_EQ(functions[op](0, mode(variant), reference.d, reference.a, reference.b,
+                                  reference.index),
                     GOC_SUCCESS);
           uint32_t expected[15][32];
           std::memcpy(expected, r.data, sizeof(expected));
           for (unsigned reg = 0; reg < regs; ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
-              if ((exec_mask >> lane) & 1)
-                expected[offsets[reg]][lane] = reference.d[reg][lane];
-          ASSERT_EQ(functions[op](cpu, exec_mask, mode(variant), r.d, r.a, r.b, r.index),
-                    GOC_SUCCESS);
+
+              expected[offsets[reg]][lane] = reference.d[reg][lane];
+          ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
           ASSERT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0)
               << op << "/" << cpu << "/" << variant << "/" << alias;
         }
 }
 
-TEST(Swmmac8, ValidationAndEmptyExec) {
+TEST(Swmmac8, Validation) {
   for (Fn fn : functions) {
-    EXPECT_EQ(fn(0, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr, nullptr),
-              GOC_SUCCESS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr,
-                 nullptr, nullptr),
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, nullptr, nullptr, nullptr,
+                 nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     for (unsigned bit = 0; bit < 32; ++bit)
       if (!((1u << bit) & mode(1))) {
-        EXPECT_EQ(fn(0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(0, 1u << bit, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
       }
   }
 }
@@ -153,7 +142,7 @@ TEST(Swmmac8, EveryInputEncoding) {
           for (unsigned reg = 6; reg < 14; ++reg)
             for (auto &word : r.data[reg])
               word = 0;
-          ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, r.d, r.a, r.b, r.index), GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu, 0, r.d, r.a, r.b, r.index), GOC_SUCCESS);
           for (unsigned reg = 0; reg < 8; ++reg)
             for (unsigned lane = 0; lane < 32; ++lane) {
               if (std::isnan(want)) {

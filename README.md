@@ -263,13 +263,17 @@ Packed-output forms halve the C/D register counts, packing adjacent rows into
 the low and high 16 bits. Input and output operands may share whole VGPRs. Distinct backing
 addresses must not overlap, and every pointer must refer to sufficient storage.
 
+WMMA and SWMMAC ignore architectural EXEC, including zero, and always read and
+write all lanes. Their APIs omit `exec_mask`, as do scalar and pseudo-scalar
+instructions. Other vector APIs retain it.
+
 All four FP8/BF8 WMMA forms have v3 SIMD paths supporting NEG_C/ABS_C.
 They decode each input element once and reuse it across output rows/columns;
-all results are staged before masked writes to preserve operand aliasing.
-Tests cross dense matrix goldens with all CPU levels, all C modifiers, 84 EXEC
-masks and aliases, and check every input byte encoding through each operand.
+all results are staged before writes to preserve operand aliasing.
+Tests cross dense matrix goldens with all CPU levels, all C modifiers
+and aliases, and check every input byte encoding through each operand.
 Benchmark rows for all four `v_wmma_f32_16x16x16_*` mnemonics
-compare scalar and SIMD with full EXEC, default flags and ABS_C/NEG_C.
+compare scalar and SIMD with default flags and ABS_C/NEG_C.
 
 FP8/BF8 DOT4 supports all four E4M3FN/E5M2 input combinations with FP32
 accumulation and `GOC_DOT_ABS_C` / `GOC_DOT_NEG_C`, applied in that order.
@@ -423,10 +427,10 @@ API contract. These forms expose loose FP32 FMA accumulation, with nearest-even
 packed narrowing and `GOC_FP16_OVFL` support for finite FP16 overflow.
 
 Tests retain GPU digests for 32,768 logical results across all four forms and
-all 32 modifier combinations. They cover every EXEC lane, overlapping inputs
+all 32 modifier combinations. They cover every lane, overlapping inputs
 and destinations (including the index register), duplicate destinations,
 packed-rounding ties and finite overflow versus infinity. All operands are
-snapshotted before masked stores. Benchmarks include resetting the accumulator
+snapshotted before stores. Benchmarks include resetting the accumulator
 on every call, equally for all CPU paths. Pinned-core Ryzen 9 7950X3D timings
 measured 4.77–11.19x for v3 and 4.81–11.84x for v4 versus scalar, including
 negation and index-key selection (seven samples, each at least 10 ms).
@@ -435,9 +439,9 @@ Sparse FP8/BF8 WMMA covers all four `v_swmmac_f32_16x16x32_*_*`
 combinations. A uses two VGPRs, B four, the index one, and in/out D eight.
 Both index keys are supported; these instructions have no negation or CLAMP
 modifiers. The scalar and shared floating-point v3/v4 backends use loose FP32
-FMA semantics, with full input snapshots and masked destination stores.
+FMA semantics, with full input snapshots and destination stores.
 Tests check 32,768 GPU-captured logical results, all 256 encodings of each
-input type, both index keys, every EXEC lane and destination/source/index
+input type, both index keys, every lane and destination/source/index
 aliases. The exhaustive encoding checks include subnormals, signed zeros,
 BF8 infinities and both formats' NaNs. Pinned-core timings on the same CPU
 measured 7.30–8.17x for v3 and 7.77–8.75x for v4, including index-key selection
@@ -448,13 +452,13 @@ Sparse integer WMMA covers `v_swmmac_i32_16x16x32_iu8`,
 unsigned factors, CLAMP, loose and empirical exact semantics, and scalar/v3/v4
 paths. K=32 supports both index keys; K=64 consumes all metadata bits and rejects
 index-key selection. The in/out accumulator uses eight VGPRs. Inputs are read
-before masked stores, and host FP state is preserved.
+before stores, and host FP state is preserved.
 
 GPU captures establish two-stage CLAMP behavior: K=32 saturates after compressed
 positions 0–7 and again after 8–15. K=64 saturates after positions 0–7 plus 16–23,
 then after 8–15 plus 24–31. This differs from rocjitsu's current final-sum model.
 Tests check 163,840 captured results across every modifier combination, plus
-EXEC masks, aliases, and a literal witness where the two stages cancel
+aliases, and a literal witness where the two stages cancel
 mathematically but intermediate saturation changes the result. V3 processes
 eight columns and v4 sixteen, with modifiers retained on both paths. Pinned-core
 Ryzen 9 7950X3D measurements show 1.39–1.86x for v3 and 1.77–2.34x for v4,
@@ -555,8 +559,8 @@ The compiled API matches 10,485,760 distinct GPU outputs within one FP16 or two
 FP32 ULPs, requiring exact zeros and infinities and allowing NaN payload variation.
 The 31,457,280-result capture also verifies identical full, empty and partial
 EXEC behavior. Committed fixtures retain boundary and random samples across every
-modifier and FP-state combination; further tests cover scalar aliasing, ignored
-EXEC, invalid flags, strict semantics, denormal stages and overflow. Each call
+modifier and FP-state combination; further tests cover scalar aliasing,
+invalid flags, strict semantics, denormal stages and overflow. Each call
 has only one scalar result, so all CPU levels use the same implementation. The
 benchmark measures these scalar calls with default and modified FP settings.
 Pinned-core Ryzen 9 7950X3D timings for those workloads range from 2.2 to

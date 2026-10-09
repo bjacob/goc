@@ -21,7 +21,7 @@ template <bool Bf8> void decode(float (&values)[16][16], const uint32_t *const *
 }
 
 template <bool Bf8A, bool Bf8B>
-void wmma(uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
+void wmma(uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
           const uint32_t *const *b, const uint32_t *const *c) {
   // Decode each packed factor once, then reuse across the full output matrix.
   alignas(32) float left[16][16], right[16][16];
@@ -51,30 +51,28 @@ void wmma(uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d, const uint
   }
   // Snapshot all inputs and results before writes, including cross-register aliases.
   for (int lane = 0; lane < 32; lane += 8) {
-    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
-                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
     for (int reg = 0; reg < 8; ++reg)
-      _mm256_maskstore_epi32(
-          reinterpret_cast<int *>(d[reg] + lane), lane_exec_mask,
+      _mm256_storeu_si256(
+          reinterpret_cast<__m256i *>(d[reg] + lane),
           _mm256_loadu_si256(reinterpret_cast<const __m256i *>(result[reg] + lane)));
   }
 }
 
 } // namespace
 
-void fp8_wmma_x86_64_v3(bool bf8_a, bool bf8_b, uint32_t exec_mask, uint32_t modifiers,
-                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+void fp8_wmma_x86_64_v3(bool bf8_a, bool bf8_b, uint32_t modifiers, uint32_t *const *d,
+                        const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   if (bf8_a) {
     if (bf8_b)
-      wmma<true, true>(exec_mask, modifiers, d, a, b, c);
+      wmma<true, true>(modifiers, d, a, b, c);
     else
-      wmma<true, false>(exec_mask, modifiers, d, a, b, c);
+      wmma<true, false>(modifiers, d, a, b, c);
   } else {
     if (bf8_b)
-      wmma<false, true>(exec_mask, modifiers, d, a, b, c);
+      wmma<false, true>(modifiers, d, a, b, c);
     else
-      wmma<false, false>(exec_mask, modifiers, d, a, b, c);
+      wmma<false, false>(modifiers, d, a, b, c);
   }
 }
 

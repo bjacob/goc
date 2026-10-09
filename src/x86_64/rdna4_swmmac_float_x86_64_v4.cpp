@@ -29,25 +29,25 @@ namespace {
 } // namespace
 
 template <bool Bf16, bool Packed>
-void swmmac_float_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
-                            SwmmacFloatInputs &input, bool saturate) {
+void swmmac_float_x86_64_v4(uint32_t mode, uint32_t *const *d, SwmmacFloatInputs &input,
+                            bool saturate) {
   accumulate(mode, input);
   uint32_t result[Packed ? 4 : 8][32];
   swmmac_float_pack<Bf16, Packed>(result, input.acc, saturate);
   for (unsigned reg = 0; reg < (Packed ? 4u : 8u); ++reg)
     for (unsigned lane = 0; lane < 32; lane += 16) {
       auto value = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(result[reg] + lane));
-      _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(exec_mask >> lane), value);
+      _mm512_storeu_si512(d[reg] + lane, value);
     }
 }
 
-template void swmmac_float_x86_64_v4<false, false>(uint32_t, uint32_t, uint32_t *const *,
-                                                   SwmmacFloatInputs &, bool);
-template void swmmac_float_x86_64_v4<false, true>(uint32_t, uint32_t, uint32_t *const *,
-                                                  SwmmacFloatInputs &, bool);
-template void swmmac_float_x86_64_v4<true, false>(uint32_t, uint32_t, uint32_t *const *,
-                                                  SwmmacFloatInputs &, bool);
-template void swmmac_float_x86_64_v4<true, true>(uint32_t, uint32_t, uint32_t *const *,
-                                                 SwmmacFloatInputs &, bool);
+template void swmmac_float_x86_64_v4<false, false>(uint32_t, uint32_t *const *, SwmmacFloatInputs &,
+                                                   bool);
+template void swmmac_float_x86_64_v4<false, true>(uint32_t, uint32_t *const *, SwmmacFloatInputs &,
+                                                  bool);
+template void swmmac_float_x86_64_v4<true, false>(uint32_t, uint32_t *const *, SwmmacFloatInputs &,
+                                                  bool);
+template void swmmac_float_x86_64_v4<true, true>(uint32_t, uint32_t *const *, SwmmacFloatInputs &,
+                                                 bool);
 
 } // namespace goc
