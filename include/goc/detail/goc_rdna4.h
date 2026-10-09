@@ -18,6 +18,28 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Unsigned byte-to-FP32 conversions: one VGPR per operand. The mnemonic's
+// byte index selects bits [8*index, 8*index+7] of A. Supports OMOD and CLAMP;
+// source ABS/NEG and half selectors are invalid. All results are exactly
+// representable, independent of host rounding, and preserve host FP state.
+// Supports loose semantics, full EXEC masking and whole-register A/D aliasing.
+
+GOC_API int goc_rdna4_v_cvt_f32_ubyte0(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_f32_ubyte1(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_f32_ubyte2(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_f32_ubyte3(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a);
+
 // FP16 conversions, one VGPR per operand; loose semantics only. HIGH_A selects
 // a 16-bit source half, HIGH_D selects a 16-bit destination half, preserving the
 // other half. The corresponding selector is invalid for a full FP32 operand.

@@ -375,6 +375,20 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+The four `v_cvt_f32_ubyte0` through `v_cvt_f32_ubyte3` instructions extract
+one unsigned byte from a VGPR and convert it to FP32, following rocjitsu's
+byte-conversion handlers. All eight OMOD/CLAMP combinations stay on the
+available SIMD paths; source ABS/NEG and half selectors are invalid. Results
+are exact for all byte values and output modifiers, so all host rounding modes
+produce the same bits and preserve existing FP exception flags. The API exposes
+loose semantics. Tests exhaust byte values, byte positions, unselected source
+bits and modifiers, and cross 85 EXEC masks with aliases and unaligned storage.
+Eight-lane v3 and sixteen-lane v4 paths support all modifiers. Benchmarks cover
+full-EXEC default and combined OMOD/CLAMP workloads. On the development Ryzen 9
+7950X3D, pinned-core measurements showed v3 roughly tied with scalar for default
+instructions and 2.4–2.6x faster with modifiers; v4 was 3.7–5.0x faster for
+defaults and 9.3–10.7x with modifiers (seven samples, each at least 10 ms).
+
 Six FP16 conversions cover `v_cvt_f16_i16`, `v_cvt_f16_u16`,
 `v_cvt_i16_f16`, `v_cvt_u16_f16`, `v_cvt_f16_f32`, and `v_cvt_f32_f16`.
 Each operand occupies one VGPR. Half selectors preserve the unused destination
