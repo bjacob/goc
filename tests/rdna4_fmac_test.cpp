@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_half_fma_reference.h"
+#include "rdna4_omod_reference.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -56,8 +57,7 @@ uint32_t reference(bool half, uint32_t a, uint32_t b, uint32_t d, uint32_t mode,
   if (mode & GOC_ALU_NEG_B)
     b ^= 0x80000000;
   float result = std::fma(as_float(a), as_float(b), as_float(d));
-  const float scale[] = {1, 2, 4, 0.5f};
-  result *= scale[(mode >> 6) & 3];
+  result = goc_test::omod_f32_reference(result, mode);
   if (mode & GOC_ALU_CLAMP)
     result = !(result > 0) ? 0 : std::min(result, 1.0f);
   return as_bits(result);

@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_dpp16_reference.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_omod_reference.h"
 
 #include <algorithm>
 #include <cmath>
@@ -144,8 +145,7 @@ TEST(Dpp16, AllRowBankAndArithmeticModifiers) {
               float value =
                   std::fma(modify(src < 0 ? 0 : saved[0][src], low, 0),
                            modify(saved[1][lane], low, 1), modify(saved[ci][lane], low, 2));
-              const float scales[] = {1, 2, 4, 0.5f};
-              value *= scales[(low >> 6) & 3];
+              value = goc_test::omod_f32_reference(value, low);
               if (low & GOC_ALU_CLAMP) {
                 value = std::clamp(value, 0.f, 1.f);
                 if (value == 0)

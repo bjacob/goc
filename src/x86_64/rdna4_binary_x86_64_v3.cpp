@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_binary.h"
+#include "x86_64/rdna4_alu_x86_64_v3.h"
 #include "x86_64/rdna4_minmax_x86_64_v3.h"
 
 #include <immintrin.h>
@@ -47,14 +48,7 @@ void run(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uin
     if constexpr (Op == Binary::Maximum)
       value = minmax<true, true>(x, y);
     if (mode & GOC_ALU_OMOD_HALF) {
-      auto magnitude = _mm256_and_si256(_mm256_castps_si256(value), _mm256_set1_epi32(INT32_MAX));
-      auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x00800000), magnitude);
-      value = _mm256_andnot_ps(_mm256_castsi256_ps(tiny), value);
-      if ((mode & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF) {
-        auto underflow = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x01000000), magnitude);
-        auto sign = _mm256_and_ps(value, _mm256_castsi256_ps(_mm256_set1_epi32(INT32_MIN)));
-        value = _mm256_blendv_ps(value, sign, _mm256_castsi256_ps(underflow));
-      }
+      value = prepare_omod_f32(value, mode);
       value = _mm256_mul_ps(value, scale);
     }
     if (mode & GOC_ALU_CLAMP)

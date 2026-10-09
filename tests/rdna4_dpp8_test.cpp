@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_omod_reference.h"
 
 #include <algorithm>
 #include <cmath>
@@ -109,8 +110,7 @@ TEST(Dpp8, ArithmeticModifiersMasksAndAliases) {
               uint32_t raw = fi || ((mask >> src) & 1) ? saved[0][src + 1] : 0;
               float value = std::fma(modify(raw, low, 0), modify(saved[bi][lane + 1], low, 1),
                                      modify(saved[ci][lane + 1], low, 2));
-              const float scales[] = {1, 2, 4, 0.5f};
-              value *= scales[(low >> 6) & 3];
+              value = goc_test::omod_f32_reference(value, low);
               if (low & GOC_ALU_CLAMP) {
                 value = std::min(std::max(value, 0.f), 1.f);
                 // Architectural clamp canonicalizes either zero sign to +0.

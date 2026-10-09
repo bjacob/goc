@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_fma.h"
 #include "rdna4_simd.h"
+#include "x86_64/rdna4_alu_x86_64_v4.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -44,8 +45,11 @@ void run(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, cons
           _mm512_cmp_ps_mask(va, zero, _CMP_EQ_OQ) | _mm512_cmp_ps_mask(vb, zero, _CMP_EQ_OQ);
       result = _mm512_mask_mov_ps(result, has_zero, vc);
     }
-    if (modifiers & GOC_ALU_OMOD_HALF)
+    if (modifiers & GOC_ALU_OMOD_HALF) {
+      if constexpr (!Dx9Zero)
+        result = prepare_omod_f32(result, modifiers);
       result = _mm512_mul_ps(result, scale);
+    }
     if (modifiers & GOC_ALU_CLAMP)
       result = _mm512_min_ps(_mm512_max_ps(result, _mm512_setzero_ps()), _mm512_set1_ps(1));
     _mm512_mask_storeu_epi32(d + i, static_cast<__mmask16>(mask >> i), _mm512_castps_si512(result));

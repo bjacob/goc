@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_fma.h"
 #include "rdna4_simd.h"
+#include "x86_64/rdna4_alu_x86_64_v3.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -47,8 +48,11 @@ void run(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, cons
           _mm256_or_ps(_mm256_cmp_ps(va, zero, _CMP_EQ_OQ), _mm256_cmp_ps(vb, zero, _CMP_EQ_OQ));
       result = _mm256_blendv_ps(result, vc, has_zero);
     }
-    if (modifiers & GOC_ALU_OMOD_HALF)
+    if (modifiers & GOC_ALU_OMOD_HALF) {
+      if constexpr (!Dx9Zero)
+        result = prepare_omod_f32(result, modifiers);
       result = _mm256_mul_ps(result, scale);
+    }
     if (modifiers & GOC_ALU_CLAMP)
       result = _mm256_min_ps(_mm256_max_ps(result, _mm256_setzero_ps()), _mm256_set1_ps(1));
     __m256i active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> i)),

@@ -51,7 +51,8 @@ int fma(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags, uint32_t
       value = (x == 0 || y == 0) ? z : std::fma(x, y, z);
     else
       value = std::fma(x, y, z);
-    result[lane] = goc::as_bits(goc::alu_output(value, instruction_flags));
+    result[lane] = goc::as_bits((Dx9Zero ? goc::alu_output(value, instruction_flags)
+                                         : goc::alu_output_f32(value, instruction_flags)));
   }
 
   for (int lane = 0; lane < 32; ++lane)

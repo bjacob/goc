@@ -3,6 +3,8 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_fma_omod_hardware.h"
+#include "rdna4_omod_reference.h"
 
 #include <algorithm>
 #include <array>
@@ -145,7 +147,8 @@ void check_fma_modifiers(bool dx9) {
             float want = float(inputs[0] * inputs[1] + inputs[2]);
             if (dx9 && (inputs[0] == 0 || inputs[1] == 0))
               want = float(inputs[2]);
-            want *= scales[modifiers >> 6 & 3];
+            want = dx9 ? want * scales[modifiers >> 6 & 3]
+                       : goc_test::omod_f32_reference(want, modifiers);
             if (modifiers & GOC_ALU_CLAMP)
               want = std::min(1.0f, std::max(0.0f, want));
             expected[lane] = goc::as_bits(want);
@@ -176,7 +179,7 @@ TEST(Arithmetic, FmaModifierSpecialValues) {
   const uint32_t modes[] = {
       GOC_ALU_OMOD_2,    GOC_ALU_CLAMP, GOC_ALU_CLAMP, GOC_ALU_OMOD_HALF,
       GOC_ALU_OMOD_HALF, GOC_ALU_CLAMP, GOC_ALU_ABS_C, GOC_ALU_ABS_C | GOC_ALU_NEG_C};
-  const uint32_t golden[] = {0xa9000000, 0, 0, 0x80000000, 1, 0x3f800000, 0x40200000, 0x40000000};
+  const uint32_t golden[] = {0xa9000000, 0, 0, 0, 0, 0x3f800000, 0x40200000, 0x40000000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (int test = 0; test < 8; ++test) {
       uint32_t a[32], b[32], c[32], d[32];
@@ -255,4 +258,50 @@ TEST(Arithmetic, Dx9FmaFusedRoundingAndValidation) {
     for (uint32_t value : d)
       EXPECT_EQ(value, 0xa8800000);
   }
+}
+
+TEST(Arithmetic, FmaAndFmacOmodHardwareBoundaries) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (bool fmac : {false, true})
+      for (unsigned omod = 0; omod < 4; ++omod)
+        for (unsigned clamp = 0; clamp < 2; ++clamp)
+          for (unsigned neg = 0; neg < 2; ++neg)
+            for (uint64_t mask : rdna4_exec_masks())
+              for (int alias = 0; alias < (fmac ? 1 : 4); ++alias) {
+                SCOPED_TRACE(::testing::Message()
+                             << cpu << '/' << fmac << '/' << omod << '/' << clamp << '/' << neg
+                             << '/' << mask << '/' << alias);
+                uint32_t words[4][34];
+                uint32_t *p[4];
+                for (int reg = 0; reg < 4; ++reg) {
+                  std::fill(words[reg], words[reg] + 34, 0xdeadbeef);
+                  p[reg] = words[reg] + 1;
+                }
+                for (int lane = 0; lane < 32; ++lane) {
+                  p[0][lane] = 0x80000000;
+                  p[1][lane] = goc_test::fma_omod_inputs[lane];
+                  p[2][lane] = 0x3f800000;
+                  p[3][lane] = 0x80000000;
+                }
+                uint32_t before[32];
+                std::copy(p[alias], p[alias] + 32, before);
+                uint64_t mode = (omod << 6) | (clamp ? GOC_ALU_CLAMP : 0) | neg;
+                int error =
+                    fmac ? goc_rdna4_v_fmac_f32(cpu, mask, mode, &p[alias], &p[1], &p[2])
+                         : goc_rdna4_v_fma_f32(cpu, mask, mode, &p[alias], &p[1], &p[2], &p[3]);
+                ASSERT_EQ(error, GOC_SUCCESS);
+                for (int lane = 0; lane < 32; ++lane) {
+                  uint32_t want = (mask >> lane) & 1
+                                      ? goc_test::fma_omod_hardware[omod][clamp][neg][lane]
+                                      : before[lane];
+                  if ((want & 0x7fffffff) > 0x7f800000)
+                    EXPECT_GT(p[alias][lane] & 0x7fffffff, 0x7f800000u);
+                  else
+                    EXPECT_EQ(p[alias][lane], want);
+                }
+                for (const auto &reg : words) {
+                  EXPECT_EQ(reg[0], 0xdeadbeefu);
+                  EXPECT_EQ(reg[33], 0xdeadbeefu);
+                }
+              }
 }

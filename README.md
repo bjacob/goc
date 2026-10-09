@@ -1564,8 +1564,18 @@ The hardware probes also corrected OMOD behavior in these 18 operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal
 produces signed zero. These rules apply independently of guest denormal mode.
+The same correction now covers `v_fma_f32` and `v_fmac_f32`, including their
+DPP forms, on scalar, AVX2, and AVX-512 paths. A separate GFX1201 capture checks
+all OMOD settings with NEG/CLAMP, signed zeros, subnormal boundaries, overflow,
+and NaNs; tests combine those results with EXEC masks and FMA destination aliases.
+On the Ryzen 9 7950X3D, FMA with NEG/ABS/OMOD measures 16.5 ns on AVX2
+and 7.0 ns on AVX-512 (5.3× and 12.6× scalar speed).
+
 Other FP families still need this OMOD boundary audit, and other applicable
-instructions still need DPP support.
+instructions still need DPP support. The audit has also identified pending
+forced-denormal-flush corrections in FP32 transcendental operations and DX9 FMA;
+DX9 additionally needs positive-zero-product addition rather than direct
+selection of the addend.
 
 All public instruction entry points take a 64-bit `instruction_flags` value.
 Existing modifier bits keep their meanings. The extra width accommodates the
