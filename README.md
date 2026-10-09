@@ -412,6 +412,14 @@ hardware denormal modes; tests cover every destination alias, exceptional
 factors and accumulators, output-underflow boundaries, and fused rounding.
 With NEG/ABS/OMOD, DX9 FMA measures 18.4 ns on AVX2 and 8.9 ns on
 AVX-512 (6.2× and 12.7× scalar speed on the Ryzen 9 7950X3D).
+DX9 FMA also supports DPP8/DPP16 on A before source modifiers; B/C retain
+their lanes. Both SIMD paths remain active. Tests check every modifier with
+DPP, masks, shared sources, output aliases and guards, plus 917,504 GPU result
+words (NaN payloads ignored). The capture uses documented ISA opcode 0x209
+with the DPP encoding because LLVM lacks this assembler variant.
+Pinned-core DPP8/DPP16 timings, including source modifiers and output scaling,
+are 22.8–27.7 ns for v3 (4.67–6.10x scalar) and 10.9–16.0 ns for v4
+(9.33–11.57x), with seven samples of at least 10 ms each.
 
 Sparse WMMA covers the four FP16/BF16 `v_swmmac_*_16x16x32_*` forms,
 with FP32 or matching packed output. D is the in/out accumulator, A contains

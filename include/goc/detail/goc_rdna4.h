@@ -2226,8 +2226,10 @@ GOC_API int goc_rdna4_v_fmaak_f32(uint64_t flags, uint64_t exec_mask, uint64_t i
                                   const uint32_t *const *b, uint32_t literal);
 
 // DX9 FMA: one VGPR per operand, all ALU source/output modifiers, loose semantics.
-// If either modified factor is signed zero, select modified C unchanged before
-// output scaling/CLAMP; otherwise compute a fused multiply-add.
+// Flush source/result subnormals. If either modified factor is signed zero,
+// add a positive-zero product to modified C before output scaling/CLAMP;
+// otherwise compute a fused multiply-add. DPP8/DPP16 permute A before source
+// modifiers; B and C retain their lanes.
 GOC_API int goc_rdna4_v_fma_dx9_zero_f32(uint64_t flags, uint64_t exec_mask,
                                          uint64_t instruction_flags, uint32_t *const *d,
                                          const uint32_t *const *a, const uint32_t *const *b,

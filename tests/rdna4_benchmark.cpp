@@ -422,19 +422,48 @@ bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int mi
   return true;
 }
 
-bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t modifiers, bool dx9) {
+bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t modifiers, bool dx9,
+                   int descriptor = -1) {
+  if (dx9 && descriptor < 0)
+    for (int selected : {0, 5})
+      if (!benchmark_fma(cpu, iterations, min_ms, modifiers, dx9, selected))
+        return false;
   Registers r;
   r.initialize_fma(modifiers, dx9);
+  uint64_t mode = modifiers | (descriptor < 0 ? 0 : goc_test::dpp_modes[descriptor]);
+  if (descriptor >= 0)
+    for (unsigned lane = 0; lane < 32; ++lane) {
+      int source;
+      if (!goc_test::dpp_source(mode, UINT32_MAX, lane, source))
+        return false;
+      double input[] = {source < 0 ? 0.0 : goc::as_float(r.data[0][source]),
+                        goc::as_float(r.data[4][lane]), goc::as_float(r.data[8][lane])};
+      for (unsigned i = 0; i < 3; ++i) {
+        if (modifiers & (8u << i))
+          input[i] = std::abs(input[i]);
+        if (modifiers & (1u << i))
+          input[i] = -input[i];
+      }
+      float value = float((input[0] == 0 || input[1] == 0 ? 0.0 : input[0] * input[1]) + input[2]);
+      unsigned scale = (modifiers >> 6) & 3;
+      value *= scale == 1 ? 2.0f : scale == 2 ? 4.0f : scale == 3 ? 0.5f : 1.0f;
+      if (modifiers & GOC_ALU_CLAMP)
+        value = std::min(1.0f, std::max(0.0f, value));
+      r.expected[128 * (lane / 16) + lane % 16] = bits(value);
+    }
+  const char *label = descriptor < 0    ? (modifiers ? "NEG/ABS/half" : "none")
+                      : descriptor == 0 ? (modifiers ? "DPP8/modified" : "DPP8")
+                                        : (modifiers ? "DPP16/modified" : "DPP16");
   double scalar = 0;
   const auto run = [&](const char *path, uint64_t level) {
     auto fn = dx9 ? goc_rdna4_v_fma_dx9_zero_f32 : goc_rdna4_v_fma_f32;
-    double time = measure(fn, level, r, iterations, min_ms, modifiers);
+    double time = measure(fn, level, r, iterations, min_ms, mode);
     if (time < 0)
       return false;
     if (level == GOC_CPU_BASELINE)
       scalar = time;
-    print_result(dx9 ? "v_fma_dx9_zero_f32" : "v_fma_f32", "loose",
-                 modifiers ? "NEG/ABS/half" : "none", path, time, scalar / time);
+    print_result(dx9 ? "v_fma_dx9_zero_f32" : "v_fma_f32", "loose", label, path, time,
+                 scalar / time);
     return true;
   };
   if (!run("scalar", GOC_CPU_BASELINE))

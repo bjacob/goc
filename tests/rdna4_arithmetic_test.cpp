@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_dx9_hardware.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_fma_omod_hardware.h"
@@ -332,4 +333,92 @@ TEST(Arithmetic, Dx9HardwareAllModifiersAndDenormalModes) {
           }
           EXPECT_EQ(hash, goc_test::dx9_hardware_hashes[set]);
         }
+}
+
+TEST(Arithmetic, Dx9DppHardwareCorpus) {
+  // RX 9070/gfx1201, raw ISA opcode 0x209 (LLVM lacks DPP assembly), MODE 0xf0: all 512 modifiers,
+  // seven DPP descriptors, and eight EXEC masks. FNV hashes words with NaN payloads canonicalized.
+  const uint32_t values[] = {1,          0x807fffff, 0x00800000, 0x80000000,
+                             0x7f800001, 0xff800000, 0x3f800000, 0xff7fffff};
+  const uint32_t masks[] = {UINT32_MAX, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (uint32_t mask : masks)
+      for (unsigned mode = 0; mode < 512; ++mode)
+        for (uint64_t descriptor : goc_test::dpp_modes) {
+          uint32_t words[4][32];
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            words[0][lane] = values[lane % 8];
+            words[1][lane] = values[(lane + 3) % 8];
+            words[2][lane] = values[(lane + 5) % 8];
+            words[3][lane] = 0xdead0000u + lane;
+          }
+          const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+          uint32_t *d[] = {words[3]};
+          ASSERT_EQ(goc_rdna4_v_fma_dx9_zero_f32(cpu, mask, descriptor | mode, d, a, b, c),
+                    GOC_SUCCESS);
+          for (uint32_t word : words[3]) {
+            if ((word & 0x7fffffff) > 0x7f800000)
+              word = 0x7fc00000;
+            hash = (hash ^ word) * UINT64_C(1099511628211);
+          }
+        }
+    EXPECT_EQ(hash, UINT64_C(0xda037611da867b25));
+  }
+}
+
+TEST(Arithmetic, Dx9DppModifiersMasksAliasesAndGuards) {
+  for (uint32_t mode = 0; mode < 512; ++mode)
+    for (uint64_t descriptor : goc_test::dpp_modes)
+      for (uint64_t mask : rdna4_exec_masks()) {
+        if (mode != 0 && mode != 511 && uint32_t(mask) != UINT32_MAX)
+          continue;
+        for (bool shared : {false, true}) {
+          uint32_t initial[4][34], expected[32], writes = 0;
+          for (unsigned reg = 0; reg < 4; ++reg)
+            for (unsigned lane = 0; lane < 34; ++lane)
+              initial[reg][lane] = goc::as_bits(float(int((lane * (reg + 1)) % 17) - 8) * 0.25f);
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            int source;
+            if (!goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+              continue;
+            writes |= 1u << lane;
+            double input[] = {source < 0 ? 0.0 : goc::as_float(initial[0][source + 1]),
+                              goc::as_float(initial[shared ? 0 : 1][lane + 1]),
+                              goc::as_float(initial[shared ? 0 : 2][lane + 1])};
+            for (unsigned i = 0; i < 3; ++i) {
+              if (mode & (8u << i))
+                input[i] = std::abs(input[i]);
+              if (mode & (1u << i))
+                input[i] = -input[i];
+            }
+            float value =
+                float((input[0] == 0 || input[1] == 0 ? 0.0 : input[0] * input[1]) + input[2]);
+            value = goc_test::omod_f32_reference(value, mode);
+            if (mode & GOC_ALU_CLAMP)
+              value = std::min(1.0f, std::max(0.0f, value));
+            expected[lane] = goc::as_bits(value);
+          }
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+            for (unsigned target = 0; target < 4; ++target) {
+              uint32_t words[4][34];
+              for (unsigned reg = 0; reg < 4; ++reg)
+                std::copy_n(initial[reg], 34, words[reg]);
+              const uint32_t *a[] = {words[0] + 1}, *b[] = {words[shared ? 0 : 1] + 1},
+                             *c[] = {words[shared ? 0 : 2] + 1};
+              uint32_t *d[] = {words[target] + 1};
+              ASSERT_EQ(goc_rdna4_v_fma_dx9_zero_f32(cpu, mask, descriptor | mode, d, a, b, c),
+                        GOC_SUCCESS);
+              for (unsigned reg = 0; reg < 4; ++reg)
+                for (unsigned lane = 0; lane < 34; ++lane) {
+                  uint32_t want = initial[reg][lane];
+                  if (reg == target && lane > 0 && lane < 33 && ((writes >> (lane - 1)) & 1))
+                    want = expected[lane - 1];
+                  ASSERT_EQ(words[reg][lane], want)
+                      << mode << "/" << descriptor << "/" << cpu << "/" << lane;
+                }
+            }
+        }
+      }
 }

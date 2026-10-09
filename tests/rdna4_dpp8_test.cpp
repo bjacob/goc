@@ -152,5 +152,8 @@ TEST(Dpp8, InvalidFlagsAndSemantics) {
       EXPECT_EQ(word, 0x12345678u);
   }
   EXPECT_EQ(goc_rdna4_v_fma_dx9_zero_f32(0, 0, GOC_DPP8, nullptr, nullptr, nullptr, nullptr),
-            GOC_ERROR_INVALID_FLAGS);
+            GOC_SUCCESS);
+  EXPECT_EQ(goc_rdna4_v_fma_dx9_zero_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
+                                         GOC_DPP8, nullptr, nullptr, nullptr, nullptr),
+            GOC_ERROR_UNSUPPORTED_SEMANTICS);
 }
