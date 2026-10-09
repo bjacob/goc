@@ -37,13 +37,15 @@ extern "C" {
 // This includes non-packed 16-bit MAD, MIN3, MAX3, and MED3.
 // FP16 ADD/SUB/SUBREV/MUL and binary/ternary min/max/median support DPP
 // with all modifiers. FP16 FMA/FMAC support DPP in loose and exact semantics.
-// FP16 unary math also supports DPP with all applicable modifiers.
+// FP16 unary math also supports DPP with all applicable modifiers, as do FP16
+// and FP32 LDEXP/FREXP exponent and all six FP32/integer conversions.
 static const uint64_t GOC_DPP8 = (UINT64_C(1) << 32);
 static const uint64_t GOC_DPP_FI = (UINT64_C(1) << 33);
 static const uint32_t GOC_DPP8_SELECT_SHIFT = 40;
 static const uint64_t GOC_DPP8_SELECT_MASK = (UINT64_C(0xffffff) << 40);
 
-// DPP16 permutes A within 16-lane rows before arithmetic modifiers. Select
+// DPP16 permutes the same source as DPP8 within 16-lane rows before arithmetic
+// modifiers (B for SUBREV_NC_U32, A otherwise). Select
 // exactly one of GOC_DPP8/GOC_DPP16. DPP16 control is the architectural 9-bit
 // encoding: quad_perm 0x000..0x0ff; row_shl 0x101..0x10f; row_shr 0x111..0x11f;
 // row_ror 0x121..0x12f; row_mirror 0x140; row_half_mirror 0x141;
@@ -1417,8 +1419,9 @@ GOC_API int goc_rdna4_v_cndmask_b16(uint64_t flags, uint64_t exec_mask, uint64_t
 // Select each output byte using the corresponding byte of C. Selectors 0..7
 // select bytes of the concatenation A:B (B supplies the low four bytes).
 // Selectors 8..11 replicate the sign bit of its four 16-bit halves; 12 selects
-// zero, and 13..255 select 0xff. Each operand uses one VGPR. No instruction
-// modifiers apply; loose semantics only. Preserves all host FP state.
+// zero, and 13..255 select 0xff. Each operand uses one VGPR. Supports DPP8/DPP16
+// on A; low 32 instruction-flag bits must be zero. Loose semantics only; preserves
+// all host FP state.
 GOC_API int goc_rdna4_v_perm_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b, const uint32_t *const *c);
@@ -1464,15 +1467,17 @@ GOC_API int goc_rdna4_v_pack_b32_f16(uint64_t flags, uint64_t exec_mask, uint64_
                                      uint32_t *const *d, const uint32_t *const *a,
                                      const uint32_t *const *b);
 
-// Bitwise equivalence: D = ~(A ^ B). Each operand uses one VGPR. No
-// instruction modifiers apply; loose semantics only. Host FP state is preserved.
+// Bitwise equivalence: D = ~(A ^ B). Each operand uses one VGPR. Supports
+// DPP8/DPP16 on A; low 32 instruction-flag bits must be zero. Loose semantics
+// only; host FP state is preserved.
 GOC_API int goc_rdna4_v_xnor_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b);
 
 // Extract the low 32 bits of the concatenation A:B shifted right by C & 31
 // bits (ALIGNBIT), or (C & 3) bytes (ALIGNBYTE). Each operand uses one VGPR.
-// No instruction modifiers apply; loose semantics only. Host FP state is preserved.
+// Supports DPP8/DPP16 on A; low 32 instruction-flag bits must be zero.
+// Loose semantics only; host FP state is preserved.
 GOC_API int goc_rdna4_v_alignbit_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                      uint32_t *const *d, const uint32_t *const *a,
                                      const uint32_t *const *b, const uint32_t *const *c);
@@ -1993,8 +1998,9 @@ GOC_API int goc_rdna4_v_cvt_floor_i32_f32(uint64_t flags, uint64_t exec_mask,
                                           const uint32_t *const *a);
 
 // Combined three-input integer operations, one VGPR per operand. Shift
-// counts wrap modulo 32; all addition and shifting wrap to 32 bits. Instruction
-// flags must be zero. Loose semantics only; preserves all host FP state.
+// counts wrap modulo 32; all addition and shifting wrap to 32 bits. Supports
+// DPP8/DPP16 on A; low 32 instruction-flag bits must be zero. Loose semantics
+// only; preserves all host FP state.
 
 // (A << (B & 31)) + C.
 GOC_API int goc_rdna4_v_lshl_add_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
@@ -2083,8 +2089,9 @@ GOC_API int goc_rdna4_v_mqsad_u32_u8(uint64_t flags, uint64_t exec_mask, uint64_
 // Reverse shifts: shift B by the count in A. A is one VGPR. B and D are one
 // VGPR for 32-bit forms or two VGPRs (low word first) for 64-bit forms. Counts
 // wrap modulo 32 or 64. ASHR replicates the sign bit; logical shifts insert
-// zero bits. Instruction flags must be zero. Loose semantics only; preserves
-// all host floating-point state.
+// zero bits. The 32-bit forms support DPP8/DPP16 on A (the shift count); their
+// low 32 instruction-flag bits must be zero. The 64-bit forms require zero
+// instruction_flags. Loose semantics only; preserves all host floating-point state.
 GOC_API int goc_rdna4_v_lshlrev_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b);
@@ -2239,8 +2246,9 @@ GOC_API int goc_rdna4_v_pk_maximum_f16(uint64_t flags, uint64_t exec_mask,
 // select the input and output halves; the other destination half is preserved.
 // ADD/SUB accept GOC_ALU_CLAMP for signed/unsigned saturation; otherwise they
 // wrap. Other forms do not accept CLAMP. Multiply retains its low 16 bits.
-// Shifts use B as the value and A modulo 16 as the count. No other instruction
-// flags are valid. Loose semantics only; independent of host FP state.
+// Shifts use B as the value and A modulo 16 as the count. All forms support
+// DPP8/DPP16 on A before half selection. Other instruction flags are invalid.
+// Loose semantics only; independent of host FP state.
 GOC_API int goc_rdna4_v_add_nc_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                    uint32_t *const *d, const uint32_t *const *a,
                                    const uint32_t *const *b);
@@ -2293,8 +2301,9 @@ GOC_API int goc_rdna4_v_ashrrev_i16(uint64_t flags, uint64_t exec_mask, uint64_t
 // forms support HIGH_A/B; the 24-bit forms discard A/B's upper byte. Signed
 // forms sign-extend the selected factors and interpret C as signed 32-bit.
 // CLAMP saturates the full product plus C to the result's 32-bit range;
-// otherwise results wrap. Other instruction flags are invalid. Loose semantics
-// only; independent of host FP state. Whole-register aliases are supported.
+// otherwise results wrap. Supports DPP8/DPP16 on A before half selection. Other
+// instruction flags are invalid. Loose semantics only; independent of host FP
+// state. Whole-register aliases are supported.
 GOC_API int goc_rdna4_v_mad_u32_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b, const uint32_t *const *c);
@@ -2316,8 +2325,8 @@ GOC_API int goc_rdna4_v_mad_i32_i24(uint64_t flags, uint64_t exec_mask, uint64_t
 // MAD supports CLAMP after full-precision A * B + C, otherwise wrapping.
 // MIN3/MAX3 select the smallest/largest of all three signed/unsigned inputs.
 // MED3 selects the middle value. CLAMP is invalid for MIN3/MAX3/MED3.
-// No other instruction flags are valid.
-// Loose semantics only; independent of host floating-point state.
+// Supports DPP8/DPP16 on A before half selection; other instruction flags are
+// invalid. Loose semantics only; independent of host floating-point state.
 GOC_API int goc_rdna4_v_mad_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b, const uint32_t *const *c);
@@ -2667,7 +2676,8 @@ GOC_API int goc_rdna4_v_ldexp_f64(uint64_t flags, uint64_t exec_mask, uint64_t i
 
 // Signed/unsigned 32-bit integer selection. Each operand uses one VGPR;
 // D may alias any whole source VGPR. These instructions have no arithmetic
-// modifiers: instruction_flags must be zero. Supports loose semantics.
+// modifiers. Supports DPP8/DPP16 on A; low 32 instruction-flag bits must be
+// zero. Supports loose semantics.
 // MINMAX computes max(min(A, B), C); MAXMIN computes min(max(A, B), C).
 GOC_API int goc_rdna4_v_min_i32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                 const uint32_t *const *a, const uint32_t *const *b);
@@ -2725,8 +2735,9 @@ GOC_API int goc_rdna4_v_med3_u32(uint64_t flags, uint64_t mask, uint64_t mode, u
 // D may alias A or B. The 24-bit forms discard the upper byte of each input,
 // then sign-extend signed inputs. High forms select bits 63:32 of the product.
 // MUL_I32_I24 and MUL_U32_U24 support GOC_ALU_CLAMP to saturate to the signed
-// or unsigned 32-bit range; otherwise low results wrap. Other instruction_flags
-// must be zero. Supports loose semantics and preserves the host FP environment.
+// or unsigned 32-bit range; otherwise low results wrap. All four 24-bit forms
+// support DPP8/DPP16 on A; other instruction flags are invalid. The 32-bit forms
+// require zero instruction_flags. Loose semantics; preserves the host FP environment.
 GOC_API int goc_rdna4_v_mul_lo_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                    uint32_t *const *d, const uint32_t *const *a,
                                    const uint32_t *const *b);
@@ -2758,7 +2769,8 @@ GOC_API int goc_rdna4_v_mul_hi_u32_u24(uint64_t flags, uint64_t exec_mask,
 // Non-carry 32-bit integer addition/subtraction. Each operand uses one VGPR;
 // D may alias any whole source VGPR. The two-input forms accept GOC_ALU_CLAMP
 // to saturate in the signed/unsigned result domain; otherwise results wrap.
-// ADD3 wraps modulo 2^32 and requires zero instruction_flags. Supports loose
+// ADD3 wraps modulo 2^32 and requires zero low instruction-flag bits. All forms
+// support DPP8/DPP16 on A, except SUBREV_NC_U32 which permutes B. Supports loose
 // semantics and preserves the host FP environment. No carry mask is produced.
 GOC_API int goc_rdna4_v_add_nc_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                    uint32_t *const *d, const uint32_t *const *a,
@@ -2924,8 +2936,9 @@ GOC_API int goc_rdna4_v_frexp_exp_i16_f16(uint64_t flags, uint64_t exec_mask,
 // NEG_A, HIGH_A/D, OMOD, CLAMP and GOC_FP16_OVFL. Preserves the unselected D
 // half and inactive lanes; whole-register A/D aliasing is allowed. EXP/LOG
 // use base two, RNDNE rounds ties to even, and FRACT is capped below one.
-// Loose semantics use FP32 arithmetic and output modifiers before nearest-even
-// FP16 narrowing, requiring host nearest-even arithmetic with denormals enabled.
+// Supports DPP8/DPP16 on A. Loose semantics require host nearest-even arithmetic
+// with denormals enabled. EXP/LOG round to FP16 before OMOD; other forms apply
+// output modifiers before final FP16 narrowing.
 GOC_API int goc_rdna4_v_trunc_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                   uint32_t *const *d, const uint32_t *const *a);
 
@@ -3210,7 +3223,8 @@ GOC_API int goc_rdna4_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t exec_mask
 // MBCNT_LO counts A bits below min(lane, 32); MBCNT_HI counts A bits below
 // max(lane - 32, 0). Both add B with wrapping. The lane index is physical and
 // independent of EXEC. Wave64 forms use 64 lane words per VGPR.
-// No instruction modifiers apply. Only loose semantics are implemented;
+// Wave32 forms support DPP8/DPP16 on A; low 32 instruction-flag bits must be zero.
+// Wave64 forms require zero instruction_flags. Only loose semantics are implemented;
 // all host FP state is preserved.
 GOC_API int goc_rdna4_v_clz_i32_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a);
@@ -3241,9 +3255,10 @@ GOC_API int goc_rdna4w64_v_mbcnt_hi_u32_b32(uint64_t flags, uint64_t exec_mask,
                                             uint64_t instruction_flags, uint32_t *const *d,
                                             const uint32_t *const *a, const uint32_t *const *b);
 
-// Wave32 Boolean operations: each operand holds one VGPR. B32 forms have no
-// instruction modifiers. B16 forms select A/B/D halves with HIGH_A/B/D, leave
-// the other D half unchanged, and reject all other modifiers; NOT has no B.
+// Wave32 Boolean operations: each operand holds one VGPR. All forms support
+// DPP8/DPP16 on A. B32 forms have no arithmetic modifiers. B16 forms select A/B/D
+// halves with HIGH_A/B/D after DPP and leave the other D half unchanged. Other
+// modifiers are invalid; NOT has no B.
 // Only loose semantics are implemented. All host FP state is preserved.
 GOC_API int goc_rdna4_v_and_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
@@ -3275,9 +3290,10 @@ GOC_API int goc_rdna4_v_xor_b16(uint64_t flags, uint64_t exec_mask, uint64_t ins
 GOC_API int goc_rdna4_v_not_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
 
-// Wave32 bit operations: every operand holds one VGPR. No instruction modifiers
-// are supported. Only loose semantics are implemented. BFE offsets and widths,
-// and BFM widths and offsets, use their low five bits; a zero width produces zero.
+// Wave32 bit operations: every operand holds one VGPR. Supports DPP8/DPP16 on A;
+// low 32 instruction-flag bits must be zero. Only loose semantics are implemented.
+// BFE offsets and widths, and BFM widths and offsets, use their low five bits;
+// a zero width produces zero.
 // Signed BFE sign-extends A before extraction and sign-extends the extracted field.
 // BFI selects B where A has a set bit, C otherwise. BFREV reverses all 32 bits.
 GOC_API int goc_rdna4_v_bfe_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,

@@ -229,7 +229,7 @@ The FP16/BF16 WMMA forms support all six NEG/NEG_HI modifier bits, including
 C absolute value. FP8/BF8 WMMA supports C negation and absolute value; A/B
 negation bits are rejected. Integer WMMA supports independent signed/unsigned
 A/B inputs and signed output saturation (`GOC_WMMA_CLAMP`); without CLAMP,
-results wrap modulo 2^32. Other instructions accept only zero instruction flags.
+results wrap modulo 2^32.
 The FP8/BF8 and integer entry points currently support wave32 only. FP16 and
 BF16 SIMD WMMA paths handle loose wave32 calls with FP32 outputs and all 64
 combinations of `NEG_LO`/`NEG_HI` on A/B and `NEG`/`ABS` on C. `ABS_C` is applied before
@@ -1028,7 +1028,9 @@ cannot reproduce the upper-half lane indices. Wave32 MBCNT_HI is a masked copy
 of `B`; its v3 candidate showed little benefit and was removed. Tests cover every pair of bit
 positions, complements, all population counts, accumulator wrapping, sentinel
 results, EXEC masks and aliases, including an in-place LO/HI sequence that
-constructs physical lane numbers under sparse EXEC masks. No modifiers apply.
+constructs physical lane numbers under sparse EXEC masks. Wave32 forms support
+DPP8/DPP16 on A; wave64 MBCNT requires zero instruction flags. No arithmetic
+modifiers apply.
 
 Packing supports `v_sat_pk_u8_i16` and `v_pack_b32_f16`. The former saturates
 each signed I16 half to U8 and packs the bytes into the selected destination
@@ -1048,7 +1050,8 @@ and signaling-NaN quieting. Pinned-core Ryzen 9 7950X3D timings measured
 AND, OR, XOR, and NOT support 16-bit and 32-bit values; XNOR supports 32-bit values. The 16-bit forms
 select source and destination halves with `HIGH_A`, `HIGH_B` (binary forms),
 and `HIGH_D`, preserving the other destination half. The 32-bit forms have
-no instruction modifiers. SIMD processes sixteen lanes on v4, including every
+no arithmetic modifiers. Both widths support DPP8/DPP16 on A before any half
+selection. SIMD processes sixteen lanes on v4, including every
 half selector. AVX2 candidates were slower than baseline, so v3 CPUs use the
 portable path. Tests cover every half encoding,
 per-bit truth tables, every selector combination, unaligned storage, EXEC
@@ -1072,7 +1075,8 @@ shuffles and retain full EXEC masking. Tests check all selector bytes against
 whole-register aliases, unaligned storage and preservation of host FP state.
 Pinned-core Ryzen 9 7950X3D timings for permutation are 68.8 ns scalar, 14.0 ns
 v3 (4.91x), and 4.5 ns v4 (15.40x), using seven samples of at least 10 ms.
-These rules follow rocjitsu's integer helpers. No instruction modifiers apply;
+These rules follow rocjitsu's integer helpers. All these forms support
+DPP8/DPP16 on A, with zero low instruction-flag bits;
 all host FP state is preserved. Eight-lane v3 and sixteen-lane v4 paths use
 variable shifts, Boolean operations, and byte lookup/shuffle reversal. `BFI`
 uses scalar on v3 because its AVX2 candidate showed little benefit; v4 uses
@@ -1087,8 +1091,8 @@ Combined integer instructions include shift/add, add/shift, shift/OR, AND/OR,
 three-input OR/XOR, and XOR/add. Shifts mask their count to five bits, and
 arithmetic wraps to 32 bits. `LERP_U8` independently averages four byte pairs;
 the low bit of each `C` byte selects whether an odd sum rounds up or down.
-Other `C` bits are ignored. These forms have no instruction modifiers and
-preserve host FP state. All have scalar and sixteen-lane v4 paths; v4 uses
+Other `C` bits are ignored. These forms support DPP8/DPP16 on A, have no
+arithmetic modifiers, and preserve host FP state. All have scalar and sixteen-lane v4 paths; v4 uses
 native three-input Boolean operations. Eight-lane v3 paths accelerate the three
 shift combinations and byte interpolation. The simple Boolean/XOR-add forms
 remain on baseline for v3 CPUs because measurements showed no AVX2 gain.
@@ -1112,8 +1116,9 @@ The 32- and 64-bit reverse shifts (`LSHLREV`, `LSHRREV`, `ASHRREV`) take
 the shift count in `A` and the value in `B`. Counts wrap modulo the value width.
 The 64-bit forms use two VGPRs for `B` and `D`, low word first, and one for `A`.
 Eight-lane v3 paths operate directly on the separate low/high words, including
-arithmetic sign extension across the 32-bit boundary. No instruction modifiers
-apply. Both scalar and SIMD preserve all host FP state. Tests cover every
+arithmetic sign extension across the 32-bit boundary. The 32-bit forms support
+DPP8/DPP16 on the shift-count operand A; the 64-bit forms require zero instruction
+flags. Both scalar and SIMD preserve all host FP state. Tests cover every
 count and bit position, random full-width counts, single-active/inactive-lane
 masks, and every destination alias with the count or either value half.
 
@@ -1201,14 +1206,15 @@ selection, three-input min/max, mixed min/max and median. Mixed operations
 combine A/B first: `MINMAX = max(min(A, B), C)` and
 `MAXMIN = min(max(A, B), C)`. Every form has scalar, eight-lane v3 and sixteen-lane v4 paths,
 masked stores and whole-register aliases. These instructions have no arithmetic
-modifiers; `instruction_flags` must be zero. Tests cover boundary Cartesian
-products, random inputs, all mask patterns, source/destination aliases, signed
+modifiers; they support DPP8/DPP16 on A with zero low instruction-flag bits.
+Tests cover boundary Cartesian products, random inputs, all mask patterns, source/destination aliases, signed
 versus unsigned ordering, operand grouping, and host FP-environment preservation.
 
 Integer multiply covers low/high 32-bit products and all four signed/unsigned
 24-bit forms. The 24-bit forms discard each source's upper byte and sign-extend
 signed inputs. `v_mul_i32_i24` and `v_mul_u32_u24` accept `GOC_ALU_CLAMP` for signed
-or unsigned saturation; other forms require zero instruction flags. Scalar,
+or unsigned saturation. All four 24-bit forms support DPP8/DPP16 on A; the
+32-bit forms require zero instruction flags. Scalar,
 eight-lane v3 and sixteen-lane v4 paths support masks and whole-register aliases.
 Saturation stays on SIMD by checking the high product word against the low
 word's sign extension, or against zero for unsigned products. Tests include
