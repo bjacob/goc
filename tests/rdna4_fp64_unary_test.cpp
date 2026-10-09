@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_omod_reference.h"
 
 #include <algorithm>
 #include <cmath>
@@ -74,8 +75,7 @@ double reference(int op, uint64_t input, uint32_t mode) {
     break;
   }
   double result = double(y);
-  const double scales[] = {1, 2, 4, 0.5};
-  result *= scales[(mode >> 6) & 3];
+  result = goc_test::omod_f64_reference(result, mode);
   if (mode & GOC_ALU_CLAMP)
     result = !(result > 0) ? 0 : std::min(result, 1.0);
   return result;

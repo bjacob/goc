@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_fp64.h"
+#include "x86_64/rdna4_alu_x86_64_v3.h"
 #include "x86_64/rdna4_minmax_x86_64_v3.h"
 
 #include <immintrin.h>
@@ -84,8 +85,10 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
       auto limit = _mm256_castsi256_pd(_mm256_set1_epi64x(INT64_C(0x3fefffffffffffff)));
       value = _mm256_blendv_pd(value, limit, _mm256_cmp_pd(value, limit, _CMP_GT_OQ));
     }
-    if (mode & GOC_ALU_OMOD_HALF)
+    if (mode & GOC_ALU_OMOD_HALF) {
+      value = prepare_omod_f64(value, mode);
       value = _mm256_mul_pd(value, scale);
+    }
     if (mode & GOC_ALU_CLAMP)
       value = _mm256_min_pd(_mm256_max_pd(value, _mm256_setzero_pd()), _mm256_set1_pd(1));
     // Gather low words and high words into separate 128-bit halves.

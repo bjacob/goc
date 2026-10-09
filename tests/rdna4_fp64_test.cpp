@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_omod_reference.h"
 
 #include <algorithm>
 #include <cmath>
@@ -45,7 +46,6 @@ int call(int op, uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *
 TEST(Fp64, AllModifiersMasksAndCrossHalfAliases) {
   const int aliases[][2] = {{6, 7}, {0, 1}, {2, 3}, {4, 5}, {1, 0},
                             {3, 2}, {5, 4}, {1, 2}, {4, 1}, {6, 6}};
-  const double scales[] = {1, 2, 4, 0.5};
   for (int op = 0; op < 7; ++op)
     for (uint32_t mode = 0; mode < 512; ++mode) {
       if (op != 2 && (mode & (GOC_ALU_NEG_C | GOC_ALU_ABS_C)))
@@ -74,7 +74,7 @@ TEST(Fp64, AllModifiersMasksAndCrossHalfAliases) {
           else
             want = double(maximum ? std::max(x[0], x[1]) : std::min(x[0], x[1]));
         }
-        want *= scales[(mode >> 6) & 3];
+        want = goc_test::omod_f64_reference(want, mode);
         if (mode & GOC_ALU_CLAMP)
           want = !(want > 0) ? 0 : std::min(want, 1.0);
         expected[0][lane] = uint32_t(bits(want));
@@ -218,11 +218,8 @@ uint64_t minmax_reference(int op, uint64_t a, uint64_t b, uint32_t mode) {
     std::sort(operands, operands + 2, [&](uint64_t x, uint64_t y) { return key(x) < key(y); });
     selected = operands[op % 2];
   }
-  if (!nan(selected)) {
-    const int exponents[] = {0, 1, 2, -1};
-    selected = bits(
-        double(std::ldexp(static_cast<long double>(number(selected)), exponents[(mode >> 6) & 3])));
-  }
+  if (!nan(selected))
+    selected = bits(goc_test::omod_f64_reference(number(selected), mode));
   if (mode & GOC_ALU_CLAMP) {
     if (nan(selected) || (selected & UINT64_C(0x8000000000000000)))
       selected = 0;

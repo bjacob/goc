@@ -19,4 +19,16 @@ inline float omod_f32_reference(float value, uint32_t mode) {
   return std::ldexp(value, omod == 3 ? -1 : int(omod));
 }
 
+inline double omod_f64_reference(double value, uint32_t mode) {
+  unsigned omod = (mode >> 6) & 3;
+  if (!omod)
+    return value;
+  double magnitude = std::abs(value);
+  if (magnitude < std::ldexp(1.0, -1022))
+    return 0.0;
+  if (omod == 3 && magnitude < std::ldexp(1.0, -1021))
+    return std::copysign(0.0, value);
+  return std::ldexp(value, omod == 3 ? -1 : int(omod));
+}
+
 } // namespace goc_test

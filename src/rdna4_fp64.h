@@ -128,6 +128,21 @@ inline double fp64_output(double value, uint32_t mode) {
   return value;
 }
 
+// Apply FP64 arithmetic output modifiers. Active OMOD clears tiny results
+// and either zero sign; halving a normal below twice minimum normal gives
+// signed zero.
+inline double fp64_arithmetic_output(double value, uint32_t mode) {
+  unsigned omod = (mode >> 6) & 3;
+  if (omod) {
+    uint64_t raw = double_bits(value), magnitude = raw & UINT64_C(0x7fffffffffffffff);
+    if (magnitude < UINT64_C(0x0010000000000000))
+      value = 0;
+    else if (omod == 3 && magnitude < UINT64_C(0x0020000000000000))
+      value = as_double(raw & UINT64_C(0x8000000000000000));
+  }
+  return fp64_output(value, mode);
+}
+
 #if defined(GOC_HAVE_X86_64_V3)
 void fp64_x86_64_v3(Fp64 op, uint32_t mask, uint32_t mode, uint32_t *const *d,
                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c);

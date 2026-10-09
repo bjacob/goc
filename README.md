@@ -1120,6 +1120,18 @@ ABS/NEG, OMOD and CLAMP are accepted without changing the integer result.
 Tests cover all 32 modifier combinations, every exponent field and subnormal
 leading-bit position, special values, masks, and aliases with either FP64 half.
 
+FP64 ADD/MUL/FMA, rounding, FRACT, min/max, FREXP mantissa, and SQRT/RCP/RSQ
+now apply hardware-checked OMOD zero/denormal rules on scalar and AVX2 paths.
+An unscaled subnormal or either zero sign becomes positive zero; halving a
+normal below twice minimum normal produces signed zero. The GFX1201 tests
+check all output modifiers with NEG and CLAMP and cross-half aliases. The
+thirteen non-transcendental operations use raw-result comparisons (NaN payloads
+are ignored); SQRT/RCP/RSQ use numerical comparisons because the hardware
+instructions themselves provide approximations substantially below FP64
+precision. FP64 LDEXP and FP64-output conversions still need their separate
+OMOD boundary corrections. With ABS/NEG/OMOD/CLAMP, these sixteen FP64
+AVX2 arithmetic paths measure 1.9–3.4× scalar speed on the Ryzen 9 7950X3D.
+
 FP32/FP64 `LDEXP` scales A by an integer power of two held in one B VGPR.
 A and D use one VGPR for FP32 or low/high pairs for FP64. Both widths have
 scalar, v3 and v4 implementations, supporting all 32 A ABS/NEG, OMOD and CLAMP
