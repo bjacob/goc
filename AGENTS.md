@@ -69,3 +69,10 @@ mask-density checks, active-lane iteration, or sparse-mask specializations:
 their code size and runtime overhead are unwanted. An early return for a zero
 effective mask is explicitly allowed; it does not justify further mask-dependent
 optimizations.
+
+Production implementations of API entry points must never explicitly mutate the
+host CPU floating-point environment, even temporarily. Do not change rounding
+modes, exception masks, denormal controls, or exception flags, and do not use
+save/modify/restore guards or helpers for that purpose. Ordinary arithmetic may
+raise sticky exception flags. Tests may modify the FP environment to verify
+behavior under different host settings.

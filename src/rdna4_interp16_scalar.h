@@ -3,6 +3,7 @@
 #pragma once
 
 #include "internal.h"
+#include "rdna4_fma_integer.h"
 #include "rdna4_fp64.h"
 #include "rdna4_mixed_fma_scalar.h"
 
@@ -11,28 +12,27 @@
 
 namespace goc {
 
-// Preserve the direction of discarded bits for a later narrowing conversion.
-// The product of these FP32 inputs is exact in FP64. TwoSum and round-to-odd
-// follow rocjitsu's mixed FMA implementation.
+// Preserve discarded bits without using host floating-point arithmetic.
 inline double interp16_round_odd(uint32_t a, uint32_t b, uint32_t c) {
-  double product = mixed_fma_widen(a) * mixed_fma_widen(b), addend = mixed_fma_widen(c);
-  double value = product + addend, virtual_c = value - product;
-  double error = (product - (value - virtual_c)) + (addend - virtual_c);
-  uint64_t bits = double_bits(value), eb = double_bits(error);
-  if (error != 0 && !(bits & 1))
-    bits += ((bits ^ eb) >> 63) ? UINT64_MAX : 1;
-  return as_double(bits);
+  return as_double(fma_finite_round_odd(a, b, c));
 }
 
 inline float interp16_rtz_float(uint32_t a, uint32_t b, uint32_t c) {
   if ((a & 0x7fffffff) >= 0x7f800000 || (b & 0x7fffffff) >= 0x7f800000 ||
       (c & 0x7fffffff) >= 0x7f800000)
     return std::fma(as_float(a), as_float(b), as_float(c));
-  double value = interp16_round_odd(a, b, c);
-  float rounded = float(value);
-  if (std::abs(double(rounded)) > std::abs(value))
-    rounded = as_float(as_bits(rounded) - 1);
-  return rounded;
+  uint64_t bits = fma_finite_round_odd(a, b, c);
+  uint32_t sign = uint32_t(bits >> 32) & 0x80000000;
+  int exponent = int((bits >> 52) & 2047) - 1023;
+  uint64_t significand = (bits & 0xfffffffffffffULL) | (1ULL << 52);
+  if (exponent > 127)
+    return as_float(sign | 0x7f7fffff);
+  if (exponent < -149)
+    return as_float(sign);
+  if (exponent < -126)
+    return as_float(sign | uint32_t(significand >> (-exponent - 97)));
+  return as_float(sign | (uint32_t(exponent + 127) << 23) |
+                  (uint32_t(significand >> 29) & 0x7fffff));
 }
 
 inline uint16_t interp16_rtz_half(uint32_t a, uint32_t b, uint32_t c, bool clamp) {

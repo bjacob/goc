@@ -16,14 +16,13 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
-  bool exact = (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
 #if defined(GOC_HAVE_X86_64_V3)
+  bool exact = (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
   if (!exact && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
     goc::packed_fma_x86_64_v3(flags & GOC_FP16_OVFL, exec_mask, mode, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
-  goc::HalfFmaEnvironment environment(exact);
   uint32_t modes[] = {goc::packed_half_mode(mode, false), goc::packed_half_mode(mode, true)};
   uint32_t result[32];
   for (int lane = 0; lane < 32; ++lane) {

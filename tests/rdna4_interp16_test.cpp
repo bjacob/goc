@@ -120,7 +120,7 @@ TEST(Interp16, IndependentIntegerOracleAndRoundingBoundaries) {
       }
 }
 
-TEST(Interp16, ValidationAndRestoredHostRounding) {
+TEST(Interp16, ValidationAndUnchangedHostRounding) {
   goc_test::ScopedFpEnvironment saved;
   ASSERT_TRUE(saved.saved());
   std::fesetround(FE_TONEAREST);
@@ -146,5 +146,34 @@ TEST(Interp16, ValidationAndRestoredHostRounding) {
       EXPECT_EQ(std::fegetround(), FE_TONEAREST);
       EXPECT_TRUE(std::fetestexcept(FE_DIVBYZERO));
     }
+  }
+}
+
+// RTZ must be implemented by the instruction, not by changing host rounding.
+TEST(Interp16, P10RtzAcrossHostRoundingModes) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
+    ASSERT_EQ(std::fesetround(rounding), 0);
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned m = 0; m < 64; ++m) {
+        uint32_t words[4][32], expected[32];
+        goc_test::interp16_capture_inputs(words, m * 32);
+        for (unsigned lane = 0; lane < 32; ++lane)
+          expected[lane] = goc_test::interp16_canonical(
+              2, m,
+              goc_test::interp16_reference(2, words[0], words[1], words[2], words[3][lane], lane, m,
+                                           false));
+        const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+        uint32_t *d[] = {words[3]};
+        std::feraiseexcept(FE_DIVBYZERO);
+        ASSERT_EQ(functions[2](cpu, UINT32_MAX, goc_test::interp16_mode(2, m), d, a, b, c),
+                  GOC_SUCCESS);
+        EXPECT_EQ(std::fegetround(), rounding);
+        EXPECT_TRUE(std::fetestexcept(FE_DIVBYZERO));
+        for (unsigned lane = 0; lane < 32; ++lane)
+          ASSERT_EQ(goc_test::interp16_canonical(2, m, words[3][lane]), expected[lane])
+              << rounding << "/" << cpu << "/" << m << "/" << lane;
+      }
   }
 }

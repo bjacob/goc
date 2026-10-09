@@ -5,44 +5,34 @@
 #include "float_formats.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_fma_integer.h"
 #include "rdna4_fp64.h"
 
-#include <cfenv>
 #include <cmath>
-#include <limits>
 #include <stdint.h>
 
 namespace goc {
 
-// Restore rounding, exception flags and trap enables after exact arithmetic.
-class HalfFmaEnvironment {
-public:
-  explicit HalfFmaEnvironment(bool exact) : active(exact) {
-    if (active) {
-      std::feholdexcept(&saved);
-      std::fesetround(FE_TONEAREST);
-    }
-  }
-
-  ~HalfFmaEnvironment() {
-    if (active)
-      std::fesetenv(&saved);
-  }
-
-private:
-  bool active;
-  std::fenv_t saved;
-};
-
-// Round finite double values to FP16 without double rounding through FP32.
+// Round finite FP64 to FP16, nearest-even, saturating finite overflow if requested.
 inline uint16_t half_fma_narrow(double value, bool saturate) {
-  float rounded = float(value);
-  uint32_t bits = goc::as_bits(rounded);
-  if (double(rounded) != value && !(bits & 1)) {
-    bool increase = (value > double(rounded)) == !std::signbit(rounded);
-    rounded = goc::as_float(bits + (increase ? 1u : UINT32_MAX));
-  }
-  return goc::float_to_f16(rounded, saturate);
+  // Adapted from rocjitsu mixed_fma_simd.h: round_finite_f16_simd.
+  uint64_t bits = double_bits(value), exponent = (bits >> 52) & 2047;
+  uint16_t sign = uint16_t((bits >> 48) & 0x8000);
+  if (exponent < 998)
+    return sign;
+  if (exponent > 1038)
+    return sign | (saturate ? 0x7bff : 0x7c00);
+  unsigned shift = exponent < 1009 ? unsigned(1051 - exponent) : 42;
+  uint64_t significand = (bits & 0x000fffffffffffffULL) | (1ULL << 52);
+  uint64_t rounded = significand >> shift;
+  if (exponent >= 1009)
+    rounded += (exponent - 1009) << 10;
+  uint64_t remainder = significand & ((1ULL << shift) - 1);
+  uint64_t halfway = 1ULL << (shift - 1);
+  rounded += remainder > halfway || (remainder == halfway && (rounded & 1));
+  if (rounded >= 0x7c00)
+    rounded = saturate ? 0x7bff : 0x7c00;
+  return sign | uint16_t(rounded);
 }
 
 inline uint16_t half_fma_clamp(uint16_t value) {
@@ -77,18 +67,8 @@ inline uint16_t half_fma_value(uint16_t a, uint16_t b, uint16_t c, uint32_t mode
   if (exceptional)
     return mode & GOC_ALU_CLAMP ? half_fma_clamp(exceptional) : exceptional;
 
-  // Half products are exact in double. TwoSum plus round-to-odd retains tiny
-  // addends that would otherwise disappear at a later half rounding boundary.
-  double product = double(goc::f16_to_float(a)) * double(goc::f16_to_float(b));
-  double addend = goc::f16_to_float(c);
-  double value = product + addend;
-  double virtual_c = value - product;
-  double error = (product - (value - virtual_c)) + (addend - virtual_c);
-  if (error != 0 && !(goc::double_bits(value) & 1))
-    value = std::nextafter(value, std::copysign(std::numeric_limits<double>::infinity(), error));
-  // Under nearest-even, only matching negative zero terms produce -0.
-  if (value == 0)
-    value = ((a ^ b) & c & 0x8000) && mc == 0 ? -0.0 : 0.0;
+  double value = as_double(fma_finite_round_odd(as_bits(f16_to_float(a)), as_bits(f16_to_float(b)),
+                                                as_bits(f16_to_float(c))));
 
   uint16_t result = half_fma_narrow(value, saturate);
   uint32_t omod = (mode >> 6) & 3;

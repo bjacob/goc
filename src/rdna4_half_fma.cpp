@@ -32,8 +32,8 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
-  bool exact = (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
 #if defined(GOC_HAVE_X86_64_V3)
+  bool exact = (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
   if (!exact && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
     goc::half_fma_x86_64_v3<Operands>(
         bool(flags & GOC_FP16_OVFL), exec_mask, mode, d[0], a[0], b[0],
@@ -41,7 +41,6 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
     return GOC_SUCCESS;
   }
 #endif
-  goc::HalfFmaEnvironment environment(exact);
   int a_shift = mode & GOC_ALU_HIGH_A ? 16 : 0;
   int b_shift = mode & GOC_ALU_HIGH_B ? 16 : 0;
   int c_shift = mode & GOC_ALU_HIGH_C ? 16 : 0;

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "internal.h"
 #include "rdna4_interp.h"
+#include "rdna4_interp16_scalar.h"
 #include "x86_64/rdna4_half_x86_64_v3.h"
 #include "x86_64/rdna4_mixed_half_x86_64_v3.h"
 
@@ -13,11 +15,6 @@ namespace goc {
 template <bool P2, bool Rtz>
 void interp16_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                         const uint32_t *a, const uint32_t *b, const uint32_t *c) {
-  unsigned saved = 0;
-  if constexpr (Rtz && !P2) {
-    saved = _mm_getcsr();
-    _mm_setcsr((saved & ~_MM_ROUND_MASK) | _MM_ROUND_TOWARD_ZERO);
-  }
   for (unsigned lane = 0; lane < 32; lane += 8) {
     auto aw = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane));
     auto x = half_input<false>(aw, mode & GOC_ALU_HIGH_A ? 16 : 0, mode);
@@ -45,7 +42,18 @@ void interp16_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32
       result = _mm256_or_si256(_mm256_sll_epi32(result, _mm_cvtsi32_si128(sd)),
                                _mm256_andnot_si256(_mm256_set1_epi32(int(65535u << sd)), old));
     } else {
-      auto value = _mm256_fmadd_ps(x, y, z);
+      __m256 value;
+      if constexpr (Rtz) {
+        alignas(32) uint32_t xs[8], ys[8], zs[8], results[8];
+        _mm256_store_si256(reinterpret_cast<__m256i *>(xs), _mm256_castps_si256(x));
+        _mm256_store_si256(reinterpret_cast<__m256i *>(ys), _mm256_castps_si256(y));
+        _mm256_store_si256(reinterpret_cast<__m256i *>(zs), _mm256_castps_si256(z));
+        for (unsigned i = 0; i < 8; ++i)
+          results[i] = as_bits(interp16_rtz_float(xs[i], ys[i], zs[i]));
+        value = _mm256_castsi256_ps(_mm256_load_si256(reinterpret_cast<const __m256i *>(results)));
+      } else {
+        value = _mm256_fmadd_ps(x, y, z);
+      }
       if (mode & GOC_ALU_CLAMP)
         value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
       result = _mm256_castps_si256(value);
@@ -54,8 +62,6 @@ void interp16_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32
                                             _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
     _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
-  if constexpr (Rtz && !P2)
-    _mm_setcsr(saved);
 }
 
 template void interp16_x86_64_v3<false, false>(bool, uint32_t, uint32_t, uint32_t *,
