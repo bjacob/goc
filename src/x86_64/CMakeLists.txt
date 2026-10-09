@@ -56,6 +56,8 @@ foreach(target IN LISTS goc_library_targets)
   endif()
 
   if(GOC_COMPILER_X86_64_V4)
+    target_sources(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_boolean_x86_64_v4.cpp)
+    set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/rdna4_boolean_x86_64_v4.cpp TARGET_DIRECTORY ${target} PROPERTIES COMPILE_OPTIONS "${goc_x86_64_v4_flags}")
     target_sources(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_bitfield_x86_64_v4.cpp)
     set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/rdna4_bitfield_x86_64_v4.cpp TARGET_DIRECTORY ${target} PROPERTIES COMPILE_OPTIONS "${goc_x86_64_v4_flags}")
     target_sources(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_integer_ternary_x86_64_v4.cpp)

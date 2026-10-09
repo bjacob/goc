@@ -175,6 +175,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_i16`, `v_min3_u16`, `v_max3_i16`, `v_max3_u16`, `v_med3_i16`, `v_med3_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
 | `v_add_nc_i16`, `v_sub_nc_i16`, `v_add_nc_u16`, `v_sub_nc_u16` | Scalar, x86-64-v3; half selectors and saturation | Not implemented |
 | `v_min_i16`, `v_max_i16`, `v_min_u16`, `v_max_u16`, `v_mul_lo_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
+| `v_and_b16`, `v_or_b16`, `v_xor_b16`, `v_not_b16` | Scalar, x86-64-v4 | Not implemented |
+| `v_and_b32`, `v_or_b32`, `v_xor_b32`, `v_not_b32` | Scalar, x86-64-v4 | Not implemented |
 | `v_bfe_u32`, `v_bfe_i32`, `v_bfm_b32`, `v_bfrev_b32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_bfi_b32` | Scalar, x86-64-v4 | Not implemented |
 | `v_lshl_add_u32`, `v_add_lshl_u32`, `v_lshl_or_b32`, `v_lerp_u8` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
@@ -385,6 +387,16 @@ SIMD outputs within one half-precision ULP of the model. Further tests cover
 all modifiers, half selectors, aliases, masks, host FP settings, and literal
 OMOD underflow boundaries. `GOC_FP16_OVFL` is accepted but has no effect because
 finite trig outputs and their permitted scaling cannot overflow FP16.
+
+AND, OR, XOR, and NOT support 16-bit and 32-bit values. The 16-bit forms
+select source and destination halves with `HIGH_A`, `HIGH_B` (binary forms),
+and `HIGH_D`, preserving the other destination half. The 32-bit forms have
+no instruction modifiers. SIMD processes sixteen lanes on v4, including every
+half selector. AVX2 candidates were slower than baseline, so v3 CPUs use the
+portable path. Tests cover every half encoding,
+per-bit truth tables, every selector combination, unaligned storage, EXEC
+masks, and source/destination aliases. Invalid flags leave all registers
+unchanged, and every path preserves host FP state.
 
 Bit-field instructions include unsigned/signed extraction, insertion, mask
 creation, and reversal. `BFE` takes its offset from `B` and width from `C`;

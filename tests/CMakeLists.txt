@@ -23,7 +23,7 @@ gtest_discover_tests(goc_cpu_decode_test TEST_PREFIX "internal.")
 
 foreach(library IN LISTS goc_library_targets)
   string(REPLACE "goc_" "" variant "${library}")
-  foreach(test IN ITEMS rdna4_bitfield rdna4_integer_ternary rdna4_sad rdna4_shift rdna4_half_trig rdna4_trig rdna4_integer_mad rdna4_integer16_ternary rdna4_integer16 rdna4_packed_mad rdna4_packed_integer rdna4_packed_binary rdna4_packed_fma rdna4_literal_fma rdna4_fmac rdna4_half_fma rdna4_half_minmax rdna4_half_exponent rdna4_half_unary rdna4_half_binary rdna4_integer_add rdna4_integer_mul rdna4_integer_minmax rdna4_ldexp rdna4_frexp_exp rdna4_fp64_unary rdna4_fp64 rdna4_minmax rdna4_binary rdna4_half_dot rdna4_fp8_dot rdna4_dot2 rdna4_integer_dot rdna4_arithmetic rdna4_unary rdna4_exec_mask cpu rdna4_wmma rdna4_packed_wmma rdna4_subbyte_wmma)
+  foreach(test IN ITEMS rdna4_boolean rdna4_bitfield rdna4_integer_ternary rdna4_sad rdna4_shift rdna4_half_trig rdna4_trig rdna4_integer_mad rdna4_integer16_ternary rdna4_integer16 rdna4_packed_mad rdna4_packed_integer rdna4_packed_binary rdna4_packed_fma rdna4_literal_fma rdna4_fmac rdna4_half_fma rdna4_half_minmax rdna4_half_exponent rdna4_half_unary rdna4_half_binary rdna4_integer_add rdna4_integer_mul rdna4_integer_minmax rdna4_ldexp rdna4_frexp_exp rdna4_fp64_unary rdna4_fp64 rdna4_minmax rdna4_binary rdna4_half_dot rdna4_fp8_dot rdna4_dot2 rdna4_integer_dot rdna4_arithmetic rdna4_unary rdna4_exec_mask cpu rdna4_wmma rdna4_packed_wmma rdna4_subbyte_wmma)
     set(target "goc_${test}_test_${variant}")
     add_executable(${target} "${test}_test.cpp")
     if(test STREQUAL "rdna4_arithmetic")
