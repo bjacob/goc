@@ -3,88 +3,13 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_exec_masks.h"
-#include "rdna4_omod_reference.h"
 #include "rdna4_unary_hardware.h"
+#include "rdna4_unary_reference.h"
 
 #include <algorithm>
 #include <cmath>
 #include <gtest/gtest.h>
 #include <stdint.h>
-
-namespace {
-
-using Fn = decltype(&goc_rdna4_v_log_f32);
-const Fn functions[] = {goc_rdna4_v_trunc_f32, goc_rdna4_v_ceil_f32,      goc_rdna4_v_rndne_f32,
-                        goc_rdna4_v_floor_f32, goc_rdna4_v_sqrt_f32,      goc_rdna4_v_rcp_f32,
-                        goc_rdna4_v_rsq_f32,   goc_rdna4_v_exp_f32,       goc_rdna4_v_log_f32,
-                        goc_rdna4_v_fract_f32, goc_rdna4_v_frexp_mant_f32};
-
-// Independent higher-precision reference, with explicit ties-to-even and
-// binary32 rounding before output scaling.
-float reference(int op, float input, uint32_t flags) {
-  double x = input;
-  if (flags & GOC_ALU_ABS_A)
-    x = std::abs(x);
-  if (flags & GOC_ALU_NEG_A)
-    x = -x;
-  bool flush = op >= 4 && op <= 8;
-  if (flush && std::abs(x) < std::ldexp(1.0, -126))
-    x = std::copysign(0.0, x);
-  double y = 0;
-  switch (op) {
-  case 10: {
-    int exponent;
-    y = std::isfinite(x) ? std::frexp(x, &exponent) : x;
-    break;
-  }
-  case 0:
-    y = std::trunc(x);
-    break;
-  case 1:
-    y = std::ceil(x);
-    break;
-  case 2:
-    y = x;
-    if (std::isfinite(x) && x != 0) {
-      double lo = std::floor(x), fraction = x - lo;
-      y = lo + (fraction > 0.5 || (fraction == 0.5 && std::fmod(lo, 2) != 0));
-      y = std::copysign(std::abs(y), x);
-    }
-    break;
-  case 3:
-    y = std::floor(x);
-    break;
-  case 4:
-    y = std::sqrt(x);
-    break;
-  case 5:
-    y = 1 / x;
-    break;
-  case 6:
-    y = 1 / std::sqrt(x);
-    break;
-  case 7:
-    y = std::exp2(x);
-    break;
-  case 9:
-    y = x - std::floor(x);
-    if (y > double(goc::as_float(0x3f7fffff)))
-      y = goc::as_float(0x3f7fffff);
-    break;
-  case 8:
-    y = std::log2(x);
-    break;
-  }
-  float result = float(y);
-  if (flush && std::abs(result) < std::ldexp(1.0f, -126))
-    result = std::copysign(0.0f, result);
-  result = goc_test::omod_f32_reference(result, flags);
-  if (flags & GOC_ALU_CLAMP)
-    result = std::isnan(result) || result <= 0 ? 0 : std::min(result, 1.0f);
-  return result;
-}
-
-} // namespace
 
 TEST(Unary, ModifiersMasksAliasesAndCpuLevels) {
   const uint32_t inputs[] = {0,          0x80000000, 0x3f000000, 0xbf000000, 0x3fc00000, 0xbfc00000,
@@ -107,13 +32,13 @@ TEST(Unary, ModifiersMasksAliasesAndCpuLevels) {
             std::fill(d, d + 34, 0xdeadbeef);
             std::copy(inputs, inputs + 32, a + 1);
             uint32_t *pa = a + 1, *pd = alias ? a + 1 : d + 1;
-            ASSERT_EQ(functions[op](cpu, mask, flags, &pd, &pa), GOC_SUCCESS);
+            ASSERT_EQ(goc_test::unary_functions[op](cpu, mask, flags, &pd, &pa), GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane) {
               if (!((mask >> lane) & 1)) {
                 EXPECT_EQ(pd[lane], alias ? inputs[lane] : 0xdeadbeef);
                 continue;
               }
-              float want = reference(op, goc::as_float(inputs[lane]), flags);
+              float want = goc_test::unary_reference(op, goc::as_float(inputs[lane]), flags);
               float got = goc::as_float(pd[lane]);
               if (std::isnan(want))
                 EXPECT_TRUE(std::isnan(got));
@@ -131,7 +56,7 @@ TEST(Unary, ModifiersMasksAliasesAndCpuLevels) {
 }
 
 TEST(Unary, ValidationAndEmptyMask) {
-  for (Fn fn : functions) {
+  for (auto fn : goc_test::unary_functions) {
     uint32_t a[32] = {}, d[32];
     std::fill(d, d + 32, 0xdeadbeef);
     auto pa = a, pd = d;
@@ -211,7 +136,7 @@ TEST(Unary, HardwareOmodAndMandatoryFlush) {
                           a + 1);
                 uint32_t *pa = a + 1, *pd = alias ? a + 1 : d + 1;
                 uint64_t mode = (omod << 6) | (clamp ? GOC_ALU_CLAMP : 0) | neg;
-                ASSERT_EQ(functions[op](cpu, mask, mode, &pd, &pa), GOC_SUCCESS);
+                ASSERT_EQ(goc_test::unary_functions[op](cpu, mask, mode, &pd, &pa), GOC_SUCCESS);
                 for (int lane = 0; lane < 32; ++lane) {
                   if (!((mask >> lane) & 1)) {
                     EXPECT_EQ(pd[lane],

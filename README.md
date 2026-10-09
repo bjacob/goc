@@ -1607,7 +1607,21 @@ Two GFX1201 corpora validate 193,536 raw results, including output-scaling
 boundaries. Representative ADD/MUL/min3/median benchmarks measure 1.8–4.8×
 scalar speed on x86-64-v3 and 1.9–4.9× on x86-64-v4 with DPP enabled.
 
-The hardware probes also corrected OMOD behavior in these 18 operations,
+DPP8/DPP16 also cover all eleven FP32 unary operations: TRUNC, CEIL, RNDNE,
+FLOOR, SQRT, RCP, RSQ, EXP, LOG, FRACT, and FREXP mantissa. Permutation occurs
+before ABS/NEG and arithmetic, with FI/BOUND/row/bank controls and inactive
+write preservation. Nine operations retain AVX2 arithmetic; x86-64-v4 adds
+AVX-512 permutation. EXP and LOG retain scalar arithmetic after SIMD permutation.
+A GFX1201 capture checks 39,424 results across seven descriptors, two modifier
+settings, and eight EXEC masks. Independent tests cross all 32 unary modifier
+combinations with all mask patterns and separate/aliased output, including
+subnormals, signed zeros, infinities, and NaNs. Invalid flags are checked before
+operand access. Benchmarks cover representative rounding, SQRT, RCP, and FRACT
+with full EXEC and both DPP kinds. On the Ryzen 9 7950X3D, these paths measure
+18.6–25.2 ns on AVX2 (1.9–4.9× scalar speed) and 17.9–24.1 ns with AVX-512
+permutation plus AVX2 arithmetic (2.0–5.1×).
+
+The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal
 produces signed zero. These rules apply independently of guest denormal mode.

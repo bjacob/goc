@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_dpp_arithmetic_reference.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <algorithm>
@@ -20,7 +21,7 @@ TEST(DppArithmetic, HardwareCorpus) {
     for (uint32_t mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned op = 0; op < 18; ++op)
-        for (uint64_t descriptor : goc_test::dpp_arithmetic_modes)
+        for (uint64_t descriptor : goc_test::dpp_modes)
           for (unsigned modified = 0; modified < 2; ++modified) {
             uint32_t data[4][32];
             for (unsigned lane = 0; lane < 32; ++lane) {
@@ -38,7 +39,7 @@ TEST(DppArithmetic, HardwareCorpus) {
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
               uint32_t want = goc::as_bits(float(100 + lane));
-              if (goc_test::dpp_arithmetic_source(descriptor, mask, lane, source))
+              if (goc_test::dpp_source(descriptor, mask, lane, source))
                 want = goc_test::dpp_arithmetic_reference(op, source < 0 ? 0 : a[source], b[lane],
                                                           c[lane], low);
               ASSERT_EQ(d[lane], want) << op << "/" << cpu << "/" << descriptor << "/" << lane;
@@ -64,7 +65,7 @@ TEST(DppArithmetic, OmodBoundaryHardware) {
     for (uint32_t mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned op = 0; op < 18; ++op)
-        for (uint64_t descriptor : goc_test::dpp_arithmetic_modes)
+        for (uint64_t descriptor : goc_test::dpp_modes)
           for (unsigned modified = 0; modified < 4; ++modified) {
             uint32_t data[4][32];
             for (unsigned lane = 0; lane < 32; ++lane) {
@@ -82,7 +83,7 @@ TEST(DppArithmetic, OmodBoundaryHardware) {
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
               uint32_t want = goc::as_bits(float(100 + lane));
-              if (goc_test::dpp_arithmetic_source(descriptor, mask, lane, source))
+              if (goc_test::dpp_source(descriptor, mask, lane, source))
                 want = goc_test::dpp_arithmetic_reference(op, source < 0 ? 0 : a[source], b[lane],
                                                           c[lane], low);
               ASSERT_EQ(d[lane], want) << op << "/" << cpu << "/" << descriptor << "/" << lane;
@@ -104,7 +105,7 @@ TEST(DppArithmetic, ModifiersMasksAliasesAndSpecialValues) {
       for (unsigned low = 0; low < 512; ++low) {
         if (op < 9 && (low & (GOC_ALU_NEG_C | GOC_ALU_ABS_C)))
           continue;
-        for (uint64_t descriptor : goc_test::dpp_arithmetic_modes)
+        for (uint64_t descriptor : goc_test::dpp_modes)
           for (unsigned alias = 0; alias < 5; ++alias) {
             uint32_t data[4][34], before[4][34];
             for (unsigned reg = 0; reg < 4; ++reg)
@@ -122,9 +123,8 @@ TEST(DppArithmetic, ModifiersMasksAliasesAndSpecialValues) {
               for (unsigned lane = 0; lane < 34; ++lane) {
                 int source;
                 uint32_t want = before[reg][lane];
-                bool written =
-                    reg == di && lane > 0 && lane < 33 &&
-                    goc_test::dpp_arithmetic_source(descriptor, uint32_t(mask), lane - 1, source);
+                bool written = reg == di && lane > 0 && lane < 33 &&
+                               goc_test::dpp_source(descriptor, uint32_t(mask), lane - 1, source);
                 if (written)
                   want =
                       goc_test::dpp_arithmetic_reference(op, source < 0 ? 0 : before[0][source + 1],
@@ -142,7 +142,7 @@ TEST(DppArithmetic, ModifiersMasksAliasesAndSpecialValues) {
 
 TEST(DppArithmetic, ValidationBeforeOperandAccess) {
   for (unsigned op = 0; op < 18; ++op)
-    for (uint64_t descriptor : goc_test::dpp_arithmetic_modes) {
+    for (uint64_t descriptor : goc_test::dpp_modes) {
       EXPECT_EQ(goc_test::dpp_arithmetic_call(op, 0, UINT64_MAX, descriptor | (UINT64_C(1) << 31),
                                               nullptr, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
