@@ -4,31 +4,10 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_bits.h"
 
 #include <cstring>
 #include <stdint.h>
-
-namespace {
-
-template <typename T> T reverse(T x) {
-  const T m1 = T(UINT64_C(0x5555555555555555));
-  const T m2 = T(UINT64_C(0x3333333333333333));
-  const T m4 = T(UINT64_C(0x0f0f0f0f0f0f0f0f));
-  const T m8 = T(UINT64_C(0x00ff00ff00ff00ff));
-  x = ((x >> 1) & m1) | ((x & m1) << 1);
-  x = ((x >> 2) & m2) | ((x & m2) << 2);
-  x = ((x >> 4) & m4) | ((x & m4) << 4);
-  x = ((x >> 8) & m8) | ((x & m8) << 8);
-  if constexpr (sizeof(T) == 8) {
-    const T m16 = UINT64_C(0x0000ffff0000ffff);
-    x = ((x >> 16) & m16) | ((x & m16) << 16);
-    return (x >> 32) | (x << 32);
-  } else {
-    return (x >> 16) | (x << 16);
-  }
-}
-
-} // namespace
 
 int goc_rdna4_s_and_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         uint32_t a, uint32_t b, uint32_t *scc) {
@@ -289,7 +268,7 @@ int goc_rdna4_s_brev_b32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  uint32_t result = reverse(a);
+  uint32_t result = goc::bit_reverse(a);
   *d = result;
   return GOC_SUCCESS;
 }
@@ -301,7 +280,7 @@ int goc_rdna4_s_brev_b64(uint64_t flags, uint32_t exec_mask, uint64_t instructio
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  uint64_t result = reverse(a);
+  uint64_t result = goc::bit_reverse(a);
   *d = result;
   return GOC_SUCCESS;
 }

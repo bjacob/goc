@@ -5,56 +5,13 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_bits.h"
 
 #include <algorithm>
 #include <cstring>
 #include <stdint.h>
 
 namespace {
-
-template <typename T> uint32_t population(T x) {
-  x -= (x >> 1) & T(UINT64_C(0x5555555555555555));
-  x = (x & T(UINT64_C(0x3333333333333333))) + ((x >> 2) & T(UINT64_C(0x3333333333333333)));
-  x = (x + (x >> 4)) & T(UINT64_C(0x0f0f0f0f0f0f0f0f));
-  x += x >> 8;
-  x += x >> 16;
-  if constexpr (sizeof(T) == 8)
-    x += x >> 32;
-  return uint32_t(x) & 127;
-}
-
-template <bool Trailing, typename T> uint32_t count_zero(T a) {
-  if (!a)
-    return UINT32_MAX;
-#if defined(__GNUC__) || defined(__clang__)
-  if constexpr (Trailing) {
-    if constexpr (sizeof(T) == 8)
-      return __builtin_ctzll(a);
-    else
-      return __builtin_ctz(a);
-  } else {
-    if constexpr (sizeof(T) == 8)
-      return __builtin_clzll(a);
-    else
-      return __builtin_clz(a);
-  }
-#else
-  uint32_t n = 0;
-  if constexpr (Trailing) {
-    while (!(a & 1)) {
-      ++n;
-      a >>= 1;
-    }
-  } else {
-    const T sign = T(1) << (sizeof(T) * 8 - 1);
-    while (!(a & sign)) {
-      ++n;
-      a <<= 1;
-    }
-  }
-  return n;
-#endif
-}
 
 template <typename T, bool Signed> T extract(T a, uint32_t field) {
   const unsigned bits = sizeof(T) * 8;
@@ -160,7 +117,7 @@ int goc_rdna4_s_bcnt0_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instr
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  uint32_t result = population(uint32_t(~a));
+  uint32_t result = goc::bit_population(uint32_t(~a));
   *d = result;
   uint32_t cc = result != 0;
   std::memcpy(scc, &cc, sizeof(cc));
@@ -174,7 +131,7 @@ int goc_rdna4_s_bcnt0_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instr
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  uint32_t result = population(uint64_t(~a));
+  uint32_t result = goc::bit_population(uint64_t(~a));
   *d = result;
   uint32_t cc = result != 0;
   std::memcpy(scc, &cc, sizeof(cc));
@@ -188,7 +145,7 @@ int goc_rdna4_s_bcnt1_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instr
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  uint32_t result = population(uint32_t(a));
+  uint32_t result = goc::bit_population(uint32_t(a));
   *d = result;
   uint32_t cc = result != 0;
   std::memcpy(scc, &cc, sizeof(cc));
@@ -202,7 +159,7 @@ int goc_rdna4_s_bcnt1_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instr
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  uint32_t result = population(uint64_t(a));
+  uint32_t result = goc::bit_population(uint64_t(a));
   *d = result;
   uint32_t cc = result != 0;
   std::memcpy(scc, &cc, sizeof(cc));
@@ -216,7 +173,7 @@ int goc_rdna4_s_ctz_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  uint32_t result = count_zero<true>(a);
+  uint32_t result = goc::bit_count_zero<true>(a);
   *d = result;
   return GOC_SUCCESS;
 }
@@ -228,7 +185,7 @@ int goc_rdna4_s_ctz_i32_b64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  uint32_t result = count_zero<true>(a);
+  uint32_t result = goc::bit_count_zero<true>(a);
   *d = result;
   return GOC_SUCCESS;
 }
@@ -240,7 +197,7 @@ int goc_rdna4_s_clz_i32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  uint32_t result = count_zero<false>(a);
+  uint32_t result = goc::bit_count_zero<false>(a);
   *d = result;
   return GOC_SUCCESS;
 }
@@ -252,7 +209,7 @@ int goc_rdna4_s_clz_i32_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  uint32_t result = count_zero<false>(a);
+  uint32_t result = goc::bit_count_zero<false>(a);
   *d = result;
   return GOC_SUCCESS;
 }
@@ -265,7 +222,7 @@ int goc_rdna4_s_cls_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   a ^= uint32_t(0) - (a >> 31);
-  uint32_t result = count_zero<false>(a);
+  uint32_t result = goc::bit_count_zero<false>(a);
   *d = result;
   return GOC_SUCCESS;
 }
@@ -278,7 +235,7 @@ int goc_rdna4_s_cls_i32_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
   a ^= uint64_t(0) - (a >> 63);
-  uint32_t result = count_zero<false>(a);
+  uint32_t result = goc::bit_count_zero<false>(a);
   *d = result;
   return GOC_SUCCESS;
 }

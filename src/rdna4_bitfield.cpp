@@ -3,6 +3,7 @@
 #include "rdna4_bitfield.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_bits.h"
 #include "rdna4_dpp.h"
 
 #include <stdint.h>
@@ -47,13 +48,8 @@ template <goc::Bitfield Op> uint32_t evaluate(uint32_t a, uint32_t b, uint32_t c
     return (a & b) | (~a & c);
   if constexpr (Op == goc::Bitfield::Mask)
     return ((uint32_t(1) << (a & 31)) - 1) << (b & 31);
-  if constexpr (Op == goc::Bitfield::Reverse) {
-    a = ((a & 0x55555555) << 1) | ((a >> 1) & 0x55555555);
-    a = ((a & 0x33333333) << 2) | ((a >> 2) & 0x33333333);
-    a = ((a & 0x0f0f0f0f) << 4) | ((a >> 4) & 0x0f0f0f0f);
-    a = ((a & 0x00ff00ff) << 8) | ((a >> 8) & 0x00ff00ff);
-    return (a << 16) | (a >> 16);
-  }
+  if constexpr (Op == goc::Bitfield::Reverse)
+    return goc::bit_reverse(a);
 }
 
 template <goc::Bitfield Op>

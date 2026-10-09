@@ -3,6 +3,7 @@
 #include "rdna4_bit_count.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_bits.h"
 #include "rdna4_dpp.h"
 
 #include <stdint.h>
@@ -19,50 +20,18 @@ static const uint32_t prefix_masks[] = {
     0x1fffffu,  0x3fffffu,   0x7fffffu,   0xffffffu,   0x1ffffffu, 0x3ffffffu, 0x7ffffffu,
     0xfffffffu, 0x1fffffffu, 0x3fffffffu, 0x7fffffffu, 0xffffffffu};
 
-// Returns the number of set bits in x.
-uint32_t population(uint32_t x) {
-  // Integer bit sums follow rocjitsu's popcount_u32_simd.
-  x -= (x >> 1) & 0x55555555;
-  x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
-  x = (x + (x >> 4)) & 0x0f0f0f0f;
-  x += x >> 8;
-  x += x >> 16;
-  return x & 63;
-}
-
 template <goc::BitCount Op> uint32_t evaluate(uint32_t a, uint32_t b, unsigned lane) {
   if constexpr (Op == goc::BitCount::Sign)
     a ^= 0u - (a >> 31);
   if constexpr (Op == goc::BitCount::Leading || Op == goc::BitCount::Sign ||
                 Op == goc::BitCount::Trailing) {
-    if (!a)
-      return UINT32_MAX;
-#if defined(__GNUC__) || defined(__clang__)
-    if constexpr (Op == goc::BitCount::Trailing)
-      return __builtin_ctz(a);
-    else
-      return __builtin_clz(a);
-#else
-    uint32_t count = 0;
-    if constexpr (Op == goc::BitCount::Trailing) {
-      while (!(a & 1)) {
-        ++count;
-        a >>= 1;
-      }
-    } else {
-      while (!(a & 0x80000000)) {
-        ++count;
-        a <<= 1;
-      }
-    }
-    return count;
-#endif
+    return goc::bit_count_zero<Op == goc::BitCount::Trailing>(a);
   }
   if constexpr (Op == goc::BitCount::MaskedLow)
     a &= prefix_masks[lane < 32 ? lane : 32];
   if constexpr (Op == goc::BitCount::MaskedHigh)
     a &= prefix_masks[lane < 32 ? 0 : lane - 32];
-  return population(a) + b;
+  return goc::bit_population(a) + b;
 }
 
 template <goc::BitCount Op, int Lanes>

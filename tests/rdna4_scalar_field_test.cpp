@@ -156,3 +156,37 @@ TEST(ScalarField, ErrorsDoNotWriteAndHostFpStatePreserved) {
   }
   EXPECT_EQ(std::fesetenv(&saved), 0);
 }
+
+TEST(ScalarField, BitUtilitiesAtEveryWordPosition) {
+  for (unsigned bit = 0; bit < 64; ++bit) {
+    uint64_t input = UINT64_C(1) << bit, reversed = 0;
+    uint32_t count = 0, cc = 0;
+    ASSERT_EQ(goc_rdna4_s_bcnt1_i32_b64(0, 0, 0, &count, input, &cc), GOC_SUCCESS);
+    EXPECT_EQ(count, 1u);
+    EXPECT_EQ(cc, 1u);
+    ASSERT_EQ(goc_rdna4_s_clz_i32_u64(0, 0, 0, &count, input), GOC_SUCCESS);
+    EXPECT_EQ(count, 63 - bit);
+    ASSERT_EQ(goc_rdna4_s_ctz_i32_b64(0, 0, 0, &count, input), GOC_SUCCESS);
+    EXPECT_EQ(count, bit);
+    ASSERT_EQ(goc_rdna4_s_brev_b64(0, 0, 0, &reversed, input), GOC_SUCCESS);
+    EXPECT_EQ(reversed, UINT64_C(1) << (63 - bit));
+    if (bit >= 32)
+      continue;
+    uint32_t words[32], output[32];
+    for (unsigned lane = 0; lane < 32; ++lane)
+      words[lane] = uint32_t(1) << ((bit + lane) % 32);
+    const uint32_t *a = words;
+    uint32_t *d = output;
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      ASSERT_EQ(goc_rdna4_v_clz_i32_u32(cpu, UINT32_MAX, 0, &d, &a), GOC_SUCCESS);
+      for (unsigned lane = 0; lane < 32; ++lane)
+        EXPECT_EQ(output[lane], 31 - ((bit + lane) % 32));
+      ASSERT_EQ(goc_rdna4_v_ctz_i32_b32(cpu, UINT32_MAX, 0, &d, &a), GOC_SUCCESS);
+      for (unsigned lane = 0; lane < 32; ++lane)
+        EXPECT_EQ(output[lane], (bit + lane) % 32);
+      ASSERT_EQ(goc_rdna4_v_bfrev_b32(cpu, UINT32_MAX, 0, &d, &a), GOC_SUCCESS);
+      for (unsigned lane = 0; lane < 32; ++lane)
+        EXPECT_EQ(output[lane], uint32_t(1) << (31 - ((bit + lane) % 32)));
+    }
+  }
+}
