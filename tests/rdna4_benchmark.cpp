@@ -19,6 +19,7 @@
 #include "rdna4_half_reference.h"
 #include "rdna4_integer16_reference.h"
 #include "rdna4_integer16_ternary_reference.h"
+#include "rdna4_integer_compare_reference.h"
 #include "rdna4_integer_conversion_reference.h"
 #include "rdna4_integer_mad_reference.h"
 #include "rdna4_integer_ternary_reference.h"
@@ -1442,6 +1443,64 @@ bool benchmark_interp32(uint64_t cpu, int iterations, int min_ms) {
         if (simd < 0)
           return false;
         print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_integer_compare(uint64_t cpu, int iterations, int min_ms) {
+  struct CompareRegisters : Registers {
+    uint32_t result = 0, want = 0;
+
+    CompareRegisters() { output_regs = 0; }
+
+    bool correct() const { return result == want; }
+  };
+
+  for (unsigned op = 0; op < 72; ++op)
+    for (unsigned m : {0u, 3u}) {
+      if (op >= 24 && m)
+        continue;
+      CompareRegisters r;
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        uint32_t w[4];
+        goc_test::integer_compare_inputs(op / 24, 128 + lane, w);
+        r.data[0][lane] = w[0];
+        r.data[1][lane] = w[1];
+        r.data[4][lane] = w[2];
+        r.data[5][lane] = w[3];
+        r.want |= uint32_t(goc_test::integer_compare_reference(op, m, w)) << lane;
+      }
+      auto fn = [&r, op](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *) {
+        return goc_test::integer_compare_functions[op](flags | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                                           GOC_SEMANTICS_STRICT,
+                                                       mask, mode, &r.result, a, b);
+      };
+      auto name = goc_test::integer_compare_names[op];
+      const char *label = m ? "high" : "none";
+      uint32_t mode = goc_test::integer_compare_mode(m);
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(name, "exact", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "exact", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "exact", label, "x86-64-v4", simd, scalar / simd);
       }
 #endif
     }
@@ -3890,7 +3949,8 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave");
-  if (!benchmark_class(cpu, iterations, min_ms) || !benchmark_interp16(cpu, iterations, min_ms) ||
+  if (!benchmark_integer_compare(cpu, iterations, min_ms) ||
+      !benchmark_class(cpu, iterations, min_ms) || !benchmark_interp16(cpu, iterations, min_ms) ||
       !benchmark_interp32(cpu, iterations, min_ms) || !benchmark_cndmask(cpu, iterations, min_ms) ||
       !benchmark_trig_preop(cpu, iterations, min_ms) ||
       !benchmark_mullit(cpu, iterations, min_ms) || !benchmark_pack(cpu, iterations, min_ms) ||

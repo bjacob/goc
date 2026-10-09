@@ -470,6 +470,25 @@ Ryzen 9 7950X3D measurements show 5.76–5.96x for P10, 11.99–12.38x for RTZ
 P10, and 3.78–4.10x for the P2 forms versus scalar, including modifiers
 (seven samples, each at least 10 ms).
 
+Integer comparison supports LT/EQ/LE/GT/NE/GE for signed and unsigned
+16-, 32- and 64-bit operands, including every corresponding CMPX form (72 entry
+points). CMP returns a scalar condition mask and CMPX a replacement EXEC mask;
+inactive bits are zero. The 16-bit forms support independent source-half
+selection. The scalar destination may alias any input word, with all source
+reads completed before its write. These integer models follow rocjitsu and
+support both semantics while preserving all host FP state.
+
+Both SIMD paths retain all modifiers. Comparisons process eight lanes on v3
+and sixteen on v4, including 64-bit inputs: high-word ordering and unsigned
+low-word tie-breaking avoid assembling narrower vectors of 64-bit elements.
+Tests compare 1,474,560 GPU-captured masks across every instruction and half
+selector, plus independent boundary/reference tests, source/output aliases,
+unaligned storage, EXEC masks, invalid flags and host FP-state preservation.
+Pinned-core Ryzen 9 7950X3D timings show 1.24–7.12x for v3 and 1.26–9.62x
+for v4 versus baseline, including half selectors (seven samples, each at least
+10 ms). Simple 32-bit predicates have the smallest gains because the baseline
+compiler already lowers them efficiently.
+
 Floating-point classification (`v_cmp_class_f16/f32/f64` and their CMPX forms)
 tests raw source encodings against the ten-bit class mask in B. CMP returns a
 scalar condition mask; CMPX returns a replacement EXEC mask. Inactive bits are

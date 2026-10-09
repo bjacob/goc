@@ -18,6 +18,194 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Integer comparisons write a scalar condition mask (CMP) or replacement EXEC
+// mask (CMPX) to d. Inactive bits are zero, including for empty EXEC. d is always
+// required and may alias any input word. Zero EXEC permits null VGPR pointers.
+// A/B use one VGPR for 16/32 bits or a low/high pair for 64 bits. The 16-bit
+// forms support HIGH_A/HIGH_B; other instruction flags are rejected. Errors
+// leave d unchanged. Supports loose and empirical-exact semantics. All host FP
+// state is preserved; inputs are interpreted as two's-complement or unsigned.
+GOC_API int goc_rdna4_v_cmp_lt_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_eq_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_le_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_gt_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ne_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ge_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_lt_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_eq_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_le_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_gt_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ne_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ge_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_lt_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_eq_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_le_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_gt_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ne_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ge_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_lt_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_eq_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_le_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_gt_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ne_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ge_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_lt_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_eq_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_le_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_gt_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ne_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ge_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_lt_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_eq_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_le_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_gt_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ne_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ge_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_lt_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_eq_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_le_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_gt_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ne_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ge_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_lt_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_eq_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_le_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_gt_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ne_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ge_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_lt_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_eq_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_le_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_gt_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ne_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ge_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_lt_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_eq_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_le_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_gt_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ne_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ge_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_lt_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_eq_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_le_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_gt_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ne_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmp_ge_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a, const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_lt_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_eq_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_le_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_gt_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ne_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_cmpx_ge_u64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
 // Floating-point class-mask bits; any combination may be supplied in B.
 static const uint32_t GOC_CLASS_SNAN = (UINT32_C(1) << 0);
 static const uint32_t GOC_CLASS_QNAN = (UINT32_C(1) << 1);
