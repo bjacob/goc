@@ -2129,9 +2129,13 @@ that do not report exceptions have no such parameter; existing register outputs
 are not duplicated.
 
 **Only `v_rcp_iflag_f32` currently implements exception generation.** It
-accumulates integer-divide-by-zero flags on all CPU paths. For other affected
-instructions, a non-null pointer returns
-`GOC_ERROR_UNSUPPORTED_EXCEPTIONS` before any operand access or other validation,
-leaving all outputs unchanged, including for empty EXEC. This applies to both
-loose and empirical-exact semantics. The host FP environment is not used to
-collect guest exception state. See the [design plan](https://github.com/bjacob/goc/blob/main/PLAN.md#implicit-architectural-register-outputs).
+accumulates integer-divide-by-zero flags on all CPU paths. In loose mode, other
+affected instructions execute normally and leave the register unchanged. Loose
+reporting may be incomplete or inaccurate and never returns
+`GOC_ERROR_UNSUPPORTED_EXCEPTIONS`; callers cannot rely on hardware-faithful flags.
+
+In non-loose mode, a non-null pointer requires faithful reporting, regardless of
+`GOC_SEMANTICS_STRICT`. Where unavailable, the call returns
+`GOC_ERROR_UNSUPPORTED_EXCEPTIONS` before operand access or other validation,
+leaving all outputs unchanged, including for empty EXEC. The host FP environment
+is not used to collect guest exception state. See the [design plan](https://github.com/bjacob/goc/blob/main/PLAN.md#implicit-architectural-register-outputs).

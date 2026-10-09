@@ -83,5 +83,8 @@ lowercase ISA register name and its native-width unsigned integer type. A null
 pointer opts out. Apply the register's specified update semantics: in particular,
 EXCP_FLAG_USER is a wave-wide uint32_t accumulated with bitwise OR, not cleared
 or overwritten. Only participating lanes contribute. Leave all outputs unchanged
-on API errors. Never silently omit requested exception reporting; return an
-explicit unsupported error when it is unavailable.
+on API errors. Loose semantics allow incomplete or inaccurate exception reporting:
+never return GOC_ERROR_UNSUPPORTED_EXCEPTIONS in loose mode, even with a non-null
+pointer. Unimplemented loose reporting leaves the register unchanged. In exact
+mode, requested reporting must be faithful or return GOC_ERROR_UNSUPPORTED_EXCEPTIONS,
+regardless of whether GOC_SEMANTICS_STRICT is set.

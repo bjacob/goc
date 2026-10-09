@@ -370,14 +370,20 @@ instruction contract (currently `V_RCP_IFLAG_F32`).
 Every API error preserves every output, including this register. Guest exception
 reporting must never rely on changing or sampling the host FP environment.
 
-The initial API migration reserves this parameter on exception-producing
-instructions. `V_RCP_IFLAG_F32` retains its implemented integer-divide-by-zero
-reporting, consolidated into this accumulating parameter. For all other affected
-instructions, reporting is not implemented yet: any non-null pointer returns
-`GOC_ERROR_UNSUPPORTED_EXCEPTIONS` before accessing operands, even for empty
-`exec_mask`, with precedence over other validation errors. Null retains existing
-validation, numerical behavior, and SIMD dispatch. Implement and hardware-test
-exception generation incrementally; never silently ignore a requested report.
+Loose semantics never return `GOC_ERROR_UNSUPPORTED_EXCEPTIONS`, even for a
+non-null pointer. Reporting may be incomplete or inaccurate; callers must not
+rely on hardware-faithful exception state. Unimplemented reporting leaves the
+register unchanged. Any reported bits still accumulate with OR.
+
+Non-loose semantics require faithful reporting when requested, independently of
+`GOC_SEMANTICS_STRICT`; lack of reporting cannot silently fall back to loose
+exception behavior. The initial API migration reserves the parameter on
+exception-producing instructions. `V_RCP_IFLAG_F32` retains its implemented
+integer-divide-by-zero reporting. For other affected instructions, non-loose
+semantics with a non-null pointer return `GOC_ERROR_UNSUPPORTED_EXCEPTIONS`
+before accessing operands, even for empty `exec_mask`, with precedence over
+other validation errors. Null retains existing validation, numerical behavior,
+and SIMD dispatch. Implement and hardware-test exception generation incrementally.
 
 The classification uses the [RDNA4 ISA reference](https://www.amd.com/content/dam/amd/en/documents/radeon-tech-docs/instruction-set-architectures/rdna4-instruction-set-architecture.pdf)
 (§3.4.10, §6.8, §7.7, §7.11, §12.3 and instruction descriptions), cross-checked

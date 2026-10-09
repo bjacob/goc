@@ -115,7 +115,7 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
 int goc_rdna4_v_cvt_f16_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<goc::Conversion16::SignedToHalf>(flags, exec_mask, instruction_flags, d, a);
 }
@@ -123,7 +123,7 @@ int goc_rdna4_v_cvt_f16_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_v_cvt_f16_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<goc::Conversion16::UnsignedToHalf>(flags, exec_mask, instruction_flags, d, a);
 }
@@ -131,7 +131,7 @@ int goc_rdna4_v_cvt_f16_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_v_cvt_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<goc::Conversion16::HalfToSigned>(flags, exec_mask, instruction_flags, d, a);
 }
@@ -139,7 +139,7 @@ int goc_rdna4_v_cvt_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_v_cvt_u16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<goc::Conversion16::HalfToUnsigned>(flags, exec_mask, instruction_flags, d, a);
 }
@@ -147,7 +147,7 @@ int goc_rdna4_v_cvt_u16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_v_cvt_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<goc::Conversion16::FloatToHalf>(flags, exec_mask, instruction_flags, d, a);
 }
@@ -155,7 +155,7 @@ int goc_rdna4_v_cvt_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_v_cvt_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<goc::Conversion16::HalfToFloat>(flags, exec_mask, instruction_flags, d, a);
 }

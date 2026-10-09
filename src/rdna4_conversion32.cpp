@@ -98,7 +98,7 @@ int goc_rdna4_v_cvt_f32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_v_cvt_i32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<goc::Conversion32::FloatToSigned>(flags, exec_mask, instruction_flags, d, a);
 }
@@ -106,7 +106,7 @@ int goc_rdna4_v_cvt_i32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_rdna4_v_cvt_u32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<goc::Conversion32::FloatToUnsigned>(flags, exec_mask, instruction_flags, d, a);
 }

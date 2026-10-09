@@ -96,7 +96,7 @@ int goc_rdna4_v_cvt_pk_norm_u16_f32(uint64_t flags, uint32_t exec_mask, uint64_t
 int goc_rdna4_v_cvt_pk_norm_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b, uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<false, goc::NormalizedForm::PackedHalf>(flags, exec_mask, instruction_flags, d, a,
                                                          b);
@@ -105,7 +105,7 @@ int goc_rdna4_v_cvt_pk_norm_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t
 int goc_rdna4_v_cvt_pk_norm_u16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b, uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return convert<true, goc::NormalizedForm::PackedHalf>(flags, exec_mask, instruction_flags, d, a,
                                                         b);

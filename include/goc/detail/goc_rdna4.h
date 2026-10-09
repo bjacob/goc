@@ -21,10 +21,13 @@ extern "C" {
 // with bitwise OR, preserving all existing bits. NULL opts out. It must not
 // overlap operand storage unless the instruction explicitly permits it.
 // Errors leave it and all other outputs unchanged.
-// Except for V_RCP_IFLAG_F32, reporting is not yet implemented: non-NULL returns
-// GOC_ERROR_UNSUPPORTED_EXCEPTIONS before operand access, even for empty EXEC.
-// This error takes precedence over flags/semantics validation. NULL preserves
-// the existing numerical paths and their validation behavior.
+// Loose semantics permit incomplete or inaccurate reporting and never return
+// GOC_ERROR_UNSUPPORTED_EXCEPTIONS. Unimplemented reporting leaves the register
+// unchanged. Non-loose semantics require faithful reporting when non-NULL,
+// regardless of GOC_SEMANTICS_STRICT. Except for V_RCP_IFLAG_F32, reporting is not
+// yet implemented: such requests return GOC_ERROR_UNSUPPORTED_EXCEPTIONS before
+// operand access, even for empty EXEC, with precedence over other validation.
+// NULL preserves the existing numerical paths and their validation behavior.
 
 // DPP8 permutes source A within each group of eight lanes before arithmetic
 // modifiers. Pack eight 3-bit lane indices into bits 40..63, index 0 first, and

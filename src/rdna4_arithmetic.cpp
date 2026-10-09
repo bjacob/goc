@@ -125,7 +125,7 @@ int literal_fma(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *con
 int goc_rdna4_v_fma_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c, uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   return fma_with_dpp(flags, exec_mask, instruction_flags, d, a, b, c, 0x1ff);
 }
@@ -145,7 +145,7 @@ int goc_rdna4_v_fma_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t in
 int goc_rdna4_v_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
@@ -155,7 +155,7 @@ int goc_rdna4_v_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
 int goc_rdna4_v_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, uint32_t literal, const uint32_t *const *b,
                           uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -165,7 +165,7 @@ int goc_rdna4_v_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uin
 int goc_rdna4_v_fmaak_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b, uint32_t literal,
                           uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;

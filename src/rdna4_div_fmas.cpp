@@ -53,7 +53,7 @@ int goc_rdna4_v_div_fmas_f32(uint64_t flags, uint32_t exec_mask, uint64_t instru
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c, uint32_t condition,
                              uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -64,7 +64,7 @@ int goc_rdna4_v_div_fmas_f64(uint64_t flags, uint32_t exec_mask, uint64_t instru
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c, uint32_t condition,
                              uint32_t *excp_flag_user) {
-  if (excp_flag_user)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_EXCEPTIONS;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
