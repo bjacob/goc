@@ -401,27 +401,32 @@ reporting path uses integer classification; loose and null-output paths keep SIM
 dispatch without that work. All eight scalar rounding instructions also report
 invalid/input-denormal flags in exact mode; rounding a fractional value does not
 raise inexact. Their reporting is checked against 6,291,456 RX 9070 captures.
+
 FP16/32/64 division-fixup reporting covers all six floating exception bits,
-including modifier suppression, and is checked against 393,216 RX 9070 captures.
+including modifier suppression, and is checked against 786,432 RX 9070 captures.
+
 FP16 FMA, FMAC, both literal forms, and packed FMA/FMAC also report exceptions.
 Their integer FMA intermediate supplies inexact/underflow/overflow classification;
 `CLAMP` suppresses all flags and output scaling suppresses underflow/inexact.
 Packed results accumulate exceptions from both selected halves. Loose SIMD
 paths skip all of this work.
+
 FP16/32 `SIN`/`COS` report invalid, input-denormal, underflow, and inexact flags.
 Their hardware corpora cover every FP16 encoding, FP32 exponent/mantissa patterns,
 and FP32 neighborhoods around underflow, quarter turns, zeros, and NaNs.
+
 FP32/64 `DIV_FMAS` report overflow, underflow and inexact after conditional
 post-scaling; hardware suppresses invalid/input-denormal flags. Integer guard and
 sticky bits supply reporting, with additional FMA16/DIV_FMAS hardware captures
 around underflow and overflow rounding boundaries.
+
 FP16 `FMA_MIXLO`/`FMA_MIXHI` accept reporting and leave the register unchanged:
 1,048,576 hardware flag reads are zero, including invalid arithmetic, overflow,
 source-format/half selection, modifiers, and saturation.
 `DOT2_F32_F16`/`DOT2_F32_BF16` likewise leave the register unchanged, validated
 with 524,288 hardware flag reads across packed selections, negation, and clamp.
-Other affected instructions reject requested
-reporting in non-loose modes before accessing operands, even for empty
+
+Other affected instructions reject requested reporting in non-loose modes before accessing operands, even for empty
 `exec_mask`, with precedence over other validation errors. Null retains existing
 validation, numerical behavior, and SIMD dispatch. Implement and hardware-test
 exception generation incrementally for bit-exact semantics.

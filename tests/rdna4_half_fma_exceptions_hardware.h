@@ -16,4 +16,65 @@ static const uint64_t half_fma_exception_hashes[16] = {
     0xb9d103fd6854a325ULL, 0xb9d103fd6854a325ULL, 0xb9d103fd6854a325ULL, 0xb9d103fd6854a325ULL,
 };
 
+// Direct FMAC/FMAMK/FMAAK captures. FMAC uses the ordinary modifier columns
+// but does not negate its accumulator; literal forms use the literal 0x3c01
+// and repeat their unmodified form. Both FP16_OVFL settings agree.
+static const uint64_t other_half_fma_exception_hashes[3][16] = {
+
+    {
+        0x9bfbf83a6e3822a5ULL,
+        0xe9548a6b9c093575ULL,
+        0xd8e8d47ffe89e09dULL,
+        0x66b12a1a8fbe47a5ULL,
+        0xb9d103fd6854a325ULL,
+        0xb9d103fd6854a325ULL,
+        0xb9d103fd6854a325ULL,
+        0xb9d103fd6854a325ULL,
+        0x245abaabcae1f4f5ULL,
+        0x45087e3bc31333fdULL,
+        0x4889400b6c6a732dULL,
+        0x31c48b539d52a8a5ULL,
+        0xb9d103fd6854a325ULL,
+        0xb9d103fd6854a325ULL,
+        0xb9d103fd6854a325ULL,
+        0xb9d103fd6854a325ULL,
+    },
+    {
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+        0x4918f8f46e8380bbULL,
+    },
+    {
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+        0x443aded70db57720ULL,
+    },
+};
+
 } // namespace goc_test

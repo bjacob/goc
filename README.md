@@ -2143,31 +2143,42 @@ and input-denormal flags in exact mode. They do not raise inexact when discardin
 a fractional part. Another 6,291,456 RX 9070 captures cover all FP16 encodings,
 65,536 FP32 patterns, every rounding instruction, denormal mode, and three EXEC
 masks. Capture probes can be regenerated with
-[the HIP probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_fp_exceptions.py). Division-fixup reporting is also implemented for FP16/32/64,
+[the HIP probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_fp_exceptions.py).
+
+Division-fixup reporting is also implemented for FP16/32/64,
 including invalid, input-denormal, floating-divide-by-zero, overflow, underflow,
 and inexact flags. `CLAMP` suppresses all flags; output scaling suppresses
-underflow/inexact flags. Its 393,216 RX 9070 flag captures cover edge/random triples,
+underflow/inexact flags. Its 786,432 RX 9070 flag captures cover edge/random triples,
 source/output modifiers, and both FP16 saturation settings; regenerate them with
-[the arithmetic probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_arithmetic_exceptions.py). FP16 `v_fma`, `v_fmac`, `v_fmamk`, `v_fmaak`,
+[the arithmetic probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_arithmetic_exceptions.py).
+
+FP16 `v_fma`, `v_fmac`, `v_fmamk`, `v_fmaak`,
 `v_pk_fma`, and `v_pk_fmac` also report exceptions. The existing integer FMA
 intermediate retains discarded precision for inexact/underflow/overflow
 classification, without consulting host exception flags. Packed operations OR
 the flags from both selected halves. Hardware flag corpora cover FMA and packed
-FMA/FMAC, with separate API tests for literals, DPP, masks, aliases, and host FP
-controls. `CLAMP` suppresses all flags; output scaling suppresses underflow/inexact.
-Loose SIMD paths retain their existing dispatch and skip reporting. FP16/32
+FMA/FMAC, plus direct FMAC and literal-form captures. API tests cover DPP,
+masks, aliases, and host FP controls. `CLAMP` suppresses all flags; output scaling suppresses underflow/inexact.
+Loose SIMD paths retain their existing dispatch and skip reporting.
+
+FP16/32
 `SIN`/`COS` reporting is also implemented, with exhaustive FP16 inputs, a broad
 FP32 corpus, and FP32 boundary neighborhoods (12,582,912 captured flag reads).
 Quarter turns are exact; other finite inputs report inexact. FP32 cosine treats
 subnormal inputs as exact zero for reporting, unlike FP16 cosine. `CLAMP` and
-output scaling suppress flags as above. FP32/64 `DIV_FMAS` also reports overflow,
+output scaling suppress flags as above.
+
+FP32/64 `DIV_FMAS` also reports overflow,
 underflow, and inexact, including per-lane conditional scaling. Hardware suppresses
 invalid/input-denormal flags for these instructions. Additional FMA16 and
 `DIV_FMAS` captures bracket underflow/overflow rounding boundaries.
+
 `FMA_MIXLO_F16`/`FMA_MIXHI_F16` accept reporting but leave the register unchanged:
 all 1,048,576 hardware flag reads are zero, including invalid arithmetic and
 overflow with every source-format combination, both half selections, source
-modifiers, clamp, and saturation. `DOT2_F32_F16`/`DOT2_F32_BF16` likewise leave
+modifiers, clamp, and saturation.
+
+`DOT2_F32_F16`/`DOT2_F32_BF16` likewise leave
 the register unchanged, validated with 524,288 hardware flag reads across packed
 selections, negation, clamp, and saturation.
 
