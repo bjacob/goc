@@ -13,9 +13,11 @@
 namespace {
 
 using Fn = decltype(&goc_rdna4_v_pk_add_i16);
-const Fn functions[] = {goc_rdna4_v_pk_add_i16, goc_rdna4_v_pk_sub_i16, goc_rdna4_v_pk_add_u16,
-                        goc_rdna4_v_pk_sub_u16, goc_rdna4_v_pk_min_i16, goc_rdna4_v_pk_max_i16,
-                        goc_rdna4_v_pk_min_u16, goc_rdna4_v_pk_max_u16, goc_rdna4_v_pk_mul_lo_u16};
+const Fn functions[] = {
+    goc_rdna4_v_pk_add_i16,     goc_rdna4_v_pk_sub_i16,     goc_rdna4_v_pk_add_u16,
+    goc_rdna4_v_pk_sub_u16,     goc_rdna4_v_pk_min_i16,     goc_rdna4_v_pk_max_i16,
+    goc_rdna4_v_pk_min_u16,     goc_rdna4_v_pk_max_u16,     goc_rdna4_v_pk_mul_lo_u16,
+    goc_rdna4_v_pk_lshlrev_b16, goc_rdna4_v_pk_lshrrev_b16, goc_rdna4_v_pk_ashrrev_i16};
 
 uint32_t mode_bits(int mode) {
   return (mode & 1 ? GOC_PK_LO_A_HIGH : 0) | (mode & 2 ? GOC_PK_LO_B_HIGH : 0) |
@@ -27,7 +29,7 @@ uint32_t mode_bits(int mode) {
 
 TEST(PackedInteger, AllModifiersBoundaryPairsAndRandomInputs) {
   const uint32_t values[] = {0, 1, 2, 0x7ffe, 0x7fff, 0x8000, 0x8001, 0xfffe, 0xffff};
-  for (int op = 0; op < 9; ++op)
+  for (int op = 0; op < 12; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int mode = 0; mode < 32; ++mode) {
         SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << mode);
@@ -50,7 +52,7 @@ TEST(PackedInteger, AllModifiersBoundaryPairsAndRandomInputs) {
 }
 
 TEST(PackedInteger, EveryHalfEncoding) {
-  for (int op = 0; op < 9; ++op)
+  for (int op = 0; op < 12; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint32_t mode : {uint32_t(0), GOC_PK_CLAMP | GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW}) {
         SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << mode);
@@ -62,6 +64,11 @@ TEST(PackedInteger, EveryHalfEncoding) {
           for (uint32_t lane = 0; lane < 32; ++lane) {
             a[lane] = (start + lane) | ((65535 - start - lane) << 16);
             b[lane] = random();
+            if (op >= 9) {
+              uint32_t count = b[lane];
+              b[lane] = a[lane];
+              a[lane] = count;
+            }
           }
           ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, dp, ap, bp), GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
@@ -72,7 +79,7 @@ TEST(PackedInteger, EveryHalfEncoding) {
 
 TEST(PackedInteger, MasksAndAllWholeRegisterAliases) {
   const int layouts[][3] = {{0, 1, 2}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}};
-  for (int op = 0; op < 9; ++op)
+  for (int op = 0; op < 12; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int mode = 0; mode < 32; ++mode)
         for (uint64_t mask : rdna4_exec_masks())
@@ -105,6 +112,12 @@ TEST(PackedInteger, LiteralSaturationAndHalfSelectionWitnesses) {
   };
 
   const Witness cases[] = {
+      {9, 0x0001000f, 0x80010001, 0, 0x00028000},
+      {10, 0x0001000f, 0x80018000, 0, 0x40000001},
+      {11, 0x0001000f, 0x80018000, 0, 0xc000ffff},
+      {9, 0xfff00010, 0x1234abcd, GOC_PK_CLAMP, 0x1234abcd},
+      {10, 0x00000001, 0xffff0000, 0, 0xffff0000},
+      {11, 0x000f000f, 0xffff7fff, GOC_PK_CLAMP, 0xffff0000},
       {0, 0x80007fff, 0xffff0001, 0, 0x7fff8000},
       {0, 0x80007fff, 0xffff0001, GOC_PK_CLAMP, 0x80007fff},
       {1, 0x7fff8000, 0xffff0001, GOC_PK_CLAMP, 0x7fff8000},
@@ -129,6 +142,27 @@ TEST(PackedInteger, LiteralSaturationAndHalfSelectionWitnesses) {
       for (uint32_t value : a)
         EXPECT_EQ(value, w.expected);
     }
+}
+
+TEST(PackedInteger, ShiftCountsAndDiscardedCountBits) {
+  const uint32_t values[] = {0, 1, 0x7fff, 0x8000, 0x8001, 0xffff, 0x55aa, 0xaa55};
+  for (int op = 9; op < 12; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (int mode = 0; mode < 32; ++mode)
+        for (uint32_t start = 0; start < 65536; start += 32) {
+          uint32_t a[32], b[32], d[32];
+          for (uint32_t lane = 0; lane < 32; ++lane) {
+            a[lane] = (start + lane) | ((65535 - start - lane) << 16);
+            b[lane] = values[lane % 8] | (values[(lane / 8 + start / 32) % 8] << 16);
+          }
+          const uint32_t *ap[] = {a}, *bp[] = {b};
+          uint32_t *dp[] = {d};
+          ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode_bits(mode), dp, ap, bp), GOC_SUCCESS);
+          for (int lane = 0; lane < 32; ++lane)
+            ASSERT_EQ(d[lane],
+                      goc_test::packed_integer_reference(op, a[lane], b[lane], mode_bits(mode)))
+                << op << "/" << cpu << "/" << mode << "/" << start << "/" << lane;
+        }
 }
 
 TEST(PackedInteger, ValidationAndFloatingEnvironment) {

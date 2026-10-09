@@ -920,14 +920,15 @@ bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_packed_integer(uint64_t cpu, int iterations, int min_ms) {
-  using Binary = decltype(&goc_rdna4_v_pk_add_f16);
+  using Binary = decltype(&goc_rdna4_v_pk_add_i16);
   const Binary functions[] = {
-      goc_rdna4_v_pk_add_i16, goc_rdna4_v_pk_sub_i16, goc_rdna4_v_pk_add_u16,
-      goc_rdna4_v_pk_sub_u16, goc_rdna4_v_pk_min_i16, goc_rdna4_v_pk_max_i16,
-      goc_rdna4_v_pk_min_u16, goc_rdna4_v_pk_max_u16, goc_rdna4_v_pk_mul_lo_u16};
-  const char *names[] = {"i16/padd", "i16/psub", "u16/padd", "u16/psub", "i16/pmin",
-                         "i16/pmax", "u16/pmin", "u16/pmax", "u16/pmul"};
-  for (int op = 0; op < 9; ++op)
+      goc_rdna4_v_pk_add_i16,     goc_rdna4_v_pk_sub_i16,     goc_rdna4_v_pk_add_u16,
+      goc_rdna4_v_pk_sub_u16,     goc_rdna4_v_pk_min_i16,     goc_rdna4_v_pk_max_i16,
+      goc_rdna4_v_pk_min_u16,     goc_rdna4_v_pk_max_u16,     goc_rdna4_v_pk_mul_lo_u16,
+      goc_rdna4_v_pk_lshlrev_b16, goc_rdna4_v_pk_lshrrev_b16, goc_rdna4_v_pk_ashrrev_i16};
+  const char *names[] = {"i16/padd", "i16/psub", "u16/padd", "u16/psub", "i16/pmin", "i16/pmax",
+                         "u16/pmin", "u16/pmax", "u16/pmul", "u16/pshl", "u16/pshr", "i16/pshr"};
+  for (int op = 0; op < 12; ++op)
     for (bool modified : {false, true}) {
       uint32_t mode =
           modified ? GOC_PK_LO_A_HIGH | GOC_PK_HI_A_LOW | GOC_PK_LO_B_HIGH | GOC_PK_CLAMP : 0;

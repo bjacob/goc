@@ -45,6 +45,23 @@ void packed_integer_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const u
       result = Signed ? _mm256_max_epi16(x, y) : _mm256_max_epu16(x, y);
     if constexpr (Op == PackedInteger::Mul)
       result = _mm256_mullo_epi16(x, y);
+    if constexpr (Op == PackedInteger::ShiftLeft || Op == PackedInteger::ShiftRight) {
+      const auto halves = _mm256_set1_epi32(65535);
+      auto count_lo = _mm256_and_si256(x, _mm256_set1_epi32(15));
+      auto count_hi = _mm256_and_si256(_mm256_srli_epi32(x, 16), _mm256_set1_epi32(15));
+      __m256i lo, hi;
+      if constexpr (Op == PackedInteger::ShiftLeft) {
+        lo = _mm256_sllv_epi32(y, count_lo);
+        hi = _mm256_sllv_epi32(_mm256_srli_epi32(y, 16), count_hi);
+      } else if constexpr (Signed) {
+        lo = _mm256_srav_epi32(_mm256_srai_epi32(_mm256_slli_epi32(y, 16), 16), count_lo);
+        hi = _mm256_srav_epi32(_mm256_srai_epi32(y, 16), count_hi);
+      } else {
+        lo = _mm256_srlv_epi32(_mm256_and_si256(y, halves), count_lo);
+        hi = _mm256_srlv_epi32(_mm256_srli_epi32(y, 16), count_hi);
+      }
+      result = _mm256_or_si256(_mm256_and_si256(lo, halves), _mm256_slli_epi32(hi, 16));
+    }
     auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
                                     _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
     _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
@@ -78,5 +95,18 @@ template void packed_integer_x86_64_v3<PackedInteger::Max, false>(uint32_t, uint
 template void packed_integer_x86_64_v3<PackedInteger::Mul, false>(uint32_t, uint32_t, uint32_t *,
                                                                   const uint32_t *,
                                                                   const uint32_t *);
+
+template void packed_integer_x86_64_v3<PackedInteger::ShiftLeft, false>(uint32_t, uint32_t,
+                                                                        uint32_t *,
+                                                                        const uint32_t *,
+                                                                        const uint32_t *);
+template void packed_integer_x86_64_v3<PackedInteger::ShiftRight, false>(uint32_t, uint32_t,
+                                                                         uint32_t *,
+                                                                         const uint32_t *,
+                                                                         const uint32_t *);
+template void packed_integer_x86_64_v3<PackedInteger::ShiftRight, true>(uint32_t, uint32_t,
+                                                                        uint32_t *,
+                                                                        const uint32_t *,
+                                                                        const uint32_t *);
 
 } // namespace goc

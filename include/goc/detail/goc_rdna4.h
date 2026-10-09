@@ -167,6 +167,22 @@ GOC_API int goc_rdna4_v_pk_mul_lo_u16(uint64_t flags, uint64_t exec_mask,
                                       uint32_t instruction_flags, uint32_t *const *d,
                                       const uint32_t *const *a, const uint32_t *const *b);
 
+// Packed 16-bit shifts: A supplies counts modulo 16; B supplies values.
+// Supports GOC_PK_* half selectors for A/B. CLAMP is accepted and ignored;
+// negation and C flags are invalid. ASHR sign-extends each selected B half.
+// Two results per lane, one VGPR per operand, loose semantics only.
+GOC_API int goc_rdna4_v_pk_lshlrev_b16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_lshrrev_b16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_ashrrev_i16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
 // Packed source negation: independent for the low and high result calculations.
 static const uint32_t GOC_PK_NEG_LO_A = (UINT32_C(1) << 0);
 static const uint32_t GOC_PK_NEG_LO_B = (UINT32_C(1) << 1);

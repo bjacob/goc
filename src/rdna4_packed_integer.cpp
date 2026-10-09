@@ -46,6 +46,14 @@ int arithmetic(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
         value = std::max(x, y);
       if constexpr (Op == goc::PackedInteger::Mul)
         value = x * y;
+      if constexpr (Op == goc::PackedInteger::ShiftLeft)
+        value = uint32_t(y) << (uint32_t(x) & 15);
+
+      // Signed Y is already extended to 32 bits. At most 15 right shifts
+      // cannot move a zero from above bit 31 into the retained low 16 bits.
+      if constexpr (Op == goc::PackedInteger::ShiftRight)
+        value = uint32_t(y) >> (uint32_t(x) & 15);
+
       if constexpr (Op == goc::PackedInteger::Add || Op == goc::PackedInteger::Sub) {
         if (mode & GOC_PK_CLAMP)
           value = std::clamp(value, Signed ? INT64_C(-32768) : INT64_C(0),
@@ -106,4 +114,25 @@ int goc_rdna4_v_pk_mul_lo_u16(uint64_t flags, uint64_t exec_mask, uint32_t instr
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b) {
   return arithmetic<goc::PackedInteger::Mul, false>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_rdna4_v_pk_lshlrev_b16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b) {
+  return arithmetic<goc::PackedInteger::ShiftLeft, false>(flags, exec_mask, instruction_flags, d, a,
+                                                          b);
+}
+
+int goc_rdna4_v_pk_lshrrev_b16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b) {
+  return arithmetic<goc::PackedInteger::ShiftRight, false>(flags, exec_mask, instruction_flags, d,
+                                                           a, b);
+}
+
+int goc_rdna4_v_pk_ashrrev_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b) {
+  return arithmetic<goc::PackedInteger::ShiftRight, true>(flags, exec_mask, instruction_flags, d, a,
+                                                          b);
 }

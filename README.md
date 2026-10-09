@@ -167,6 +167,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
 | `v_dot4_f32_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar, x86-64-v3 | Not implemented |
 | `v_pk_add_i16`, `v_pk_sub_i16`, `v_pk_add_u16`, `v_pk_sub_u16` | Scalar, x86-64-v3; all half selectors and saturation | Not implemented |
+| `v_pk_lshlrev_b16`, `v_pk_lshrrev_b16`, `v_pk_ashrrev_i16` | Scalar, x86-64-v3; all half selectors | Not implemented |
 | `v_pk_min_i16`, `v_pk_max_i16`, `v_pk_min_u16`, `v_pk_max_u16`, `v_pk_mul_lo_u16` | Scalar, x86-64-v3; all half selectors | Not implemented |
 | `v_dot4_i32_iu8`, `v_dot4_u32_u8` | Scalar, x86-64-v3 | Same integer result |
 | `v_dot8_i32_iu4`, `v_dot8_u32_u4` | Scalar, x86-64-v3 | Same integer result |
@@ -392,6 +393,14 @@ unsigned saturation. Min/max and multiply ignore CLAMP, matching rocjitsu;
 negation and C flags are invalid. Both halves read the original inputs before
 masked stores. Tests cover every 16-bit encoding, boundary pairs, every modifier
 combination, masks, aliases, literal saturation witnesses and FP-state preservation.
+
+Packed 16-bit shifts take the counts from A and the values from B. Counts
+use only their low four bits; arithmetic right shift propagates the selected
+half's sign. Scalar and AVX2 paths support every A/B half selector, ignored
+CLAMP, EXEC masks and whole-register aliases. AVX2 shifts the low and high
+halves separately in 32-bit lanes, then packs them before masked stores.
+Tests exercise every count encoding with every selector combination, every
+value encoding, boundary values and literal sign-extension witnesses.
 
 Packed FP16 `PK_ADD`, `PK_MUL`, `PK_MIN_NUM`, `PK_MAX_NUM`, `PK_MINIMUM`
 and `PK_MAXIMUM` compute two results per VGPR lane. They support all 512

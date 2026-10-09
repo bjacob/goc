@@ -26,6 +26,13 @@ inline uint32_t packed_integer_reference(int op, uint32_t a, uint32_t b, uint32_
                     : op == 8  ? x * y
                     : (op & 1) ? (x > y ? x : y)
                                : (x < y ? x : y);
+    if (op >= 9) {
+      if (op == 11 && y >= 32768)
+        y -= 65536;
+      const int64_t power = INT64_C(1) << (x % 16);
+      // Arithmetic right shift rounds negative quotients down, unlike C++ division.
+      value = op == 9 ? y * power : (y >= 0 ? y / power : -((-y + power - 1) / power));
+    }
     if (op < 4 && (mode & GOC_PK_CLAMP)) {
       int64_t low = sign ? -32768 : 0, high = sign ? 32767 : 65535;
       if (value < low)
