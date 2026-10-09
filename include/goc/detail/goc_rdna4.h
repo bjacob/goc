@@ -1765,6 +1765,7 @@ GOC_API int goc_rdna4_v_cvt_sr_bf8_f32(uint64_t flags, uint64_t exec_mask,
                                        uint64_t instruction_flags, uint32_t *const *d,
                                        const uint32_t *const *a, const uint32_t *const *b);
 
+// DPP8/DPP16 permute A before nibble selection.
 // Convert A's signed low nibble to FP32 divided by 16, then apply OMOD/CLAMP.
 // Each operand holds one VGPR; higher source bits are ignored. Supports loose
 // semantics, full EXEC masking and whole-register aliasing. Results are exact
@@ -1889,6 +1890,7 @@ GOC_API int goc_rdna4_v_cvt_pk_f32_bf8(uint64_t flags, uint64_t exec_mask,
                                        uint64_t instruction_flags, uint32_t *const *d,
                                        const uint32_t *const *a);
 
+// DPP8/DPP16 permute A before byte selection.
 // Unsigned byte-to-FP32 conversions: one VGPR per operand. The mnemonic's
 // byte index selects bits [8*index, 8*index+7] of A. Supports OMOD and CLAMP;
 // source ABS/NEG and half selectors are invalid. All results are exactly

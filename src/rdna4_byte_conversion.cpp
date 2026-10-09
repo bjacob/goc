@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_alu.h"
+#include "rdna4_dpp.h"
 
 #include <cmath>
 #include <stdint.h>
@@ -11,8 +12,13 @@
 namespace {
 
 template <unsigned Byte>
-int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int convert(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a) {
+  if (mode >> 32)
+    return goc::execute_dpp(flags, mask, mode, a,
+                            [&](uint32_t effective, const uint32_t *const *source) {
+                              return convert<Byte>(flags, effective, uint32_t(mode), d, source);
+                            });
   if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP)))
     return error;
   if (!uint32_t(mask))
@@ -46,36 +52,31 @@ int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 int goc_rdna4_v_cvt_f32_ubyte0(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<0>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_cvt_f32_ubyte1(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<1>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_cvt_f32_ubyte2(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<2>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_cvt_f32_ubyte3(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<3>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_cvt_off_f32_i4(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a) {
   if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
+    return goc::execute_dpp(
+        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+          return goc_rdna4_v_cvt_off_f32_i4(flags, effective, uint32_t(mode), d, source);
+        });
   if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP)))
     return error;
   if (!uint32_t(mask))

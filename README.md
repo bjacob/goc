@@ -907,6 +907,16 @@ full-EXEC default and combined OMOD/CLAMP workloads. On the development Ryzen 9
 instructions and 2.4–2.6x faster with modifiers; v4 was 3.7–5.0x faster for
 defaults and 9.3–10.7x with modifiers (seven samples, each at least 10 ms).
 
+The four byte conversions and `v_cvt_off_f32_i4` also support DPP8 and
+DPP16: source A is permuted before byte/nibble extraction, and all eight
+OMOD/CLAMP combinations retain SIMD dispatch. Tests cross seven descriptors
+with every modifier, 85 EXEC masks, aliases and unaligned storage, and match
+71,680 output words captured on an RX 9070 (including inactive destinations).
+Full-EXEC benchmarks include DPP8 reversal and DPP16 row shift with combined
+output modifiers. Pinned Ryzen 9 7950X3D measurements across these DPP cases
+showed v3 at 18.3–22.8 ns (1.78–3.22x scalar) and v4 at 8.5–11.8 ns
+(3.45–7.20x), using seven samples of at least 10 ms each.
+
 Six FP16 conversions cover `v_cvt_f16_i16`, `v_cvt_f16_u16`,
 `v_cvt_i16_f16`, `v_cvt_u16_f16`, `v_cvt_f16_f32`, and `v_cvt_f32_f16`.
 Each operand occupies one VGPR. Half selectors preserve the unused destination

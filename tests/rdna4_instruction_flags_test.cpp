@@ -71,6 +71,9 @@ void check_high_flags(const char *name,
     supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   for (auto mnemonic : goc_test::conversion16_names)
     supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
+  for (auto mnemonic : {"v_cvt_f32_ubyte0", "v_cvt_f32_ubyte1", "v_cvt_f32_ubyte2",
+                        "v_cvt_f32_ubyte3", "v_cvt_off_f32_i4"})
+    supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   for (unsigned bit = 32; bit < 64; ++bit)
     for (uint64_t exec : {UINT64_C(0), UINT64_MAX}) {
       // A DPP enable bit alone is a valid descriptor (zero fields).
