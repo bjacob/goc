@@ -36,7 +36,7 @@ extern "C" {
 // DPP with their source/destination selectors and applicable CLAMP modifiers.
 // This includes non-packed 16-bit MAD, MIN3, MAX3, and MED3.
 // FP16 ADD/SUB/SUBREV/MUL and binary/ternary min/max/median support DPP
-// with all modifiers.
+// with all modifiers. FP16 FMA/FMAC support DPP in loose and exact semantics.
 static const uint64_t GOC_DPP8 = (UINT64_C(1) << 32);
 static const uint64_t GOC_DPP_FI = (UINT64_C(1) << 33);
 static const uint32_t GOC_DPP8_SELECT_SHIFT = 40;

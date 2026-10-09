@@ -3,6 +3,7 @@
 #include "rdna4_half_fma.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 #include "rdna4_fma.h"
 #include "rdna4_half_fma_scalar.h"
 
@@ -11,8 +12,18 @@
 namespace {
 
 template <goc::FmaOperands Operands = goc::FmaOperands::Registers>
-int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *c, uint16_t literal = 0) {
+  if (mode >> 32) {
+    if constexpr (Operands == goc::FmaOperands::Registers) {
+      return goc::execute_dpp(
+          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+            return run<Operands>(flags, effective, uint32_t(mode), d, source, b, c, literal);
+          });
+    } else {
+      return GOC_ERROR_INVALID_FLAGS;
+    }
+  }
   const uint32_t known = Operands == goc::FmaOperands::Registers
                              ? UINT32_C(0x1fff)
                              : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D;
@@ -59,15 +70,16 @@ int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
 int goc_rdna4_v_fma_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_fmac_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
+    return goc::execute_dpp(
+        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+          return goc_rdna4_v_fmac_f16(flags, effective, uint32_t(mode), d, source, b);
+        });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A | GOC_ALU_HIGH_B |
                          GOC_ALU_HIGH_D;

@@ -1789,6 +1789,22 @@ these cases measure 31.3–47.5 ns on AVX2 (5.1–7.5× scalar speed) and
 30.8–46.6 ns with AVX-512 permutation plus AVX2 arithmetic (5.2–7.8×), using
 seven pinned samples of at least 10 ms each.
 
+FP16 FMA and FMAC now support DPP8/DPP16 in both loose and existing exact
+semantics. Two GFX1201 captures check 114,688 results across normal and
+underflow-boundary inputs, source modifiers, output scaling/clamp, half
+selectors, and EXEC masks. Tests exercise all 8,192 FMA and 1,024 FMAC modifier
+encodings in both overflow modes and semantics, plus aliases, guards, untouched
+halves, and exact-mode host rounding/exception-state preservation. FMAC reads
+the selected destination half and still rejects independent C modifiers.
+Literal FMA forms retain their separate encoding contract. Loose arithmetic
+stays on AVX2 for every supported modifier; v4 uses AVX-512 permutation with
+AVX2 arithmetic. Full-EXEC benchmarks cover both instructions, both DPP kinds,
+and default or combined modifiers. FMAC timings include resetting its
+accumulator input on every call to keep repeated measurements stable. On the
+Ryzen 9 7950X3D, these cases measure 30.6–54.5 ns on AVX2 (9.7–11.8× scalar
+speed) and 30.5–53.5 ns with AVX-512 permutation plus AVX2 arithmetic
+(10.1–11.9×), using seven pinned samples of at least 10 ms each.
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal
