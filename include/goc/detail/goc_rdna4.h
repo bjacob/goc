@@ -29,7 +29,8 @@ extern "C" {
 // Any loose reporting is not guaranteed complete or accurate; loose arithmetic
 // need not match hardware, so its exception flags need not match hardware either.
 // Loose mode never returns GOC_ERROR_UNSUPPORTED_GLOBAL_STATE.
-// Reporting is implemented for floating comparisons and V_RCP_IFLAG_F32. Other
+// Reporting is implemented for floating comparisons, scalar rounding, and
+// V_RCP_IFLAG_F32. Other
 // non-loose requests with a non-NULL pointer return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE
 // before operand access, even for empty EXEC, before other validation. NULL opts
 // out of reporting in every mode and preserves numerical paths and validation.
@@ -412,6 +413,9 @@ int goc_rdna4_s_cvt_pk_rtz_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t 
 // be zero. Guest input flushing applies; output flushing and FP16_OVFL have no
 // effect. Preserves all host FP state and SCC, independently of host rounding.
 // Inputs may originate from d storage. Errors leave d unchanged.
+// Exact mode with non-NULL excp_flag_user accumulates INVALID for signaling NaNs
+// and INPUT_DENORM for preserved subnormals. Discarding a fractional part does
+// not raise INEXACT. Loose mode leaves excp_flag_user unchanged.
 
 // Round to an integral value toward positive infinity.
 int goc_rdna4_s_ceil_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,

@@ -2138,7 +2138,12 @@ execute regardless of EXEC; vector comparisons reduce only participating lanes
 after DPP. Exact comparison reporting uses integer classification on the scalar
 path; loose mode and null-output calls retain their SIMD paths. A 338,688-case
 RX 9070 capture validates the reporting rules across predicates, formats, masks,
-and denormal modes.
+and denormal modes. All eight scalar rounding instructions also report invalid
+and input-denormal flags in exact mode. They do not raise inexact when discarding
+a fractional part. Another 6,291,456 RX 9070 captures cover all FP16 encodings,
+65,536 FP32 patterns, every rounding instruction, denormal mode, and three EXEC
+masks. Capture probes can be regenerated with
+[the HIP probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_fp_exceptions.py).
 
 In loose mode, other affected instructions leave the register unchanged. Loose
 semantics require no optional global-state output, even with a non-null pointer.

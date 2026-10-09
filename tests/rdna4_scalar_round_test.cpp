@@ -5,6 +5,7 @@
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_scalar_fp_reference.h"
+#include "rdna4_scalar_round_exceptions_hardware.h"
 #include "rdna4_scalar_round_hardware.h"
 #include "rdna4_scalar_round_reference.h"
 
@@ -106,5 +107,53 @@ TEST(ScalarRound, ErrorsDoNotWrite) {
     EXPECT_EQ(goc_test::scalar_round_functions[op](1ULL << 63, 0, 0, &d, 0, nullptr),
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(d, 123u);
+  }
+}
+
+TEST(ScalarRound, HardwareExceptionFlags) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned denorm = 0; denorm < 4; ++denorm)
+      for (unsigned op = 0; op < 8; ++op) {
+        uint64_t hash = goc_test::capture_hash_seed;
+        for (unsigned i = 0; i < 65536; ++i) {
+          uint32_t a =
+              op & 1 ? (0xabcd0000U | i) : (i << 16) | ((i * 1664525U + 1013904223U) & 65535);
+          uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                           (i & 2 ? GOC_SEMANTICS_STRICT : 0) |
+                           (denorm & 1 ? 0 : GOC_FP_FLUSH_INPUT_DENORMALS) |
+                           (denorm & 2 ? 0 : GOC_FP_FLUSH_OUTPUT_DENORMALS);
+          uint32_t d = 0, excp_flag_user = 0xa5000040;
+          ASSERT_EQ(goc_test::scalar_round_functions[op](flags, i & 1 ? 0 : UINT32_MAX, 0, &d, a,
+                                                         &excp_flag_user),
+                    GOC_SUCCESS);
+          ASSERT_EQ(excp_flag_user & ~3U, 0xa5000040U);
+          hash = goc_test::capture_hash_word(hash, excp_flag_user & 3);
+        }
+        EXPECT_EQ(hash, goc_test::scalar_round_exception_hashes[denorm & 1][op & 1 ? 0 : 1]) << op;
+      }
+}
+
+TEST(ScalarRound, ReportingContractAndHostState) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (unsigned op = 0; op < 8; ++op) {
+    uint32_t a = op & 1 ? 0x7c01 : 0x7f800001;
+    for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
+      std::fesetround(rounding);
+      std::feraiseexcept(FE_INEXACT);
+      int host_exceptions = std::fetestexcept(FE_ALL_EXCEPT);
+      uint32_t d = 0xdeadbeef, excp_flag_user = 0x80000040;
+      auto fn = goc_test::scalar_round_functions[op];
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 1, &d, a, &excp_flag_user),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(d, 0xdeadbeefU);
+      EXPECT_EQ(excp_flag_user, 0x80000040U);
+      EXPECT_EQ(fn(GOC_SEMANTICS_LOOSE, 0, 0, &d, a, &excp_flag_user), GOC_SUCCESS);
+      EXPECT_EQ(excp_flag_user, 0x80000040U);
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &d, a, &excp_flag_user), GOC_SUCCESS);
+      EXPECT_EQ(excp_flag_user, 0x80000040U | GOC_RDNA4_EXCEPTION_INVALID);
+      EXPECT_EQ(std::fegetround(), rounding);
+      EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), host_exceptions);
+    }
   }
 }

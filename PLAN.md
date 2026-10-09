@@ -398,7 +398,10 @@ loose reporting. Currently, `V_RCP_IFLAG_F32` retains its implemented
 integer-divide-by-zero reporting. Floating comparisons also implement exact
 invalid/input-denormal reporting, validated against RX 9070 captures. Their exact
 reporting path uses integer classification; loose and null-output paths keep SIMD
-dispatch without that work. Other affected instructions reject requested
+dispatch without that work. All eight scalar rounding instructions also report
+invalid/input-denormal flags in exact mode; rounding a fractional value does not
+raise inexact. Their reporting is checked against 6,291,456 RX 9070 captures.
+Other affected instructions reject requested
 reporting in non-loose modes before accessing operands, even for empty
 `exec_mask`, with precedence over other validation errors. Null retains existing
 validation, numerical behavior, and SIMD dispatch. Implement and hardware-test
