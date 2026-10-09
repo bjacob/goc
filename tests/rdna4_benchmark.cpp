@@ -3129,52 +3129,67 @@ bool benchmark_float_compare(uint64_t cpu, int iterations, int min_ms) {
   };
 
   for (unsigned op = 0; op < 84; ++op)
-    for (unsigned config = 0; config < 3; ++config) {
-      unsigned m = config ? (op < 28 ? 63 : 15) : 0;
-      bool flush = config == 2;
-      CompareRegisters r;
-      for (unsigned lane = 0; lane < 32; ++lane) {
-        uint32_t w[4];
-        goc_test::float_compare_inputs(op / 28, 128 + lane, w);
-        r.data[0][lane] = w[0];
-        r.data[1][lane] = w[1];
-        r.data[4][lane] = w[2];
-        r.data[5][lane] = w[3];
-        r.want |= uint32_t(goc_test::float_compare_reference(op, m, flush, w)) << lane;
-      }
-      auto fn = [&r, op, flush](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *,
-                                const uint32_t *const *a, const uint32_t *const *b,
-                                const uint32_t *const *) {
-        return goc_test::float_compare_functions[op](flags | GOC_SEMANTICS_EXACT_EMPIRICAL |
-                                                         GOC_SEMANTICS_STRICT |
-                                                         (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0),
-                                                     mask, mode, &r.result, a, b);
-      };
-      auto name = goc_test::float_compare_names[op];
-      const char *label = m ? (op < 28 ? "ABS/NEG/high" : "ABS/NEG") : "none",
-                 *state = flush ? "flush-input" : "none";
-      uint32_t mode = goc_test::float_compare_mode(m);
-      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
-      if (scalar < 0)
-        return false;
-      print_result(name, "exact", label, "scalar", scalar, 1, 32, state);
-#if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if (cpu >= GOC_CPU_X86_64_V3) {
-        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
-        if (simd < 0)
+    for (unsigned config = 0; config < 3; ++config)
+      for (int descriptor : {-1, 0, 5}) {
+        // Sample DPP LT/EQ; the permutation cost is shared by all predicates.
+        if (descriptor >= 0 && (op >= 56 || op % 28 >= 2))
+          continue;
+        unsigned m = config ? (op < 28 ? 63 : 15) : 0;
+        bool flush = config == 2;
+        uint64_t mode = goc_test::float_compare_mode(m) |
+                        (descriptor < 0 ? 0 : goc_test::dpp_modes[descriptor]);
+        CompareRegisters r;
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          uint32_t w[4];
+          goc_test::float_compare_inputs(op / 28, 128 + lane, w);
+          r.data[0][lane] = w[0];
+          r.data[1][lane] = w[1];
+          r.data[4][lane] = w[2];
+          r.data[5][lane] = w[3];
+        }
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          int source = int(lane);
+          if (descriptor >= 0)
+            goc_test::dpp_source(mode, UINT32_MAX, lane, source);
+          uint32_t w[] = {source < 0 ? 0 : r.data[0][source], r.data[1][lane], r.data[4][lane],
+                          r.data[5][lane]};
+          r.want |= uint32_t(goc_test::float_compare_reference(op, m, flush, w)) << lane;
+        }
+        auto fn = [&r, op, flush](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *,
+                                  const uint32_t *const *a, const uint32_t *const *b,
+                                  const uint32_t *const *) {
+          return goc_test::float_compare_functions[op](
+              flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                  (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0),
+              mask, mode, &r.result, a, b);
+        };
+        auto name = goc_test::float_compare_names[op];
+        const char *label = m ? (op < 28 ? "ABS/NEG/high" : "ABS/NEG") : "none",
+                   *state = flush ? "flush-input" : "none";
+        if (descriptor >= 0)
+          label =
+              descriptor == 0 ? (m ? "DPP8/modified" : "DPP8") : (m ? "DPP16/modified" : "DPP16");
+        double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+        if (scalar < 0)
           return false;
-        print_result(name, "exact", label, "x86-64-v3", simd, scalar / simd, 32, state);
-      }
+        print_result(name, "exact", label, "scalar", scalar, 1, 32, state);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+        if (cpu >= GOC_CPU_X86_64_V3) {
+          double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(name, "exact", label, "x86-64-v3", simd, scalar / simd, 32, state);
+        }
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
-      if (cpu >= GOC_CPU_X86_64_V4) {
-        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
-        if (simd < 0)
-          return false;
-        print_result(name, "exact", label, "x86-64-v4", simd, scalar / simd, 32, state);
-      }
+        if (cpu >= GOC_CPU_X86_64_V4) {
+          double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(name, "exact", label, "x86-64-v4", simd, scalar / simd, 32, state);
+        }
 #endif
-    }
+      }
   (void)cpu;
   return true;
 }

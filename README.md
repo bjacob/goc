@@ -570,6 +570,9 @@ may alias any input word. ABS/NEG and independent FP16 source-half selectors
 remain on every SIMD path. Both semantics use the raw integer ordering model
 borrowed from rocjitsu, with signed zeros equal and the prescribed ordered or
 unordered behavior for every NaN, including signaling NaNs.
+The 56 FP16/FP32 forms support DPP8/DPP16 on A before source modifiers and
+half selection. B retains its lane, and filtered result bits are zero. FP64
+forms have no DPP encoding. DPP stays on SIMD with modifiers and guest flushing.
 
 `GOC_FP_FLUSH_INPUT_DENORMALS` flushes guest input subnormals to signed zero
 after source modifiers. Its default value preserves them. This setting is
@@ -589,6 +592,14 @@ modified, and modified-with-input-flushing cases for every instruction.
 Pinned-core Ryzen 9 7950X3D timings show 3.70–8.13x for v3 and 4.82–12.23x
 for v4 versus scalar, including input flushing (seven samples, each at least
 10 ms). FP64 gains alone are 3.70–4.70x and 4.82–6.62x respectively.
+DPP tests match 225,792 additional GPU masks across every FP16/FP32 predicate,
+source modifier cases, EXEC masks and both denormal modes. Independent tests
+exercise all modifier combinations, shared sources, scalar-output aliases and
+guards; both semantics preserve host FP state under every rounding mode.
+Full-EXEC benchmarks sample DPP8/DPP16 LT/EQ with modifiers and input flushing.
+Pinned-core timings for these DPP cases are 12.2–18.8 ns for v3
+(4.84–6.82x scalar) and 9.2–13.3 ns for v4 (6.32–9.24x), including
+modified and input-flushing cases (seven samples, each at least 10 ms).
 
 Integer comparison supports LT/EQ/LE/GT/NE/GE for signed and unsigned
 16-, 32- and 64-bit operands, including every corresponding CMPX form (72 entry

@@ -904,6 +904,8 @@ GOC_API int goc_rdna4_v_s_sqrt_f16(uint64_t flags, uint64_t exec_mask, uint64_t 
 // always be writable and may alias any input word. Zero EXEC permits null VGPR
 // pointers. Errors leave d unchanged. A/B use one VGPR for FP16/FP32 or a low/high
 // pair for FP64. Supports ABS_A/B, NEG_A/B and FP16 HIGH_A/B. ABS precedes NEG.
+// FP16/FP32 support DPP8/DPP16 on A before modifiers and half selection; B
+// stays in its original lane, and filtered result bits are zero. FP64 rejects DPP.
 // Supports loose and empirical-exact semantics. GOC_FP_FLUSH_INPUT_DENORMALS
 // flushes input subnormals to signed zero after modifiers; otherwise they are
 // preserved. Signed zeros compare equal. NaNs make ordered relations false and

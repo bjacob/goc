@@ -7,6 +7,7 @@
 #include "rdna4_conversion32_reference.h"
 #include "rdna4_dpp_arithmetic_reference.h"
 #include "rdna4_dpp_integer_reference.h"
+#include "rdna4_float_compare_reference.h"
 #include "rdna4_half_binary_reference.h"
 #include "rdna4_half_minmax_reference.h"
 #include "rdna4_half_unary_reference.h"
@@ -107,6 +108,9 @@ void check_high_flags(const char *name,
   for (unsigned op = 0; op < 48; ++op)
     dpp_scalar_output |=
         std::strcmp(name + sizeof("goc_rdna4_") - 1, goc_test::integer_compare_names[op]) == 0;
+  for (unsigned op = 0; op < 56; ++op)
+    dpp_scalar_output |=
+        std::strcmp(name + sizeof("goc_rdna4_") - 1, goc_test::float_compare_names[op]) == 0;
   supports_dpp |= dpp_scalar_output;
   for (unsigned bit = 32; bit < 64; ++bit)
     for (uint64_t exec : {UINT64_C(0), UINT64_MAX}) {
