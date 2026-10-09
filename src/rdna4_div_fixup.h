@@ -53,6 +53,43 @@ fixup_value(typename DivisionFormat<Width>::Bits p, typename DivisionFormat<Widt
   return division_output<Width>(result, mode, overflow);
 }
 
+// Classify DIV_FIXUP's wave exception contribution from unmodified source bits.
+// Adapted from rocjitsu shared/alu_exceptions.h, with RX 9070 corrections:
+// CLAMP suppresses all flags; NaN/invalid cases suppress input-denormal flags;
+// FP16 has no exponent-gap underflow recovery. Signs do not affect these flags.
+template <unsigned Width>
+inline uint32_t fixup_exceptions(typename DivisionFormat<Width>::Bits p,
+                                 typename DivisionFormat<Width>::Bits b,
+                                 typename DivisionFormat<Width>::Bits c, uint32_t mode) {
+  using F = DivisionFormat<Width>;
+  p &= F::sign - 1;
+  b &= F::sign - 1;
+  c &= F::sign - 1;
+  if (mode & GOC_ALU_CLAMP)
+    return 0;
+  if ((b > F::infinity && !(b & F::quiet)) || (c > F::infinity && !(c & F::quiet)))
+    return GOC_RDNA4_EXCEPTION_INVALID;
+  if (b > F::infinity || c > F::infinity)
+    return 0;
+  if ((!b && !c) || (b == F::infinity && c == F::infinity))
+    return GOC_RDNA4_EXCEPTION_INVALID;
+  if (!b && c && c < F::infinity)
+    return GOC_RDNA4_EXCEPTION_FLOAT_DIV0;
+  uint32_t exceptions = ((b && b < (1ULL << F::fraction)) || (c && c < (1ULL << F::fraction)))
+                            ? GOC_RDNA4_EXCEPTION_INPUT_DENORM
+                            : 0;
+  if (!b || !c || b >= F::infinity || c >= F::infinity)
+    return exceptions;
+  unsigned omod = (mode >> 6) & 3;
+  if (Width != 16 && int(c >> F::fraction) - int(b >> F::fraction) < -(F::bias + F::fraction))
+    return exceptions | (omod ? 0 : GOC_RDNA4_EXCEPTION_UNDERFLOW | GOC_RDNA4_EXCEPTION_INEXACT);
+  if (p >= F::infinity)
+    return exceptions | GOC_RDNA4_EXCEPTION_OVERFLOW | (omod ? 0 : GOC_RDNA4_EXCEPTION_INEXACT);
+  if ((omod == 1 || omod == 2) && (p >> F::fraction) + omod >= unsigned(2 * F::bias + 1))
+    exceptions |= GOC_RDNA4_EXCEPTION_OVERFLOW;
+  return exceptions;
+}
+
 template <unsigned Width>
 void fixup_x86_64_v3(uint32_t exec_mask, uint32_t mode, bool saturate, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c);

@@ -29,8 +29,8 @@ extern "C" {
 // Any loose reporting is not guaranteed complete or accurate; loose arithmetic
 // need not match hardware, so its exception flags need not match hardware either.
 // Loose mode never returns GOC_ERROR_UNSUPPORTED_GLOBAL_STATE.
-// Reporting is implemented for floating comparisons, scalar rounding, and
-// V_RCP_IFLAG_F32. Other
+// Reporting is implemented for floating comparisons, scalar rounding,
+// V_DIV_FIXUP_F16/F32/F64, and V_RCP_IFLAG_F32. Other
 // non-loose requests with a non-NULL pointer return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE
 // before operand access, even for empty EXEC, before other validation. NULL opts
 // out of reporting in every mode and preserves numerical paths and validation.
@@ -862,6 +862,10 @@ int goc_rdna4_s_mulk_i32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 // RDNA4 WAVE_EXCP_FLAG_USER status bits currently produced by GoC.
 static const uint32_t GOC_RDNA4_EXCEPTION_INVALID = 1U << 0;
 static const uint32_t GOC_RDNA4_EXCEPTION_INPUT_DENORM = 1U << 1;
+static const uint32_t GOC_RDNA4_EXCEPTION_FLOAT_DIV0 = 1U << 2;
+static const uint32_t GOC_RDNA4_EXCEPTION_OVERFLOW = 1U << 3;
+static const uint32_t GOC_RDNA4_EXCEPTION_UNDERFLOW = 1U << 4;
+static const uint32_t GOC_RDNA4_EXCEPTION_INEXACT = 1U << 5;
 static const uint32_t GOC_RDNA4_EXCEPTION_INT_DIV0 = 1U << 6;
 
 // Reciprocal with sticky integer divide-by-zero status. Supports ABS_A, NEG_A,

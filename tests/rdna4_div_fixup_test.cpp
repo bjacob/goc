@@ -3,6 +3,7 @@
 #include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
+#include "rdna4_div_fixup_exceptions_hardware.h"
 #include "rdna4_div_fixup_hardware.h"
 #include "rdna4_div_fixup_reference.h"
 #include "rdna4_dpp_reference.h"
@@ -324,4 +325,61 @@ TEST(DivFixup, ValidationAndFallback) {
       for (auto word : output)
         EXPECT_EQ(word, op == 0 ? 0xdeadfe00 : op == 1 ? 0xffc00000 : 0xfff80000);
     }
+}
+
+TEST(DivFixup, ExceptionHardwareCorpus) {
+  for (unsigned type = 0; type < 3; ++type)
+    for (unsigned variant = 0; variant < 16; ++variant)
+      for (bool saturate : {false, true}) {
+        uint32_t mode =
+            ((variant & 3) << 6) | (variant & 4 ? GOC_ALU_CLAMP : 0) |
+            (variant & 8 ? GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_ABS_B | GOC_ALU_NEG_C : 0);
+        uint64_t hash = goc_test::capture_hash_seed;
+        for (unsigned i = 0; i < 8192; ++i) {
+          uint32_t words[4][2][32] = {};
+          uint64_t state = uint64_t(i) * 0x9e3779b97f4a7c15ULL;
+          for (unsigned operand = 0; operand < 3; ++operand) {
+            state ^= state >> 12;
+            state ^= state << 25;
+            state ^= state >> 27;
+            uint64_t value =
+                i < 4096 ? goc_test::fixup_capture_values[type][(i >> (8 - operand * 4)) & 15]
+                         : state * 0x2545f4914f6cdd1dULL;
+            // Only lane zero participates; the remaining lanes are deliberately zero/zero.
+            words[operand][0][0] = uint32_t(value);
+            words[operand][1][0] = uint32_t(value >> 32);
+          }
+          const uint32_t *a[] = {words[0][0], words[0][1]}, *b[] = {words[1][0], words[1][1]},
+                         *c[] = {words[2][0], words[2][1]};
+          uint32_t *d[] = {words[3][0], words[3][1]};
+          uint32_t exceptions = 0x80000000;
+          uint64_t flags =
+              exact | (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
+          ASSERT_EQ(functions[type](flags, 1, mode, d, a, b, c, &exceptions), GOC_SUCCESS);
+          ASSERT_TRUE(exceptions & 0x80000000);
+          hash = goc_test::capture_hash_word(hash, exceptions & 127);
+        }
+        EXPECT_EQ(hash, goc_test::fixup_exception_hashes[type][variant])
+            << type << "/" << variant << "/" << saturate;
+      }
+}
+
+TEST(DivFixup, ExceptionOptOutAndErrorAtomicity) {
+  for (Fn fn : functions) {
+    uint32_t words[2][32] = {};
+    const uint32_t *a[] = {words[0], words[1]};
+    uint32_t *d[] = {words[0], words[1]};
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      uint32_t exceptions = 0x80000000;
+      ASSERT_EQ(fn(cpu, UINT32_MAX, 0, d, a, a, a, &exceptions), GOC_SUCCESS);
+      EXPECT_EQ(exceptions, 0x80000000);
+      EXPECT_EQ(fn(cpu | exact, 0, 0, nullptr, nullptr, nullptr, nullptr, &exceptions),
+                GOC_SUCCESS);
+      EXPECT_EQ(exceptions, 0x80000000);
+      EXPECT_EQ(
+          fn(cpu | exact, UINT32_MAX, 1ULL << 31, nullptr, nullptr, nullptr, nullptr, &exceptions),
+          GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(exceptions, 0x80000000);
+    }
+  }
 }

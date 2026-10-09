@@ -2143,7 +2143,12 @@ and input-denormal flags in exact mode. They do not raise inexact when discardin
 a fractional part. Another 6,291,456 RX 9070 captures cover all FP16 encodings,
 65,536 FP32 patterns, every rounding instruction, denormal mode, and three EXEC
 masks. Capture probes can be regenerated with
-[the HIP probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_fp_exceptions.py).
+[the HIP probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_fp_exceptions.py). Division-fixup reporting is also implemented for FP16/32/64,
+including invalid, input-denormal, floating-divide-by-zero, overflow, underflow,
+and inexact flags. `CLAMP` suppresses all flags; output scaling suppresses
+underflow/inexact flags. Its 393,216 RX 9070 flag captures cover edge/random triples,
+source/output modifiers, and both FP16 saturation settings; regenerate them with
+[the arithmetic probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_arithmetic_exceptions.py).
 
 In loose mode, other affected instructions leave the register unchanged. Loose
 semantics require no optional global-state output, even with a non-null pointer.
