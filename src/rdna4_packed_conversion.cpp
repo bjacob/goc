@@ -3,26 +3,12 @@
 #include "rdna4_packed_conversion.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_half_conversion.h"
 
 #include <cmath>
 #include <stdint.h>
 
 namespace {
-
-// Round toward zero to FP16, saturating finite overflow and quieting NaNs.
-uint16_t half_rtz(uint32_t raw) {
-  // Adapted from rocjitsu's util::f32_to_f16_rtz; RDNA4 quiets source NaNs.
-  uint32_t sign = (raw >> 16) & 0x8000;
-  unsigned exponent = (raw >> 23) & 255, fraction = raw & 0x7fffff;
-  if (exponent == 255)
-    return uint16_t(sign | 0x7c00 | (fraction ? (fraction >> 13) | 0x200 : 0));
-  int adjusted = int(exponent) - 112;
-  if (adjusted <= 0)
-    return uint16_t(sign | (adjusted < -10 ? 0 : (fraction | 0x800000) >> (14 - adjusted)));
-  if (adjusted >= 31)
-    return uint16_t(sign | 0x7bff);
-  return uint16_t(sign | (unsigned(adjusted) << 10) | (fraction >> 13));
-}
 
 template <goc::PackedConversion Op> uint16_t narrow(uint32_t raw, uint32_t mode) {
   if (mode & GOC_ALU_ABS_A)
@@ -30,7 +16,7 @@ template <goc::PackedConversion Op> uint16_t narrow(uint32_t raw, uint32_t mode)
   if (mode & GOC_ALU_NEG_A)
     raw ^= 0x80000000;
   if constexpr (Op == goc::PackedConversion::HalfRtz)
-    return half_rtz(raw);
+    return goc::half_rtz(raw);
   else {
     float value = goc::as_float(raw);
     if constexpr (Op == goc::PackedConversion::Unsigned)

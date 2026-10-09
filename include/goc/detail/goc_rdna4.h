@@ -18,6 +18,51 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Scalar conversions execute once per wave and ignore EXEC, including zero;
+// d is required and SCC is unchanged. Operands are raw register bits. Sources
+// may originate from d storage. instruction_flags must be zero; loose semantics
+// only. Errors leave d unchanged. Requires host nearest-even rounding and enabled
+// denormals; preserves host rounding but may change exception flags.
+// Guest input flushing applies to floating inputs. Output flushing applies to
+// FP16 outputs, including tininess detection before subnormal rounding for RNE.
+// FP16_OVFL saturates finite RNE narrowing overflow; it does not affect RTZ.
+// All other guest FP-state flags accepted here have no effect on integer results
+// or integer inputs. Floating conversions quiet signaling NaNs.
+
+// Signed 32-bit integer to FP32, nearest-even.
+GOC_API int goc_rdna4_s_cvt_f32_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a);
+
+// Unsigned 32-bit integer to FP32, nearest-even.
+GOC_API int goc_rdna4_s_cvt_f32_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a);
+
+// FP32 to signed 32-bit integer, truncating and saturating; NaNs yield zero.
+GOC_API int goc_rdna4_s_cvt_i32_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a);
+
+// FP32 to unsigned 32-bit integer, truncating and saturating; NaNs/negatives yield zero.
+GOC_API int goc_rdna4_s_cvt_u32_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a);
+
+// FP32 to FP16, nearest-even; writes a zero upper half.
+GOC_API int goc_rdna4_s_cvt_f16_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a);
+
+// Low FP16 half to FP32.
+GOC_API int goc_rdna4_s_cvt_f32_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a);
+
+// High FP16 half to FP32.
+GOC_API int goc_rdna4_s_cvt_hi_f32_f16(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *d, uint32_t a);
+
+// Two FP32 values to low/high FP16 halves, truncating toward zero.
+// Finite overflow saturates to the largest finite half; infinities remain infinite.
+GOC_API int goc_rdna4_s_cvt_pk_rtz_f16_f32(uint64_t flags, uint64_t exec_mask,
+                                           uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                           uint32_t b);
+
 // Scalar rounding ignores EXEC, including zero EXEC; d is required. Inputs and
 // outputs are raw IEEE bits. FP16 reads the low half and writes a zero upper
 // half. Signed zero and NaN payload/sign bits survive; signaling NaNs are quieted.

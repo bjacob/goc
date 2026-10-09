@@ -1482,6 +1482,14 @@ Signed zeros and NaN payloads/signs are preserved while signaling NaNs quiet.
 Input flushing is supported; output flushing and FP16 overflow saturation have
 no effect. Benchmarks cover all eight instructions and input-flush variants.
 
+All eight scalar conversions are implemented: signed/unsigned integer–FP32,
+FP32–FP16, high-half FP16 widening, and packed FP32-to-FP16 RTZ. Models borrowed
+from rocjitsu match 12,582,912 raw GFX1201 result/SCC pairs, including every FP16
+pattern in both source halves and all eight guest FP states. Tests cover
+saturation, NaNs, ties, underflow, packed ordering, aliases, and EXEC. The packed
+RTZ helper is shared with vector conversions. Benchmarks include all eight
+instructions with default and nondefault FP settings; semantics are loose.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU

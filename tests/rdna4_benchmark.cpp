@@ -39,6 +39,7 @@
 #include "rdna4_rcp_iflag_reference.h"
 #include "rdna4_sad_reference.h"
 #include "rdna4_scalar_bits_reference.h"
+#include "rdna4_scalar_convert_reference.h"
 #include "rdna4_scalar_field_reference.h"
 #include "rdna4_scalar_fma_reference.h"
 #include "rdna4_scalar_fp_reference.h"
@@ -1592,6 +1593,46 @@ bool benchmark_scalar_fma(int iterations, int min_ms) {
       if (scalar < 0)
         return false;
       print_result(goc_test::scalar_fma_names[op], "loose", "none", "scalar", scalar, 1, 32,
+                   variant == 0   ? "none"
+                   : variant == 1 ? "flush-io-ovfl"
+                                  : "flush-output");
+    }
+  return true;
+}
+
+bool benchmark_scalar_convert(int iterations, int min_ms) {
+  struct ScalarRegisters : Registers {
+    uint32_t result = 0, want = 0;
+
+    ScalarRegisters() { output_regs = 0; }
+
+    bool correct() const { return result == want; }
+  };
+
+  // GFX1201 capture: input pair 3001, preserve / flush both + OVFL / flush output.
+  const uint32_t gold[8][3] = {
+      {0x4ea5e5eeu, 0x4ea5e5eeu, 0x4ea5e5eeu}, {0x4ea5e5eeu, 0x4ea5e5eeu, 0x4ea5e5eeu},
+      {0x7fffffffu, 0x7fffffffu, 0x7fffffffu}, {0xffffffffu, 0xffffffffu, 0xffffffffu},
+      {0x00007c00u, 0x00007bffu, 0x00007c00u}, {0x39772000u, 0x39772000u, 0x39772000u},
+      {0x39772000u, 0x39772000u, 0x39772000u}, {0x00007bffu, 0x00007bffu, 0x00007bffu}};
+  const unsigned states[] = {3, 4, 1};
+  for (unsigned op = 0; op < 8; ++op)
+    for (unsigned variant = 0; variant < 3; ++variant) {
+      ScalarRegisters r;
+
+      r.want = gold[op][variant];
+      uint32_t w[2];
+      goc_test::scalar_convert_inputs(3001, op, w);
+      auto fn = [&r, op, &w](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *,
+                             const uint32_t *const *, const uint32_t *const *,
+                             const uint32_t *const *) {
+        return goc_test::scalar_convert_call(op, flags, mask, mode, &r.result, w[0], w[1]);
+      };
+      double scalar =
+          measure(fn, goc_test::scalar_fp_flags(states[variant]), r, iterations, min_ms, 0);
+      if (scalar < 0)
+        return false;
+      print_result(goc_test::scalar_convert_names[op], "loose", "none", "scalar", scalar, 1, 32,
                    variant == 0   ? "none"
                    : variant == 1 ? "flush-io-ovfl"
                                   : "flush-output");
@@ -4414,6 +4455,7 @@ int main(int argc, char **argv) {
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave", "FP state");
   if (!benchmark_rcp_iflag(cpu, iterations, min_ms) ||
+      !benchmark_scalar_convert(iterations, min_ms) ||
       !benchmark_scalar_round(iterations, min_ms) || !benchmark_scalar_fma(iterations, min_ms) ||
       !benchmark_scalar_fp(iterations, min_ms) || !benchmark_scalar_field(iterations, min_ms) ||
       !benchmark_scalar_bits(iterations, min_ms) || !benchmark_scalar_integer(iterations, min_ms) ||
