@@ -9,6 +9,21 @@
 
 namespace goc {
 
+// Applies FP16 OMOD tiny-result handling before output scaling. OMOD must be
+// enabled; values are FP16 arithmetic results represented as FP32.
+inline __m256 prepare_omod_f16(__m256 value, uint32_t mode) {
+  auto bits = _mm256_castps_si256(value);
+  auto magnitude = _mm256_and_si256(bits, _mm256_set1_epi32(0x7fffffff));
+  auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x38800000), magnitude);
+  if ((mode & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF) {
+    auto underflow = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x39000000), magnitude);
+    auto sign = _mm256_and_si256(bits, _mm256_set1_epi32(int(0x80000000u)));
+    bits = _mm256_blendv_epi8(bits, sign, underflow);
+  }
+  value = _mm256_castsi256_ps(_mm256_andnot_si256(tiny, bits));
+  return value;
+}
+
 template <bool Bf16> __m256 half_input(__m256i words, int shift, uint32_t mode) {
   auto halves = _mm256_and_si256(_mm256_srl_epi32(words, _mm_cvtsi32_si128(shift)),
                                  _mm256_set1_epi32(mode & GOC_ALU_ABS_A ? 0x7fff : 0xffff));

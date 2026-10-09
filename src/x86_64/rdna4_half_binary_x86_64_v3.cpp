@@ -45,15 +45,7 @@ void half_binary_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32_t
       if constexpr (Op == Binary::Maximum)
         value = minmax<true, true>(x, y);
       if (m & GOC_ALU_OMOD_HALF) {
-        auto bits = _mm256_castps_si256(value);
-        auto magnitude = _mm256_and_si256(bits, _mm256_set1_epi32(0x7fffffff));
-        auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x38800000), magnitude);
-        if ((m & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF) {
-          auto underflow = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x39000000), magnitude);
-          auto sign = _mm256_and_si256(bits, _mm256_set1_epi32(int(0x80000000u)));
-          bits = _mm256_blendv_epi8(bits, sign, underflow);
-        }
-        value = _mm256_castsi256_ps(_mm256_andnot_si256(tiny, bits));
+        value = prepare_omod_f16(value, m);
         value = _mm256_mul_ps(value, _mm256_set1_ps(scales[(m >> 6) & 3]));
       }
       if (m & GOC_ALU_CLAMP)

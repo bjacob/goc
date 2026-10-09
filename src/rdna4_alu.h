@@ -40,6 +40,20 @@ inline float alu_output(float value, uint32_t modifiers) {
   return value;
 }
 
+// Scales an FP16 arithmetic result and applies CLAMP. OMOD flushes an
+// unscaled tiny result to positive zero; halving a normal into the subnormal
+// range produces signed zero instead. The input is represented in FP32.
+inline float alu_output_f16(float value, uint32_t modifiers) {
+  if (modifiers & GOC_ALU_OMOD_HALF) {
+    uint32_t bits = as_bits(value), magnitude = bits & 0x7fffffffu;
+    if (magnitude < 0x38800000u)
+      value = 0;
+    else if ((modifiers & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF && magnitude < 0x39000000u)
+      value = as_float(bits & 0x80000000u);
+  }
+  return alu_output(value, modifiers);
+}
+
 // FP32 scaling follows rocjitsu's fp_mode::apply_omod_f32. Tiny unscaled
 // results become +0; halving a normal result below twice minimum normal gives
 // signed zero, independently of guest denormal mode.

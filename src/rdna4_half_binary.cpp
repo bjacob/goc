@@ -75,17 +75,9 @@ int binary(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
         value = goc::minmax<false, true>(x, y);
       if constexpr (Op == goc::Binary::Maximum)
         value = goc::minmax<true, true>(x, y);
-      if (m & GOC_ALU_OMOD_HALF) {
-        uint32_t bits = goc::as_bits(value), magnitude = bits & 0x7fffffffu;
-        // OMOD flushes an unscaled FP16 tiny result to positive zero. Halving
-        // a normal result into the subnormal range retains its sign instead.
-        if (magnitude < 0x38800000u)
-          value = 0;
-        else if ((m & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF && magnitude < 0x39000000u)
-          value = goc::as_float(bits & 0x80000000u);
-      }
-      result[lane] |= uint32_t(goc::float_to_f16(goc::alu_output(value, m), flags & GOC_FP16_OVFL))
-                      << (16 * half);
+      result[lane] |=
+          uint32_t(goc::float_to_f16(goc::alu_output_f16(value, m), flags & GOC_FP16_OVFL))
+          << (16 * half);
     }
   }
   for (int lane = 0; lane < 32; ++lane)

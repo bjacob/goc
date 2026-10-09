@@ -1320,10 +1320,11 @@ rocjitsu hardware witnesses, double-rounding and tininess boundaries, and all
 four host rounding modes. Benchmarks compare full-EXEC scalar/SIMD loose paths
 and report exact scalar separately, with default and modified inputs.
 
-Three-input FP16 min/max and median share the FP32 selection rules. The mixed
-forms select A/B first and then C; median uses the minimumNumber result if any
-input is NaN and follows the ISA's first-maximum removal rule for signed-zero
-ties. Scalar and eight-lane SIMD paths support all 8,192 combinations of A/B/C
+Three-input FP16 mixed min/max forms select A/B first and then C. Median uses
+the minimumNumber result if any input is NaN; otherwise it orders negative zero
+below positive zero. A GFX1201 capture checks all 512 triples drawn from signed
+zeros, ones, minimum subnormals, and infinities. Another 512-case capture checks
+signed quiet/signaling NaNs mixed with zeros and ones, allowing any NaN payload. Scalar and eight-lane SIMD paths support all 8,192 combinations of A/B/C
 ABS/NEG, output scaling/clamp, and independent A/B/C/D half selectors, plus
 `GOC_FP16_OVFL`. Output modifiers apply after the final selection. Tests cover
 every half encoding, special-value Cartesian products, all modifier combinations,
@@ -1772,6 +1773,20 @@ forms retain their separate modifier contract. Full-EXEC benchmarks cover ADD,
 SUBREV, MUL, and MINIMUM with default and combined modifiers. On the Ryzen 9
 7950X3D, these measure 23.3–34.5 ns on AVX2 (4.5–7.6× scalar speed) and
 22.6–34.4 ns with AVX-512 permutation plus AVX2 arithmetic (4.5–7.8×), using
+seven pinned samples of at least 10 ms each.
+
+All nine FP16 ternary min/max/median forms also support DPP8/DPP16 with all
+8,192 modifier combinations and both overflow modes. Two GFX1201 captures
+check 580,608 results across normal and underflow-boundary inputs, all nine
+operations, 18 modifier combinations, seven DPP descriptors, and eight EXEC
+masks. Independent tests cover all modifier encodings, random words, masks,
+whole-register aliases, guards, and destination-half preservation. FP16 OMOD
+handling is shared with binary arithmetic, including its tiny-result rules.
+AVX2 arithmetic stays active with all modifiers; v4 uses AVX-512 permutation
+with AVX2 arithmetic. Benchmarks cover MIN3, MINMAX, and MED3 with full EXEC,
+both DPP kinds, and default or combined modifiers. On the Ryzen 9 7950X3D,
+these cases measure 31.3–47.5 ns on AVX2 (5.1–7.5× scalar speed) and
+30.8–46.6 ns with AVX-512 permutation plus AVX2 arithmetic (5.2–7.8×), using
 seven pinned samples of at least 10 ms each.
 
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,

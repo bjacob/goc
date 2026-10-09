@@ -32,8 +32,10 @@ template <bool Maximum, bool Propagate> float minmax(float x, float y) {
 }
 
 // Select A/B first and then C; median follows the ISA's first-maximum removal
-// rule and returns minimumNumber(A,B,C) if any input is NaN.
-template <bool FirstMaximum, bool SecondMaximum, bool Propagate, bool Median = false>
+// rule by default. OrderedMedian orders -0 below +0 for FP16. Either median
+// returns minimumNumber(A,B,C) if any input is NaN.
+template <bool FirstMaximum, bool SecondMaximum, bool Propagate, bool Median = false,
+          bool OrderedMedian = false>
 float minmax3_value(float x, float y, float z) {
   float value;
   if constexpr (Median) {
@@ -42,6 +44,10 @@ float minmax3_value(float x, float y, float z) {
                          (goc::as_bits(z) & 0x7fffffff) > 0x7f800000;
     if (has_nan) {
       value = goc::minmax<false, false>(goc::minmax<false, false>(x, y), z);
+    } else if constexpr (OrderedMedian) {
+      value =
+          goc::minmax<true, false>(goc::minmax<false, false>(x, y),
+                                   goc::minmax<false, false>(goc::minmax<true, false>(x, y), z));
     } else {
       float maximum = goc::minmax<true, false>(goc::minmax<true, false>(x, y), z);
       value = maximum == x   ? goc::minmax<true, false>(y, z)
