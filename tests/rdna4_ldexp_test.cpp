@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_omod_reference.h"
 
@@ -228,4 +229,102 @@ TEST(Ldexp, LiteralRoundingAndValidation) {
       EXPECT_EQ(functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, pd, pa, &pb),
                 GOC_SUCCESS);
     }
+}
+
+TEST(Ldexp, DppHardwareCorpus) {
+  const uint32_t values[] = {1,          0x807fffff, 0x00800000, 0x80000000,
+                             0x7f800001, 0xff800000, 0x3f800000, 0xff7fffff};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (uint32_t mask :
+         {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
+      for (uint64_t descriptor : goc_test::dpp_modes)
+        for (unsigned variant = 0; variant < 32; ++variant) {
+          uint32_t a[32], b[32], d[32];
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            a[lane] = values[lane % 8];
+            b[lane] = lane % 9 - 4;
+            d[lane] = 0xdead0000u + lane;
+          }
+          auto pa = a, pb = b, pd = d;
+          ASSERT_EQ(functions[0](cpu, mask, descriptor | modifiers(variant), &pd, &pa, &pb),
+                    GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            int source;
+            uint32_t want = 0xdead0000u + lane;
+            bool active = goc_test::dpp_source(descriptor, mask, lane, source);
+            if (active)
+              want = reference<float>(source < 0 ? 0u : a[source], int(lane % 9) - 4,
+                                      modifiers(variant));
+            if (active && nan_bits(false, want))
+              EXPECT_TRUE(nan_bits(false, d[lane]));
+            else
+              EXPECT_EQ(d[lane], want);
+            uint32_t word = d[lane];
+            if (nan_bits(false, word))
+              word = 0x7fc00000;
+            hash = (hash ^ word) * UINT64_C(1099511628211);
+          }
+        }
+    EXPECT_EQ(hash, UINT64_C(0x78ec29fe61dad845));
+  }
+}
+
+TEST(Ldexp, DppModifiersMasksAliasesAndRandomWords) {
+  const uint32_t special[] = {0,          0x80000000, 1,          0x807fffff, 0x00800000,
+                              0x80800001, 0x3f800000, 0xff7fffff, 0x7f800000, 0xff800001};
+  const int exponents[] = {INT32_MIN, -149, -126, -1, 0, 1, 127, INT32_MAX};
+  std::mt19937 random(628);
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t descriptor : goc_test::dpp_modes)
+      for (unsigned variant = 0; variant < 32; ++variant)
+        for (uint64_t mask : rdna4_exec_masks())
+          for (unsigned layout = 0; layout < 5; ++layout) {
+            uint32_t words[3][34], before[3][34];
+            for (auto &reg : words)
+              for (auto &word : reg)
+                word = random();
+            for (unsigned lane = 1; lane <= 32; ++lane) {
+              if (lane & 1)
+                words[0][lane] = special[(lane / 2) % 10];
+              words[1][lane] = uint32_t(exponents[lane % 8]);
+            }
+            std::memcpy(before, words, sizeof(words));
+            unsigned dest = layout % 3 == 0 ? 2 : layout % 3 - 1;
+            unsigned breg = layout >= 3 ? 0 : 1;
+            auto a = words[0] + 1, b = words[breg] + 1, d = words[dest] + 1;
+            ASSERT_EQ(functions[0](cpu, mask, descriptor | modifiers(variant), &d, &a, &b),
+                      GOC_SUCCESS);
+            for (unsigned reg = 0; reg < 3; ++reg)
+              for (unsigned lane = 0; lane < 34; ++lane) {
+                int source;
+                uint32_t want = before[reg][lane];
+                bool active = reg == dest && lane >= 1 && lane <= 32 &&
+                              goc_test::dpp_source(descriptor, uint32_t(mask), lane - 1, source);
+                if (active) {
+                  int32_t exponent;
+                  std::memcpy(&exponent, &before[breg][lane], sizeof(exponent));
+                  want = reference<float>(source < 0 ? 0u : before[0][source + 1], exponent,
+                                          modifiers(variant));
+                }
+                if (active && nan_bits(false, want))
+                  EXPECT_TRUE(nan_bits(false, words[reg][lane]));
+                else
+                  EXPECT_EQ(words[reg][lane], want);
+              }
+          }
+}
+
+TEST(Ldexp, DppValidation) {
+  for (uint64_t descriptor : goc_test::dpp_modes) {
+    EXPECT_EQ(functions[0](0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(
+        functions[0](0, UINT32_MAX, descriptor | (UINT64_C(1) << 36), nullptr, nullptr, nullptr),
+        GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(functions[0](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
+                           descriptor, nullptr, nullptr, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+  }
 }

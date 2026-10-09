@@ -1145,6 +1145,17 @@ covering all applicable modifiers. With ABS/NEG/OMOD/CLAMP, these sixteen FP64
 AVX2 arithmetic paths measure 1.9–3.4× scalar speed on the Ryzen 9 7950X3D.
 
 FP32/FP64 `LDEXP` scales A by an integer power of two held in one B VGPR.
+The FP32 form supports DPP8/DPP16 on A while retaining each lane's original B
+exponent. Scalar, AVX2, and AVX-512 arithmetic paths support all existing low
+modifiers together with FI, boundary handling, and row/bank filtering.
+A GFX1201 capture checks 57,344 results across all low modifier combinations,
+subnormal/overflow boundaries, zeros, infinities, NaNs, and eight EXEC patterns.
+Tests also cover every mask pattern, random encodings, extreme signed exponents,
+all A/B/D alias layouts, and exact preservation of filtered lanes and guard words.
+Full-EXEC DPP benchmarks on a Ryzen 9 7950X3D measure 25.1–59.4 ns on AVX2
+(2.3–4.8× scalar speed) and 7.6–11.7 ns on AVX-512 (12.1–15.9×), including
+combined modifiers, using seven pinned-core samples of at least 10 ms each.
+
 A and D use one VGPR for FP32 or low/high pairs for FP64. Both widths have
 scalar, v3 and v4 implementations, supporting all 32 A ABS/NEG, OMOD and CLAMP
 combinations without falling back to scalar. B is an integer and has no

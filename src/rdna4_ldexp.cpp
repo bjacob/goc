@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_alu.h"
+#include "rdna4_dpp.h"
 #include "rdna4_fp64.h"
 
 #include <cmath>
@@ -76,7 +77,10 @@ int ldexp(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 int goc_rdna4_v_ldexp_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
+    return goc::execute_dpp(flags, mask, mode, a,
+                            [&](uint32_t effective, const uint32_t *const *source) {
+                              return ldexp<false>(flags, effective, uint32_t(mode), d, source, b);
+                            });
   return ldexp<false>(flags, mask, mode, d, a, b);
 }
 

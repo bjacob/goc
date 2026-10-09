@@ -2653,6 +2653,7 @@ GOC_API int goc_rdna4_v_frexp_exp_i32_f64(uint64_t flags, uint64_t exec_mask,
 // FP32 A/D each use one VGPR; FP64 A/D use low/high pairs. Supports A ABS/NEG,
 // OMOD and CLAMP with loose semantics and gradual underflow. Integer B has no
 // sign modifiers. D may alias any whole source VGPR; FP64 writes low then high.
+// The FP32 form supports DPP8/DPP16 on A; B is not permuted.
 GOC_API int goc_rdna4_v_ldexp_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b);
