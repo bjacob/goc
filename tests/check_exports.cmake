@@ -132,6 +132,18 @@ else()
     goc_rdna4_v_pk_ashrrev_i16
     goc_rdna4_v_pk_mad_i16
     goc_rdna4_v_pk_mad_u16
+    goc_rdna4_v_add_nc_i16
+    goc_rdna4_v_sub_nc_i16
+    goc_rdna4_v_add_nc_u16
+    goc_rdna4_v_sub_nc_u16
+    goc_rdna4_v_min_i16
+    goc_rdna4_v_max_i16
+    goc_rdna4_v_min_u16
+    goc_rdna4_v_max_u16
+    goc_rdna4_v_mul_lo_u16
+    goc_rdna4_v_lshlrev_b16
+    goc_rdna4_v_lshrrev_b16
+    goc_rdna4_v_ashrrev_i16
     goc_rdna4_v_pk_add_i16
     goc_rdna4_v_pk_sub_i16
     goc_rdna4_v_pk_add_u16
