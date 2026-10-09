@@ -18,6 +18,49 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Sum of unsigned absolute differences between packed fields of A and B, plus
+// C. SAD_U8 sums four byte differences, SAD_U16 two halfword differences, and
+// SAD_U32 one full-word difference. SAD_HI_U8 shifts the byte sum left by 16
+// before accumulation. MSAD_U8 omits differences where the corresponding B
+// byte is zero. These forms use one VGPR for each operand.
+// GOC_ALU_CLAMP saturates the final unsigned accumulation; all other instruction
+// flags are invalid. Loose semantics only; preserves all host FP state.
+GOC_API int goc_rdna4_v_sad_u8(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c);
+GOC_API int goc_rdna4_v_sad_hi_u8(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c);
+GOC_API int goc_rdna4_v_sad_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+GOC_API int goc_rdna4_v_sad_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+GOC_API int goc_rdna4_v_msad_u8(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
+// Quad SAD compares four overlapping four-byte windows of A (starting at
+// byte offsets 0, 1, 2 and 3) against B. A has two VGPRs, low word first; B has
+// one. QSAD uses all B bytes; MQSAD omits zero B bytes. PK_U16 packs four
+// independent 16-bit accumulations into two C/D VGPRs. U32 uses four C/D VGPRs.
+// GOC_ALU_CLAMP saturates each accumulation to its destination width; otherwise
+// each wraps independently. The high byte of A's second VGPR is unused.
+// All other instruction flags are invalid. Loose semantics only; preserves
+// all host floating-point state.
+GOC_API int goc_rdna4_v_qsad_pk_u16_u8(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b,
+                                       const uint32_t *const *c);
+GOC_API int goc_rdna4_v_mqsad_pk_u16_u8(uint64_t flags, uint64_t exec_mask,
+                                        uint32_t instruction_flags, uint32_t *const *d,
+                                        const uint32_t *const *a, const uint32_t *const *b,
+                                        const uint32_t *const *c);
+GOC_API int goc_rdna4_v_mqsad_u32_u8(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
 // Reverse shifts: shift B by the count in A. A is one VGPR. B and D are one
 // VGPR for 32-bit forms or two VGPRs (low word first) for 64-bit forms. Counts
 // wrap modulo 32 or 64. ASHR replicates the sign bit; logical shifts insert

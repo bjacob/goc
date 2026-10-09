@@ -8,6 +8,7 @@
 #include "rdna4_integer_mad_reference.h"
 #include "rdna4_packed_integer_reference.h"
 #include "rdna4_packed_mad_reference.h"
+#include "rdna4_sad_reference.h"
 #include "rdna4_shift_reference.h"
 #include "rdna4_subbyte_golden.h"
 
@@ -823,6 +824,47 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
         if (simd < 0)
           return false;
         print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_sad(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {goc_rdna4_v_sad_u8,          goc_rdna4_v_sad_hi_u8,
+                            goc_rdna4_v_sad_u16,         goc_rdna4_v_sad_u32,
+                            goc_rdna4_v_msad_u8,         goc_rdna4_v_qsad_pk_u16_u8,
+                            goc_rdna4_v_mqsad_pk_u16_u8, goc_rdna4_v_mqsad_u32_u8};
+  const char *names[] = {"u8/sad",  "u8/sadhi", "u16/sad",   "u32/sad",
+                         "u8/msad", "u16/qsad", "u16/mqsad", "u32/mqsad"};
+  for (int op = 0; op < 8; ++op)
+    for (uint32_t mode : {UINT32_C(0), GOC_ALU_CLAMP}) {
+      Registers r;
+      r.output_regs = op == 7 ? 4 : op >= 5 ? 2 : 1;
+      std::mt19937 random(830);
+      for (int lane = 0; lane < 32; ++lane) {
+        r.data[0][lane] = random();
+        r.data[1][lane] = random();
+        r.data[4][lane] = random() & (lane % 2 ? UINT32_MAX : 0x00ff00ff);
+        uint32_t c[4];
+        for (int reg = 0; reg < 4; ++reg)
+          r.data[8 + reg][lane] = c[reg] = lane % 2 ? UINT32_MAX - random() % 2048 : random();
+        auto expected = goc_test::sad_reference(op, r.data[0][lane], r.data[1][lane],
+                                                r.data[4][lane], c, bool(mode));
+        for (int reg = 0; reg < r.output_regs; ++reg)
+          r.expected[128 * (lane / 16) + 16 * reg + lane % 16] = expected[reg];
+      }
+      double scalar = measure(functions[op], GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", mode ? "clamp" : "none", "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(functions[op], GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", mode ? "clamp" : "none", "x86-64-v3", simd, scalar / simd);
       }
 #endif
     }
@@ -2093,9 +2135,10 @@ int main(int argc, char **argv) {
     return 1;
   }
   if (!benchmark_half_exponent(cpu, iterations, min_ms) ||
-      !benchmark_shift(cpu, iterations, min_ms) || !benchmark_half_trig(cpu, iterations, min_ms) ||
-      !benchmark_trig(cpu, iterations, min_ms) || !benchmark_half_unary(cpu, iterations, min_ms) ||
-      !benchmark_unary(cpu, iterations, min_ms) || !benchmark_frexp_exp(cpu, iterations, min_ms)) {
+      !benchmark_sad(cpu, iterations, min_ms) || !benchmark_shift(cpu, iterations, min_ms) ||
+      !benchmark_half_trig(cpu, iterations, min_ms) || !benchmark_trig(cpu, iterations, min_ms) ||
+      !benchmark_half_unary(cpu, iterations, min_ms) || !benchmark_unary(cpu, iterations, min_ms) ||
+      !benchmark_frexp_exp(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }

@@ -175,6 +175,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_i16`, `v_min3_u16`, `v_max3_i16`, `v_max3_u16`, `v_med3_i16`, `v_med3_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
 | `v_add_nc_i16`, `v_sub_nc_i16`, `v_add_nc_u16`, `v_sub_nc_u16` | Scalar, x86-64-v3; half selectors and saturation | Not implemented |
 | `v_min_i16`, `v_max_i16`, `v_min_u16`, `v_max_u16`, `v_mul_lo_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
+| `v_sad_u8`, `v_sad_hi_u8`, `v_sad_u16`, `v_sad_u32`, `v_msad_u8` | Scalar, x86-64-v3; saturation | Not implemented |
+| `v_qsad_pk_u16_u8`, `v_mqsad_pk_u16_u8`, `v_mqsad_u32_u8` | Scalar, x86-64-v3; independent packed/full-width saturation | Not implemented |
 | `v_lshlrev_b32`, `v_lshrrev_b32`, `v_ashrrev_i32` | Scalar, x86-64-v3 | Not implemented |
 | `v_lshlrev_b64`, `v_lshrrev_b64`, `v_ashrrev_i64` | Scalar, x86-64-v3 | Not implemented |
 | `v_lshlrev_b16`, `v_lshrrev_b16`, `v_ashrrev_i16` | Scalar, x86-64-v3; half selectors | Not implemented |
@@ -379,6 +381,18 @@ SIMD outputs within one half-precision ULP of the model. Further tests cover
 all modifiers, half selectors, aliases, masks, host FP settings, and literal
 OMOD underflow boundaries. `GOC_FP16_OVFL` is accepted but has no effect because
 finite trig outputs and their permitted scaling cannot overflow FP16.
+
+All eight SAD-family instructions have scalar and eight-lane v3 paths,
+including `CLAMP` saturation. Ordinary SAD sums unsigned byte, halfword or
+full-word differences and adds `C`; `SAD_HI_U8` shifts the byte sum left by 16
+before that addition. `MSAD` ignores positions whose `B` byte is zero.
+The quad forms compare four overlapping four-byte windows from the two-VGPR
+`A` against `B`, with four independent accumulators. Packed `U16` results use
+two `C`/`D` VGPRs; `U32` uses four. Saturation and wrapping apply independently
+to each accumulator. Tests cover every byte pair and halfword encoding,
+overflow boundaries, all masked-byte patterns, sliding windows, the unused
+high source byte, and destination/source aliases under varied EXEC masks.
+The arithmetic and saturation rules follow rocjitsu's existing SAD helpers.
 
 The 32- and 64-bit reverse shifts (`LSHLREV`, `LSHRREV`, `ASHRREV`) take
 the shift count in `A` and the value in `B`. Counts wrap modulo the value width.
