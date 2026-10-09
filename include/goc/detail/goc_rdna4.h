@@ -18,6 +18,43 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Unsigned add/subtract with a scalar carry/borrow output. CI forms also consume
+// one input carry/borrow bit per lane. SUBREV computes B-A-input_borrow.
+// CLAMP saturates overflow to UINT32_MAX for addition and underflow to zero for
+// subtraction; carry/borrow bits still describe the unsaturated result.
+// Supports CLAMP only, loose and empirical exact semantics, all EXEC masks and
+// whole-register aliases. Inactive scalar output bits are cleared, even at zero
+// EXEC. The scalar output must always be writable and is written after VGPR D;
+// zero EXEC permits null VGPR pointers. Errors leave all destinations unchanged.
+// Host FP state is preserved; GOC_FP16_OVFL has no effect.
+GOC_API int goc_rdna4_v_add_co_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_sub_co_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_subrev_co_u32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      uint32_t *carry, const uint32_t *const *a,
+                                      const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_add_co_ci_u32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      uint32_t *carry, const uint32_t *const *a,
+                                      const uint32_t *const *b, uint32_t input_carry);
+
+GOC_API int goc_rdna4_v_sub_co_ci_u32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      uint32_t *carry, const uint32_t *const *a,
+                                      const uint32_t *const *b, uint32_t input_carry);
+
+GOC_API int goc_rdna4_v_subrev_co_ci_u32(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         uint32_t *carry, const uint32_t *const *a,
+                                         const uint32_t *const *b, uint32_t input_carry);
+
 // Fused division post-scaling: compute A*B+C and apply a power-of-two scale
 // before the single nearest-even rounding. A set lane bit in condition (the
 // implicit wave32 VCC input) selects +64/+128 when C's modified encoded exponent

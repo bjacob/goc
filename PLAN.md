@@ -99,7 +99,8 @@ following the above pattern. Each such function shall take the following functio
 * Scalar register outputs use pointers to their raw unsigned integer values, in
   assembly operand order. Wave32 condition outputs use `uint32_t *`. Their EXEC
   behavior follows the instruction: `v_div_scale_f32` and `v_div_scale_f64` clear
-  inactive condition bits, including writing zero for zero EXEC. Their scalar
+  inactive condition bits, including writing zero for zero EXEC. Carry/borrow
+  instructions follow the same rule for their scalar output masks. Their scalar
   output pointer must therefore remain writable even when VGPR pointers may be null.
 * For each VGPR operand of the GPU instruction, a pointer to the array of pointers
   representing the VGPRs backing that operand: `const uint32_t *const *` for inputs,

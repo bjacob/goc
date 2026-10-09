@@ -375,6 +375,23 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Carry/borrow arithmetic covers `v_add_co_u32`, `v_sub_co_u32`,
+`v_subrev_co_u32`, and their `co_ci` forms. The scalar carry/borrow output follows
+D in assembly operand order; CI forms take the input mask by value after A/B.
+CLAMP saturates the VGPR result while preserving the unsaturated carry/borrow
+indication. Inactive scalar output bits are cleared, including for zero EXEC;
+inactive VGPR lanes remain unchanged. The scalar output is written last and may
+share storage with a VGPR. All paths preserve host FP state.
+
+Scalar, v3 (eight lanes), and v4 (sixteen lanes) paths support both semantics,
+CLAMP and all aliases. GPU captures verify full, partial and zero EXEC behavior,
+including saturation. Independent widened-integer references cover boundary
+Cartesian products and random inputs. Tests cross all 85 EXEC masks with all 85
+input-carry mask patterns, check shared sources, unaligned storage, destination
+aliases and scalar-output overlap, and verify host FP-state preservation. Pinned-core
+Ryzen 9 7950X3D measurements show 1.43–2.09x for v3 and 5.36–7.84x for v4 versus
+scalar, including CLAMP (seven samples, each at least 10 ms).
+
 Division fused post-scaling covers `v_div_fmas_f32` and `v_div_fmas_f64`, with
 loose and empirical exact semantics borrowed from rocjitsu. The API takes the
 implicit wave32 VCC condition mask by value after A/B/C. Set lane bits select
