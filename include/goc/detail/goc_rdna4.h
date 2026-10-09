@@ -18,6 +18,40 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Sparse FP8/BF8 2:4 matrix multiply-accumulate into FP32 D. A uses two
+// VGPRs, B four, index one, and in/out D eight. FP8 is E4M3FN; BF8 is E5M2.
+// Metadata pairs must contain strictly increasing positions in each group of
+// four. GOC_SWMMAC_INDEX_KEY_1 selects the upper 16 metadata bits per lane;
+// no other instruction modifiers apply. Loose semantics use FP32 FMA with
+// host nearest-even rounding and denormals enabled. Exception flags may change.
+// Exact semantics are unsupported; GOC_FP16_OVFL has no effect. All inputs and
+// D are read before ascending destination-register stores; last store wins
+// aliases. EXEC masks only stores, and high bits are ignored. Zero effective
+// EXEC permits null pointers. Errors leave destinations unchanged.
+GOC_API int goc_rdna4_v_swmmac_f32_16x16x32_fp8_fp8(uint64_t flags, uint64_t exec_mask,
+                                                    uint32_t instruction_flags, uint32_t *const *d,
+                                                    const uint32_t *const *a,
+                                                    const uint32_t *const *b,
+                                                    const uint32_t *const *index);
+
+GOC_API int goc_rdna4_v_swmmac_f32_16x16x32_fp8_bf8(uint64_t flags, uint64_t exec_mask,
+                                                    uint32_t instruction_flags, uint32_t *const *d,
+                                                    const uint32_t *const *a,
+                                                    const uint32_t *const *b,
+                                                    const uint32_t *const *index);
+
+GOC_API int goc_rdna4_v_swmmac_f32_16x16x32_bf8_fp8(uint64_t flags, uint64_t exec_mask,
+                                                    uint32_t instruction_flags, uint32_t *const *d,
+                                                    const uint32_t *const *a,
+                                                    const uint32_t *const *b,
+                                                    const uint32_t *const *index);
+
+GOC_API int goc_rdna4_v_swmmac_f32_16x16x32_bf8_bf8(uint64_t flags, uint64_t exec_mask,
+                                                    uint32_t instruction_flags, uint32_t *const *d,
+                                                    const uint32_t *const *a,
+                                                    const uint32_t *const *b,
+                                                    const uint32_t *const *index);
+
 // Sparse 2:4 matrix multiply-accumulate. D is both the initial accumulator and
 // destination; A holds 16 compressed elements per row, B the dense 32x16 matrix,
 // and index holds packed 2-bit positions. Within each four-element K group the

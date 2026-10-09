@@ -30,6 +30,7 @@
 #include "rdna4_shift_reference.h"
 #include "rdna4_subbyte_golden.h"
 #include "rdna4_swmmac16_hardware.h"
+#include "rdna4_swmmac8_hardware.h"
 
 #include <algorithm>
 #include <array>
@@ -1303,6 +1304,78 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
         if (simd < 0)
           return false;
         print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_swmmac8(uint64_t cpu, int iterations, int min_ms) {
+  using Fn = decltype(&goc_rdna4_v_swmmac_f32_16x16x32_fp8_fp8);
+  const Fn functions[] = {
+      goc_rdna4_v_swmmac_f32_16x16x32_fp8_fp8, goc_rdna4_v_swmmac_f32_16x16x32_fp8_bf8,
+      goc_rdna4_v_swmmac_f32_16x16x32_bf8_fp8, goc_rdna4_v_swmmac_f32_16x16x32_bf8_bf8};
+  const char *names[] = {"v_swmmac_f32_16x16x32_fp8_fp8", "v_swmmac_f32_16x16x32_fp8_bf8",
+                         "v_swmmac_f32_16x16x32_bf8_fp8", "v_swmmac_f32_16x16x32_bf8_bf8"};
+
+  struct SparseRegisters {
+    uint32_t data[24][32] = {}, *v[24];
+    unsigned regs;
+    uint64_t expected;
+
+    bool correct() const {
+      uint64_t digest = UINT64_C(14695981039346656037);
+      for (unsigned reg = 0; reg < regs; ++reg)
+        for (unsigned lane = 0; lane < 32; ++lane)
+          for (unsigned byte = 0; byte < 4; ++byte) {
+            digest ^= (data[16 + reg][lane] >> (8 * byte)) & 255;
+            digest *= UINT64_C(1099511628211);
+          }
+      return digest == expected;
+    }
+  };
+
+  for (unsigned op = 0; op < 4; ++op)
+    for (unsigned variant : {0u, 1u}) {
+      uint32_t initial[15][32];
+      goc_test::swmmac8_capture_inputs(op, 0, initial);
+      SparseRegisters r;
+      r.regs = 8;
+      r.expected = goc_test::swmmac8_capture_digests[op][0][variant];
+      for (unsigned reg = 0; reg < 24; ++reg)
+        r.v[reg] = r.data[reg];
+      std::memcpy(r.data, initial, 2 * 32 * sizeof(uint32_t));
+      std::memcpy(r.data + 4, initial + 2, 4 * 32 * sizeof(uint32_t));
+      const uint32_t *index[] = {initial[14]};
+      const uint32_t mode = variant ? GOC_SWMMAC_INDEX_KEY_1 : 0;
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *) {
+        // Reset the in/out accumulator on every call; all paths include this cost.
+        for (unsigned reg = 0; reg < r.regs; ++reg)
+          std::memcpy(d[reg], initial[6 + reg], 32 * sizeof(uint32_t));
+        return functions[op](flags, mask, modifiers, d, a, b, index);
+      };
+      const char *label = variant ? "key1" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
       }
 #endif
     }
@@ -3413,8 +3486,9 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave");
-  if (!benchmark_swmmac16(cpu, iterations, min_ms) || !benchmark_mad64(cpu, iterations, min_ms) ||
-      !benchmark_carry(cpu, iterations, min_ms) || !benchmark_div_fmas(cpu, iterations, min_ms) ||
+  if (!benchmark_swmmac8(cpu, iterations, min_ms) || !benchmark_swmmac16(cpu, iterations, min_ms) ||
+      !benchmark_mad64(cpu, iterations, min_ms) || !benchmark_carry(cpu, iterations, min_ms) ||
+      !benchmark_div_fmas(cpu, iterations, min_ms) ||
       !benchmark_div_scale(cpu, iterations, min_ms) ||
       !benchmark_div_fixup(cpu, iterations, min_ms) || !benchmark_cube(cpu, iterations, min_ms) ||
       !benchmark_fp8_narrow(cpu, iterations, min_ms) ||

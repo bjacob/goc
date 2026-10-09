@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
-#include "rdna4_swmmac16.h"
+#include "rdna4_swmmac_float.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -9,8 +9,8 @@
 namespace goc {
 
 template <bool Bf16, bool Packed>
-void swmmac16_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, Swmmac16Inputs &input,
-                        bool saturate) {
+void swmmac_float_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d,
+                            SwmmacFloatInputs &input, bool saturate) {
   const uint32_t flip[] = {mode & GOC_WMMA_NEG_LO_B ? 0x80000000u : 0,
                            mode & GOC_WMMA_NEG_HI_B ? 0x80000000u : 0};
   for (unsigned row = 0; row < 16; ++row)
@@ -24,7 +24,7 @@ void swmmac16_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, Swmmac
       _mm256_storeu_ps(input.acc[row] + col, acc);
     }
   uint32_t result[Packed ? 4 : 8][32];
-  swmmac16_pack<Bf16, Packed>(result, input.acc, saturate);
+  swmmac_float_pack<Bf16, Packed>(result, input.acc, saturate);
   for (unsigned reg = 0; reg < (Packed ? 4u : 8u); ++reg)
     for (unsigned lane = 0; lane < 32; lane += 8) {
       auto value = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(result[reg] + lane));
@@ -34,13 +34,13 @@ void swmmac16_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, Swmmac
     }
 }
 
-template void swmmac16_x86_64_v3<false, false>(uint32_t, uint32_t, uint32_t *const *,
-                                               Swmmac16Inputs &, bool);
-template void swmmac16_x86_64_v3<false, true>(uint32_t, uint32_t, uint32_t *const *,
-                                              Swmmac16Inputs &, bool);
-template void swmmac16_x86_64_v3<true, false>(uint32_t, uint32_t, uint32_t *const *,
-                                              Swmmac16Inputs &, bool);
-template void swmmac16_x86_64_v3<true, true>(uint32_t, uint32_t, uint32_t *const *,
-                                             Swmmac16Inputs &, bool);
+template void swmmac_float_x86_64_v3<false, false>(uint32_t, uint32_t, uint32_t *const *,
+                                                   SwmmacFloatInputs &, bool);
+template void swmmac_float_x86_64_v3<false, true>(uint32_t, uint32_t, uint32_t *const *,
+                                                  SwmmacFloatInputs &, bool);
+template void swmmac_float_x86_64_v3<true, false>(uint32_t, uint32_t, uint32_t *const *,
+                                                  SwmmacFloatInputs &, bool);
+template void swmmac_float_x86_64_v3<true, true>(uint32_t, uint32_t, uint32_t *const *,
+                                                 SwmmacFloatInputs &, bool);
 
 } // namespace goc

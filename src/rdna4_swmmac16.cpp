@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-#include "rdna4_swmmac16.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_swmmac_float.h"
 
 #include <cmath>
 #include <stdint.h>
@@ -19,18 +19,18 @@ int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
   uint32_t mask = uint32_t(exec_mask);
   if (!mask)
     return GOC_SUCCESS;
-  goc::Swmmac16Inputs input;
+  goc::SwmmacFloatInputs input;
   goc::swmmac16_prepare<Bf16, Packed>(input, mode, d, a, b, index);
   bool saturate = (flags & GOC_FP16_OVFL) != 0;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::swmmac16_x86_64_v4<Bf16, Packed>(mask, mode, d, input, saturate);
+    goc::swmmac_float_x86_64_v4<Bf16, Packed>(mask, mode, d, input, saturate);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::swmmac16_x86_64_v3<Bf16, Packed>(mask, mode, d, input, saturate);
+    goc::swmmac_float_x86_64_v3<Bf16, Packed>(mask, mode, d, input, saturate);
     return GOC_SUCCESS;
   }
 #endif
@@ -47,7 +47,7 @@ int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
       input.acc[row][col] = acc;
     }
   uint32_t result[Packed ? 4 : 8][32];
-  goc::swmmac16_pack<Bf16, Packed>(result, input.acc, saturate);
+  goc::swmmac_float_pack<Bf16, Packed>(result, input.acc, saturate);
   for (unsigned reg = 0; reg < (Packed ? 4u : 8u); ++reg)
     for (unsigned lane = 0; lane < 32; ++lane)
       if ((mask >> lane) & 1)

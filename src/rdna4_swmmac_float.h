@@ -14,7 +14,7 @@
 
 namespace goc {
 
-struct Swmmac16Inputs {
+struct SwmmacFloatInputs {
   float a[16][16];
   float b[32][16];
   float acc[16][16];
@@ -24,7 +24,7 @@ struct Swmmac16Inputs {
 // Decode all input registers and the initial accumulator before destination
 // writes. Each metadata pair must contain two increasing positions in [0,3].
 template <bool Bf16, bool Packed>
-inline void swmmac16_prepare(Swmmac16Inputs &input, uint32_t mode, uint32_t *const *d,
+inline void swmmac16_prepare(SwmmacFloatInputs &input, uint32_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *index) {
   auto decode = [](uint16_t x) { return Bf16 ? bf16_to_float(x) : f16_to_float(x); };
@@ -57,8 +57,8 @@ inline void swmmac16_prepare(Swmmac16Inputs &input, uint32_t mode, uint32_t *con
 
 // Pack a complete result matrix into physical destination words.
 template <bool Bf16, bool Packed>
-inline void swmmac16_pack(uint32_t (&result)[Packed ? 4 : 8][32], const float (&acc)[16][16],
-                          bool saturate) {
+inline void swmmac_float_pack(uint32_t (&result)[Packed ? 4 : 8][32], const float (&acc)[16][16],
+                              bool saturate) {
   for (unsigned row = 0; row < 16; ++row)
     for (unsigned col = 0; col < 16; ++col) {
       unsigned reg = row % 8, lane = col + 16 * (row / 8);
@@ -75,11 +75,11 @@ inline void swmmac16_pack(uint32_t (&result)[Packed ? 4 : 8][32], const float (&
 }
 
 template <bool Bf16, bool Packed>
-void swmmac16_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, Swmmac16Inputs &input,
-                        bool saturate);
+void swmmac_float_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d,
+                            SwmmacFloatInputs &input, bool saturate);
 
 template <bool Bf16, bool Packed>
-void swmmac16_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d, Swmmac16Inputs &input,
-                        bool saturate);
+void swmmac_float_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d,
+                            SwmmacFloatInputs &input, bool saturate);
 
 } // namespace goc

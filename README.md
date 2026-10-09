@@ -394,6 +394,18 @@ on every call, equally for all CPU paths. Pinned-core Ryzen 9 7950X3D timings
 measured 4.77–11.19x for v3 and 4.81–11.84x for v4 versus scalar, including
 negation and index-key selection (seven samples, each at least 10 ms).
 
+Sparse FP8/BF8 WMMA covers all four `v_swmmac_f32_16x16x32_*_*`
+combinations. A uses two VGPRs, B four, the index one, and in/out D eight.
+Both index keys are supported; these instructions have no negation or CLAMP
+modifiers. The scalar and shared floating-point v3/v4 backends use loose FP32
+FMA semantics, with full input snapshots and masked destination stores.
+Tests check 32,768 GPU-captured logical results, all 256 encodings of each
+input type, both index keys, every EXEC lane and destination/source/index
+aliases. The exhaustive encoding checks include subnormals, signed zeros,
+BF8 infinities and both formats' NaNs. Pinned-core timings on the same CPU
+measured 7.30–8.17x for v3 and 7.77–8.75x for v4, including index-key selection
+and the per-call accumulator reset (seven samples, each at least 10 ms).
+
 Wide integer MAD covers `v_mad_co_u64_u32` and `v_mad_co_i64_i32`, the RDNA4
 names for unsigned/signed 32x32 multiplication plus a 64-bit accumulator. A/B use
 one VGPR each; C/D use low/high pairs. CLAMP saturates to the corresponding
