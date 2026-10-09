@@ -18,6 +18,32 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Narrow FP32 to OCP E4M3FN (FP8) / E5M2 (BF8). Each operand is one VGPR.
+// PK rounds A/B to nearest-even into the low/high bytes of the destination half
+// selected by HIGH_D, preserving the other half. Supports A/B ABS/NEG.
+// SR converts A using B as the stochastic seed, replaces D's GOC_CVT_BYTE_*
+// byte and preserves the others. Supports A ABS/NEG. Subnormal SR alignment
+// discards low significand bits before adding the seed's high 20/21 bits.
+// GOC_FP16_OVFL saturates finite overflow to signed max finite; infinities
+// remain signed FP8 NaNs / BF8 infinities. Input NaNs become 0xff / 0xfe.
+// Supports loose semantics, full EXEC masking and every whole-register alias.
+// Results do not depend on host rounding and preserve all host FP state.
+GOC_API int goc_rdna4_v_cvt_pk_fp8_f32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_cvt_pk_bf8_f32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_cvt_sr_fp8_f32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_cvt_sr_bf8_f32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
 // Convert A's signed low nibble to FP32 divided by 16, then apply OMOD/CLAMP.
 // Each operand holds one VGPR; higher source bits are ignored. Supports loose
 // semantics, full EXEC masking and whole-register aliasing. Results are exact
@@ -113,7 +139,8 @@ GOC_API int goc_rdna4_v_cvt_pk_u16_f32(uint64_t flags, uint64_t exec_mask,
                                        const uint32_t *const *a, const uint32_t *const *b);
 
 // FP8/BF8 single-result conversion byte selector, an enumeration encoded in
-// instruction_flags bits 16-17. Byte 0 is the least significant input byte.
+// instruction_flags bits 16-17. Byte 0 is the least significant byte of A for
+// widening, or of D for stochastic narrowing.
 static const uint32_t GOC_CVT_BYTE_0 = (UINT32_C(0) << 16);
 static const uint32_t GOC_CVT_BYTE_1 = (UINT32_C(1) << 16);
 static const uint32_t GOC_CVT_BYTE_2 = (UINT32_C(2) << 16);

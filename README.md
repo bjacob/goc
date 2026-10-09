@@ -375,6 +375,30 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+FP8/BF8 narrowing covers `v_cvt_pk_fp8_f32`, `v_cvt_pk_bf8_f32`,
+`v_cvt_sr_fp8_f32`, and `v_cvt_sr_bf8_f32`. Packed forms round two FP32
+sources to nearest-even and replace the selected destination half. Stochastic
+forms take the seed directly from B and replace one selected destination byte;
+there is no internal random-number generator. Both preserve the unselected
+parts of D and support source ABS/NEG, full EXEC masking and every whole-register
+alias. `GOC_FP16_OVFL` saturates finite overflow while preserving the input
+infinity behavior. Input NaNs produce canonical `0xff` (FP8) or `0xfe` (BF8).
+
+The conversion model adapts rocjitsu's integer rounding logic, with RX 9070
+captures establishing RDNA4-specific NaN, infinity and stochastic-underflow
+behavior. Subnormal stochastic conversion first aligns the significand,
+discarding shifted-out bits, then adds the seed's high 20/21 bits. All four
+instructions have scalar, eight-lane v3 and sixteen-lane v4 paths using only
+integer operations; every supported modifier stays vectorized and host FP state
+is preserved. These APIs currently expose loose semantics.
+
+Tests retain 116 hardware input/seed cases across 20 configurations, and cover
+rounding boundaries, exceptional values, stochastic underflow, both overflow
+settings, every modifier and destination selector, 85 masks, unaligned storage,
+aliases and all host rounding modes. Pinned-core benchmarks on the development
+Ryzen 9 7950X3D measured 1.82–3.57x for v3 and 5.09–6.37x for v4 versus scalar
+(seven samples, each at least 10 ms), including modified and saturating cases.
+
 `v_cvt_off_f32_i4` interprets the low nibble as signed i4 and converts it to
 FP32 divided by 16, then applies OMOD/CLAMP. Higher source bits are ignored.
 `v_cvt_pk_u8_f32` rounds FP32 A to nearest-even, saturates to [0,255], maps
