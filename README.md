@@ -1498,6 +1498,12 @@ Tests match 4,521,984 GFX1201 SCC results across guest FP states and cover NaNs,
 signed zeros, bit-index masking, source/output overlap, and host rounding modes.
 Benchmarks cover each instruction and floating input-flush variants.
 
+Scalar packing and selection covers all four halfword PACK forms, BITREPLICATE,
+32/64-bit CSELECT, QUADMASK and WQM. Both semantics preserve all host FP state.
+Tests match 270,336 GFX1201 result/SCC triples and cover every input bit, all
+65,536 quad-presence patterns, source/output overlap, SCC and EXEC behavior.
+All eleven operations have scalar benchmarks.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU

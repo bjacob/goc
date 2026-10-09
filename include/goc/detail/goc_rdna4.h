@@ -18,6 +18,62 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Scalar packing/selection ignores EXEC, including zero EXEC; output pointers
+// are required. Inputs are passed by value and may come from destination storage.
+// Both loose and empirical exact semantics are supported; instruction_flags must
+// be zero. Guest FP flags have no effect and all host FP state is preserved.
+// Errors leave outputs unchanged. SCC outputs, where present, are written after
+// d and win on overlap, including within a 64-bit destination. Other operations
+// preserve SCC. Conditional selection reads only input_scc bit 0.
+
+// Pack low A and low B into low/high destination halves.
+GOC_API int goc_rdna4_s_pack_ll_b32_b16(uint64_t flags, uint64_t exec_mask,
+                                        uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                        uint32_t b);
+
+// Pack low A and high B into low/high destination halves.
+GOC_API int goc_rdna4_s_pack_lh_b32_b16(uint64_t flags, uint64_t exec_mask,
+                                        uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                        uint32_t b);
+
+// Pack high A and low B into low/high destination halves.
+GOC_API int goc_rdna4_s_pack_hl_b32_b16(uint64_t flags, uint64_t exec_mask,
+                                        uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                        uint32_t b);
+
+// Pack high A and high B into low/high destination halves.
+GOC_API int goc_rdna4_s_pack_hh_b32_b16(uint64_t flags, uint64_t exec_mask,
+                                        uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                        uint32_t b);
+
+// Replicate each input bit i into output bits 2*i and 2*i+1.
+GOC_API int goc_rdna4_s_bitreplicate_b64_b32(uint64_t flags, uint64_t exec_mask,
+                                             uint32_t instruction_flags, uint64_t *d, uint32_t a);
+
+// Select a when input_scc bit 0 is 1, otherwise b.
+GOC_API int goc_rdna4_s_cselect_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a, uint32_t b, uint32_t input_scc);
+
+// Select a when input_scc bit 0 is 1, otherwise b.
+GOC_API int goc_rdna4_s_cselect_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint64_t *d, uint64_t a, uint64_t b, uint32_t input_scc);
+
+// Set output bit i when input nibble i is nonzero; upper 24 bits are zero. SCC is result != 0.
+GOC_API int goc_rdna4_s_quadmask_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *d, uint32_t a, uint32_t *scc);
+
+// Set output bit i when input nibble i is nonzero; upper 48 bits are zero. SCC is result != 0.
+GOC_API int goc_rdna4_s_quadmask_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint64_t *d, uint64_t a, uint32_t *scc);
+
+// Replace each nonzero input nibble with 0xf. SCC is result != 0.
+GOC_API int goc_rdna4_s_wqm_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t *scc);
+
+// Replace each nonzero input nibble with 0xf. SCC is result != 0.
+GOC_API int goc_rdna4_s_wqm_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint64_t *d, uint64_t a, uint32_t *scc);
+
 // Scalar comparisons execute once per wave and ignore EXEC, including zero.
 // scc is required and receives 0 or 1. Inputs are passed by value and may come
 // from output storage, including a word within uint64_t storage. Both loose and
