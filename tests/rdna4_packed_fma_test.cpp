@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_half_fma_reference.h"
+#include "rdna4_packed_fma_exceptions_hardware.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -247,4 +249,42 @@ TEST(PackedFma, ValidationAndZeroMasks) {
     EXPECT_EQ(call(accumulate, 0, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(call(accumulate, 2ULL << 16, UINT32_MAX, 0, &p, &p, &p, &p), GOC_SUCCESS);
   }
+}
+
+TEST(PackedFma, ExceptionHardwareCorpus) {
+  const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3c00, 0xbc00,
+                             0x4000, 0x7bff, 0x77ff, 0x7c00, 0xfc00, 0x7c01, 0xfe03, 0x800};
+  for (unsigned op = 0; op < 2; ++op)
+    for (unsigned variant = 0; variant < (op ? 1U : 16U); ++variant)
+      for (bool saturate : {false, true}) {
+        uint32_t mode = (variant & 1 ? 5 : 0) | (variant & 2 ? 48 : 0) |
+                        (variant & 4 ? GOC_PK_CLAMP : 0) | (variant & 8 ? 0x1f80 : 0);
+        uint64_t hash = goc_test::capture_hash_seed;
+        for (unsigned i = 0; i < 8192; ++i) {
+          uint32_t words[4][32] = {};
+          uint64_t state = uint64_t(i) * 0x9e3779b97f4a7c15ULL;
+          for (unsigned operand = 0; operand < 3; ++operand) {
+            state ^= state >> 12;
+            state ^= state << 25;
+            state ^= state >> 27;
+            unsigned index = (i >> (8 - operand * 4)) & 15;
+            uint32_t lo = i < 4096 ? values[index] : uint16_t(state * 0x2545f4914f6cdd1dULL);
+            uint32_t hi = i < 4096 ? values[(index + 5) % 16] : ((lo * 0x9e37 + 0x1234) & 65535);
+            words[operand][0] = lo | (hi << 16);
+            words[operand][1] = 0x7c017c01;
+          }
+          const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+          uint32_t *d[] = {words[op ? 2 : 3]};
+          uint32_t exceptions = 0x80000000;
+          uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                           (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
+          int status = op ? goc_rdna4_v_pk_fmac_f16(flags, 1, 0, d, a, b, &exceptions)
+                          : goc_rdna4_v_pk_fma_f16(flags, 1, mode, d, a, b, c, &exceptions);
+          ASSERT_EQ(status, GOC_SUCCESS);
+          ASSERT_TRUE(exceptions & 0x80000000);
+          hash = goc_test::capture_hash_word(hash, exceptions & 127);
+        }
+        EXPECT_EQ(hash, goc_test::packed_fma_exception_hashes[op][variant])
+            << op << "/" << variant << "/" << saturate;
+      }
 }

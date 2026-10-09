@@ -403,6 +403,11 @@ invalid/input-denormal flags in exact mode; rounding a fractional value does not
 raise inexact. Their reporting is checked against 6,291,456 RX 9070 captures.
 FP16/32/64 division-fixup reporting covers all six floating exception bits,
 including modifier suppression, and is checked against 393,216 RX 9070 captures.
+FP16 FMA, FMAC, both literal forms, and packed FMA/FMAC also report exceptions.
+Their integer FMA intermediate supplies inexact/underflow/overflow classification;
+`CLAMP` suppresses all flags and output scaling suppresses underflow/inexact.
+Packed results accumulate exceptions from both selected halves. Loose SIMD
+paths skip all of this work.
 Other affected instructions reject requested
 reporting in non-loose modes before accessing operands, even for empty
 `exec_mask`, with precedence over other validation errors. Null retains existing

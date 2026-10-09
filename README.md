@@ -2148,7 +2148,14 @@ including invalid, input-denormal, floating-divide-by-zero, overflow, underflow,
 and inexact flags. `CLAMP` suppresses all flags; output scaling suppresses
 underflow/inexact flags. Its 393,216 RX 9070 flag captures cover edge/random triples,
 source/output modifiers, and both FP16 saturation settings; regenerate them with
-[the arithmetic probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_arithmetic_exceptions.py).
+[the arithmetic probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_rdna4_arithmetic_exceptions.py). FP16 `v_fma`, `v_fmac`, `v_fmamk`, `v_fmaak`,
+`v_pk_fma`, and `v_pk_fmac` also report exceptions. The existing integer FMA
+intermediate retains discarded precision for inexact/underflow/overflow
+classification, without consulting host exception flags. Packed operations OR
+the flags from both selected halves. Hardware flag corpora cover FMA and packed
+FMA/FMAC, with separate API tests for literals, DPP, masks, aliases, and host FP
+controls. `CLAMP` suppresses all flags; output scaling suppresses underflow/inexact.
+Loose SIMD paths retain their existing dispatch and skip reporting.
 
 In loose mode, other affected instructions leave the register unchanged. Loose
 semantics require no optional global-state output, even with a non-null pointer.
