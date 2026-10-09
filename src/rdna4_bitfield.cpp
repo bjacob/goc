@@ -25,6 +25,23 @@ template <goc::Bitfield Op> uint32_t evaluate(uint32_t a, uint32_t b, uint32_t c
     unsigned shift = Op == goc::Bitfield::AlignBit ? c & 31 : (c & 3) * 8;
     return uint32_t(((uint64_t(a) << 32) | b) >> shift);
   }
+  if constexpr (Op == goc::Bitfield::Permute) {
+    // Byte selection and sign-fill semantics follow rocjitsu's perm_b32.
+    uint64_t source = (uint64_t(a) << 32) | b;
+    uint32_t result = 0;
+    for (unsigned byte = 0; byte < 4; ++byte) {
+      unsigned selector = (c >> (8 * byte)) & 255;
+      uint32_t value;
+      if (selector < 8)
+        value = uint32_t(source >> (8 * selector)) & 255;
+      else if (selector < 12)
+        value = ((source >> (16 * (selector - 8) + 15)) & 1) ? 255 : 0;
+      else
+        value = selector == 12 ? 0 : 255;
+      result |= value << (8 * byte);
+    }
+    return result;
+  }
   if constexpr (Op == goc::Bitfield::Insert)
     return (a & b) | (~a & c);
   if constexpr (Op == goc::Bitfield::Mask)
@@ -115,4 +132,10 @@ int goc_rdna4_v_alignbyte_b32(uint64_t flags, uint64_t exec_mask, uint32_t instr
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c) {
   return bitfield<goc::Bitfield::AlignByte>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_rdna4_v_perm_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
+  return bitfield<goc::Bitfield::Permute>(flags, exec_mask, instruction_flags, d, a, b, c);
 }

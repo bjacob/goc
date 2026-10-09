@@ -1060,16 +1060,18 @@ bool benchmark_bitfield(uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {goc_rdna4_v_bfe_u32,        goc_rdna4_v_bfe_i32,
                             goc_rdna4_v_bfi_b32,        goc_test::bitfield_mask,
                             goc_test::bitfield_reverse, goc_rdna4_v_alignbit_b32,
-                            goc_rdna4_v_alignbyte_b32};
-  const char *names[] = {"v_bfe_u32",   "v_bfe_i32",      "v_bfi_b32",      "v_bfm_b32",
-                         "v_bfrev_b32", "v_alignbit_b32", "v_alignbyte_b32"};
-  for (int op = 0; op < 7; ++op) {
+                            goc_rdna4_v_alignbyte_b32,  goc_rdna4_v_perm_b32};
+  const char *names[] = {"v_bfe_u32",   "v_bfe_i32",      "v_bfi_b32",       "v_bfm_b32",
+                         "v_bfrev_b32", "v_alignbit_b32", "v_alignbyte_b32", "v_perm_b32"};
+  for (int op = 0; op < 8; ++op) {
     Registers r;
     r.output_regs = 1;
     std::mt19937 random(452);
     for (int lane = 0; lane < 32; ++lane) {
       for (int reg : {0, 4, 8})
         r.data[reg][lane] = random();
+      if (op == 7)
+        r.data[8][lane] &= 0x0f0f0f0f;
       r.expected[128 * (lane / 16) + lane % 16] =
           goc_test::bitfield_reference(op, r.data[0][lane], r.data[4][lane], r.data[8][lane]);
     }

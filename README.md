@@ -195,7 +195,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_and_b16`, `v_or_b16`, `v_xor_b16`, `v_not_b16` | Scalar, x86-64-v4 | Not implemented |
 | `v_sat_pk_u8_i16`, `v_pack_b32_f16` | Scalar, x86-64-v3, x86-64-v4; all supported modifiers | Not implemented |
 | `v_and_b32`, `v_or_b32`, `v_xor_b32`, `v_not_b32`, `v_xnor_b32` | Scalar, x86-64-v4 | Not implemented |
-| `v_bfe_u32`, `v_bfe_i32`, `v_bfm_b32`, `v_bfrev_b32`, `v_alignbit_b32`, `v_alignbyte_b32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
+| `v_bfe_u32`, `v_bfe_i32`, `v_bfm_b32`, `v_bfrev_b32`, `v_alignbit_b32`, `v_alignbyte_b32`, `v_perm_b32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_bfi_b32` | Scalar, x86-64-v4 | Not implemented |
 | `v_lshl_add_u32`, `v_add_lshl_u32`, `v_lshl_or_b32`, `v_lerp_u8` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_and_or_b32`, `v_or3_b32`, `v_xor3_b32`, `v_xad_u32` | Scalar, x86-64-v4 | Not implemented |
@@ -869,6 +869,14 @@ from `B` wherever `A` is set and from `C` elsewhere. `BFREV` reverses all 32 bit
 `ALIGNBIT` extracts the low word of the concatenation `A:B` shifted right by
 `C & 31` bits; `ALIGNBYTE` shifts it by `(C & 3) * 8` bits. A zero shift
 returns `B`, and high count bits are ignored.
+`PERM` takes four selector bytes from `C`: 0..7 select bytes of `A:B`, 8..11
+replicate the sign bits of its four 16-bit halves, 12 selects zero, and 13..255
+select `0xff`. Its eight-lane v3 and sixteen-lane v4 implementations use byte
+shuffles and retain full EXEC masking. Tests check all selector bytes against
+65,536 GPU-captured outputs, every source bit and its complement, plus masks,
+whole-register aliases, unaligned storage and preservation of host FP state.
+Pinned-core Ryzen 9 7950X3D timings for permutation are 68.8 ns scalar, 14.0 ns
+v3 (4.91x), and 4.5 ns v4 (15.40x), using seven samples of at least 10 ms.
 These rules follow rocjitsu's integer helpers. No instruction modifiers apply;
 all host FP state is preserved. Eight-lane v3 and sixteen-lane v4 paths use
 variable shifts, Boolean operations, and byte lookup/shuffle reversal. `BFI`

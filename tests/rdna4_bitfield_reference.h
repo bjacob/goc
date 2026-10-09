@@ -30,6 +30,15 @@ inline uint32_t bitfield_reference(int op, uint32_t a, uint32_t b, uint32_t c) {
       unsigned source = bit + (op == 5 ? c % 32 : (c % 4) * 8);
       value = source < 32 ? (b >> source) & 1 : (a >> (source - 32)) & 1;
     }
+    if (op == 7) {
+      unsigned selector = (c >> (8 * (bit / 8))) & 255;
+      unsigned source = selector < 8    ? 8 * selector + bit % 8
+                        : selector < 12 ? 16 * (selector - 8) + 15
+                                        : 64;
+      value = source < 32   ? (b >> source) & 1
+              : source < 64 ? (a >> (source - 32)) & 1
+                            : selector > 12;
+    }
     result |= uint32_t(value) << bit;
   }
   return result;

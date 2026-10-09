@@ -20,7 +20,7 @@ using Fn = decltype(&goc_rdna4_v_bfe_u32);
 const Fn functions[] = {goc_rdna4_v_bfe_u32,        goc_rdna4_v_bfe_i32,
                         goc_rdna4_v_bfi_b32,        goc_test::bitfield_mask,
                         goc_test::bitfield_reverse, goc_rdna4_v_alignbit_b32,
-                        goc_rdna4_v_alignbyte_b32};
+                        goc_rdna4_v_alignbyte_b32,  goc_rdna4_v_perm_b32};
 
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t words[4][32]) {
   uint32_t expected[32];
@@ -45,7 +45,7 @@ TEST(Bitfield, BoundaryTriplesAndRandomValues) {
   const uint32_t edges[] = {0,          1,          31,         32,         63,         64,
                             0x7fffffff, 0x80000000, 0xffffffff, 0xfffffffe, 0xff00ff00, 0x00ff00ff,
                             0x01010101, 0xfefefefe, 0x55555555, 0xaaaaaaaa};
-  for (int op = 0; op < 7; ++op)
+  for (int op = 0; op < 8; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       std::mt19937 random(1023);
       for (int start = 0; start < 8192; start += 32) {
@@ -121,7 +121,7 @@ TEST(Bitfield, LiteralBoundaryResults) {
 
 TEST(Bitfield, MasksAndWholeRegisterAliases) {
   const int sources[][3] = {{0, 1, 2}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}};
-  for (int op = 0; op < 7; ++op)
+  for (int op = 0; op < 8; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (const auto &source : sources) {
         std::mt19937 random(560);
@@ -129,6 +129,9 @@ TEST(Bitfield, MasksAndWholeRegisterAliases) {
         for (auto &reg : original)
           for (auto &word : reg)
             word = random();
+        if (op == 7)
+          for (auto &word : original[source[2]])
+            word &= 0x0f0f0f0f;
         for (int lane = 0; lane < 32; ++lane)
           result[lane] = goc_test::bitfield_reference(
               op, original[source[0]][lane], original[source[1]][lane], original[source[2]][lane]);
@@ -167,7 +170,7 @@ TEST(Bitfield, ValidationAndHostFpState) {
       _mm_setcsr((_mm_getcsr() & ~0x8040u) | (flush ? 0x8040u : 0));
       unsigned before = _mm_getcsr();
 #endif
-      for (int op = 0; op < 7; ++op)
+      for (int op = 0; op < 8; ++op)
         for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
           uint32_t words[4][32];
           for (auto &reg : words)
@@ -216,4 +219,78 @@ TEST(Bitfield, AlignmentEveryConcatenatedBitAndShift) {
           }
           ASSERT_TRUE(check(op, cpu, words));
         }
+}
+
+TEST(Bitfield, PermuteEverySelectorAndSourceBit) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned bit = 0; bit < 64; ++bit)
+      for (bool invert : {false, true})
+        for (unsigned start = 0; start < 256; start += 32) {
+          uint32_t words[4][32];
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            uint64_t source = (UINT64_C(1) << ((bit + lane) % 64)) ^ (invert ? UINT64_MAX : 0);
+            words[0][lane] = uint32_t(source >> 32);
+            words[1][lane] = uint32_t(source);
+            words[2][lane] = (start + lane) * 0x01010101u;
+          }
+          ASSERT_TRUE(check(7, cpu, words));
+        }
+}
+
+TEST(Bitfield, PermuteHardwareAllSelectorBytes) {
+  // GFX1201 capture: 65536 pseudorandom source pairs. Each byte position
+  // receives every selector 256 times. Digest is FNV-1a, low byte first.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t digest = UINT64_C(14695981039346656037);
+    for (unsigned start = 0; start < 65536; start += 32) {
+      uint32_t words[4][32];
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        unsigned i = start + lane;
+        words[0][lane] = (i * 0x7395a831u) ^ 0xa7925163u;
+        words[1][lane] = (i * 0x83a1459du) ^ 0x5389d241u;
+        words[2][lane] = 0;
+        for (unsigned byte = 0; byte < 4; ++byte)
+          words[2][lane] |= ((i + 85 * byte) & 255) << (8 * byte);
+      }
+      const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+      uint32_t *d[] = {words[3]};
+      ASSERT_EQ(goc_rdna4_v_perm_b32(cpu, UINT32_MAX, 0, d, a, b, c), GOC_SUCCESS);
+      for (uint32_t value : words[3])
+        for (unsigned byte = 0; byte < 4; ++byte) {
+          digest ^= (value >> (8 * byte)) & 255;
+          digest *= UINT64_C(1099511628211);
+        }
+    }
+    EXPECT_EQ(digest, UINT64_C(0x130dcc447fe090a6)) << cpu;
+  }
+}
+
+TEST(Bitfield, UnalignedStorageAndEmptyExec) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned op = 0; op < 8; ++op) {
+      EXPECT_EQ(
+          functions[op](cpu, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr, nullptr),
+          GOC_SUCCESS);
+      for (unsigned target = 0; target < 4; ++target)
+        for (uint64_t mask : rdna4_exec_masks()) {
+          uint32_t words[4][35], expected[4][35];
+          for (unsigned reg = 0; reg < 4; ++reg)
+            for (unsigned lane = 0; lane < 35; ++lane) {
+              uint32_t value = (lane * 0x7395a831u) ^ (reg * 0xd317b579u);
+              if (reg == 2)
+                value &= 0x0f0f0f0f;
+              words[reg][lane] = expected[reg][lane] = value;
+            }
+          for (unsigned lane = 0; lane < 32; ++lane)
+            if ((mask >> lane) & 1)
+              expected[target][lane + 1] = goc_test::bitfield_reference(
+                  op, words[0][lane + 1], words[1][lane + 1], words[2][lane + 1]);
+          const uint32_t *a[] = {words[0] + 1}, *b[] = {words[1] + 1}, *c[] = {words[2] + 1};
+          uint32_t *d[] = {words[target] + 1};
+          ASSERT_EQ(functions[op](cpu, mask, 0, d, a, b, c), GOC_SUCCESS);
+          for (unsigned reg = 0; reg < 4; ++reg)
+            for (unsigned lane = 0; lane < 35; ++lane)
+              ASSERT_EQ(words[reg][lane], expected[reg][lane]) << op << "/" << cpu << "/" << lane;
+        }
+    }
 }

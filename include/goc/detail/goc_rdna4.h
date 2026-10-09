@@ -18,6 +18,15 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Select each output byte using the corresponding byte of C. Selectors 0..7
+// select bytes of the concatenation A:B (B supplies the low four bytes).
+// Selectors 8..11 replicate the sign bit of its four 16-bit halves; 12 selects
+// zero, and 13..255 select 0xff. Each operand uses one VGPR. No instruction
+// modifiers apply; loose semantics only. Preserves all host FP state.
+GOC_API int goc_rdna4_v_perm_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c);
+
 // Trigonometric range-reduction table lookup. A is an FP64 VGPR pair, B is
 // one integer VGPR (only its low five bits select the segment), and D is an
 // FP64 VGPR pair. Only A's encoded exponent affects the lookup, including

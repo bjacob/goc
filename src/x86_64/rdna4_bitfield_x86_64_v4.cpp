@@ -42,6 +42,27 @@ void bitfield_x86_64_v4(uint32_t mask, uint32_t *d, const uint32_t *a, const uin
       auto inverse = _mm512_sub_epi32(_mm512_set1_epi32(32), shift);
       result = _mm512_or_si512(_mm512_srlv_epi32(y, shift), _mm512_sllv_epi32(x, inverse));
     }
+    if constexpr (Op == Bitfield::Permute) {
+      // PSHUFB indices stay within each lane's four bytes. A small lookup
+      // redirects selectors 8..11 to the bytes providing sign-fill bits.
+      auto selector = _mm512_min_epu8(z, _mm512_set1_epi8(13));
+      auto mapping =
+          _mm512_broadcast_i32x4(_mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 1, 3, 5, 7, 0, 0, 0, 0));
+      auto source = _mm512_shuffle_epi8(mapping, selector);
+      auto base = _mm512_broadcast_i32x4(_mm_setr_epi32(0, 0x04040404, 0x08080808, 0x0c0c0c0c));
+      auto index = _mm512_or_si512(base, _mm512_and_si512(source, _mm512_set1_epi8(3)));
+      auto from_a = _mm512_cmpeq_epi8_mask(_mm512_and_si512(source, _mm512_set1_epi8(4)),
+                                           _mm512_set1_epi8(4));
+      auto value = _mm512_mask_blend_epi8(from_a, _mm512_shuffle_epi8(y, index),
+                                          _mm512_shuffle_epi8(x, index));
+      auto sign = _mm512_movm_epi8(_mm512_cmpgt_epi8_mask(_mm512_setzero_si512(), value));
+      value = _mm512_mask_blend_epi8(_mm512_cmpgt_epi8_mask(selector, _mm512_set1_epi8(7)), value,
+                                     sign);
+      value = _mm512_mask_mov_epi8(value, _mm512_cmpeq_epi8_mask(selector, _mm512_set1_epi8(12)),
+                                   _mm512_setzero_si512());
+      result = _mm512_mask_mov_epi8(value, _mm512_cmpeq_epi8_mask(selector, _mm512_set1_epi8(13)),
+                                    _mm512_set1_epi8(-1));
+    }
     if constexpr (Op == Bitfield::Mask)
       result = _mm512_sllv_epi32(
           _mm512_sub_epi32(
@@ -80,5 +101,8 @@ template void bitfield_x86_64_v4<Bitfield::AlignBit>(uint32_t, uint32_t *, const
                                                      const uint32_t *, const uint32_t *);
 template void bitfield_x86_64_v4<Bitfield::AlignByte>(uint32_t, uint32_t *, const uint32_t *,
                                                       const uint32_t *, const uint32_t *);
+
+template void bitfield_x86_64_v4<Bitfield::Permute>(uint32_t, uint32_t *, const uint32_t *,
+                                                    const uint32_t *, const uint32_t *);
 
 } // namespace goc
