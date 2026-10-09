@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_rcp_iflag_hardware.h"
 #include "rdna4_rcp_iflag_reference.h"
@@ -165,4 +166,107 @@ TEST(RcpIflag, ValidationAndHostRounding) {
     EXPECT_EQ(std::fegetround(), FE_TONEAREST);
   }
   std::fesetenv(&saved);
+}
+
+TEST(RcpIflag, DppModifiersMasksAndStatusAliases) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned m = 0; m < 32; ++m)
+      for (auto descriptor : goc_test::dpp_modes)
+        for (auto mask : rdna4_exec_masks())
+          for (unsigned target = 0; target < 2; ++target)
+            for (unsigned status_target = 0; status_target < 3; ++status_target) {
+              uint32_t words[2][34], expected[2][34], permuted[32] = {}, status = 0xdeadbeef;
+              for (unsigned reg = 0; reg < 2; ++reg)
+                for (unsigned word = 0; word < 34; ++word)
+                  words[reg][word] = expected[reg][word] =
+                      reg ? 0xdead0000u + word : goc_test::rcp_iflag_input((word - 1) * 32);
+              uint32_t effective = 0;
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                int source = 0;
+                if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source)) {
+                  effective |= uint32_t(1) << lane;
+                  permuted[lane] = source < 0 ? 0 : words[0][source + 1];
+                  expected[target][lane + 1] = goc_test::rcp_iflag_reference(permuted[lane], m);
+                }
+              }
+              uint32_t seed = m & 1 ? 0x55 : 0x15;
+              uint32_t want = goc_test::rcp_iflag_status(permuted, effective, m, seed);
+              if (status_target < 2)
+                expected[status_target][14] = want;
+              const uint32_t *a[] = {words[0] + 1};
+              uint32_t *d[] = {words[target] + 1};
+              ASSERT_EQ(goc_rdna4_v_rcp_iflag_f32(
+                            cpu, mask, descriptor | goc_test::rcp_iflag_mode(m), d, a,
+                            status_target < 2 ? words[status_target] + 14 : &status, seed),
+                        GOC_SUCCESS);
+              EXPECT_EQ(status, status_target < 2 ? 0xdeadbeef : want);
+              for (unsigned reg = 0; reg < 2; ++reg)
+                for (unsigned word = 0; word < 34; ++word) {
+                  if (reg == status_target && word == 14)
+                    ASSERT_EQ(words[reg][word], want);
+                  else if (reg == target && word >= 1 && word <= 32 &&
+                           ((effective >> (word - 1)) & 1))
+                    ASSERT_TRUE(goc_test::rcp_iflag_close(words[reg][word], expected[reg][word]));
+                  else
+                    ASSERT_EQ(words[reg][word], expected[reg][word]);
+                }
+            }
+}
+
+TEST(RcpIflag, DppValidationAndZeroExec) {
+  for (auto descriptor : goc_test::dpp_modes) {
+    uint32_t status = 0xdeadbeef;
+    for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 1})
+      for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+        EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, mask, descriptor | invalid, nullptr, nullptr,
+                                            &status, 0x15),
+                  GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(status, 0xdeadbeefu);
+      }
+    EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
+                                        descriptor, nullptr, nullptr, &status, 0x15),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(status, 0xdeadbeefu);
+    EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, UINT64_C(0xffffffff00000000), descriptor, nullptr,
+                                        nullptr, &status, 0x12345678),
+              GOC_SUCCESS);
+    EXPECT_EQ(status, 0x12345678u);
+  }
+}
+
+// RX 9070: two denormal modes, three sticky-status seeds, eight EXEC masks,
+// every modifier and seven DPP descriptors. Powers of two give exact finite
+// reciprocals; NaN payloads are canonicalized, while status and zeros are exact.
+TEST(RcpIflag, DppHardwareCorpus) {
+  const uint32_t values[] = {0,          0x80000000, 1,          0x807fffff,
+                             0x3f800000, 0xc0000000, 0x7f800000, 0x7fc00000};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (uint64_t fp : {GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS, UINT64_C(0)})
+      for (uint32_t seed : {0u, 0x15u, 0x55u})
+        for (auto mask : masks)
+          for (unsigned m = 0; m < 32; ++m)
+            for (auto descriptor : goc_test::dpp_modes) {
+              uint32_t av[32], output[32], status = 0;
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                av[lane] = values[lane % 8];
+                output[lane] = 0xdead0000u + lane;
+              }
+              const uint32_t *a[] = {av};
+              uint32_t *d[] = {output};
+              ASSERT_EQ(goc_rdna4_v_rcp_iflag_f32(cpu | fp, mask,
+                                                  descriptor | goc_test::rcp_iflag_mode(m), d, a,
+                                                  &status, seed),
+                        GOC_SUCCESS);
+              for (auto word : output) {
+                if ((word & 0x7fffffff) > 0x7f800000)
+                  word = 0x7fc00000;
+                hash = (hash ^ word) * UINT64_C(1099511628211);
+              }
+              hash = (hash ^ status) * UINT64_C(1099511628211);
+            }
+    EXPECT_EQ(hash, UINT64_C(0x0c1abc142a4dc525)) << cpu;
+  }
 }

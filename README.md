@@ -507,6 +507,9 @@ any pre-existing status bit. Other status bits survive unchanged. The scalar
 status is written after VGPR stores, taking precedence if its storage aliases
 an input or output word. Empty EXEC leaves VGPRs untouched and copies the incoming
 status to the scalar output.
+DPP8/DPP16 permutes A before the source modifiers. Filtered-out destination
+lanes add no guest exception, while active lanes receiving a DPP zero can raise
+INT_DIV0. Existing status bits survive all DPP and CLAMP combinations.
 
 The scalar, eight-lane v3 and sixteen-lane v4 paths support every ABS/NEG/OMOD/
 CLAMP combination. Input/output subnormals always flush, independently of guest
@@ -514,6 +517,12 @@ FP-mode settings. Numeric results use loose semantics; host nearest-even roundin
 and enabled denormals are required, and host exception flags may change.
 The status rules correct two details in rocjitsu's classifier: flushed subnormal
 inputs also raise INT_DIV0, and CLAMP suppresses the new cause.
+DPP tests add 354,816 GPU-captured words covering all modifiers, sticky seeds,
+EXEC masks and both denormal modes. The powers-of-two corpus matches raw finite
+results and status bits; NaN payloads are canonicalized. Further DPP tests check
+numeric edge cases, masks, guards, status/source/destination overlap and errors.
+Pinned DPP timings are 34.1–54.0 ns on v3 (1.71–2.68× scalar) and
+23.6–33.9 ns on v4 (2.89–3.92×), including all benchmark modifier cases.
 
 Tests use GPU captures of 4,718,592 lane results and 147,456 exact status values,
 covering modifiers, full/empty/partial EXEC, denormal modes and initial sticky

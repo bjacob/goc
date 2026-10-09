@@ -2570,52 +2570,63 @@ bool benchmark_rcp_iflag(uint64_t cpu, int iterations, int min_ms) {
   struct IflagRegisters : Registers {
     uint32_t status = 0, want = 0;
     unsigned mode = 0;
+    uint32_t inputs[32] = {};
 
     bool correct() const {
       if (status != want)
         return false;
       for (unsigned lane = 0; lane < 32; ++lane)
         if (!goc_test::rcp_iflag_close(data[16][lane],
-                                       goc_test::rcp_iflag_reference(data[0][lane], mode)))
+                                       goc_test::rcp_iflag_reference(inputs[lane], mode)))
           return false;
       return true;
     }
   };
 
-  for (unsigned m : {0u, 15u, 31u}) {
-    IflagRegisters r;
-    r.output_regs = 1;
-    r.mode = m;
-    for (unsigned lane = 0; lane < 32; ++lane)
-      r.data[0][lane] = goc_test::rcp_iflag_input(lane * 32);
-    r.want = goc_test::rcp_iflag_status(r.data[0], UINT32_MAX, m, 0x15);
-    auto fn = [&r](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
-                   const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
-      return goc_rdna4_v_rcp_iflag_f32(flags, mask, mode, d, a, &r.status, 0x15);
-    };
-    const char *label = m == 0 ? "none" : m == 15 ? "ABS/NEG/half" : "ABS/NEG/half/clamp";
-    uint32_t mode = goc_test::rcp_iflag_mode(m);
-    double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
-    if (scalar < 0)
-      return false;
-    print_result("v_rcp_iflag_f32", "loose", label, "scalar", scalar, 1);
-#if defined(GOC_BENCH_HAVE_X86_64_V3)
-    if (cpu >= GOC_CPU_X86_64_V3) {
-      double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
-      if (simd < 0)
+  for (unsigned m : {0u, 15u, 31u})
+    for (int descriptor : {-1, 0, 5}) {
+      uint64_t mode =
+          goc_test::rcp_iflag_mode(m) | (descriptor < 0 ? 0 : goc_test::dpp_modes[descriptor]);
+      IflagRegisters r;
+      r.output_regs = 1;
+      r.mode = m;
+      for (unsigned lane = 0; lane < 32; ++lane)
+        r.data[0][lane] = goc_test::rcp_iflag_input(lane * 32);
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        int source = int(lane);
+        if (descriptor >= 0)
+          goc_test::dpp_source(mode, UINT32_MAX, lane, source);
+        r.inputs[lane] = source < 0 ? 0 : r.data[0][source];
+      }
+      r.want = goc_test::rcp_iflag_status(r.inputs, UINT32_MAX, m, 0x15);
+      auto fn = [&r](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+                     const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
+        return goc_rdna4_v_rcp_iflag_f32(flags, mask, mode, d, a, &r.status, 0x15);
+      };
+      const char *label = m == 0 ? "none" : m == 15 ? "ABS/NEG/half" : "ABS/NEG/half/clamp";
+      if (descriptor >= 0)
+        label = descriptor == 0 ? (m ? "DPP8/modified" : "DPP8") : (m ? "DPP16/modified" : "DPP16");
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
         return false;
-      print_result("v_rcp_iflag_f32", "loose", label, "x86-64-v3", simd, scalar / simd);
-    }
+      print_result("v_rcp_iflag_f32", "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result("v_rcp_iflag_f32", "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
-    if (cpu >= GOC_CPU_X86_64_V4) {
-      double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
-      if (simd < 0)
-        return false;
-      print_result("v_rcp_iflag_f32", "loose", label, "x86-64-v4", simd, scalar / simd);
-    }
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result("v_rcp_iflag_f32", "loose", label, "x86-64-v4", simd, scalar / simd);
+      }
 #endif
-  }
+    }
   (void)cpu;
   return true;
 }

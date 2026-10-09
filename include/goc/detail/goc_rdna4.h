@@ -854,6 +854,8 @@ static const uint32_t GOC_RDNA4_EXCEPTION_INT_DIV0 = (UINT32_C(1) << 6);
 // OMOD and CLAMP. Input/output subnormals always flush, independently of guest
 // flush flags. Active zero or subnormal inputs set INT_DIV0 unless CLAMP is set.
 // Other input_exception_flags bits, including a pre-existing INT_DIV0, survive.
+// DPP8/DPP16 permutes A before source modifiers. DPP-filtered destination lanes
+// add no exception; a zero-filled source in an active lane can set INT_DIV0.
 // exception_flags is written after VGPR stores and may alias any input/output
 // word. Its scalar write takes precedence on overlap. Zero EXEC leaves VGPRs
 // untouched, permits null VGPR pointers, and still writes input_exception_flags

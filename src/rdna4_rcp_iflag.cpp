@@ -7,22 +7,33 @@
 #include "rdna4_rcp_iflag.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <stdint.h>
 
 int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, uint32_t *exception_flags,
                               uint32_t input_exception_flags) {
-  if (mode >> 32)
+  if ((mode >> 32) && (!(mode & (GOC_DPP8 | GOC_DPP16)) || !goc::valid_dpp(mode)))
     return GOC_ERROR_INVALID_FLAGS;
   const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  if (int error = goc::validate(flags, mode & ~known, false,
+  if (int error = goc::validate(flags, uint32_t(mode) & ~known, false,
                                 GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   uint32_t mask = uint32_t(exec_mask);
   if (!mask) {
     *exception_flags = input_exception_flags;
     return GOC_SUCCESS;
+  }
+  if (mode >> 32) {
+    uint32_t permuted[32];
+    const uint32_t *source = permuted;
+    if (mode & GOC_DPP8)
+      goc::dpp8_source(flags, mask, mode, permuted, a[0]);
+    else
+      mask = goc::dpp16_source(flags, mask, mode, permuted, a[0]);
+    return goc_rdna4_v_rcp_iflag_f32(flags, mask, uint32_t(mode), d, &source, exception_flags,
+                                     input_exception_flags);
   }
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {

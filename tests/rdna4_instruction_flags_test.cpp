@@ -99,7 +99,7 @@ void check_high_flags(const char *name,
     supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   for (auto mnemonic : {"v_cubeid_f32", "v_cubesc_f32", "v_cubetc_f32", "v_cubema_f32"})
     supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
-  bool dpp_scalar_output = false;
+  bool dpp_scalar_output = std::strcmp(name, "goc_rdna4_v_rcp_iflag_f32") == 0;
   for (auto mnemonic : {"v_add_co_u32", "v_sub_co_u32", "v_subrev_co_u32", "v_add_co_ci_u32",
                         "v_sub_co_ci_u32", "v_subrev_co_ci_u32"})
     dpp_scalar_output |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
@@ -108,7 +108,7 @@ void check_high_flags(const char *name,
     for (uint64_t exec : {UINT64_C(0), UINT64_MAX}) {
       // A DPP enable bit alone is a valid descriptor (zero fields).
       if (supports_dpp && (bit == 32 || bit == 34)) {
-        // Carry tests supply the required scalar output even for zero EXEC.
+        // Family tests supply required scalar outputs even for zero EXEC.
         if (exec == 0 && !dpp_scalar_output) {
           EXPECT_EQ(instruction(0, exec, UINT64_C(1) << bit, Operands{}...), GOC_SUCCESS);
         }
