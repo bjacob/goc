@@ -18,6 +18,36 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// FP32/integer conversions, one VGPR per operand. Loose semantics only.
+// Integer-to-FP32 conversion uses host nearest-even rounding, followed by OMOD
+// and CLAMP; source ABS/NEG are invalid. Float-to-integer conversion saturates
+// to the destination range, maps NaNs to zero, and supports ABS/NEG. CLAMP is
+// accepted but does not affect integer results. Truncating float-to-integer
+// forms also accept OMOD without numeric scaling; GPU exceptions are not modeled.
+
+GOC_API int goc_rdna4_v_cvt_f32_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_f32_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+// Convert toward zero.
+GOC_API int goc_rdna4_v_cvt_i32_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_u32_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+// Round to nearest integer, breaking ties toward positive infinity.
+GOC_API int goc_rdna4_v_cvt_nearest_i32_f32(uint64_t flags, uint64_t exec_mask,
+                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            const uint32_t *const *a);
+
+// Round toward negative infinity.
+GOC_API int goc_rdna4_v_cvt_floor_i32_f32(uint64_t flags, uint64_t exec_mask,
+                                          uint32_t instruction_flags, uint32_t *const *d,
+                                          const uint32_t *const *a);
+
 // Combined three-input integer operations, one VGPR per operand. Shift
 // counts wrap modulo 32; all addition and shifting wrap to 32 bits. Instruction
 // flags must be zero. Loose semantics only; preserves all host FP state.

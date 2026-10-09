@@ -255,7 +255,7 @@ They decode each input element once and reuse it across output rows/columns;
 all results are staged before masked writes to preserve operand aliasing.
 Tests cross dense matrix goldens with all CPU levels, all C modifiers, 85 EXEC
 masks and aliases, and check every input byte encoding through each operand.
-Benchmark `wmma/f8f8`, `wmma/f8b8`, `wmma/b8f8`, and `wmma/b8b8` rows
+Benchmark rows for all four `v_wmma_f32_16x16x16_*` mnemonics
 compare scalar and SIMD with full EXEC, default flags and ABS_C/NEG_C.
 
 FP8/BF8 DOT4 supports all four E4M3FN/E5M2 input combinations with FP32
@@ -263,8 +263,8 @@ accumulation and `GOC_DOT_ABS_C` / `GOC_DOT_NEG_C`, applied in that order.
 Both scalar and v3 paths handle all encodings, including subnormals and special
 values; no input-dependent fallback is needed. Tests exhaust all 65,536 input
 byte pairs for every format combination, modifier combination and CPU level.
-Strict exact requests are rejected. Benchmark labels `f8` and `b8` denote
-FP8 and BF8; each combination has unmodified and ABS_C/NEG_C rows.
+Strict exact requests are rejected. Each combination has unmodified and
+ABS_C/NEG_C benchmark rows, labeled with its full `v_dot4_f32_*` mnemonic.
 
 The true16 `v_dot2_f16_f16` and `v_dot2_bf16_bf16` instructions instead use
 `GOC_ALU_` ABS/NEG modifiers on each whole operand, `GOC_ALU_HIGH_C` for
@@ -276,8 +276,8 @@ evaluation. BF16 input/output denormals flush independently of other FP flags;
 FP16 supports `GOC_FP16_OVFL`. Host nearest-even rounding and enabled denormals
 remain required by the loose FP contract. Tests cover every accumulator encoding,
 all 256 modifier/half-selector combinations with 85 masks and aliases, literal
-rounding/overflow cases, and random scalar/SIMD comparisons. Benchmark
-`dot2/f16` / `dot2/b16` rows denote these 16-bit-output instructions.
+rounding/overflow cases, and random scalar/SIMD comparisons. Benchmark rows
+use the full mnemonics to distinguish these 16-bit-output instructions.
 
 FP16/BF16 DOT2 supports independent negation of each selected A/B half and C.
 The four half-selection flags can swap or replicate halves; zero flags select
@@ -346,15 +346,14 @@ output scaling and CLAMP only at the end. All 512 A/B/C modifier combinations
 remain on the SIMD path. Tests cross those combinations with 85 masks, every
 CPU level and each destination/source alias, and include literal evaluation-order,
 NaN-priority and signed-zero cases plus 4,096 random input triples. Benchmark
-labels use `min3`/`max3` for repeated selections, `mnmx`/`mxmn` for mixed
-selections, and an `n` suffix for number-preferring variants.
+rows use the full mnemonics, including `_num` for number-preferring variants.
 
 FP32 median selection also supports all 512 modifiers on scalar/v3 paths.
 With any NaN input it returns the three-input minimumNumber result; otherwise
 it follows the ISA rule of removing the first input numerically equal to the
 maximum and selecting the maximum of the other two. Tests include signed-zero
 ties, where this rule differs from sorting by a total order that distinguishes
-the signs of zero. The benchmark labels this instruction `f32/med3n`.
+the signs of zero. The benchmark labels this instruction `v_med3_num_f32`.
 
 FMA supports all three source ABS/NEG pairs, OMOD scaling and CLAMP on scalar,
 x86-64-v3 and x86-64-v4 paths. Tests cross all 512 modifier combinations with
@@ -365,6 +364,25 @@ coverage. If either factor is signed zero, it selects modified C before output
 scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
+
+Six 32-bit numeric conversions cover `v_cvt_f32_i32`, `v_cvt_f32_u32`,
+`v_cvt_i32_f32`, `v_cvt_u32_f32`, `v_cvt_nearest_i32_f32`, and
+`v_cvt_floor_i32_f32`. Float-to-integer conversions saturate overflow and map
+NaNs to zero. The ordinary forms truncate; `NEAREST` breaks ties toward positive
+infinity, and `FLOOR` rounds downward. Integer-to-FP32 uses host nearest-even
+rounding followed by OMOD/CLAMP. Float-to-integer accepts ABS/NEG; CLAMP is a
+numeric no-op, as is OMOD on the two truncating forms. The explicit rounding
+forms reject OMOD. GPU exception reporting is not modeled. These entry points
+currently expose loose semantics only.
+
+All six have scalar and 16-lane x86-64-v4 implementations. Eight-lane v3
+implementations cover integer-to-float, NEAREST, and FLOOR, including every
+accepted modifier combination. The truncating v3 candidates gained only 7–10%
+over baseline and were removed. Tests use an independent integer-bit reference,
+literal tie/overflow/NaN witnesses, precision boundaries, random words, all
+modifiers, all mask patterns, unaligned storage, and in-place aliases. They also
+check that float-to-integer rounding is independent of the host rounding mode.
+Benchmark rows exercise full EXEC with default and modified operands.
 
 FP32 `FRACT` computes `x - floor(x)` and caps it at `0x3f7fffff` before
 output modifiers, so tiny negative inputs stay strictly below one. Scalar/v3
