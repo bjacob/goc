@@ -232,7 +232,7 @@ TEST(HalfFma, ValidationAndSemantics) {
   uint32_t data[32];
   std::fill(data, data + 32, 0xdeadbeef);
   auto p = data;
-  for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+  for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
     for (int bit = 13; bit < 32; ++bit)
       EXPECT_EQ(goc_rdna4_v_fma_f16(0, mask, UINT32_C(1) << bit, &p, &p, &p, &p),
                 GOC_ERROR_INVALID_FLAGS);

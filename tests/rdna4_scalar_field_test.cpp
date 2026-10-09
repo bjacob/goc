@@ -16,7 +16,7 @@ TEST(ScalarField, HardwareResultsAndScc) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (unsigned seed = 0; seed < 2; ++seed)
-        for (uint64_t mask : {UINT64_C(0), UINT64_MAX, UINT64_C(0xaaaaaaaa)})
+        for (uint32_t mask : {UINT32_C(0), UINT32_MAX, UINT32_C(0xaaaaaaaa)})
           for (unsigned op = 0; op < 20; ++op) {
             uint64_t hash = UINT64_C(14695981039346656037);
             for (unsigned i = 0; i < 16384; ++i) {
@@ -40,7 +40,7 @@ TEST(ScalarField, HardwareResultsAndScc) {
 TEST(ScalarField, ExecAndAliasing) {
   const uint64_t a = UINT64_C(0x87654321abcdef01);
   for (unsigned op = 0; op < 20; ++op)
-    for (uint64_t mask : rdna4_exec_masks()) {
+    for (uint32_t mask : rdna4_exec_masks()) {
       uint32_t d = uint32_t(a), cc = 7;
       uint64_t wide = a;
       ASSERT_EQ(goc_test::scalar_field_call(op, 0, mask, 0, &d, &wide, a, 0x3f0011, &cc),

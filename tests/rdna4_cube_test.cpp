@@ -106,7 +106,7 @@ TEST(Cube, EveryModifierMaskAndDestinationAlias) {
         result[lane] = goc_test::cube_reference(op, original[0][lane + 1], original[1][lane + 1],
                                                 original[2][lane + 1], mode);
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (unsigned alias = 0; alias < 4; ++alias) {
             uint32_t storage[4][34];
             std::memcpy(storage, original, sizeof(storage));
@@ -200,8 +200,7 @@ TEST(Cube, ValidationAndSemanticFallback) {
       }
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(fn(cpu | exact, 0xffffffff00000000ull, 511, nullptr, nullptr, nullptr, nullptr),
-                GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu | exact, UINT32_C(0), 511, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(fn(cpu, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(fn(cpu | (2 * GOC_SEMANTICS_EXACT_EMPIRICAL), UINT32_MAX, 0, d, a, a, a),
                 GOC_SUCCESS);
@@ -221,7 +220,7 @@ TEST(Cube, DppModifiersMasksAliasesAndGuards) {
       for (uint32_t m = 0; m < 512; ++m)
         for (auto descriptor : goc_test::dpp_modes) {
           bool endpoints = m == 0 || m == 511;
-          auto masks = endpoints ? rdna4_exec_masks() : std::vector<uint64_t>{UINT32_MAX};
+          auto masks = endpoints ? rdna4_exec_masks() : std::vector<uint32_t>{UINT32_MAX};
           for (auto mask : masks)
             for (unsigned sharing = 0; sharing < (endpoints ? 4u : 1u); ++sharing)
               for (unsigned target = 0; target < 4; ++target) {
@@ -232,7 +231,7 @@ TEST(Cube, DppModifiersMasksAliasesAndGuards) {
                 std::memcpy(expected, initial, sizeof(expected));
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+                  if (goc_test::dpp_source(descriptor, mask, lane, source))
                     expected[target][lane + 1] =
                         goc_test::cube_reference(op, source < 0 ? 0 : initial[0][source + 1],
                                                  initial[br][lane + 1], initial[cr][lane + 1], m);

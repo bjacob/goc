@@ -52,8 +52,7 @@ TEST(FloatCompare, HardwarePredicatesModifiersExecAndDenormalModes) {
               inputs(op, start, words);
               const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]};
               ASSERT_EQ(goc_test::float_compare_functions[op](
-                            flags, UINT64_C(0xffffffff00000000) | masks[mi],
-                            goc_test::float_compare_mode(m), &d, a, b),
+                            flags, masks[mi], goc_test::float_compare_mode(m), &d, a, b),
                         GOC_SUCCESS);
               for (unsigned byte = 0; byte < 4; ++byte) {
                 digest ^= (d >> (8 * byte)) & 255;
@@ -136,7 +135,7 @@ TEST(FloatCompare, ScalarOutputAliasesSourcesUnalignedAndMasks) {
           }
           uint32_t want = expected(op, m, flush, plain);
           for (uint64_t cpu = 0; cpu <= max_cpu; ++cpu)
-            for (uint64_t mask : rdna4_exec_masks())
+            for (uint32_t mask : rdna4_exec_masks())
               for (unsigned target = 0; target < 9; ++target) {
                 uint32_t words[4][35], after[4][35], outside = 0;
                 std::memcpy(words, initial, sizeof(words));
@@ -144,7 +143,7 @@ TEST(FloatCompare, ScalarOutputAliasesSourcesUnalignedAndMasks) {
                 unsigned reg = target / 2, lane = target % 2 ? 32 : 1;
                 uint32_t *d = target == 8 ? &outside : &words[reg][lane];
                 if (target != 8)
-                  after[reg][lane] = want & uint32_t(mask);
+                  after[reg][lane] = want & mask;
                 const uint32_t *a[] = {words[0] + 1, words[alias == 2 ? 0 : 1] + 1},
                                *b[] = {words[alias == 1 ? 0 : 2] + 1, words[alias == 1   ? 1
                                                                             : alias == 2 ? 2
@@ -154,7 +153,7 @@ TEST(FloatCompare, ScalarOutputAliasesSourcesUnalignedAndMasks) {
                               cpu | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), mask,
                               goc_test::float_compare_mode(m), d, a, b),
                           GOC_SUCCESS);
-                ASSERT_EQ(*d, want & uint32_t(mask))
+                ASSERT_EQ(*d, want & mask)
                     << op << "/" << m << "/" << flush << "/" << alias << "/" << cpu;
                 ASSERT_EQ(std::memcmp(words, after, sizeof(words)), 0);
               }
@@ -174,9 +173,8 @@ TEST(FloatCompare, ValidationAndCompleteHostFpState) {
   EXPECT_EQ(result, 0xdeadbeef);
   for (unsigned op = 0; op < 84; ++op) {
     uint32_t known = goc_test::float_compare_mode(op < 28 ? 63 : 15), d = 1;
-    EXPECT_EQ(goc_test::float_compare_functions[op](GOC_FP_FLUSH_INPUT_DENORMALS,
-                                                    UINT64_C(0xffffffff00000000), known, &d,
-                                                    nullptr, nullptr),
+    EXPECT_EQ(goc_test::float_compare_functions[op](GOC_FP_FLUSH_INPUT_DENORMALS, UINT32_C(0),
+                                                    known, &d, nullptr, nullptr),
               GOC_SUCCESS);
     EXPECT_EQ(d, 0u);
     for (unsigned bit = 0; bit < 32; ++bit)
@@ -229,7 +227,7 @@ TEST(FloatCompare, DppPredicatesSelectorsMasksAndAliases) {
           for (auto descriptor : goc_test::dpp_modes)
             for (auto mask :
                  (m == 0 || m == (op < 28 ? 63u : 15u) ? rdna4_exec_masks()
-                                                       : std::vector<uint64_t>{UINT32_MAX}))
+                                                       : std::vector<uint32_t>{UINT32_MAX}))
               for (unsigned shared = 0; shared < 2; ++shared)
                 for (unsigned target = 0; target < 5; ++target) {
                   uint32_t words[2][34], expected[2][34], outside = 0xdeadbeef, want = 0;
@@ -243,7 +241,7 @@ TEST(FloatCompare, DppPredicatesSelectorsMasksAndAliases) {
                   unsigned br = shared ? 0 : 1;
                   for (unsigned lane = 0; lane < 32; ++lane) {
                     int source = 0;
-                    if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source)) {
+                    if (goc_test::dpp_source(descriptor, mask, lane, source)) {
                       uint32_t w[] = {source < 0 ? 0 : words[0][source + 1], 0, words[br][lane + 1],
                                       0};
                       want |= uint32_t(goc_test::float_compare_reference(op, m, flush, w)) << lane;
@@ -275,7 +273,7 @@ TEST(FloatCompare, DppValidationAndZeroExec) {
         EXPECT_EQ(fn(0, 0, descriptor | invalid, &d, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(d, 0xdeadbeefu);
       }
-      EXPECT_EQ(fn(0, UINT64_C(0xffffffff00000000), descriptor, &d, nullptr, nullptr),
+      EXPECT_EQ(fn(0, UINT32_C(0), descriptor, &d, nullptr, nullptr),
                 op < 56 ? GOC_SUCCESS : GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(d, op < 56 ? 0u : 0xdeadbeefu);
     }

@@ -17,7 +17,7 @@ template <int Bits, bool Signed> int64_t input(uint32_t bits) {
 }
 
 template <int Bits, bool Signed>
-int mad(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
+int mad(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *c) {
   if (mode >> 32)
     return goc::execute_dpp(
@@ -28,11 +28,11 @@ int mad(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
   const uint32_t known = GOC_ALU_CLAMP | (Bits == 16 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0);
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (uint32_t(mask) == 0)
+  if (mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::integer_mad_x86_64_v3<Bits, Signed>(uint32_t(mask), mode, d[0], a[0], b[0], c[0]);
+    goc::integer_mad_x86_64_v3<Bits, Signed>(mask, mode, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -55,25 +55,25 @@ int mad(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
 
 } // namespace
 
-int goc_rdna4_v_mad_u32_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_mad_u32_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
   return mad<16, false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_mad_i32_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_mad_i32_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
   return mad<16, true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_mad_u32_u24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_mad_u32_u24(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
   return mad<24, false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_mad_i32_i24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_mad_i32_i24(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
   return mad<24, true>(flags, exec_mask, instruction_flags, d, a, b, c);

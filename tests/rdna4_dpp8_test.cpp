@@ -24,7 +24,7 @@ float number(uint32_t u) {
   return x;
 }
 
-int call(bool accumulate, uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int call(bool accumulate, uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   return accumulate ? goc_rdna4_v_fmac_f32(flags, mask, mode, d, a, b)
                     : goc_rdna4_v_fma_f32(flags, mask, mode, d, a, b, c);
@@ -99,7 +99,7 @@ TEST(Dpp8, ArithmeticModifiersMasksAndAliases) {
                           : alias == 4 ? 0
                                        : 2;
             uint32_t sel = random() & 0xffffff;
-            uint64_t mask = masks[(low + alias * 17) % masks.size()];
+            uint32_t mask = masks[(low + alias * 17) % masks.size()];
             uint64_t mode =
                 low | GOC_DPP8 | (fi ? GOC_DPP_FI : 0) | (uint64_t(sel) << GOC_DPP8_SELECT_SHIFT);
             for (unsigned lane = 0; lane < 32; ++lane) {
@@ -137,15 +137,15 @@ TEST(Dpp8, InvalidFlagsAndSemantics) {
     uint32_t *pd = d;
     for (uint64_t mode : {GOC_DPP_FI, GOC_DPP8_SELECT_MASK, GOC_DPP8 | (UINT64_C(1) << 34),
                           GOC_DPP8 | (UINT64_C(1) << 31)})
-      EXPECT_EQ(call(accumulate, 0, UINT64_MAX, mode, &pd, nullptr, nullptr, nullptr),
+      EXPECT_EQ(call(accumulate, 0, UINT32_MAX, mode, &pd, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(call(accumulate, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX,
+    EXPECT_EQ(call(accumulate, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
                    GOC_DPP8, &pd, nullptr, nullptr, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(call(accumulate, UINT64_C(1) << 63, 0, GOC_DPP8, &pd, nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
     if (accumulate) {
-      EXPECT_EQ(call(true, 0, UINT64_MAX, GOC_DPP8 | GOC_ALU_NEG_C, &pd, nullptr, nullptr, nullptr),
+      EXPECT_EQ(call(true, 0, UINT32_MAX, GOC_DPP8 | GOC_ALU_NEG_C, &pd, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
     }
     for (auto word : d)

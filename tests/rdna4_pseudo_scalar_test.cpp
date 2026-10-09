@@ -44,7 +44,7 @@ TEST(PseudoScalar, ExecIsIgnoredAndScalarStorageMayAlias) {
                                                                            m]];
         for (unsigned sample : {0u, 1u, 2u, 9u, 16u, 20u, 42u})
           for (uint64_t cpu = 0; cpu <= max_cpu; ++cpu)
-            for (uint64_t mask : rdna4_exec_masks()) {
+            for (uint32_t mask : rdna4_exec_masks()) {
               uint32_t words[] = {
                   0x12345678,
                   goc_test::pseudo_scalar_input(op & 1, goc_test::pseudo_scalar_samples[sample]),

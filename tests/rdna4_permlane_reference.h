@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 namespace goc_test {
-inline int permlane_call(unsigned op, uint64_t flags, uint64_t mask, uint64_t mode,
+inline int permlane_call(unsigned op, uint64_t flags, uint32_t mask, uint64_t mode,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t lo, uint32_t hi) {
   switch (op) {

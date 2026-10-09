@@ -75,7 +75,7 @@ TEST(PackedMad, AllMasksModifiersAndWholeRegisterAliases) {
   for (int sign = 0; sign < 2; ++sign)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int mode = 0; mode < 128; ++mode)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           // Restricted growth indices enumerate all 15 partitions of A/B/C/D.
           for (int bi = 0; bi <= 1; ++bi)
             for (int ci = 0; ci <= bi + 1; ++ci)
@@ -150,8 +150,7 @@ TEST(PackedMad, ValidationAndFloatingEnvironment) {
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(fn(UINT64_C(1) << 63, 0, 0, nullptr, nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(0, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr, nullptr),
-              GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
     fenv_t environment;
     ASSERT_EQ(std::fegetenv(&environment), 0);
     std::fesetround(FE_UPWARD);

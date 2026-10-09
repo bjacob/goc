@@ -52,7 +52,7 @@ TEST(Permlane, MasksAliasingAndSelectors) {
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (unsigned op = 0; op < 4; ++op)
         for (unsigned mode = 0; mode < 4; ++mode)
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (unsigned alias = 0; alias < 4; ++alias) {
               uint32_t storage[3][34], before[3][34], want[32];
               for (auto &reg : storage)
@@ -64,7 +64,7 @@ TEST(Permlane, MasksAliasingAndSelectors) {
               uint32_t lo = rng(), hi = rng();
               for (unsigned lane = 0; lane < 32; ++lane)
                 want[lane] =
-                    goc_test::permlane_reference(op, uint32_t(mask), mode, lane, before[0] + 1,
+                    goc_test::permlane_reference(op, mask, mode, lane, before[0] + 1,
                                                  before[bi] + 1, before[dest][lane + 1], lo, hi);
               uint32_t *pd = storage[dest] + 1;
               const uint32_t *pa = storage[0] + 1, *pb = storage[bi] + 1;
@@ -96,7 +96,7 @@ TEST(Permlane, FlagsAndHostState) {
           ASSERT_EQ(goc_test::permlane_call(op,
                                             cpu | GOC_FP_FLUSH_INPUT_DENORMALS |
                                                 GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP16_OVFL,
-                                            UINT64_MAX, mode, &pd, &pa, &pa, 0, 0),
+                                            UINT32_MAX, mode, &pd, &pa, &pa, 0, 0),
                     GOC_SUCCESS);
         d[0] = 123;
         for (unsigned bit = 2; bit < 32; ++bit)

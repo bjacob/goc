@@ -51,7 +51,7 @@ TEST(DppUnary, AllModifiersMasksAliasesAndSpecialValues) {
     for (unsigned op = 0; op < 11; ++op)
       for (unsigned variant = 0; variant < 32; ++variant)
         for (uint64_t descriptor : goc_test::dpp_modes)
-          for (uint64_t mask : masks)
+          for (uint32_t mask : masks)
             for (bool alias : {false, true}) {
               SCOPED_TRACE(::testing::Message() << cpu << '/' << op << '/' << variant << '/'
                                                 << descriptor << '/' << mask << '/' << alias);
@@ -67,7 +67,7 @@ TEST(DppUnary, AllModifiersMasksAliasesAndSpecialValues) {
                         GOC_SUCCESS);
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source;
-                if (!goc_test::dpp_source(descriptor, uint32_t(mask), lane, source)) {
+                if (!goc_test::dpp_source(descriptor, mask, lane, source)) {
                   ASSERT_EQ(pd[lane], alias ? before[lane] : 0xdeadbeefu);
                   continue;
                 }
@@ -97,7 +97,7 @@ TEST(DppUnary, ValidationBeforeOperandAccess) {
                           GOC_DPP16 | (UINT64_C(1) << 63),
                           GOC_DPP8 | GOC_ALU_NEG_B};
   for (auto fn : goc_test::unary_functions)
-    for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
       for (uint64_t mode : bad) {
         EXPECT_EQ(fn(0, mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
       }

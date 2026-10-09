@@ -29,17 +29,17 @@ inline uint32_t bit_count_reference(int op, uint32_t a, uint32_t b, unsigned lan
   return b + count;
 }
 
-inline int count_leading(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+inline int count_leading(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *) {
   return goc_rdna4_v_clz_i32_u32(flags, mask, mode, d, a);
 }
 
-inline int count_trailing(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+inline int count_trailing(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *) {
   return goc_rdna4_v_ctz_i32_b32(flags, mask, mode, d, a);
 }
 
-inline int count_sign(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+inline int count_sign(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                       const uint32_t *const *a, const uint32_t *const *) {
   return goc_rdna4_v_cls_i32(flags, mask, mode, d, a);
 }

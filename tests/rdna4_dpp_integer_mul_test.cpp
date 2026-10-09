@@ -66,7 +66,7 @@ TEST(DppIntegerMul, MasksAliasesAndRandomWords) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 3; op < 7; ++op)
       for (uint64_t mode : modes(op))
-        for (uint64_t mask : masks)
+        for (uint32_t mask : masks)
           for (const auto &alias : aliases)
             for (unsigned batch = 0; batch < 8; ++batch) {
               SCOPED_TRACE(::testing::Message()
@@ -93,7 +93,7 @@ TEST(DppIntegerMul, MasksAliasesAndRandomWords) {
                   uint32_t want = before[reg][index];
                   int source;
                   if (reg == alias[0] && index > 0 && index < 33 &&
-                      goc_test::dpp_source(mode, uint32_t(mask), index - 1, source))
+                      goc_test::dpp_source(mode, mask, index - 1, source))
                     want = goc_test::integer_mul_reference(
                         op, source < 0 ? 0 : before[alias[1]][source + 1], before[alias[2]][index],
                         mode & GOC_ALU_CLAMP);
@@ -114,7 +114,7 @@ TEST(DppIntegerMul, ValidationAndHostFpState) {
   for (unsigned op = 3; op < 7; ++op)
     for (uint64_t mode : modes(op)) {
       auto fn = goc_test::integer_mul_functions[op];
-      for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         if (!goc_test::integer_mul_can_clamp(op)) {
           EXPECT_EQ(fn(0, mask, mode | GOC_ALU_CLAMP, nullptr, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);

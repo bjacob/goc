@@ -71,7 +71,7 @@ TEST(ByteConversion, EveryModifierMasksAliasesAndUnalignedStorage) {
   for (unsigned byte = 0; byte < 4; ++byte)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 8; ++variant)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (bool alias : {false, true}) {
             uint32_t storage[2][34], original[2][34];
             for (unsigned reg = 0; reg < 2; ++reg)
@@ -137,7 +137,7 @@ TEST(ByteConversion, ValidationAndSemanticFallback) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(fn(cpu, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu, UINT32_C(0), 0, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned semantics = 0; semantics < 4; ++semantics) {
         EXPECT_EQ(fn(cpu | (uint64_t(semantics) << 16) | GOC_FP16_OVFL, UINT32_MAX, 0, d, a),
                   GOC_SUCCESS);
@@ -170,7 +170,7 @@ TEST(ByteConversion, DppModifiersMasksAliasesAndGuards) {
                   uint32_t expected = original[reg][word];
                   int source = 0;
                   if (reg == unsigned(alias ? 0 : 1) && word > 0 && word <= 32 &&
-                      goc_test::dpp_source(mode, uint32_t(mask), word - 1, source)) {
+                      goc_test::dpp_source(mode, mask, word - 1, source)) {
                     auto raw = source < 0 ? 0 : original[0][source + 1];
                     expected = op < 4 ? goc_test::byte_conversion_reference(op, raw, uint32_t(mode))
                                       : goc_test::nibble_offset_reference(raw, uint32_t(mode));

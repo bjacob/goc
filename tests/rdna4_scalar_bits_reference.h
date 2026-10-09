@@ -16,7 +16,7 @@ inline const char *const scalar_bits_names[] = {
     "s_lshl_b32",    "s_lshl_b64",      "s_lshr_b32",      "s_lshr_b64",      "s_ashr_i32",
     "s_ashr_i64",    "s_lshl1_add_u32", "s_lshl2_add_u32", "s_lshl3_add_u32", "s_lshl4_add_u32"};
 
-inline int scalar_bits_call(unsigned op, uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *d,
+inline int scalar_bits_call(unsigned op, uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *d,
                             uint64_t *d64, uint64_t a, uint64_t b, uint32_t *scc) {
   switch (op) {
   case 0:

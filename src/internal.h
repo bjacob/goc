@@ -7,8 +7,12 @@
 
 #include <cstring>
 #include <stdint.h>
+#include <type_traits>
 
 namespace goc {
+
+// EXEC has one bit per lane in the instruction wave.
+template <int Lanes> using ExecMask = std::conditional_t<Lanes == 32, uint32_t, uint64_t>;
 
 inline float as_float(uint32_t v) {
   float f;

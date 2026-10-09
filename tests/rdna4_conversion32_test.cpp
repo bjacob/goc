@@ -115,7 +115,7 @@ TEST(Conversion32, MasksAliasesAndUnalignedStorage) {
   for (int op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < goc_test::conversion32_modes(op); ++variant)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (bool alias : {false, true}) {
             uint32_t storage[2][35], original[2][35];
             for (auto &reg : storage)
@@ -161,7 +161,7 @@ TEST(Conversion32, ValidationAndSemanticFallback) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(functions[op](cpu, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 1; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16), 0, input));
     }
@@ -192,7 +192,7 @@ TEST(Conversion32, DppModifiersMasksAliasesAndRandomWords) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t descriptor : goc_test::dpp_modes)
         for (unsigned variant = 0; variant < goc_test::conversion32_modes(op); ++variant)
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (bool alias : {false, true}) {
               uint32_t storage[2][35], original[2][35];
               for (auto &reg : storage)
@@ -209,7 +209,7 @@ TEST(Conversion32, DppModifiersMasksAliasesAndRandomWords) {
                   uint32_t expected = original[reg][word];
                   int source;
                   if (reg == (alias ? 0 : 1) && word >= 1 && word <= 32 &&
-                      goc_test::dpp_source(descriptor, uint32_t(mask), word - 1, source))
+                      goc_test::dpp_source(descriptor, mask, word - 1, source))
                     expected = goc_test::conversion32_reference(
                         op, source < 0 ? 0 : original[0][source + 1], mode);
                   ASSERT_EQ(storage[reg][word], expected);

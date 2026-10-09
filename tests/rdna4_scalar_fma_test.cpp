@@ -20,7 +20,7 @@ TEST(ScalarFma, HardwareEveryFpStateAndLiteral) {
           uint32_t w[3];
           goc_test::scalar_fma_inputs(i, k == 1, w);
           uint32_t d = w[2];
-          ASSERT_EQ(goc_test::scalar_fma_call(k, cpu | goc_test::scalar_fp_flags(state), UINT64_MAX,
+          ASSERT_EQ(goc_test::scalar_fma_call(k, cpu | goc_test::scalar_fp_flags(state), UINT32_MAX,
                                               0, &d, w[0], w[1]),
                     GOC_SUCCESS);
           hash = (hash ^ goc_test::scalar_fp_canonical(d, k == 1)) * UINT64_C(1099511628211);
@@ -38,9 +38,9 @@ TEST(ScalarFma, ExecAndAllScalarAliases) {
         auto flags = goc_test::scalar_fp_flags(state);
         for (unsigned alias = 0; alias < 3; ++alias) {
           uint32_t expected = w[alias];
-          ASSERT_EQ(goc_test::scalar_fma_call(k, flags, UINT64_MAX, 0, &expected, w[0], w[1]),
+          ASSERT_EQ(goc_test::scalar_fma_call(k, flags, UINT32_MAX, 0, &expected, w[0], w[1]),
                     GOC_SUCCESS);
-          for (uint64_t mask : rdna4_exec_masks()) {
+          for (uint32_t mask : rdna4_exec_masks()) {
             uint32_t words[] = {123, w[0], w[1], w[2], 456};
             ASSERT_EQ(
                 goc_test::scalar_fma_call(k, flags, mask, 0, words + 1 + alias, words[1], words[2]),

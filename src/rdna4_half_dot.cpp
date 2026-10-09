@@ -25,7 +25,7 @@ template <bool Bf16> float input(uint16_t bits, uint32_t mode) {
 }
 
 template <bool Bf16>
-int dot(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
+int dot(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *c) {
   if (mode >> 32)
     return goc::execute_dpp(flags, mask, mode, a,
@@ -35,12 +35,11 @@ int dot(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
   // Six ABS/NEG bits, plus C and D half selectors.
   if (int error = goc::validate(flags, mode & ~(UINT32_C(63) | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D)))
     return error;
-  if (uint32_t(mask) == 0)
+  if (mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::half_dot_x86_64_v3(Bf16, bool(flags & GOC_FP16_OVFL), uint32_t(mask), mode, d[0], a[0],
-                            b[0], c[0]);
+    goc::half_dot_x86_64_v3(Bf16, bool(flags & GOC_FP16_OVFL), mask, mode, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -69,13 +68,13 @@ int dot(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
 
 } // namespace
 
-int goc_rdna4_v_dot2_f16_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_dot2_f16_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
   return dot<false>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_dot2_bf16_bf16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_dot2_bf16_bf16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b,
                                const uint32_t *const *c) {
   return dot<true>(flags, mask, mode, d, a, b, c);

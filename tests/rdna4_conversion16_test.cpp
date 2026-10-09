@@ -121,7 +121,7 @@ TEST(Conversion16, EveryModifierMasksAliasesAndUnalignedStorage) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool sat : {false, true})
         for (unsigned variant = 0; variant < goc_test::conversion16_modes(op); ++variant)
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (bool alias : {false, true}) {
               uint32_t storage[2][34], original[2][34];
               for (int reg = 0; reg < 2; ++reg)
@@ -171,7 +171,7 @@ TEST(Conversion16, ValidationAndSemanticFallback) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(functions[op](cpu, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 1; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16), 0, input));
     }
@@ -203,7 +203,7 @@ TEST(Conversion16, DppMasksAliasesAndUnalignedStorage) {
         for (bool sat : {false, true})
           for (unsigned variant :
                {0u, goc_test::conversion16_modes(op) / 2, goc_test::conversion16_modes(op) - 1})
-            for (uint64_t mask : rdna4_exec_masks())
+            for (uint32_t mask : rdna4_exec_masks())
               for (bool alias : {false, true}) {
                 uint32_t storage[2][34], original[2][34];
                 for (int reg = 0; reg < 2; ++reg)
@@ -220,7 +220,7 @@ TEST(Conversion16, DppMasksAliasesAndUnalignedStorage) {
                     uint32_t expected = original[reg][word];
                     int source;
                     if (reg == (alias ? 0 : 1) && word > 0 && word <= 32 &&
-                        goc_test::dpp_source(descriptor, uint32_t(mask), word - 1, source)) {
+                        goc_test::dpp_source(descriptor, mask, word - 1, source)) {
                       expected = goc_test::conversion16_reference(
                           op, source < 0 ? 0u : original[0][source + 1], expected, mode, sat);
                       ASSERT_TRUE(

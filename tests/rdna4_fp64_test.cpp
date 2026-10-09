@@ -24,7 +24,7 @@ double number(uint64_t value) {
   return result;
 }
 
-int call(int op, uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int call(int op, uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (op == 0)
     return goc_rdna4_v_add_f64(flags, mask, mode, d, a, b);
@@ -81,7 +81,7 @@ TEST(Fp64, AllModifiersMasksAndCrossHalfAliases) {
         expected[1][lane] = uint32_t(bits(want) >> 32);
       }
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (const auto &alias : aliases) {
             SCOPED_TRACE(::testing::Message() << op << "/" << mode << "/" << cpu << "/" << mask
                                               << "/" << alias[0] << "/" << alias[1]);
@@ -171,8 +171,7 @@ TEST(Fp64, Validation) {
     EXPECT_EQ(
         call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, d, a, a, a),
         GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, 0xffffffff00000000, 0, d, a, a, a),
-              GOC_SUCCESS);
+    EXPECT_EQ(call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_C(0), 0, d, a, a, a), GOC_SUCCESS);
     for (auto &reg : output)
       for (uint32_t value : reg)
         EXPECT_EQ(value, 0xdeadbeef);

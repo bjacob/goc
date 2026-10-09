@@ -33,7 +33,7 @@ TEST(IntegerCompare, DppPredicatesSelectorsMasksAndAliases) {
                 unsigned br = shared ? 0 : 1;
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source)) {
+                  if (goc_test::dpp_source(descriptor, mask, lane, source)) {
                     uint32_t w[] = {source < 0 ? 0 : words[0][source + 1], 0, words[br][lane + 1],
                                     0};
                     want |= uint32_t(goc_test::integer_compare_reference(op, m, w)) << lane;
@@ -65,7 +65,7 @@ TEST(IntegerCompare, DppValidationAndZeroExec) {
         EXPECT_EQ(fn(0, 0, descriptor | invalid, &d, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(d, 0xdeadbeefu);
       }
-      EXPECT_EQ(fn(0, UINT64_C(0xffffffff00000000), descriptor, &d, nullptr, nullptr),
+      EXPECT_EQ(fn(0, UINT32_C(0), descriptor, &d, nullptr, nullptr),
                 op < 48 ? GOC_SUCCESS : GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(d, op < 48 ? 0u : 0xdeadbeefu);
     }
@@ -131,8 +131,7 @@ TEST(IntegerCompare, HardwarePredicatesWidthsModifiersAndExec) {
             }
             const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]};
             ASSERT_EQ(goc_test::integer_compare_functions[op](
-                          cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                          UINT64_C(0xffffffff00000000) | masks[mi],
+                          cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, masks[mi],
                           goc_test::integer_compare_mode(m), &d, a, b),
                       GOC_SUCCESS);
             for (unsigned byte = 0; byte < 4; ++byte) {
@@ -196,7 +195,7 @@ TEST(IntegerCompare, ScalarOutputAliasesSourcesUnalignedAndMasks) {
           expected |= uint32_t(goc_test::integer_compare_reference(op, m, w)) << lane;
         }
         for (uint64_t cpu = 0; cpu <= max_cpu; ++cpu)
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (unsigned target = 0; target < 9; ++target) {
               uint32_t words[4][35], outside = 0xdeadbeef;
               std::memcpy(words, initial, sizeof(words));
@@ -210,13 +209,11 @@ TEST(IntegerCompare, ScalarOutputAliasesSourcesUnalignedAndMasks) {
               ASSERT_EQ(goc_test::integer_compare_functions[op](
                             cpu, mask, goc_test::integer_compare_mode(m), d, a, b),
                         GOC_SUCCESS);
-              ASSERT_EQ(*d, expected & uint32_t(mask))
-                  << op << "/" << m << "/" << cpu << "/" << alias;
+              ASSERT_EQ(*d, expected & mask) << op << "/" << m << "/" << cpu << "/" << alias;
               for (unsigned j = 0; j < 4; ++j)
                 for (unsigned l = 0; l < 35; ++l)
-                  ASSERT_EQ(words[j][l], target != 8 && j == reg && l == lane
-                                             ? expected & uint32_t(mask)
-                                             : initial[j][l]);
+                  ASSERT_EQ(words[j][l],
+                            target != 8 && j == reg && l == lane ? expected & mask : initial[j][l]);
             }
       }
 }
@@ -230,8 +227,7 @@ TEST(IntegerCompare, ValidationAndHostFpState) {
   const uint64_t max_cpu = goc_init_cpu_flags();
   for (unsigned op = 0; op < 72; ++op) {
     uint32_t known = goc_test::integer_compare_mode(op < 24 ? 3 : 0), d = 1;
-    EXPECT_EQ(goc_test::integer_compare_functions[op](0, UINT64_C(0xffffffff00000000), known, &d,
-                                                      nullptr, nullptr),
+    EXPECT_EQ(goc_test::integer_compare_functions[op](0, UINT32_C(0), known, &d, nullptr, nullptr),
               GOC_SUCCESS);
     EXPECT_EQ(d, 0u);
     for (unsigned bit = 0; bit < 32; ++bit)

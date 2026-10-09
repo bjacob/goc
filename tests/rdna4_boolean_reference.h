@@ -46,12 +46,12 @@ inline uint32_t boolean_reference(int op, uint32_t a, uint32_t b, uint32_t d, ui
   return result;
 }
 
-inline int boolean_not32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+inline int boolean_not32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *) {
   return goc_rdna4_v_not_b32(flags, mask, mode, d, a);
 }
 
-inline int boolean_not16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+inline int boolean_not16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *) {
   return goc_rdna4_v_not_b16(flags, mask, mode, d, a);
 }

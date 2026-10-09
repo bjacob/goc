@@ -210,7 +210,7 @@ TEST(Sad, MasksAndEveryDestinationSourceAlias) {
               map[slot] = target;
               aliases.push_back(map);
             }
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (const auto &map : aliases) {
               uint32_t words[12][32], expected[12][32];
               for (int reg = 0; reg < 12; ++reg) {
@@ -249,7 +249,7 @@ TEST(Sad, ValidationAndHostFpState) {
         const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2]},
                        *c[] = {words[3], words[4], words[5], words[6]};
         uint32_t *d[] = {words[7], words[8], words[9], words[10]};
-        for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+        for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
           for (int bit = 0; bit < 32; ++bit)
             if ((uint32_t(1) << bit) != GOC_ALU_CLAMP) {
               EXPECT_EQ(functions[op](cpu, mask, uint32_t(1) << bit, d, a, b, c),
@@ -290,7 +290,7 @@ TEST(Sad, DppClampMasksAliasesAndGuards) {
                   uint64_t mode = descriptor | (clamp ? GOC_ALU_CLAMP : 0);
                   for (unsigned lane = 0; lane < 32; ++lane) {
                     int source = 0;
-                    if (goc_test::dpp_source(mode, uint32_t(mask), lane, source)) {
+                    if (goc_test::dpp_source(mode, mask, lane, source)) {
                       uint32_t accumulator = storage[creg][lane + 1];
                       expected[dreg][lane + 1] =
                           goc_test::sad_reference(op, source < 0 ? 0 : storage[0][source + 1], 0,

@@ -9,11 +9,11 @@
 namespace {
 
 template <bool Signed>
-int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d, uint32_t *carry,
+int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, uint32_t *carry,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (int error = goc::validate(flags, mode & ~GOC_ALU_CLAMP, true))
     return error;
-  uint32_t mask = uint32_t(exec_mask);
+  uint32_t mask = exec_mask;
   if (!mask) {
     *carry = 0;
     return GOC_SUCCESS;
@@ -67,7 +67,7 @@ int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d, u
 
 } // namespace
 
-int goc_rdna4_v_mad_co_u64_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_mad_co_u64_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
@@ -75,7 +75,7 @@ int goc_rdna4_v_mad_co_u64_u32(uint64_t flags, uint64_t exec_mask, uint64_t inst
   return run<false>(flags, exec_mask, instruction_flags, d, carry, a, b, c);
 }
 
-int goc_rdna4_v_mad_co_i64_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_mad_co_i64_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)

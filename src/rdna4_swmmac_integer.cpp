@@ -10,13 +10,13 @@
 namespace {
 
 template <unsigned Bits, unsigned K>
-int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
+int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *index) {
   const uint32_t known = GOC_WMMA_SIGNED_A | GOC_WMMA_SIGNED_B | GOC_WMMA_CLAMP |
                          (K == 32 ? GOC_SWMMAC_INDEX_KEY_1 : 0);
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;
-  uint32_t mask = uint32_t(exec_mask);
+  uint32_t mask = exec_mask;
   if (!mask)
     return GOC_SUCCESS;
   goc::SwmmacIntegerInputs input;
@@ -57,7 +57,7 @@ int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_swmmac_i32_16x16x32_iu8(uint64_t flags, uint64_t exec_mask,
+int goc_rdna4_v_swmmac_i32_16x16x32_iu8(uint64_t flags, uint32_t exec_mask,
                                         uint64_t instruction_flags, uint32_t *const *d,
                                         const uint32_t *const *a, const uint32_t *const *b,
                                         const uint32_t *const *index) {
@@ -66,7 +66,7 @@ int goc_rdna4_v_swmmac_i32_16x16x32_iu8(uint64_t flags, uint64_t exec_mask,
   return run<8, 32>(flags, exec_mask, instruction_flags, d, a, b, index);
 }
 
-int goc_rdna4_v_swmmac_i32_16x16x32_iu4(uint64_t flags, uint64_t exec_mask,
+int goc_rdna4_v_swmmac_i32_16x16x32_iu4(uint64_t flags, uint32_t exec_mask,
                                         uint64_t instruction_flags, uint32_t *const *d,
                                         const uint32_t *const *a, const uint32_t *const *b,
                                         const uint32_t *const *index) {
@@ -75,7 +75,7 @@ int goc_rdna4_v_swmmac_i32_16x16x32_iu4(uint64_t flags, uint64_t exec_mask,
   return run<4, 32>(flags, exec_mask, instruction_flags, d, a, b, index);
 }
 
-int goc_rdna4_v_swmmac_i32_16x16x64_iu4(uint64_t flags, uint64_t exec_mask,
+int goc_rdna4_v_swmmac_i32_16x16x64_iu4(uint64_t flags, uint32_t exec_mask,
                                         uint64_t instruction_flags, uint32_t *const *d,
                                         const uint32_t *const *a, const uint32_t *const *b,
                                         const uint32_t *const *index) {

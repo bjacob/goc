@@ -59,7 +59,7 @@ constexpr std::array<uint64_t, 2370> trig_preop_table = make_table();
 
 } // namespace goc
 
-int goc_rdna4_v_trig_preop_f64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+int goc_rdna4_v_trig_preop_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b) {
   if (mode >> 32)
@@ -68,17 +68,17 @@ int goc_rdna4_v_trig_preop_f64(uint64_t flags, uint64_t exec_mask, uint64_t mode
       GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_2 | GOC_ALU_OMOD_4 | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;
-  if (!uint32_t(exec_mask))
+  if (!exec_mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::trig_preop_x86_64_v4(uint32_t(exec_mask), mode, d, a[1], b[0]);
+    goc::trig_preop_x86_64_v4(exec_mask, mode, d, a[1], b[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::trig_preop_x86_64_v3(uint32_t(exec_mask), mode, d, a[1], b[0]);
+    goc::trig_preop_x86_64_v3(exec_mask, mode, d, a[1], b[0]);
     return GOC_SUCCESS;
   }
 #endif

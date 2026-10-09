@@ -7,10 +7,9 @@
 #include <vector>
 
 // Wave32 masks covering every single active/inactive lane, SIMD chunk boundaries,
-// empty/full/alternating masks, ignored high bits, and deterministic random masks.
-inline std::vector<uint64_t> rdna4_exec_masks() {
-  std::vector<uint64_t> masks = {0, UINT32_MAX, UINT64_C(0xffffffff00000000), UINT64_C(0x55555555),
-                                 UINT64_C(0xaaaaaaaa)};
+// empty/full/alternating masks, deterministic random masks.
+inline std::vector<uint32_t> rdna4_exec_masks() {
+  std::vector<uint32_t> masks = {0, UINT32_MAX, UINT32_C(0x55555555), UINT32_C(0xaaaaaaaa)};
   for (int lane = 0; lane < 32; ++lane) {
     uint32_t bit = UINT32_C(1) << lane;
     masks.push_back(bit);
@@ -18,9 +17,9 @@ inline std::vector<uint64_t> rdna4_exec_masks() {
   }
   std::mt19937 random(12345);
   for (int i = 0; i < 16; ++i) {
-    uint64_t high = random();
+    random(); // Preserve the existing deterministic low-word sequence.
     uint32_t low = random();
-    masks.push_back((high << 32) | low);
+    masks.push_back(low);
   }
   return masks;
 }

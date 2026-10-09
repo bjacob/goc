@@ -30,7 +30,7 @@ inline const char *const dpp_arithmetic_names[] = {"v_add_f32",
                                                    "v_maximumminimum_f32",
                                                    "v_med3_num_f32"};
 
-inline int dpp_arithmetic_call(unsigned op, uint64_t flags, uint64_t mask, uint64_t mode,
+inline int dpp_arithmetic_call(unsigned op, uint64_t flags, uint32_t mask, uint64_t mode,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c) {
   using Binary = decltype(&goc_rdna4_v_add_f32);

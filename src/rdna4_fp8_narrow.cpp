@@ -10,7 +10,7 @@
 namespace {
 
 template <bool Bf8, bool Stochastic>
-int convert(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return goc::execute_dpp(
@@ -22,18 +22,18 @@ int convert(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
       (Stochastic ? GOC_CVT_BYTE_3 : GOC_ALU_ABS_B | GOC_ALU_NEG_B | GOC_ALU_HIGH_D);
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (!uint32_t(mask))
+  if (!mask)
     return GOC_SUCCESS;
   bool saturate = flags & GOC_FP16_OVFL;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::fp8_narrow_x86_64_v4<Bf8, Stochastic>(uint32_t(mask), mode, saturate, d[0], a[0], b[0]);
+    goc::fp8_narrow_x86_64_v4<Bf8, Stochastic>(mask, mode, saturate, d[0], a[0], b[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::fp8_narrow_x86_64_v3<Bf8, Stochastic>(uint32_t(mask), mode, saturate, d[0], a[0], b[0]);
+    goc::fp8_narrow_x86_64_v3<Bf8, Stochastic>(mask, mode, saturate, d[0], a[0], b[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -60,22 +60,22 @@ int convert(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_cvt_pk_fp8_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_cvt_pk_fp8_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b) {
   return convert<false, false>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_cvt_pk_bf8_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_cvt_pk_bf8_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b) {
   return convert<true, false>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_cvt_sr_fp8_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_cvt_sr_fp8_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b) {
   return convert<false, true>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_cvt_sr_bf8_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_cvt_sr_bf8_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b) {
   return convert<true, true>(flags, mask, mode, d, a, b);
 }

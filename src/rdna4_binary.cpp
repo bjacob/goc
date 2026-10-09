@@ -12,7 +12,7 @@
 namespace {
 
 template <goc::Binary Op>
-int binary(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int binary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
            const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32) {
     return goc::execute_dpp(flags, mask, mode, a,
@@ -25,11 +25,11 @@ int binary(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (uint32_t(mask) == 0)
+  if (mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::binary_x86_64_v3(Op, uint32_t(mask), mode, d[0], a[0], b[0]);
+    goc::binary_x86_64_v3(Op, mask, mode, d[0], a[0], b[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -65,47 +65,47 @@ int binary(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_add_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_add_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
   return binary<goc::Binary::Add>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_sub_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_sub_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
   return binary<goc::Binary::Sub>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_subrev_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_subrev_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b) {
   return binary<goc::Binary::Subrev>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_mul_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_mul_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
   return binary<goc::Binary::Mul>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_min_num_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_min_num_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   return binary<goc::Binary::MinNum>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_max_num_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_max_num_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   return binary<goc::Binary::MaxNum>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_minimum_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_minimum_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   return binary<goc::Binary::Minimum>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_maximum_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_maximum_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   return binary<goc::Binary::Maximum>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_mul_dx9_zero_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_mul_dx9_zero_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                                  const uint32_t *const *a, const uint32_t *const *b) {
   return binary<goc::Binary::MulDx9Zero>(flags, mask, mode, d, a, b);
 }

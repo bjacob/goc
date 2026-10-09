@@ -161,7 +161,7 @@ TEST(Conversion64, MasksCrossHalfAliasesAndUnalignedStorage) {
   for (int op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < goc_test::conversion64_modes(op); ++variant)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (const auto &layout : layouts) {
             uint32_t storage[4][34], expected[4][34];
             for (int reg = 0; reg < 4; ++reg)
@@ -229,7 +229,7 @@ TEST(Conversion64, ValidationAndSemanticFallback) {
       for (auto &reg : output)
         for (auto word : reg)
           EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(functions[op](cpu, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 1; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16), 0, input));
     }

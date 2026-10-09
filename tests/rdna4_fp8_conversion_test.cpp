@@ -100,7 +100,7 @@ TEST(Fp8Conversion, EverySelectorMaskAndDestinationAliasLayout) {
   for (unsigned op = 0; op < 4; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned select = 0; select < (op >= 2 ? 2u : 4u); ++select)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (unsigned low = 0; low < 3; ++low)
             for (unsigned high = 0; high < (op >= 2 ? 3u : 1u); ++high) {
               uint32_t storage[3][34], expected[3][34];
@@ -173,7 +173,7 @@ TEST(Fp8Conversion, ValidationAndSemanticFallback) {
       for (auto &reg : output)
         for (auto word : reg)
           EXPECT_EQ(word, 0xdeadbeefu);
-      EXPECT_EQ(functions[op](cpu, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 0; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16) | GOC_FP16_OVFL, 0, input));
     }
@@ -200,7 +200,7 @@ TEST(Fp8Conversion, DppSelectorsMasksAliasesAndGuards) {
                   uint32_t expected = original[reg][word];
                   int source = 0;
                   if (reg == unsigned(alias ? 0 : 1) && word > 0 && word <= 32 &&
-                      goc_test::dpp_source(mode, uint32_t(mask), word - 1, source)) {
+                      goc_test::dpp_source(mode, mask, word - 1, source)) {
                     uint32_t raw = source < 0 ? 0 : original[0][source + 1];
                     expected = goc_test::fp8_conversion_reference(op, uint8_t(raw >> (select * 8)));
                   }

@@ -21,7 +21,7 @@ template <bool Unsigned> uint32_t narrow(uint32_t raw) {
 }
 
 template <bool Unsigned, bool Packed>
-int convert(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return goc::execute_dpp(
@@ -30,11 +30,11 @@ int convert(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
         });
   if (int error = goc::validate(flags, mode & ~(Packed ? 0 : GOC_ALU_HIGH_A)))
     return error;
-  if (!uint32_t(mask))
+  if (!mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::integer_conversion_x86_64_v4<Unsigned, Packed>(uint32_t(mask), mode, d[0], a[0],
+    goc::integer_conversion_x86_64_v4<Unsigned, Packed>(mask, mode, d[0], a[0],
                                                         Packed ? b[0] : nullptr);
     return GOC_SUCCESS;
   }
@@ -42,7 +42,7 @@ int convert(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
 #if defined(GOC_HAVE_X86_64_V3)
   if constexpr (Packed) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::integer_conversion_x86_64_v3<Unsigned>(uint32_t(mask), d[0], a[0], b[0]);
+      goc::integer_conversion_x86_64_v3<Unsigned>(mask, d[0], a[0], b[0]);
       return GOC_SUCCESS;
     }
   }
@@ -64,23 +64,23 @@ int convert(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_cvt_i32_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_cvt_i32_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
   return convert<false, false>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
-int goc_rdna4_v_cvt_u32_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_cvt_u32_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
   return convert<true, false>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
-int goc_rdna4_v_cvt_pk_i16_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_cvt_pk_i16_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b) {
   return convert<false, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_cvt_pk_u16_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_cvt_pk_u16_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b) {
   return convert<true, true>(flags, exec_mask, instruction_flags, d, a, b);

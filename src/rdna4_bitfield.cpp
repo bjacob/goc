@@ -57,7 +57,7 @@ template <goc::Bitfield Op> uint32_t evaluate(uint32_t a, uint32_t b, uint32_t c
 }
 
 template <goc::Bitfield Op>
-int bitfield(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int bitfield(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
              const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (mode >> 32)
     return goc::execute_dpp(
@@ -67,7 +67,7 @@ int bitfield(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
 
   if (int error = goc::validate(flags, mode))
     return error;
-  if (!uint32_t(mask))
+  if (!mask)
     return GOC_SUCCESS;
   const uint32_t *bp = nullptr, *cp = nullptr;
   if constexpr (Op != goc::Bitfield::Reverse)
@@ -76,7 +76,7 @@ int bitfield(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
     cp = c[0];
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::bitfield_x86_64_v4<Op>(uint32_t(mask), d[0], a[0], bp, cp);
+    goc::bitfield_x86_64_v4<Op>(mask, d[0], a[0], bp, cp);
     return GOC_SUCCESS;
   }
 #endif
@@ -84,7 +84,7 @@ int bitfield(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
   // BFI's AVX2 candidate provided no substantial gain over baseline.
   if constexpr (Op != goc::Bitfield::Insert) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::bitfield_x86_64_v3<Op>(uint32_t(mask), d[0], a[0], bp, cp);
+      goc::bitfield_x86_64_v3<Op>(mask, d[0], a[0], bp, cp);
       return GOC_SUCCESS;
     }
   }
@@ -110,48 +110,48 @@ int bitfield(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_bfe_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_bfe_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   return bitfield<goc::Bitfield::ExtractUnsigned>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_bfe_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_bfe_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   return bitfield<goc::Bitfield::ExtractSigned>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_bfi_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_bfi_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   return bitfield<goc::Bitfield::Insert>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_bfm_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_bfm_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return bitfield<goc::Bitfield::Mask>(flags, exec_mask, instruction_flags, d, a, b, nullptr);
 }
 
-int goc_rdna4_v_bfrev_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_bfrev_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a) {
   return bitfield<goc::Bitfield::Reverse>(flags, exec_mask, instruction_flags, d, a, nullptr,
                                           nullptr);
 }
 
-int goc_rdna4_v_alignbit_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_alignbit_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
   return bitfield<goc::Bitfield::AlignBit>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_alignbyte_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_alignbyte_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c) {
   return bitfield<goc::Bitfield::AlignByte>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_perm_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_perm_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
   return bitfield<goc::Bitfield::Permute>(flags, exec_mask, instruction_flags, d, a, b, c);

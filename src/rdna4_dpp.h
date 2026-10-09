@@ -32,20 +32,20 @@ uint32_t dpp16_x86_64_v4(uint32_t mask, uint32_t control, uint32_t valid_row, bo
 // state unchanged for zero EXEC, and support a temporary source pointer array.
 // The zero-EXEC call validates the instruction's own flags before source access.
 template <typename Execute>
-int execute_dpp(uint64_t flags, uint64_t mask, uint64_t mode, const uint32_t *const *a,
+int execute_dpp(uint64_t flags, uint32_t mask, uint64_t mode, const uint32_t *const *a,
                 Execute execute) {
   if (!(mode & (GOC_DPP8 | GOC_DPP16)) || !valid_dpp(mode))
     return GOC_ERROR_INVALID_FLAGS;
   int error = execute(0, a);
-  if (error || !uint32_t(mask))
+  if (error || !mask)
     return error;
   uint32_t permuted[32];
   const uint32_t *source = permuted;
   if (mode & GOC_DPP8)
-    dpp8_source(flags, uint32_t(mask), mode, permuted, a[0]);
+    dpp8_source(flags, mask, mode, permuted, a[0]);
   else
-    mask = dpp16_source(flags, uint32_t(mask), mode, permuted, a[0]);
-  return execute(uint32_t(mask), &source);
+    mask = dpp16_source(flags, mask, mode, permuted, a[0]);
+  return execute(mask, &source);
 }
 
 } // namespace goc

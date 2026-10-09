@@ -24,13 +24,17 @@
 #include <cstring>
 #include <gtest/gtest.h>
 #include <stdint.h>
+#include <type_traits>
 
 namespace {
 
-template <typename... Operands>
-void check_high_flags(const char *name,
-                      int (*instruction)(uint64_t, uint64_t, uint64_t, Operands...)) {
+template <typename Mask, typename... Operands>
+void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint64_t, Operands...)) {
   SCOPED_TRACE(name);
+  if (std::strncmp(name, "goc_rdna4w64_", 12) == 0)
+    EXPECT_TRUE((std::is_same_v<Mask, uint64_t>));
+  else
+    EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));
   bool supports_dpp = std::strcmp(name, "goc_rdna4_v_fma_f32") == 0 ||
                       std::strcmp(name, "goc_rdna4_v_fmac_f32") == 0 ||
                       std::strcmp(name, "goc_rdna4_v_fma_f16") == 0 ||
@@ -121,7 +125,7 @@ void check_high_flags(const char *name,
     dpp_scalar_output |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   supports_dpp |= dpp_scalar_output;
   for (unsigned bit = 32; bit < 64; ++bit)
-    for (uint64_t exec : {UINT64_C(0), UINT64_MAX}) {
+    for (Mask exec : {Mask(0), Mask(~Mask(0))}) {
       // A DPP enable bit alone is a valid descriptor (zero fields).
       if (supports_dpp && (bit == 32 || bit == 34)) {
         // Family tests supply required scalar outputs even for zero EXEC.

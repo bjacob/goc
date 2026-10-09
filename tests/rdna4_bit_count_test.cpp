@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_bit_count_reference.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_test_instruction.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -17,7 +18,7 @@
 
 namespace {
 
-using Fn = decltype(&goc_rdna4_v_bcnt_u32_b32);
+using Fn = goc_test::WaveInstruction<decltype(&goc_rdna4_v_bcnt_u32_b32)>;
 const Fn functions[] = {
     goc_test::count_leading,         goc_test::count_trailing,       goc_test::count_sign,
     goc_rdna4_v_bcnt_u32_b32,        goc_rdna4_v_mbcnt_lo_u32_b32,   goc_rdna4_v_mbcnt_hi_u32_b32,
@@ -43,7 +44,8 @@ const Fn functions[] = {
 }
 
 std::vector<uint64_t> masks(int op) {
-  auto result = rdna4_exec_masks();
+  const auto wave32 = rdna4_exec_masks();
+  std::vector<uint64_t> result(wave32.begin(), wave32.end());
   if (op >= 6) {
     for (unsigned bit = 0; bit < 64; ++bit) {
       result.push_back(UINT64_C(1) << bit);

@@ -12,7 +12,7 @@
 namespace {
 
 template <bool Half>
-int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
+int run(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, uint32_t condition) {
   if (mode >> 32)
     return goc::execute_dpp(
@@ -23,11 +23,11 @@ int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
                          (Half ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D : 0);
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (!uint32_t(mask))
+  if (!mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::cndmask_x86_64_v4<Half>(uint32_t(mask), mode, d[0], a[0], b[0], condition);
+    goc::cndmask_x86_64_v4<Half>(mask, mode, d[0], a[0], b[0], condition);
     return GOC_SUCCESS;
   }
 #endif
@@ -58,13 +58,13 @@ int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
 
 } // namespace
 
-int goc_rdna4_v_cndmask_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_cndmask_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             uint32_t condition) {
   return run<false>(flags, exec_mask, instruction_flags, d, a, b, condition);
 }
 
-int goc_rdna4_v_cndmask_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_cndmask_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             uint32_t condition) {
   return run<true>(flags, exec_mask, instruction_flags, d, a, b, condition);

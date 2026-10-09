@@ -82,7 +82,7 @@ TEST(Carry, ExecAndInputMasksUnalignedAliases) {
   for (unsigned op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool clamp : {false, true})
-        for (uint64_t mask : masks)
+        for (uint32_t mask : masks)
           for (uint64_t input_mask : masks)
             for (unsigned alias = 0; alias < 3; ++alias) {
               uint32_t data[3][34], expected[3][34], carry = 0xdeadbeef, wanted_carry = 0;
@@ -165,9 +165,8 @@ TEST(Carry, ValidationAndZeroExec) {
       EXPECT_EQ(carry, 0x12345678);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(
-          fn(cpu | exact, 0xffffffff00000000ull, 0, nullptr, &carry, nullptr, nullptr, UINT32_MAX),
-          GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu | exact, UINT32_C(0), 0, nullptr, &carry, nullptr, nullptr, UINT32_MAX),
+                GOC_SUCCESS);
       EXPECT_EQ(carry, 0u);
       carry = 0x12345678;
       EXPECT_EQ(
@@ -193,12 +192,12 @@ TEST(Carry, DppMasksModifiersAndScalarVectorAliases) {
                 for (unsigned target = 0; target < 3; ++target)
                   for (bool scalar_alias : {false, true}) {
                     uint32_t words[3][34], expected[3][34], carry = 0xdeadbeef, wanted_carry = 0;
-                    uint32_t ci = uint32_t(mask) ^ 0xa5a5a5a5;
+                    uint32_t ci = mask ^ 0xa5a5a5a5;
                     std::memcpy(words, initial, sizeof(words));
                     std::memcpy(expected, initial, sizeof(expected));
                     for (unsigned lane = 0; lane < 32; ++lane) {
                       int source = 0;
-                      if (!goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+                      if (!goc_test::dpp_source(descriptor, mask, lane, source))
                         continue;
                       uint32_t av = initial[0][lane + 1], bv = initial[source_b][lane + 1];
                       if (op % 3 == 2)
@@ -228,13 +227,12 @@ TEST(Carry, DppValidationAndZeroExec) {
     for (auto descriptor : goc_test::dpp_modes) {
       uint32_t carry = 0x12345678;
       for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1)})
-        for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+        for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
           EXPECT_EQ(fn(0, mask, descriptor | invalid, nullptr, &carry, nullptr, nullptr, 0),
                     GOC_ERROR_INVALID_FLAGS);
           EXPECT_EQ(carry, 0x12345678u);
         }
-      EXPECT_EQ(fn(0, UINT64_C(0xffffffff00000000), descriptor, nullptr, &carry, nullptr, nullptr,
-                   UINT32_MAX),
+      EXPECT_EQ(fn(0, UINT32_C(0), descriptor, nullptr, &carry, nullptr, nullptr, UINT32_MAX),
                 GOC_SUCCESS);
       EXPECT_EQ(carry, 0u);
     }

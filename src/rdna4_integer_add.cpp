@@ -15,7 +15,7 @@ template <bool Signed> int64_t value(uint32_t bits) {
 }
 
 template <goc::IntegerAdd Op, bool Signed>
-int arithmetic(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int arithmetic(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (mode >> 32) {
     // GFX1201 applies SUBREV's DPP to B before subtracting lane-local A.
@@ -31,12 +31,11 @@ int arithmetic(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
   const uint32_t known = three ? 0 : GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (uint32_t(mask) == 0)
+  if (mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::integer_add_x86_64_v4<Op, Signed>(uint32_t(mask), mode, d[0], a[0], b[0],
-                                           three ? c[0] : nullptr);
+    goc::integer_add_x86_64_v4<Op, Signed>(mask, mode, d[0], a[0], b[0], three ? c[0] : nullptr);
     return GOC_SUCCESS;
   }
 #endif
@@ -45,7 +44,7 @@ int arithmetic(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
   // masked-store overhead outweighs the cheaper vector add/subtract.
   if constexpr (!three) {
     if ((mode & GOC_ALU_CLAMP) && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::integer_add_sat_x86_64_v3<Op, Signed>(uint32_t(mask), d[0], a[0], b[0]);
+      goc::integer_add_sat_x86_64_v3<Op, Signed>(mask, d[0], a[0], b[0]);
       return GOC_SUCCESS;
     }
   }
@@ -74,38 +73,38 @@ int arithmetic(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_add_nc_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_add_nc_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return arithmetic<goc::IntegerAdd::Add, false>(flags, exec_mask, instruction_flags, d, a, b,
                                                  nullptr);
 }
 
-int goc_rdna4_v_sub_nc_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_sub_nc_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return arithmetic<goc::IntegerAdd::Sub, false>(flags, exec_mask, instruction_flags, d, a, b,
                                                  nullptr);
 }
 
-int goc_rdna4_v_subrev_nc_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_subrev_nc_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b) {
   return arithmetic<goc::IntegerAdd::Subrev, false>(flags, exec_mask, instruction_flags, d, a, b,
                                                     nullptr);
 }
 
-int goc_rdna4_v_add_nc_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_add_nc_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return arithmetic<goc::IntegerAdd::Add, true>(flags, exec_mask, instruction_flags, d, a, b,
                                                 nullptr);
 }
 
-int goc_rdna4_v_sub_nc_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_sub_nc_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return arithmetic<goc::IntegerAdd::Sub, true>(flags, exec_mask, instruction_flags, d, a, b,
                                                 nullptr);
 }
 
-int goc_rdna4_v_add3_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_add3_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
   return arithmetic<goc::IntegerAdd::Add3, false>(flags, exec_mask, instruction_flags, d, a, b, c);

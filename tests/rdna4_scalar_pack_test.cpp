@@ -24,7 +24,7 @@ TEST(ScalarPack, HardwareAndScc) {
             goc_test::scalar_integer_inputs(i, w);
             uint64_t a = (uint64_t(w[1]) << 32) | w[0], b = (uint64_t(w[3]) << 32) | w[2];
             ASSERT_EQ(goc_test::scalar_pack_call(op, cpu | semantics | GOC_SEMANTICS_STRICT,
-                                                 UINT64_MAX, 0, &d, &d64, a, b, &cc,
+                                                 UINT32_MAX, 0, &d, &d64, a, b, &cc,
                                                  seed | 0xfffffffeu),
                       GOC_SUCCESS);
             bool wide = op == 4 || op == 6 || op == 8 || op == 10;
@@ -39,7 +39,7 @@ TEST(ScalarPack, HardwareAndScc) {
 TEST(ScalarPack, ExecAndOutputOverlap) {
   for (unsigned op = 0; op < 11; ++op)
     for (unsigned seed = 0; seed < 2; ++seed)
-      for (uint64_t mask : rdna4_exec_masks()) {
+      for (uint32_t mask : rdna4_exec_masks()) {
         uint64_t a = UINT64_C(0x87654321abcdef01), b = UINT64_C(0x1234567800000041), wide = 0;
         uint32_t d = 0, cc = seed;
         ASSERT_EQ(goc_test::scalar_pack_call(op, 0, mask, 0, &d, &wide, a, b, &cc, seed),

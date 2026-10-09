@@ -23,7 +23,7 @@ TEST(Unary, ModifiersMasksAliasesAndCpuLevels) {
       for (unsigned mode = 0; mode < 32; ++mode) {
         uint32_t flags = (mode & 1 ? GOC_ALU_NEG_A : 0) | (mode & 2 ? GOC_ALU_ABS_A : 0) |
                          ((mode >> 2 & 3) << 6) | (mode & 16 ? GOC_ALU_CLAMP : 0);
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (bool alias : {false, true}) {
             SCOPED_TRACE(::testing::Message()
                          << op << "/" << cpu << "/" << mode << "/" << mask << "/" << alias);
@@ -60,7 +60,7 @@ TEST(Unary, ValidationAndEmptyMask) {
     uint32_t a[32] = {}, d[32];
     std::fill(d, d + 32, 0xdeadbeef);
     auto pa = a, pd = d;
-    for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
       EXPECT_EQ(fn(0, mask, GOC_ALU_ABS_B, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(0, mask, 1u << 31, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(UINT64_C(1) << 63, mask, 0, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
@@ -68,7 +68,7 @@ TEST(Unary, ValidationAndEmptyMask) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &pd, &pa), GOC_SUCCESS);
-    EXPECT_EQ(fn(0, UINT64_C(0xffffffff00000000), GOC_ALU_NEG_A, &pd, &pa), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT32_C(0), GOC_ALU_NEG_A, &pd, &pa), GOC_SUCCESS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0xdeadbeef);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &pd, &pa), GOC_SUCCESS);
@@ -125,7 +125,7 @@ TEST(Unary, HardwareOmodAndMandatoryFlush) {
       for (unsigned omod = 0; omod < 4; ++omod)
         for (unsigned clamp = 0; clamp < 2; ++clamp)
           for (unsigned neg = 0; neg < 2; ++neg)
-            for (uint64_t mask : rdna4_exec_masks())
+            for (uint32_t mask : rdna4_exec_masks())
               for (bool alias : {false, true}) {
                 SCOPED_TRACE(::testing::Message() << cpu << '/' << op << '/' << omod << '/' << clamp
                                                   << '/' << neg << '/' << mask << '/' << alias);

@@ -64,7 +64,7 @@ TEST(HalfUnary, AllModifiersMasksAndAliases) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 128; ++variant)
         for (bool saturate : {false, true})
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (bool alias : {false, true}) {
               auto mode = goc_test::half_unary_modifiers(variant);
               SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << mode << '/'
@@ -156,7 +156,7 @@ TEST(HalfUnary, ValidationAndSemantics) {
     uint32_t data[32];
     std::fill(data, data + 32, 0xdeadbeef);
     auto p = data;
-    for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit) {
         if (!(goc_test::half_unary_known & (UINT32_C(1) << bit))) {
           EXPECT_EQ(fn(0, mask, UINT32_C(1) << bit, &p, &p), GOC_ERROR_INVALID_FLAGS);

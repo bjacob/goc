@@ -102,7 +102,7 @@ TEST(Shift, MasksAndEveryDestinationAlias) {
           uint64_t value = original[source[1]][lane] | (uint64_t(original[source[2]][lane]) << 32);
           results[lane] = goc_test::shift_reference(bits, op % 3, original[source[0]][lane], value);
         }
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (int low = 0; low < 5; ++low)
             for (int high = 0; high < (bits == 64 ? 5 : 1); ++high) {
               uint32_t words[5][32], expected[5][32];
@@ -174,7 +174,7 @@ TEST(Shift, RejectsModifiersAndStrictExactBeforeEmptyMask) {
     uint32_t *dp[] = {d[0], d[1]};
     for (auto &reg : d)
       std::fill_n(reg, 32, 0xdeadbeef);
-    for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit)
         EXPECT_EQ(fn(0, mask, uint32_t(1) << bit, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(UINT64_C(1) << 63, mask, 0, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);

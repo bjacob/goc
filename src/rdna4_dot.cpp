@@ -14,7 +14,7 @@
 namespace {
 
 template <bool Bf16>
-int dot(uint64_t flags, uint64_t mask, uint64_t instruction_flags, uint32_t *const *d,
+int dot(uint64_t flags, uint32_t mask, uint64_t instruction_flags, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return goc::execute_dpp(
@@ -24,13 +24,13 @@ int dot(uint64_t flags, uint64_t mask, uint64_t instruction_flags, uint32_t *con
   // Bits 0..4: negation; bit 6: CLAMP; bits 7..10: half selection.
   if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(0x7df), true))
     return error;
-  if (uint32_t(mask) == 0)
+  if (mask == 0)
     return GOC_SUCCESS;
 
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL &&
       (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::dot2_x86_64_v3(Bf16, uint32_t(mask), instruction_flags, d[0], a[0], b[0], c[0]);
+    goc::dot2_x86_64_v3(Bf16, mask, instruction_flags, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -74,13 +74,13 @@ int dot(uint64_t flags, uint64_t mask, uint64_t instruction_flags, uint32_t *con
 
 } // namespace
 
-int goc_rdna4_v_dot2_f32_f16(uint64_t flags, uint64_t mask, uint64_t instruction_flags,
+int goc_rdna4_v_dot2_f32_f16(uint64_t flags, uint32_t mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
   return dot<false>(flags, mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint64_t mask, uint64_t instruction_flags,
+int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint32_t mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c) {
   return dot<true>(flags, mask, instruction_flags, d, a, b, c);

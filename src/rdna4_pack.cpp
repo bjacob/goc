@@ -11,7 +11,7 @@
 namespace {
 
 template <bool Saturate>
-int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
+int run(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b) {
   if (mode >> 32)
     return goc::execute_dpp(flags, mask, mode, a,
@@ -23,20 +23,20 @@ int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
                                         GOC_ALU_ABS_B | GOC_ALU_NEG_A | GOC_ALU_NEG_B;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (!uint32_t(mask))
+  if (!mask)
     return GOC_SUCCESS;
   const uint32_t *bp = nullptr;
   if constexpr (!Saturate)
     bp = b[0];
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::pack_x86_64_v4<Saturate>(uint32_t(mask), mode, d[0], a[0], bp);
+    goc::pack_x86_64_v4<Saturate>(mask, mode, d[0], a[0], bp);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::pack_x86_64_v3<Saturate>(uint32_t(mask), mode, d[0], a[0], bp);
+    goc::pack_x86_64_v3<Saturate>(mask, mode, d[0], a[0], bp);
     return GOC_SUCCESS;
   }
 #endif
@@ -77,12 +77,12 @@ int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
 
 } // namespace
 
-int goc_rdna4_v_sat_pk_u8_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_sat_pk_u8_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a) {
   return run<true>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
-int goc_rdna4_v_pack_b32_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_pack_b32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a,
                              const uint32_t *const *b) {
   return run<false>(flags, exec_mask, instruction_flags, d, a, b);

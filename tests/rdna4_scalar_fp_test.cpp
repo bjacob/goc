@@ -23,7 +23,7 @@ TEST(ScalarFp, HardwareEveryFpStateAndUnderflowBoundary) {
             else
               goc_test::scalar_fp_inputs(i, op & 1, w);
             ASSERT_EQ(goc_test::scalar_fp_functions[op](cpu | goc_test::scalar_fp_flags(state),
-                                                        UINT64_MAX, 0, &d, w[0], w[1]),
+                                                        UINT32_MAX, 0, &d, w[0], w[1]),
                       GOC_SUCCESS);
             hash = (hash ^ goc_test::scalar_fp_canonical(d, op & 1)) * UINT64_C(1099511628211);
           }
@@ -39,9 +39,9 @@ TEST(ScalarFp, ExecIgnoredAndInputStorageMayAlias) {
         uint32_t w[2], expected;
         goc_test::scalar_fp_inputs(sample, op & 1, w);
         auto flags = goc_test::scalar_fp_flags(state);
-        ASSERT_EQ(goc_test::scalar_fp_functions[op](flags, UINT64_MAX, 0, &expected, w[0], w[1]),
+        ASSERT_EQ(goc_test::scalar_fp_functions[op](flags, UINT32_MAX, 0, &expected, w[0], w[1]),
                   GOC_SUCCESS);
-        for (uint64_t mask : rdna4_exec_masks()) {
+        for (uint32_t mask : rdna4_exec_masks()) {
           uint32_t storage[] = {123, w[0], w[1], 456};
           ASSERT_EQ(goc_test::scalar_fp_functions[op](flags, mask, 0, storage + 1, storage[1],
                                                       storage[2]),

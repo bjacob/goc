@@ -29,7 +29,7 @@ TEST(Binary, AllModifiersMasksAliasesAndSpecialValues) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint32_t variant = 0; variant < 128; ++variant) {
         uint32_t mode = (variant & 3) | ((variant & 12) << 1) | ((variant & 112) << 2);
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (int alias = 0; alias < 3; ++alias) {
             SCOPED_TRACE(::testing::Message()
                          << op << "/" << cpu << "/" << mode << "/" << mask << "/" << alias);
@@ -76,7 +76,7 @@ TEST(Binary, Validation) {
     EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_C, &pd, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, &pd, &pa, &pa),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0xffffffff00000000, 0, &pd, &pa, &pa), GOC_SUCCESS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_C(0), 0, &pd, &pa, &pa), GOC_SUCCESS);
     for (auto value : d)
       EXPECT_EQ(value, 0xdeadbeef);
   }

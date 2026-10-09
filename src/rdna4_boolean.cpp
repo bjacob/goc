@@ -10,7 +10,7 @@
 namespace {
 
 template <goc::Boolean Op, bool Half>
-int boolean(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int boolean(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return goc::execute_dpp(
@@ -22,14 +22,14 @@ int boolean(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
       Half ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | (Op == goc::Boolean::Not ? 0 : GOC_ALU_HIGH_B) : 0;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (!uint32_t(mask))
+  if (!mask)
     return GOC_SUCCESS;
   const uint32_t *bp = nullptr;
   if constexpr (Op != goc::Boolean::Not)
     bp = b[0];
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::boolean_x86_64_v4<Op, Half>(uint32_t(mask), mode, d[0], a[0], bp);
+    goc::boolean_x86_64_v4<Op, Half>(mask, mode, d[0], a[0], bp);
     return GOC_SUCCESS;
   }
 #endif
@@ -63,47 +63,47 @@ int boolean(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_and_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_and_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return boolean<goc::Boolean::And, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_or_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_or_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return boolean<goc::Boolean::Or, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_xor_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_xor_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return boolean<goc::Boolean::Xor, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_not_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_not_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
   return boolean<goc::Boolean::Not, false>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
-int goc_rdna4_v_and_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_and_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return boolean<goc::Boolean::And, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_or_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_or_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return boolean<goc::Boolean::Or, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_xor_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_xor_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return boolean<goc::Boolean::Xor, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_not_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_not_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
   return boolean<goc::Boolean::Not, true>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
-int goc_rdna4_v_xnor_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_xnor_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return boolean<goc::Boolean::Xnor, false>(flags, exec_mask, instruction_flags, d, a, b);
 }

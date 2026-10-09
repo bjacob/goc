@@ -17,7 +17,7 @@ namespace {
 
 using Fn = decltype(&goc_rdna4_v_cvt_pk_u8_f32);
 const Fn functions[] = {
-    [](uint64_t f, uint64_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+    [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
        const uint32_t *const *,
        const uint32_t *const *) { return goc_rdna4_v_cvt_off_f32_i4(f, m, i, d, a); },
     goc_rdna4_v_cvt_pk_u8_f32};
@@ -100,7 +100,7 @@ TEST(BytePack, EveryModifierMaskAndWholeRegisterAlias) {
   for (unsigned op = 0; op < 2; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 8; ++variant)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (unsigned breg = 0; breg < (op ? 2u : 1u); ++breg)
             for (unsigned creg = 0; creg < (op ? 3u : 1u); ++creg)
               for (unsigned dreg = 0; dreg < 4; ++dreg) {
@@ -177,9 +177,8 @@ TEST(BytePack, ValidationAndSemanticFallback) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeefu);
-      EXPECT_EQ(
-          functions[op](cpu, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr, nullptr),
-          GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr),
+                GOC_SUCCESS);
       for (unsigned sem = 0; sem < 4; ++sem) {
         EXPECT_EQ(functions[op](cpu | (uint64_t(sem) << 16), UINT32_MAX, 0, d, a, a, a),
                   GOC_SUCCESS);
@@ -194,7 +193,7 @@ TEST(BytePack, DppModifiersMasksAliasesAndGuards) {
   for (auto descriptor : goc_test::dpp_modes)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 8; ++variant)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (unsigned breg = 0; breg < 2; ++breg)
             for (unsigned creg = 0; creg < 3; ++creg)
               for (unsigned dreg = 0; dreg < 4; ++dreg) {
@@ -205,7 +204,7 @@ TEST(BytePack, DppModifiersMasksAliasesAndGuards) {
                 uint64_t flags = descriptor | goc_test::byte_pack_mode(variant);
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (goc_test::dpp_source(flags, uint32_t(mask), lane, source))
+                  if (goc_test::dpp_source(flags, mask, lane, source))
                     expected[dreg][lane + 1] = goc_test::byte_pack_reference(
                         source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
                         storage[creg][lane + 1], uint32_t(flags));

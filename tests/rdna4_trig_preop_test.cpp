@@ -52,7 +52,7 @@ TEST(TrigPreop, MasksAliasesAndUnalignedStorage) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned mode = 0; mode < 32; ++mode)
       for (unsigned target = 0; target < 25; ++target)
-        for (uint64_t mask : rdna4_exec_masks()) {
+        for (uint32_t mask : rdna4_exec_masks()) {
           uint32_t words[5][35];
           std::memcpy(words, initial, sizeof(words));
           const uint32_t *a[] = {words[0] + 1, words[1] + 1}, *b[] = {words[2] + 1};
@@ -95,9 +95,7 @@ TEST(TrigPreop, PreservesFpStateAndValidatesFlags) {
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
     }
   std::fesetenv(&saved);
-  EXPECT_EQ(
-      goc_rdna4_v_trig_preop_f64(0, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr),
-      GOC_SUCCESS);
+  EXPECT_EQ(goc_rdna4_v_trig_preop_f64(0, UINT32_C(0), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
   uint32_t known = goc_test::trig_preop_mode(31);
   for (unsigned bit = 0; bit < 32; ++bit)
     if (!(known & (1u << bit))) {

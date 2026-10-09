@@ -10,19 +10,19 @@ namespace goc_test {
 
 using CarryFn = decltype(&goc_rdna4_v_add_co_ci_u32);
 
-inline int carry_add(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+inline int carry_add(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                      uint32_t *carry, const uint32_t *const *a, const uint32_t *const *b,
                      uint32_t) {
   return goc_rdna4_v_add_co_u32(flags, mask, mode, d, carry, a, b);
 }
 
-inline int carry_sub(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+inline int carry_sub(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                      uint32_t *carry, const uint32_t *const *a, const uint32_t *const *b,
                      uint32_t) {
   return goc_rdna4_v_sub_co_u32(flags, mask, mode, d, carry, a, b);
 }
 
-inline int carry_subrev(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+inline int carry_subrev(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                         uint32_t *carry, const uint32_t *const *a, const uint32_t *const *b,
                         uint32_t) {
   return goc_rdna4_v_subrev_co_u32(flags, mask, mode, d, carry, a, b);

@@ -22,7 +22,7 @@ TEST(ScalarRound, HardwareAllHalfPatternsAndFpStates) {
             goc_test::scalar_round_inputs(i, op & 1, w);
             ASSERT_EQ(goc_test::scalar_round_functions[op](cpu | semantics | GOC_SEMANTICS_STRICT |
                                                                goc_test::scalar_fp_flags(state),
-                                                           UINT64_MAX, 0, &d, w[0]),
+                                                           UINT32_MAX, 0, &d, w[0]),
                       GOC_SUCCESS);
             hash = (hash ^ d) * UINT64_C(1099511628211);
           }
@@ -38,9 +38,9 @@ TEST(ScalarRound, ExecAndAliasing) {
         uint32_t w[2], expected;
         goc_test::scalar_round_inputs(i, op & 1, w);
         uint64_t flags = goc_test::scalar_fp_flags(state);
-        ASSERT_EQ(goc_test::scalar_round_functions[op](flags, UINT64_MAX, 0, &expected, w[0]),
+        ASSERT_EQ(goc_test::scalar_round_functions[op](flags, UINT32_MAX, 0, &expected, w[0]),
                   GOC_SUCCESS);
-        for (uint64_t mask : rdna4_exec_masks()) {
+        for (uint32_t mask : rdna4_exec_masks()) {
           uint32_t words[] = {123, w[0], 456};
           ASSERT_EQ(goc_test::scalar_round_functions[op](flags, mask, 0, words + 1, words[1]),
                     GOC_SUCCESS);

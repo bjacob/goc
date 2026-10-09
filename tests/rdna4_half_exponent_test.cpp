@@ -17,7 +17,7 @@ namespace {
 
 using Fn = decltype(&goc_rdna4_v_ldexp_f16);
 
-int frexp_exp(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int frexp_exp(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
               const uint32_t *const *a, const uint32_t *const *) {
   return goc_rdna4_v_frexp_exp_i16_f16(flags, mask, mode, d, a);
 }
@@ -147,7 +147,7 @@ TEST(HalfExponent, AllModifiersMasksAndAliases) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < (op == 0 ? 256u : 128u); ++variant)
         for (bool saturate : {false, true})
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (int layout = 0; layout < (op == 0 ? 5 : 2); ++layout) {
               auto mode = modifiers(variant);
               SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << mode << '/'
@@ -263,7 +263,7 @@ TEST(HalfExponent, ValidationAndSemantics) {
     std::fill(data, data + 32, 0xdeadbeef);
     auto p = data;
     uint32_t known = common_modes | (op == 0 ? GOC_ALU_HIGH_B : 0);
-    for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit) {
         if (!(known & (UINT32_C(1) << bit))) {
           EXPECT_EQ(functions[op](0, mask, UINT32_C(1) << bit, &p, &p, &p),
@@ -291,7 +291,7 @@ TEST(HalfExponent, DppMasksAndAliases) {
       for (unsigned variant : {0u, 127u, op == 0 ? 255u : 73u})
         for (uint64_t descriptor : goc_test::dpp_modes)
           for (bool saturate : {false, true})
-            for (uint64_t mask : rdna4_exec_masks())
+            for (uint32_t mask : rdna4_exec_masks())
               for (int layout = 0; layout < (op == 0 ? 5 : 2); ++layout) {
                 auto mode = modifiers(variant);
                 SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << mode << '/'
@@ -317,7 +317,7 @@ TEST(HalfExponent, DppMasksAndAliases) {
                   for (int lane = 0; lane < 34; ++lane) {
                     int source = -1;
                     if (reg == dest && lane >= 1 && lane <= 32 &&
-                        goc_test::dpp_source(descriptor, uint32_t(mask), lane - 1, source)) {
+                        goc_test::dpp_source(descriptor, mask, lane - 1, source)) {
                       check(op, words[reg][lane], before[reg][lane],
                             reference(op, source < 0 ? 0 : before[0][source + 1], before[b][lane],
                                       mode, saturate),

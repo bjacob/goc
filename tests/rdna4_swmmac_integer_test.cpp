@@ -67,7 +67,7 @@ TEST(SwmmacInteger, EveryExecLaneAndModifier) {
       ASSERT_EQ(functions[op](0, UINT32_MAX, mode(variant), full.d, full.a, full.b, full.index),
                 GOC_SUCCESS);
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint64_t mask : rdna4_exec_masks()) {
+        for (uint32_t mask : rdna4_exec_masks()) {
           Registers r(op);
           ASSERT_EQ(functions[op](cpu, mask, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
           for (unsigned reg = 0; reg < 8u; ++reg)
@@ -111,8 +111,7 @@ TEST(SwmmacInteger, OverlappingSourcesAndDuplicateDestinations) {
 TEST(SwmmacInteger, ValidationAndEmptyExec) {
   for (unsigned op = 0; op < 3; ++op) {
     Fn fn = functions[op];
-    EXPECT_EQ(fn(0, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr, nullptr),
-              GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr,
                  nullptr, nullptr),
               GOC_SUCCESS);

@@ -135,7 +135,7 @@ TEST(Fp64Unary, AllModifiersMasksAndCrossHalfAliases) {
           source[1][lane] = uint32_t(inputs[lane] >> 32);
         }
         ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, pd, pa), GOC_SUCCESS);
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (const auto &alias : aliases) {
             SCOPED_TRACE(::testing::Message() << op << "/" << mode << "/" << cpu << "/" << mask
                                               << "/" << alias[0] << "/" << alias[1]);
@@ -229,7 +229,7 @@ TEST(Fp64Unary, Validation) {
     EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_D, pd, pa), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, pd, pa),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0xffffffff00000000, 0, pd, pa), GOC_SUCCESS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_C(0), 0, pd, pa), GOC_SUCCESS);
     for (auto &reg : d)
       for (uint32_t value : reg)
         EXPECT_EQ(value, 0xdeadbeef);

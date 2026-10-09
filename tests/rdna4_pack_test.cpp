@@ -49,7 +49,7 @@ TEST(Pack, MasksAliasesAndUnalignedStorage) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned breg : {0u, 1u})
         for (unsigned target = 0; target < 3; ++target)
-          for (uint64_t mask : rdna4_exec_masks()) {
+          for (uint32_t mask : rdna4_exec_masks()) {
             uint32_t words[3][35], expected[3][35];
             std::memcpy(words, initial, sizeof(words));
             std::memcpy(expected, initial, sizeof(expected));
@@ -70,9 +70,8 @@ TEST(Pack, MasksAliasesAndUnalignedStorage) {
 TEST(Pack, ValidationAndEmptyMask) {
   for (unsigned variant : {0u, 2u}) {
     uint32_t allowed = goc_test::pack_mode(variant == 0 ? 1 : 65);
-    EXPECT_EQ(
-        goc_test::pack_call(variant, 0, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr),
-        GOC_SUCCESS);
+    EXPECT_EQ(goc_test::pack_call(variant, 0, UINT32_C(0), 0, nullptr, nullptr, nullptr),
+              GOC_SUCCESS);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!(allowed & (1u << bit))) {
         EXPECT_EQ(goc_test::pack_call(variant, 0, 0, 1u << bit, nullptr, nullptr, nullptr),
@@ -125,7 +124,7 @@ TEST(Pack, DppModifiersMasksAliasesAndGuards) {
             std::memcpy(expected, initial, sizeof(expected));
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source = 0;
-              if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+              if (goc_test::dpp_source(descriptor, mask, lane, source))
                 expected[target][lane + 1] =
                     goc_test::pack_reference(variant, source < 0 ? 0 : initial[0][source + 1],
                                              initial[1][lane + 1], initial[target][lane + 1]);

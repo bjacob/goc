@@ -64,7 +64,7 @@ TEST(DppInteger16Ternary, MasksAliasesAndRandomWords) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 8; ++op)
       for (uint64_t mode : modes(op))
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (const auto &layout : layouts)
             for (unsigned dest = 0; dest < 4; ++dest) {
               SCOPED_TRACE(::testing::Message()
@@ -89,7 +89,7 @@ TEST(DppInteger16Ternary, MasksAliasesAndRandomWords) {
                   uint32_t want = before[reg][index];
                   int source;
                   if (reg == dest && index > 0 && index < 33 &&
-                      goc_test::dpp_source(mode, uint32_t(mask), index - 1, source))
+                      goc_test::dpp_source(mode, mask, index - 1, source))
                     want = goc_test::integer16_ternary_reference(
                         op, source < 0 ? 0 : before[layout[0]][source + 1],
                         before[layout[1]][index], before[layout[2]][index], uint32_t(mode), want);
@@ -110,7 +110,7 @@ TEST(DppInteger16Ternary, ValidationAndHostFpState) {
   for (unsigned op = 0; op < 8; ++op)
     for (uint64_t mode : modes(op)) {
       auto fn = goc_test::integer16_ternary_functions[op];
-      for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         if (op >= 2) {
           EXPECT_EQ(fn(0, mask, mode | GOC_ALU_CLAMP, nullptr, nullptr, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);

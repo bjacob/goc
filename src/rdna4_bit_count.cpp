@@ -66,7 +66,7 @@ template <goc::BitCount Op> uint32_t evaluate(uint32_t a, uint32_t b, unsigned l
 }
 
 template <goc::BitCount Op, int Lanes>
-int bit_count(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int bit_count(uint64_t flags, goc::ExecMask<Lanes> mask, uint64_t mode, uint32_t *const *d,
               const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32) {
     if constexpr (Lanes == 32) {
@@ -81,8 +81,6 @@ int bit_count(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
 
   if (int error = goc::validate(flags, mode))
     return error;
-  if constexpr (Lanes == 32)
-    mask = uint32_t(mask);
   if (!mask)
     return GOC_SUCCESS;
   const uint32_t *bp = nullptr;
@@ -115,34 +113,34 @@ int bit_count(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_clz_i32_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_clz_i32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
   return bit_count<goc::BitCount::Leading, 32>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
-int goc_rdna4_v_ctz_i32_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_ctz_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
   return bit_count<goc::BitCount::Trailing, 32>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
-int goc_rdna4_v_cls_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_cls_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
   return bit_count<goc::BitCount::Sign, 32>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
-int goc_rdna4_v_bcnt_u32_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_bcnt_u32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a,
                              const uint32_t *const *b) {
   return bit_count<goc::BitCount::Population, 32>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_mbcnt_lo_u32_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_mbcnt_lo_u32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b) {
   return bit_count<goc::BitCount::MaskedLow, 32>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_mbcnt_hi_u32_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_mbcnt_hi_u32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b) {
   return bit_count<goc::BitCount::MaskedHigh, 32>(flags, exec_mask, instruction_flags, d, a, b);

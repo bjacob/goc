@@ -90,7 +90,7 @@ TEST(Ldexp, AllModifiersMasksAndAliases) {
                           -52, 126, -126, 1022, -1022, INT32_MIN, INT32_MAX, -4096};
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int variant = 0; variant < 32; ++variant)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (const auto &alias : aliases) {
             SCOPED_TRACE(::testing::Message() << fp64 << "/" << cpu << "/" << variant << "/" << mask
                                               << "/" << alias[0] << "/" << alias[1]);
@@ -213,7 +213,7 @@ TEST(Ldexp, LiteralRoundingAndValidation) {
       }
       for (auto &reg : d)
         std::fill(reg, reg + 32, 0xdeadbeef);
-      for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         for (uint32_t invalid :
              {GOC_ALU_NEG_B, GOC_ALU_ABS_B, GOC_ALU_NEG_C, GOC_ALU_HIGH_D, UINT32_C(1) << 31})
           EXPECT_EQ(functions[fp64](cpu, mask, invalid, pd, pa, &pb), GOC_ERROR_INVALID_FLAGS);
@@ -278,7 +278,7 @@ TEST(Ldexp, DppModifiersMasksAliasesAndRandomWords) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t descriptor : goc_test::dpp_modes)
       for (unsigned variant = 0; variant < 32; ++variant)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (unsigned layout = 0; layout < 5; ++layout) {
             uint32_t words[3][34], before[3][34];
             for (auto &reg : words)
@@ -300,7 +300,7 @@ TEST(Ldexp, DppModifiersMasksAliasesAndRandomWords) {
                 int source;
                 uint32_t want = before[reg][lane];
                 bool active = reg == dest && lane >= 1 && lane <= 32 &&
-                              goc_test::dpp_source(descriptor, uint32_t(mask), lane - 1, source);
+                              goc_test::dpp_source(descriptor, mask, lane - 1, source);
                 if (active) {
                   int32_t exponent;
                   std::memcpy(&exponent, &before[breg][lane], sizeof(exponent));

@@ -55,7 +55,7 @@ TEST(Cndmask, EveryModifierMaskAliasAndUnalignedStorage) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (unsigned alias = 0; alias < 2; ++alias)
           for (unsigned target = 0; target < 3; ++target)
-            for (uint64_t mask : rdna4_exec_masks()) {
+            for (uint32_t mask : rdna4_exec_masks()) {
               uint32_t words[3][35], expected[3][35];
               for (unsigned reg = 0; reg < 3; ++reg)
                 for (unsigned lane = 0; lane < 35; ++lane)
@@ -111,8 +111,7 @@ TEST(Cndmask, InvalidFlagsAndHostFpState) {
   std::fegetenv(&saved);
   for (unsigned half = 0; half < 2; ++half) {
     uint32_t known = goc_test::cndmask_mode(half ? 127 : 15);
-    EXPECT_EQ(functions[half](0, UINT64_C(0xffffffff00000000), known, nullptr, nullptr, nullptr, 0),
-              GOC_SUCCESS);
+    EXPECT_EQ(functions[half](0, UINT32_C(0), known, nullptr, nullptr, nullptr, 0), GOC_SUCCESS);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!(known & (1u << bit))) {
         EXPECT_EQ(functions[half](0, 0, 1u << bit, nullptr, nullptr, nullptr, 0),
@@ -148,7 +147,7 @@ TEST(Cndmask, DppModifiersMasksAliasesAndGuards) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (auto descriptor : goc_test::dpp_modes) {
           auto masks = (m == 0 || m == (half ? 127u : 15u)) ? rdna4_exec_masks()
-                                                            : std::vector<uint64_t>{UINT32_MAX};
+                                                            : std::vector<uint32_t>{UINT32_MAX};
           for (auto mask : masks)
             for (unsigned source_b : {0u, 1u})
               for (unsigned target = 0; target < 3; ++target) {
@@ -160,7 +159,7 @@ TEST(Cndmask, DppModifiersMasksAliasesAndGuards) {
                 uint32_t condition = (m * 0x9e3779b9u) ^ 0x96969696u;
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+                  if (goc_test::dpp_source(descriptor, mask, lane, source))
                     expected[target][lane + 1] = goc_test::cndmask_reference(
                         half, source < 0 ? 0 : words[0][source + 1], words[source_b][lane + 1],
                         words[target][lane + 1], m, (condition >> lane) & 1);

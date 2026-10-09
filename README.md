@@ -275,7 +275,7 @@ addresses must not overlap, and every pointer must refer to sufficient storage.
 All four FP8/BF8 WMMA forms have v3 SIMD paths supporting NEG_C/ABS_C.
 They decode each input element once and reuse it across output rows/columns;
 all results are staged before masked writes to preserve operand aliasing.
-Tests cross dense matrix goldens with all CPU levels, all C modifiers, 85 EXEC
+Tests cross dense matrix goldens with all CPU levels, all C modifiers, 84 EXEC
 masks and aliases, and check every input byte encoding through each operand.
 Benchmark rows for all four `v_wmma_f32_16x16x16_*` mnemonics
 compare scalar and SIMD with full EXEC, default flags and ABS_C/NEG_C.
@@ -307,7 +307,7 @@ association followed by nearest-even narrowing, matching rocjitsu's loose
 evaluation. BF16 input/output denormals flush independently of other FP flags;
 FP16 supports `GOC_FP16_OVFL`. Host nearest-even rounding and enabled denormals
 remain required by the loose FP contract. Tests cover every accumulator encoding,
-all 256 modifier/half-selector combinations with 85 masks and aliases, literal
+all 256 modifier/half-selector combinations with 84 masks and aliases, literal
 rounding/overflow cases, and random scalar/SIMD comparisons. Benchmark rows
 use the full mnemonics to distinguish these 16-bit-output instructions.
 
@@ -315,7 +315,7 @@ Both true16 DOT2 forms support DPP8/DPP16: the complete packed A word is
 permuted before ABS/NEG, while B and C stay in their original lanes. C/D half
 selection and the untouched destination half remain supported on the v3 path.
 Tests exercise every modifier combination, cross representative combinations
-with 85 masks and aliases, and match 86,016 RX 9070 output words for exactly
+with 84 masks and aliases, and match 86,016 RX 9070 output words for exactly
 representable finite inputs. Full-EXEC benchmarks include DPP8 reversal and
 DPP16 row shift with combined modifiers. Pinned Ryzen 9 7950X3D measurements
 put FP16 DPP at 26.5–30.1 ns on v3 (9.01–10.19x scalar) and BF16 DPP at
@@ -337,7 +337,7 @@ only after the complete dot plus accumulator; otherwise results wrap modulo
 2^32. Every flag combination remains on the v3 path. Widening to signed 16-bit
 factors avoids the unwanted intermediate saturation of x86 byte-pair dot
 instructions. Tests cover all signedness/CLAMP modes, overflow boundaries,
-85 masks, source/destination aliases and unchanged host FP state.
+84 masks, source/destination aliases and unchanged host FP state.
 
 FP64 ADD, MUL and FMA use two VGPRs per operand: element zero of each pointer
 array names the low-word buffer and element one names the high-word buffer.
@@ -345,7 +345,7 @@ Each buffer still contains 32 lane words; their addresses need not be adjacent.
 Scalar and x86-64-v3 paths support all applicable ALU source/output modifiers
 (128 combinations for binary operations, 512 for FMA). The SIMD path processes
 four FP64 lanes at a time and stages both result halves before masked stores.
-Tests cross all modifiers, CPU levels and 85 masks with ten destination layouts,
+Tests cross all modifiers, CPU levels and 84 masks with ten destination layouts,
 including reversed halves, aliases spanning different operands, and identical
 output buffers; the latter receive the high-word write last. Literal cases
 cover fused rounding, subnormals, overflow, signed zero, NaNs and CLAMP.
@@ -362,14 +362,14 @@ FP64 TRUNC, CEIL, RNDNE, FLOOR, FRACT, SQRT, RCP and RSQ share that layout and
 four-lane SIMD implementation, with all 32 A ABS/NEG/OMOD/CLAMP combinations.
 RNDNE uses ties-to-even rounding and preserves signed zero; FRACT caps its
 fractional result at `0x3fefffffffffffff` before output modifiers. Tests cross
-all modifiers, CPU levels, 85 masks and six destination layouts with signed
+all modifiers, CPU levels, 84 masks and six destination layouts with signed
 zeros, subnormals, infinities and NaNs, using higher-precision references and
 literal rounding/boundary cases. Unary paths also stage both output halves
 before writes, including reversed or identical destination buffers.
 
 FP32 ADD, SUB, SUBREV and MUL support A/B ABS/NEG, output scaling and CLAMP
 on scalar and v3 paths. Tests cross all 128 modifier combinations with all CPU
-levels, 85 masks and aliases, including signed zeros, subnormals, infinities,
+levels, 84 masks and aliases, including signed zeros, subnormals, infinities,
 NaNs and overflow. Their benchmark rows compare default and modified cases.
 The DX9 zero-multiplication variant supports the same paths and modifiers.
 Either signed-zero input forces positive zero, even with NaN or infinity in
@@ -385,7 +385,7 @@ The SIMD path handles these rules explicitly and supports all 128 modifiers.
 All eight three-input FP32 min/max variants use the same scalar/v3 selection
 rules. They select between A/B first, then between that result and C, applying
 output scaling and CLAMP only at the end. All 512 A/B/C modifier combinations
-remain on the SIMD path. Tests cross those combinations with 85 masks, every
+remain on the SIMD path. Tests cross those combinations with 84 masks, every
 CPU level and each destination/source alias, and include literal evaluation-order,
 NaN-priority and signed-zero cases plus 4,096 random input triples. Benchmark
 rows use the full mnemonics, including `_num` for number-preferring variants.
@@ -399,7 +399,7 @@ the signs of zero. The benchmark labels this instruction `v_med3_num_f32`.
 
 FMA supports all three source ABS/NEG pairs, OMOD scaling and CLAMP on scalar,
 x86-64-v3 and x86-64-v4 paths. Tests cross all 512 modifier combinations with
-85 masks, all CPU levels and output aliasing each source; literal bit patterns
+84 masks, all CPU levels and output aliasing each source; literal bit patterns
 add fused-rounding, signed-zero, subnormal, overflow and NaN-clamping cases.
 The DX9 FMA variant has the same scalar/v3/v4 paths and full modifier/mask/alias
 coverage. It flushes all three inputs and the result to signed zero regardless
@@ -761,7 +761,7 @@ carry bits. All DPP modifiers retain the existing scalar, v3 and v4 paths.
 Scalar, v3 (eight lanes), and v4 (sixteen lanes) paths support both semantics,
 CLAMP and all aliases. GPU captures verify full, partial and zero EXEC behavior,
 including saturation. Independent widened-integer references cover boundary
-Cartesian products and random inputs. Tests cross all 85 EXEC masks with all 85
+Cartesian products and random inputs. Tests cross all 84 EXEC masks with all 84
 input-carry mask patterns, check shared sources, unaligned storage, destination
 aliases and scalar-output overlap, and verify host FP-state preservation. Pinned-core
 Ryzen 9 7950X3D measurements show 1.43–2.09x for v3 and 5.36–7.84x for v4 versus
@@ -830,7 +830,7 @@ Tests verify 122,880 captured RX 9070 outputs using compact digests of three
 4,096-input Cartesian corpora across ten modifier/overflow configurations.
 Independent numeric references cover all 8,192 FP16 selector/modifier combinations,
 all 512 FP32/FP64 modifier combinations, both saturation settings, special values
-and random bits. Additional coverage includes 85 EXEC masks, unaligned storage,
+and random bits. Additional coverage includes 84 EXEC masks, unaligned storage,
 all FP64 destination-pair aliases, shared sources and host rounding/exception
 preservation. Pinned-core benchmarks on the development Ryzen 9 7950X3D measured
 2.01–4.01x for v3 and 3.66–8.44x for v4 versus scalar (seven samples, each at
@@ -871,7 +871,7 @@ RX 9070 captures matched the model for 87,040 outputs. Regression tests retain
 4,096-input Cartesian hardware corpus across 20 instruction/modifier cases.
 Independent numeric references test all 512 modifier combinations, exceptional
 values and random bit patterns; mask/alias tests cross every modifier with all
-85 EXEC masks and every destination alias. Benchmarks use full masks and default
+84 EXEC masks and every destination alias. Benchmarks use full masks and default
 or mixed modifiers. Pinned-core measurements on the development Ryzen 9 7950X3D
 showed 2.42–6.48x for v3 and 4.29–11.99x for v4 versus scalar (seven samples,
 each at least 10 ms).
@@ -904,7 +904,7 @@ is preserved. These APIs currently expose loose semantics.
 
 Tests retain 116 hardware input/seed cases across 20 configurations, and cover
 rounding boundaries, exceptional values, stochastic underflow, both overflow
-settings, every modifier and destination selector, 85 masks, unaligned storage,
+settings, every modifier and destination selector, 84 masks, unaligned storage,
 aliases and all host rounding modes. Pinned-core benchmarks on the development
 Ryzen 9 7950X3D measured 1.82–3.57x for v3 and 5.09–6.37x for v4 versus scalar
 (seven samples, each at least 10 ms), including modified and saturating cases.
@@ -922,7 +922,7 @@ RX 9070 (`gfx1201`) captures of 36 inputs across eight instruction/modifier
 combinations establish these rules. In particular, byte packing rounds 1.5 to
 2, whereas rocjitsu's current handler truncates. Tests preserve those hardware
 results and cover every nibble, FP32 neighbors of every byte-rounding midpoint,
-all byte positions and modifiers, ignored selector/source bits, 85 masks,
+all byte positions and modifiers, ignored selector/source bits, 84 masks,
 unaligned storage and every whole-register alias layout. Results are independent
 of host rounding; nibble-offset conversion also preserves FP exception flags.
 Benchmarks use full EXEC, mixed per-lane byte positions, and default/modified
@@ -941,7 +941,7 @@ Sixteen-lane v4 paths cover all four operations. Eight-lane v3 paths cover
 packing; widening candidates were slightly slower than baseline and were
 removed. The signed scalar packing path uses an unsigned interval test to
 avoid expensive 64-bit comparisons. Tests cover every half encoding, saturation
-boundaries, full-word inputs, all source/destination alias layouts, 85 masks,
+boundaries, full-word inputs, all source/destination alias layouts, 84 masks,
 unaligned storage, validation, and host FP-state preservation. Benchmarks use
 full EXEC and both half selectors where applicable. On the development Ryzen 9
 7950X3D, pinned-core measurements showed 1.21–1.43x for v3 packing and
@@ -949,7 +949,7 @@ full EXEC and both half selectors where applicable. On the development Ryzen 9
 
 All four integer conversions also support DPP8/DPP16. Source A is permuted
 before widening's half selection or packing's saturation; B stays in its
-original lane. Tests cross seven descriptors with half selectors, 85 masks,
+original lane. Tests cross seven descriptors with half selectors, 84 masks,
 source/destination aliases and unaligned storage, and match 10,752 words
 captured on the RX 9070. Full-EXEC benchmarks cover DPP8 reversal and DPP16
 row shift without leaving the applicable SIMD arithmetic paths. Pinned Ryzen 9
@@ -969,7 +969,7 @@ accepted without numeric effect. All six expose loose semantics.
 DPP8/DPP16 permute A before modifiers and half selection, while B remains in
 its original lane. All six forms retain their SIMD paths with DPP, including
 unary destination-half preservation. Tests cover all modifier combinations,
-85 masks with aliases and guards, and 114,688 RX 9070 captured output words.
+84 masks with aliases and guards, and 114,688 RX 9070 captured output words.
 Full-EXEC benchmarks include DPP8 reversal and DPP16 row shift. Pinned Ryzen 9
 7950X3D measurements across these cases showed v3 at 23.1–33.7 ns (4.76–7.30x
 scalar) and v4 at 12.9–22.6 ns (7.90–10.09x), using seven samples of at least
@@ -979,7 +979,7 @@ The scalar model borrows rocjitsu's exact double product. SIMD borrows its
 `round_normalized_simd` FMA-residual correction: a rounded FP32 product can
 land on a false integer midpoint, so the residual determines the proper side.
 Tests use an independent integer-significand oracle and include every FP16
-encoding, FP32 neighbors of every rounding boundary, all modifiers, 85 EXEC
+encoding, FP32 neighbors of every rounding boundary, all modifiers, 84 EXEC
 masks, every whole-register alias layout, and host-rounding independence.
 Another 54 input cases captured on the RX 9070 (`gfx1201`) cover 20 opcode/modifier
 combinations, including false ties, saturation and NaNs. Full-EXEC benchmark
@@ -999,7 +999,7 @@ quieting source NaNs to match RDNA4; finite overflow saturates regardless of
 All three also support DPP8/DPP16, permuting A before conversion and modifiers
 while keeping B in its original lane. All modifier combinations match a
 344,064-word RX 9070 capture (with FP16 NaNs canonicalized); mask/alias tests
-cover seven descriptors, 85 EXEC masks, unaligned storage and guard words.
+cover seven descriptors, 84 EXEC masks, unaligned storage and guard words.
 DPP8 reversal and DPP16 row shift are included in the full-EXEC benchmarks.
 Pinned Ryzen 9 7950X3D measurements across these DPP cases showed v3 at
 20.5–23.9 ns (1.82–4.07x scalar) and v4 at 9.6–13.0 ns (3.35–8.68x),
@@ -1008,7 +1008,7 @@ using seven samples of at least 10 ms each.
 Sixteen literal input pairs captured on the RX 9070 (`gfx1201`) verify nine
 opcode/modifier combinations with `FP16_OVFL` both clear and set. Tests also
 cover every FP32 exponent, every FP16 boundary and adjacent FP32 values,
-random words, all modifiers, and 85 EXEC masks crossed with whole-register
+random words, all modifiers, and 84 EXEC masks crossed with whole-register
 aliases and unaligned storage. The RTZ reference independently searches the
 FP16 representable values; integer conversion uses an integer-significand
 reference. Benchmarks compare default and modified full-EXEC workloads. On the
@@ -1036,7 +1036,7 @@ these DPP cases at 19.8–23.5 ns on v3 (2.69–3.41x scalar) and 9.3–12.4 ns 
 v4 (5.14–7.44x), using seven samples of at least 10 ms each.
 
 Tests cover every byte encoding, every packed byte pair, all selectors,
-unselected bits, and all source/destination alias layouts crossed with 85 EXEC
+unselected bits, and all source/destination alias layouts crossed with 84 EXEC
 masks and unaligned storage. If the two destinations alias, the second wins.
 Literal format-boundary cases complement an independent integer-significand
 reference. Benchmarks use full EXEC with default and upper-byte/half selectors.
@@ -1050,7 +1050,7 @@ available SIMD paths; source ABS/NEG and half selectors are invalid. Results
 are exact for all byte values and output modifiers, so all host rounding modes
 produce the same bits and preserve existing FP exception flags. The API exposes
 loose semantics. Tests exhaust byte values, byte positions, unselected source
-bits and modifiers, and cross 85 EXEC masks with aliases and unaligned storage.
+bits and modifiers, and cross 84 EXEC masks with aliases and unaligned storage.
 Eight-lane v3 and sixteen-lane v4 paths support all modifiers. Benchmarks cover
 full-EXEC default and combined OMOD/CLAMP workloads. On the development Ryzen 9
 7950X3D, pinned-core measurements showed v3 roughly tied with scalar for default
@@ -1060,7 +1060,7 @@ defaults and 9.3–10.7x with modifiers (seven samples, each at least 10 ms).
 The four byte conversions and `v_cvt_off_f32_i4` also support DPP8 and
 DPP16: source A is permuted before byte/nibble extraction, and all eight
 OMOD/CLAMP combinations retain SIMD dispatch. Tests cross seven descriptors
-with every modifier, 85 EXEC masks, aliases and unaligned storage, and match
+with every modifier, 84 EXEC masks, aliases and unaligned storage, and match
 71,680 output words captured on an RX 9070 (including inactive destinations).
 Full-EXEC benchmarks include DPP8 reversal and DPP16 row shift with combined
 output modifiers. Pinned Ryzen 9 7950X3D measurements across these DPP cases
@@ -1069,7 +1069,7 @@ showed v3 at 18.3–22.8 ns (1.78–3.22x scalar) and v4 at 8.5–11.8 ns
 
 `v_cvt_pk_u8_f32` supports DPP8/DPP16 with ABS/NEG and CLAMP. Only A is
 permuted; B's byte selector and C's preserved bytes come from the destination
-lane. Tests cover every modifier, 85 masks, all whole-register alias layouts,
+lane. Tests cover every modifier, 84 masks, all whole-register alias layouts,
 unaligned storage and guards, plus 14,336 GPU-captured output words containing
 rounding ties, saturation boundaries and NaNs. Both SIMD paths retain DPP
 and modifier support; full-EXEC benchmarks include DPP8 and DPP16 cases.
@@ -1090,7 +1090,7 @@ normal values preserves the sign of zero. All six expose loose semantics only.
 Scalar, eight-lane x86-64-v3 and sixteen-lane x86-64-v4 paths support every valid
 modifier, full EXEC masking and in-place operation. Tests exhaust all 65,536
 half/integer input encodings, every FP16 narrowing midpoint and its adjacent
-FP32 values, all modifiers, both overflow modes, and 85 masks crossed with
+FP32 values, all modifiers, both overflow modes, and 84 masks crossed with
 aliasing and unaligned storage. An independent integer-bit reference checks
 random full words and rounding boundaries. Another 42 literal input cases
 were captured on an RX 9070 (`gfx1201`) with nearest-even rounding and denormals
@@ -1130,7 +1130,7 @@ No supported modifier forces an otherwise available SIMD path to scalar.
 Tests use an independent integer-bit reference, literal rounding/saturation
 witnesses, narrowing midpoints across the FP32 range, every source exponent,
 random full words, all modifiers, and all 32 source/destination layouts crossed
-with 85 EXEC masks. They also check unaligned storage, validation without writes,
+with 84 EXEC masks. They also check unaligned storage, validation without writes,
 and host-rounding independence for integer outputs. Benchmark rows compare
 unmodified and modified full-EXEC workloads.
 
@@ -1308,7 +1308,7 @@ high source byte, and destination/source aliases under varied EXEC masks.
 The five single-result SAD/MSAD forms also support DPP8/DPP16, permuting A
 while B and C remain in their original lanes. CLAMP stays on the v3 path.
 Tests match 17,920 RX 9070 outputs and cross all seven descriptors with both
-CLAMP settings, 85 EXEC masks, source/destination aliases and guard words.
+CLAMP settings, 84 EXEC masks, source/destination aliases and guard words.
 Quad forms have no RDNA4 DPP encoding and continue to reject DPP flags.
 Full-EXEC benchmarks cover DPP8 reversal and DPP16 row shift. Pinned Ryzen 9
 7950X3D measurements put these DPP cases at 18.6–23.1 ns on v3 (1.81–3.16x
@@ -1657,7 +1657,7 @@ operations with all OMOD values, NEG, and CLAMP; tests require exact special
 values and signed zeros, allowing a few ULPs for finite transcendental results.
 The scalar ties-to-even helper is adapted from rocjitsu's
 [`rndne_scalar`](https://github.com/ROCm/rocm-systems/blob/develop/emulation/rocjitsu/lib/util/include/util/simd.h).
-Unary tests cross all 32 modifier combinations with 85 masks, both separate and
+Unary tests cross all 32 modifier combinations with 84 masks, both separate and
 aliased output, and all available CPU levels, including signed zeros, subnormals,
 infinities, NaNs, half-integer ties and large integral values. With ABS/OMOD/CLAMP
 enabled, the nine AVX2 unary paths measure 3.2–6.5× scalar speed on the
@@ -1666,7 +1666,7 @@ Ryzen 9 7950X3D; EXP and LOG remain scalar.
 GoC applies `exec_mask` to destination writes, including WMMA, as specified by
 its API contract. Inactive destination lanes remain unchanged; source lanes are
 not masked. Empty effective EXEC masks return immediately after flag validation,
-including high-bits-only masks in wave32. Invalid flags and unsupported strict
+using `uint32_t` EXEC masks for Wave32 and `uint64_t` for Wave64. Invalid flags and unsupported strict
 semantics still return errors. Nonempty masks stay on the same SIMD paths;
 SIMD FMA/WMMA use masked stores, and WMMA stages results before writes to support
 aliasing. Improving sparse-mask performance is an explicit non-goal: the intended
@@ -1729,7 +1729,7 @@ CPU level, masks, overlapping operands and noncontiguous/unaligned storage.
 Special-value tests include signed zeros, subnormal factors and accumulators,
 normal factors with subnormal products, overflow, infinities and NaNs.
 A shared 85-mask corpus covers every single-active and single-inactive wave32
-lane, both alternating patterns, empty/full/high-bits-only masks and 16 seeded
+lane, both alternating patterns, empty/full masks and 16 seeded
 random masks. FMA and integer WMMA cross it with all usable CPU levels and
 operand overlap; floating WMMA does so with representative modifiers, retaining
 the existing all-64-modifier tests. Empty-mask tests cover every entry point,

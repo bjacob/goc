@@ -33,7 +33,7 @@ float modify(uint32_t raw, unsigned mode, unsigned operand) {
   return number(raw);
 }
 
-int call(bool accumulate, uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int call(bool accumulate, uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   return accumulate ? goc_rdna4_v_fmac_f32(flags, mask, mode, d, a, b)
                     : goc_rdna4_v_fma_f32(flags, mask, mode, d, a, b, c);
@@ -87,7 +87,7 @@ TEST(Dpp16, EveryControlMasksAndAliases) {
         continue;
       for (unsigned fi = 0; fi < 2; ++fi)
         for (unsigned bc = 0; bc < 2; ++bc)
-          for (uint64_t mask : masks)
+          for (uint32_t mask : masks)
             for (unsigned alias = 0; alias < 4; ++alias) {
               uint32_t data[4][34], saved[4][34];
               for (auto &reg : data)
@@ -105,8 +105,7 @@ TEST(Dpp16, EveryControlMasksAndAliases) {
                   uint32_t want = saved[reg][lane];
                   int source;
                   if (reg == alias && lane > 0 && lane < 33 &&
-                      goc_test::dpp16_reference(ctrl, fi, bc, rows, banks, uint32_t(mask), lane - 1,
-                                                source))
+                      goc_test::dpp16_reference(ctrl, fi, bc, rows, banks, mask, lane - 1, source))
                     want = bits((source < 0 ? 0.f : number(saved[0][source + 1])) *
                                     number(saved[1][lane]) +
                                 number(saved[2][lane]));

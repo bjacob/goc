@@ -70,7 +70,7 @@ TEST(HalfBinary, AllModifiersAndHalfSelectors) {
                                  (uint32_t(values[(lane / 2 + reg * 5) % 16]) << 16);
           std::memcpy(before, words, sizeof(words));
           int dest = variant % 3;
-          uint64_t mask = UINT32_MAX;
+          uint32_t mask = UINT32_MAX;
           uint32_t *p[] = {words[0], words[1], words[2]};
           ASSERT_EQ(goc_test::half_binary_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), mask,
                                                         mode, p + dest, p, p + 1),
@@ -96,7 +96,7 @@ TEST(HalfBinary, MasksAliasesAndUntouchedHalves) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned selectors = 0; selectors < 8; ++selectors)
         for (uint32_t arithmetic : arithmetic_modes)
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (int b = 0; b < 2; ++b)
               for (int dest = 0; dest < 3; ++dest) {
                 uint32_t mode = goc_test::half_binary_modifiers(selectors << 7) | arithmetic;
@@ -174,7 +174,7 @@ TEST(HalfBinary, ValidationAndSemantics) {
     uint32_t data[32];
     std::fill(data, data + 32, 0xdeadbeef);
     auto p = data;
-    for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit)
         if (!(goc_test::half_binary_known & (UINT32_C(1) << bit))) {
           EXPECT_EQ(fn(0, mask, UINT32_C(1) << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);

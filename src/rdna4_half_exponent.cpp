@@ -14,7 +14,7 @@
 namespace {
 
 template <bool Ldexp>
-int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
+int run(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b) {
   if (mode >> 32)
     return goc::execute_dpp(flags, mask, mode, a,
@@ -25,12 +25,12 @@ int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
                          GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | (Ldexp ? GOC_ALU_HIGH_B : 0);
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (uint32_t(mask) == 0)
+  if (mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::half_exponent_x86_64_v3<Ldexp>(bool(flags & GOC_FP16_OVFL), uint32_t(mask), mode, d[0],
-                                        a[0], Ldexp ? b[0] : nullptr);
+    goc::half_exponent_x86_64_v3<Ldexp>(bool(flags & GOC_FP16_OVFL), mask, mode, d[0], a[0],
+                                        Ldexp ? b[0] : nullptr);
     return GOC_SUCCESS;
   }
 #endif
@@ -80,12 +80,12 @@ int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
 
 } // namespace
 
-int goc_rdna4_v_ldexp_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_ldexp_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b) {
   return run<true>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_frexp_exp_i16_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_frexp_exp_i16_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                                   const uint32_t *const *a) {
   return run<false>(flags, mask, mode, d, a, nullptr);
 }

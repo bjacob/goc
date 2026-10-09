@@ -26,8 +26,8 @@ TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
           const uint32_t mode = negate | (selection << 7) | clamp;
           for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
             for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
-              for (uint64_t mask : {UINT64_MAX, UINT64_C(0xaaaaaaaa), UINT64_C(0xffffffff00000000),
-                                    UINT64_C(0x80018001)})
+              for (uint32_t mask :
+                   {UINT32_MAX, UINT32_C(0xaaaaaaaa), UINT32_C(0), UINT32_C(0x80018001)})
                 for (int alias = 0; alias < 4; ++alias) {
                   SCOPED_TRACE(::testing::Message() << brain << "/" << mode << "/" << cpu << "/"
                                                     << semantics << "/" << mask << "/" << alias);
@@ -117,7 +117,7 @@ TEST(Dot2, SimdSpecialValuesAndEveryExecMask) {
     for (uint32_t mode :
          {UINT32_C(0), GOC_DOT_NEG_C | GOC_DOT_NEG_LO_A | GOC_DOT_LO_B_HIGH | GOC_DOT_HI_A_LOW})
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint64_t mask : rdna4_exec_masks()) {
+        for (uint32_t mask : rdna4_exec_masks()) {
           auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
           uint32_t a[32], b[32], c[32], ref[32], d[32];
           for (int i = 0; i < 32; ++i) {
@@ -149,7 +149,7 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
           for (unsigned variant = 0; variant < 1024; ++variant) {
             uint64_t mode = descriptor | (variant & 31) | ((variant & 992) << 1);
             auto masks = (variant == 0 || variant == 1023) ? rdna4_exec_masks()
-                                                           : std::vector<uint64_t>{UINT32_MAX};
+                                                           : std::vector<uint32_t>{UINT32_MAX};
             for (auto mask : masks)
               for (unsigned alias = 0; alias < 4; ++alias) {
                 uint32_t storage[4][34], expected[4][34];
@@ -170,7 +170,7 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
                   std::copy_n(storage[reg], 34, expected[reg]);
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (!goc_test::dpp_source(mode, uint32_t(mask), lane, source))
+                  if (!goc_test::dpp_source(mode, mask, lane, source))
                     continue;
                   int a0 = source < 0 ? 0 : factors[0][source][bool(mode & GOC_DOT_LO_A_HIGH)];
                   int a1 = source < 0 ? 0 : factors[0][source][!bool(mode & GOC_DOT_HI_A_LOW)];

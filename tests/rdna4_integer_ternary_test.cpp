@@ -141,7 +141,7 @@ TEST(IntegerTernary, MasksAndWholeRegisterAliases) {
         for (int lane = 0; lane < 32; ++lane)
           result[lane] = goc_test::integer_ternary_reference(
               op, original[source[0]][lane], original[source[1]][lane], original[source[2]][lane]);
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (int target = 0; target < 4; ++target) {
             uint32_t words[4][32], expected[4][32];
             for (int reg = 0; reg < 4; ++reg) {
@@ -184,7 +184,7 @@ TEST(IntegerTernary, ValidationAndHostFpState) {
             std::fill_n(reg, 32, 0x7f800001);
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
-          for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+          for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
             for (int bit = 0; bit < 32; ++bit)
               EXPECT_EQ(goc_test::integer_ternary_functions[op](cpu, mask, uint32_t(1) << bit, d, a,
                                                                 b, c),

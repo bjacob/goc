@@ -88,7 +88,7 @@ TEST(DppHalfFma, MasksAliasesAndRandomWords) {
     for (uint64_t sem : {UINT64_C(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
       for (unsigned op = 0; op < 2; ++op)
         for (uint64_t mode : modes(op))
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (const auto &layout : layouts)
               for (unsigned dest = 0; dest < 4; ++dest) {
                 SCOPED_TRACE(::testing::Message()
@@ -114,7 +114,7 @@ TEST(DppHalfFma, MasksAliasesAndRandomWords) {
                     uint32_t want = before[reg][index];
                     int source;
                     bool written = reg == dest && index > 0 && index < 33 &&
-                                   goc_test::dpp_source(mode, uint32_t(mask), index - 1, source);
+                                   goc_test::dpp_source(mode, mask, index - 1, source);
                     if (written)
                       want = goc_test::half_fma_result(
                           op, source < 0 ? 0 : before[layout[0]][source + 1],
@@ -135,7 +135,7 @@ TEST(DppHalfFma, Validation) {
     for (uint64_t mode : modes(op)) {
       auto fn = goc_test::half_fma_functions[op];
       EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         if (op == 1) {
           for (uint32_t invalid : {GOC_ALU_NEG_C, GOC_ALU_ABS_C, GOC_ALU_HIGH_C})
             EXPECT_EQ(fn(0, mask, mode | invalid, nullptr, nullptr, nullptr, nullptr),

@@ -81,7 +81,7 @@ TEST(FrexpExp, AllModifiersMasksAndAliases) {
                                sign | inf | 12345};
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int variant = 0; variant < 32; ++variant)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (int alias = 0; alias < (fp64 ? 3 : 2); ++alias) {
             SCOPED_TRACE(::testing::Message()
                          << fp64 << "/" << cpu << "/" << variant << "/" << mask << "/" << alias);
@@ -165,7 +165,7 @@ TEST(FrexpExp, LiteralValuesAndValidation) {
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(d[lane], uint32_t(expected[fp64][lane % 8]));
       std::fill(d, d + 32, 0xdeadbeef);
-      for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         for (uint32_t invalid : {GOC_ALU_NEG_B, GOC_ALU_ABS_B, GOC_ALU_HIGH_D, UINT32_C(1) << 31})
           EXPECT_EQ(functions[fp64](cpu, mask, invalid, &pd, pa), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(functions[fp64](cpu | (UINT64_C(1) << 63), mask, 0, &pd, pa),
@@ -215,7 +215,7 @@ TEST(FrexpExp, DppModifiersMasksAliasesAndRandomWords) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t descriptor : goc_test::dpp_modes)
       for (int variant = 0; variant < 32; ++variant)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (bool alias : {false, true}) {
             uint32_t words[2][34], before[2][34];
             for (auto &reg : words)
@@ -229,7 +229,7 @@ TEST(FrexpExp, DppModifiersMasksAliasesAndRandomWords) {
                 int source;
                 uint32_t want = before[reg][lane];
                 if (reg == (alias ? 0u : 1u) && lane >= 1 && lane <= 32 &&
-                    goc_test::dpp_source(descriptor, uint32_t(mask), lane - 1, source))
+                    goc_test::dpp_source(descriptor, mask, lane - 1, source))
                   want = reference(source < 0 ? 0 : before[0][source + 1], false);
                 EXPECT_EQ(words[reg][lane], want);
               }

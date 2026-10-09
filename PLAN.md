@@ -81,8 +81,8 @@ Most entry points shall correspond 1:1 to a supported GPU instruction
 following the above pattern. Each such function shall take the following function parameters:
 
 * `uint64_t flags`, a bit-field described below.
-* `uint64_t exec_mask`, with the same semantics as in the GPU architectures, each
-  bit enabling a lane in the destination VGPRs.
+* `uint32_t exec_mask` for Wave32 and `uint64_t exec_mask` for Wave64, with the
+  same semantics as in the GPU architectures, each bit enabling a lane in the destination VGPRs.
 * Scalars/literals can be passed by value as function parameters of suitable C type.
   - Default to unsigned integer C types, meaning "raw bits", unless a standard C
     type exists with exactly the right semantics, e.g. a signed integer or
@@ -128,7 +128,7 @@ Example:
 ```c
 int goc_rdna4_v_wmma_f32_16x16x16_f16(
   uint64_t flags,
-  uint64_t exec_mask,
+  uint32_t exec_mask,
   uint64_t instruction_flags,  // NEG and NEG_HI bits go here.
   uint32_t *const * vgpr_d,
   const uint32_t *const * vgpr_a,

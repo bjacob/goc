@@ -67,7 +67,7 @@ TEST(IntegerDot, AllModifiersCpuLevelsMasksAliasesAndBoundaryInputs) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (uint64_t semantics :
              {UINT64_C(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (int alias = 0; alias < 4; ++alias) {
               SCOPED_TRACE(::testing::Message()
                            << op << "/" << mode << "/" << cpu << "/" << mask << "/" << alias);
@@ -131,7 +131,7 @@ TEST(IntegerDot, ValidationAndFpEnvironment) {
       std::fill(words, words + 32, 0x7f800001);
       std::fill(dest, dest + 32, 0xdeadbeef);
       auto p = words, d = dest;
-      for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         EXPECT_EQ(functions[op](cpu, mask, 1u << 31, &d, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(functions[op](cpu | (UINT64_C(2) << 16) | GOC_SEMANTICS_STRICT, mask, 0, &d, &p,
                                 &p, &p),

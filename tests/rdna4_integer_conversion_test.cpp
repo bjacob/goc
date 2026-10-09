@@ -15,9 +15,9 @@ namespace {
 
 using Fn = decltype(&goc_rdna4_v_cvt_pk_i16_i32);
 const Fn functions[] = {
-    [](uint64_t f, uint64_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+    [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
        const uint32_t *const *) { return goc_rdna4_v_cvt_i32_i16(f, m, i, d, a); },
-    [](uint64_t f, uint64_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+    [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
        const uint32_t *const *) { return goc_rdna4_v_cvt_u32_u16(f, m, i, d, a); },
     goc_rdna4_v_cvt_pk_i16_i32, goc_rdna4_v_cvt_pk_u16_u32};
 
@@ -72,7 +72,7 @@ TEST(IntegerConversion, MasksAliasesAndUnalignedFullWords) {
   for (unsigned op = 0; op < 4; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned select = 0; select < (op < 2 ? 2u : 1u); ++select)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (unsigned breg = 0; breg < (op >= 2 ? 2u : 1u); ++breg)
             for (unsigned dreg = 0; dreg < 3; ++dreg) {
               uint32_t storage[3][34], expected[3][34];
@@ -141,8 +141,7 @@ TEST(IntegerConversion, ValidationAndSemanticFallback) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeefu);
-      EXPECT_EQ(functions[op](cpu, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr),
-                GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 0; sem < 4; ++sem) {
         EXPECT_EQ(functions[op](cpu | (uint64_t(sem) << 16), UINT32_MAX, 0, d, a, a), GOC_SUCCESS);
         for (auto word : output)
@@ -157,7 +156,7 @@ TEST(IntegerConversion, DppMasksAliasesAndUnalignedFullWords) {
     for (unsigned op = 0; op < 4; ++op)
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (unsigned select = 0; select < (op < 2 ? 2u : 1u); ++select)
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (unsigned breg = 0; breg < (op >= 2 ? 2u : 1u); ++breg)
               for (unsigned dreg = 0; dreg < 3; ++dreg) {
                 uint32_t storage[3][34], expected[3][34];
@@ -167,7 +166,7 @@ TEST(IntegerConversion, DppMasksAliasesAndUnalignedFullWords) {
                 uint64_t mode = descriptor | (select ? GOC_ALU_HIGH_A : 0);
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (goc_test::dpp_source(mode, uint32_t(mask), lane, source))
+                  if (goc_test::dpp_source(mode, mask, lane, source))
                     expected[dreg][lane + 1] = goc_test::integer_conversion_reference(
                         op, source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
                         uint32_t(mode));

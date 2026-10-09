@@ -31,9 +31,8 @@ TEST(RcpIflag, HardwareNumericAndStickyExceptions) {
             }
             const uint32_t *ap[] = {a};
             uint32_t *dp[] = {d};
-            ASSERT_EQ(goc_rdna4_v_rcp_iflag_f32(flags, UINT64_C(0xffffffff00000000) | masks[mi],
-                                                goc_test::rcp_iflag_mode(m), dp, ap, &status,
-                                                seeds[si]),
+            ASSERT_EQ(goc_rdna4_v_rcp_iflag_f32(flags, masks[mi], goc_test::rcp_iflag_mode(m), dp,
+                                                ap, &status, seeds[si]),
                       GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
               if ((masks[mi] >> lane) & 1)
@@ -72,7 +71,7 @@ TEST(RcpIflag, ModifiersExecAliasesAndUnalignedStorage) {
   const uint64_t max_cpu = goc_init_cpu_flags();
   for (unsigned m = 0; m < 32; ++m)
     for (unsigned alias = 0; alias < 2; ++alias)
-      for (uint64_t mask : rdna4_exec_masks())
+      for (uint32_t mask : rdna4_exec_masks())
         for (uint64_t cpu = 0; cpu <= max_cpu; ++cpu)
           for (unsigned target = 0; target < 5; ++target) {
             uint32_t words[2][35], initial[2][35], outside = 0;
@@ -83,8 +82,7 @@ TEST(RcpIflag, ModifiersExecAliasesAndUnalignedStorage) {
               words[0][lane + 1] = goc_test::rcp_iflag_input(lane * 32);
             std::memcpy(initial, words, sizeof(words));
             uint32_t seed = target & 1 ? 0xa5a50055 : 0xa5a50015;
-            uint32_t wanted_status =
-                goc_test::rcp_iflag_status(words[0] + 1, uint32_t(mask), m, seed);
+            uint32_t wanted_status = goc_test::rcp_iflag_status(words[0] + 1, mask, m, seed);
             unsigned status_reg = target / 2, status_lane = target % 2 ? 32 : 1;
             uint32_t *status = target == 4 ? &outside : &words[status_reg][status_lane],
                      *dp[] = {words[alias ? 0 : 1] + 1};
@@ -132,8 +130,7 @@ TEST(RcpIflag, ActiveSubnormalsClampAndStickyState) {
 TEST(RcpIflag, ValidationAndHostRounding) {
   uint32_t status = 0xdeadbeef, dwords[32] = {};
   uint32_t *dp[] = {dwords};
-  EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, &status,
-                                      0x12345678),
+  EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, UINT32_C(0), 0, nullptr, nullptr, &status, 0x12345678),
             GOC_SUCCESS);
   EXPECT_EQ(status, 0x12345678u);
   const uint32_t known = goc_test::rcp_iflag_mode(31);
@@ -183,7 +180,7 @@ TEST(RcpIflag, DppModifiersMasksAndStatusAliases) {
               uint32_t effective = 0;
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source = 0;
-                if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source)) {
+                if (goc_test::dpp_source(descriptor, mask, lane, source)) {
                   effective |= uint32_t(1) << lane;
                   permuted[lane] = source < 0 ? 0 : words[0][source + 1];
                   expected[target][lane + 1] = goc_test::rcp_iflag_reference(permuted[lane], m);
@@ -217,7 +214,7 @@ TEST(RcpIflag, DppValidationAndZeroExec) {
   for (auto descriptor : goc_test::dpp_modes) {
     uint32_t status = 0xdeadbeef;
     for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 1})
-      for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, mask, descriptor | invalid, nullptr, nullptr,
                                             &status, 0x15),
                   GOC_ERROR_INVALID_FLAGS);
@@ -227,8 +224,8 @@ TEST(RcpIflag, DppValidationAndZeroExec) {
                                         descriptor, nullptr, nullptr, &status, 0x15),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(status, 0xdeadbeefu);
-    EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, UINT64_C(0xffffffff00000000), descriptor, nullptr,
-                                        nullptr, &status, 0x12345678),
+    EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(0, UINT32_C(0), descriptor, nullptr, nullptr, &status,
+                                        0x12345678),
               GOC_SUCCESS);
     EXPECT_EQ(status, 0x12345678u);
   }

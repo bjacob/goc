@@ -53,7 +53,7 @@ TEST(Mullit, AllModifiersMasksAndAliases) {
                                                 initial[2][lane + 1], mode);
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned target = 0; target < 4; ++target)
-        for (uint64_t mask : rdna4_exec_masks()) {
+        for (uint32_t mask : rdna4_exec_masks()) {
           uint32_t words[4][35];
           std::memcpy(words, initial, sizeof(words));
           const uint32_t *a[] = {words[0] + 1}, *b[] = {words[1] + 1}, *c[] = {words[2] + 1};
@@ -74,8 +74,7 @@ TEST(Mullit, AllModifiersMasksAndAliases) {
 }
 
 TEST(Mullit, InvalidFlagsAndEmptyExec) {
-  EXPECT_EQ(goc_rdna4_v_mullit_f32(0, UINT64_C(0xffffffff00000000), 511, nullptr, nullptr, nullptr,
-                                   nullptr),
+  EXPECT_EQ(goc_rdna4_v_mullit_f32(0, UINT32_C(0), 511, nullptr, nullptr, nullptr, nullptr),
             GOC_SUCCESS);
   for (unsigned bit = 9; bit < 32; ++bit)
     EXPECT_EQ(goc_rdna4_v_mullit_f32(0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr),
@@ -93,13 +92,13 @@ TEST(Mullit, DppModifiersMasksAliasesAndGuards) {
         for (unsigned reg = 0; reg < 4; ++reg)
           for (unsigned lane = 0; lane < 34; ++lane)
             initial[reg][lane] = goc_test::mullit_capture_values[(lane * (reg + 1) + reg * 3) % 16];
-        for (uint64_t mask : rdna4_exec_masks()) {
-          if (mode != 0 && mode != 511 && uint32_t(mask) != UINT32_MAX)
+        for (uint32_t mask : rdna4_exec_masks()) {
+          if (mode != 0 && mode != 511 && mask != UINT32_MAX)
             continue;
           uint32_t result[32], writes = 0;
           for (unsigned lane = 0; lane < 32; ++lane) {
             int source;
-            if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source)) {
+            if (goc_test::dpp_source(descriptor, mask, lane, source)) {
               writes |= 1u << lane;
               result[lane] = goc_test::mullit_reference(source < 0 ? 0 : initial[0][source + 1],
                                                         initial[shared ? 0 : 1][lane + 1],

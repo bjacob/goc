@@ -20,7 +20,7 @@ TEST(ScalarConvert, HardwareAllHalfPatternsAndFpStates) {
           uint32_t w[2], d;
           goc_test::scalar_convert_inputs(i, op, w);
           ASSERT_EQ(goc_test::scalar_convert_call(op, cpu | goc_test::scalar_fp_flags(state),
-                                                  UINT64_MAX, 0, &d, w[0], w[1]),
+                                                  UINT32_MAX, 0, &d, w[0], w[1]),
                     GOC_SUCCESS);
           hash = (hash ^ d) * UINT64_C(1099511628211);
         }
@@ -36,9 +36,9 @@ TEST(ScalarConvert, ExecAndAliasing) {
         uint32_t w[2], expected;
         goc_test::scalar_convert_inputs(i, op, w);
         uint64_t flags = goc_test::scalar_fp_flags(state);
-        ASSERT_EQ(goc_test::scalar_convert_call(op, flags, UINT64_MAX, 0, &expected, w[0], w[1]),
+        ASSERT_EQ(goc_test::scalar_convert_call(op, flags, UINT32_MAX, 0, &expected, w[0], w[1]),
                   GOC_SUCCESS);
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (unsigned alias = 1; alias <= 2; ++alias) {
             uint32_t words[] = {123, w[0], w[1], 456};
             ASSERT_EQ(goc_test::scalar_convert_call(op, flags, mask, 0, words + alias, words[1],

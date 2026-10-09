@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_packed_modifier_fixtures.h"
 #include "rdna4_packed_wmma_fixtures.h"
+#include "rdna4_test_instruction.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -12,7 +13,7 @@
 
 namespace {
 
-using Wmma = decltype(&goc_rdna4_v_wmma_f16_16x16x16_f16);
+using Wmma = goc_test::WaveInstruction<decltype(&goc_rdna4_v_wmma_f16_16x16x16_f16)>;
 
 Wmma function(int width, bool bf16) {
   if (width == 64)

@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, uint32_t *exception_flags,
                               uint32_t input_exception_flags) {
   if ((mode >> 32) && (!(mode & (GOC_DPP8 | GOC_DPP16)) || !goc::valid_dpp(mode)))
@@ -20,7 +20,7 @@ int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint64_t exec_mask, uint64_t mode,
   if (int error = goc::validate(flags, uint32_t(mode) & ~known, false,
                                 GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
-  uint32_t mask = uint32_t(exec_mask);
+  uint32_t mask = exec_mask;
   if (!mask) {
     *exception_flags = input_exception_flags;
     return GOC_SUCCESS;

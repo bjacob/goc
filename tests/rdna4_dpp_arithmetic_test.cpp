@@ -113,7 +113,7 @@ TEST(DppArithmetic, ModifiersMasksAliasesAndSpecialValues) {
                 data[reg][lane] = values[(lane * (2 * reg + 1) + reg * 3 + low) % 23];
             std::memcpy(before, data, sizeof(data));
             unsigned di = alias < 4 ? alias : 0, bi = alias == 4 ? 0 : 1, ci = alias == 4 ? 0 : 2;
-            uint64_t mask = masks[(low + alias * 17) % masks.size()];
+            uint32_t mask = masks[(low + alias * 17) % masks.size()];
             uint32_t *d = data[di] + 1;
             const uint32_t *a = data[0] + 1, *b = data[bi] + 1, *c = data[ci] + 1;
             ASSERT_EQ(
@@ -124,7 +124,7 @@ TEST(DppArithmetic, ModifiersMasksAliasesAndSpecialValues) {
                 int source;
                 uint32_t want = before[reg][lane];
                 bool written = reg == di && lane > 0 && lane < 33 &&
-                               goc_test::dpp_source(descriptor, uint32_t(mask), lane - 1, source);
+                               goc_test::dpp_source(descriptor, mask, lane - 1, source);
                 if (written)
                   want =
                       goc_test::dpp_arithmetic_reference(op, source < 0 ? 0 : before[0][source + 1],
@@ -143,21 +143,21 @@ TEST(DppArithmetic, ModifiersMasksAliasesAndSpecialValues) {
 TEST(DppArithmetic, ValidationBeforeOperandAccess) {
   for (unsigned op = 0; op < 18; ++op)
     for (uint64_t descriptor : goc_test::dpp_modes) {
-      EXPECT_EQ(goc_test::dpp_arithmetic_call(op, 0, UINT64_MAX, descriptor | (UINT64_C(1) << 31),
+      EXPECT_EQ(goc_test::dpp_arithmetic_call(op, 0, UINT32_MAX, descriptor | (UINT64_C(1) << 31),
                                               nullptr, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(goc_test::dpp_arithmetic_call(op, UINT64_C(1) << 63, UINT64_MAX, descriptor,
+      EXPECT_EQ(goc_test::dpp_arithmetic_call(op, UINT64_C(1) << 63, UINT32_MAX, descriptor,
                                               nullptr, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(
           goc_test::dpp_arithmetic_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                        UINT64_MAX, descriptor, nullptr, nullptr, nullptr, nullptr),
+                                        UINT32_MAX, descriptor, nullptr, nullptr, nullptr, nullptr),
           GOC_ERROR_UNSUPPORTED_SEMANTICS);
       EXPECT_EQ(
           goc_test::dpp_arithmetic_call(op, 0, 0, descriptor, nullptr, nullptr, nullptr, nullptr),
           GOC_SUCCESS);
       if (op < 9) {
-        EXPECT_EQ(goc_test::dpp_arithmetic_call(op, 0, UINT64_MAX, descriptor | GOC_ALU_NEG_C,
+        EXPECT_EQ(goc_test::dpp_arithmetic_call(op, 0, UINT32_MAX, descriptor | GOC_ALU_NEG_C,
                                                 nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
       }

@@ -53,8 +53,8 @@ TEST(DivFixup, DppHalfModifiersMasksAndAliases) {
           initial[reg][lane] =
               uint32_t(goc_test::fixup_capture_values[0][(lane + reg * 3) % 16]) |
               (uint32_t(goc_test::fixup_capture_values[0][(lane * 7 + reg) % 16]) << 16);
-      for (uint64_t mask : rdna4_exec_masks()) {
-        if (mode != 0 && mode != 8191 && uint32_t(mask) != UINT32_MAX)
+      for (uint32_t mask : rdna4_exec_masks()) {
+        if (mode != 0 && mode != 8191 && mask != UINT32_MAX)
           continue;
         for (bool shared : {false, true}) {
           if (shared && mode != 0 && mode != 8191)
@@ -66,7 +66,7 @@ TEST(DivFixup, DppHalfModifiersMasksAndAliases) {
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
               expected[lane] = initial[target][lane + 1];
-              if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source)) {
+              if (goc_test::dpp_source(descriptor, mask, lane, source)) {
                 uint32_t a = source < 0 ? 0 : initial[0][source + 1];
                 uint32_t b = initial[shared ? 0 : 1][lane + 1],
                          c = initial[shared ? 0 : 2][lane + 1];
@@ -227,7 +227,7 @@ TEST(DivFixup, MasksAndCrossRegisterAliases) {
             (variant & 1 ? 63 : 0) | ((variant >> 1) << 6) | (variant & 1 ? GOC_ALU_CLAMP : 0);
         if (op == 0)
           mode |= (variant & 7) << 9 | (variant & 1 ? GOC_ALU_HIGH_D : 0);
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (unsigned first = 0; first < 8; first += (op == 2 ? 1 : 2))
             for (unsigned second = 0; second < (op == 2 ? 8u : 1u); ++second) {
               uint32_t data[8][34], expected[8][34];
@@ -313,9 +313,8 @@ TEST(DivFixup, ValidationAndFallback) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(
-          functions[op](cpu | exact, 0xffffffff00000000ull, 0, nullptr, nullptr, nullptr, nullptr),
-          GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu | exact, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr),
+                GOC_SUCCESS);
       EXPECT_EQ(functions[op](cpu, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(functions[op](cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, d, a, a, a),
                 GOC_SUCCESS);

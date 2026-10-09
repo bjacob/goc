@@ -91,7 +91,7 @@ TEST(DppHalfMinmax, MasksAliasesAndRandomWords) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 9; ++op)
       for (uint64_t mode : modes())
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (const auto &layout : layouts)
             for (unsigned dest = 0; dest < 4; ++dest) {
               SCOPED_TRACE(::testing::Message()
@@ -116,7 +116,7 @@ TEST(DppHalfMinmax, MasksAliasesAndRandomWords) {
                   uint32_t want = before[reg][index];
                   int source;
                   bool written = reg == dest && index > 0 && index < 33 &&
-                                 goc_test::dpp_source(mode, uint32_t(mask), index - 1, source);
+                                 goc_test::dpp_source(mode, mask, index - 1, source);
                   if (written)
                     want = reference(op, source < 0 ? 0 : before[layout[0]][source + 1],
                                      before[layout[1]][index], before[layout[2]][index],
@@ -135,7 +135,7 @@ TEST(DppHalfMinmax, Validation) {
   for (auto fn : goc_test::half_minmax_functions)
     for (uint64_t mode : modes()) {
       EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         EXPECT_EQ(fn(0, mask, mode | (1u << 13), nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(0, mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr, nullptr),

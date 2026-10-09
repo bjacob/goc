@@ -46,7 +46,7 @@ inline void scalar_fma_inputs(unsigned i, bool half, uint32_t *w) {
 }
 
 // Variant 0/1 is FMAC; variants 2..13 / 14..25 are FMAAK / FMAMK literals.
-inline int scalar_fma_call(unsigned variant, uint64_t flags, uint64_t mask, uint64_t mode,
+inline int scalar_fma_call(unsigned variant, uint64_t flags, uint32_t mask, uint64_t mode,
                            uint32_t *d, uint32_t a, uint32_t b) {
   if (variant == 0)
     return goc_rdna4_s_fmac_f32(flags, mask, mode, d, a, b);

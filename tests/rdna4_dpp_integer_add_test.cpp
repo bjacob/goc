@@ -72,7 +72,7 @@ TEST(DppIntegerAdd, MasksAliasesAndRandomWords) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 6; ++op)
       for (uint64_t mode : modes(op))
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (const auto &layout : layouts)
             for (unsigned dest = 0; dest < 4; ++dest) {
               SCOPED_TRACE(::testing::Message()
@@ -97,7 +97,7 @@ TEST(DppIntegerAdd, MasksAliasesAndRandomWords) {
                   uint32_t want = before[reg][index];
                   int source;
                   if (reg == dest && index > 0 && index < 33 &&
-                      goc_test::dpp_source(mode, uint32_t(mask), index - 1, source))
+                      goc_test::dpp_source(mode, mask, index - 1, source))
                     want = goc_test::integer_add_reference(
                         op,
                         op == 2      ? before[layout[0]][index]
@@ -124,7 +124,7 @@ TEST(DppIntegerAdd, ValidationAndHostFpState) {
   for (unsigned op = 0; op < 6; ++op)
     for (uint64_t mode : modes(op)) {
       auto fn = goc_test::integer_add_functions[op];
-      for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         if (op == 5) {
           EXPECT_EQ(fn(0, mask, mode | GOC_ALU_CLAMP, nullptr, nullptr, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);

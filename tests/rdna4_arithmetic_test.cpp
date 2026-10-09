@@ -52,11 +52,11 @@ TEST(Arithmetic, ErrorsPreserveDestination) {
   auto pa = a, pd = d;
   for (auto &v : d)
     v = 0xdeadbeef;
-  EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, ~UINT64_C(0),
-                                0, &pd, &pa, &pa, &pa),
+  EXPECT_EQ(goc_rdna4_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0,
+                                &pd, &pa, &pa, &pa),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
-  EXPECT_EQ(goc_rdna4_v_log_f32(0, ~UINT64_C(0), GOC_ALU_NEG_B, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
-  EXPECT_EQ(goc_rdna4_v_log_f32(UINT64_C(1) << 63, ~UINT64_C(0), 0, &pd, &pa),
+  EXPECT_EQ(goc_rdna4_v_log_f32(0, UINT32_MAX, GOC_ALU_NEG_B, &pd, &pa), GOC_ERROR_INVALID_FLAGS);
+  EXPECT_EQ(goc_rdna4_v_log_f32(UINT64_C(1) << 63, UINT32_MAX, 0, &pd, &pa),
             GOC_ERROR_INVALID_FLAGS);
   for (auto v : d)
     EXPECT_EQ(v, 0xdeadbeef);
@@ -65,12 +65,12 @@ TEST(Arithmetic, ErrorsPreserveDestination) {
     EXPECT_EQ(v, 0xdeadbeef);
 }
 
-TEST(Arithmetic, LogPowersOfTwoAndHighMaskBits) {
+TEST(Arithmetic, LogPowersOfTwoAndEmptyMask) {
   uint32_t a[32];
   for (int i = 0; i < 32; ++i)
     a[i] = goc::as_bits(std::ldexp(1.0f, i - 16));
   auto pa = a;
-  ASSERT_EQ(goc_rdna4_v_log_f32(0, UINT64_C(0xffffffff00000000), 0, &pa, &pa), 0);
+  ASSERT_EQ(goc_rdna4_v_log_f32(0, UINT32_C(0), 0, &pa, &pa), 0);
   EXPECT_EQ(a[0], goc::as_bits(std::ldexp(1.0f, -16)));
   ASSERT_EQ(goc_rdna4_v_log_f32(0, UINT32_MAX, 0, &pa, &pa), 0);
   for (int i = 0; i < 32; ++i)
@@ -90,7 +90,7 @@ TEST(Arithmetic, AllCpuLevelsFmaGoldenAndAliasing) {
                              0x40000000, 0x00000000, 0x00400000, 0x00000000};
   for (uint64_t level = 0; level <= goc_init_cpu_flags(); ++level)
     for (int alias = 0; alias < 4; ++alias)
-      for (uint64_t mask : rdna4_exec_masks()) {
+      for (uint32_t mask : rdna4_exec_masks()) {
         SCOPED_TRACE(::testing::Message()
                      << "level=" << level << " alias=" << alias << " mask=" << mask);
         uint32_t storage[4][34]; // Offsets avoid requiring SIMD alignment.
@@ -124,7 +124,7 @@ void check_fma_modifiers(bool dx9) {
   auto fn = dx9 ? goc_rdna4_v_fma_dx9_zero_f32 : goc_rdna4_v_fma_f32;
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint32_t modifiers = 0; modifiers < 512; ++modifiers)
-      for (uint64_t mask : rdna4_exec_masks())
+      for (uint32_t mask : rdna4_exec_masks())
         for (int alias = 0; alias < 4; ++alias) {
           SCOPED_TRACE(::testing::Message()
                        << cpu << "/" << modifiers << "/" << mask << "/" << alias);
@@ -266,7 +266,7 @@ TEST(Arithmetic, FmaAndFmacOmodHardwareBoundaries) {
       for (unsigned omod = 0; omod < 4; ++omod)
         for (unsigned clamp = 0; clamp < 2; ++clamp)
           for (unsigned neg = 0; neg < 2; ++neg)
-            for (uint64_t mask : rdna4_exec_masks())
+            for (uint32_t mask : rdna4_exec_masks())
               for (int alias = 0; alias < (fmac ? 1 : 4); ++alias) {
                 SCOPED_TRACE(::testing::Message()
                              << cpu << '/' << fmac << '/' << omod << '/' << clamp << '/' << neg
@@ -371,8 +371,8 @@ TEST(Arithmetic, Dx9DppHardwareCorpus) {
 TEST(Arithmetic, Dx9DppModifiersMasksAliasesAndGuards) {
   for (uint32_t mode = 0; mode < 512; ++mode)
     for (uint64_t descriptor : goc_test::dpp_modes)
-      for (uint64_t mask : rdna4_exec_masks()) {
-        if (mode != 0 && mode != 511 && uint32_t(mask) != UINT32_MAX)
+      for (uint32_t mask : rdna4_exec_masks()) {
+        if (mode != 0 && mode != 511 && mask != UINT32_MAX)
           continue;
         for (bool shared : {false, true}) {
           uint32_t initial[4][34], expected[32], writes = 0;
@@ -381,7 +381,7 @@ TEST(Arithmetic, Dx9DppModifiersMasksAliasesAndGuards) {
               initial[reg][lane] = goc::as_bits(float(int((lane * (reg + 1)) % 17) - 8) * 0.25f);
           for (unsigned lane = 0; lane < 32; ++lane) {
             int source;
-            if (!goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+            if (!goc_test::dpp_source(descriptor, mask, lane, source))
               continue;
             writes |= 1u << lane;
             double input[] = {source < 0 ? 0.0 : goc::as_float(initial[0][source + 1]),

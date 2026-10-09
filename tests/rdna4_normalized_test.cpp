@@ -21,9 +21,9 @@ const Fn functions[] = {
     goc_rdna4_v_cvt_pk_norm_u16_f32,
     goc_rdna4_v_cvt_pk_norm_i16_f16,
     goc_rdna4_v_cvt_pk_norm_u16_f16,
-    [](uint64_t f, uint64_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+    [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
        const uint32_t *const *) { return goc_rdna4_v_cvt_norm_i16_f16(f, m, i, d, a); },
-    [](uint64_t f, uint64_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+    [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
        const uint32_t *const *) { return goc_rdna4_v_cvt_norm_u16_f16(f, m, i, d, a); }};
 
 ::testing::AssertionResult check(unsigned op, uint64_t flags, uint32_t mode, const uint32_t av[32],
@@ -127,7 +127,7 @@ TEST(Normalized, EveryModifierMaskAndWholeRegisterAlias) {
   for (unsigned op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < goc_test::normalized_modes(op); ++variant)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (unsigned breg = 0; breg < (op < 4 ? 2u : 1u); ++breg)
             for (unsigned dreg = 0; dreg < 3; ++dreg) {
               uint32_t storage[3][34], expected[3][34];
@@ -190,8 +190,7 @@ TEST(Normalized, ValidationAndSemanticFallback) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeefu);
-      EXPECT_EQ(functions[op](cpu, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr),
-                GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, UINT32_C(0), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
       for (unsigned sem = 0; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16), 0, input, input));
     }
@@ -204,7 +203,7 @@ TEST(Normalized, DppMasksAndWholeRegisterAliases) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (unsigned variant :
              {0u, goc_test::normalized_modes(op) / 2, goc_test::normalized_modes(op) - 1})
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (unsigned breg = 0; breg < (op < 4 ? 2u : 1u); ++breg)
               for (unsigned dreg = 0; dreg < 3; ++dreg) {
                 uint32_t storage[3][34], expected[3][34];
@@ -214,7 +213,7 @@ TEST(Normalized, DppMasksAndWholeRegisterAliases) {
                 uint64_t mode = descriptor | goc_test::normalized_mode(op, variant);
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (goc_test::dpp_source(mode, uint32_t(mask), lane, source))
+                  if (goc_test::dpp_source(mode, mask, lane, source))
                     expected[dreg][lane + 1] = goc_test::normalized_reference(
                         op, source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
                         storage[dreg][lane + 1], uint32_t(mode));

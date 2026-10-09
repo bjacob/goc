@@ -16,7 +16,7 @@ TEST(ScalarBits, HardwareResultsAndScc) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (unsigned seed = 0; seed < 2; ++seed)
-        for (uint64_t mask : {UINT64_C(0), UINT64_MAX, UINT64_C(0xaaaaaaaa)})
+        for (uint32_t mask : {UINT32_C(0), UINT32_MAX, UINT32_C(0xaaaaaaaa)})
           for (unsigned op = 0; op < 30; ++op) {
             uint64_t hash = UINT64_C(14695981039346656037);
             for (unsigned i = 0; i < 4096; ++i) {
@@ -39,7 +39,7 @@ TEST(ScalarBits, HardwareResultsAndScc) {
 
 TEST(ScalarBits, ExecAndOverlappingScalarOutputs) {
   for (unsigned op = 0; op < 30; ++op)
-    for (uint64_t mask : rdna4_exec_masks()) {
+    for (uint32_t mask : rdna4_exec_masks()) {
       uint32_t d = 0, cc = 7;
       uint64_t wide = 0;
       const uint64_t a = UINT64_C(0x87654321abcdef01), b = UINT64_C(0x1234567800000041);

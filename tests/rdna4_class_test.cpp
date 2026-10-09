@@ -41,11 +41,11 @@ TEST(Class, DppModifiersMasksAliasesAndFpState) {
                          : goc_test::class_edges32[lane % 16];
               initial[1][lane] = (lane * 0x9e3779b9u) ^ 0xa5a59669u;
             }
-            for (uint64_t mask : rdna4_exec_masks()) {
+            for (uint32_t mask : rdna4_exec_masks()) {
               uint32_t want = 0;
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source;
-                if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+                if (goc_test::dpp_source(descriptor, mask, lane, source))
                   want |= uint32_t(goc_test::class_reference(
                               op / 2, source < 0 ? 0 : initial[0][source + 1], 0,
                               initial[shared ? 0 : 1][lane + 1], m))
@@ -83,9 +83,8 @@ TEST(Class, DppValidationAndZeroExec) {
   for (unsigned op = 0; op < 6; ++op)
     for (uint64_t descriptor : goc_test::dpp_modes) {
       uint32_t result = 0xdeadbeef;
-      EXPECT_EQ(
-          functions[op](0, UINT64_C(0xffffffff00000000), descriptor, &result, nullptr, nullptr),
-          op < 4 ? GOC_SUCCESS : GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](0, UINT32_C(0), descriptor, &result, nullptr, nullptr),
+                op < 4 ? GOC_SUCCESS : GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(result, op < 4 ? 0u : 0xdeadbeef);
       for (uint64_t invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_NEG_B)}) {
         result = 0xdeadbeef;
@@ -145,8 +144,7 @@ TEST(Class, HardwareFormatsModifiersExecAndCmpx) {
             ASSERT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                                         GOC_FP_FLUSH_OUTPUT_DENORMALS |
                                         GOC_FP_FLUSH_INPUT_DENORMALS,
-                                    UINT64_C(0xffffffff00000000) | masks[mi],
-                                    goc_test::class_mode(m), &result, a, b),
+                                    masks[mi], goc_test::class_mode(m), &result, a, b),
                       GOC_SUCCESS);
             for (unsigned byte = 0; byte < 4; ++byte) {
               digest ^= (result >> (8 * byte)) & 255;
@@ -208,7 +206,7 @@ TEST(Class, ScalarOutputAliasesMasksAndUnalignedStorage) {
                           initial[source_alias ? 0 : 2][lane + 1], m))
                       << lane;
         for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (unsigned target = 0; target < 7; ++target) {
               uint32_t words[3][35], outside = 0x87654321;
               std::memcpy(words, initial, sizeof(words));
@@ -218,12 +216,11 @@ TEST(Class, ScalarOutputAliasesMasksAndUnalignedStorage) {
                              *b[] = {words[source_alias ? 0 : 2] + 1};
               ASSERT_EQ(functions[op](cpu, mask, goc_test::class_mode(m), result, a, b),
                         GOC_SUCCESS);
-              ASSERT_EQ(*result, expected & uint32_t(mask))
-                  << cpu << "/" << op << "/" << m << "/" << target;
+              ASSERT_EQ(*result, expected & mask) << cpu << "/" << op << "/" << m << "/" << target;
               for (unsigned reg = 0; reg < 3; ++reg)
                 for (unsigned lane = 0; lane < 35; ++lane) {
                   uint32_t want = target != 6 && reg == reg_target && lane == lane_target
-                                      ? expected & uint32_t(mask)
+                                      ? expected & mask
                                       : initial[reg][lane];
                   ASSERT_EQ(words[reg][lane], want);
                 }
@@ -239,8 +236,7 @@ TEST(Class, ValidationAndCompleteHostFpState) {
 #endif
   for (unsigned op = 0; op < 6; ++op) {
     uint32_t known = goc_test::class_mode(op < 2 ? 15 : 3), result = 1;
-    EXPECT_EQ(functions[op](0, UINT64_C(0xffffffff00000000), known, &result, nullptr, nullptr),
-              GOC_SUCCESS);
+    EXPECT_EQ(functions[op](0, UINT32_C(0), known, &result, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(result, 0u);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!(known & (1u << bit))) {

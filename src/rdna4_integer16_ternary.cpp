@@ -18,7 +18,7 @@ template <bool Signed> int64_t input(uint32_t word, int half) {
 }
 
 template <bool Signed, goc::Integer16Ternary Op = goc::Integer16Ternary::Mad, bool Packed = true>
-int ternary(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int ternary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (mode >> 32) {
     if constexpr (!Packed) {
@@ -38,12 +38,11 @@ int ternary(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                    (Op == goc::Integer16Ternary::Mad ? GOC_ALU_CLAMP : 0);
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (uint32_t(mask) == 0)
+  if (mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::integer16_ternary_x86_64_v3<Signed, Op, Packed>(uint32_t(mask), mode, d[0], a[0], b[0],
-                                                         c[0]);
+    goc::integer16_ternary_x86_64_v3<Signed, Op, Packed>(mask, mode, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -89,7 +88,7 @@ int ternary(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_pk_mad_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_pk_mad_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
   if (instruction_flags >> 32)
@@ -97,7 +96,7 @@ int goc_rdna4_v_pk_mad_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruct
   return ternary<true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_pk_mad_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_pk_mad_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
   if (instruction_flags >> 32)
@@ -105,56 +104,56 @@ int goc_rdna4_v_pk_mad_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruct
   return ternary<false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_mad_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_mad_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   return ternary<false, goc::Integer16Ternary::Mad, false>(flags, exec_mask, instruction_flags, d,
                                                            a, b, c);
 }
 
-int goc_rdna4_v_mad_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_mad_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   return ternary<true, goc::Integer16Ternary::Mad, false>(flags, exec_mask, instruction_flags, d, a,
                                                           b, c);
 }
 
-int goc_rdna4_v_min3_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_min3_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
   return ternary<false, goc::Integer16Ternary::Min, false>(flags, exec_mask, instruction_flags, d,
                                                            a, b, c);
 }
 
-int goc_rdna4_v_min3_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_min3_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
   return ternary<true, goc::Integer16Ternary::Min, false>(flags, exec_mask, instruction_flags, d, a,
                                                           b, c);
 }
 
-int goc_rdna4_v_max3_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_max3_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
   return ternary<false, goc::Integer16Ternary::Max, false>(flags, exec_mask, instruction_flags, d,
                                                            a, b, c);
 }
 
-int goc_rdna4_v_max3_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_max3_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
   return ternary<true, goc::Integer16Ternary::Max, false>(flags, exec_mask, instruction_flags, d, a,
                                                           b, c);
 }
 
-int goc_rdna4_v_med3_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_med3_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
   return ternary<false, goc::Integer16Ternary::Median, false>(flags, exec_mask, instruction_flags,
                                                               d, a, b, c);
 }
 
-int goc_rdna4_v_med3_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_med3_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
   return ternary<true, goc::Integer16Ternary::Median, false>(flags, exec_mask, instruction_flags, d,

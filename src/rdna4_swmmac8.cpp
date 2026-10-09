@@ -11,11 +11,11 @@
 namespace {
 
 template <bool Bf8A, bool Bf8B>
-int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
+int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *index) {
   if (int error = goc::validate(flags, mode & ~GOC_SWMMAC_INDEX_KEY_1))
     return error;
-  uint32_t mask = uint32_t(exec_mask);
+  uint32_t mask = exec_mask;
   if (!mask)
     return GOC_SUCCESS;
   goc::SwmmacFloatInputs input;
@@ -63,7 +63,7 @@ int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_swmmac_f32_16x16x32_fp8_fp8(uint64_t flags, uint64_t exec_mask,
+int goc_rdna4_v_swmmac_f32_16x16x32_fp8_fp8(uint64_t flags, uint32_t exec_mask,
                                             uint64_t instruction_flags, uint32_t *const *d,
                                             const uint32_t *const *a, const uint32_t *const *b,
                                             const uint32_t *const *index) {
@@ -72,7 +72,7 @@ int goc_rdna4_v_swmmac_f32_16x16x32_fp8_fp8(uint64_t flags, uint64_t exec_mask,
   return run<false, false>(flags, exec_mask, instruction_flags, d, a, b, index);
 }
 
-int goc_rdna4_v_swmmac_f32_16x16x32_fp8_bf8(uint64_t flags, uint64_t exec_mask,
+int goc_rdna4_v_swmmac_f32_16x16x32_fp8_bf8(uint64_t flags, uint32_t exec_mask,
                                             uint64_t instruction_flags, uint32_t *const *d,
                                             const uint32_t *const *a, const uint32_t *const *b,
                                             const uint32_t *const *index) {
@@ -81,7 +81,7 @@ int goc_rdna4_v_swmmac_f32_16x16x32_fp8_bf8(uint64_t flags, uint64_t exec_mask,
   return run<false, true>(flags, exec_mask, instruction_flags, d, a, b, index);
 }
 
-int goc_rdna4_v_swmmac_f32_16x16x32_bf8_fp8(uint64_t flags, uint64_t exec_mask,
+int goc_rdna4_v_swmmac_f32_16x16x32_bf8_fp8(uint64_t flags, uint32_t exec_mask,
                                             uint64_t instruction_flags, uint32_t *const *d,
                                             const uint32_t *const *a, const uint32_t *const *b,
                                             const uint32_t *const *index) {
@@ -90,7 +90,7 @@ int goc_rdna4_v_swmmac_f32_16x16x32_bf8_fp8(uint64_t flags, uint64_t exec_mask,
   return run<true, false>(flags, exec_mask, instruction_flags, d, a, b, index);
 }
 
-int goc_rdna4_v_swmmac_f32_16x16x32_bf8_bf8(uint64_t flags, uint64_t exec_mask,
+int goc_rdna4_v_swmmac_f32_16x16x32_bf8_bf8(uint64_t flags, uint32_t exec_mask,
                                             uint64_t instruction_flags, uint32_t *const *d,
                                             const uint32_t *const *a, const uint32_t *const *b,
                                             const uint32_t *const *index) {

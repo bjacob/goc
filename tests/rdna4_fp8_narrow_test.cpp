@@ -113,7 +113,7 @@ TEST(Fp8Narrow, EveryModifierMaskAndWholeRegisterAlias) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < (op >= 2 ? 16u : 32u); ++variant)
         for (bool sat : {false, true})
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (unsigned breg = 0; breg < 2; ++breg)
               for (unsigned dreg = 0; dreg < 3; ++dreg) {
                 uint32_t storage[3][34], expected[3][34];
@@ -190,8 +190,7 @@ TEST(Fp8Narrow, ValidationAndSemanticFallback) {
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
       EXPECT_EQ(functions[op](cpu, 0, known, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      EXPECT_EQ(functions[op](cpu, 0xffffffff00000000ull, known, nullptr, nullptr, nullptr),
-                GOC_SUCCESS);
+      EXPECT_EQ(functions[op](cpu, UINT32_C(0), known, nullptr, nullptr, nullptr), GOC_SUCCESS);
       EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, d, a, a),
                 GOC_SUCCESS);
       for (auto word : output)
@@ -206,7 +205,7 @@ TEST(Fp8Narrow, DppMasksAliasesAndGuards) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (unsigned variant : {0u, op >= 2 ? 8u : 16u, op >= 2 ? 15u : 31u})
           for (bool sat : {false, true})
-            for (uint64_t mask : rdna4_exec_masks())
+            for (uint32_t mask : rdna4_exec_masks())
               for (unsigned breg = 0; breg < 2; ++breg)
                 for (unsigned dreg = 0; dreg < 3; ++dreg) {
                   uint32_t storage[3][34], expected[3][34];
@@ -216,7 +215,7 @@ TEST(Fp8Narrow, DppMasksAliasesAndGuards) {
                   uint64_t mode = descriptor | goc_test::fp8_narrow_mode(op, variant);
                   for (unsigned lane = 0; lane < 32; ++lane) {
                     int source = 0;
-                    if (goc_test::dpp_source(mode, uint32_t(mask), lane, source))
+                    if (goc_test::dpp_source(mode, mask, lane, source))
                       expected[dreg][lane + 1] = goc_test::fp8_narrow_result(
                           op, source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
                           storage[dreg][lane + 1], uint32_t(mode), sat);

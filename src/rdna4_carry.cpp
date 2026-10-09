@@ -10,13 +10,13 @@
 namespace {
 
 template <goc::CarryOp Op, bool WithCarry>
-int run(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d, uint32_t *carry,
+int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d, uint32_t *carry,
         const uint32_t *const *a, const uint32_t *const *b, uint32_t input_carry) {
   if ((mode >> 32) && (!(mode & (GOC_DPP8 | GOC_DPP16)) || !goc::valid_dpp(mode)))
     return GOC_ERROR_INVALID_FLAGS;
   if (int error = goc::validate(flags, uint32_t(mode) & ~GOC_ALU_CLAMP, true))
     return error;
-  uint32_t mask = uint32_t(exec_mask);
+  uint32_t mask = exec_mask;
   if (!mask) {
     *carry = 0;
     return GOC_SUCCESS;
@@ -70,39 +70,39 @@ int run(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d, u
 
 } // namespace
 
-int goc_rdna4_v_add_co_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_add_co_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
                            const uint32_t *const *b) {
   return run<goc::CarryOp::Add, false>(flags, exec_mask, instruction_flags, d, carry, a, b, 0);
 }
 
-int goc_rdna4_v_sub_co_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_sub_co_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
                            const uint32_t *const *b) {
   return run<goc::CarryOp::Sub, false>(flags, exec_mask, instruction_flags, d, carry, a, b, 0);
 }
 
-int goc_rdna4_v_subrev_co_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_subrev_co_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
                               const uint32_t *const *b) {
   return run<goc::CarryOp::Subrev, false>(flags, exec_mask, instruction_flags, d, carry, a, b, 0);
 }
 
-int goc_rdna4_v_add_co_ci_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_add_co_ci_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
                               const uint32_t *const *b, uint32_t input_carry) {
   return run<goc::CarryOp::Add, true>(flags, exec_mask, instruction_flags, d, carry, a, b,
                                       input_carry);
 }
 
-int goc_rdna4_v_sub_co_ci_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_sub_co_ci_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
                               const uint32_t *const *b, uint32_t input_carry) {
   return run<goc::CarryOp::Sub, true>(flags, exec_mask, instruction_flags, d, carry, a, b,
                                       input_carry);
 }
 
-int goc_rdna4_v_subrev_co_ci_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_subrev_co_ci_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                  uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
                                  const uint32_t *const *b, uint32_t input_carry) {
   return run<goc::CarryOp::Subrev, true>(flags, exec_mask, instruction_flags, d, carry, a, b,

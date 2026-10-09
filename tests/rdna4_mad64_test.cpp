@@ -126,7 +126,7 @@ TEST(Mad64, MasksAndCrossRegisterAliases) {
   for (unsigned op = 0; op < 2; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool clamp : {false, true})
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (unsigned first = 0; first < 6; ++first)
             for (unsigned second = 0; second < 6; ++second) {
               uint32_t data[6][34], expected[6][34], result[2][32], carry = 0xa5a5a5a5,
@@ -153,7 +153,7 @@ TEST(Mad64, MasksAndCrossRegisterAliases) {
               ASSERT_EQ(functions[op](cpu | (clamp ? exact : 0), mask, clamp ? GOC_ALU_CLAMP : 0, d,
                                       &carry, a, b, c),
                         GOC_SUCCESS);
-              ASSERT_EQ(carry, expected_carry & uint32_t(mask));
+              ASSERT_EQ(carry, expected_carry & mask);
               ASSERT_EQ(std::memcmp(data, expected, sizeof(data)), 0)
                   << op << "/" << cpu << "/" << clamp << "/" << first << "/" << second;
             }
@@ -215,9 +215,8 @@ TEST(Mad64, ValidationAndZeroExec) {
       EXPECT_EQ(carry, 0x12345678);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(
-          fn(cpu | exact, 0xffffffff00000000ull, 0, nullptr, &carry, nullptr, nullptr, nullptr),
-          GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu | exact, UINT32_C(0), 0, nullptr, &carry, nullptr, nullptr, nullptr),
+                GOC_SUCCESS);
       EXPECT_EQ(carry, 0u);
       carry = 0x12345678;
       EXPECT_EQ(fn(cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, &carry, nullptr, nullptr,

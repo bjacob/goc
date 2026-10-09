@@ -132,7 +132,7 @@ TEST(MixedFma, DppMasksAliasesAndGuards) {
   for (int op = 0; op < 3; ++op)
     for (unsigned index : {0u, 1u, 85u, 1023u, 4096u, 8191u})
       for (uint64_t descriptor : goc_test::dpp_modes)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (bool shared : {false, true})
             for (unsigned target = 0; target < 4; ++target) {
               uint32_t initial[4][34], want[32];
@@ -143,7 +143,7 @@ TEST(MixedFma, DppMasksAliasesAndGuards) {
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source;
                 want[lane] = initial[target][lane + 1];
-                if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+                if (goc_test::dpp_source(descriptor, mask, lane, source))
                   want[lane] = goc_test::mixed_fma_reference::evaluate(
                       op, source < 0 ? 0 : initial[0][source + 1],
                       initial[shared ? 0 : 1][lane + 1], initial[shared ? 0 : 2][lane + 1],
@@ -324,7 +324,7 @@ TEST(MixedFma, MasksUnalignedBuffersAndAllWholeAliases) {
     for (unsigned semantics = 0; semantics < (op ? 2u : 1u); ++semantics)
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (uint32_t mode : modes)
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (const auto &layout : layouts)
               for (int target = 0; target < 4; ++target) {
                 uint32_t words[4][34], expected[4][34];
@@ -381,7 +381,7 @@ TEST(MixedFma, ExactPreservesHostStateAndErrorsPrecedeEmptyMask) {
           uint32_t original[32];
           std::copy_n(words[3], 32, original);
           uint32_t known = goc_test::mixed_fma_reference::mode(8191);
-          for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+          for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
             for (int bit = 0; bit < 32; ++bit)
               if (!(known & (uint32_t(1) << bit))) {
                 EXPECT_EQ(functions[op](cpu, mask, uint32_t(1) << bit, d, a, b, c),
@@ -399,8 +399,7 @@ TEST(MixedFma, ExactPreservesHostStateAndErrorsPrecedeEmptyMask) {
             }
           }
           EXPECT_TRUE(std::equal(words[3], words[3] + 32, original));
-          EXPECT_EQ(functions[op](cpu, UINT64_C(0xffffffff00000000), known, d, a, b, c),
-                    GOC_SUCCESS);
+          EXPECT_EQ(functions[op](cpu, UINT32_C(0), known, d, a, b, c), GOC_SUCCESS);
           EXPECT_TRUE(std::equal(words[3], words[3] + 32, original));
           if (op) {
             for (uint32_t mode : {UINT32_C(0), known, GOC_MIX_F16_A | GOC_ALU_HIGH_A})

@@ -39,7 +39,7 @@ inline void scalar_convert_inputs(unsigned i, unsigned op, uint32_t *w) {
   w[1] = i < 32 ? f[31 - i] : ((i * 0x9e3779b9u) ^ 0xa5a59669u);
 }
 
-inline int scalar_convert_call(unsigned op, uint64_t flags, uint64_t mask, uint64_t mode,
+inline int scalar_convert_call(unsigned op, uint64_t flags, uint32_t mask, uint64_t mode,
                                uint32_t *d, uint32_t a, uint32_t b) {
   switch (op) {
   case 0:

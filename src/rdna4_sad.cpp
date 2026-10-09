@@ -25,7 +25,7 @@ template <int Bits, bool Masked> uint32_t difference(uint32_t a, uint32_t b) {
 }
 
 template <goc::Sad Op>
-int sad(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
+int sad(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *c) {
   if (mode >> 32) {
     if constexpr (goc::sad_quad(Op))
@@ -38,12 +38,12 @@ int sad(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
   }
   if (int error = goc::validate(flags, mode & ~GOC_ALU_CLAMP))
     return error;
-  if (!uint32_t(mask))
+  if (!mask)
     return GOC_SUCCESS;
   const bool clamp = mode & GOC_ALU_CLAMP;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::sad_x86_64_v3<Op>(uint32_t(mask), clamp, d, a, b[0], c);
+    goc::sad_x86_64_v3<Op>(mask, clamp, d, a, b[0], c);
     return GOC_SUCCESS;
   }
 #endif
@@ -80,49 +80,49 @@ int sad(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const 
 
 } // namespace
 
-int goc_rdna4_v_sad_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_sad_u8(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c) {
   return sad<goc::Sad::U8>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_sad_hi_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_sad_hi_u8(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *c) {
   return sad<goc::Sad::HighU8>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_sad_u16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_sad_u16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   return sad<goc::Sad::U16>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_sad_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_sad_u32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   return sad<goc::Sad::U32>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_msad_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_msad_u8(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   return sad<goc::Sad::MaskedU8>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_qsad_pk_u16_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_qsad_pk_u16_u8(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b,
                                const uint32_t *const *c) {
   return sad<goc::Sad::QuadU16>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_mqsad_pk_u16_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_mqsad_pk_u16_u8(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c) {
   return sad<goc::Sad::MaskedQuadU16>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_mqsad_u32_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_mqsad_u32_u8(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
   return sad<goc::Sad::MaskedQuadU32>(flags, mask, mode, d, a, b, c);

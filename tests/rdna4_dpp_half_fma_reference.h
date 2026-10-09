@@ -9,7 +9,7 @@
 
 namespace goc_test {
 
-inline int half_fmac(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+inline int half_fmac(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
   return goc_rdna4_v_fmac_f16(flags, mask, mode, d, a, b);
 }

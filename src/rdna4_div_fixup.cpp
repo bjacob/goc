@@ -11,22 +11,22 @@
 namespace {
 
 template <unsigned Width>
-int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+int run(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *c) {
   if (int error = goc::validate(flags, mode & ~uint32_t(Width == 16 ? 0x1fff : 0x1ff), true))
     return error;
-  if (!uint32_t(mask))
+  if (!mask)
     return GOC_SUCCESS;
   bool saturate = flags & GOC_FP16_OVFL;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::fixup_x86_64_v4<Width>(uint32_t(mask), mode, saturate, d, a, b, c);
+    goc::fixup_x86_64_v4<Width>(mask, mode, saturate, d, a, b, c);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::fixup_x86_64_v3<Width>(uint32_t(mask), mode, saturate, d, a, b, c);
+    goc::fixup_x86_64_v3<Width>(mask, mode, saturate, d, a, b, c);
     return GOC_SUCCESS;
   }
 #endif
@@ -60,18 +60,18 @@ int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
 
 } // namespace
 
-int goc_rdna4_v_div_fixup_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_div_fixup_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return goc::execute_dpp(
-        flags, exec_mask, instruction_flags, a, [&](uint64_t mask, const uint32_t *const *source) {
+        flags, exec_mask, instruction_flags, a, [&](uint32_t mask, const uint32_t *const *source) {
           return run<16>(flags, mask, uint32_t(instruction_flags), d, source, b, c);
         });
   return run<16>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_div_fixup_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_div_fixup_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
@@ -79,7 +79,7 @@ int goc_rdna4_v_div_fixup_f32(uint64_t flags, uint64_t exec_mask, uint64_t instr
   return run<32>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_div_fixup_f64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_div_fixup_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)

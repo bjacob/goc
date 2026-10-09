@@ -44,7 +44,7 @@ TEST(IntegerMinmax, MasksAndAllWholeRegisterAliases) {
   const int layouts[][3] = {{0, 1, 2}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}};
   for (int op = 0; op < 14; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (uint64_t mask : rdna4_exec_masks())
+      for (uint32_t mask : rdna4_exec_masks())
         for (const auto &layout : layouts)
           for (int dest = 0; dest < 4; ++dest) {
             SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << mask << "/" << dest
@@ -102,7 +102,7 @@ TEST(IntegerMinmax, ValidationAndFpEnvironment) {
       std::fill(input, input + 32, 0x7f800001);
       std::fill(output, output + 32, 0xdeadbeef);
       auto a = input, d = output;
-      for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit)
           EXPECT_EQ(fn(cpu, mask, UINT32_C(1) << bit, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(cpu | (UINT64_C(1) << 63), mask, 0, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);

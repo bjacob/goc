@@ -89,7 +89,7 @@ void fill(bool half, uint32_t (&words)[3][34], unsigned seed) {
   }
 }
 
-void run(bool half, uint64_t flags, uint64_t mask, uint64_t mode, int a, int b, int d,
+void run(bool half, uint64_t flags, uint32_t mask, uint64_t mode, int a, int b, int d,
          uint32_t (&words)[3][34]) {
   uint32_t before[3][34];
   std::memcpy(before, words, sizeof(before));
@@ -234,7 +234,7 @@ TEST(Fmac, ValidationAndZeroMasks) {
     uint32_t words[32];
     std::fill(words, words + 32, 0xfacecafe);
     auto p = words;
-    for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
       for (unsigned bit = 0; bit < 32; ++bit)
         if ((UINT32_C(1) << bit) & ~(half ? known16 : known32)) {
           EXPECT_EQ(fn(0, mask, UINT32_C(1) << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
@@ -250,7 +250,7 @@ TEST(Fmac, ValidationAndZeroMasks) {
     for (auto word : words)
       EXPECT_EQ(word, 0xfacecafe);
     EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(fn(0, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT32_C(0), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(fn(UINT64_C(2) << 16, UINT32_MAX, 0, &p, &p, &p), GOC_SUCCESS);
   }
 }

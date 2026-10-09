@@ -44,13 +44,13 @@ inline uint32_t bitfield_reference(int op, uint32_t a, uint32_t b, uint32_t c) {
   return result;
 }
 
-inline int bitfield_mask(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+inline int bitfield_mask(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *) {
   return goc_rdna4_v_bfm_b32(flags, mask, mode, d, a, b);
 }
 
-inline int bitfield_reverse(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+inline int bitfield_reverse(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *,
                             const uint32_t *const *) {
   return goc_rdna4_v_bfrev_b32(flags, mask, mode, d, a);

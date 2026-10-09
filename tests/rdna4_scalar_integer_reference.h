@@ -50,7 +50,7 @@ inline void scalar_integer_inputs(unsigned i, uint32_t *w) {
   w[3] = uint32_t(b >> 32);
 }
 
-inline int scalar_integer_call(unsigned op, uint64_t flags, uint64_t mask, uint64_t mode,
+inline int scalar_integer_call(unsigned op, uint64_t flags, uint32_t mask, uint64_t mode,
                                uint32_t *d, uint64_t *d64, uint64_t a, uint64_t b, uint32_t *scc,
                                uint32_t seed, uint16_t immediate) {
   switch (op) {

@@ -24,7 +24,7 @@ const uint16_t special16[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x
                               0x3c01, 0x3bff, 0x3800, 0xb800, 0x4000, 0xc000, 0xbc00,
                               0x7bff, 0xfbff, 0x7c00, 0xfc00, 0x7c01, 0xfe12};
 
-int call(bool half, bool multiply, uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int call(bool half, bool multiply, uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, uint32_t literal) {
   if (half)
     return multiply ? goc_rdna4_v_fmamk_f16(flags, mask, mode, d, a, uint16_t(literal), b)
@@ -72,7 +72,7 @@ void check(bool half, uint32_t actual, uint32_t before, uint32_t want, uint32_t 
 
 uint32_t selectors(unsigned bits) { return ((bits & 3) << 9) | ((bits & 4) ? GOC_ALU_HIGH_D : 0); }
 
-void run(bool half, bool multiply, uint64_t flags, uint64_t mask, uint64_t mode, int a, int b,
+void run(bool half, bool multiply, uint64_t flags, uint32_t mask, uint64_t mode, int a, int b,
          int d, uint32_t literal, uint32_t (&words)[3][34]) {
   uint32_t before[3][34];
   std::memcpy(before, words, sizeof(before));
@@ -151,7 +151,7 @@ TEST(LiteralFma, SpecialValuesSelectorsMasksAliasesAndOverflow) {
                                      (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL : 0) |
                                      (exact && half ? GOC_SEMANTICS_STRICT : 0);
                     // Rotate literal categories across mask and alias cases.
-                    unsigned index = unsigned((mask ^ (mask >> 32)) + d + b + selection) % 20;
+                    unsigned index = unsigned(mask + d + b + selection) % 20;
                     run(half, multiply, flags, mask, mode, 0, b, d,
                         half ? special16[index] : special32[index], words);
                   }
@@ -240,7 +240,7 @@ TEST(LiteralFma, ValidationAndZeroMasks) {
       uint32_t words[32];
       std::fill(words, words + 32, 0xfacecafe);
       auto p = words;
-      for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         for (unsigned bit = 0; bit < 32; ++bit) {
           if ((UINT32_C(1) << bit) & ~(half ? known16 : 0)) {
             EXPECT_EQ(call(half, multiply, 0, mask, UINT32_C(1) << bit, &p, &p, &p, 0),
@@ -261,9 +261,7 @@ TEST(LiteralFma, ValidationAndZeroMasks) {
       for (auto word : words)
         EXPECT_EQ(word, 0xfacecafe);
       EXPECT_EQ(call(half, multiply, 0, 0, 0, nullptr, nullptr, nullptr, 0), GOC_SUCCESS);
-      EXPECT_EQ(
-          call(half, multiply, 0, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr, 0),
-          GOC_SUCCESS);
+      EXPECT_EQ(call(half, multiply, 0, UINT32_C(0), 0, nullptr, nullptr, nullptr, 0), GOC_SUCCESS);
       EXPECT_EQ(call(half, multiply, UINT64_C(2) << 16, UINT32_MAX, 0, &p, &p, &p, 0), GOC_SUCCESS);
     }
 }

@@ -13,19 +13,18 @@
 namespace {
 
 template <bool P2, bool Rtz>
-int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+int run(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *c) {
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C | GOC_ALU_CLAMP |
                          GOC_ALU_HIGH_A | (P2 ? GOC_ALU_HIGH_D : GOC_ALU_HIGH_C) |
                          GOC_INTERP_WAIT_EXP_MASK;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (!uint32_t(mask))
+  if (!mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::interp16_x86_64_v3<P2, Rtz>(flags & GOC_FP16_OVFL, uint32_t(mask), mode, d[0], a[0], b[0],
-                                     c[0]);
+    goc::interp16_x86_64_v3<P2, Rtz>(flags & GOC_FP16_OVFL, mask, mode, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -64,7 +63,7 @@ int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
 
 } // namespace
 
-int goc_rdna4_v_interp_p10_f16_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_interp_p10_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                    uint32_t *const *d, const uint32_t *const *a,
                                    const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
@@ -72,7 +71,7 @@ int goc_rdna4_v_interp_p10_f16_f32(uint64_t flags, uint64_t exec_mask, uint64_t 
   return run<false, false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_interp_p2_f16_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_interp_p2_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
@@ -80,7 +79,7 @@ int goc_rdna4_v_interp_p2_f16_f32(uint64_t flags, uint64_t exec_mask, uint64_t i
   return run<true, false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_interp_p10_rtz_f16_f32(uint64_t flags, uint64_t exec_mask,
+int goc_rdna4_v_interp_p10_rtz_f16_f32(uint64_t flags, uint32_t exec_mask,
                                        uint64_t instruction_flags, uint32_t *const *d,
                                        const uint32_t *const *a, const uint32_t *const *b,
                                        const uint32_t *const *c) {
@@ -89,7 +88,7 @@ int goc_rdna4_v_interp_p10_rtz_f16_f32(uint64_t flags, uint64_t exec_mask,
   return run<false, true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_interp_p2_rtz_f16_f32(uint64_t flags, uint64_t exec_mask,
+int goc_rdna4_v_interp_p2_rtz_f16_f32(uint64_t flags, uint32_t exec_mask,
                                       uint64_t instruction_flags, uint32_t *const *d,
                                       const uint32_t *const *a, const uint32_t *const *b,
                                       const uint32_t *const *c) {

@@ -123,7 +123,7 @@ TEST(DppHalfBinary, MasksAliasesAndRandomWords) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 8; ++op)
       for (uint64_t mode : modes())
-        for (uint64_t mask : masks)
+        for (uint32_t mask : masks)
           for (const auto &alias : aliases)
             for (unsigned batch = 0; batch < 4; ++batch) {
               SCOPED_TRACE(::testing::Message()
@@ -150,7 +150,7 @@ TEST(DppHalfBinary, MasksAliasesAndRandomWords) {
                   uint32_t want = before[reg][index];
                   int source;
                   bool written = reg == alias[0] && index > 0 && index < 33 &&
-                                 goc_test::dpp_source(mode, uint32_t(mask), index - 1, source);
+                                 goc_test::dpp_source(mode, mask, index - 1, source);
                   if (written)
                     want =
                         reference(op, source < 0 ? 0 : before[alias[1]][source + 1],
@@ -169,7 +169,7 @@ TEST(DppHalfBinary, Validation) {
   for (auto fn : goc_test::half_binary_functions)
     for (uint64_t mode : modes()) {
       EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         EXPECT_EQ(fn(0, mask, mode | GOC_ALU_NEG_C, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(0, mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr),

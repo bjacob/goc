@@ -101,7 +101,7 @@ TEST(DivFmas, MasksAndCrossRegisterAliases) {
   for (unsigned op = 0; op < 2; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 8; ++variant)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (unsigned first = 0; first < 8; first += (op ? 1 : 2))
             for (unsigned second = 0; second < (op ? 8u : 1u); ++second) {
               uint32_t data[8][34], expected[8][34], result[2][32], condition = random();
@@ -181,9 +181,8 @@ TEST(DivFmas, ValidationAndZeroExec) {
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
-      EXPECT_EQ(
-          fn(cpu | exact, 0xffffffff00000000ull, 0, nullptr, nullptr, nullptr, nullptr, UINT32_MAX),
-          GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu | exact, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr, UINT32_MAX),
+                GOC_SUCCESS);
       EXPECT_EQ(
           fn(cpu | 2 * GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr, nullptr, 0),
           GOC_SUCCESS);

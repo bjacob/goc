@@ -82,7 +82,7 @@ TEST(Interp32, MasksModifiersAliasesAndUnalignedStorage) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (const auto &source : sources)
           for (unsigned target = 0; target < 4; ++target)
-            for (uint64_t mask : rdna4_exec_masks()) {
+            for (uint32_t mask : rdna4_exec_masks()) {
               uint32_t words[4][35], expected[4][35];
               for (unsigned reg = 0; reg < 4; ++reg)
                 for (unsigned lane = 0; lane < 35; ++lane)
@@ -133,8 +133,7 @@ TEST(Interp32, SpecialValuesAndRandomBits) {
 TEST(Interp32, ValidationAndEmptyExec) {
   uint32_t known = goc_test::interp32_mode(15, 7);
   for (Fn fn : functions) {
-    EXPECT_EQ(fn(0, UINT64_C(0xffffffff00000000), known, nullptr, nullptr, nullptr, nullptr),
-              GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT32_C(0), known, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!(known & (1u << bit))) {
         EXPECT_EQ(fn(0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);

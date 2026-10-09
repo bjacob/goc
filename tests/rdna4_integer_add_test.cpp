@@ -47,7 +47,7 @@ TEST(IntegerAdd, MasksAliasesAndSaturation) {
   for (int op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int clamp = 0; clamp <= int(op != 5); ++clamp)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (const auto &layout : layouts)
             for (int dest = 0; dest < 4; ++dest) {
               SCOPED_TRACE(::testing::Message()
@@ -124,7 +124,7 @@ TEST(IntegerAdd, ValidationAndFpEnvironment) {
       std::fill(input, input + 32, 0x7f800001);
       std::fill(output, output + 32, 0xdeadbeef);
       auto a = input, d = output;
-      for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit) {
           uint32_t mode = UINT32_C(1) << bit;
           if (op != 5 && mode == GOC_ALU_CLAMP)

@@ -81,7 +81,7 @@ TEST(Boolean, MasksAliasesAndUnalignedStorage) {
               word = random();
           uint32_t mode = goc_test::boolean_mode(op, selection);
           int breg = same_sources ? 0 : 1;
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (int target = 0; target < 3; ++target) {
               uint32_t words[3][35], expected[3][35];
               for (int reg = 0; reg < 3; ++reg) {
@@ -111,7 +111,7 @@ TEST(Boolean, ValidationBeforeEmptyMaskAndUnchangedOutputs) {
       const uint32_t *a[] = {words[0]}, *b[] = {words[1]};
       uint32_t *d[] = {words[2]};
       uint32_t known = goc_test::boolean_mode(op, 7);
-      for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit)
           if (!(known & (uint32_t(1) << bit))) {
             EXPECT_EQ(goc_test::boolean_functions[op](cpu, mask, uint32_t(1) << bit, d, a, b),

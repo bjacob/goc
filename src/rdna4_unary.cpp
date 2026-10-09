@@ -13,7 +13,7 @@
 namespace {
 
 template <goc::Unary Op>
-int unary(uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
+int unary(uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
           const uint32_t *const *a) {
   if (modifiers >> 32) {
     return goc::execute_dpp(flags, mask, modifiers, a,
@@ -25,12 +25,12 @@ int unary(uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, modifiers & ~known))
     return error;
-  if (uint32_t(mask) == 0)
+  if (mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if constexpr (Op != goc::Unary::Exp && Op != goc::Unary::Log) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::unary_x86_64_v3(Op, uint32_t(mask), modifiers, d[0], a[0]);
+      goc::unary_x86_64_v3(Op, mask, modifiers, d[0], a[0]);
       return GOC_SUCCESS;
     }
   }
@@ -53,57 +53,57 @@ int unary(uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_trunc_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_trunc_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a) {
   return unary<goc::Unary::Trunc>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_ceil_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_ceil_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a) {
   return unary<goc::Unary::Ceil>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_rndne_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_rndne_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a) {
   return unary<goc::Unary::Rndne>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_floor_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_floor_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a) {
   return unary<goc::Unary::Floor>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_sqrt_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_sqrt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a) {
   return unary<goc::Unary::Sqrt>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_rcp_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_rcp_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
   return unary<goc::Unary::Rcp>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_rsq_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_rsq_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
   return unary<goc::Unary::Rsq>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_exp_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_exp_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
   return unary<goc::Unary::Exp>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_log_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_log_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
   return unary<goc::Unary::Log>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_fract_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_v_fract_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a) {
   return unary<goc::Unary::Fract>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_frexp_mant_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_frexp_mant_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a) {
   return unary<goc::Unary::FrexpMant>(flags, mask, mode, d, a);
 }

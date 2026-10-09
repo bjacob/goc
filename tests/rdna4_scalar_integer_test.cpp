@@ -14,7 +14,7 @@ TEST(ScalarInteger, HardwareResultsAndScc) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (unsigned seed = 0; seed < 2; ++seed)
-        for (uint64_t mask : {UINT64_C(0), UINT64_MAX, UINT64_C(0xaaaaaaaa)})
+        for (uint32_t mask : {UINT32_C(0), UINT32_MAX, UINT32_C(0xaaaaaaaa)})
           for (unsigned k = 0; k < 40; ++k) {
             uint64_t hash = UINT64_C(14695981039346656037);
             unsigned op = k < 18 ? k : k < 29 ? 18 : 19;
@@ -40,7 +40,7 @@ TEST(ScalarInteger, HardwareResultsAndScc) {
 
 TEST(ScalarInteger, ExecAndAliasing) {
   for (unsigned op = 0; op < 20; ++op)
-    for (uint64_t mask : rdna4_exec_masks()) {
+    for (uint32_t mask : rdna4_exec_masks()) {
       uint32_t d = 0x80000000u, cc = 0;
       uint64_t wide = 0;
       ASSERT_EQ(
@@ -133,7 +133,7 @@ TEST(ScalarInteger, SignExtendExhaustiveHardware) {
         uint64_t hash = UINT64_C(14695981039346656037);
         for (unsigned i = 0; i < 65536; ++i) {
           uint32_t a = i | ((i * 0x9e37u) << 16), d;
-          ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, &d, a), GOC_SUCCESS);
+          ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, &d, a), GOC_SUCCESS);
           int value = int(i % modulus);
           if (value >= int(modulus / 2))
             value -= int(modulus);
@@ -155,7 +155,7 @@ TEST(ScalarInteger, SignExtendExecAliasesFlagsAndHostState) {
     std::feraiseexcept(FE_DIVBYZERO);
     int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
     for (auto fn : {goc_rdna4_s_sext_i32_i8, goc_rdna4_s_sext_i32_i16}) {
-      for (uint64_t mask : rdna4_exec_masks()) {
+      for (uint32_t mask : rdna4_exec_masks()) {
         uint32_t words[] = {123, 0xabcdffff, 456};
         ASSERT_EQ(fn(0, mask, 0, words + 1, words[1]), GOC_SUCCESS);
         EXPECT_EQ(words[1], UINT32_MAX);

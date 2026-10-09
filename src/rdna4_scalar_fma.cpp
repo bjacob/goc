@@ -64,7 +64,7 @@ int run(uint64_t flags, uint32_t mode, uint32_t *d, uint32_t a, uint32_t b, uint
 
 } // namespace
 
-int goc_rdna4_s_fmac_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_s_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *d, uint32_t a, uint32_t b) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -72,7 +72,7 @@ int goc_rdna4_s_fmac_f32(uint64_t flags, uint64_t exec_mask, uint64_t instructio
   return run<false, true>(flags, instruction_flags, d, a, b, 0);
 }
 
-int goc_rdna4_s_fmac_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_s_fmac_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *d, uint32_t a, uint32_t b) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -80,7 +80,7 @@ int goc_rdna4_s_fmac_f16(uint64_t flags, uint64_t exec_mask, uint64_t instructio
   return run<true, true>(flags, instruction_flags, d, a, b, 0);
 }
 
-int goc_rdna4_s_fmaak_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_s_fmaak_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *d, uint32_t a, uint32_t b, uint32_t literal) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -88,7 +88,7 @@ int goc_rdna4_s_fmaak_f32(uint64_t flags, uint64_t exec_mask, uint64_t instructi
   return run<false, false>(flags, instruction_flags, d, a, b, literal);
 }
 
-int goc_rdna4_s_fmamk_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+int goc_rdna4_s_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *d, uint32_t a, uint32_t literal, uint32_t c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;

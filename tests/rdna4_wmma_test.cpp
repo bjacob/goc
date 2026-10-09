@@ -431,8 +431,7 @@ TEST(Wmma, Fp16V3FiniteAndExceptionalInputsMatchScalar) {
   for (bool exceptional : {false, true})
     for (int trial = 0; trial < 8; ++trial)
       for (int dst : {0, 2, 4, 8, 16})
-        for (uint64_t mask :
-             {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_C(0x91234567), UINT64_MAX}) {
+        for (uint32_t mask : {UINT32_C(0), UINT32_C(0x91234567), UINT32_MAX}) {
           Registers reference, actual;
           std::minstd_rand random(73 + trial);
           for (int reg = 0; reg < 24; ++reg)
@@ -479,8 +478,7 @@ TEST(Wmma, Bf16V3AndZen4FallbackMatchScalar) {
   for (uint64_t level = GOC_CPU_X86_64_V3; level <= goc_init_cpu_flags(); ++level)
     for (int trial = 0; trial < 8; ++trial)
       for (int dst : {0, 2, 4, 8, 16})
-        for (uint64_t mask :
-             {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_C(0x91234567), UINT64_MAX}) {
+        for (uint32_t mask : {UINT32_C(0), UINT32_C(0x91234567), UINT32_MAX}) {
           Registers reference, actual;
           std::minstd_rand random(107 + trial);
           for (int reg = 0; reg < 24; ++reg)
@@ -658,13 +656,11 @@ TEST(Wmma, SimdModifiersDenseReferenceMasksAndOverlap) {
     for (uint32_t modifiers = 0; modifiers < 64; ++modifiers)
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (int dst : {0, 2, 4, 8, 16})
-          for (uint64_t mask :
-               (modifiers == 0 || modifiers == GOC_WMMA_NEG_LO_A ||
-                modifiers ==
-                    (GOC_WMMA_NEG_HI_A | GOC_WMMA_NEG_LO_B | GOC_WMMA_ABS_C | GOC_WMMA_NEG_C))
-                   ? rdna4_exec_masks()
-                   : std::vector<uint64_t>{0, UINT64_C(0xffffffff00000000),
-                                           UINT64_C(0xdeadbeef91234567), UINT64_MAX}) {
+          for (uint32_t mask : (modifiers == 0 || modifiers == GOC_WMMA_NEG_LO_A ||
+                                modifiers == (GOC_WMMA_NEG_HI_A | GOC_WMMA_NEG_LO_B |
+                                              GOC_WMMA_ABS_C | GOC_WMMA_NEG_C))
+                                   ? rdna4_exec_masks()
+                                   : std::vector<uint32_t>{0, UINT32_C(0x91234567), UINT32_MAX}) {
             SCOPED_TRACE(::testing::Message()
                          << "bf16=" << bf << " modifiers=" << modifiers << " cpu=" << cpu
                          << " dst=" << dst << " mask=" << mask);

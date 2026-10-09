@@ -50,7 +50,7 @@ TEST(DppBitfield, MasksAliasesAndRandomWords) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 8; ++op)
       for (uint64_t mode : goc_test::dpp_modes)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (const auto &layout : layouts)
             for (unsigned dest = 0; dest < 4; ++dest) {
               SCOPED_TRACE(::testing::Message()
@@ -75,7 +75,7 @@ TEST(DppBitfield, MasksAliasesAndRandomWords) {
                   uint32_t want = before[reg][index];
                   int source;
                   if (reg == dest && index > 0 && index < 33 &&
-                      goc_test::dpp_source(mode, uint32_t(mask), index - 1, source))
+                      goc_test::dpp_source(mode, mask, index - 1, source))
                     want = goc_test::bitfield_reference(
                         op, source < 0 ? 0 : before[layout[0]][source + 1],
                         before[layout[1]][index], before[layout[2]][index]);
@@ -96,7 +96,7 @@ TEST(DppBitfield, ValidationAndHostFpState) {
   for (unsigned op = 0; op < 8; ++op)
     for (uint64_t mode : goc_test::dpp_modes) {
       auto fn = goc_test::bitfield_functions[op];
-      for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         EXPECT_EQ(fn(0, mask, mode | GOC_ALU_NEG_A, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(UINT64_C(1) << 63, mask, mode, nullptr, nullptr, nullptr, nullptr),

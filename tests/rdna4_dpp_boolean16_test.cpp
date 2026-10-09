@@ -64,7 +64,7 @@ TEST(DppBoolean16, MasksAliasesAndRandomWords) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 4; op < 8; ++op)
       for (uint64_t mode : modes(op))
-        for (uint64_t mask : masks)
+        for (uint32_t mask : masks)
           for (const auto &alias : aliases)
             for (unsigned batch = 0; batch < 8; ++batch) {
               SCOPED_TRACE(::testing::Message()
@@ -91,7 +91,7 @@ TEST(DppBoolean16, MasksAliasesAndRandomWords) {
                   uint32_t want = before[reg][index];
                   int source;
                   if (reg == alias[0] && index > 0 && index < 33 &&
-                      goc_test::dpp_source(mode, uint32_t(mask), index - 1, source))
+                      goc_test::dpp_source(mode, mask, index - 1, source))
                     want = goc_test::boolean_reference(
                         op, source < 0 ? 0 : before[alias[1]][source + 1], before[alias[2]][index],
                         before[alias[0]][index], uint32_t(mode));
@@ -112,7 +112,7 @@ TEST(DppBoolean16, ValidationAndHostFpState) {
   for (unsigned op = 4; op < 8; ++op)
     for (uint64_t mode : modes(op)) {
       auto fn = goc_test::boolean_functions[op];
-      for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         if (op == 7) {
           EXPECT_EQ(fn(0, mask, mode | GOC_ALU_HIGH_B, nullptr, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);

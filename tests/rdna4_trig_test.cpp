@@ -139,7 +139,7 @@ TEST(Trig, EveryMaskAliasesAndModifier) {
         const uint32_t *ap[] = {source};
         uint32_t *fp[] = {full};
         ASSERT_EQ(functions[op](cpu, UINT32_MAX, modifiers(mode), fp, ap), GOC_SUCCESS);
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (bool alias : {false, true}) {
             uint32_t a[32], d[32];
             std::copy_n(source, 32, a);
@@ -214,7 +214,7 @@ TEST(Trig, InvalidFlagsAndReservedSemanticsPreserveDestination) {
       uint32_t mode = uint32_t(1) << bit;
       if (mode & (GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP))
         continue;
-      for (uint64_t mask : {UINT64_C(0), UINT64_MAX})
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX})
         EXPECT_EQ(fn(0, mask, mode, dp, ap), GOC_ERROR_INVALID_FLAGS);
     }
     EXPECT_EQ(fn(UINT64_C(1) << 63, 0, 0, dp, ap), GOC_ERROR_INVALID_FLAGS);
@@ -238,7 +238,7 @@ TEST(Trig, DppModifiersMasksAliasesAndGuards) {
         for (int m = 0; m < 32; ++m)
           for (auto descriptor : goc_test::dpp_modes) {
             auto masks =
-                (m == 0 || m == 32 - 1) ? rdna4_exec_masks() : std::vector<uint64_t>{UINT32_MAX};
+                (m == 0 || m == 32 - 1) ? rdna4_exec_masks() : std::vector<uint32_t>{UINT32_MAX};
             for (auto mask : masks)
               for (unsigned target = 0; target < 2; ++target) {
                 uint32_t words[2][34], expected[2][34], permuted[32] = {};
@@ -249,7 +249,7 @@ TEST(Trig, DppModifiersMasksAliasesAndGuards) {
                 uint32_t effective = 0;
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source)) {
+                  if (goc_test::dpp_source(descriptor, mask, lane, source)) {
                     effective |= uint32_t(1) << lane;
                     permuted[lane] = source < 0 ? 0 : initial[0][source + 1];
                   }

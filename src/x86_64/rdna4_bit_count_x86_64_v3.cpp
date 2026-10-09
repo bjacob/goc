@@ -22,7 +22,7 @@ __m256i population(__m256i x) {
 namespace goc {
 
 template <BitCount Op, int Lanes>
-void bit_count_x86_64_v3(uint64_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b) {
+void bit_count_x86_64_v3(ExecMask<Lanes> mask, uint32_t *d, const uint32_t *a, const uint32_t *b) {
   static_assert(Op != BitCount::MaskedHigh || Lanes != 32);
   for (int lane = 0; lane < Lanes; lane += 8) {
     auto x = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane));
@@ -64,15 +64,15 @@ void bit_count_x86_64_v3(uint64_t mask, uint32_t *d, const uint32_t *a, const ui
   }
 }
 
-template void bit_count_x86_64_v3<BitCount::Leading, 32>(uint64_t mask, uint32_t *d,
+template void bit_count_x86_64_v3<BitCount::Leading, 32>(uint32_t mask, uint32_t *d,
                                                          const uint32_t *a, const uint32_t *b);
-template void bit_count_x86_64_v3<BitCount::Trailing, 32>(uint64_t mask, uint32_t *d,
+template void bit_count_x86_64_v3<BitCount::Trailing, 32>(uint32_t mask, uint32_t *d,
                                                           const uint32_t *a, const uint32_t *b);
-template void bit_count_x86_64_v3<BitCount::Sign, 32>(uint64_t mask, uint32_t *d, const uint32_t *a,
+template void bit_count_x86_64_v3<BitCount::Sign, 32>(uint32_t mask, uint32_t *d, const uint32_t *a,
                                                       const uint32_t *b);
-template void bit_count_x86_64_v3<BitCount::Population, 32>(uint64_t mask, uint32_t *d,
+template void bit_count_x86_64_v3<BitCount::Population, 32>(uint32_t mask, uint32_t *d,
                                                             const uint32_t *a, const uint32_t *b);
-template void bit_count_x86_64_v3<BitCount::MaskedLow, 32>(uint64_t mask, uint32_t *d,
+template void bit_count_x86_64_v3<BitCount::MaskedLow, 32>(uint32_t mask, uint32_t *d,
                                                            const uint32_t *a, const uint32_t *b);
 template void bit_count_x86_64_v3<BitCount::MaskedLow, 64>(uint64_t mask, uint32_t *d,
                                                            const uint32_t *a, const uint32_t *b);

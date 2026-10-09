@@ -37,7 +37,7 @@ TEST(HalfDot, AllModifiersHalfSelectionsMasksAndAliases) {
       for (unsigned variant = 0; variant < 256; ++variant) {
         uint32_t mode = (variant & 63) | (variant & 64 ? GOC_ALU_HIGH_C : 0) |
                         (variant & 128 ? GOC_ALU_HIGH_D : 0);
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (int alias = 0; alias < 4; ++alias) {
             SCOPED_TRACE(::testing::Message()
                          << brain << "/" << cpu << "/" << variant << "/" << mask << "/" << alias);
@@ -152,7 +152,7 @@ TEST(HalfDot, Validation) {
     uint32_t a[32] = {}, d[32];
     std::fill(d, d + 32, 0xdeadbeef);
     auto pa = a, pd = d;
-    for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
       for (uint32_t invalid : {GOC_ALU_CLAMP, GOC_ALU_OMOD_2, UINT32_C(1) << 31})
         EXPECT_EQ(fn(0, mask, invalid, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(
@@ -181,7 +181,7 @@ TEST(HalfDot, RandomEncodingsSimdMatchesScalar) {
         }
         uint32_t mode = rng() & (63 | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D);
         uint64_t fp = trial & 1 ? GOC_FP16_OVFL : 0;
-        uint64_t mask = rdna4_exec_masks()[trial % rdna4_exec_masks().size()];
+        uint32_t mask = rdna4_exec_masks()[trial % rdna4_exec_masks().size()];
         auto pa = a, pb = b, pc = c, pr = ref, pd = result;
         ASSERT_EQ(functions[brain](fp, mask, mode, &pr, &pa, &pb, &pc), GOC_SUCCESS);
         ASSERT_EQ(functions[brain](fp | cpu, mask, mode, &pd, &pa, &pb, &pc), GOC_SUCCESS);
@@ -209,7 +209,7 @@ TEST(HalfDot, DppModifiersMasksAliasesAndGuards) {
           auto masks =
               (variant == 0 || variant == 63 || variant == 64 || variant == 128 || variant == 255)
                   ? rdna4_exec_masks()
-                  : std::vector<uint64_t>{UINT32_MAX};
+                  : std::vector<uint32_t>{UINT32_MAX};
           for (auto mask : masks)
             for (unsigned alias = 0; alias < 4; ++alias) {
               uint32_t storage[4][34], expected[4][34];
@@ -237,7 +237,7 @@ TEST(HalfDot, DppModifiersMasksAliasesAndGuards) {
                 std::copy_n(storage[reg], 34, expected[reg]);
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source = 0;
-                if (!goc_test::dpp_source(mode, uint32_t(mask), lane, source))
+                if (!goc_test::dpp_source(mode, mask, lane, source))
                   continue;
                 int a0 = source < 0 ? 0 : values[0][source][0],
                     a1 = source < 0 ? 0 : values[0][source][1];

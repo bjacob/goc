@@ -60,7 +60,7 @@ void set(uint32_t *const *v, int index, int k, int bits, uint32_t value) {
   v[reg][lane] = (v[reg][lane] & ~mask) | (value << shift);
 }
 
-void check(Registers &r, int dst, uint64_t mask, const uint32_t *golden,
+void check(Registers &r, int dst, uint32_t mask, const uint32_t *golden,
            const uint32_t (&before)[8][32]) {
   for (int row = 0; row < 16; ++row)
     for (int col = 0; col < 16; ++col) {
@@ -85,7 +85,7 @@ TEST(SubbyteWmma, Fp8DenseGoldensMasksAndOverlap) {
          {UINT32_C(0), GOC_WMMA_NEG_C, GOC_WMMA_ABS_C, GOC_WMMA_NEG_C | GOC_WMMA_ABS_C})
       for (int format = 0; format < 4; ++format)
         for (int dst : {0, 4, 8, 16})
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
               Registers r;
               std::minstd_rand random(12056925);
@@ -133,7 +133,7 @@ TEST(SubbyteWmma, AllFp8CodesThroughApi) {
               bool other_bf8 = operand ? format & 2 : format & 1;
               set(r.v + 4 * (1 - operand), index, k, 8, other_bf8 ? 0x3c : 0x38);
             }
-          ASSERT_EQ(floating[format](cpu, UINT64_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8), 0);
+          ASSERT_EQ(floating[format](cpu, UINT32_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8), 0);
           for (int row = 0; row < 16; ++row)
             for (int col = 0; col < 16; ++col) {
               int code = block * 16 + (operand ? col : row);
@@ -166,7 +166,7 @@ TEST(SubbyteWmma, Fp8ModifiersAndStrictErrors) {
       for (int reg = 0; reg < 8; ++reg)
         for (int lane = 0; lane < 32; ++lane)
           r.v[8 + reg][lane] = goc::as_bits(-3.0f);
-      ASSERT_EQ(fn(GOC_FP16_OVFL, UINT64_MAX, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8), 0);
+      ASSERT_EQ(fn(GOC_FP16_OVFL, UINT32_MAX, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8), 0);
       float want = (modifiers & GOC_WMMA_ABS_C) ? 3.0f : -3.0f;
       if (modifiers & GOC_WMMA_NEG_C)
         want = -want;
@@ -175,12 +175,12 @@ TEST(SubbyteWmma, Fp8ModifiersAndStrictErrors) {
           EXPECT_EQ(r.v[16 + reg][lane], goc::as_bits(want));
       uint32_t before[8][32];
       save(r, 16, before);
-      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX, modifiers,
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, modifiers,
                    r.v + 16, r.v, r.v + 4, r.v + 8),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
-      EXPECT_EQ(fn(0, UINT64_MAX, GOC_WMMA_NEG_LO_A, r.v + 16, r.v, r.v + 4, r.v + 8),
+      EXPECT_EQ(fn(0, UINT32_MAX, GOC_WMMA_NEG_LO_A, r.v + 16, r.v, r.v + 4, r.v + 8),
                 GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(UINT64_C(1) << 63, UINT64_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8),
+      EXPECT_EQ(fn(UINT64_C(1) << 63, UINT32_MAX, 0, r.v + 16, r.v, r.v + 4, r.v + 8),
                 GOC_ERROR_INVALID_FLAGS);
       check(r, 16, 0, nullptr, before);
     }
@@ -191,7 +191,7 @@ TEST(SubbyteWmma, IntegerGoldensSignsClampMasksAndOverlap) {
     for (int shape = 0; shape < 3; ++shape)
       for (uint32_t mode = 0; mode < 8; ++mode)
         for (int dst : {0, 4, 8, 16})
-          for (uint64_t mask : rdna4_exec_masks())
+          for (uint32_t mask : rdna4_exec_masks())
             for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
               int bits = shape == 0 ? 8 : 4, K = shape == 2 ? 32 : 16;
               Registers r;
@@ -227,9 +227,9 @@ TEST(SubbyteWmma, IntegerErrorsPreserveEveryDestination) {
       save(r, 16, before);
       for (uint32_t flag : {GOC_WMMA_NEG_C, GOC_WMMA_NEG_HI_A, GOC_WMMA_NEG_HI_B, GOC_WMMA_ABS_C,
                             UINT32_C(1) << 31})
-        EXPECT_EQ(fn(cpu, UINT64_MAX, flag, r.v + 16, r.v, r.v + 4, r.v + 8),
+        EXPECT_EQ(fn(cpu, UINT32_MAX, flag, r.v + 16, r.v, r.v + 4, r.v + 8),
                   GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(cpu | (UINT64_C(2) << 16) | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, r.v + 16, r.v,
+      EXPECT_EQ(fn(cpu | (UINT64_C(2) << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, r.v + 16, r.v,
                    r.v + 4, r.v + 8),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       check(r, 16, 0, nullptr, before);
@@ -309,9 +309,9 @@ TEST(SubbyteWmma, IntegerExtremesAndCancellationAcrossCpuLevels) {
           save(r, 16, before);
           const uint32_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
           ASSERT_EQ(integer[shape](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                   UINT64_MAX, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8),
+                                   UINT32_MAX, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8),
                     0);
-          check(r, 16, UINT64_MAX, golden, before);
+          check(r, 16, UINT32_MAX, golden, before);
         }
       }
 }

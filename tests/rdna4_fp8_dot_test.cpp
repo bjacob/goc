@@ -95,7 +95,7 @@ TEST(Fp8Dot, MixedBytesMasksAndAliases) {
     }
     for (uint32_t mode : {UINT32_C(0), GOC_DOT_NEG_C, GOC_DOT_ABS_C, GOC_DOT_NEG_C | GOC_DOT_ABS_C})
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (int alias = 0; alias < 4; ++alias) {
             uint32_t storage[4][34], before[32];
             uint32_t *v[4];
@@ -134,7 +134,7 @@ TEST(Fp8Dot, ValidationAndLooseFallback) {
     uint32_t a[32] = {}, d[32];
     std::fill(d, d + 32, 0xdeadbeef);
     auto pa = a, pd = d;
-    for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+    for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
       for (uint32_t invalid :
            {GOC_DOT_NEG_LO_A, GOC_DOT_CLAMP, GOC_DOT_LO_A_HIGH, UINT32_C(1) << 31})
         EXPECT_EQ(fn(0, mask, invalid, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);

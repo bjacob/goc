@@ -67,7 +67,7 @@ TEST(Integer16, MasksModifiersAndAllWholeRegisterAliases) {
   for (int op = 0; op < 12; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int mode = 0; mode < (op < 4 ? 16 : 8); ++mode)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (const auto &layout : layouts) {
             uint32_t words[3][32], saved[3][32];
             for (int r = 0; r < 3; ++r)
@@ -152,7 +152,7 @@ TEST(Integer16, ValidationAndFloatingEnvironment) {
     EXPECT_EQ(
         fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr, nullptr),
         GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(fn(0, UINT64_C(0xffffffff00000000), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT32_C(0), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
     fenv_t environment;
     ASSERT_EQ(std::fegetenv(&environment), 0);
     std::fesetround(FE_DOWNWARD);

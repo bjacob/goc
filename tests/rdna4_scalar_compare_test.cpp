@@ -25,7 +25,7 @@ TEST(ScalarCompare, HardwareEveryPredicateAndFpState) {
             ASSERT_EQ(goc_test::scalar_compare_call(op,
                                                     cpu | semantics | GOC_SEMANTICS_STRICT |
                                                         goc_test::scalar_fp_flags(state),
-                                                    UINT64_MAX, 0, &scc, a, b),
+                                                    UINT32_MAX, 0, &scc, a, b),
                       GOC_SUCCESS);
             hash = (hash ^ scc) * UINT64_C(1099511628211);
           }
@@ -40,8 +40,8 @@ TEST(ScalarCompare, ExecIgnoredAndOutputMayOverlapEitherSourceWord) {
       uint32_t w[4], expected;
       goc_test::scalar_compare_inputs(sample, op, w);
       uint64_t a = (uint64_t(w[1]) << 32) | w[0], b = (uint64_t(w[3]) << 32) | w[2];
-      ASSERT_EQ(goc_test::scalar_compare_call(op, 0, UINT64_MAX, 0, &expected, a, b), GOC_SUCCESS);
-      for (uint64_t mask : rdna4_exec_masks())
+      ASSERT_EQ(goc_test::scalar_compare_call(op, 0, UINT32_MAX, 0, &expected, a, b), GOC_SUCCESS);
+      for (uint32_t mask : rdna4_exec_masks())
         for (unsigned alias = 0; alias < 4; ++alias) {
           uint64_t words[] = {123, a, b, 456}, want[] = {123, a, b, 456};
           auto out = reinterpret_cast<uint32_t *>(reinterpret_cast<unsigned char *>(words + 1) +

@@ -44,7 +44,7 @@ TEST(IntegerMul, MasksAliasesAndSaturation) {
   for (int op = 0; op < 7; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int clamp = 0; clamp <= int(goc_test::integer_mul_can_clamp(op)); ++clamp)
-        for (uint64_t mask : rdna4_exec_masks())
+        for (uint32_t mask : rdna4_exec_masks())
           for (const auto &layout : layouts)
             for (int dest = 0; dest < 3; ++dest) {
               SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << clamp << "/" << mask
@@ -116,7 +116,7 @@ TEST(IntegerMul, ValidationAndFpEnvironment) {
       std::fill(a, a + 32, 0x7f800001);
       std::fill(b, b + 32, 0xffffffff);
       std::fill(d, d + 32, 0xdeadbeef);
-      for (uint64_t mask : {UINT64_C(0), UINT64_C(0xffffffff00000000), UINT64_MAX}) {
+      for (uint32_t mask : {UINT32_C(0), UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit) {
           uint32_t mode = UINT32_C(1) << bit;
           if (mode == GOC_ALU_CLAMP && goc_test::integer_mul_can_clamp(op))
