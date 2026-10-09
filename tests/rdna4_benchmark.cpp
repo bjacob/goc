@@ -4309,46 +4309,59 @@ bool benchmark_fp8_conversion(uint64_t cpu, int iterations, int min_ms) {
                              goc_rdna4_v_cvt_pk_f32_fp8, goc_rdna4_v_cvt_pk_f32_bf8};
   const char *names[] = {"v_cvt_f32_fp8", "v_cvt_f32_bf8", "v_cvt_pk_f32_fp8", "v_cvt_pk_f32_bf8"};
   for (unsigned op = 0; op < 4; ++op)
-    for (bool upper : {false, true}) {
-      bool packed = op >= 2;
-      unsigned selection = upper ? (packed ? 1 : 3) : 0;
-      uint32_t mode = goc_test::fp8_conversion_mode(packed, selection);
-      Registers r;
-      r.output_regs = packed ? 2 : 1;
-      for (unsigned lane = 0; lane < 32; ++lane) {
-        uint32_t raw = lane * 0x072f0311u;
-        r.data[0][lane] = raw;
-        for (int reg = 0; reg < r.output_regs; ++reg)
-          r.expected[128 * (lane / 16) + 16 * reg + lane % 16] = goc_test::fp8_conversion_reference(
-              op & 1, uint8_t(raw >> (selection * (packed ? 16 : 8) + 8 * reg)));
-      }
-      const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *,
-                          const uint32_t *const *) {
-        return functions[op](flags, mask, modifiers, d, a);
-      };
-      const char *label = upper ? (packed ? "HIGH_A" : "byte:3") : "none";
-      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
-      if (scalar < 0)
-        return false;
-      print_result(names[op], "loose", label, "scalar", scalar, 1);
-#if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if (cpu >= GOC_CPU_X86_64_V3) {
-        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
-        if (simd < 0)
+    for (int descriptor : {-1, 0, 5})
+      for (bool upper : {false, true}) {
+        bool packed = op >= 2;
+        if (packed && descriptor >= 0)
+          continue;
+        unsigned selection = upper ? (packed ? 1 : 3) : 0;
+        uint64_t mode = goc_test::fp8_conversion_mode(packed, selection);
+        if (descriptor >= 0)
+          mode |= goc_test::dpp_modes[descriptor];
+        Registers r;
+        r.output_regs = packed ? 2 : 1;
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          uint32_t raw = lane * 0x072f0311u;
+          r.data[0][lane] = raw;
+          int source = int(lane);
+          if (descriptor >= 0)
+            goc_test::dpp_source(mode, UINT32_MAX, lane, source);
+          uint32_t selected = source < 0 ? 0 : uint32_t(source) * 0x072f0311u;
+          for (int reg = 0; reg < r.output_regs; ++reg)
+            r.expected[128 * (lane / 16) + 16 * reg + lane % 16] =
+                goc_test::fp8_conversion_reference(
+                    op & 1, uint8_t(selected >> (selection * (packed ? 16 : 8) + 8 * reg)));
+        }
+        const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *,
+                            const uint32_t *const *) {
+          return functions[op](flags, mask, modifiers, d, a);
+        };
+        const char *label = upper ? (packed ? "HIGH_A" : "byte:3") : "none";
+        if (descriptor >= 0)
+          label = descriptor == 0 ? (upper ? "DPP8/byte:3" : "DPP8")
+                                  : (upper ? "DPP16/byte:3" : "DPP16");
+        double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+        if (scalar < 0)
           return false;
-        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
-      }
+        print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+        if (cpu >= GOC_CPU_X86_64_V3) {
+          double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+        }
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
-      if (cpu >= GOC_CPU_X86_64_V4) {
-        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
-        if (simd < 0)
-          return false;
-        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
-      }
+        if (cpu >= GOC_CPU_X86_64_V4) {
+          double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
+        }
 #endif
-    }
+      }
   (void)cpu;
   return true;
 }

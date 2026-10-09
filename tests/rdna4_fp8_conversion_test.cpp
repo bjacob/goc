@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_fp8_conversion_reference.h"
 
@@ -176,4 +177,92 @@ TEST(Fp8Conversion, ValidationAndSemanticFallback) {
       for (unsigned sem = 0; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16) | GOC_FP16_OVFL, 0, input));
     }
+}
+
+TEST(Fp8Conversion, DppSelectorsMasksAliasesAndGuards) {
+  std::mt19937 random(8359);
+  for (unsigned op = 0; op < 2; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (auto descriptor : goc_test::dpp_modes)
+        for (unsigned select = 0; select < 4; ++select)
+          for (auto mask : rdna4_exec_masks())
+            for (bool alias : {false, true}) {
+              uint32_t storage[2][34], original[2][34];
+              for (unsigned reg = 0; reg < 2; ++reg)
+                for (unsigned word = 0; word < 34; ++word)
+                  storage[reg][word] = original[reg][word] = random();
+              const uint32_t *a[] = {storage[0] + 1};
+              uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
+              uint64_t mode = descriptor | goc_test::fp8_conversion_mode(false, select);
+              ASSERT_EQ(functions[op](cpu, mask, mode, d, a), GOC_SUCCESS);
+              for (unsigned reg = 0; reg < 2; ++reg)
+                for (unsigned word = 0; word < 34; ++word) {
+                  uint32_t expected = original[reg][word];
+                  int source = 0;
+                  if (reg == unsigned(alias ? 0 : 1) && word > 0 && word <= 32 &&
+                      goc_test::dpp_source(mode, uint32_t(mask), word - 1, source)) {
+                    uint32_t raw = source < 0 ? 0 : original[0][source + 1];
+                    expected = goc_test::fp8_conversion_reference(op, uint8_t(raw >> (select * 8)));
+                  }
+                  ASSERT_EQ(storage[reg][word], expected) << op << "/" << cpu << "/" << mode;
+                }
+            }
+}
+
+TEST(Fp8Conversion, DppValidation) {
+  for (auto descriptor : goc_test::dpp_modes) {
+    for (unsigned op = 0; op < 2; ++op) {
+      EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
+      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_NEG_A), uint64_t(GOC_ALU_ABS_A)})
+        EXPECT_EQ(functions[op](0, 0, descriptor | invalid, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+    }
+    // RDNA4's two-result widening forms have no DPP encoding.
+    for (unsigned op = 2; op < 4; ++op)
+      for (auto mask : {UINT64_C(0), UINT64_C(0xffffffff)})
+        EXPECT_EQ(functions[op](0, mask, descriptor, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+  }
+}
+
+// RX 9070 capture: every byte encoding and selector. Canonicalize FP32 NaNs.
+TEST(Fp8Conversion, DppHardwareCorpusAndHostEnvironment) {
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  fenv_t saved;
+  ASSERT_EQ(std::fegetenv(&saved), 0);
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+    EXPECT_EQ(std::fesetround(rounding), 0);
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      EXPECT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
+      EXPECT_EQ(std::feraiseexcept(FE_INVALID | FE_INEXACT), 0);
+      int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
+      uint64_t hash = UINT64_C(14695981039346656037);
+      for (unsigned batch = 0; batch < 8; ++batch)
+        for (auto mask : masks)
+          for (unsigned op = 0; op < 2; ++op)
+            for (auto descriptor : goc_test::dpp_modes)
+              for (unsigned select = 0; select < 4; ++select) {
+                uint32_t input[32], output[32];
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  input[lane] = ((lane + batch * 32) * 0x01010101u) ^ 0x5aa55aa5u;
+                  output[lane] = 0xdead0000u + lane;
+                }
+                const uint32_t *a[] = {input};
+                uint32_t *d[] = {output};
+                EXPECT_EQ(functions[op](cpu, mask,
+                                        descriptor | goc_test::fp8_conversion_mode(false, select),
+                                        d, a),
+                          GOC_SUCCESS);
+                for (auto word : output) {
+                  if ((word & 0x7fffffff) > 0x7f800000)
+                    word = 0x7fc00000;
+                  hash = (hash ^ word) * UINT64_C(1099511628211);
+                }
+              }
+      EXPECT_EQ(hash, UINT64_C(0xd937e5afc80bb725)) << cpu;
+      EXPECT_EQ(std::fegetround(), rounding);
+      EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
+    }
+  }
+  EXPECT_EQ(std::fesetenv(&saved), 0);
 }

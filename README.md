@@ -921,6 +921,16 @@ values expand exactly, including subnormals and signed zeros; NaNs become
 sign-preserving canonical quiet NaNs. These APIs expose loose semantics and
 preserve the host FP environment under every rounding mode.
 
+The single-result forms support DPP8/DPP16, permuting A before byte selection.
+The RDNA4 ISA XML lists no DPP encoding for the two-result packed forms, which
+continue to reject those flags. Tests match 114,688 RX 9070 output words across
+every byte encoding and selector (canonicalizing FP32 NaNs), verify FP-state
+preservation under all four host rounding modes, and cross masks, aliases,
+unaligned storage and guards. Full-EXEC benchmarks include DPP8/DPP16 with
+both low and high byte selection. Pinned Ryzen 9 7950X3D measurements put
+these DPP cases at 19.8–23.5 ns on v3 (2.69–3.41x scalar) and 9.3–12.4 ns on
+v4 (5.14–7.44x), using seven samples of at least 10 ms each.
+
 Tests cover every byte encoding, every packed byte pair, all selectors,
 unselected bits, and all source/destination alias layouts crossed with 85 EXEC
 masks and unaligned storage. If the two destinations alias, the second wins.

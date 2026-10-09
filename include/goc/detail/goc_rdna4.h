@@ -1875,6 +1875,8 @@ static const uint32_t GOC_CVT_BYTE_1 = (UINT32_C(1) << 16);
 static const uint32_t GOC_CVT_BYTE_2 = (UINT32_C(2) << 16);
 static const uint32_t GOC_CVT_BYTE_3 = (UINT32_C(3) << 16);
 
+// Single-result forms support DPP8/DPP16, permuting A before byte selection.
+// Packed two-result forms have no RDNA4 DPP encoding and reject DPP flags.
 // FP8 (OCP E4M3FN) / BF8 (OCP E5M2) to FP32, loose semantics. A holds one
 // VGPR. Single-result forms select one byte with GOC_CVT_BYTE_* and write D[0].
 // Packed forms select the low/high A half with GOC_ALU_HIGH_A and write its
