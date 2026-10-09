@@ -6,6 +6,7 @@
 #include "rdna4_integer16_reference.h"
 #include "rdna4_integer16_ternary_reference.h"
 #include "rdna4_integer_mad_reference.h"
+#include "rdna4_integer_ternary_reference.h"
 #include "rdna4_packed_integer_reference.h"
 #include "rdna4_packed_mad_reference.h"
 #include "rdna4_sad_reference.h"
@@ -827,6 +828,48 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
       }
 #endif
     }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_integer_ternary(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {goc_rdna4_v_lshl_add_u32, goc_rdna4_v_add_lshl_u32,
+                            goc_rdna4_v_lshl_or_b32,  goc_rdna4_v_and_or_b32,
+                            goc_rdna4_v_or3_b32,      goc_rdna4_v_xor3_b32,
+                            goc_rdna4_v_xad_u32,      goc_rdna4_v_lerp_u8};
+  const char *names[] = {"u32/shladd", "u32/addshl", "b32/shlor", "b32/andor",
+                         "b32/or3",    "b32/xor3",   "u32/xad",   "u8/lerp"};
+  for (int op = 0; op < 8; ++op) {
+    Registers r;
+    r.output_regs = 1;
+    std::mt19937 random(452);
+    for (int lane = 0; lane < 32; ++lane) {
+      for (int reg : {0, 4, 8})
+        r.data[reg][lane] = random();
+      r.expected[128 * (lane / 16) + lane % 16] = goc_test::integer_ternary_reference(
+          op, r.data[0][lane], r.data[4][lane], r.data[8][lane]);
+    }
+    double scalar = measure(functions[op], GOC_CPU_BASELINE, r, iterations, min_ms, 0);
+    if (scalar < 0)
+      return false;
+    print_result(names[op], "loose", "none", "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+    if (cpu >= GOC_CPU_X86_64_V3 && (op < 3 || op == 7)) {
+      double simd = measure(functions[op], GOC_CPU_X86_64_V3, r, iterations, min_ms, 0);
+      if (simd < 0)
+        return false;
+      print_result(names[op], "loose", "none", "x86-64-v3", simd, scalar / simd);
+    }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+    if (cpu >= GOC_CPU_X86_64_V4) {
+      double simd = measure(functions[op], GOC_CPU_X86_64_V4, r, iterations, min_ms, 0);
+      if (simd < 0)
+        return false;
+      print_result(names[op], "loose", "none", "x86-64-v4", simd, scalar / simd);
+    }
+#endif
+  }
   (void)cpu;
   return true;
 }
@@ -2135,6 +2178,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   if (!benchmark_half_exponent(cpu, iterations, min_ms) ||
+      !benchmark_integer_ternary(cpu, iterations, min_ms) ||
       !benchmark_sad(cpu, iterations, min_ms) || !benchmark_shift(cpu, iterations, min_ms) ||
       !benchmark_half_trig(cpu, iterations, min_ms) || !benchmark_trig(cpu, iterations, min_ms) ||
       !benchmark_half_unary(cpu, iterations, min_ms) || !benchmark_unary(cpu, iterations, min_ms) ||

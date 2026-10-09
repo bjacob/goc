@@ -175,6 +175,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_i16`, `v_min3_u16`, `v_max3_i16`, `v_max3_u16`, `v_med3_i16`, `v_med3_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
 | `v_add_nc_i16`, `v_sub_nc_i16`, `v_add_nc_u16`, `v_sub_nc_u16` | Scalar, x86-64-v3; half selectors and saturation | Not implemented |
 | `v_min_i16`, `v_max_i16`, `v_min_u16`, `v_max_u16`, `v_mul_lo_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
+| `v_lshl_add_u32`, `v_add_lshl_u32`, `v_lshl_or_b32`, `v_lerp_u8` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
+| `v_and_or_b32`, `v_or3_b32`, `v_xor3_b32`, `v_xad_u32` | Scalar, x86-64-v4 | Not implemented |
 | `v_sad_u8`, `v_sad_hi_u8`, `v_sad_u16`, `v_sad_u32`, `v_msad_u8` | Scalar, x86-64-v3; saturation | Not implemented |
 | `v_qsad_pk_u16_u8`, `v_mqsad_pk_u16_u8`, `v_mqsad_u32_u8` | Scalar, x86-64-v3; independent packed/full-width saturation | Not implemented |
 | `v_lshlrev_b32`, `v_lshrrev_b32`, `v_ashrrev_i32` | Scalar, x86-64-v3 | Not implemented |
@@ -381,6 +383,19 @@ SIMD outputs within one half-precision ULP of the model. Further tests cover
 all modifiers, half selectors, aliases, masks, host FP settings, and literal
 OMOD underflow boundaries. `GOC_FP16_OVFL` is accepted but has no effect because
 finite trig outputs and their permitted scaling cannot overflow FP16.
+
+Combined integer instructions include shift/add, add/shift, shift/OR, AND/OR,
+three-input OR/XOR, and XOR/add. Shifts mask their count to five bits, and
+arithmetic wraps to 32 bits. `LERP_U8` independently averages four byte pairs;
+the low bit of each `C` byte selects whether an odd sum rounds up or down.
+Other `C` bits are ignored. These forms have no instruction modifiers and
+preserve host FP state. All have scalar and sixteen-lane v4 paths; v4 uses
+native three-input Boolean operations. Eight-lane v3 paths accelerate the three
+shift combinations and byte interpolation. The simple Boolean/XOR-add forms
+remain on baseline for v3 CPUs because measurements showed no AVX2 gain.
+Tests cover truth tables
+at every bit position, wrapped counts and arithmetic, every byte pair and all
+sixteen rounding-control combinations, EXEC masks, and whole-register aliases.
 
 All eight SAD-family instructions have scalar and eight-lane v3 paths,
 including `CLAMP` saturation. Ordinary SAD sums unsigned byte, halfword or

@@ -18,6 +18,51 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Combined three-input integer operations, one VGPR per operand. Shift
+// counts wrap modulo 32; all addition and shifting wrap to 32 bits. Instruction
+// flags must be zero. Loose semantics only; preserves all host FP state.
+
+// (A << (B & 31)) + C.
+GOC_API int goc_rdna4_v_lshl_add_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
+// (A + B) << (C & 31).
+GOC_API int goc_rdna4_v_add_lshl_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
+// (A << (B & 31)) | C.
+GOC_API int goc_rdna4_v_lshl_or_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c);
+
+// (A & B) | C.
+GOC_API int goc_rdna4_v_and_or_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, const uint32_t *const *c);
+
+// A | B | C.
+GOC_API int goc_rdna4_v_or3_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
+// A ^ B ^ C.
+GOC_API int goc_rdna4_v_xor3_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c);
+
+// (A ^ B) + C.
+GOC_API int goc_rdna4_v_xad_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
+// Each result byte is floor((A_byte + B_byte + (C_byte & 1)) / 2).
+// Higher C-byte bits are ignored. Carries do not cross byte boundaries.
+GOC_API int goc_rdna4_v_lerp_u8(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
 // Sum of unsigned absolute differences between packed fields of A and B, plus
 // C. SAD_U8 sums four byte differences, SAD_U16 two halfword differences, and
 // SAD_U32 one full-word difference. SAD_HI_U8 shifts the byte sum left by 16
