@@ -375,6 +375,28 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Normalized conversions cover `v_cvt_pk_norm_i16_f32`, `v_cvt_pk_norm_u16_f32`,
+`v_cvt_pk_norm_i16_f16`, `v_cvt_pk_norm_u16_f16`, `v_cvt_norm_i16_f16`, and
+`v_cvt_norm_u16_f16`. Signed results scale by 32767 and saturate to
+[-32767,32767]; unsigned results scale by 65535 and saturate to [0,65535].
+Both round once to nearest-even and map NaNs to zero. Packed forms write A/B
+into the two destination halves; unary forms preserve the unselected half.
+Source ABS/NEG and applicable half selectors remain on the scalar, eight-lane
+v3 and sixteen-lane v4 paths. CLAMP has no numeric effect; unary OMOD is also
+accepted without numeric effect. All six expose loose semantics.
+
+The scalar model borrows rocjitsu's exact double product. SIMD borrows its
+`round_normalized_simd` FMA-residual correction: a rounded FP32 product can
+land on a false integer midpoint, so the residual determines the proper side.
+Tests use an independent integer-significand oracle and include every FP16
+encoding, FP32 neighbors of every rounding boundary, all modifiers, 85 EXEC
+masks, every whole-register alias layout, and host-rounding independence.
+Another 54 input cases captured on the RX 9070 (`gfx1201`) cover 20 opcode/modifier
+combinations, including false ties, saturation and NaNs. Full-EXEC benchmark
+rows compare default and modified instructions. On the development Ryzen 9
+7950X3D, pinned-core measurements showed 5.27–8.22x for v3 and 12.25–17.23x
+for v4 versus scalar (seven samples, each at least 10 ms).
+
 Packed FP32 conversions cover `v_cvt_pk_rtz_f16_f32`, `v_cvt_pk_i16_f32`,
 and `v_cvt_pk_u16_f32`: A converts into the low destination half, B into the
 high half. All source ABS/NEG combinations stay on the scalar, eight-lane v3

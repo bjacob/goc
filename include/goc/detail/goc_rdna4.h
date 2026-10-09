@@ -18,6 +18,39 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Normalized conversions scale by 32767 (signed) or 65535 (unsigned), round
+// once to nearest-even, and saturate to [-32767,32767] or [0,65535]. NaNs map
+// to zero. All operands hold one VGPR. Packed forms put A/B in D's low/high
+// halves; unary forms preserve the unselected D half. Floating sources support
+// ABS/NEG; FP16 sources support HIGH_A/B, unary destinations support HIGH_D.
+// CLAMP is accepted without numeric effect; unary forms also accept and ignore
+// OMOD. GOC_FP16_OVFL has no effect. Supports loose semantics, all EXEC masks
+// and whole-register aliases. Host FP exception flags may change.
+
+GOC_API int goc_rdna4_v_cvt_pk_norm_i16_f32(uint64_t flags, uint64_t exec_mask,
+                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_cvt_pk_norm_u16_f32(uint64_t flags, uint64_t exec_mask,
+                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_cvt_pk_norm_i16_f16(uint64_t flags, uint64_t exec_mask,
+                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_cvt_pk_norm_u16_f16(uint64_t flags, uint64_t exec_mask,
+                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_cvt_norm_i16_f16(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_norm_u16_f16(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a);
+
 // Pack two FP32 source VGPRs into one 16-bit-pair destination: A goes to the
 // low half, B to the high half. Supports ABS/NEG on A/B, full EXEC masking and
 // whole-register aliases. Loose semantics only. CLAMP is accepted without
