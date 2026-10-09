@@ -42,11 +42,11 @@ inline uint32_t narrow_fp8(uint32_t raw, uint32_t seed, bool saturate) {
 }
 
 template <bool Bf8, bool Stochastic>
-void fp8_narrow_x86_64_v3(uint32_t mask, uint32_t mode, bool saturate, uint32_t *d,
+void fp8_narrow_x86_64_v3(uint32_t exec_mask, uint32_t mode, bool saturate, uint32_t *d,
                           const uint32_t *a, const uint32_t *b);
 
 template <bool Bf8, bool Stochastic>
-void fp8_narrow_x86_64_v4(uint32_t mask, uint32_t mode, bool saturate, uint32_t *d,
+void fp8_narrow_x86_64_v4(uint32_t exec_mask, uint32_t mode, bool saturate, uint32_t *d,
                           const uint32_t *a, const uint32_t *b);
 
 } // namespace goc

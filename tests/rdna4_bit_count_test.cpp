@@ -139,16 +139,16 @@ TEST(BitCount, EveryPopulationAndAccumulatorWrapping) {
 TEST(BitCount, MaskedCountCompositionReturnsPhysicalLane) {
   for (bool wave64 : {false, true})
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (uint64_t mask : masks(wave64 ? 6 : 4)) {
+      for (uint64_t exec_mask : masks(wave64 ? 6 : 4)) {
         uint32_t input[64], zero[64] = {}, result[64];
         std::fill_n(input, 64, UINT32_MAX);
         std::fill_n(result, 64, 0x859e43c1);
         const uint32_t *a[] = {input}, *b[] = {zero}, *previous[] = {result};
         uint32_t *d[] = {result};
-        ASSERT_EQ(functions[wave64 ? 6 : 4](cpu, mask, 0, d, a, b), GOC_SUCCESS);
-        ASSERT_EQ(functions[wave64 ? 7 : 5](cpu, mask, 0, d, a, previous), GOC_SUCCESS);
+        ASSERT_EQ(functions[wave64 ? 6 : 4](cpu, exec_mask, 0, d, a, b), GOC_SUCCESS);
+        ASSERT_EQ(functions[wave64 ? 7 : 5](cpu, exec_mask, 0, d, a, previous), GOC_SUCCESS);
         for (unsigned lane = 0; lane < 64; ++lane) {
-          bool active = lane < (wave64 ? 64u : 32u) && ((mask >> lane) & 1);
+          bool active = lane < (wave64 ? 64u : 32u) && ((exec_mask >> lane) & 1);
           EXPECT_EQ(result[lane], active ? lane : 0x859e43c1);
         }
       }
@@ -164,7 +164,7 @@ TEST(BitCount, MasksAliasesAndUnalignedStorage) {
           for (auto &word : reg)
             word = random();
         int breg = same_sources ? 0 : 1;
-        for (uint64_t mask : masks(op))
+        for (uint64_t exec_mask : masks(op))
           for (int target = 0; target < 3; ++target) {
             uint32_t words[3][67], expected[3][67];
             for (int reg = 0; reg < 3; ++reg) {
@@ -172,12 +172,12 @@ TEST(BitCount, MasksAliasesAndUnalignedStorage) {
               std::copy_n(original[reg], 67, expected[reg]);
             }
             for (unsigned lane = 0; lane < (op < 6 ? 32u : 64u); ++lane)
-              if ((mask >> lane) & 1)
+              if ((exec_mask >> lane) & 1)
                 expected[target][lane + 1] = goc_test::bit_count_reference(
                     op, original[0][lane + 1], original[breg][lane + 1], lane);
             const uint32_t *a[] = {words[0] + 1}, *b[] = {words[breg] + 1};
             uint32_t *d[] = {words[target] + 1};
-            ASSERT_EQ(functions[op](cpu, mask, 0, d, a, b), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, 0, d, a, b), GOC_SUCCESS);
             for (int reg = 0; reg < 3; ++reg)
               ASSERT_TRUE(std::equal(words[reg], words[reg] + 67, expected[reg]));
           }
@@ -203,13 +203,14 @@ TEST(BitCount, ValidationAndHostFpState) {
             std::fill_n(reg, 64, 0x7f800001);
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]};
           uint32_t *d[] = {words[2]};
-          for (uint64_t mask : std::initializer_list<uint64_t>{0ULL, UINT64_MAX}) {
+          for (uint64_t exec_mask : std::initializer_list<uint64_t>{0ULL, UINT64_MAX}) {
             for (int bit = 0; bit < 32; ++bit)
-              EXPECT_EQ(functions[op](cpu, mask, uint32_t(1) << bit, d, a, b),
+              EXPECT_EQ(functions[op](cpu, exec_mask, uint32_t(1) << bit, d, a, b),
                         GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(functions[op](cpu | (1ULL << 63), mask, 0, d, a, b), GOC_ERROR_INVALID_FLAGS);
+            EXPECT_EQ(functions[op](cpu | (1ULL << 63), exec_mask, 0, d, a, b),
+                      GOC_ERROR_INVALID_FLAGS);
             EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                    mask, 0, d, a, b),
+                                    exec_mask, 0, d, a, b),
                       GOC_ERROR_UNSUPPORTED_SEMANTICS);
           }
           for (const auto &reg : words)

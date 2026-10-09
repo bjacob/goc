@@ -11,13 +11,13 @@
 namespace {
 
 template <goc::Integer16 Op, bool Signed, bool Packed = true>
-int arithmetic(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int arithmetic(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32) {
     if constexpr (!Packed) {
       return goc::execute_dpp(
-          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
-            return arithmetic<Op, Signed, Packed>(flags, effective, uint32_t(mode), d, source, b);
+          flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+            return arithmetic<Op, Signed, Packed>(flags, exec_mask, uint32_t(mode), d, source, b);
           });
     } else {
       return GOC_ERROR_INVALID_FLAGS;
@@ -31,11 +31,11 @@ int arithmetic(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
           : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D | (saturating ? GOC_ALU_CLAMP : 0);
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (mask == 0)
+  if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::integer16_x86_64_v3<Op, Signed, Packed>(mask, mode, d[0], a[0], b[0]);
+    goc::integer16_x86_64_v3<Op, Signed, Packed>(exec_mask, mode, d[0], a[0], b[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -83,7 +83,7 @@ int arithmetic(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
     }
   }
   for (int lane = 0; lane < 32; ++lane)
-    if (mask >> lane & 1) {
+    if (exec_mask >> lane & 1) {
       if constexpr (Packed) {
         d[0][lane] = result[lane];
       } else {

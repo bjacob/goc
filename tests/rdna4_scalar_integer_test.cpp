@@ -16,7 +16,7 @@ TEST(ScalarInteger, HardwareResultsAndScc) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (unsigned seed = 0; seed < 2; ++seed)
-        for (uint32_t mask : {0U, UINT32_MAX, 0xaaaaaaaaU})
+        for (uint32_t exec_mask : {0U, UINT32_MAX, 0xaaaaaaaaU})
           for (unsigned k = 0; k < 40; ++k) {
             uint64_t hash = goc_test::capture_hash_seed;
             unsigned op = k < 18 ? k : k < 29 ? 18 : 19;
@@ -28,7 +28,7 @@ TEST(ScalarInteger, HardwareResultsAndScc) {
                        d64 = 0;
               uint32_t d = w[0], cc = seed;
               ASSERT_EQ(goc_test::scalar_integer_call(op, cpu | semantics | GOC_SEMANTICS_STRICT,
-                                                      mask, 0, &d, &d64, a, b, &cc,
+                                                      exec_mask, 0, &d, &d64, a, b, &cc,
                                                       seed | 0xaaaa0000u, imm),
                         GOC_SUCCESS);
               bool wide = op >= 15 && op <= 17;
@@ -36,21 +36,21 @@ TEST(ScalarInteger, HardwareResultsAndScc) {
                 hash = goc_test::capture_hash_word(hash, word);
             }
             ASSERT_EQ(hash, goc_test::scalar_integer_hardware[seed][k])
-                << cpu << "/" << semantics << "/" << seed << "/" << mask << "/" << k;
+                << cpu << "/" << semantics << "/" << seed << "/" << exec_mask << "/" << k;
           }
 }
 
 TEST(ScalarInteger, ExecAndAliasing) {
   for (unsigned op = 0; op < 20; ++op)
-    for (uint32_t mask : rdna4_exec_masks()) {
+    for (uint32_t exec_mask : rdna4_exec_masks()) {
       uint32_t d = 0x80000000u, cc = 0;
       uint64_t wide = 0;
-      ASSERT_EQ(
-          goc_test::scalar_integer_call(op, 0, mask, 0, &d, &wide, d, 0xffffffffu, &cc, 1, 0xffff),
-          GOC_SUCCESS);
+      ASSERT_EQ(goc_test::scalar_integer_call(op, 0, exec_mask, 0, &d, &wide, d, 0xffffffffu, &cc,
+                                              1, 0xffff),
+                GOC_SUCCESS);
       uint32_t words[] = {0x12345678, 0x80000000u, 0x87654321};
       uint64_t wide2 = 0x80000000ULL;
-      ASSERT_EQ(goc_test::scalar_integer_call(op, 0, mask, 0, words + 1, &wide2, words[1],
+      ASSERT_EQ(goc_test::scalar_integer_call(op, 0, exec_mask, 0, words + 1, &wide2, words[1],
                                               0xffffffffu, words + 1, 1, 0xffff),
                 GOC_SUCCESS);
       ASSERT_EQ(words[1], op < 12 || op == 18 ? cc : op >= 15 && op <= 17 ? 0x80000000u : d);
@@ -159,9 +159,9 @@ TEST(ScalarInteger, SignExtendExecAliasesFlagsAndHostState) {
     std::feraiseexcept(FE_DIVBYZERO);
     int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
     for (auto fn : {goc_rdna4_s_sext_i32_i8, goc_rdna4_s_sext_i32_i16}) {
-      for (uint32_t mask : rdna4_exec_masks()) {
+      for (uint32_t exec_mask : rdna4_exec_masks()) {
         uint32_t words[] = {123, 0xabcdffff, 456};
-        ASSERT_EQ(fn(0, mask, 0, words + 1, words[1]), GOC_SUCCESS);
+        ASSERT_EQ(fn(0, exec_mask, 0, words + 1, words[1]), GOC_SUCCESS);
         EXPECT_EQ(words[1], UINT32_MAX);
         EXPECT_EQ(words[0], 123u);
         EXPECT_EQ(words[2], 456u);

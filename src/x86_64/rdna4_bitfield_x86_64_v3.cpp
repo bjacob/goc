@@ -8,7 +8,7 @@
 namespace goc {
 
 template <Bitfield Op>
-void bitfield_x86_64_v3(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
+void bitfield_x86_64_v3(uint32_t exec_mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
                         const uint32_t *c) {
   static_assert(Op != Bitfield::Insert);
   for (int lane = 0; lane < 32; lane += 8) {
@@ -77,22 +77,23 @@ void bitfield_x86_64_v3(uint32_t mask, uint32_t *d, const uint32_t *a, const uin
                                    _mm256_broadcastsi128_si256(_mm_setr_epi8(
                                        3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12)));
     }
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 
-template void bitfield_x86_64_v3<Bitfield::ExtractUnsigned>(uint32_t mask, uint32_t *d,
+template void bitfield_x86_64_v3<Bitfield::ExtractUnsigned>(uint32_t exec_mask, uint32_t *d,
                                                             const uint32_t *a, const uint32_t *b,
                                                             const uint32_t *c);
-template void bitfield_x86_64_v3<Bitfield::ExtractSigned>(uint32_t mask, uint32_t *d,
+template void bitfield_x86_64_v3<Bitfield::ExtractSigned>(uint32_t exec_mask, uint32_t *d,
                                                           const uint32_t *a, const uint32_t *b,
                                                           const uint32_t *c);
-template void bitfield_x86_64_v3<Bitfield::Mask>(uint32_t mask, uint32_t *d, const uint32_t *a,
+template void bitfield_x86_64_v3<Bitfield::Mask>(uint32_t exec_mask, uint32_t *d, const uint32_t *a,
                                                  const uint32_t *b, const uint32_t *c);
-template void bitfield_x86_64_v3<Bitfield::Reverse>(uint32_t mask, uint32_t *d, const uint32_t *a,
-                                                    const uint32_t *b, const uint32_t *c);
+template void bitfield_x86_64_v3<Bitfield::Reverse>(uint32_t exec_mask, uint32_t *d,
+                                                    const uint32_t *a, const uint32_t *b,
+                                                    const uint32_t *c);
 
 template void bitfield_x86_64_v3<Bitfield::AlignBit>(uint32_t, uint32_t *, const uint32_t *,
                                                      const uint32_t *, const uint32_t *);

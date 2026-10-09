@@ -15,9 +15,9 @@ inline const char *const dpp_integer_names[] = {
     "v_mbcnt_hi_u32_b32", "v_and_b32",     "v_or_b32",      "v_xor_b32",      "v_xnor_b32",
     "v_not_b32",          "v_lshlrev_b32", "v_lshrrev_b32", "v_ashrrev_i32"};
 
-inline int dpp_not(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+inline int dpp_not(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                    const uint32_t *const *a, const uint32_t *const *) {
-  return goc_rdna4_v_not_b32(flags, mask, mode, d, a);
+  return goc_rdna4_v_not_b32(flags, exec_mask, mode, d, a);
 }
 
 using DppIntegerFn = decltype(&goc_rdna4_v_bcnt_u32_b32);

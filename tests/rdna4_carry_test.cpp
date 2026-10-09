@@ -84,7 +84,7 @@ TEST(Carry, ExecAndInputMasksUnalignedAliases) {
   for (unsigned op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool clamp : {false, true})
-        for (uint32_t mask : masks)
+        for (uint32_t exec_mask : masks)
           for (uint64_t input_mask : masks)
             for (unsigned alias = 0; alias < 3; ++alias) {
               uint32_t data[3][34], expected[3][34], carry = 0xdeadbeef, wanted_carry = 0;
@@ -97,12 +97,12 @@ TEST(Carry, ExecAndInputMasksUnalignedAliases) {
               for (unsigned lane = 0; lane < 32; ++lane) {
                 auto gold = goc_test::carry_reference(op, a[0][lane], b[0][lane],
                                                       (input_mask >> lane) & 1, clamp);
-                if ((mask >> lane) & 1) {
+                if ((exec_mask >> lane) & 1) {
                   expected[alias][lane + 1] = gold.value;
                   wanted_carry |= uint32_t(gold.carry) << lane;
                 }
               }
-              ASSERT_EQ(goc_test::carry_functions[op](cpu | (clamp ? exact : 0), mask,
+              ASSERT_EQ(goc_test::carry_functions[op](cpu | (clamp ? exact : 0), exec_mask,
                                                       clamp ? GOC_ALU_CLAMP : 0, d, &carry, a, b,
                                                       uint32_t(input_mask)),
                         GOC_SUCCESS);
@@ -187,17 +187,17 @@ TEST(Carry, DppMasksModifiersAndScalarVectorAliases) {
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, exact})
         for (bool clamp : {false, true})
           for (auto descriptor : goc_test::dpp_modes)
-            for (auto mask : rdna4_exec_masks())
+            for (auto exec_mask : rdna4_exec_masks())
               for (unsigned source_b : {0u, 1u})
                 for (unsigned target = 0; target < 3; ++target)
                   for (bool scalar_alias : {false, true}) {
                     uint32_t words[3][34], expected[3][34], carry = 0xdeadbeef, wanted_carry = 0;
-                    uint32_t ci = mask ^ 0xa5a5a5a5;
+                    uint32_t ci = exec_mask ^ 0xa5a5a5a5;
                     std::memcpy(words, initial, sizeof(words));
                     std::memcpy(expected, initial, sizeof(expected));
                     for (unsigned lane = 0; lane < 32; ++lane) {
                       int source = 0;
-                      if (!goc_test::dpp_source(descriptor, mask, lane, source))
+                      if (!goc_test::dpp_source(descriptor, exec_mask, lane, source))
                         continue;
                       uint32_t av = initial[0][lane + 1], bv = initial[source_b][lane + 1];
                       if (op % 3 == 2)
@@ -213,12 +213,13 @@ TEST(Carry, DppMasksModifiersAndScalarVectorAliases) {
                     const uint32_t *a[] = {words[0] + 1}, *b[] = {words[source_b] + 1};
                     uint32_t *d[] = {words[target] + 1};
                     ASSERT_EQ(goc_test::carry_functions[op](
-                                  cpu | semantics, mask, descriptor | (clamp ? GOC_ALU_CLAMP : 0),
-                                  d, scalar_alias ? words[target] + 14 : &carry, a, b, ci),
+                                  cpu | semantics, exec_mask,
+                                  descriptor | (clamp ? GOC_ALU_CLAMP : 0), d,
+                                  scalar_alias ? words[target] + 14 : &carry, a, b, ci),
                               GOC_SUCCESS);
                     EXPECT_EQ(carry, scalar_alias ? 0xdeadbeef : wanted_carry);
                     ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0)
-                        << op << "/" << cpu << "/" << mask << "/" << descriptor;
+                        << op << "/" << cpu << "/" << exec_mask << "/" << descriptor;
                   }
 }
 
@@ -227,8 +228,8 @@ TEST(Carry, DppValidationAndZeroExec) {
     for (auto descriptor : goc_test::dpp_modes) {
       uint32_t carry = 0x12345678;
       for (auto invalid : {1ULL << 36, 1ULL})
-        for (uint32_t mask : {0U, UINT32_MAX}) {
-          EXPECT_EQ(fn(0, mask, descriptor | invalid, nullptr, &carry, nullptr, nullptr, 0),
+        for (uint32_t exec_mask : {0U, UINT32_MAX}) {
+          EXPECT_EQ(fn(0, exec_mask, descriptor | invalid, nullptr, &carry, nullptr, nullptr, 0),
                     GOC_ERROR_INVALID_FLAGS);
           EXPECT_EQ(carry, 0x12345678u);
         }
@@ -253,7 +254,7 @@ TEST(Carry, DppHardwareCorpusAndHostFpState) {
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, exact}) {
         uint64_t hash = goc_test::capture_hash_seed;
         for (uint32_t ci : {0u, UINT32_MAX, 0xa5a5a5a5u})
-          for (auto mask : masks)
+          for (auto exec_mask : masks)
             for (auto fn : goc_test::carry_functions)
               for (bool clamp : {false, true})
                 for (auto descriptor : goc_test::dpp_modes) {
@@ -265,8 +266,8 @@ TEST(Carry, DppHardwareCorpusAndHostFpState) {
                   }
                   const uint32_t *a[] = {av}, *b[] = {bv};
                   uint32_t *d[] = {output};
-                  EXPECT_EQ(fn(cpu | semantics, mask, descriptor | (clamp ? GOC_ALU_CLAMP : 0), d,
-                               &carry, a, b, ci),
+                  EXPECT_EQ(fn(cpu | semantics, exec_mask, descriptor | (clamp ? GOC_ALU_CLAMP : 0),
+                               d, &carry, a, b, ci),
                             GOC_SUCCESS);
                   for (auto word : output)
                     hash = goc_test::capture_hash_word(hash, word);

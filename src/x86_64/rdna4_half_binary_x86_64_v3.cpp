@@ -13,7 +13,7 @@
 namespace goc {
 
 template <Binary Op, bool Packed>
-void half_binary_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32_t *d,
+void half_binary_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                            const uint32_t *a, const uint32_t *b) {
   uint32_t modes[] = {Packed ? packed_half_mode(mode, false) : mode, packed_half_mode(mode, true)};
   int d_shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
@@ -60,9 +60,9 @@ void half_binary_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32_t
       auto old = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(d + lane));
       result = _mm256_or_si256(result, _mm256_and_si256(old, keep));
     }
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 

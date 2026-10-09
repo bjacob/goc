@@ -45,10 +45,10 @@ TEST(IntegerMinmax, MasksAndAllWholeRegisterAliases) {
   const int layouts[][3] = {{0, 1, 2}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}};
   for (int op = 0; op < 14; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (uint32_t mask : rdna4_exec_masks())
+      for (uint32_t exec_mask : rdna4_exec_masks())
         for (const auto &layout : layouts)
           for (int dest = 0; dest < 4; ++dest) {
-            SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << mask << "/" << dest
+            SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << exec_mask << "/" << dest
                                               << "/" << layout[0] << layout[1] << layout[2]);
             std::mt19937 random(109);
             uint32_t words[4][34], want[4][34];
@@ -59,13 +59,13 @@ TEST(IntegerMinmax, MasksAndAllWholeRegisterAliases) {
             }
             std::memcpy(want, words, sizeof(want));
             for (int lane = 0; lane < 32; ++lane)
-              if (mask >> lane & 1)
+              if (exec_mask >> lane & 1)
                 want[dest][lane + 1] = goc_test::integer_minmax_reference(
                     op, words[layout[0]][lane + 1], words[layout[1]][lane + 1],
                     words[layout[2]][lane + 1]);
             uint32_t *d = words[dest] + 1, *a = words[layout[0]] + 1, *b = words[layout[1]] + 1,
                      *c = words[layout[2]] + 1;
-            ASSERT_EQ(goc_test::integer_minmax_functions[op](cpu, mask, 0, &d, &a, &b, &c),
+            ASSERT_EQ(goc_test::integer_minmax_functions[op](cpu, exec_mask, 0, &d, &a, &b, &c),
                       GOC_SUCCESS);
             for (int reg = 0; reg < 4; ++reg)
               for (int lane = 0; lane < 34; ++lane)
@@ -103,13 +103,13 @@ TEST(IntegerMinmax, ValidationAndFpEnvironment) {
       std::fill(input, input + 32, 0x7f800001);
       std::fill(output, output + 32, 0xdeadbeef);
       auto a = input, d = output;
-      for (uint32_t mask : {0U, UINT32_MAX}) {
+      for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit)
-          EXPECT_EQ(fn(cpu, mask, 1U << bit, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(cpu | (1ULL << 63), mask, 0, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(
-            fn(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &d, &a, &a, &a),
-            GOC_ERROR_UNSUPPORTED_SEMANTICS);
+          EXPECT_EQ(fn(cpu, exec_mask, 1U << bit, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(cpu | (1ULL << 63), exec_mask, 0, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &d,
+                     &a, &a, &a),
+                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
@@ -129,20 +129,20 @@ TEST(IntegerMinmax, EverySingleLaneAndComplementWithAlias) {
   for (unsigned op = 0; op < 14; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned bit = 0; bit < 32; ++bit)
-        for (uint32_t mask : {1U << bit, ~(1U << bit)}) {
+        for (uint32_t exec_mask : {1U << bit, ~(1U << bit)}) {
           uint32_t words[3][32], expected[32];
           for (unsigned lane = 0; lane < 32; ++lane) {
             words[0][lane] = 0x80000000U + lane;
             words[1][lane] = 0x7fffffffU - lane;
             words[2][lane] = lane & 1 ? UINT32_MAX : 0;
-            expected[lane] = mask & (1U << lane)
+            expected[lane] = exec_mask & (1U << lane)
                                  ? goc_test::integer_minmax_reference(
                                        op, words[0][lane], words[1][lane], words[2][lane])
                                  : words[1][lane];
           }
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[1]};
-          ASSERT_EQ(goc_test::integer_minmax_functions[op](cpu, mask, 0, d, a, b,
+          ASSERT_EQ(goc_test::integer_minmax_functions[op](cpu, exec_mask, 0, d, a, b,
                                                            op % 7 < 2 ? nullptr : c),
                     GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane)

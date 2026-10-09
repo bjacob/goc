@@ -81,14 +81,14 @@ TEST(HalfBinary, AllModifiersAndHalfSelectors) {
                                  (uint32_t(values[(lane / 2 + reg * 5) % 16]) << 16);
           std::memcpy(before, words, sizeof(words));
           int dest = variant % 3;
-          uint32_t mask = UINT32_MAX;
+          uint32_t exec_mask = UINT32_MAX;
           uint32_t *p[] = {words[0], words[1], words[2]};
-          ASSERT_EQ(goc_test::half_binary_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), mask,
-                                                        mode, p + dest, p, p + 1),
+          ASSERT_EQ(goc_test::half_binary_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0),
+                                                        exec_mask, mode, p + dest, p, p + 1),
                     GOC_SUCCESS);
           for (int reg = 0; reg < 3; ++reg)
             for (int lane = 0; lane < 32; ++lane) {
-              if (reg == dest && ((mask >> lane) & 1)) {
+              if (reg == dest && ((exec_mask >> lane) & 1)) {
                 check(words[reg][lane], before[reg][lane],
                       goc_test::half_binary_reference(op, before[0][lane], before[1][lane], mode,
                                                       saturate),
@@ -107,12 +107,12 @@ TEST(HalfBinary, MasksAliasesAndUntouchedHalves) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned selectors = 0; selectors < 8; ++selectors)
         for (uint32_t arithmetic : arithmetic_modes)
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (int b = 0; b < 2; ++b)
               for (int dest = 0; dest < 3; ++dest) {
                 uint32_t mode = goc_test::half_binary_modifiers(selectors << 7) | arithmetic;
-                SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << mode << '/' << mask
-                                                  << '/' << b << '/' << dest);
+                SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << mode << '/'
+                                                  << exec_mask << '/' << b << '/' << dest);
                 uint32_t words[3][34], before[3][34];
                 std::mt19937 random(12);
                 for (auto &reg : words)
@@ -120,11 +120,12 @@ TEST(HalfBinary, MasksAliasesAndUntouchedHalves) {
                     word = random();
                 std::memcpy(before, words, sizeof(words));
                 uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
-                ASSERT_EQ(goc_test::half_binary_functions[op](cpu, mask, mode, p + dest, p, p + b),
-                          GOC_SUCCESS);
+                ASSERT_EQ(
+                    goc_test::half_binary_functions[op](cpu, exec_mask, mode, p + dest, p, p + b),
+                    GOC_SUCCESS);
                 for (int reg = 0; reg < 3; ++reg)
                   for (int lane = 0; lane < 34; ++lane) {
-                    if (reg == dest && lane >= 1 && lane <= 32 && ((mask >> (lane - 1)) & 1)) {
+                    if (reg == dest && lane >= 1 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
                       check(words[reg][lane], before[reg][lane],
                             goc_test::half_binary_reference(op, before[0][lane], before[b][lane],
                                                             mode, false),
@@ -185,13 +186,13 @@ TEST(HalfBinary, ValidationAndSemantics) {
     uint32_t data[32];
     std::fill(data, data + 32, 0xdeadbeef);
     auto p = data;
-    for (uint32_t mask : {0U, UINT32_MAX}) {
+    for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit)
         if (!(goc_test::half_binary_known & (1U << bit))) {
-          EXPECT_EQ(fn(0, mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(fn(0, exec_mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(fn(1ULL << 63, mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p),
+      EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (auto word : data)

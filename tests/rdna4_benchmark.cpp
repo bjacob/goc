@@ -254,9 +254,11 @@ bool nonnegative_integer(const char *text, int &value) {
 // or iteration-count overflow. Every accepted sample spans at least min_ms.
 template <typename Instruction, typename RegisterFile, typename Mask = uint32_t>
 double measure(Instruction fn, uint64_t flags, RegisterFile &r, int initial_iterations, int min_ms,
-               uint64_t modifiers, Mask mask = UINT32_MAX) {
+               uint64_t modifiers, Mask exec_mask = UINT32_MAX) {
   uint64_t iterations = uint64_t(initial_iterations);
-  const auto call = [&] { return fn(flags, mask, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8); };
+  const auto call = [&] {
+    return fn(flags, exec_mask, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8);
+  };
   for (int warmup = 0; warmup < 32; ++warmup)
     if (call() != GOC_SUCCESS)
       return -1;
@@ -516,10 +518,10 @@ bool benchmark_integer_mul(uint64_t cpu, int iterations, int min_ms) {
         bool high = op == 1 || op == 2 || op == 4 || op == 6;
         r.expected[128 * (lane / 16) + lane % 16] = uint32_t(high ? product >> 32 : product);
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *) {
-        return functions[op](flags, mask, mode, d, a, b);
+        return functions[op](flags, exec_mask, mode, d, a, b);
       };
       const uint32_t mode = clamp ? GOC_ALU_CLAMP : 0;
       const char *label = clamp ? "clamp" : "none";
@@ -549,9 +551,9 @@ bool benchmark_integer_mul(uint64_t cpu, int iterations, int min_ms) {
 }
 
 template <auto Function>
-int integer_binary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int integer_binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                    const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
-  return Function(flags, mask, mode, d, a, b);
+  return Function(flags, exec_mask, mode, d, a, b);
 }
 
 bool benchmark_half_binary(uint64_t cpu, int iterations, int min_ms) {
@@ -775,10 +777,10 @@ bool benchmark_ldexp(uint64_t cpu, int iterations, int min_ms) {
           if (fp64)
             r.expected[index + 16] = uint32_t(output_bits >> 32);
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *) {
-          return functions[fp64](flags, mask, modifiers, d, a, b);
+          return functions[fp64](flags, exec_mask, modifiers, d, a, b);
         };
         const char *name = fp64 ? "v_ldexp_f64" : "v_ldexp_f32";
         const char *label = descriptor < 0    ? (low ? "ABS_A / half/clamp" : "none")
@@ -833,10 +835,10 @@ bool benchmark_frexp_exp(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               source < 0 ? 0 : uint32_t(exponents[source % 4]);
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *,
                             const uint32_t *const *) {
-          return functions[fp64](flags, mask, modifiers, d, a);
+          return functions[fp64](flags, exec_mask, modifiers, d, a);
         };
         const char *name = fp64 ? "v_frexp_exp_i32_f64" : "v_frexp_exp_i32_f32";
         const char *label = descriptor < 0    ? (low ? "NEG/ABS/half/clamp" : "none")
@@ -907,11 +909,11 @@ bool benchmark_half_exponent(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               modified ? (result << 16) | 0xcafe : 0xface0000 | result;
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *) {
-          return ldexp ? goc_rdna4_v_ldexp_f16(flags, mask, modifiers, d, a, b)
-                       : goc_rdna4_v_frexp_exp_i16_f16(flags, mask, modifiers, d, a);
+          return ldexp ? goc_rdna4_v_ldexp_f16(flags, exec_mask, modifiers, d, a, b)
+                       : goc_rdna4_v_frexp_exp_i16_f16(flags, exec_mask, modifiers, d, a);
         };
         const char *name = ldexp ? "v_ldexp_f16" : "v_frexp_exp_i16_f16";
         const char *label = descriptor < 0    ? (modified ? "ABS/hi/half/clamp" : "none")
@@ -976,10 +978,10 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] =
             modifiers ? (result << 16) | 0xcafe : 0xface0000 | result;
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *,
                           const uint32_t *const *) {
-        return functions[op](flags, mask, mode, d, a);
+        return functions[op](flags, exec_mask, mode, d, a);
       };
       const char *mode = modifiers ? "ABS/hi/half/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
@@ -1100,21 +1102,21 @@ bool benchmark_bit_count(uint64_t cpu, int iterations, int min_ms) {
           lane < lanes ? goc_test::bit_count_reference(op, r.data[0][lane], r.data[1][lane], lane)
                        : 0xfacecafe;
     }
-    uint64_t mask = op < 6 ? UINT32_MAX : UINT64_MAX;
-    const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
+    uint64_t exec_mask = op < 6 ? UINT32_MAX : UINT64_MAX;
+    const auto fn = [&](uint64_t flags, uint64_t exec_mask, uint64_t modifiers, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *) {
-      return functions[op](flags, mask, modifiers, d, a, b);
+      return functions[op](flags, exec_mask, modifiers, d, a, b);
     };
     const char *label = "none";
-    double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, 0, mask);
+    double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, 0, exec_mask);
     if (scalar < 0)
       return false;
     print_result(names[op], "loose", label, "scalar", scalar, 1, op >= 6 ? 64 : 32);
 
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
     if (cpu >= GOC_CPU_X86_64_V3 && op != 5) {
-      double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, 0, mask);
+      double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, 0, exec_mask);
       if (simd < 0)
         return false;
       print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd, op >= 6 ? 64 : 32);
@@ -1122,7 +1124,7 @@ bool benchmark_bit_count(uint64_t cpu, int iterations, int min_ms) {
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
     if (cpu >= GOC_CPU_X86_64_V4) {
-      double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, 0, mask);
+      double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, 0, exec_mask);
       if (simd < 0)
         return false;
       print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd, op >= 6 ? 64 : 32);
@@ -1155,10 +1157,10 @@ bool benchmark_boolean(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] = goc_test::boolean_reference(
             op, r.data[0][lane], r.data[4][lane], r.data[16][lane], mode);
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *) {
-        return functions[op](flags, mask, modifiers, d, a, b);
+        return functions[op](flags, exec_mask, modifiers, d, a, b);
       };
       const char *label = modified ? "high" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -1347,10 +1349,10 @@ bool benchmark_shift(uint64_t cpu, int iterations, int min_ms) {
       if (width == 64)
         r.expected[index + 16] = uint32_t(expected >> 32);
     }
-    const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+    const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *) {
-      return functions[op](flags, mask, mode, d, a, b);
+      return functions[op](flags, exec_mask, mode, d, a, b);
     };
     double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, 0);
     if (scalar < 0)
@@ -1406,10 +1408,10 @@ bool benchmark_half_trig(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               modifiers ? (uint32_t(want) << 16) | 0xcafe : 0xface0000 | want;
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *,
                             const uint32_t *const *) {
-          return functions[op](flags, mask, mode, d, a);
+          return functions[op](flags, exec_mask, mode, d, a);
         };
         const char *mode = modifiers ? "NEG/hi/half/clamp" : "none";
         if (descriptor >= 0)
@@ -1460,10 +1462,10 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
             want = std::min(1.0, std::max(0.0, want * 0.5));
           r.expected[128 * (lane / 16) + lane % 16] = bits(float(want));
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *,
                             const uint32_t *const *) {
-          return functions[op](flags, mask, mode, d, a);
+          return functions[op](flags, exec_mask, mode, d, a);
         };
         const char *mode = modifiers ? "NEG_A / half/clamp" : "none";
         if (descriptor >= 0)
@@ -1512,10 +1514,10 @@ bool benchmark_dpp_integer_add(uint64_t cpu, int iterations, int min_ms) {
                                                         : r.data[4][src],
                                               r.data[8][lane], low);
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c) {
-          return goc_test::integer_add_functions[op](flags, mask, mode, d, a, b, c);
+          return goc_test::integer_add_functions[op](flags, exec_mask, mode, d, a, b, c);
         };
         const char *label = descriptor == 0 ? (modified ? "DPP8/CLAMP" : "DPP8")
                                             : (modified ? "DPP16/CLAMP" : "DPP16");
@@ -1566,10 +1568,10 @@ bool benchmark_dpp_integer_mad(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] = goc_test::integer_mad_reference(
               op, src < 0 ? 0 : r.data[0][src], r.data[4][lane], r.data[8][lane], low);
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c) {
-          return goc_test::integer_mad_functions[op](flags, mask, mode, d, a, b, c);
+          return goc_test::integer_mad_functions[op](flags, exec_mask, mode, d, a, b, c);
         };
         const char *label =
             descriptor == 0
@@ -1621,10 +1623,10 @@ bool benchmark_dpp_arithmetic(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] = goc_test::dpp_arithmetic_reference(
               op, src < 0 ? 0 : r.data[0][src], r.data[4][lane], r.data[8][lane], low);
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c) {
-          return goc_test::dpp_arithmetic_call(op, flags, mask, mode, d, a, b, c);
+          return goc_test::dpp_arithmetic_call(op, flags, exec_mask, mode, d, a, b, c);
         };
         const char *label = descriptor == 0 ? (modified ? "DPP8/NEG/mul2" : "DPP8")
                                             : (modified ? "DPP16/NEG/mul2" : "DPP16");
@@ -1672,9 +1674,9 @@ bool benchmark_dpp_bitfield(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] = goc_test::bitfield_reference(
             op, src < 0 ? 0 : r.data[0][src], r.data[4][lane], r.data[8][lane]);
       }
-      auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+      auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-        return goc_test::bitfield_functions[op](flags, mask, mode, d, a, b, c);
+        return goc_test::bitfield_functions[op](flags, exec_mask, mode, d, a, b, c);
       };
       const char *label = descriptor == 0 ? "DPP8" : "DPP16";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -1721,9 +1723,9 @@ bool benchmark_dpp_integer_ternary(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] = goc_test::integer_ternary_reference(
             op, src < 0 ? 0 : r.data[0][src], r.data[4][lane], r.data[8][lane]);
       }
-      auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+      auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-        return goc_test::integer_ternary_functions[op](flags, mask, mode, d, a, b, c);
+        return goc_test::integer_ternary_functions[op](flags, exec_mask, mode, d, a, b, c);
       };
       const char *label = descriptor == 0 ? "DPP8" : "DPP16";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -1770,9 +1772,9 @@ bool benchmark_dpp_integer_minmax(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] = goc_test::integer_minmax_reference(
             op, src < 0 ? 0 : r.data[0][src], r.data[4][lane], r.data[8][lane]);
       }
-      auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+      auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-        return goc_test::integer_minmax_functions[op](flags, mask, mode, d, a, b, c);
+        return goc_test::integer_minmax_functions[op](flags, exec_mask, mode, d, a, b, c);
       };
       const char *label = descriptor == 0 ? "DPP8" : "DPP16";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -1823,12 +1825,12 @@ bool benchmark_dpp_half_fma(uint64_t cpu, int iterations, int min_ms) {
               goc_test::half_fma_result(op, src < 0 ? 0 : r.data[0][src], r.data[4][lane],
                                         r.data[8][lane], uint32_t(mode), r.data[16][lane]);
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c) {
           if (op == 1)
             std::memcpy(d[0], c[0], 32 * sizeof(uint32_t));
-          return goc_test::half_fma_functions[op](flags, mask, mode, d, a, b, c);
+          return goc_test::half_fma_functions[op](flags, exec_mask, mode, d, a, b, c);
         };
         const char *label = descriptor == 0 ? (modified ? "DPP8/all modifiers" : "DPP8")
                                             : (modified ? "DPP16/all modifiers" : "DPP16");
@@ -1882,10 +1884,10 @@ bool benchmark_dpp_half_minmax(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               (r.data[16][lane] & ~(65535U << shift)) | (value << shift);
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c) {
-          return goc_test::half_minmax_functions[op](flags, mask, mode, d, a, b, c);
+          return goc_test::half_minmax_functions[op](flags, exec_mask, mode, d, a, b, c);
         };
         const char *label = descriptor == 0 ? (modified ? "DPP8/all modifiers" : "DPP8")
                                             : (modified ? "DPP16/all modifiers" : "DPP16");
@@ -1937,10 +1939,10 @@ bool benchmark_dpp_integer16_ternary(uint64_t cpu, int iterations, int min_ms) {
               op, src < 0 ? 0 : r.data[0][src], r.data[4][lane], r.data[8][lane], uint32_t(mode),
               r.data[16][lane]);
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c) {
-          return goc_test::integer16_ternary_functions[op](flags, mask, mode, d, a, b, c);
+          return goc_test::integer16_ternary_functions[op](flags, exec_mask, mode, d, a, b, c);
         };
         const char *label =
             descriptor == 0 ? (modified ? (op < 2 ? "DPP8/HIGH/CLAMP" : "DPP8/HIGH") : "DPP8")
@@ -1993,9 +1995,9 @@ bool benchmark_dpp_half_unary(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               (r.data[16][lane] & ~(65535U << shift)) | (value << shift);
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
-          return goc_test::half_unary_functions[op](flags, mask, mode, d, a);
+          return goc_test::half_unary_functions[op](flags, exec_mask, mode, d, a);
         };
         const char *label = descriptor == 0 ? (modified ? "DPP8/all modifiers" : "DPP8")
                                             : (modified ? "DPP16/all modifiers" : "DPP16");
@@ -2048,10 +2050,10 @@ bool benchmark_dpp_half_binary(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               (r.data[16][lane] & ~(65535U << shift)) | (value << shift);
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *) {
-          return goc_test::half_binary_functions[op](flags, mask, mode, d, a, b);
+          return goc_test::half_binary_functions[op](flags, exec_mask, mode, d, a, b);
         };
         const char *label = descriptor == 0 ? (modified ? "DPP8/all modifiers" : "DPP8")
                                             : (modified ? "DPP16/all modifiers" : "DPP16");
@@ -2101,10 +2103,10 @@ bool benchmark_dpp_integer16(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] = goc_test::integer16_reference(
               op, src < 0 ? 0 : r.data[0][src], r.data[4][lane], r.data[16][lane], uint32_t(mode));
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *) {
-          return goc_test::integer16_functions[op](flags, mask, mode, d, a, b);
+          return goc_test::integer16_functions[op](flags, exec_mask, mode, d, a, b);
         };
         const char *label =
             descriptor == 0 ? (modified ? (op < 4 ? "DPP8/HIGH/CLAMP" : "DPP8/HIGH") : "DPP8")
@@ -2155,10 +2157,10 @@ bool benchmark_dpp_boolean16(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] = goc_test::boolean_reference(
               op, src < 0 ? 0 : r.data[0][src], r.data[4][lane], r.data[16][lane], uint32_t(mode));
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *) {
-          return goc_test::boolean_functions[op](flags, mask, mode, d, a, b);
+          return goc_test::boolean_functions[op](flags, exec_mask, mode, d, a, b);
         };
         const char *label = descriptor == 0 ? (modified ? "DPP8/HIGH" : "DPP8")
                                             : (modified ? "DPP16/HIGH" : "DPP16");
@@ -2206,10 +2208,10 @@ bool benchmark_dpp_integer_mul(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] = goc_test::integer_mul_reference(
               op, src < 0 ? 0 : r.data[0][src], r.data[4][lane], clamp);
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *) {
-          return goc_test::integer_mul_functions[op](flags, mask, mode, d, a, b);
+          return goc_test::integer_mul_functions[op](flags, exec_mask, mode, d, a, b);
         };
         const char *label =
             descriptor == 0 ? (clamp ? "DPP8/CLAMP" : "DPP8") : (clamp ? "DPP16/CLAMP" : "DPP16");
@@ -2256,9 +2258,9 @@ bool benchmark_dpp_integer(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] = goc_test::dpp_integer_reference(
             op, src < 0 ? 0 : r.data[0][src], r.data[4][lane], lane);
       }
-      auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+      auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
-        return goc_test::dpp_integer_functions[op](flags, mask, mode, d, a, b);
+        return goc_test::dpp_integer_functions[op](flags, exec_mask, mode, d, a, b);
       };
       const char *label = descriptor == 0 ? "DPP8" : "DPP16";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -2306,9 +2308,9 @@ bool benchmark_dpp_unary(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               bits(goc_test::unary_reference(op, src < 0 ? 0 : goc::as_float(r.data[0][src]), low));
         }
-        auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
-          return goc_test::unary_functions[op](flags, mask, mode, d, a);
+          return goc_test::unary_functions[op](flags, exec_mask, mode, d, a);
         };
         const char *label = descriptor == 0 ? (modified ? "DPP8/ABS/half" : "DPP8")
                                             : (modified ? "DPP16/ABS/half" : "DPP16");
@@ -2441,9 +2443,9 @@ bool benchmark_permlane(uint64_t cpu, int iterations, int min_ms) {
       for (unsigned lane = 0; lane < 32; ++lane)
         r.expected[128 * (lane / 16) + lane % 16] = goc_test::permlane_reference(
             op, UINT32_MAX, mode, lane, r.data[0], r.data[4], 0, 0x12345678, 0x9abcdef0);
-      auto fn = [op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+      auto fn = [op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
-        return goc_test::permlane_call(op, flags, mask, mode, d, a, b, 0x12345678, 0x9abcdef0);
+        return goc_test::permlane_call(op, flags, exec_mask, mode, d, a, b, 0x12345678, 0x9abcdef0);
       };
       double scalar = measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL, r, iterations, min_ms, mode);
       if (scalar < 0)
@@ -2495,11 +2497,11 @@ bool benchmark_cndmask(uint64_t cpu, int iterations, int min_ms) {
               goc_test::cndmask_reference(half, source < 0 ? 0 : r.data[0][source], r.data[4][lane],
                                           r.data[16][lane], compact, (condition >> lane) & 1);
         }
-        auto fn = [half](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+        auto fn = [half](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *) {
-          return (half ? goc_rdna4_v_cndmask_b16 : goc_rdna4_v_cndmask_b32)(flags, mask, mode, d, a,
-                                                                            b, condition);
+          return (half ? goc_rdna4_v_cndmask_b16 : goc_rdna4_v_cndmask_b32)(flags, exec_mask, mode,
+                                                                            d, a, b, condition);
         };
         const char *name = half ? "v_cndmask_b16" : "v_cndmask_b32";
         const char *label = modified ? (half ? "ABS/NEG/high" : "ABS/NEG") : "none";
@@ -2640,9 +2642,9 @@ bool benchmark_rcp_iflag(uint64_t cpu, int iterations, int min_ms) {
         r.inputs[lane] = source < 0 ? 0 : r.data[0][source];
       }
       r.want = goc_test::rcp_iflag_status(r.inputs, UINT32_MAX, m, 0x15);
-      auto fn = [&r](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+      auto fn = [&r](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
-        return goc_rdna4_v_rcp_iflag_f32(flags, mask, mode, d, a, &r.status, 0x15);
+        return goc_rdna4_v_rcp_iflag_f32(flags, exec_mask, mode, d, a, &r.status, 0x15);
       };
       const char *label = m == 0 ? "none" : m == 15 ? "ABS/NEG/half" : "ABS/NEG/half/clamp";
       if (descriptor >= 0)
@@ -2692,10 +2694,10 @@ bool benchmark_scalar_round(int iterations, int min_ms) {
       r.want = gold[op][state];
       uint32_t w[2];
       goc_test::scalar_round_inputs(op & 1 ? 0x3e01 : 10, op & 1, w);
-      auto fn = [&r, op, &w](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+      auto fn = [&r, op, &w](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                              const uint32_t *const *, const uint32_t *const *,
                              const uint32_t *const *) {
-        return goc_test::scalar_round_functions[op](flags, mask, mode, &r.result, w[0]);
+        return goc_test::scalar_round_functions[op](flags, exec_mask, mode, &r.result, w[0]);
       };
       double scalar =
           measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL | (state ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), r,
@@ -2734,12 +2736,12 @@ bool benchmark_scalar_fma(int iterations, int min_ms) {
       r.want = gold[op][variant];
       uint32_t w[3];
       goc_test::scalar_fma_inputs(3001, op == 1, w);
-      auto fn = [&r, op, &w](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+      auto fn = [&r, op, &w](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                              const uint32_t *const *, const uint32_t *const *,
                              const uint32_t *const *) {
         r.result = w[2];
         unsigned k = op < 2 ? op : op == 2 ? 8 : 20;
-        return goc_test::scalar_fma_call(k, flags, mask, mode, &r.result, w[0], w[1]);
+        return goc_test::scalar_fma_call(k, flags, exec_mask, mode, &r.result, w[0], w[1]);
       };
       double scalar =
           measure(fn, goc_test::scalar_fp_flags(states[variant]), r, iterations, min_ms, 0);
@@ -2777,10 +2779,10 @@ bool benchmark_scalar_compare(int iterations, int min_ms) {
       uint32_t w[4];
       goc_test::scalar_compare_inputs(op < 18 ? 333 : 3, op, w);
       uint64_t a = (uint64_t(w[1]) << 32) | w[0], b = (uint64_t(w[3]) << 32) | w[2];
-      auto fn = [&r, op, a, b](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+      auto fn = [&r, op, a, b](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                                const uint32_t *const *, const uint32_t *const *,
                                const uint32_t *const *) {
-        return goc_test::scalar_compare_call(op, flags, mask, mode, &r.result, a, b);
+        return goc_test::scalar_compare_call(op, flags, exec_mask, mode, &r.result, a, b);
       };
       double scalar =
           measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL | (state ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), r,
@@ -2816,10 +2818,10 @@ bool benchmark_scalar_convert(int iterations, int min_ms) {
       r.want = gold[op][variant];
       uint32_t w[2];
       goc_test::scalar_convert_inputs(3001, op, w);
-      auto fn = [&r, op, &w](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+      auto fn = [&r, op, &w](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                              const uint32_t *const *, const uint32_t *const *,
                              const uint32_t *const *) {
-        return goc_test::scalar_convert_call(op, flags, mask, mode, &r.result, w[0], w[1]);
+        return goc_test::scalar_convert_call(op, flags, exec_mask, mode, &r.result, w[0], w[1]);
       };
       double scalar =
           measure(fn, goc_test::scalar_fp_flags(states[variant]), r, iterations, min_ms, 0);
@@ -2863,10 +2865,10 @@ bool benchmark_scalar_fp(int iterations, int min_ms) {
       r.want = gold[op][variant];
       uint32_t w[2];
       goc_test::scalar_fp_inputs(3001, op & 1, w);
-      auto fn = [&r, op, &w](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+      auto fn = [&r, op, &w](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                              const uint32_t *const *, const uint32_t *const *,
                              const uint32_t *const *) {
-        return goc_test::scalar_fp_functions[op](flags, mask, mode, &r.result, w[0], w[1]);
+        return goc_test::scalar_fp_functions[op](flags, exec_mask, mode, &r.result, w[0], w[1]);
       };
       double scalar =
           measure(fn, goc_test::scalar_fp_flags(states[variant]), r, iterations, min_ms, 0);
@@ -2912,13 +2914,14 @@ bool benchmark_scalar_field(int iterations, int min_ms) {
     r.want = gold[op][0];
     r.want_cc = uint32_t(gold[op][1]);
     r.is_wide = op == 2 || op == 3 || op == 5 || op == 17 || op == 19;
-    auto fn = [&r, op, a, b](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+    auto fn = [&r, op, a, b](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                              const uint32_t *const *, const uint32_t *const *,
                              const uint32_t *const *) {
       r.result = uint32_t(a);
       r.wide = a;
       r.cc = 1;
-      return goc_test::scalar_field_call(op, flags, mask, mode, &r.result, &r.wide, a, b, &r.cc);
+      return goc_test::scalar_field_call(op, flags, exec_mask, mode, &r.result, &r.wide, a, b,
+                                         &r.cc);
     };
     double scalar = measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL, r, iterations, min_ms, 0);
     if (scalar < 0)
@@ -2943,10 +2946,10 @@ bool benchmark_scalar_sign_extend(int iterations, int min_ms) {
   for (auto function : functions) {
     ScalarRegisters r;
     r.want = op ? 0xffff8081u : 0xffffff81u;
-    auto fn = [&r, function](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+    auto fn = [&r, function](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                              const uint32_t *const *, const uint32_t *const *,
                              const uint32_t *const *) {
-      return function(flags, mask, mode, &r.result, 0xabcd8081);
+      return function(flags, exec_mask, mode, &r.result, 0xabcd8081);
     };
     double scalar = measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL, r, iterations, min_ms, 0);
     if (scalar < 0)
@@ -2989,12 +2992,13 @@ bool benchmark_scalar_pack(int iterations, int min_ms) {
     r.want = gold[op][0];
     r.want_cc = uint32_t(gold[op][1]);
     r.is_wide = op == 4 || op == 6 || op == 8 || op == 10;
-    auto fn = [&r, op, a, b](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+    auto fn = [&r, op, a, b](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                              const uint32_t *const *, const uint32_t *const *,
                              const uint32_t *const *) {
       r.result = uint32_t(a);
       r.cc = 1;
-      return goc_test::scalar_pack_call(op, flags, mask, mode, &r.result, &r.wide, a, b, &r.cc, 1);
+      return goc_test::scalar_pack_call(op, flags, exec_mask, mode, &r.result, &r.wide, a, b, &r.cc,
+                                        1);
     };
     double scalar = measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL, r, iterations, min_ms, 0);
     if (scalar < 0)
@@ -3041,12 +3045,13 @@ bool benchmark_scalar_bits(int iterations, int min_ms) {
     r.want = gold[op][0];
     r.want_cc = uint32_t(gold[op][1]);
     r.is_wide = op < 26 && (op & 1);
-    auto fn = [&r, op, a, b](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+    auto fn = [&r, op, a, b](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                              const uint32_t *const *, const uint32_t *const *,
                              const uint32_t *const *) {
       r.result = uint32_t(a);
       r.cc = 1;
-      return goc_test::scalar_bits_call(op, flags, mask, mode, &r.result, &r.wide, a, b, &r.cc);
+      return goc_test::scalar_bits_call(op, flags, exec_mask, mode, &r.result, &r.wide, a, b,
+                                        &r.cc);
     };
     double scalar = measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL, r, iterations, min_ms, 0);
     if (scalar < 0)
@@ -3098,13 +3103,13 @@ bool benchmark_scalar_integer(int iterations, int min_ms) {
     r.want = gold[op][0];
     r.want_cc = uint32_t(gold[op][1]);
     r.is_wide = op >= 15 && op <= 17;
-    auto fn = [&r, op, a, b](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+    auto fn = [&r, op, a, b](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                              const uint32_t *const *, const uint32_t *const *,
                              const uint32_t *const *) {
       r.result = uint32_t(a);
       r.cc = 1;
-      return goc_test::scalar_integer_call(op, flags, mask, mode, &r.result, &r.wide, a, b, &r.cc,
-                                           1, 0xffff);
+      return goc_test::scalar_integer_call(op, flags, exec_mask, mode, &r.result, &r.wide, a, b,
+                                           &r.cc, 1, 0xffff);
     };
     double scalar = measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL, r, iterations, min_ms, 0);
     if (scalar < 0)
@@ -3139,10 +3144,10 @@ bool benchmark_pseudo_scalar(int iterations, int min_ms) {
       r.want =
           goc_test::pseudo_scalar_outputs[goc_test::pseudo_scalar_blocks[(state * 10 + op) * 32 +
                                                                          m]][sample];
-      auto fn = [&r, op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+      auto fn = [&r, op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                          const uint32_t *const *a, const uint32_t *const *,
                          const uint32_t *const *) {
-        return goc_test::pseudo_scalar_functions[op](flags, mask, mode, &r.result, a[0][0]);
+        return goc_test::pseudo_scalar_functions[op](flags, exec_mask, mode, &r.result, a[0][0]);
       };
       double scalar = measure(fn, goc_test::pseudo_scalar_flags(state), r, iterations, min_ms,
                               goc_test::pseudo_scalar_mode(m));
@@ -3196,13 +3201,13 @@ bool benchmark_float_compare(uint64_t cpu, int iterations, int min_ms) {
                           r.data[5][lane]};
           r.want |= uint32_t(goc_test::float_compare_reference(op, m, flush, w)) << lane;
         }
-        auto fn = [&r, op, flush](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
-                                  const uint32_t *const *a, const uint32_t *const *b,
-                                  const uint32_t *const *) {
+        auto fn = [&r, op, flush](uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                                  uint32_t *const *, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *) {
           return goc_test::float_compare_functions[op](
               flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                   (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0),
-              mask, mode, &r.result, a, b);
+              exec_mask, mode, &r.result, a, b);
         };
         auto name = goc_test::float_compare_names[op];
         const char *label = m ? (op < 28 ? "ABS/NEG/high" : "ABS/NEG") : "none",
@@ -3271,12 +3276,12 @@ bool benchmark_integer_compare(uint64_t cpu, int iterations, int min_ms) {
                           r.data[5][lane]};
           r.want |= uint32_t(goc_test::integer_compare_reference(op, m, w)) << lane;
         }
-        auto fn = [&r, op](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *,
+        auto fn = [&r, op](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *,
                            const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *) {
           return goc_test::integer_compare_functions[op](flags | GOC_SEMANTICS_EXACT_EMPIRICAL |
                                                              GOC_SEMANTICS_STRICT,
-                                                         mask, mode, &r.result, a, b);
+                                                         exec_mask, mode, &r.result, a, b);
         };
         auto name = goc_test::integer_compare_names[op];
         const char *label = m ? "high" : "none";
@@ -3349,11 +3354,11 @@ bool benchmark_class(uint64_t cpu, int iterations, int min_ms) {
                                                        r.data[1][lane], r.data[4][lane], compact))
                     << lane;
         }
-        auto fn = [&r, op, &functions](uint64_t flags, uint32_t mask, uint64_t mode,
+        auto fn = [&r, op, &functions](uint64_t flags, uint32_t exec_mask, uint64_t mode,
                                        uint32_t *const *, const uint32_t *const *a,
                                        const uint32_t *const *b, const uint32_t *const *) {
-          return functions[op](flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask,
-                               mode, &r.result, a, b);
+          return functions[op](flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                               exec_mask, mode, &r.result, a, b);
         };
         const char *label = modified ? (op < 2 ? "ABS/NEG/high" : "ABS/NEG") : "none";
         if (descriptor >= 0)
@@ -3398,10 +3403,10 @@ bool benchmark_trig_preop(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + 16 * reg + lane % 16] =
             uint32_t(goc_test::trig_preop_samples[compact][lane] >> (32 * reg));
     }
-    auto fn = [](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+    auto fn = [](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                  const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
       return goc_rdna4_v_trig_preop_f64(
-          flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, mode, d, a, b);
+          flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, mode, d, a, b);
     };
     const char *label = modified ? "ABS/NEG/half/clamp" : "none";
     double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -3502,10 +3507,10 @@ bool benchmark_pack(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] = goc_test::pack_reference(
             variant, source < 0 ? 0 : r.data[0][source], r.data[4][lane], r.data[16][lane]);
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *) {
-        return goc_test::pack_call(variant, flags, mask, mode, d, a, b);
+        return goc_test::pack_call(variant, flags, exec_mask, mode, d, a, b);
       };
       const char *name = variant < 2 ? "v_sat_pk_u8_i16" : "v_pack_b32_f16";
       const char *label = variant == 1 ? "high" : variant == 65 ? "ABS/NEG/high" : "none";
@@ -3572,13 +3577,13 @@ bool benchmark_swmmac_integer(uint64_t cpu, int iterations, int min_ms) {
       std::memcpy(r.data + 4, initial + 2, 4 * 32 * sizeof(uint32_t));
       const uint32_t *index[] = {initial[14]};
       const uint32_t mode = (variant & 3) | ((variant & 4) << 4) | ((variant & 8) << 4);
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *) {
         // Reset the in/out accumulator on every call; all paths include this cost.
         for (unsigned reg = 0; reg < r.regs; ++reg)
           std::memcpy(d[reg], initial[6 + reg], 32 * sizeof(uint32_t));
-        return functions[op](flags, mask, modifiers, d, a, b, index);
+        return functions[op](flags, exec_mask, modifiers, d, a, b, index);
       };
       const char *label = modified ? (op == 2 ? "signed/clamp" : "signed/clamp/key1") : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -3641,13 +3646,13 @@ bool benchmark_swmmac8(uint64_t cpu, int iterations, int min_ms) {
       std::memcpy(r.data + 4, initial + 2, 4 * 32 * sizeof(uint32_t));
       const uint32_t *index[] = {initial[14]};
       const uint32_t mode = variant ? GOC_SWMMAC_INDEX_KEY_1 : 0;
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *) {
         // Reset the in/out accumulator on every call; all paths include this cost.
         for (unsigned reg = 0; reg < r.regs; ++reg)
           std::memcpy(d[reg], initial[6 + reg], 32 * sizeof(uint32_t));
-        return functions[op](flags, mask, modifiers, d, a, b, index);
+        return functions[op](flags, exec_mask, modifiers, d, a, b, index);
       };
       const char *label = variant ? "key1" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -3709,13 +3714,13 @@ bool benchmark_swmmac16(uint64_t cpu, int iterations, int min_ms) {
       std::memcpy(r.data, initial, 12 * 32 * sizeof(uint32_t));
       const uint32_t *index[] = {initial[20]};
       const uint32_t mode = (variant & 3) | ((variant & 12) << 1) | ((variant & 16) << 3);
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *) {
         // Reset the in/out accumulator on every call; all paths include this cost.
         for (unsigned reg = 0; reg < r.regs; ++reg)
           std::memcpy(d[reg], initial[12 + reg], 32 * sizeof(uint32_t));
-        return functions[op](flags, mask, modifiers, d, a, b, index);
+        return functions[op](flags, exec_mask, modifiers, d, a, b, index);
       };
       const char *label = variant ? "NEG/key1" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -3773,10 +3778,10 @@ bool benchmark_mad64(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + 16 + lane % 16] = uint32_t(gold.value >> 32);
         r.expected_carry |= uint32_t(gold.carry) << lane;
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *c) {
-        return functions[op](flags, mask, modifiers, d, &r.carry, a, b, c);
+        return functions[op](flags, exec_mask, modifiers, d, &r.carry, a, b, c);
       };
       uint32_t mode = clamp ? GOC_ALU_CLAMP : 0;
       const char *label = clamp ? "clamp" : "none";
@@ -3841,10 +3846,10 @@ bool benchmark_carry(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] = gold.value;
           r.expected_carry |= uint32_t(gold.carry) << lane;
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *) {
-          return goc_test::carry_functions[op](flags, mask, modifiers, d, &r.carry, a, b,
+          return goc_test::carry_functions[op](flags, exec_mask, modifiers, d, &r.carry, a, b,
                                                0xa5a5a5a5);
         };
         const char *label = clamp ? "clamp" : "none";
@@ -3900,10 +3905,10 @@ bool benchmark_div_fmas(uint64_t cpu, int iterations, int min_ms) {
           r.data[4 * operand][lane] = uint32_t(raw);
           r.data[4 * operand + 1][lane] = uint32_t(raw >> 32);
         }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *c) {
-        return functions[op](flags, mask, modifiers, d, a, b, c, 0xa5a5a5a5);
+        return functions[op](flags, exec_mask, modifiers, d, a, b, c, 0xa5a5a5a5);
       };
       if (fn(semantics, UINT32_MAX, mode, r.v + 16, r.v, r.v + 4, r.v + 8) != GOC_SUCCESS)
         return false;
@@ -3973,10 +3978,10 @@ bool benchmark_div_scale(uint64_t cpu, int iterations, int min_ms) {
           r.data[4 * operand + 1][lane] = uint32_t(raw[operand] >> 32);
         }
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *c) {
-        return functions[op](flags, mask, modifiers, d, &r.condition, a, b, c);
+        return functions[op](flags, exec_mask, modifiers, d, &r.condition, a, b, c);
       };
       if (fn(semantics, UINT32_MAX, mode, r.v + 16, r.v, r.v + 4, r.v + 8) != GOC_SUCCESS)
         return false;
@@ -4213,9 +4218,11 @@ bool benchmark_fp8_narrow(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] = goc_test::fp8_narrow_result(
               op, selected, r.data[4][lane], r.data[16][lane], uint32_t(mode), modified);
         }
-        auto call = [&](uint64_t f, uint64_t m, uint64_t i, uint32_t *const *d,
+        auto call = [&](uint64_t f, uint64_t exec_mask, uint64_t i, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *) { return functions[op](f, m, i, d, a, b); };
+                        const uint32_t *const *) {
+          return functions[op](f, exec_mask, i, d, a, b);
+        };
         const char *label = modified ? (op >= 2 ? "NEG/ABS/byte3" : "mixed/high") : "none";
         if (descriptor >= 0)
           label = descriptor == 0 ? (modified ? "DPP8/modified" : "DPP8")
@@ -4249,9 +4256,9 @@ bool benchmark_fp8_narrow(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_byte_pack(uint64_t cpu, int iterations, int min_ms) {
   const Wmma functions[] = {
-      [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+      [](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
          const uint32_t *const *,
-         const uint32_t *const *) { return goc_rdna4_v_cvt_off_f32_i4(f, m, i, d, a); },
+         const uint32_t *const *) { return goc_rdna4_v_cvt_off_f32_i4(f, exec_mask, i, d, a); },
       goc_rdna4_v_cvt_pk_u8_f32};
   const char *names[] = {"v_cvt_off_f32_i4", "v_cvt_pk_u8_f32"};
   const uint32_t values[] = {0,          0x3f000000, 0x3fc00000, 0x40200000,
@@ -4314,10 +4321,10 @@ bool benchmark_byte_pack(uint64_t cpu, int iterations, int min_ms) {
 bool benchmark_integer_conversion(uint64_t cpu, int iterations, int min_ms) {
   using Binary = decltype(&goc_rdna4_v_cvt_pk_i16_i32);
   const Binary functions[] = {
-      [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
-         const uint32_t *const *) { return goc_rdna4_v_cvt_i32_i16(f, m, i, d, a); },
-      [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
-         const uint32_t *const *) { return goc_rdna4_v_cvt_u32_u16(f, m, i, d, a); },
+      [](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+         const uint32_t *const *) { return goc_rdna4_v_cvt_i32_i16(f, exec_mask, i, d, a); },
+      [](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+         const uint32_t *const *) { return goc_rdna4_v_cvt_u32_u16(f, exec_mask, i, d, a); },
       goc_rdna4_v_cvt_pk_i16_i32, goc_rdna4_v_cvt_pk_u16_u32};
   const char *names[] = {"v_cvt_i32_i16", "v_cvt_u32_u16", "v_cvt_pk_i16_i32", "v_cvt_pk_u16_u32"};
   const uint32_t values[] = {0, 1, 0xffffffff, 0x7fff, 0x8000, 0x10000, 0xffff7fff, 0x80000000};
@@ -4339,10 +4346,10 @@ bool benchmark_integer_conversion(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               goc_test::integer_conversion_reference(op, selected, r.data[4][lane], uint32_t(mode));
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *) {
-          return functions[op](flags, mask, modifiers, d, a, b);
+          return functions[op](flags, exec_mask, modifiers, d, a, b);
         };
         const char *label = descriptor < 0    ? (select ? "HIGH_A" : "none")
                             : descriptor == 0 ? (select ? "DPP8/HIGH_A" : "DPP8")
@@ -4379,10 +4386,10 @@ bool benchmark_normalized(uint64_t cpu, int iterations, int min_ms) {
       goc_rdna4_v_cvt_pk_norm_u16_f32,
       goc_rdna4_v_cvt_pk_norm_i16_f16,
       goc_rdna4_v_cvt_pk_norm_u16_f16,
-      [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
-         const uint32_t *const *) { return goc_rdna4_v_cvt_norm_i16_f16(f, m, i, d, a); },
-      [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
-         const uint32_t *const *) { return goc_rdna4_v_cvt_norm_u16_f16(f, m, i, d, a); }};
+      [](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+         const uint32_t *const *) { return goc_rdna4_v_cvt_norm_i16_f16(f, exec_mask, i, d, a); },
+      [](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+         const uint32_t *const *) { return goc_rdna4_v_cvt_norm_u16_f16(f, exec_mask, i, d, a); }};
   const char *names[] = {"v_cvt_pk_norm_i16_f32", "v_cvt_pk_norm_u16_f32", "v_cvt_pk_norm_i16_f16",
                          "v_cvt_pk_norm_u16_f16", "v_cvt_norm_i16_f16",    "v_cvt_norm_u16_f16"};
   const uint32_t floats[] = {0,          0x3f000000, 0x3f7fffff, 0x3f800000,
@@ -4412,10 +4419,10 @@ bool benchmark_normalized(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] = goc_test::normalized_reference(
               op, selected, r.data[4][lane], 0xa5a5a5a5, uint32_t(mode));
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *) {
-          return functions[op](flags, mask, modifiers, d, a, b);
+          return functions[op](flags, exec_mask, modifiers, d, a, b);
         };
         const char *label = !modified ? "none"
                             : op < 2  ? "ABS/NEG/clamp"
@@ -4477,10 +4484,10 @@ bool benchmark_packed_conversion(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               goc_test::packed_conversion_reference(op, selected, r.data[4][lane], uint32_t(mode));
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *) {
-          return functions[op](flags, mask, modifiers, d, a, b);
+          return functions[op](flags, exec_mask, modifiers, d, a, b);
         };
         const char *label = modified ? (op == 0 ? "ABS/NEG/cl/OMOD" : "ABS/NEG/clamp") : "none";
         if (descriptor >= 0)
@@ -4540,10 +4547,10 @@ bool benchmark_fp8_conversion(uint64_t cpu, int iterations, int min_ms) {
                 goc_test::fp8_conversion_reference(
                     op & 1, uint8_t(selected >> (selection * (packed ? 16 : 8) + 8 * reg)));
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *,
                             const uint32_t *const *) {
-          return functions[op](flags, mask, modifiers, d, a);
+          return functions[op](flags, exec_mask, modifiers, d, a);
         };
         const char *label = upper ? (packed ? "HIGH_A" : "byte:3") : "none";
         if (descriptor >= 0)
@@ -4603,10 +4610,10 @@ bool benchmark_byte_conversion(uint64_t cpu, int iterations, int min_ms) {
               byte < 4 ? goc_test::byte_conversion_reference(byte, selected, uint32_t(mode))
                        : goc_test::nibble_offset_reference(selected, uint32_t(mode));
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *,
                             const uint32_t *const *) {
-          return functions[byte](flags, mask, modifiers, d, a);
+          return functions[byte](flags, exec_mask, modifiers, d, a);
         };
         const char *label = descriptor < 0    ? (variant ? "half/clamp" : "none")
                             : descriptor == 0 ? (variant ? "DPP8/half/clamp" : "DPP8")
@@ -4670,10 +4677,10 @@ bool benchmark_conversion16(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               goc_test::conversion16_reference(op, input, 0xa5a55a5a, uint32_t(mode), true);
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *,
                             const uint32_t *const *) {
-          return functions[op](flags, mask, modifiers, d, a);
+          return functions[op](flags, exec_mask, modifiers, d, a);
         };
         const char *label = !modified ? "none"
                             : op < 2  ? "hi/half/clamp"
@@ -4739,10 +4746,10 @@ bool benchmark_conversion64(uint64_t cpu, int iterations, int min_ms) {
         for (int reg = 0; reg < r.output_regs; ++reg)
           r.expected[128 * (lane / 16) + 16 * reg + lane % 16] = uint32_t(expected >> (32 * reg));
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *,
                           const uint32_t *const *) {
-        return functions[op](flags, mask, modifiers, d, a);
+        return functions[op](flags, exec_mask, modifiers, d, a);
       };
       const char *label = !modified ? "none"
                           : op < 2  ? "half/clamp"
@@ -4801,10 +4808,10 @@ bool benchmark_conversion32(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               goc_test::conversion32_reference(op, input, uint32_t(mode));
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *,
                             const uint32_t *const *) {
-          return functions[op](flags, mask, modifiers, d, a);
+          return functions[op](flags, exec_mask, modifiers, d, a);
         };
         const char *label = !modified ? "none"
                             : op < 2  ? "half/clamp"
@@ -4870,10 +4877,10 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
         r.data[0][lane] = bits(input);
         r.expected[128 * (lane / 16) + lane % 16] = bits(want);
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *,
                           const uint32_t *const *) {
-        return functions[op](flags, mask, mode, d, a);
+        return functions[op](flags, exec_mask, mode, d, a);
       };
       const char *mode = modifiers ? "ABS_A / half/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
@@ -4924,10 +4931,10 @@ bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
           want = -0.0f;
         r.expected[128 * (lane / 16) + lane % 16] = bits(want);
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *) {
-        return functions[op](flags, mask, modifiers, d, a, b);
+        return functions[op](flags, exec_mask, modifiers, d, a, b);
       };
       const char *label = mode ? "ABS/NEG/half/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -5085,10 +5092,10 @@ bool benchmark_integer16(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] = goc_test::integer16_reference(
             op, r.data[0][lane], r.data[4][lane], r.data[16][lane], mode);
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *) {
-        return functions[op](flags, mask, modifiers, d, a, b);
+        return functions[op](flags, exec_mask, modifiers, d, a, b);
       };
       const char *label = modified ? (op < 4 ? "high/clamp" : "high") : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -5131,10 +5138,10 @@ bool benchmark_packed_integer(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] =
             goc_test::packed_integer_reference(op, r.data[0][lane], r.data[4][lane], mode);
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *) {
-        return functions[op](flags, mask, modifiers, d, a, b);
+        return functions[op](flags, exec_mask, modifiers, d, a, b);
       };
       const char *label = modified ? "select/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -5187,10 +5194,10 @@ bool benchmark_packed_binary(uint64_t cpu, int iterations, int min_ms) {
         }
         r.expected[128 * (lane / 16) + lane % 16] = expected;
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *) {
-        return functions[op](flags, mask, modifiers, d, a, b);
+        return functions[op](flags, exec_mask, modifiers, d, a, b);
       };
       const char *label = modified ? "NEG/select/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -5234,15 +5241,15 @@ bool benchmark_packed_fma(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] =
             goc_test::half_bits(low) | (uint32_t(goc_test::half_bits(high)) << 16);
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *c) {
         if (accumulate) {
           // Include the fixed-input accumulator reset in all FMAC timings.
           std::memcpy(d[0], c[0], 32 * sizeof(uint32_t));
-          return goc_rdna4_v_pk_fmac_f16(flags, mask, modifiers, d, a, b);
+          return goc_rdna4_v_pk_fmac_f16(flags, exec_mask, modifiers, d, a, b);
         }
-        return goc_rdna4_v_pk_fma_f16(flags, mask, modifiers, d, a, b, c);
+        return goc_rdna4_v_pk_fma_f16(flags, exec_mask, modifiers, d, a, b, c);
       };
       const char *name = accumulate ? "v_pk_fmac_f16" : "v_pk_fma_f16";
       const char *label = modified ? "NEG/select/clamp" : "none";
@@ -5294,15 +5301,16 @@ bool benchmark_literal_fma(uint64_t cpu, int iterations, int min_ms) {
             r.expected[128 * (lane / 16) + lane % 16] = bits(want);
           }
         }
-        const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b,
+        const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *) {
           if (half)
-            return multiply
-                       ? goc_rdna4_v_fmamk_f16(flags, mask, modifiers, d, a, uint16_t(literal), b)
-                       : goc_rdna4_v_fmaak_f16(flags, mask, modifiers, d, a, b, uint16_t(literal));
-          return multiply ? goc_rdna4_v_fmamk_f32(flags, mask, modifiers, d, a, literal, b)
-                          : goc_rdna4_v_fmaak_f32(flags, mask, modifiers, d, a, b, literal);
+            return multiply ? goc_rdna4_v_fmamk_f16(flags, exec_mask, modifiers, d, a,
+                                                    uint16_t(literal), b)
+                            : goc_rdna4_v_fmaak_f16(flags, exec_mask, modifiers, d, a, b,
+                                                    uint16_t(literal));
+          return multiply ? goc_rdna4_v_fmamk_f32(flags, exec_mask, modifiers, d, a, literal, b)
+                          : goc_rdna4_v_fmaak_f32(flags, exec_mask, modifiers, d, a, b, literal);
         };
         const char *name = half ? (multiply ? "v_fmamk_f16" : "v_fmaak_f16")
                                 : (multiply ? "v_fmamk_f32" : "v_fmaak_f32");
@@ -5371,13 +5379,13 @@ bool benchmark_fmac(uint64_t cpu, int iterations, int min_ms) {
         }
       }
       auto operation = half ? goc_rdna4_v_fmac_f16 : goc_rdna4_v_fmac_f32;
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *c) {
         // Keep the accumulator input fixed, avoiding drift during repeated FMAC.
         // This reset is included in timings for every CPU path.
         std::memcpy(d[0], c[0], 32 * sizeof(uint32_t));
-        return operation(flags, mask, modifiers, d, a, b);
+        return operation(flags, exec_mask, modifiers, d, a, b);
       };
       const char *name = half ? "v_fmac_f16" : "v_fmac_f32";
       const char *label = modified ? (half ? "ABS/NEG/hi/half/cl" : "ABS/NEG/half/cl") : "none";
@@ -5606,22 +5614,22 @@ bool benchmark_fp64(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] = uint32_t(raw);
         r.expected[128 * (lane / 16) + 16 + lane % 16] = uint32_t(raw >> 32);
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *c) {
         if (op == 0)
-          return goc_rdna4_v_add_f64(flags, mask, modifiers, d, a, b);
+          return goc_rdna4_v_add_f64(flags, exec_mask, modifiers, d, a, b);
         if (op == 1)
-          return goc_rdna4_v_mul_f64(flags, mask, modifiers, d, a, b);
+          return goc_rdna4_v_mul_f64(flags, exec_mask, modifiers, d, a, b);
         if (op == 3)
-          return goc_rdna4_v_min_num_f64(flags, mask, modifiers, d, a, b);
+          return goc_rdna4_v_min_num_f64(flags, exec_mask, modifiers, d, a, b);
         if (op == 4)
-          return goc_rdna4_v_max_num_f64(flags, mask, modifiers, d, a, b);
+          return goc_rdna4_v_max_num_f64(flags, exec_mask, modifiers, d, a, b);
         if (op == 5)
-          return goc_rdna4_v_minimum_f64(flags, mask, modifiers, d, a, b);
+          return goc_rdna4_v_minimum_f64(flags, exec_mask, modifiers, d, a, b);
         if (op == 6)
-          return goc_rdna4_v_maximum_f64(flags, mask, modifiers, d, a, b);
-        return goc_rdna4_v_fma_f64(flags, mask, modifiers, d, a, b, c);
+          return goc_rdna4_v_maximum_f64(flags, exec_mask, modifiers, d, a, b);
+        return goc_rdna4_v_fma_f64(flags, exec_mask, modifiers, d, a, b, c);
       };
       const char *label = mode ? "ABS/NEG/half/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
@@ -5672,10 +5680,10 @@ bool benchmark_fp64_unary(uint64_t cpu, int iterations, int min_ms) {
         r.expected[128 * (lane / 16) + lane % 16] = uint32_t(raw);
         r.expected[128 * (lane / 16) + 16 + lane % 16] = uint32_t(raw >> 32);
       }
-      const auto fn = [&](uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *,
+      const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *,
                           const uint32_t *const *) {
-        return functions[op](flags, mask, modifiers, d, a);
+        return functions[op](flags, exec_mask, modifiers, d, a);
       };
       const char *label = mode ? "ABS_A / half/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);

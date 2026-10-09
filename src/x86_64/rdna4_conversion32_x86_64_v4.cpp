@@ -9,7 +9,7 @@
 namespace goc {
 
 template <Conversion32 Op>
-void conversion32_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a) {
+void conversion32_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a) {
   constexpr bool to_float =
       Op == Conversion32::SignedToFloat || Op == Conversion32::UnsignedToFloat;
   const auto zero = _mm512_setzero_ps();
@@ -63,7 +63,7 @@ void conversion32_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uin
         }
       }
     }
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), result);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), result);
   }
 }
 

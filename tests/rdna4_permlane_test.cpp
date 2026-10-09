@@ -17,7 +17,7 @@ TEST(Permlane, HardwareCorpus) {
   // patterns, 8 EXEC masks, and all 32 destination lanes (65536 raw results).
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (uint32_t mask :
+    for (uint32_t exec_mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned op = 0; op < 4; ++op)
         for (unsigned mode = 0; mode < 4; ++mode)
@@ -35,11 +35,11 @@ TEST(Permlane, HardwareCorpus) {
             uint32_t *pd = d;
             const uint32_t *pa = a, *pb = b;
             ASSERT_EQ(goc_test::permlane_call(
-                          op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask,
+                          op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask,
                           mode, &pd, &pa, &pb, lo, hi),
                       GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
-              ASSERT_EQ(d[lane], goc_test::permlane_reference(op, mask, mode, lane, a, b,
+              ASSERT_EQ(d[lane], goc_test::permlane_reference(op, exec_mask, mode, lane, a, b,
                                                               0xdef00000u + lane, lo, hi));
               hash = goc_test::capture_hash_word(hash, d[lane]);
             }
@@ -54,7 +54,7 @@ TEST(Permlane, MasksAliasingAndSelectors) {
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (unsigned op = 0; op < 4; ++op)
         for (unsigned mode = 0; mode < 4; ++mode)
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (unsigned alias = 0; alias < 4; ++alias) {
               uint32_t storage[3][34], before[3][34], want[32];
               for (auto &reg : storage)
@@ -66,12 +66,12 @@ TEST(Permlane, MasksAliasingAndSelectors) {
               uint32_t lo = rng(), hi = rng();
               for (unsigned lane = 0; lane < 32; ++lane)
                 want[lane] =
-                    goc_test::permlane_reference(op, mask, mode, lane, before[0] + 1,
+                    goc_test::permlane_reference(op, exec_mask, mode, lane, before[0] + 1,
                                                  before[bi] + 1, before[dest][lane + 1], lo, hi);
               uint32_t *pd = storage[dest] + 1;
               const uint32_t *pa = storage[0] + 1, *pb = storage[bi] + 1;
-              ASSERT_EQ(goc_test::permlane_call(op, cpu | semantics | GOC_SEMANTICS_STRICT, mask,
-                                                mode, &pd, &pa, &pb, lo, hi),
+              ASSERT_EQ(goc_test::permlane_call(op, cpu | semantics | GOC_SEMANTICS_STRICT,
+                                                exec_mask, mode, &pd, &pa, &pb, lo, hi),
                         GOC_SUCCESS);
               for (unsigned reg = 0; reg < 3; ++reg)
                 for (unsigned lane = 0; lane < 34; ++lane)

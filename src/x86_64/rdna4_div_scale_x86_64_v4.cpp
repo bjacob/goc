@@ -199,7 +199,7 @@ __m512i load(const uint32_t *const *v, unsigned lane, uint32_t mode, unsigned op
 namespace goc {
 
 template <unsigned Width>
-uint32_t div_scale_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d,
+uint32_t div_scale_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
   constexpr unsigned lanes = Width == 64 ? 8 : 16;
@@ -215,7 +215,7 @@ uint32_t div_scale_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d,
       _mm256_storeu_si256(reinterpret_cast<__m256i *>(staged[1] + lane),
                           _mm512_cvtepi64_epi32(_mm512_srli_epi64(result, 32)));
     } else {
-      _mm512_mask_storeu_epi32(d[0] + lane, __mmask16(mask >> lane), result);
+      _mm512_mask_storeu_epi32(d[0] + lane, __mmask16(exec_mask >> lane), result);
     }
   }
   // Preserve cross-half aliases by committing D0 then D1 after all reads.
@@ -223,9 +223,9 @@ uint32_t div_scale_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d,
     for (unsigned reg = 0; reg < 2; ++reg)
       for (unsigned lane = 0; lane < 32; lane += 16) {
         auto result = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(staged[reg] + lane));
-        _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(mask >> lane), result);
+        _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(exec_mask >> lane), result);
       }
-  return conditions & mask;
+  return conditions & exec_mask;
 }
 
 template uint32_t div_scale_x86_64_v4<32>(uint32_t, uint32_t, uint32_t *const *,

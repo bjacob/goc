@@ -10,7 +10,7 @@ namespace goc {
 enum class Shift { Left, LogicalRight, ArithmeticRight };
 
 template <int Bits, Shift Op>
-void shift_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *a,
+void shift_x86_64_v3(uint32_t exec_mask, uint32_t *const *d, const uint32_t *a,
                      const uint32_t *const *b);
 
 } // namespace goc

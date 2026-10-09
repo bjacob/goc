@@ -11,32 +11,32 @@
 namespace {
 
 template <bool Saturate>
-int run(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
-        const uint32_t *const *b) {
+int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+        const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
-    return goc::execute_dpp(flags, mask, mode, a,
-                            [&](uint32_t effective, const uint32_t *const *source) {
-                              return run<Saturate>(flags, effective, uint32_t(mode), d, source, b);
+    return goc::execute_dpp(flags, exec_mask, mode, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return run<Saturate>(flags, exec_mask, uint32_t(mode), d, source, b);
                             });
   const uint32_t known = Saturate ? GOC_ALU_HIGH_D
                                   : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_ABS_A |
                                         GOC_ALU_ABS_B | GOC_ALU_NEG_A | GOC_ALU_NEG_B;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
   const uint32_t *bp = nullptr;
   if constexpr (!Saturate)
     bp = b[0];
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::pack_x86_64_v4<Saturate>(mask, mode, d[0], a[0], bp);
+    goc::pack_x86_64_v4<Saturate>(exec_mask, mode, d[0], a[0], bp);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::pack_x86_64_v3<Saturate>(mask, mode, d[0], a[0], bp);
+    goc::pack_x86_64_v3<Saturate>(exec_mask, mode, d[0], a[0], bp);
     return GOC_SUCCESS;
   }
 #endif
@@ -70,7 +70,7 @@ int run(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const 
     }
   }
   for (unsigned lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }

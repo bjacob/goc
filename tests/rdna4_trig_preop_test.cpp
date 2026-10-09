@@ -51,17 +51,18 @@ TEST(TrigPreop, MasksAliasesAndUnalignedStorage) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned mode = 0; mode < 32; ++mode)
       for (unsigned target = 0; target < 25; ++target)
-        for (uint32_t mask : rdna4_exec_masks()) {
+        for (uint32_t exec_mask : rdna4_exec_masks()) {
           uint32_t words[5][35];
           std::memcpy(words, initial, sizeof(words));
           const uint32_t *a[] = {words[0] + 1, words[1] + 1}, *b[] = {words[2] + 1};
           uint32_t *d[] = {words[target / 5] + 1, words[target % 5] + 1};
-          ASSERT_EQ(goc_rdna4_v_trig_preop_f64(cpu, mask, goc_test::trig_preop_mode(mode), d, a, b),
-                    GOC_SUCCESS);
+          ASSERT_EQ(
+              goc_rdna4_v_trig_preop_f64(cpu, exec_mask, goc_test::trig_preop_mode(mode), d, a, b),
+              GOC_SUCCESS);
           for (unsigned reg = 0; reg < 5; ++reg)
             for (unsigned lane = 0; lane < 35; ++lane) {
               uint32_t want = initial[reg][lane];
-              if (lane > 0 && lane <= 32 && ((mask >> (lane - 1)) & 1)) {
+              if (lane > 0 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
                 uint64_t value = goc_test::trig_preop_samples[mode][lane - 1];
                 if (reg == target / 5)
                   want = uint32_t(value);

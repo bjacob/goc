@@ -8,7 +8,7 @@
 namespace goc {
 
 template <Bitfield Op>
-void bitfield_x86_64_v4(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
+void bitfield_x86_64_v4(uint32_t exec_mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
                         const uint32_t *c) {
   for (int lane = 0; lane < 32; lane += 16) {
     __m512i x;
@@ -80,22 +80,24 @@ void bitfield_x86_64_v4(uint32_t mask, uint32_t *d, const uint32_t *a, const uin
                                    _mm512_broadcast_i32x4(_mm_setr_epi8(3, 2, 1, 0, 7, 6, 5, 4, 11,
                                                                         10, 9, 8, 15, 14, 13, 12)));
     }
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), result);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), result);
   }
 }
 
-template void bitfield_x86_64_v4<Bitfield::ExtractUnsigned>(uint32_t mask, uint32_t *d,
+template void bitfield_x86_64_v4<Bitfield::ExtractUnsigned>(uint32_t exec_mask, uint32_t *d,
                                                             const uint32_t *a, const uint32_t *b,
                                                             const uint32_t *c);
-template void bitfield_x86_64_v4<Bitfield::ExtractSigned>(uint32_t mask, uint32_t *d,
+template void bitfield_x86_64_v4<Bitfield::ExtractSigned>(uint32_t exec_mask, uint32_t *d,
                                                           const uint32_t *a, const uint32_t *b,
                                                           const uint32_t *c);
-template void bitfield_x86_64_v4<Bitfield::Insert>(uint32_t mask, uint32_t *d, const uint32_t *a,
-                                                   const uint32_t *b, const uint32_t *c);
-template void bitfield_x86_64_v4<Bitfield::Mask>(uint32_t mask, uint32_t *d, const uint32_t *a,
+template void bitfield_x86_64_v4<Bitfield::Insert>(uint32_t exec_mask, uint32_t *d,
+                                                   const uint32_t *a, const uint32_t *b,
+                                                   const uint32_t *c);
+template void bitfield_x86_64_v4<Bitfield::Mask>(uint32_t exec_mask, uint32_t *d, const uint32_t *a,
                                                  const uint32_t *b, const uint32_t *c);
-template void bitfield_x86_64_v4<Bitfield::Reverse>(uint32_t mask, uint32_t *d, const uint32_t *a,
-                                                    const uint32_t *b, const uint32_t *c);
+template void bitfield_x86_64_v4<Bitfield::Reverse>(uint32_t exec_mask, uint32_t *d,
+                                                    const uint32_t *a, const uint32_t *b,
+                                                    const uint32_t *c);
 
 template void bitfield_x86_64_v4<Bitfield::AlignBit>(uint32_t, uint32_t *, const uint32_t *,
                                                      const uint32_t *, const uint32_t *);

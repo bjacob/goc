@@ -21,7 +21,9 @@ Mask greater(__m256i a, __m256i b) { return _mm256_cmpgt_epi32(a, b); }
 
 Mask equal(__m256i a, __m256i b) { return _mm256_cmpeq_epi32(a, b); }
 
-__m256i select(Mask mask, __m256i yes, __m256i no) { return _mm256_blendv_epi8(no, yes, mask); }
+__m256i select(Mask exec_mask, __m256i yes, __m256i no) {
+  return _mm256_blendv_epi8(no, yes, exec_mask);
+}
 
 Mask less_equal(__m256i a, __m256i b) { return invert(greater(a, b)); }
 
@@ -35,8 +37,8 @@ __m256i magnitude(__m256i raw) {
 namespace goc {
 
 template <Cube Op>
-void cube_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uint32_t *b,
-                    const uint32_t *c) {
+void cube_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+                    const uint32_t *b, const uint32_t *c) {
   auto keep_a = _mm256_set1_epi32(mode & GOC_ALU_ABS_A ? INT32_MAX : -1);
   auto keep_b = _mm256_set1_epi32(mode & GOC_ALU_ABS_B ? INT32_MAX : -1);
   auto keep_c = _mm256_set1_epi32(mode & GOC_ALU_ABS_C ? INT32_MAX : -1);
@@ -102,9 +104,9 @@ void cube_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a
       auto positive = select(greater(result, infinity), zero, result);
       result = _mm256_min_epi32(_mm256_max_epi32(positive, zero), _mm256_set1_epi32(0x3f800000));
     }
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 

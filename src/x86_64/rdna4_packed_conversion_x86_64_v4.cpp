@@ -29,14 +29,14 @@ template <PackedConversion Op> __m512i narrow(__m512i raw, uint32_t mode) {
 } // namespace
 
 template <PackedConversion Op>
-void packed_conversion_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void packed_conversion_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                                  const uint32_t *b) {
   for (unsigned lane = 0; lane < 32; lane += 16) {
     auto va = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(a + lane));
     auto vb = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(b + lane));
     auto result =
         _mm512_or_si512(narrow<Op>(va, mode), _mm512_slli_epi32(narrow<Op>(vb, mode >> 1), 16));
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), result);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), result);
   }
 }
 

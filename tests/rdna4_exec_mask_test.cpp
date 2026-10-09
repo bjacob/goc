@@ -15,28 +15,28 @@ namespace {
 using Instruction = goc_test::WaveInstruction<decltype(&goc_rdna4_v_fma_f32)>;
 
 template <auto Fn>
-int unary(uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
+int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
           const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
-  return Fn(flags, mask, modifiers, d, a);
+  return Fn(flags, exec_mask, modifiers, d, a);
 }
 
 template <auto Fn>
-int binary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
            const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
-  return Fn(flags, mask, mode, d, a, b);
+  return Fn(flags, exec_mask, mode, d, a, b);
 }
 
 template <bool Half, bool Multiply>
-int literal_fma(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int literal_fma(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                 const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
   if constexpr (Half) {
     if constexpr (Multiply)
-      return goc_rdna4_v_fmamk_f16(flags, mask, mode, d, a, 0x3800, b);
-    return goc_rdna4_v_fmaak_f16(flags, mask, mode, d, a, b, 0x3800);
+      return goc_rdna4_v_fmamk_f16(flags, exec_mask, mode, d, a, 0x3800, b);
+    return goc_rdna4_v_fmaak_f16(flags, exec_mask, mode, d, a, b, 0x3800);
   } else {
     if constexpr (Multiply)
-      return goc_rdna4_v_fmamk_f32(flags, mask, mode, d, a, 0x3f000000, b);
-    return goc_rdna4_v_fmaak_f32(flags, mask, mode, d, a, b, 0x3f000000);
+      return goc_rdna4_v_fmamk_f32(flags, exec_mask, mode, d, a, 0x3f000000, b);
+    return goc_rdna4_v_fmaak_f32(flags, exec_mask, mode, d, a, b, 0x3f000000);
   }
 }
 
@@ -315,7 +315,7 @@ TEST(ExecMask, EmptyMaskStillValidatesFlagsAndPreservesState) {
   ASSERT_TRUE(environment.saved());
   for (const auto &f : cases)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-      const uint32_t mask = 0;
+      const uint32_t exec_mask = 0;
       uint32_t storage[24][64];
       uint32_t *v[24];
       for (int reg = 0; reg < 24; ++reg) {
@@ -326,7 +326,7 @@ TEST(ExecMask, EmptyMaskStillValidatesFlagsAndPreservesState) {
       const auto call = [&](uint64_t flags, uint32_t modifiers, int expected) {
         std::feclearexcept(FE_ALL_EXCEPT);
         std::feraiseexcept(FE_DIVBYZERO);
-        EXPECT_EQ(f.fn(flags, mask, modifiers, v + 16, v, v + 4, v + 8), expected);
+        EXPECT_EQ(f.fn(flags, exec_mask, modifiers, v + 16, v, v + 4, v + 8), expected);
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
         for (const auto &reg : storage)
           for (uint32_t bits : reg)

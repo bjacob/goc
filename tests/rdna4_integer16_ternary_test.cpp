@@ -74,7 +74,7 @@ TEST(Integer16Ternary, AllMasksModifiersAndWholeRegisterAliases) {
   for (int op = 0; op < 8; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int mode = 0; mode < (op < 2 ? 32 : 16); ++mode)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           // Restricted growth indices enumerate all 15 partitions of A/B/C/D.
           for (int bi = 0; bi <= 1; ++bi)
             for (int ci = 0; ci <= bi + 1; ++ci)
@@ -86,19 +86,19 @@ TEST(Integer16Ternary, AllMasksModifiersAndWholeRegisterAliases) {
                     words[reg][lane] = 0x7af551d3u * (lane + reg * 32 + 1);
                 std::memcpy(saved, words, sizeof(words));
                 ASSERT_EQ(goc_test::integer16_ternary_functions[op](
-                              cpu, mask, goc_test::integer16_ternary_mode_bits(mode), p + di, p,
-                              p + bi, p + ci),
+                              cpu, exec_mask, goc_test::integer16_ternary_mode_bits(mode), p + di,
+                              p, p + bi, p + ci),
                           GOC_SUCCESS);
                 for (int reg = 0; reg < 4; ++reg)
                   for (int lane = 0; lane < 32; ++lane) {
                     uint32_t expected =
-                        reg == di && (mask >> lane & 1)
+                        reg == di && (exec_mask >> lane & 1)
                             ? goc_test::integer16_ternary_reference(
                                   op, saved[0][lane], saved[bi][lane], saved[ci][lane],
                                   goc_test::integer16_ternary_mode_bits(mode), saved[di][lane])
                             : saved[reg][lane];
                     ASSERT_EQ(words[reg][lane], expected)
-                        << op << "/" << cpu << "/" << mode << "/" << mask;
+                        << op << "/" << cpu << "/" << mode << "/" << exec_mask;
                   }
               }
 }

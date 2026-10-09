@@ -45,9 +45,9 @@ struct Ops {
 
   static V select(Mask m, V yes, V no) { return _mm256_blendv_epi8(no, yes, m); }
 
-  static Mask lane_mask(uint32_t mask) {
-    return _mm256_setr_epi64x(-int64_t(mask & 1), -int64_t((mask >> 1) & 1),
-                              -int64_t((mask >> 2) & 1), -int64_t((mask >> 3) & 1));
+  static Mask lane_mask(uint32_t exec_mask) {
+    return _mm256_setr_epi64x(-int64_t(exec_mask & 1), -int64_t((exec_mask >> 1) & 1),
+                              -int64_t((exec_mask >> 2) & 1), -int64_t((exec_mask >> 3) & 1));
   }
 
   static V load_words(const uint32_t *p) {
@@ -59,10 +59,10 @@ struct Ops {
     _mm_storeu_si128(reinterpret_cast<__m128i *>(p), _mm256_castsi256_si128(words));
   }
 
-  static void masked_words(uint32_t *d, const uint32_t *p, uint32_t mask) {
-    auto active = _mm_setr_epi32(-int(mask & 1), -int((mask >> 1) & 1), -int((mask >> 2) & 1),
-                                 -int((mask >> 3) & 1));
-    _mm_maskstore_epi32(reinterpret_cast<int *>(d), active,
+  static void masked_words(uint32_t *d, const uint32_t *p, uint32_t exec_mask) {
+    auto lane_exec_mask = _mm_setr_epi32(-int(exec_mask & 1), -int((exec_mask >> 1) & 1),
+                                         -int((exec_mask >> 2) & 1), -int((exec_mask >> 3) & 1));
+    _mm_maskstore_epi32(reinterpret_cast<int *>(d), lane_exec_mask,
                         _mm_loadu_si128(reinterpret_cast<const __m128i *>(p)));
   }
 };
@@ -72,9 +72,10 @@ struct Ops {
 namespace goc {
 
 template <unsigned Width>
-void div_fmas_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
-                        const uint32_t *const *b, const uint32_t *const *c, uint32_t condition) {
-  division_vector_run<Width, Ops>(mask, mode, d, a, b, c, condition);
+void div_fmas_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+                        const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *c, uint32_t condition) {
+  division_vector_run<Width, Ops>(exec_mask, mode, d, a, b, c, condition);
 }
 
 template void div_fmas_x86_64_v3<32>(uint32_t, uint32_t, uint32_t *const *, const uint32_t *const *,

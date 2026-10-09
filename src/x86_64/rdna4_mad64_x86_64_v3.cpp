@@ -9,8 +9,9 @@
 namespace goc {
 
 template <bool Signed>
-uint32_t mad64_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
-                         const uint32_t *const *b, const uint32_t *const *c) {
+uint32_t mad64_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
   uint32_t staged[2][32], output_carry = 0;
   for (unsigned lane = 0; lane < 32; lane += 4) {
     auto av =
@@ -57,11 +58,11 @@ uint32_t mad64_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, const
   for (unsigned reg = 0; reg < 2; ++reg)
     for (unsigned lane = 0; lane < 32; lane += 8) {
       auto result = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(staged[reg] + lane));
-      auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                      _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[reg] + lane), active, result);
+      auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                              _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[reg] + lane), lane_exec_mask, result);
     }
-  return output_carry & mask;
+  return output_carry & exec_mask;
 }
 
 template uint32_t mad64_x86_64_v3<false>(uint32_t, uint32_t, uint32_t *const *,

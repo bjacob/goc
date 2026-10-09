@@ -18,7 +18,7 @@ TEST(DppUnary, HardwareCorpus) {
   const float inputs[] = {0, 1, 4, 16, 64, 256, -1, -4};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (uint32_t mask :
+    for (uint32_t exec_mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (auto fn : goc_test::unary_functions)
         for (uint64_t descriptor : goc_test::dpp_modes)
@@ -30,7 +30,7 @@ TEST(DppUnary, HardwareCorpus) {
             }
             auto pa = a, pd = d;
             uint64_t mode = descriptor | (modified ? GOC_ALU_NEG_A | GOC_ALU_OMOD_2 : 0);
-            ASSERT_EQ(fn(cpu, mask, mode, &pd, &pa), GOC_SUCCESS);
+            ASSERT_EQ(fn(cpu, exec_mask, mode, &pd, &pa), GOC_SUCCESS);
             for (uint32_t value : d) {
               if ((value & 0x7fffffff) > 0x7f800000)
                 value = 0x7fc00000;
@@ -52,10 +52,10 @@ TEST(DppUnary, AllModifiersMasksAliasesAndSpecialValues) {
     for (unsigned op = 0; op < 11; ++op)
       for (unsigned variant = 0; variant < 32; ++variant)
         for (uint64_t descriptor : goc_test::dpp_modes)
-          for (uint32_t mask : masks)
+          for (uint32_t exec_mask : masks)
             for (bool alias : {false, true}) {
               SCOPED_TRACE(::testing::Message() << cpu << '/' << op << '/' << variant << '/'
-                                                << descriptor << '/' << mask << '/' << alias);
+                                                << descriptor << '/' << exec_mask << '/' << alias);
               uint32_t a[34], d[34], before[32];
               std::fill(a, a + 34, 0xdeadbeef);
               std::fill(d, d + 34, 0xdeadbeef);
@@ -64,11 +64,11 @@ TEST(DppUnary, AllModifiersMasksAliasesAndSpecialValues) {
               uint32_t *pa = a + 1, *pd = alias ? a + 1 : d + 1;
               uint32_t low = (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
                              ((variant >> 2 & 3) << 6) | (variant & 16 ? GOC_ALU_CLAMP : 0);
-              ASSERT_EQ(goc_test::unary_functions[op](cpu, mask, descriptor | low, &pd, &pa),
+              ASSERT_EQ(goc_test::unary_functions[op](cpu, exec_mask, descriptor | low, &pd, &pa),
                         GOC_SUCCESS);
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source;
-                if (!goc_test::dpp_source(descriptor, mask, lane, source)) {
+                if (!goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
                   ASSERT_EQ(pd[lane], alias ? before[lane] : 0xdeadbeefu);
                   continue;
                 }
@@ -96,15 +96,15 @@ TEST(DppUnary, ValidationBeforeOperandAccess) {
       GOC_DPP8 | GOC_DPP_BOUND_CTRL, GOC_DPP16 | (0x110ULL << GOC_DPP_CTRL_SHIFT),
       GOC_DPP16 | (1ULL << 63),      GOC_DPP8 | GOC_ALU_NEG_B};
   for (auto fn : goc_test::unary_functions)
-    for (uint32_t mask : {0U, UINT32_MAX}) {
+    for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (uint64_t mode : bad) {
-        EXPECT_EQ(fn(0, mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(0, exec_mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
       }
       for (uint64_t mode : goc_test::dpp_modes) {
-        EXPECT_EQ(fn(1ULL << 63, mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(
-            fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, mode, nullptr, nullptr),
-            GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, mode, nullptr,
+                     nullptr),
+                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
         EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr), GOC_SUCCESS);
       }
     }

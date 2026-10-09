@@ -76,8 +76,8 @@ enum class Minmax3 {
 };
 
 #if defined(GOC_HAVE_X86_64_V3)
-void minmax3_x86_64_v3(Minmax3 op, uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
-                       const uint32_t *b, const uint32_t *c);
+void minmax3_x86_64_v3(Minmax3 op, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+                       const uint32_t *a, const uint32_t *b, const uint32_t *c);
 #endif
 
 } // namespace goc

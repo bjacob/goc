@@ -40,11 +40,11 @@ TEST(ScalarConvert, ExecAndAliasing) {
         uint64_t flags = goc_test::scalar_fp_flags(state);
         ASSERT_EQ(goc_test::scalar_convert_call(op, flags, UINT32_MAX, 0, &expected, w[0], w[1]),
                   GOC_SUCCESS);
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (unsigned alias = 1; alias <= 2; ++alias) {
             uint32_t words[] = {123, w[0], w[1], 456};
-            ASSERT_EQ(goc_test::scalar_convert_call(op, flags, mask, 0, words + alias, words[1],
-                                                    words[2]),
+            ASSERT_EQ(goc_test::scalar_convert_call(op, flags, exec_mask, 0, words + alias,
+                                                    words[1], words[2]),
                       GOC_SUCCESS);
             EXPECT_EQ(words[alias], expected);
             EXPECT_EQ(words[0], 123u);

@@ -48,19 +48,19 @@ TEST(Pack, MasksAliasesAndUnalignedStorage) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned breg : {0u, 1u})
         for (unsigned target = 0; target < 3; ++target)
-          for (uint32_t mask : rdna4_exec_masks()) {
+          for (uint32_t exec_mask : rdna4_exec_masks()) {
             uint32_t words[3][35], expected[3][35];
             std::memcpy(words, initial, sizeof(words));
             std::memcpy(expected, initial, sizeof(expected));
             for (unsigned lane = 0; lane < 32; ++lane)
-              if ((mask >> lane) & 1)
+              if ((exec_mask >> lane) & 1)
                 expected[target][lane + 1] =
                     goc_test::pack_reference(variant, initial[0][lane + 1], initial[breg][lane + 1],
                                              initial[target][lane + 1]);
             const uint32_t *a[] = {words[0] + 1}, *b[] = {words[breg] + 1};
             uint32_t *d[] = {words[target] + 1};
             ASSERT_EQ(
-                goc_test::pack_call(variant, cpu, mask, goc_test::pack_mode(variant), d, a, b),
+                goc_test::pack_call(variant, cpu, exec_mask, goc_test::pack_mode(variant), d, a, b),
                 GOC_SUCCESS);
             ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0) << variant << "/" << cpu;
           }
@@ -114,25 +114,25 @@ TEST(Pack, DppModifiersMasksAliasesAndGuards) {
   for (unsigned variant = 0; variant < 66; ++variant)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (auto descriptor : goc_test::dpp_modes)
-        for (auto mask : rdna4_exec_masks())
+        for (auto exec_mask : rdna4_exec_masks())
           for (unsigned target = 0; target < 3; ++target) {
             uint32_t words[3][34], expected[3][34];
             std::memcpy(words, initial, sizeof(words));
             std::memcpy(expected, initial, sizeof(expected));
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source = 0;
-              if (goc_test::dpp_source(descriptor, mask, lane, source))
+              if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
                 expected[target][lane + 1] =
                     goc_test::pack_reference(variant, source < 0 ? 0 : initial[0][source + 1],
                                              initial[1][lane + 1], initial[target][lane + 1]);
             }
             const uint32_t *a[] = {words[0] + 1}, *b[] = {words[1] + 1};
             uint32_t *d[] = {words[target] + 1};
-            ASSERT_EQ(goc_test::pack_call(variant, cpu, mask,
+            ASSERT_EQ(goc_test::pack_call(variant, cpu, exec_mask,
                                           descriptor | goc_test::pack_mode(variant), d, a, b),
                       GOC_SUCCESS);
             ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0)
-                << variant << "/" << cpu << "/" << descriptor << "/" << mask;
+                << variant << "/" << cpu << "/" << descriptor << "/" << exec_mask;
           }
 }
 
@@ -162,7 +162,7 @@ TEST(Pack, DppHardwareCorpusAndHostFpState) {
     std::feraiseexcept(FE_DIVBYZERO);
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       uint64_t hash = goc_test::capture_hash_seed;
-      for (auto mask : masks)
+      for (auto exec_mask : masks)
         for (unsigned variant = 0; variant < 66; ++variant)
           for (auto descriptor : goc_test::dpp_modes) {
             uint32_t av[32], bv[32], output[32];
@@ -173,7 +173,7 @@ TEST(Pack, DppHardwareCorpusAndHostFpState) {
             }
             const uint32_t *a[] = {av}, *b[] = {bv};
             uint32_t *d[] = {output};
-            EXPECT_EQ(goc_test::pack_call(variant, cpu, mask,
+            EXPECT_EQ(goc_test::pack_call(variant, cpu, exec_mask,
                                           descriptor | goc_test::pack_mode(variant), d, a, b),
                       GOC_SUCCESS);
             for (auto word : output)

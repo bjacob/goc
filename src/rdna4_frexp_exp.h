@@ -7,7 +7,7 @@
 
 namespace goc {
 
-void frexp_exp_x86_64_v3(bool fp64, uint32_t mask, uint32_t *d, const uint32_t *const *a);
+void frexp_exp_x86_64_v3(bool fp64, uint32_t exec_mask, uint32_t *d, const uint32_t *const *a);
 
 } // namespace goc
 

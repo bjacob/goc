@@ -21,7 +21,7 @@ template <bool Bf16> __m256 widen(__m256i words, int shift, uint32_t negate) {
 }
 
 template <bool Bf16>
-void dot(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, const uint32_t *b,
+void dot(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, const uint32_t *b,
          const uint32_t *c) {
   const int a0 = modifiers & GOC_DOT_LO_A_HIGH ? 16 : 0;
   const int b0 = modifiers & GOC_DOT_LO_B_HIGH ? 16 : 0;
@@ -37,20 +37,21 @@ void dot(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, cons
                           widen<Bf16>(vb, b0, modifiers & GOC_DOT_NEG_LO_B), acc);
     acc = _mm256_fmadd_ps(widen<Bf16>(va, a1, modifiers & GOC_DOT_NEG_HI_A),
                           widen<Bf16>(vb, b1, modifiers & GOC_DOT_NEG_HI_B), acc);
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, _mm256_castps_si256(acc));
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask,
+                           _mm256_castps_si256(acc));
   }
 }
 
 } // namespace
 
-void dot2_x86_64_v3(bool bf16, uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
-                    const uint32_t *b, const uint32_t *c) {
+void dot2_x86_64_v3(bool bf16, uint32_t exec_mask, uint32_t modifiers, uint32_t *d,
+                    const uint32_t *a, const uint32_t *b, const uint32_t *c) {
   if (bf16)
-    dot<true>(mask, modifiers, d, a, b, c);
+    dot<true>(exec_mask, modifiers, d, a, b, c);
   else
-    dot<false>(mask, modifiers, d, a, b, c);
+    dot<false>(exec_mask, modifiers, d, a, b, c);
 }
 
 } // namespace goc

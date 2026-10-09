@@ -124,7 +124,7 @@ TEST(PackedConversion, EveryModifierMaskAndWholeRegisterAlias) {
   for (unsigned op = 0; op < 3; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < goc_test::packed_conversion_modes(op); ++variant)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (unsigned breg = 0; breg < 2; ++breg)
             for (unsigned dreg = 0; dreg < 3; ++dreg) {
               uint32_t storage[3][34], expected[3][34];
@@ -133,12 +133,12 @@ TEST(PackedConversion, EveryModifierMaskAndWholeRegisterAlias) {
                   storage[reg][word] = expected[reg][word] = random();
               uint32_t mode = goc_test::packed_conversion_mode(op, variant);
               for (unsigned lane = 0; lane < 32; ++lane)
-                if ((mask >> lane) & 1)
+                if ((exec_mask >> lane) & 1)
                   expected[dreg][lane + 1] = goc_test::packed_conversion_reference(
                       op, storage[0][lane + 1], storage[breg][lane + 1], mode);
               const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1};
               uint32_t *d[] = {storage[dreg] + 1};
-              ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
+              ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, a, b), GOC_SUCCESS);
               for (unsigned reg = 0; reg < 3; ++reg)
                 for (unsigned word = 0; word < 34; ++word)
                   ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -200,7 +200,7 @@ TEST(PackedConversion, DppMasksAliasesAndGuards) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (unsigned variant : {0u, goc_test::packed_conversion_modes(op) / 2,
                                  goc_test::packed_conversion_modes(op) - 1})
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (unsigned breg = 0; breg < 2; ++breg)
               for (unsigned dreg = 0; dreg < 3; ++dreg) {
                 uint32_t storage[3][34], expected[3][34];
@@ -210,14 +210,14 @@ TEST(PackedConversion, DppMasksAliasesAndGuards) {
                 uint64_t mode = descriptor | goc_test::packed_conversion_mode(op, variant);
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (goc_test::dpp_source(mode, mask, lane, source))
+                  if (goc_test::dpp_source(mode, exec_mask, lane, source))
                     expected[dreg][lane + 1] = goc_test::packed_conversion_reference(
                         op, source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
                         uint32_t(mode));
                 }
                 const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1};
                 uint32_t *d[] = {storage[dreg] + 1};
-                ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
+                ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, a, b), GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 3; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
                     ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -234,7 +234,7 @@ TEST(PackedConversion, DppHardwareCorpus) {
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (auto mask : masks)
+    for (auto exec_mask : masks)
       for (unsigned op = 0; op < 3; ++op)
         for (auto descriptor : goc_test::dpp_modes)
           for (unsigned variant = 0; variant < goc_test::packed_conversion_modes(op); ++variant) {
@@ -246,7 +246,7 @@ TEST(PackedConversion, DppHardwareCorpus) {
             }
             const uint32_t *a[] = {av}, *b[] = {bv};
             uint32_t *d[] = {output};
-            ASSERT_EQ(functions[op](cpu, mask,
+            ASSERT_EQ(functions[op](cpu, exec_mask,
                                     descriptor | goc_test::packed_conversion_mode(op, variant), d,
                                     a, b),
                       GOC_SUCCESS);

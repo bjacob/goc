@@ -155,7 +155,7 @@ __m512i load(const uint32_t *const *v, unsigned lane, uint32_t mode, unsigned op
 namespace goc {
 
 template <unsigned Width>
-void fixup_x86_64_v4(uint32_t mask, uint32_t mode, bool saturate, uint32_t *const *d,
+void fixup_x86_64_v4(uint32_t exec_mask, uint32_t mode, bool saturate, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   constexpr unsigned lanes = Width == 64 ? 8 : 16;
   uint32_t staged[2][32];
@@ -174,7 +174,7 @@ void fixup_x86_64_v4(uint32_t mask, uint32_t mode, bool saturate, uint32_t *cons
         result = _mm512_or_si512(_mm512_andnot_si512(_mm512_set1_epi32(int(65535u << shift)), old),
                                  _mm512_sll_epi32(result, _mm_cvtsi32_si128(int(shift))));
       }
-      _mm512_mask_storeu_epi32(d[0] + lane, __mmask16(mask >> lane), result);
+      _mm512_mask_storeu_epi32(d[0] + lane, __mmask16(exec_mask >> lane), result);
     }
   }
   // Delay FP64 writes for cross-half aliases; D1 wins when D0 and D1 alias.
@@ -182,7 +182,7 @@ void fixup_x86_64_v4(uint32_t mask, uint32_t mode, bool saturate, uint32_t *cons
     for (unsigned reg = 0; reg < 2; ++reg)
       for (unsigned lane = 0; lane < 32; lane += 16) {
         auto result = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(staged[reg] + lane));
-        _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(mask >> lane), result);
+        _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(exec_mask >> lane), result);
       }
 }
 

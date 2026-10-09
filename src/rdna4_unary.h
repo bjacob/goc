@@ -69,7 +69,8 @@ template <Unary Op> inline float unary_value(float value) {
 }
 
 #if defined(GOC_HAVE_X86_64_V3)
-void unary_x86_64_v3(Unary op, uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a);
+void unary_x86_64_v3(Unary op, uint32_t exec_mask, uint32_t modifiers, uint32_t *d,
+                     const uint32_t *a);
 #endif
 
 } // namespace goc

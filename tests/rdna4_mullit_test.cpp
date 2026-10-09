@@ -51,16 +51,16 @@ TEST(Mullit, AllModifiersMasksAndAliases) {
                                                 initial[2][lane + 1], mode);
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned target = 0; target < 4; ++target)
-        for (uint32_t mask : rdna4_exec_masks()) {
+        for (uint32_t exec_mask : rdna4_exec_masks()) {
           uint32_t words[4][35];
           std::memcpy(words, initial, sizeof(words));
           const uint32_t *a[] = {words[0] + 1}, *b[] = {words[1] + 1}, *c[] = {words[2] + 1};
           uint32_t *d[] = {words[target] + 1};
-          ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, mask, mode, d, a, b, c), GOC_SUCCESS);
+          ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, exec_mask, mode, d, a, b, c), GOC_SUCCESS);
           for (unsigned reg = 0; reg < 4; ++reg)
             for (unsigned lane = 0; lane < 35; ++lane) {
               uint32_t want = initial[reg][lane], got = words[reg][lane];
-              if (reg == target && lane > 0 && lane <= 32 && ((mask >> (lane - 1)) & 1)) {
+              if (reg == target && lane > 0 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
                 want = result[lane - 1];
                 if ((got & 0x7fffffff) > 0x7f800000)
                   got = 0x7fc00000;
@@ -89,13 +89,13 @@ TEST(Mullit, DppModifiersMasksAliasesAndGuards) {
         for (unsigned reg = 0; reg < 4; ++reg)
           for (unsigned lane = 0; lane < 34; ++lane)
             initial[reg][lane] = goc_test::mullit_capture_values[(lane * (reg + 1) + reg * 3) % 16];
-        for (uint32_t mask : rdna4_exec_masks()) {
-          if (mode != 0 && mode != 511 && mask != UINT32_MAX)
+        for (uint32_t exec_mask : rdna4_exec_masks()) {
+          if (mode != 0 && mode != 511 && exec_mask != UINT32_MAX)
             continue;
           uint32_t result[32], writes = 0;
           for (unsigned lane = 0; lane < 32; ++lane) {
             int source;
-            if (goc_test::dpp_source(descriptor, mask, lane, source)) {
+            if (goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
               writes |= 1u << lane;
               result[lane] = goc_test::mullit_reference(source < 0 ? 0 : initial[0][source + 1],
                                                         initial[shared ? 0 : 1][lane + 1],
@@ -109,7 +109,7 @@ TEST(Mullit, DppModifiersMasksAliasesAndGuards) {
               const uint32_t *a[] = {words[0] + 1}, *b[] = {words[shared ? 0 : 1] + 1},
                              *c[] = {words[shared ? 0 : 2] + 1};
               uint32_t *d[] = {words[target] + 1};
-              ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, mask, descriptor | mode, d, a, b, c),
+              ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, exec_mask, descriptor | mode, d, a, b, c),
                         GOC_SUCCESS);
               for (unsigned reg = 0; reg < 4; ++reg)
                 for (unsigned lane = 0; lane < 34; ++lane) {
@@ -135,7 +135,7 @@ TEST(Mullit, DppHardwareCorpus) {
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (uint32_t mask : masks)
+    for (uint32_t exec_mask : masks)
       for (unsigned mode = 0; mode < 512; ++mode)
         for (uint64_t descriptor : goc_test::dpp_modes) {
           uint32_t words[4][32];
@@ -147,7 +147,8 @@ TEST(Mullit, DppHardwareCorpus) {
           }
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
-          ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
+          ASSERT_EQ(goc_rdna4_v_mullit_f32(cpu, exec_mask, descriptor | mode, d, a, b, c),
+                    GOC_SUCCESS);
           for (uint32_t word : words[3]) {
             if ((word & 0x7fffffff) > 0x7f800000)
               word = 0x7fc00000;

@@ -48,12 +48,12 @@ TEST(IntegerAdd, MasksAliasesAndSaturation) {
   for (int op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int clamp = 0; clamp <= int(op != 5); ++clamp)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (const auto &layout : layouts)
             for (int dest = 0; dest < 4; ++dest) {
               SCOPED_TRACE(::testing::Message()
-                           << op << "/" << cpu << "/" << clamp << "/" << mask << "/" << dest << "/"
-                           << layout[0] << layout[1] << layout[2]);
+                           << op << "/" << cpu << "/" << clamp << "/" << exec_mask << "/" << dest
+                           << "/" << layout[0] << layout[1] << layout[2]);
               uint32_t words[4][34], want[4][34];
               std::mt19937 random(913);
               for (auto &reg : words) {
@@ -63,14 +63,14 @@ TEST(IntegerAdd, MasksAliasesAndSaturation) {
               }
               std::memcpy(want, words, sizeof(want));
               for (int lane = 0; lane < 32; ++lane)
-                if (mask >> lane & 1)
+                if (exec_mask >> lane & 1)
                   want[dest][lane + 1] = goc_test::integer_add_reference(
                       op, words[layout[0]][lane + 1], words[layout[1]][lane + 1],
                       words[layout[2]][lane + 1], clamp);
               uint32_t *a = words[layout[0]] + 1, *b = words[layout[1]] + 1,
                        *c = words[layout[2]] + 1, *d = words[dest] + 1;
-              ASSERT_EQ(goc_test::integer_add_functions[op](cpu, mask, clamp ? GOC_ALU_CLAMP : 0,
-                                                            &d, &a, &b, &c),
+              ASSERT_EQ(goc_test::integer_add_functions[op](
+                            cpu, exec_mask, clamp ? GOC_ALU_CLAMP : 0, &d, &a, &b, &c),
                         GOC_SUCCESS);
               for (int reg = 0; reg < 4; ++reg)
                 for (int lane = 0; lane < 34; ++lane)
@@ -125,19 +125,20 @@ TEST(IntegerAdd, ValidationAndFpEnvironment) {
       std::fill(input, input + 32, 0x7f800001);
       std::fill(output, output + 32, 0xdeadbeef);
       auto a = input, d = output;
-      for (uint32_t mask : {0U, UINT32_MAX}) {
+      for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit) {
           uint32_t mode = 1U << bit;
           if (op != 5 && mode == GOC_ALU_CLAMP)
             continue;
-          EXPECT_EQ(goc_test::integer_add_functions[op](cpu, mask, mode, &d, &a, &a, &a),
+          EXPECT_EQ(goc_test::integer_add_functions[op](cpu, exec_mask, mode, &d, &a, &a, &a),
                     GOC_ERROR_INVALID_FLAGS);
         }
-        EXPECT_EQ(goc_test::integer_add_functions[op](cpu | (1ULL << 63), mask, 0, &d, &a, &a, &a),
-                  GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(
+            goc_test::integer_add_functions[op](cpu | (1ULL << 63), exec_mask, 0, &d, &a, &a, &a),
+            GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(goc_test::integer_add_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
                                                           GOC_SEMANTICS_STRICT,
-                                                      mask, 0, &d, &a, &a, &a),
+                                                      exec_mask, 0, &d, &a, &a, &a),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (uint32_t word : output)
@@ -163,7 +164,7 @@ TEST(IntegerAdd, SignedSaturationMixedLaneSigns) {
   const uint32_t expected[] = {0x7fffffff, 0x80000000, 0x7ffffffe, 0x80000001,
                                0x7fffffff, 0x80000001, 0x80000000, 0};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-    for (uint32_t mask : rdna4_exec_masks()) {
+    for (uint32_t exec_mask : rdna4_exec_masks()) {
       uint32_t a[32], b[32];
       for (unsigned lane = 0; lane < 32; ++lane) {
         a[lane] = a_values[lane % 8];
@@ -172,8 +173,8 @@ TEST(IntegerAdd, SignedSaturationMixedLaneSigns) {
       // Adjacent lanes need opposite saturation limits; D also aliases A.
       uint32_t *d = a;
       const uint32_t *ap = a, *bp = b;
-      ASSERT_EQ(goc_rdna4_v_add_nc_i32(cpu, mask, GOC_ALU_CLAMP, &d, &ap, &bp), GOC_SUCCESS);
+      ASSERT_EQ(goc_rdna4_v_add_nc_i32(cpu, exec_mask, GOC_ALU_CLAMP, &d, &ap, &bp), GOC_SUCCESS);
       for (unsigned lane = 0; lane < 32; ++lane)
-        EXPECT_EQ(a[lane], (mask >> lane & 1) ? expected[lane % 8] : a_values[lane % 8]);
+        EXPECT_EQ(a[lane], (exec_mask >> lane & 1) ? expected[lane % 8] : a_values[lane % 8]);
     }
 }

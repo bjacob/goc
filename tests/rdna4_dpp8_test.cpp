@@ -26,10 +26,10 @@ float number(uint32_t u) {
   return x;
 }
 
-int call(bool accumulate, uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int call(bool accumulate, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  return accumulate ? goc_rdna4_v_fmac_f32(flags, mask, mode, d, a, b)
-                    : goc_rdna4_v_fma_f32(flags, mask, mode, d, a, b, c);
+  return accumulate ? goc_rdna4_v_fmac_f32(flags, exec_mask, mode, d, a, b)
+                    : goc_rdna4_v_fma_f32(flags, exec_mask, mode, d, a, b, c);
 }
 
 float modify(uint32_t raw, uint32_t mode, unsigned operand) {
@@ -46,7 +46,7 @@ TEST(Dpp8, HardwareCorpus) {
   // combinations, eight EXEC masks. All 16384 raw result words matched.
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (uint32_t mask :
+    for (uint32_t exec_mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (bool accumulate : {false, true})
         for (unsigned fi = 0; fi < 2; ++fi)
@@ -66,12 +66,12 @@ TEST(Dpp8, HardwareCorpus) {
               }
               uint32_t *d = data[3];
               const uint32_t *a = data[0], *b = data[1], *c = data[2];
-              ASSERT_EQ(call(accumulate, cpu, mask, mode, &d, &a, &b, &c), GOC_SUCCESS);
+              ASSERT_EQ(call(accumulate, cpu, exec_mask, mode, &d, &a, &b, &c), GOC_SUCCESS);
               for (unsigned lane = 0; lane < 32; ++lane) {
                 unsigned src = (lane & ~7u) | ((lane * 3 + pattern) & 7);
-                int value = fi || ((mask >> src) & 1) ? int(src + 1) : 0;
+                int value = fi || ((exec_mask >> src) & 1) ? int(src + 1) : 0;
                 int want = 100 + int(lane);
-                if ((mask >> lane) & 1)
+                if ((exec_mask >> lane) & 1)
                   want = mod ? (want - 2 * value) * 2 : want + 2 * value;
                 ASSERT_EQ(d[lane], bits(float(want)));
                 hash = goc_test::capture_hash_word(hash, d[lane]);
@@ -101,15 +101,15 @@ TEST(Dpp8, ArithmeticModifiersMasksAndAliases) {
                           : alias == 4 ? 0
                                        : 2;
             uint32_t sel = random() & 0xffffff;
-            uint32_t mask = masks[(low + alias * 17) % masks.size()];
+            uint32_t exec_mask = masks[(low + alias * 17) % masks.size()];
             uint64_t mode =
                 low | GOC_DPP8 | (fi ? GOC_DPP_FI : 0) | (uint64_t(sel) << GOC_DPP8_SELECT_SHIFT);
             for (unsigned lane = 0; lane < 32; ++lane) {
               want[lane] = saved[di][lane + 1];
-              if (!((mask >> lane) & 1))
+              if (!((exec_mask >> lane) & 1))
                 continue;
               unsigned src = (lane & ~7u) | ((sel >> (3 * (lane & 7))) & 7);
-              uint32_t raw = fi || ((mask >> src) & 1) ? saved[0][src + 1] : 0;
+              uint32_t raw = fi || ((exec_mask >> src) & 1) ? saved[0][src + 1] : 0;
               float value = std::fma(modify(raw, low, 0), modify(saved[bi][lane + 1], low, 1),
                                      modify(saved[ci][lane + 1], low, 2));
               value = goc_test::omod_f32_reference(value, low);
@@ -123,7 +123,7 @@ TEST(Dpp8, ArithmeticModifiersMasksAndAliases) {
             }
             uint32_t *d = data[di] + 1;
             const uint32_t *a = data[0] + 1, *b = data[bi] + 1, *c = data[ci] + 1;
-            ASSERT_EQ(call(accumulate, cpu, mask, mode, &d, &a, &b, &c), GOC_SUCCESS);
+            ASSERT_EQ(call(accumulate, cpu, exec_mask, mode, &d, &a, &b, &c), GOC_SUCCESS);
             for (unsigned reg = 0; reg < 4; ++reg)
               for (unsigned lane = 0; lane < 34; ++lane)
                 ASSERT_EQ(data[reg][lane],

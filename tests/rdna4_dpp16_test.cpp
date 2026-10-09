@@ -35,10 +35,10 @@ float modify(uint32_t raw, unsigned mode, unsigned operand) {
   return number(raw);
 }
 
-int call(bool accumulate, uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int call(bool accumulate, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  return accumulate ? goc_rdna4_v_fmac_f32(flags, mask, mode, d, a, b)
-                    : goc_rdna4_v_fma_f32(flags, mask, mode, d, a, b, c);
+  return accumulate ? goc_rdna4_v_fmac_f32(flags, exec_mask, mode, d, a, b)
+                    : goc_rdna4_v_fma_f32(flags, exec_mask, mode, d, a, b, c);
 }
 } // namespace
 
@@ -50,7 +50,7 @@ TEST(Dpp16, HardwareCorpus) {
   const unsigned row_bank[][2] = {{15, 15}, {1, 5}, {2, 10}, {0, 15}};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (uint32_t mask :
+    for (uint32_t exec_mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned ctrl : controls)
         for (unsigned fi = 0; fi < 2; ++fi)
@@ -66,11 +66,11 @@ TEST(Dpp16, HardwareCorpus) {
               uint32_t *d = data[3];
               const uint32_t *a = data[0], *b = data[1], *c = data[2];
               auto mode = goc_test::dpp16_mode(ctrl, fi, bc, rb[0], rb[1]);
-              ASSERT_EQ(call(false, cpu, mask, mode, &d, &a, &b, &c), GOC_SUCCESS);
+              ASSERT_EQ(call(false, cpu, exec_mask, mode, &d, &a, &b, &c), GOC_SUCCESS);
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int src;
                 float want = float(1000 + lane);
-                if (goc_test::dpp16_reference(ctrl, fi, bc, rb[0], rb[1], mask, lane, src))
+                if (goc_test::dpp16_reference(ctrl, fi, bc, rb[0], rb[1], exec_mask, lane, src))
                   want = float(100 + lane + 2 * (src < 0 ? 0 : src + 1));
                 ASSERT_EQ(d[lane], bits(want));
                 hash = goc_test::capture_hash_word(hash, d[lane]);
@@ -89,7 +89,7 @@ TEST(Dpp16, EveryControlMasksAndAliases) {
         continue;
       for (unsigned fi = 0; fi < 2; ++fi)
         for (unsigned bc = 0; bc < 2; ++bc)
-          for (uint32_t mask : masks)
+          for (uint32_t exec_mask : masks)
             for (unsigned alias = 0; alias < 4; ++alias) {
               uint32_t data[4][34], saved[4][34];
               for (auto &reg : data)
@@ -99,15 +99,16 @@ TEST(Dpp16, EveryControlMasksAndAliases) {
               unsigned rows = (ctrl + alias) % 16, banks = (ctrl / 16 + alias) % 16;
               uint32_t *d = data[alias] + 1;
               const uint32_t *a = data[0] + 1, *b = data[1] + 1, *c = data[2] + 1;
-              ASSERT_EQ(call(false, cpu, mask, goc_test::dpp16_mode(ctrl, fi, bc, rows, banks), &d,
-                             &a, &b, &c),
+              ASSERT_EQ(call(false, cpu, exec_mask, goc_test::dpp16_mode(ctrl, fi, bc, rows, banks),
+                             &d, &a, &b, &c),
                         GOC_SUCCESS);
               for (unsigned reg = 0; reg < 4; ++reg)
                 for (unsigned lane = 0; lane < 34; ++lane) {
                   uint32_t want = saved[reg][lane];
                   int source;
                   if (reg == alias && lane > 0 && lane < 33 &&
-                      goc_test::dpp16_reference(ctrl, fi, bc, rows, banks, mask, lane - 1, source))
+                      goc_test::dpp16_reference(ctrl, fi, bc, rows, banks, exec_mask, lane - 1,
+                                                source))
                     want = bits((source < 0 ? 0.f : number(saved[0][source + 1])) *
                                     number(saved[1][lane]) +
                                 number(saved[2][lane]));
@@ -127,7 +128,7 @@ TEST(Dpp16, AllRowBankAndArithmeticModifiers) {
         unsigned rows = low % 16, banks = low / 16 % 16;
         for (unsigned flags = 0; flags < 4; ++flags) {
           bool fi = flags & 1, bc = flags & 2;
-          uint32_t mask = random();
+          uint32_t exec_mask = random();
           unsigned ctrl = 0x101 + (low % 15);
           uint64_t mode = goc_test::dpp16_mode(ctrl, fi, bc, rows, banks) | low;
           uint32_t data[4][32], saved[4][32];
@@ -138,11 +139,11 @@ TEST(Dpp16, AllRowBankAndArithmeticModifiers) {
           unsigned di = low % 4, ci = accumulate ? di : 2;
           uint32_t *d = data[di];
           const uint32_t *a = data[0], *b = data[1], *c = data[ci];
-          ASSERT_EQ(call(accumulate, cpu, mask, mode, &d, &a, &b, &c), GOC_SUCCESS);
+          ASSERT_EQ(call(accumulate, cpu, exec_mask, mode, &d, &a, &b, &c), GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             int src;
             uint32_t want = saved[di][lane];
-            if (goc_test::dpp16_reference(ctrl, fi, bc, rows, banks, mask, lane, src)) {
+            if (goc_test::dpp16_reference(ctrl, fi, bc, rows, banks, exec_mask, lane, src)) {
               float value =
                   std::fma(modify(src < 0 ? 0 : saved[0][src], low, 0),
                            modify(saved[1][lane], low, 1), modify(saved[ci][lane], low, 2));

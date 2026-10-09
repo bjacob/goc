@@ -39,25 +39,25 @@ inline void scalar_convert_inputs(unsigned i, unsigned op, uint32_t *w) {
   w[1] = i < 32 ? f[31 - i] : ((i * 0x9e3779b9u) ^ 0xa5a59669u);
 }
 
-inline int scalar_convert_call(unsigned op, uint64_t flags, uint32_t mask, uint64_t mode,
+inline int scalar_convert_call(unsigned op, uint64_t flags, uint32_t exec_mask, uint64_t mode,
                                uint32_t *d, uint32_t a, uint32_t b) {
   switch (op) {
   case 0:
-    return goc_rdna4_s_cvt_f32_i32(flags, mask, mode, d, a);
+    return goc_rdna4_s_cvt_f32_i32(flags, exec_mask, mode, d, a);
   case 1:
-    return goc_rdna4_s_cvt_f32_u32(flags, mask, mode, d, a);
+    return goc_rdna4_s_cvt_f32_u32(flags, exec_mask, mode, d, a);
   case 2:
-    return goc_rdna4_s_cvt_i32_f32(flags, mask, mode, d, a);
+    return goc_rdna4_s_cvt_i32_f32(flags, exec_mask, mode, d, a);
   case 3:
-    return goc_rdna4_s_cvt_u32_f32(flags, mask, mode, d, a);
+    return goc_rdna4_s_cvt_u32_f32(flags, exec_mask, mode, d, a);
   case 4:
-    return goc_rdna4_s_cvt_f16_f32(flags, mask, mode, d, a);
+    return goc_rdna4_s_cvt_f16_f32(flags, exec_mask, mode, d, a);
   case 5:
-    return goc_rdna4_s_cvt_f32_f16(flags, mask, mode, d, a);
+    return goc_rdna4_s_cvt_f32_f16(flags, exec_mask, mode, d, a);
   case 6:
-    return goc_rdna4_s_cvt_hi_f32_f16(flags, mask, mode, d, a);
+    return goc_rdna4_s_cvt_hi_f32_f16(flags, exec_mask, mode, d, a);
   case 7:
-    return goc_rdna4_s_cvt_pk_rtz_f16_f32(flags, mask, mode, d, a, b);
+    return goc_rdna4_s_cvt_pk_rtz_f16_f32(flags, exec_mask, mode, d, a, b);
   }
   return GOC_ERROR_INVALID_FLAGS;
 }

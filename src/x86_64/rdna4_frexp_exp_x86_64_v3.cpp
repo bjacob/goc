@@ -8,7 +8,7 @@
 namespace goc {
 namespace {
 
-template <bool Fp64> void run(uint32_t mask, uint32_t *d, const uint32_t *const *a) {
+template <bool Fp64> void run(uint32_t exec_mask, uint32_t *d, const uint32_t *const *a) {
   uint32_t result[32];
   for (int lane = 0; lane < 32; lane += Fp64 ? 4 : 8) {
     if constexpr (Fp64) {
@@ -55,20 +55,20 @@ template <bool Fp64> void run(uint32_t mask, uint32_t *d, const uint32_t *const 
   }
   for (int lane = 0; lane < 32; lane += 8) {
     auto lanes = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_sub_epi32(_mm256_set1_epi32(31), lanes));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active,
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_sub_epi32(_mm256_set1_epi32(31), lanes));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask,
                            _mm256_loadu_si256(reinterpret_cast<const __m256i *>(result + lane)));
   }
 }
 
 } // namespace
 
-void frexp_exp_x86_64_v3(bool fp64, uint32_t mask, uint32_t *d, const uint32_t *const *a) {
+void frexp_exp_x86_64_v3(bool fp64, uint32_t exec_mask, uint32_t *d, const uint32_t *const *a) {
   if (fp64)
-    run<true>(mask, d, a);
+    run<true>(exec_mask, d, a);
   else
-    run<false>(mask, d, a);
+    run<false>(exec_mask, d, a);
 }
 
 } // namespace goc

@@ -15,27 +15,29 @@ template <bool Signed> int64_t value(uint32_t bits) {
 }
 
 template <goc::IntegerAdd Op, bool Signed>
-int arithmetic(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int arithmetic(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (mode >> 32) {
     // GFX1201 applies SUBREV's DPP to B before subtracting lane-local A.
     constexpr bool reverse = Op == goc::IntegerAdd::Subrev;
-    return goc::execute_dpp(
-        flags, mask, mode, reverse ? b : a, [&](uint32_t effective, const uint32_t *const *source) {
-          return arithmetic<Op, Signed>(flags, effective, uint32_t(mode), d, reverse ? a : source,
-                                        reverse ? source : b, c);
-        });
+    return goc::execute_dpp(flags, exec_mask, mode, reverse ? b : a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return arithmetic<Op, Signed>(flags, exec_mask, uint32_t(mode), d,
+                                                            reverse ? a : source,
+                                                            reverse ? source : b, c);
+                            });
   }
 
   constexpr bool three = Op == goc::IntegerAdd::Add3;
   const uint32_t known = three ? 0 : GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (mask == 0)
+  if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::integer_add_x86_64_v4<Op, Signed>(mask, mode, d[0], a[0], b[0], three ? c[0] : nullptr);
+    goc::integer_add_x86_64_v4<Op, Signed>(exec_mask, mode, d[0], a[0], b[0],
+                                           three ? c[0] : nullptr);
     return GOC_SUCCESS;
   }
 #endif
@@ -44,7 +46,7 @@ int arithmetic(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
   // masked-store overhead outweighs the cheaper vector add/subtract.
   if constexpr (!three) {
     if ((mode & GOC_ALU_CLAMP) && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::integer_add_sat_x86_64_v3<Op, Signed>(mask, d[0], a[0], b[0]);
+      goc::integer_add_sat_x86_64_v3<Op, Signed>(exec_mask, d[0], a[0], b[0]);
       return GOC_SUCCESS;
     }
   }
@@ -66,7 +68,7 @@ int arithmetic(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
     result[lane] = uint32_t(sum);
   }
   for (int lane = 0; lane < 32; ++lane)
-    if (mask >> lane & 1)
+    if (exec_mask >> lane & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }

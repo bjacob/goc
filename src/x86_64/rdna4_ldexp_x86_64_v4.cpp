@@ -11,7 +11,7 @@ namespace goc {
 namespace {
 
 template <bool Fp64>
-void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+void run(uint32_t exec_mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
          const uint32_t *b) {
   uint32_t result[Fp64 ? 2 : 1][32];
   const double scales[] = {1, 2, 4, 0.5};
@@ -72,18 +72,18 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
   }
   for (int reg = 0; reg < (Fp64 ? 2 : 1); ++reg)
     for (int lane = 0; lane < 32; lane += 16)
-      _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(mask >> lane),
+      _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(exec_mask >> lane),
                                _mm512_loadu_si512(result[reg] + lane));
 }
 
 } // namespace
 
-void ldexp_x86_64_v4(bool fp64, uint32_t mask, uint32_t mode, uint32_t *const *d,
+void ldexp_x86_64_v4(bool fp64, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *b) {
   if (fp64)
-    run<true>(mask, mode, d, a, b);
+    run<true>(exec_mask, mode, d, a, b);
   else
-    run<false>(mask, mode, d, a, b);
+    run<false>(exec_mask, mode, d, a, b);
 }
 
 } // namespace goc

@@ -11,7 +11,7 @@ namespace goc {
 namespace {
 
 template <bool Bf8A, bool Bf8B>
-void dot(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, const uint32_t *b,
+void dot(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, const uint32_t *b,
          const uint32_t *c) {
   const auto keep = _mm256_set1_epi32(modifiers & GOC_DOT_ABS_C ? 0x7fffffff : -1);
   const auto flip = _mm256_set1_epi32(modifiers & GOC_DOT_NEG_C ? INT32_MIN : 0);
@@ -24,26 +24,27 @@ void dot(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, cons
     for (int shift = 0; shift < 32; shift += 8)
       acc = _mm256_fmadd_ps(widen_fp8<Bf8A>(_mm256_srl_epi32(va, _mm_cvtsi32_si128(shift))),
                             widen_fp8<Bf8B>(_mm256_srl_epi32(vb, _mm_cvtsi32_si128(shift))), acc);
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, _mm256_castps_si256(acc));
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask,
+                           _mm256_castps_si256(acc));
   }
 }
 
 } // namespace
 
-void fp8_dot_x86_64_v3(bool bf8_a, bool bf8_b, uint32_t mask, uint32_t modifiers, uint32_t *d,
+void fp8_dot_x86_64_v3(bool bf8_a, bool bf8_b, uint32_t exec_mask, uint32_t modifiers, uint32_t *d,
                        const uint32_t *a, const uint32_t *b, const uint32_t *c) {
   if (bf8_a) {
     if (bf8_b)
-      dot<true, true>(mask, modifiers, d, a, b, c);
+      dot<true, true>(exec_mask, modifiers, d, a, b, c);
     else
-      dot<true, false>(mask, modifiers, d, a, b, c);
+      dot<true, false>(exec_mask, modifiers, d, a, b, c);
   } else {
     if (bf8_b)
-      dot<false, true>(mask, modifiers, d, a, b, c);
+      dot<false, true>(exec_mask, modifiers, d, a, b, c);
     else
-      dot<false, false>(mask, modifiers, d, a, b, c);
+      dot<false, false>(exec_mask, modifiers, d, a, b, c);
   }
 }
 

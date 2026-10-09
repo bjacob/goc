@@ -63,14 +63,15 @@ TEST(Swmmac8, EveryExecLaneAndModifier) {
       ASSERT_EQ(functions[op](0, UINT32_MAX, mode(variant), full.d, full.a, full.b, full.index),
                 GOC_SUCCESS);
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint32_t mask : rdna4_exec_masks()) {
+        for (uint32_t exec_mask : rdna4_exec_masks()) {
           Registers r(op);
-          ASSERT_EQ(functions[op](cpu, mask, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu, exec_mask, mode(variant), r.d, r.a, r.b, r.index),
+                    GOC_SUCCESS);
           for (unsigned reg = 0; reg < 8u; ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
               ASSERT_EQ(r.d[reg][lane],
-                        ((mask >> lane) & 1) ? full.d[reg][lane] : initial.d[reg][lane])
-                  << op << "/" << cpu << "/" << variant << "/" << mask;
+                        ((exec_mask >> lane) & 1) ? full.d[reg][lane] : initial.d[reg][lane])
+                  << op << "/" << cpu << "/" << variant << "/" << exec_mask;
         }
     }
 }
@@ -88,17 +89,18 @@ TEST(Swmmac8, OverlappingSourcesAndDuplicateDestinations) {
             r.d[reg] = r.data[offsets[reg]];
             std::memcpy(reference.d[reg], r.d[reg], 32 * sizeof(uint32_t));
           }
-          const uint32_t mask = 0xa35ac69d;
-          ASSERT_EQ(functions[op](0, mask, mode(variant), reference.d, reference.a, reference.b,
-                                  reference.index),
+          const uint32_t exec_mask = 0xa35ac69d;
+          ASSERT_EQ(functions[op](0, exec_mask, mode(variant), reference.d, reference.a,
+                                  reference.b, reference.index),
                     GOC_SUCCESS);
           uint32_t expected[15][32];
           std::memcpy(expected, r.data, sizeof(expected));
           for (unsigned reg = 0; reg < regs; ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
-              if ((mask >> lane) & 1)
+              if ((exec_mask >> lane) & 1)
                 expected[offsets[reg]][lane] = reference.d[reg][lane];
-          ASSERT_EQ(functions[op](cpu, mask, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu, exec_mask, mode(variant), r.d, r.a, r.b, r.index),
+                    GOC_SUCCESS);
           ASSERT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0)
               << op << "/" << cpu << "/" << variant << "/" << alias;
         }

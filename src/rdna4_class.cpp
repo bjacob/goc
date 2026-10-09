@@ -25,8 +25,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *d, const ui
   if (int error = goc::validate(flags, uint32_t(mode) & ~known, true,
                                 GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
-  uint32_t mask = exec_mask;
-  if (!mask) {
+  if (!exec_mask) {
     *d = 0;
     return GOC_SUCCESS;
   }
@@ -35,21 +34,21 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *d, const ui
       uint32_t permuted[32];
       const uint32_t *source = permuted;
       if (mode & GOC_DPP8)
-        goc::dpp8_source(flags, mask, mode, permuted, a[0]);
+        goc::dpp8_source(flags, exec_mask, mode, permuted, a[0]);
       else
-        mask = goc::dpp16_source(flags, mask, mode, permuted, a[0]);
-      return run<Bits>(flags, mask, uint32_t(mode), d, &source, b);
+        exec_mask = goc::dpp16_source(flags, exec_mask, mode, permuted, a[0]);
+      return run<Bits>(flags, exec_mask, uint32_t(mode), d, &source, b);
     }
   }
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    *d = goc::class_x86_64_v4<Bits>(mode, a, b[0]) & mask;
+    *d = goc::class_x86_64_v4<Bits>(mode, a, b[0]) & exec_mask;
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    *d = goc::class_x86_64_v3<Bits>(mode, a, b[0]) & mask;
+    *d = goc::class_x86_64_v3<Bits>(mode, a, b[0]) & exec_mask;
     return GOC_SUCCESS;
   }
 #endif
@@ -86,7 +85,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *d, const ui
     }
     result |= ((classes >> index) & 1) << lane;
   }
-  *d = result & mask;
+  *d = result & exec_mask;
   return GOC_SUCCESS;
 }
 

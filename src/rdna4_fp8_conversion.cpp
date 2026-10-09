@@ -11,32 +11,32 @@
 namespace {
 
 template <bool Bf8, bool Packed>
-int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a) {
   if (mode >> 32) {
     if constexpr (Packed)
       return GOC_ERROR_INVALID_FLAGS;
     else
       return goc::execute_dpp(
-          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
-            return convert<Bf8, Packed>(flags, effective, uint32_t(mode), d, source);
+          flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+            return convert<Bf8, Packed>(flags, exec_mask, uint32_t(mode), d, source);
           });
   }
   const uint32_t known = Packed ? GOC_ALU_HIGH_A : GOC_CVT_BYTE_3;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
   unsigned shift = Packed ? (mode & GOC_ALU_HIGH_A ? 16 : 0) : 8 * (mode >> 16);
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::fp8_conversion_x86_64_v4<Bf8, Packed>(mask, shift, d, a[0]);
+    goc::fp8_conversion_x86_64_v4<Bf8, Packed>(exec_mask, shift, d, a[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::fp8_conversion_x86_64_v3<Bf8, Packed>(mask, shift, d, a[0]);
+    goc::fp8_conversion_x86_64_v3<Bf8, Packed>(exec_mask, shift, d, a[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -49,7 +49,7 @@ int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
   }
   for (unsigned reg = 0; reg < (Packed ? 2u : 1u); ++reg)
     for (unsigned lane = 0; lane < 32; ++lane)
-      if ((mask >> lane) & 1)
+      if ((exec_mask >> lane) & 1)
         d[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
 }

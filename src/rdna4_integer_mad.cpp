@@ -13,22 +13,22 @@
 namespace {
 
 template <int Bits, bool Signed>
-int mad(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
-        const uint32_t *const *b, const uint32_t *const *c) {
+int mad(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+        const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (mode >> 32)
     return goc::execute_dpp(
-        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
-          return mad<Bits, Signed>(flags, effective, uint32_t(mode), d, source, b, c);
+        flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+          return mad<Bits, Signed>(flags, exec_mask, uint32_t(mode), d, source, b, c);
         });
 
   const uint32_t known = GOC_ALU_CLAMP | (Bits == 16 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0);
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (mask == 0)
+  if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::integer_mad_x86_64_v3<Bits, Signed>(mask, mode, d[0], a[0], b[0], c[0]);
+    goc::integer_mad_x86_64_v3<Bits, Signed>(exec_mask, mode, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -45,7 +45,7 @@ int mad(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const 
     result[lane] = uint32_t(value);
   }
   for (int lane = 0; lane < 32; ++lane)
-    if (mask >> lane & 1)
+    if (exec_mask >> lane & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }

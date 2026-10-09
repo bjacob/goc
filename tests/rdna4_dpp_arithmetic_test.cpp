@@ -19,7 +19,7 @@ TEST(DppArithmetic, HardwareCorpus) {
   // raw words.
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (uint32_t mask :
+    for (uint32_t exec_mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned op = 0; op < 18; ++op)
         for (uint64_t descriptor : goc_test::dpp_modes)
@@ -35,12 +35,12 @@ TEST(DppArithmetic, HardwareCorpus) {
             const uint32_t *a = data[0], *b = data[1], *c = data[2];
             uint32_t low = modified ? GOC_ALU_NEG_A | GOC_ALU_OMOD_2 : 0;
             ASSERT_EQ(
-                goc_test::dpp_arithmetic_call(op, cpu, mask, descriptor | low, &d, &a, &b, &c),
+                goc_test::dpp_arithmetic_call(op, cpu, exec_mask, descriptor | low, &d, &a, &b, &c),
                 GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
               uint32_t want = goc::as_bits(float(100 + lane));
-              if (goc_test::dpp_source(descriptor, mask, lane, source))
+              if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
                 want = goc_test::dpp_arithmetic_reference(op, source < 0 ? 0 : a[source], b[lane],
                                                           c[lane], low);
               ASSERT_EQ(d[lane], want) << op << "/" << cpu << "/" << descriptor << "/" << lane;
@@ -63,7 +63,7 @@ TEST(DppArithmetic, OmodBoundaryHardware) {
   // raw words.
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (uint32_t mask :
+    for (uint32_t exec_mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned op = 0; op < 18; ++op)
         for (uint64_t descriptor : goc_test::dpp_modes)
@@ -79,12 +79,12 @@ TEST(DppArithmetic, OmodBoundaryHardware) {
             const uint32_t *a = data[0], *b = data[1], *c = data[2];
             uint32_t low = modified ? GOC_ALU_NEG_A | (modified << 6) : 0;
             ASSERT_EQ(
-                goc_test::dpp_arithmetic_call(op, cpu, mask, descriptor | low, &d, &a, &b, &c),
+                goc_test::dpp_arithmetic_call(op, cpu, exec_mask, descriptor | low, &d, &a, &b, &c),
                 GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
               uint32_t want = goc::as_bits(float(100 + lane));
-              if (goc_test::dpp_source(descriptor, mask, lane, source))
+              if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
                 want = goc_test::dpp_arithmetic_reference(op, source < 0 ? 0 : a[source], b[lane],
                                                           c[lane], low);
               ASSERT_EQ(d[lane], want) << op << "/" << cpu << "/" << descriptor << "/" << lane;
@@ -114,18 +114,18 @@ TEST(DppArithmetic, ModifiersMasksAliasesAndSpecialValues) {
                 data[reg][lane] = values[(lane * (2 * reg + 1) + reg * 3 + low) % 23];
             std::memcpy(before, data, sizeof(data));
             unsigned di = alias < 4 ? alias : 0, bi = alias == 4 ? 0 : 1, ci = alias == 4 ? 0 : 2;
-            uint32_t mask = masks[(low + alias * 17) % masks.size()];
+            uint32_t exec_mask = masks[(low + alias * 17) % masks.size()];
             uint32_t *d = data[di] + 1;
             const uint32_t *a = data[0] + 1, *b = data[bi] + 1, *c = data[ci] + 1;
             ASSERT_EQ(
-                goc_test::dpp_arithmetic_call(op, cpu, mask, descriptor | low, &d, &a, &b, &c),
+                goc_test::dpp_arithmetic_call(op, cpu, exec_mask, descriptor | low, &d, &a, &b, &c),
                 GOC_SUCCESS);
             for (unsigned reg = 0; reg < 4; ++reg)
               for (unsigned lane = 0; lane < 34; ++lane) {
                 int source;
                 uint32_t want = before[reg][lane];
                 bool written = reg == di && lane > 0 && lane < 33 &&
-                               goc_test::dpp_source(descriptor, mask, lane - 1, source);
+                               goc_test::dpp_source(descriptor, exec_mask, lane - 1, source);
                 if (written)
                   want =
                       goc_test::dpp_arithmetic_reference(op, source < 0 ? 0 : before[0][source + 1],
@@ -133,8 +133,9 @@ TEST(DppArithmetic, ModifiersMasksAliasesAndSpecialValues) {
                 if (written && std::isnan(goc::as_float(want))) {
                   ASSERT_TRUE(std::isnan(goc::as_float(data[reg][lane])));
                 } else {
-                  ASSERT_EQ(data[reg][lane], want) << op << "/" << cpu << "/" << low << "/"
-                                                   << descriptor << "/" << mask << "/" << alias;
+                  ASSERT_EQ(data[reg][lane], want)
+                      << op << "/" << cpu << "/" << low << "/" << descriptor << "/" << exec_mask
+                      << "/" << alias;
                 }
               }
           }

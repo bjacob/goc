@@ -8,8 +8,8 @@
 namespace goc {
 
 template <IntegerTernary Op>
-void integer_ternary_x86_64_v3(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
-                               const uint32_t *c) {
+void integer_ternary_x86_64_v3(uint32_t exec_mask, uint32_t *d, const uint32_t *a,
+                               const uint32_t *b, const uint32_t *c) {
   static_assert(integer_ternary_v3_supported(Op));
   for (int lane = 0; lane < 32; lane += 8) {
     auto x = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)),
@@ -31,9 +31,9 @@ void integer_ternary_x86_64_v3(uint32_t mask, uint32_t *d, const uint32_t *a, co
           _mm256_and_si256(_mm256_andnot_si256(z, _mm256_xor_si256(x, y)), _mm256_set1_epi8(1));
       result = _mm256_sub_epi8(_mm256_avg_epu8(x, y), correction);
     }
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 

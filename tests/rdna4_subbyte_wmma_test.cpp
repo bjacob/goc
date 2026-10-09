@@ -62,13 +62,13 @@ void set(uint32_t *const *v, int index, int k, int bits, uint32_t value) {
   v[reg][lane] = (v[reg][lane] & ~mask) | (value << shift);
 }
 
-void check(Registers &r, int dst, uint32_t mask, const uint32_t *golden,
+void check(Registers &r, int dst, uint32_t exec_mask, const uint32_t *golden,
            const uint32_t (&before)[8][32]) {
   for (int row = 0; row < 16; ++row)
     for (int col = 0; col < 16; ++col) {
       int lane = col + 16 * (row / 8), reg = row % 8;
       EXPECT_EQ(r.v[dst + reg][lane],
-                ((mask >> lane) & 1) ? golden[row * 16 + col] : before[reg][lane])
+                ((exec_mask >> lane) & 1) ? golden[row * 16 + col] : before[reg][lane])
           << "row=" << row << " col=" << col;
     }
   r.guards();
@@ -86,7 +86,7 @@ TEST(SubbyteWmma, Fp8DenseGoldensMasksAndOverlap) {
     for (uint32_t mode : {0U, GOC_WMMA_NEG_C, GOC_WMMA_ABS_C, GOC_WMMA_NEG_C | GOC_WMMA_ABS_C})
       for (int format = 0; format < 4; ++format)
         for (int dst : {0, 4, 8, 16})
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
               Registers r;
               std::minstd_rand random(12056925);
@@ -112,10 +112,10 @@ TEST(SubbyteWmma, Fp8DenseGoldensMasksAndOverlap) {
                 }
               uint32_t before[8][32];
               save(r, dst, before);
-              ASSERT_EQ(
-                  floating[format](cpu | semantics, mask, mode, r.v + dst, r.v, r.v + 4, r.v + 8),
-                  0);
-              check(r, dst, mask, expected, before);
+              ASSERT_EQ(floating[format](cpu | semantics, exec_mask, mode, r.v + dst, r.v, r.v + 4,
+                                         r.v + 8),
+                        0);
+              check(r, dst, exec_mask, expected, before);
             }
 }
 
@@ -192,7 +192,7 @@ TEST(SubbyteWmma, IntegerGoldensSignsClampMasksAndOverlap) {
     for (int shape = 0; shape < 3; ++shape)
       for (uint32_t mode = 0; mode < 8; ++mode)
         for (int dst : {0, 4, 8, 16})
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
               int bits = shape == 0 ? 8 : 4, K = shape == 2 ? 32 : 16;
               Registers r;
@@ -211,10 +211,10 @@ TEST(SubbyteWmma, IntegerGoldensSignsClampMasksAndOverlap) {
               uint32_t before[8][32];
               save(r, dst, before);
               uint32_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
-              ASSERT_EQ(integer[shape](cpu | semantics | GOC_SEMANTICS_STRICT | GOC_FP16_OVFL, mask,
-                                       modifiers, r.v + dst, r.v, r.v + 4, r.v + 8),
+              ASSERT_EQ(integer[shape](cpu | semantics | GOC_SEMANTICS_STRICT | GOC_FP16_OVFL,
+                                       exec_mask, modifiers, r.v + dst, r.v, r.v + 4, r.v + 8),
                         0);
-              check(r, dst, mask, kIntegerDense[shape][mode], before);
+              check(r, dst, exec_mask, kIntegerDense[shape][mode], before);
             }
 }
 

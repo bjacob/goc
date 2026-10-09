@@ -13,13 +13,13 @@
 namespace {
 
 template <int Bits, bool Signed, bool High>
-int multiply(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int multiply(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
              const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32) {
     if constexpr (Bits == 24) {
       return goc::execute_dpp(
-          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
-            return multiply<Bits, Signed, High>(flags, effective, uint32_t(mode), d, source, b);
+          flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+            return multiply<Bits, Signed, High>(flags, exec_mask, uint32_t(mode), d, source, b);
           });
     } else {
       return GOC_ERROR_INVALID_FLAGS;
@@ -29,17 +29,17 @@ int multiply(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
   const uint32_t known = Bits == 24 && !High ? GOC_ALU_CLAMP : 0;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (mask == 0)
+  if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::integer_mul_x86_64_v4<Bits, Signed, High>(mask, mode, d[0], a[0], b[0]);
+    goc::integer_mul_x86_64_v4<Bits, Signed, High>(exec_mask, mode, d[0], a[0], b[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::integer_mul_x86_64_v3<Bits, Signed, High>(mask, mode, d[0], a[0], b[0]);
+    goc::integer_mul_x86_64_v3<Bits, Signed, High>(exec_mask, mode, d[0], a[0], b[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -61,7 +61,7 @@ int multiply(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
     result[lane] = uint32_t(High ? product >> 32 : product);
   }
   for (int lane = 0; lane < 32; ++lane)
-    if (mask >> lane & 1)
+    if (exec_mask >> lane & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }

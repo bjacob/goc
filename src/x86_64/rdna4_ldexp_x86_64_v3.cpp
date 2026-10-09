@@ -148,7 +148,7 @@ void run64(uint32_t mode, uint32_t result[2][32], const uint32_t *const *a, cons
 
 } // namespace
 
-void ldexp_x86_64_v3(bool fp64, uint32_t mask, uint32_t mode, uint32_t *const *d,
+void ldexp_x86_64_v3(bool fp64, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *b) {
   uint32_t result[2][32];
   if (fp64)
@@ -157,10 +157,10 @@ void ldexp_x86_64_v3(bool fp64, uint32_t mask, uint32_t mode, uint32_t *const *d
     run32(mode, result, a, b);
   for (int reg = 0; reg < (fp64 ? 2 : 1); ++reg)
     for (int lane = 0; lane < 32; lane += 8) {
-      auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                      _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+      auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                              _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
       _mm256_maskstore_epi32(
-          reinterpret_cast<int *>(d[reg] + lane), active,
+          reinterpret_cast<int *>(d[reg] + lane), lane_exec_mask,
           _mm256_loadu_si256(reinterpret_cast<const __m256i *>(result[reg] + lane)));
     }
 }

@@ -12,26 +12,26 @@
 namespace {
 
 template <unsigned Byte>
-int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a) {
   if (mode >> 32)
-    return goc::execute_dpp(flags, mask, mode, a,
-                            [&](uint32_t effective, const uint32_t *const *source) {
-                              return convert<Byte>(flags, effective, uint32_t(mode), d, source);
+    return goc::execute_dpp(flags, exec_mask, mode, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return convert<Byte>(flags, exec_mask, uint32_t(mode), d, source);
                             });
   if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP)))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::byte_conversion_x86_64_v4<Byte>(mask, mode, d[0], a[0]);
+    goc::byte_conversion_x86_64_v4<Byte>(exec_mask, mode, d[0], a[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::byte_conversion_x86_64_v3<Byte>(mask, mode, d[0], a[0]);
+    goc::byte_conversion_x86_64_v3<Byte>(exec_mask, mode, d[0], a[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -43,7 +43,7 @@ int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
     result[lane] = goc::as_bits(goc::alu_output(value, mode));
   }
   for (unsigned lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }
@@ -70,26 +70,26 @@ int goc_rdna4_v_cvt_f32_ubyte3(uint64_t flags, uint32_t exec_mask, uint64_t inst
   return convert<3>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_cvt_off_f32_i4(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
-                               const uint32_t *const *a) {
+int goc_rdna4_v_cvt_off_f32_i4(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a) {
   if (mode >> 32)
     return goc::execute_dpp(
-        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
-          return goc_rdna4_v_cvt_off_f32_i4(flags, effective, uint32_t(mode), d, source);
+        flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+          return goc_rdna4_v_cvt_off_f32_i4(flags, exec_mask, uint32_t(mode), d, source);
         });
   if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP)))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::nibble_offset_x86_64_v4(mask, mode, d[0], a[0]);
+    goc::nibble_offset_x86_64_v4(exec_mask, mode, d[0], a[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::nibble_offset_x86_64_v3(mask, mode, d[0], a[0]);
+    goc::nibble_offset_x86_64_v3(exec_mask, mode, d[0], a[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -101,32 +101,32 @@ int goc_rdna4_v_cvt_off_f32_i4(uint64_t flags, uint32_t mask, uint64_t mode, uin
     result[lane] = goc::as_bits(goc::alu_output(float(nibble) * 0.0625f, mode));
   }
   for (unsigned lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }
 
-int goc_rdna4_v_cvt_pk_u8_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_cvt_pk_u8_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, const uint32_t *const *b,
                               const uint32_t *const *c) {
   if (mode >> 32)
     return goc::execute_dpp(
-        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
-          return goc_rdna4_v_cvt_pk_u8_f32(flags, effective, uint32_t(mode), d, source, b, c);
+        flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+          return goc_rdna4_v_cvt_pk_u8_f32(flags, exec_mask, uint32_t(mode), d, source, b, c);
         });
   if (int error = goc::validate(flags, mode & ~(GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_CLAMP)))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::byte_pack_x86_64_v4(mask, mode, d[0], a[0], b[0], c[0]);
+    goc::byte_pack_x86_64_v4(exec_mask, mode, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::byte_pack_x86_64_v3(mask, mode, d[0], a[0], b[0], c[0]);
+    goc::byte_pack_x86_64_v3(exec_mask, mode, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -142,7 +142,7 @@ int goc_rdna4_v_cvt_pk_u8_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint
     result[lane] = (c[0][lane] & ~(255u << shift)) | (byte << shift);
   }
   for (unsigned lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }

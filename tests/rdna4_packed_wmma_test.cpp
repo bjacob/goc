@@ -68,8 +68,8 @@ TEST(PackedWmma, HardwareMatricesMasksOverlapAndHostState) {
     for (bool bf16 : {false, true})
       for (int fixture = 0; fixture < 7; ++fixture)
         for (int dst : {0, 4, 8, 12})
-          for (uint64_t mask : std::initializer_list<uint64_t>{0ULL, 1ULL << 32, 1ULL << 63,
-                                                               0xa55a0123fedc9876ULL, UINT64_MAX})
+          for (uint64_t exec_mask : std::initializer_list<uint64_t>{
+                   0ULL, 1ULL << 32, 1ULL << 63, 0xa55a0123fedc9876ULL, UINT64_MAX})
             for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
               Registers r;
               load(r, kPackedInputs[bf16][fixture], width);
@@ -80,7 +80,7 @@ TEST(PackedWmma, HardwareMatricesMasksOverlapAndHostState) {
               std::feclearexcept(FE_ALL_EXCEPT);
               std::feraiseexcept(FE_INEXACT);
               ASSERT_EQ(function(width, bf16)(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                              mask, 0, r.v + dst, r.v, r.v + 4, r.v + 8),
+                                              exec_mask, 0, r.v + dst, r.v, r.v + 4, r.v + 8),
                         GOC_SUCCESS);
               EXPECT_EQ(std::fegetround(), rounding);
               EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
@@ -88,7 +88,7 @@ TEST(PackedWmma, HardwareMatricesMasksOverlapAndHostState) {
                 for (int col = 0; col < 16; ++col) {
                   int lane = col + 16 * (row / 8) + (width == 64 ? 32 * ((row / 4) % 2) : 0);
                   int reg = (row % (256 / width)) / 2, shift = 16 * (row % 2);
-                  uint32_t want = (mask >> lane) & 1
+                  uint32_t want = (exec_mask >> lane) & 1
                                       ? kPackedExpected[width == 64][bf16][fixture][row * 16 + col]
                                       : ((before[reg][lane] >> shift) & 65535);
                   EXPECT_EQ((r.v[dst + reg][lane] >> shift) & 65535, want)

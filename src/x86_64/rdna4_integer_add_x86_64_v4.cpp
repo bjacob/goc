@@ -10,7 +10,7 @@
 namespace goc {
 
 template <IntegerAdd Op, bool Signed>
-void integer_add_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void integer_add_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                            const uint32_t *b, const uint32_t *c) {
   if constexpr (Op == IntegerAdd::Subrev) {
     const auto *temporary = a;
@@ -53,7 +53,7 @@ void integer_add_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint
         }
       }
     }
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), result);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), result);
   }
 }
 

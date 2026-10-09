@@ -27,10 +27,11 @@ TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
           const uint32_t mode = negate | (selection << 7) | clamp;
           for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
             for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
-              for (uint32_t mask : {UINT32_MAX, 0xaaaaaaaaU, 0U, 0x80018001U})
+              for (uint32_t exec_mask : {UINT32_MAX, 0xaaaaaaaaU, 0U, 0x80018001U})
                 for (int alias = 0; alias < 4; ++alias) {
-                  SCOPED_TRACE(::testing::Message() << brain << "/" << mode << "/" << cpu << "/"
-                                                    << semantics << "/" << mask << "/" << alias);
+                  SCOPED_TRACE(::testing::Message()
+                               << brain << "/" << mode << "/" << cpu << "/" << semantics << "/"
+                               << exec_mask << "/" << alias);
                   uint32_t storage[4][34], before[32], expected[32];
                   uint32_t *v[4];
                   for (int r = 0; r < 4; ++r) {
@@ -60,11 +61,12 @@ TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
                     expected[lane] = goc::as_bits(float(x0 * y0 + x1 * y1 + c));
                   }
                   std::copy(v[alias], v[alias] + 32, before);
-                  ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, mask, mode, &v[alias], &v[0],
-                               &v[1], &v[2]),
+                  ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode, &v[alias],
+                               &v[0], &v[1], &v[2]),
                             GOC_SUCCESS);
                   for (int lane = 0; lane < 32; ++lane)
-                    EXPECT_EQ(v[alias][lane], (mask >> lane & 1) ? expected[lane] : before[lane]);
+                    EXPECT_EQ(v[alias][lane],
+                              (exec_mask >> lane & 1) ? expected[lane] : before[lane]);
                   for (const auto &reg : storage) {
                     EXPECT_EQ(reg[0], 0xdeadbeef);
                     EXPECT_EQ(reg[33], 0xdeadbeef);
@@ -117,7 +119,7 @@ TEST(Dot2, SimdSpecialValuesAndEveryExecMask) {
     for (uint32_t mode :
          {0U, GOC_DOT_NEG_C | GOC_DOT_NEG_LO_A | GOC_DOT_LO_B_HIGH | GOC_DOT_HI_A_LOW})
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint32_t mask : rdna4_exec_masks()) {
+        for (uint32_t exec_mask : rdna4_exec_masks()) {
           auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
           uint32_t a[32], b[32], c[32], ref[32], d[32];
           for (int i = 0; i < 32; ++i) {
@@ -127,8 +129,8 @@ TEST(Dot2, SimdSpecialValuesAndEveryExecMask) {
             ref[i] = d[i] = 0xdeadbeef;
           }
           auto pa = a, pb = b, pc = c, pr = ref, pd = d;
-          ASSERT_EQ(fn(GOC_CPU_BASELINE, mask, mode, &pr, &pa, &pb, &pc), GOC_SUCCESS);
-          ASSERT_EQ(fn(cpu, mask, mode, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+          ASSERT_EQ(fn(GOC_CPU_BASELINE, exec_mask, mode, &pr, &pa, &pb, &pc), GOC_SUCCESS);
+          ASSERT_EQ(fn(cpu, exec_mask, mode, &pd, &pa, &pb, &pc), GOC_SUCCESS);
           for (int i = 0; i < 32; ++i) {
             if (std::isnan(goc::as_float(ref[i]))) {
               EXPECT_TRUE(std::isnan(goc::as_float(d[i])));
@@ -150,7 +152,7 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
             uint64_t mode = descriptor | (variant & 31) | ((variant & 992) << 1);
             auto masks = (variant == 0 || variant == 1023) ? rdna4_exec_masks()
                                                            : std::vector<uint32_t>{UINT32_MAX};
-            for (auto mask : masks)
+            for (auto exec_mask : masks)
               for (unsigned alias = 0; alias < 4; ++alias) {
                 uint32_t storage[4][34], expected[4][34];
                 int factors[2][32][2];
@@ -170,7 +172,7 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
                   std::copy_n(storage[reg], 34, expected[reg]);
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (!goc_test::dpp_source(mode, mask, lane, source))
+                  if (!goc_test::dpp_source(mode, exec_mask, lane, source))
                     continue;
                   int a0 = source < 0 ? 0 : factors[0][source][bool(mode & GOC_DOT_LO_A_HIGH)];
                   int a1 = source < 0 ? 0 : factors[0][source][!bool(mode & GOC_DOT_HI_A_LOW)];
@@ -193,7 +195,7 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
                                *c[] = {storage[2] + 1};
                 uint32_t *d[] = {storage[alias] + 1};
                 auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
-                ASSERT_EQ(fn(cpu | semantics, mask, mode, d, a, b, c), GOC_SUCCESS);
+                ASSERT_EQ(fn(cpu | semantics, exec_mask, mode, d, a, b, c), GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 4; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
                     ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -225,7 +227,7 @@ TEST(Dot2, DppHardwareCorpus) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
       uint64_t hash = goc_test::capture_hash_seed;
-      for (auto mask : masks)
+      for (auto exec_mask : masks)
         for (unsigned brain = 0; brain < 2; ++brain)
           for (auto descriptor : goc_test::dpp_modes)
             for (unsigned variant = 0; variant < 25; ++variant) {
@@ -240,7 +242,7 @@ TEST(Dot2, DppHardwareCorpus) {
               const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
               uint32_t *d[] = {output};
               auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
-              ASSERT_EQ(fn(cpu | semantics, mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
+              ASSERT_EQ(fn(cpu | semantics, exec_mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
               for (auto word : output) {
                 if (semantics == GOC_SEMANTICS_LOOSE && !(word & 0x7fffffff))
                   word = 0;

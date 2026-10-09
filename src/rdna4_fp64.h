@@ -104,7 +104,7 @@ inline double fp64_output(double value, uint32_t mode) {
 }
 
 #if defined(GOC_HAVE_X86_64_V3)
-void fp64_x86_64_v3(Fp64 op, uint32_t mask, uint32_t mode, uint32_t *const *d,
+void fp64_x86_64_v3(Fp64 op, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c);
 #endif
 

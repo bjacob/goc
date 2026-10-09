@@ -16,20 +16,19 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
       GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;
-  uint32_t mask = exec_mask;
-  if (!mask) {
+  if (!exec_mask) {
     *condition = 0;
     return GOC_SUCCESS;
   }
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    *condition = goc::div_scale_x86_64_v4<Width>(mask, mode, d, a, b, c);
+    *condition = goc::div_scale_x86_64_v4<Width>(exec_mask, mode, d, a, b, c);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    *condition = goc::div_scale_x86_64_v3<Width>(mask, mode, d, a, b, c);
+    *condition = goc::div_scale_x86_64_v3<Width>(exec_mask, mode, d, a, b, c);
     return GOC_SUCCESS;
   }
 #endif
@@ -49,9 +48,9 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
   }
   for (unsigned reg = 0; reg < (Width == 64 ? 2u : 1u); ++reg)
     for (unsigned lane = 0; lane < 32; ++lane)
-      if ((mask >> lane) & 1)
+      if ((exec_mask >> lane) & 1)
         d[reg][lane] = uint32_t(result[lane] >> (Width == 64 ? 32 * reg : 0));
-  *condition = output_mask & mask;
+  *condition = output_mask & exec_mask;
   return GOC_SUCCESS;
 }
 

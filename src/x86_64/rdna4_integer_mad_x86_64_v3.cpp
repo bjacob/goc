@@ -44,7 +44,7 @@ template <bool Signed, bool Odd> __m256i saturated(__m256i a, __m256i b, __m256i
 } // namespace
 
 template <int Bits, bool Signed>
-void integer_mad_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void integer_mad_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                            const uint32_t *b, const uint32_t *c) {
   const int sa = mode & GOC_ALU_HIGH_A ? 16 : 0, sb = mode & GOC_ALU_HIGH_B ? 16 : 0;
   for (int lane = 0; lane < 32; lane += 8) {
@@ -61,9 +61,9 @@ void integer_mad_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint
     } else {
       result = _mm256_add_epi32(_mm256_mullo_epi32(x, y), z);
     }
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 

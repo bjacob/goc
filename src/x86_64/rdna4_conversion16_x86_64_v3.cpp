@@ -30,7 +30,7 @@ __m256i narrow(__m256 x, bool saturate) {
 } // namespace
 
 template <Conversion16 Op>
-void conversion16_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32_t *d,
+void conversion16_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                             const uint32_t *a) {
   constexpr bool from_integer =
       Op == Conversion16::SignedToHalf || Op == Conversion16::UnsignedToHalf;
@@ -106,9 +106,9 @@ void conversion16_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32_
       result = _mm256_or_si256(_mm256_andnot_si256(selected_mask, original),
                                _mm256_sll_epi32(result, sd));
     }
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 

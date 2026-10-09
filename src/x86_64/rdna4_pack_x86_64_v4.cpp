@@ -9,7 +9,7 @@
 namespace goc {
 
 template <bool Saturate>
-void pack_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void pack_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                     const uint32_t *b) {
   for (unsigned lane = 0; lane < 32; lane += 16) {
     auto x = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(a + lane));
@@ -43,7 +43,7 @@ void pack_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a
       y = _mm512_xor_si512(y, _mm512_set1_epi32(mode & GOC_ALU_NEG_B ? 32768 : 0));
       result = _mm512_or_si512(x, _mm512_slli_epi32(y, 16));
     }
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), result);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), result);
   }
 }
 

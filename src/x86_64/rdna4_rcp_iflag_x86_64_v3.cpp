@@ -8,7 +8,7 @@
 
 namespace goc {
 
-uint32_t rcp_iflag_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a) {
+uint32_t rcp_iflag_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a) {
   auto exponent = _mm256_set1_epi32(0x7f800000), sign = _mm256_set1_epi32(int(0x80000000u)),
        zero = _mm256_setzero_si256();
   auto keep = _mm256_set1_epi32(mode & GOC_ALU_ABS_A ? 0x7fffffff : -1),
@@ -38,11 +38,11 @@ uint32_t rcp_iflag_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const ui
     bits = _mm256_castps_si256(value);
     bits = _mm256_blendv_epi8(bits, _mm256_and_si256(bits, sign),
                               _mm256_cmpeq_epi32(_mm256_and_si256(bits, exponent), zero));
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, bits);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, bits);
   }
-  return (zeros & mask) && !(mode & GOC_ALU_CLAMP) ? GOC_RDNA4_EXCEPTION_INT_DIV0 : 0;
+  return (zeros & exec_mask) && !(mode & GOC_ALU_CLAMP) ? GOC_RDNA4_EXCEPTION_INT_DIV0 : 0;
 }
 
 } // namespace goc

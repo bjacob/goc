@@ -56,7 +56,7 @@ template <bool Bf8, bool Stochastic> __m512i narrow(__m512i raw, __m512i seed, b
 namespace goc {
 
 template <bool Bf8, bool Stochastic>
-void fp8_narrow_x86_64_v4(uint32_t mask, uint32_t mode, bool saturate, uint32_t *d,
+void fp8_narrow_x86_64_v4(uint32_t exec_mask, uint32_t mode, bool saturate, uint32_t *d,
                           const uint32_t *a, const uint32_t *b) {
   unsigned shift = Stochastic ? ((mode >> 16) & 3) * 8 : mode & GOC_ALU_HIGH_D ? 16 : 0;
   auto count = _mm_cvtsi32_si128(int(shift));
@@ -77,7 +77,7 @@ void fp8_narrow_x86_64_v4(uint32_t mask, uint32_t mode, bool saturate, uint32_t 
       value = _mm512_or_si512(value, _mm512_slli_epi32(high, 8));
     }
     value = _mm512_or_si512(_mm512_andnot_si512(selected, old), _mm512_sll_epi32(value, count));
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), value);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), value);
   }
 }
 

@@ -187,7 +187,7 @@ inline typename O::V division_vector_fmas(typename O::V a, typename O::V b, type
 
 // Evaluate all lanes, then commit masked D0/D1 stores after all source reads.
 template <unsigned Width, class O>
-inline void division_vector_run(uint32_t mask, uint32_t mode, uint32_t *const *d,
+inline void division_vector_run(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c, uint32_t condition) {
   using F = DivisionFormat<Width>;
@@ -212,7 +212,7 @@ inline void division_vector_run(uint32_t mask, uint32_t mode, uint32_t *const *d
   }
   for (unsigned reg = 0; reg < (Width == 64 ? 2u : 1u); ++reg)
     for (unsigned lane = 0; lane < 32; lane += O::lanes)
-      O::masked_words(d[reg] + lane, staged[reg] + lane, mask >> lane);
+      O::masked_words(d[reg] + lane, staged[reg] + lane, exec_mask >> lane);
 }
 
 } // namespace goc

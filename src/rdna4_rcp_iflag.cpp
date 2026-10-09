@@ -20,8 +20,7 @@ int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode,
   if (int error = goc::validate(flags, uint32_t(mode) & ~known, false,
                                 GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
-  uint32_t mask = exec_mask;
-  if (!mask) {
+  if (!exec_mask) {
     *exception_flags = input_exception_flags;
     return GOC_SUCCESS;
   }
@@ -29,21 +28,23 @@ int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode,
     uint32_t permuted[32];
     const uint32_t *source = permuted;
     if (mode & GOC_DPP8)
-      goc::dpp8_source(flags, mask, mode, permuted, a[0]);
+      goc::dpp8_source(flags, exec_mask, mode, permuted, a[0]);
     else
-      mask = goc::dpp16_source(flags, mask, mode, permuted, a[0]);
-    return goc_rdna4_v_rcp_iflag_f32(flags, mask, uint32_t(mode), d, &source, exception_flags,
+      exec_mask = goc::dpp16_source(flags, exec_mask, mode, permuted, a[0]);
+    return goc_rdna4_v_rcp_iflag_f32(flags, exec_mask, uint32_t(mode), d, &source, exception_flags,
                                      input_exception_flags);
   }
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    *exception_flags = input_exception_flags | goc::rcp_iflag_x86_64_v4(mask, mode, d[0], a[0]);
+    *exception_flags =
+        input_exception_flags | goc::rcp_iflag_x86_64_v4(exec_mask, mode, d[0], a[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    *exception_flags = input_exception_flags | goc::rcp_iflag_x86_64_v3(mask, mode, d[0], a[0]);
+    *exception_flags =
+        input_exception_flags | goc::rcp_iflag_x86_64_v3(exec_mask, mode, d[0], a[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -77,9 +78,10 @@ int goc_rdna4_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode,
     result[lane] = bits;
   }
   for (unsigned lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
-  *exception_flags = input_exception_flags |
-                     ((zeros & mask) && !(mode & GOC_ALU_CLAMP) ? GOC_RDNA4_EXCEPTION_INT_DIV0 : 0);
+  *exception_flags =
+      input_exception_flags |
+      ((zeros & exec_mask) && !(mode & GOC_ALU_CLAMP) ? GOC_RDNA4_EXCEPTION_INT_DIV0 : 0);
   return GOC_SUCCESS;
 }

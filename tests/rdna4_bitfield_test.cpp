@@ -131,7 +131,7 @@ TEST(Bitfield, MasksAndWholeRegisterAliases) {
         for (int lane = 0; lane < 32; ++lane)
           result[lane] = goc_test::bitfield_reference(
               op, original[source[0]][lane], original[source[1]][lane], original[source[2]][lane]);
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (int target = 0; target < 4; ++target) {
             uint32_t words[4][32], expected[4][32];
             for (int reg = 0; reg < 4; ++reg) {
@@ -139,12 +139,12 @@ TEST(Bitfield, MasksAndWholeRegisterAliases) {
               std::copy_n(original[reg], 32, expected[reg]);
             }
             for (int lane = 0; lane < 32; ++lane)
-              if ((mask >> lane) & 1)
+              if ((exec_mask >> lane) & 1)
                 expected[target][lane] = result[lane];
             const uint32_t *a[] = {words[source[0]]}, *b[] = {words[source[1]]},
                            *c[] = {words[source[2]]};
             uint32_t *d[] = {words[target]};
-            ASSERT_EQ(goc_test::bitfield_functions[op](cpu, mask, 0, d, a, b, c), GOC_SUCCESS);
+            ASSERT_EQ(goc_test::bitfield_functions[op](cpu, exec_mask, 0, d, a, b, c), GOC_SUCCESS);
             for (int reg = 0; reg < 4; ++reg)
               ASSERT_TRUE(std::equal(words[reg], words[reg] + 32, expected[reg]));
           }
@@ -170,15 +170,17 @@ TEST(Bitfield, ValidationAndHostFpState) {
             std::fill_n(reg, 32, 0x7f800001);
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
-          for (uint32_t mask : {0U, UINT32_MAX}) {
+          for (uint32_t exec_mask : {0U, UINT32_MAX}) {
             for (int bit = 0; bit < 32; ++bit)
-              EXPECT_EQ(goc_test::bitfield_functions[op](cpu, mask, uint32_t(1) << bit, d, a, b, c),
-                        GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(goc_test::bitfield_functions[op](cpu | (1ULL << 63), mask, 0, d, a, b, c),
-                      GOC_ERROR_INVALID_FLAGS);
+              EXPECT_EQ(
+                  goc_test::bitfield_functions[op](cpu, exec_mask, uint32_t(1) << bit, d, a, b, c),
+                  GOC_ERROR_INVALID_FLAGS);
+            EXPECT_EQ(
+                goc_test::bitfield_functions[op](cpu | (1ULL << 63), exec_mask, 0, d, a, b, c),
+                GOC_ERROR_INVALID_FLAGS);
             EXPECT_EQ(goc_test::bitfield_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
                                                            GOC_SEMANTICS_STRICT,
-                                                       mask, 0, d, a, b, c),
+                                                       exec_mask, 0, d, a, b, c),
                       GOC_ERROR_UNSUPPORTED_SEMANTICS);
           }
           for (const auto &reg : words)
@@ -258,7 +260,7 @@ TEST(Bitfield, UnalignedStorageAndEmptyExec) {
       EXPECT_EQ(goc_test::bitfield_functions[op](cpu, 0U, 0, nullptr, nullptr, nullptr, nullptr),
                 GOC_SUCCESS);
       for (unsigned target = 0; target < 4; ++target)
-        for (uint32_t mask : rdna4_exec_masks()) {
+        for (uint32_t exec_mask : rdna4_exec_masks()) {
           uint32_t words[4][35], expected[4][35];
           for (unsigned reg = 0; reg < 4; ++reg)
             for (unsigned lane = 0; lane < 35; ++lane) {
@@ -268,12 +270,12 @@ TEST(Bitfield, UnalignedStorageAndEmptyExec) {
               words[reg][lane] = expected[reg][lane] = value;
             }
           for (unsigned lane = 0; lane < 32; ++lane)
-            if ((mask >> lane) & 1)
+            if ((exec_mask >> lane) & 1)
               expected[target][lane + 1] = goc_test::bitfield_reference(
                   op, words[0][lane + 1], words[1][lane + 1], words[2][lane + 1]);
           const uint32_t *a[] = {words[0] + 1}, *b[] = {words[1] + 1}, *c[] = {words[2] + 1};
           uint32_t *d[] = {words[target] + 1};
-          ASSERT_EQ(goc_test::bitfield_functions[op](cpu, mask, 0, d, a, b, c), GOC_SUCCESS);
+          ASSERT_EQ(goc_test::bitfield_functions[op](cpu, exec_mask, 0, d, a, b, c), GOC_SUCCESS);
           for (unsigned reg = 0; reg < 4; ++reg)
             for (unsigned lane = 0; lane < 35; ++lane)
               ASSERT_EQ(words[reg][lane], expected[reg][lane]) << op << "/" << cpu << "/" << lane;

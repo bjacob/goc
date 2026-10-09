@@ -16,7 +16,7 @@ __m256i low_words(__m512i words) { return _mm512_cvtepi64_epi32(words); }
 } // namespace
 
 template <Conversion64 Op>
-void conversion64_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d,
+void conversion64_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                             const uint32_t *const *a) {
   constexpr bool from_integer =
       Op == Conversion64::SignedToDouble || Op == Conversion64::UnsignedToDouble;
@@ -88,7 +88,7 @@ void conversion64_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d,
   // before D1, so D1 wins when both destination halves share storage.
   for (int reg = 0; reg < (to_double ? 2 : 1); ++reg)
     for (int lane = 0; lane < 32; lane += 16) {
-      _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(mask >> lane),
+      _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(exec_mask >> lane),
                                _mm512_loadu_si512(result[reg] + lane));
     }
 }

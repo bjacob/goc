@@ -23,7 +23,7 @@ template <bool Signed> __m512i maximum(__m512i a, __m512i b) {
 }
 
 template <IntegerMinmax Op, bool Signed>
-void run(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b, const uint32_t *c) {
+void run(uint32_t exec_mask, uint32_t *d, const uint32_t *a, const uint32_t *b, const uint32_t *c) {
   for (int lane = 0; lane < 32; lane += 16) {
     auto x = _mm512_loadu_si512(a + lane);
     auto y = _mm512_loadu_si512(b + lane);
@@ -44,16 +44,16 @@ void run(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b, const
       value = minimum<Signed>(maximum<Signed>(x, y), z);
     if constexpr (Op == IntegerMinmax::Median)
       value = maximum<Signed>(minimum<Signed>(maximum<Signed>(x, y), z), minimum<Signed>(x, y));
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), value);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), value);
   }
 }
 
 } // namespace
 
 template <IntegerMinmax Op, bool Signed>
-void integer_minmax_x86_64_v4(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
+void integer_minmax_x86_64_v4(uint32_t exec_mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
                               const uint32_t *c) {
-  run<Op, Signed>(mask, d, a, b, c);
+  run<Op, Signed>(exec_mask, d, a, b, c);
 }
 
 template void integer_minmax_x86_64_v4<IntegerMinmax::Min, false>(uint32_t, uint32_t *,

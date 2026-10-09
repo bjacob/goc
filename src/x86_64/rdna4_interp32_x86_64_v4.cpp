@@ -9,7 +9,7 @@
 namespace goc {
 
 template <bool P2>
-void interp32_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void interp32_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                         const uint32_t *b, const uint32_t *c) {
   auto flip_a = _mm512_set1_epi32(mode & GOC_ALU_NEG_A ? INT32_MIN : 0);
   auto flip_b = _mm512_set1_epi32(mode & GOC_ALU_NEG_B ? INT32_MIN : 0);
@@ -28,7 +28,7 @@ void interp32_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_
     auto value = _mm512_fmadd_ps(x, y, z);
     if (mode & GOC_ALU_CLAMP)
       value = _mm512_min_ps(_mm512_max_ps(value, _mm512_setzero_ps()), _mm512_set1_ps(1));
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), _mm512_castps_si512(value));
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), _mm512_castps_si512(value));
   }
 }
 

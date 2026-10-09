@@ -121,7 +121,7 @@ TEST(Mad64, MasksAndCrossRegisterAliases) {
   for (unsigned op = 0; op < 2; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool clamp : {false, true})
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (unsigned first = 0; first < 6; ++first)
             for (unsigned second = 0; second < 6; ++second) {
               uint32_t data[6][34], expected[6][34], result[2][32], carry = 0xa5a5a5a5,
@@ -143,12 +143,12 @@ TEST(Mad64, MasksAndCrossRegisterAliases) {
               unsigned dest[] = {first, second};
               for (unsigned reg = 0; reg < 2; ++reg)
                 for (unsigned lane = 0; lane < 32; ++lane)
-                  if ((mask >> lane) & 1)
+                  if ((exec_mask >> lane) & 1)
                     expected[dest[reg]][lane + 1] = result[reg][lane];
-              ASSERT_EQ(functions[op](cpu | (clamp ? exact : 0), mask, clamp ? GOC_ALU_CLAMP : 0, d,
-                                      &carry, a, b, c),
+              ASSERT_EQ(functions[op](cpu | (clamp ? exact : 0), exec_mask,
+                                      clamp ? GOC_ALU_CLAMP : 0, d, &carry, a, b, c),
                         GOC_SUCCESS);
-              ASSERT_EQ(carry, expected_carry & mask);
+              ASSERT_EQ(carry, expected_carry & exec_mask);
               ASSERT_EQ(std::memcmp(data, expected, sizeof(data)), 0)
                   << op << "/" << cpu << "/" << clamp << "/" << first << "/" << second;
             }

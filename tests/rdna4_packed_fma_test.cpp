@@ -19,10 +19,10 @@ const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3c0
                            0x3c01, 0x3bff, 0x3800, 0xb800, 0x4000, 0xc000, 0xbc00,
                            0x7bff, 0xfbff, 0x7c00, 0xfc00, 0x7c01, 0xfe12};
 
-int call(bool accumulate, uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int call(bool accumulate, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  return accumulate ? goc_rdna4_v_pk_fmac_f16(flags, mask, mode, d, a, b)
-                    : goc_rdna4_v_pk_fma_f16(flags, mask, mode, d, a, b, c);
+  return accumulate ? goc_rdna4_v_pk_fmac_f16(flags, exec_mask, mode, d, a, b)
+                    : goc_rdna4_v_pk_fma_f16(flags, exec_mask, mode, d, a, b, c);
 }
 
 uint32_t reference(uint32_t a, uint32_t b, uint32_t c, uint32_t mode, bool saturate) {
@@ -69,15 +69,15 @@ void fill(uint32_t (&words)[4][34]) {
   }
 }
 
-void run(bool accumulate, uint64_t flags, uint32_t mask, uint64_t mode, int a, int b, int c, int d,
-         uint32_t (&words)[4][34]) {
+void run(bool accumulate, uint64_t flags, uint32_t exec_mask, uint64_t mode, int a, int b, int c,
+         int d, uint32_t (&words)[4][34]) {
   uint32_t before[4][34];
   std::memcpy(before, words, sizeof(before));
   uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1, words[3] + 1};
-  ASSERT_EQ(call(accumulate, flags, mask, mode, p + d, p + a, p + b, p + c), GOC_SUCCESS);
+  ASSERT_EQ(call(accumulate, flags, exec_mask, mode, p + d, p + a, p + b, p + c), GOC_SUCCESS);
   for (int reg = 0; reg < 4; ++reg)
     for (int lane = 0; lane < 34; ++lane) {
-      if (reg == d && lane >= 1 && lane <= 32 && ((mask >> (lane - 1)) & 1)) {
+      if (reg == d && lane >= 1 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
         check(words[reg][lane],
               reference(before[a][lane], before[b][lane], before[accumulate ? d : c][lane], mode,
                         flags & GOC_FP16_OVFL),
@@ -148,14 +148,14 @@ TEST(PackedFma, MasksAndEveryWholeRegisterAlias) {
         for (auto mode : modes) {
           if (accumulate && mode)
             continue;
-          for (auto mask : rdna4_exec_masks())
+          for (auto exec_mask : rdna4_exec_masks())
             for (const auto &layout : layouts)
               for (int d = 0; d < 4; ++d) {
                 SCOPED_TRACE(::testing::Message() << accumulate << '/' << cpu << '/' << exact << '/'
-                                                  << mode << '/' << mask << '/' << d);
+                                                  << mode << '/' << exec_mask << '/' << d);
                 uint32_t words[4][34];
                 fill(words);
-                run(accumulate, cpu | (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL : 0), mask, mode,
+                run(accumulate, cpu | (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL : 0), exec_mask, mode,
                     layout[0], layout[1], layout[2], d, words);
               }
         }
@@ -229,11 +229,13 @@ TEST(PackedFma, ValidationAndZeroMasks) {
     uint32_t words[32];
     std::fill(words, words + 32, 0xfacecafe);
     auto p = words;
-    for (uint32_t mask : {0U, UINT32_MAX}) {
+    for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (unsigned bit = accumulate ? 0 : 13; bit < 32; ++bit)
-        EXPECT_EQ(call(accumulate, 0, mask, 1U << bit, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(call(accumulate, 1ULL << 63, mask, 0, &p, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(call(accumulate, (2ULL << 16) | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p, &p),
+        EXPECT_EQ(call(accumulate, 0, exec_mask, 1U << bit, &p, &p, &p, &p),
+                  GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(call(accumulate, 1ULL << 63, exec_mask, 0, &p, &p, &p, &p),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(call(accumulate, (2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p, &p),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (auto word : words)

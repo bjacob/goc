@@ -41,10 +41,10 @@ TEST(ScalarPack, HardwareAndScc) {
 TEST(ScalarPack, ExecAndOutputOverlap) {
   for (unsigned op = 0; op < 11; ++op)
     for (unsigned seed = 0; seed < 2; ++seed)
-      for (uint32_t mask : rdna4_exec_masks()) {
+      for (uint32_t exec_mask : rdna4_exec_masks()) {
         uint64_t a = 0x87654321abcdef01ULL, b = 0x1234567800000041ULL, wide = 0;
         uint32_t d = 0, cc = seed;
-        ASSERT_EQ(goc_test::scalar_pack_call(op, 0, mask, 0, &d, &wide, a, b, &cc, seed),
+        ASSERT_EQ(goc_test::scalar_pack_call(op, 0, exec_mask, 0, &d, &wide, a, b, &cc, seed),
                   GOC_SUCCESS);
         if (op == 4 || op == 6 || op == 8 || op == 10) {
           for (unsigned word = 0; word < 2; ++word) {
@@ -53,8 +53,8 @@ TEST(ScalarPack, ExecAndOutputOverlap) {
                 reinterpret_cast<unsigned char *>(storage + 1) + word * 4);
             if (op >= 7)
               std::memcpy(reinterpret_cast<unsigned char *>(&expected) + word * 4, &cc, 4);
-            ASSERT_EQ(goc_test::scalar_pack_call(op, 0, mask, 0, nullptr, storage + 1, storage[1],
-                                                 b, status, seed),
+            ASSERT_EQ(goc_test::scalar_pack_call(op, 0, exec_mask, 0, nullptr, storage + 1,
+                                                 storage[1], b, status, seed),
                       GOC_SUCCESS);
             EXPECT_EQ(storage[1], expected);
             EXPECT_EQ(storage[0], 123u);
@@ -62,8 +62,8 @@ TEST(ScalarPack, ExecAndOutputOverlap) {
           }
         } else {
           uint32_t storage[] = {123, uint32_t(a), 456};
-          ASSERT_EQ(goc_test::scalar_pack_call(op, 0, mask, 0, storage + 1, nullptr, storage[1], b,
-                                               storage + 1, seed),
+          ASSERT_EQ(goc_test::scalar_pack_call(op, 0, exec_mask, 0, storage + 1, nullptr,
+                                               storage[1], b, storage + 1, seed),
                     GOC_SUCCESS);
           EXPECT_EQ(storage[1], op >= 7 ? cc : d);
           EXPECT_EQ(storage[0], 123u);

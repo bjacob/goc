@@ -45,11 +45,12 @@ TEST(IntegerMul, MasksAliasesAndSaturation) {
   for (int op = 0; op < 7; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int clamp = 0; clamp <= int(goc_test::integer_mul_can_clamp(op)); ++clamp)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (const auto &layout : layouts)
             for (int dest = 0; dest < 3; ++dest) {
-              SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << clamp << "/" << mask
-                                                << "/" << layout[0] << layout[1] << "/" << dest);
+              SCOPED_TRACE(::testing::Message()
+                           << op << "/" << cpu << "/" << clamp << "/" << exec_mask << "/"
+                           << layout[0] << layout[1] << "/" << dest);
               uint32_t words[3][34], want[3][34];
               std::mt19937 random(719);
               for (auto &reg : words) {
@@ -59,12 +60,12 @@ TEST(IntegerMul, MasksAliasesAndSaturation) {
               }
               std::memcpy(want, words, sizeof(want));
               for (int lane = 0; lane < 32; ++lane)
-                if (mask >> lane & 1)
+                if (exec_mask >> lane & 1)
                   want[dest][lane + 1] = goc_test::integer_mul_reference(
                       op, words[layout[0]][lane + 1], words[layout[1]][lane + 1], clamp);
               uint32_t *a = words[layout[0]] + 1, *b = words[layout[1]] + 1, *d = words[dest] + 1;
-              ASSERT_EQ(goc_test::integer_mul_functions[op](cpu, mask, clamp ? GOC_ALU_CLAMP : 0,
-                                                            &d, &a, &b),
+              ASSERT_EQ(goc_test::integer_mul_functions[op](cpu, exec_mask,
+                                                            clamp ? GOC_ALU_CLAMP : 0, &d, &a, &b),
                         GOC_SUCCESS);
               for (int reg = 0; reg < 3; ++reg)
                 for (int lane = 0; lane < 34; ++lane)
@@ -117,19 +118,20 @@ TEST(IntegerMul, ValidationAndFpEnvironment) {
       std::fill(a, a + 32, 0x7f800001);
       std::fill(b, b + 32, 0xffffffff);
       std::fill(d, d + 32, 0xdeadbeef);
-      for (uint32_t mask : {0U, UINT32_MAX}) {
+      for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit) {
           uint32_t mode = 1U << bit;
           if (mode == GOC_ALU_CLAMP && goc_test::integer_mul_can_clamp(op))
             continue;
-          EXPECT_EQ(goc_test::integer_mul_functions[op](cpu, mask, mode, &pd, &pa, &pb),
+          EXPECT_EQ(goc_test::integer_mul_functions[op](cpu, exec_mask, mode, &pd, &pa, &pb),
                     GOC_ERROR_INVALID_FLAGS);
         }
-        EXPECT_EQ(goc_test::integer_mul_functions[op](cpu | (1ULL << 63), mask, 0, &pd, &pa, &pb),
-                  GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(
+            goc_test::integer_mul_functions[op](cpu | (1ULL << 63), exec_mask, 0, &pd, &pa, &pb),
+            GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(goc_test::integer_mul_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
                                                           GOC_SEMANTICS_STRICT,
-                                                      mask, 0, &pd, &pa, &pb),
+                                                      exec_mask, 0, &pd, &pa, &pb),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (auto value : d)

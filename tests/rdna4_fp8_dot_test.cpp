@@ -94,7 +94,7 @@ TEST(Fp8Dot, MixedBytesMasksAndAliases) {
     }
     for (uint32_t mode : {0U, GOC_DOT_NEG_C, GOC_DOT_ABS_C, GOC_DOT_NEG_C | GOC_DOT_ABS_C})
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (int alias = 0; alias < 4; ++alias) {
             uint32_t storage[4][34], before[32];
             uint32_t *v[4];
@@ -105,7 +105,8 @@ TEST(Fp8Dot, MixedBytesMasksAndAliases) {
                 std::copy(inputs[reg], inputs[reg] + 32, v[reg]);
             }
             std::copy(v[alias], v[alias] + 32, before);
-            ASSERT_EQ(functions[op](cpu, mask, mode, &v[alias], &v[0], &v[1], &v[2]), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, mode, &v[alias], &v[0], &v[1], &v[2]),
+                      GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane) {
               int expected = lane - 16;
               if (mode & GOC_DOT_ABS_C)
@@ -114,7 +115,7 @@ TEST(Fp8Dot, MixedBytesMasksAndAliases) {
                 expected = -expected;
               for (int byte = 0; byte < 4; ++byte)
                 expected += factors[0][lane][byte] * factors[1][lane][byte];
-              if ((mask >> lane) & 1) {
+              if ((exec_mask >> lane) & 1) {
                 EXPECT_FLOAT_EQ(goc::as_float(v[alias][lane]), float(expected));
               } else {
                 EXPECT_EQ(v[alias][lane], before[lane]);
@@ -133,12 +134,12 @@ TEST(Fp8Dot, ValidationAndLooseFallback) {
     uint32_t a[32] = {}, d[32];
     std::fill(d, d + 32, 0xdeadbeef);
     auto pa = a, pd = d;
-    for (uint32_t mask : {0U, UINT32_MAX}) {
+    for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (uint32_t invalid : {GOC_DOT_NEG_LO_A, GOC_DOT_CLAMP, GOC_DOT_LO_A_HIGH, 1U << 31})
-        EXPECT_EQ(fn(0, mask, invalid, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(
-          fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &pd, &pa, &pa, &pa),
-          GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(fn(0, exec_mask, invalid, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &pd, &pa,
+                   &pa, &pa),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (auto word : d)
       EXPECT_EQ(word, 0xdeadbeef);

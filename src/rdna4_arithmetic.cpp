@@ -68,43 +68,43 @@ int fma(uint64_t flags, uint32_t exec_mask, uint32_t instruction_flags, uint32_t
   return GOC_SUCCESS;
 }
 
-int fma_with_dpp(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int fma_with_dpp(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                  const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
                  uint32_t known) {
   if ((uint32_t(mode) & ~known) || ((mode >> 32) && !goc::valid_dpp(mode)))
     return GOC_ERROR_INVALID_FLAGS;
   if (int error = goc::validate(flags, 0))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
   if (mode & (GOC_DPP8 | GOC_DPP16)) {
     uint32_t permuted[32];
     const uint32_t *source = permuted;
     if (mode & GOC_DPP8)
-      goc::dpp8_source(flags, mask, mode, permuted, a[0]);
+      goc::dpp8_source(flags, exec_mask, mode, permuted, a[0]);
     else
-      mask = goc::dpp16_source(flags, mask, mode, permuted, a[0]);
-    return fma<false>(flags, mask, uint32_t(mode), d, &source, b, c);
+      exec_mask = goc::dpp16_source(flags, exec_mask, mode, permuted, a[0]);
+    return fma<false>(flags, exec_mask, uint32_t(mode), d, &source, b, c);
   }
-  return fma<false>(flags, mask, uint32_t(mode), d, a, b, c);
+  return fma<false>(flags, exec_mask, uint32_t(mode), d, a, b, c);
 }
 
 template <bool Multiply>
-int literal_fma(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
+int literal_fma(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                 const uint32_t *const *a, const uint32_t *const *b, uint32_t literal) {
   if (int error = goc::validate(flags, mode))
     return error;
-  if (mask == 0)
+  if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::literal_fma_x86_64_v4<Multiply>(mask, literal, d[0], a[0], b[0]);
+    goc::literal_fma_x86_64_v4<Multiply>(exec_mask, literal, d[0], a[0], b[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::literal_fma_x86_64_v3<Multiply>(mask, literal, d[0], a[0], b[0]);
+    goc::literal_fma_x86_64_v3<Multiply>(exec_mask, literal, d[0], a[0], b[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -115,7 +115,7 @@ int literal_fma(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d
     result[lane] = goc::as_bits(Multiply ? std::fma(x, k, y) : std::fma(x, y, k));
   }
   for (int lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }
@@ -132,30 +132,31 @@ int goc_rdna4_v_fma_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t in
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
-    return goc::execute_dpp(
-        flags, exec_mask, instruction_flags, a, [&](uint32_t mask, const uint32_t *const *source) {
-          return fma<true>(flags, mask, uint32_t(instruction_flags), d, source, b, c);
-        });
+    return goc::execute_dpp(flags, exec_mask, instruction_flags, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return fma<true>(flags, exec_mask, uint32_t(instruction_flags), d,
+                                               source, b, c);
+                            });
   return fma<true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_fmac_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b) {
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  return fma_with_dpp(flags, mask, mode, d, a, b, d, known);
+  return fma_with_dpp(flags, exec_mask, mode, d, a, b, d, known);
 }
 
-int goc_rdna4_v_fmamk_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, uint32_t literal, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return literal_fma<true>(flags, mask, mode, d, a, b, literal);
+  return literal_fma<true>(flags, exec_mask, mode, d, a, b, literal);
 }
 
-int goc_rdna4_v_fmaak_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_fmaak_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b, uint32_t literal) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return literal_fma<false>(flags, mask, mode, d, a, b, literal);
+  return literal_fma<false>(flags, exec_mask, mode, d, a, b, literal);
 }

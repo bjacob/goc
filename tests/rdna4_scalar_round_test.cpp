@@ -42,9 +42,9 @@ TEST(ScalarRound, ExecAndAliasing) {
         uint64_t flags = goc_test::scalar_fp_flags(state);
         ASSERT_EQ(goc_test::scalar_round_functions[op](flags, UINT32_MAX, 0, &expected, w[0]),
                   GOC_SUCCESS);
-        for (uint32_t mask : rdna4_exec_masks()) {
+        for (uint32_t exec_mask : rdna4_exec_masks()) {
           uint32_t words[] = {123, w[0], 456};
-          ASSERT_EQ(goc_test::scalar_round_functions[op](flags, mask, 0, words + 1, words[1]),
+          ASSERT_EQ(goc_test::scalar_round_functions[op](flags, exec_mask, 0, words + 1, words[1]),
                     GOC_SUCCESS);
           EXPECT_EQ(words[1], expected);
           EXPECT_EQ(words[0], 123u);

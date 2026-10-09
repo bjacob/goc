@@ -11,16 +11,16 @@
 namespace {
 
 template <int Bits, bool Unsigned>
-int dot(uint64_t flags, uint32_t mask, uint32_t modifiers, uint32_t *const *d,
+int dot(uint64_t flags, uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   const uint32_t known = GOC_DOT_CLAMP | (Unsigned ? 0 : GOC_DOT_SIGNED_A | GOC_DOT_SIGNED_B);
   if (int error = goc::validate(flags, modifiers & ~known, true))
     return error;
-  if (mask == 0)
+  if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::integer_dot_x86_64_v3(Bits, Unsigned, mask, modifiers, d[0], a[0], b[0], c[0]);
+    goc::integer_dot_x86_64_v3(Bits, Unsigned, exec_mask, modifiers, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -42,41 +42,41 @@ int dot(uint64_t flags, uint32_t mask, uint32_t modifiers, uint32_t *const *d,
     result[lane] = uint32_t(sum);
   }
   for (int lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }
 
 } // namespace
 
-int goc_rdna4_v_dot4_i32_iu8(uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                             const uint32_t *const *a, const uint32_t *const *b,
+int goc_rdna4_v_dot4_i32_iu8(uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
   if (modifiers >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return dot<8, false>(flags, mask, modifiers, d, a, b, c);
+  return dot<8, false>(flags, exec_mask, modifiers, d, a, b, c);
 }
 
-int goc_rdna4_v_dot4_u32_u8(uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b,
+int goc_rdna4_v_dot4_u32_u8(uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
   if (modifiers >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return dot<8, true>(flags, mask, modifiers, d, a, b, c);
+  return dot<8, true>(flags, exec_mask, modifiers, d, a, b, c);
 }
 
-int goc_rdna4_v_dot8_i32_iu4(uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                             const uint32_t *const *a, const uint32_t *const *b,
+int goc_rdna4_v_dot8_i32_iu4(uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
   if (modifiers >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return dot<4, false>(flags, mask, modifiers, d, a, b, c);
+  return dot<4, false>(flags, exec_mask, modifiers, d, a, b, c);
 }
 
-int goc_rdna4_v_dot8_u32_u4(uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
-                            const uint32_t *const *a, const uint32_t *const *b,
+int goc_rdna4_v_dot8_u32_u4(uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
   if (modifiers >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return dot<4, true>(flags, mask, modifiers, d, a, b, c);
+  return dot<4, true>(flags, exec_mask, modifiers, d, a, b, c);
 }

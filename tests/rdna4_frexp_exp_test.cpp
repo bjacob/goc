@@ -84,10 +84,10 @@ TEST(FrexpExp, AllModifiersMasksAndAliases) {
                                sign | inf | 12345};
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int variant = 0; variant < 32; ++variant)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (int alias = 0; alias < (fp64 ? 3 : 2); ++alias) {
-            SCOPED_TRACE(::testing::Message()
-                         << fp64 << "/" << cpu << "/" << variant << "/" << mask << "/" << alias);
+            SCOPED_TRACE(::testing::Message() << fp64 << "/" << cpu << "/" << variant << "/"
+                                              << exec_mask << "/" << alias);
             uint32_t storage[3][34];
             for (auto &reg : storage)
               std::fill(reg, reg + 34, 0xdeadbeef);
@@ -99,9 +99,10 @@ TEST(FrexpExp, AllModifiersMasksAndAliases) {
             }
             std::array<uint32_t, 32> before;
             std::copy(d, d + 32, before.begin());
-            ASSERT_EQ(functions[fp64](cpu, mask, mode(variant), &d, a), GOC_SUCCESS);
+            ASSERT_EQ(functions[fp64](cpu, exec_mask, mode(variant), &d, a), GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane)
-              EXPECT_EQ(d[lane], (mask >> lane & 1) ? reference(inputs[lane], fp64) : before[lane]);
+              EXPECT_EQ(d[lane],
+                        (exec_mask >> lane & 1) ? reference(inputs[lane], fp64) : before[lane]);
             for (const auto &reg : storage) {
               EXPECT_EQ(reg[0], 0xdeadbeef);
               EXPECT_EQ(reg[33], 0xdeadbeef);
@@ -168,12 +169,13 @@ TEST(FrexpExp, LiteralValuesAndValidation) {
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(d[lane], uint32_t(expected[fp64][lane % 8]));
       std::fill(d, d + 32, 0xdeadbeef);
-      for (uint32_t mask : {0U, UINT32_MAX}) {
+      for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         for (uint32_t invalid : {GOC_ALU_NEG_B, GOC_ALU_ABS_B, GOC_ALU_HIGH_D, 1U << 31})
-          EXPECT_EQ(functions[fp64](cpu, mask, invalid, &pd, pa), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(functions[fp64](cpu | (1ULL << 63), mask, 0, &pd, pa), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask,
-                                  0, &pd, pa),
+          EXPECT_EQ(functions[fp64](cpu, exec_mask, invalid, &pd, pa), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(functions[fp64](cpu | (1ULL << 63), exec_mask, 0, &pd, pa),
+                  GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                  exec_mask, 0, &pd, pa),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (uint32_t value : d)
@@ -188,7 +190,7 @@ TEST(FrexpExp, DppHardwareCorpus) {
                              0x7f800001, 0xff800000, 0x3f800000, 0xff7fffff};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (uint32_t mask :
+    for (uint32_t exec_mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (uint64_t descriptor : goc_test::dpp_modes)
         for (uint32_t low : {0u, 1u, 8u, 9u, 256u, 257u, 264u, 265u}) {
@@ -198,11 +200,11 @@ TEST(FrexpExp, DppHardwareCorpus) {
             d[lane] = 0xdead0000u + lane;
           }
           auto pa = a, pd = d;
-          ASSERT_EQ(functions[0](cpu, mask, descriptor | low, &pd, &pa), GOC_SUCCESS);
+          ASSERT_EQ(functions[0](cpu, exec_mask, descriptor | low, &pd, &pa), GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             int source;
             uint32_t want = 0xdead0000u + lane;
-            if (goc_test::dpp_source(descriptor, mask, lane, source))
+            if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
               want = reference(source < 0 ? 0 : a[source], false);
             EXPECT_EQ(d[lane], want);
             hash = goc_test::capture_hash_word(hash, d[lane]);
@@ -217,7 +219,7 @@ TEST(FrexpExp, DppModifiersMasksAliasesAndRandomWords) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t descriptor : goc_test::dpp_modes)
       for (int variant = 0; variant < 32; ++variant)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (bool alias : {false, true}) {
             uint32_t words[2][34], before[2][34];
             for (auto &reg : words)
@@ -225,13 +227,14 @@ TEST(FrexpExp, DppModifiersMasksAliasesAndRandomWords) {
                 word = random();
             std::memcpy(before, words, sizeof(words));
             auto a = words[0] + 1, d = words[alias ? 0 : 1] + 1;
-            ASSERT_EQ(functions[0](cpu, mask, descriptor | mode(variant), &d, &a), GOC_SUCCESS);
+            ASSERT_EQ(functions[0](cpu, exec_mask, descriptor | mode(variant), &d, &a),
+                      GOC_SUCCESS);
             for (unsigned reg = 0; reg < 2; ++reg)
               for (unsigned lane = 0; lane < 34; ++lane) {
                 int source;
                 uint32_t want = before[reg][lane];
                 if (reg == (alias ? 0u : 1u) && lane >= 1 && lane <= 32 &&
-                    goc_test::dpp_source(descriptor, mask, lane - 1, source))
+                    goc_test::dpp_source(descriptor, exec_mask, lane - 1, source))
                   want = reference(source < 0 ? 0 : before[0][source + 1], false);
                 EXPECT_EQ(words[reg][lane], want);
               }

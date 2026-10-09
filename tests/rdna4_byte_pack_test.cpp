@@ -20,9 +20,9 @@ namespace {
 
 using Fn = decltype(&goc_rdna4_v_cvt_pk_u8_f32);
 const Fn functions[] = {
-    [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+    [](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
        const uint32_t *const *,
-       const uint32_t *const *) { return goc_rdna4_v_cvt_off_f32_i4(f, m, i, d, a); },
+       const uint32_t *const *) { return goc_rdna4_v_cvt_off_f32_i4(f, exec_mask, i, d, a); },
     goc_rdna4_v_cvt_pk_u8_f32};
 
 uint32_t mode(unsigned op, unsigned variant) {
@@ -103,7 +103,7 @@ TEST(BytePack, EveryModifierMaskAndWholeRegisterAlias) {
   for (unsigned op = 0; op < 2; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 8; ++variant)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (unsigned breg = 0; breg < (op ? 2u : 1u); ++breg)
             for (unsigned creg = 0; creg < (op ? 3u : 1u); ++creg)
               for (unsigned dreg = 0; dreg < 4; ++dreg) {
@@ -113,14 +113,15 @@ TEST(BytePack, EveryModifierMaskAndWholeRegisterAlias) {
                     storage[reg][word] = expected[reg][word] = random();
                 uint32_t flags = mode(op, variant);
                 for (unsigned lane = 0; lane < 32; ++lane)
-                  if ((mask >> lane) & 1)
+                  if ((exec_mask >> lane) & 1)
                     expected[dreg][lane + 1] =
                         reference(op, storage[0][lane + 1], storage[breg][lane + 1],
                                   storage[creg][lane + 1], flags);
                 const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1},
                                *c[] = {storage[creg] + 1};
                 uint32_t *d[] = {storage[dreg] + 1};
-                ASSERT_EQ(functions[op](cpu | GOC_FP16_OVFL, mask, flags, d, a, b, c), GOC_SUCCESS);
+                ASSERT_EQ(functions[op](cpu | GOC_FP16_OVFL, exec_mask, flags, d, a, b, c),
+                          GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 4; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
                     ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -194,7 +195,7 @@ TEST(BytePack, DppModifiersMasksAliasesAndGuards) {
   for (auto descriptor : goc_test::dpp_modes)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 8; ++variant)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (unsigned breg = 0; breg < 2; ++breg)
             for (unsigned creg = 0; creg < 3; ++creg)
               for (unsigned dreg = 0; dreg < 4; ++dreg) {
@@ -205,7 +206,7 @@ TEST(BytePack, DppModifiersMasksAliasesAndGuards) {
                 uint64_t flags = descriptor | goc_test::byte_pack_mode(variant);
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (goc_test::dpp_source(flags, mask, lane, source))
+                  if (goc_test::dpp_source(flags, exec_mask, lane, source))
                     expected[dreg][lane + 1] = goc_test::byte_pack_reference(
                         source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
                         storage[creg][lane + 1], uint32_t(flags));
@@ -213,8 +214,9 @@ TEST(BytePack, DppModifiersMasksAliasesAndGuards) {
                 const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1},
                                *c[] = {storage[creg] + 1};
                 uint32_t *d[] = {storage[dreg] + 1};
-                ASSERT_EQ(goc_rdna4_v_cvt_pk_u8_f32(cpu | GOC_FP16_OVFL, mask, flags, d, a, b, c),
-                          GOC_SUCCESS);
+                ASSERT_EQ(
+                    goc_rdna4_v_cvt_pk_u8_f32(cpu | GOC_FP16_OVFL, exec_mask, flags, d, a, b, c),
+                    GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 4; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
                     ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -243,7 +245,7 @@ TEST(BytePack, DppHardwareCorpus) {
   const uint32_t modifiers[] = {0, 1, 8, 9, 256, 257, 264, 265};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (auto mask : masks)
+    for (auto exec_mask : masks)
       for (auto descriptor : goc_test::dpp_modes)
         for (auto modifier : modifiers) {
           uint32_t av[32], bv[32], cv[32], output[32];
@@ -255,7 +257,7 @@ TEST(BytePack, DppHardwareCorpus) {
           }
           const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
           uint32_t *d[] = {output};
-          ASSERT_EQ(goc_rdna4_v_cvt_pk_u8_f32(cpu, mask, descriptor | modifier, d, a, b, c),
+          ASSERT_EQ(goc_rdna4_v_cvt_pk_u8_f32(cpu, exec_mask, descriptor | modifier, d, a, b, c),
                     GOC_SUCCESS);
           for (auto word : output)
             hash = goc_test::capture_hash_word(hash, word);

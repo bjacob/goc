@@ -11,8 +11,8 @@
 namespace goc {
 
 template <bool P2, bool Rtz>
-void interp16_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
-                        const uint32_t *b, const uint32_t *c) {
+void interp16_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+                        const uint32_t *a, const uint32_t *b, const uint32_t *c) {
   unsigned saved = 0;
   if constexpr (Rtz && !P2) {
     saved = _mm_getcsr();
@@ -50,9 +50,9 @@ void interp16_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32_t *d
         value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
       result = _mm256_castps_si256(value);
     }
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
   if constexpr (Rtz && !P2)
     _mm_setcsr(saved);

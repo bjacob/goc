@@ -36,10 +36,10 @@ TEST(Minmax3, AllModifiersMasksAliasesAndSpecialValues) {
                                                                source[2][lane], mode);
       }
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (int alias = 0; alias < 4; ++alias) {
             SCOPED_TRACE(::testing::Message()
-                         << op << "/" << mode << "/" << cpu << "/" << mask << "/" << alias);
+                         << op << "/" << mode << "/" << cpu << "/" << exec_mask << "/" << alias);
             uint32_t storage[4][34], before[32];
             uint32_t *v[4];
             for (int reg = 0; reg < 4; ++reg) {
@@ -49,9 +49,10 @@ TEST(Minmax3, AllModifiersMasksAliasesAndSpecialValues) {
                 std::copy(source[reg], source[reg] + 32, v[reg]);
             }
             std::copy(v[alias], v[alias] + 32, before);
-            ASSERT_EQ(functions[op](cpu, mask, mode, &v[alias], &v[0], &v[1], &v[2]), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, mode, &v[alias], &v[0], &v[1], &v[2]),
+                      GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane) {
-              uint32_t want = (mask >> lane) & 1 ? expected[lane] : before[lane];
+              uint32_t want = (exec_mask >> lane) & 1 ? expected[lane] : before[lane];
               EXPECT_EQ(v[alias][lane], want);
             }
             for (const auto &reg : storage) {

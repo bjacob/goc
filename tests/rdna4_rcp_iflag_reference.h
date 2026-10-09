@@ -66,10 +66,11 @@ inline bool rcp_iflag_close(uint32_t a, uint32_t b) {
   return a > b ? a - b <= 2 : b - a <= 2;
 }
 
-inline uint32_t rcp_iflag_status(const uint32_t *a, uint32_t mask, unsigned m, uint32_t initial) {
+inline uint32_t rcp_iflag_status(const uint32_t *a, uint32_t exec_mask, unsigned m,
+                                 uint32_t initial) {
   if (!(m & 16))
     for (unsigned lane = 0; lane < 32; ++lane)
-      if (((mask >> lane) & 1) && (a[lane] & 0x7fffffff) < 0x00800000)
+      if (((exec_mask >> lane) & 1) && (a[lane] & 0x7fffffff) < 0x00800000)
         initial |= 0x40;
   return initial;
 }

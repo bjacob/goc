@@ -27,7 +27,7 @@ __m512i narrow(__m512 x, bool saturate) {
 } // namespace
 
 template <Conversion16 Op>
-void conversion16_x86_64_v4(bool saturate, uint32_t mask, uint32_t mode, uint32_t *d,
+void conversion16_x86_64_v4(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                             const uint32_t *a) {
   constexpr bool from_integer =
       Op == Conversion16::SignedToHalf || Op == Conversion16::UnsignedToHalf;
@@ -104,7 +104,7 @@ void conversion16_x86_64_v4(bool saturate, uint32_t mask, uint32_t mode, uint32_
       result = _mm512_or_si512(_mm512_andnot_si512(selected_mask, original),
                                _mm512_sll_epi32(result, sd));
     }
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), result);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), result);
   }
 }
 

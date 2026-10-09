@@ -38,23 +38,23 @@ uint16_t output(uint16_t bits, uint32_t mode) {
 }
 
 template <bool Cosine>
-int trig(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int trig(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a) {
   if (mode >> 32)
-    return goc::execute_dpp(flags, mask, mode, a,
-                            [&](uint32_t effective, const uint32_t *const *source) {
-                              return trig<Cosine>(flags, effective, uint32_t(mode), d, source);
+    return goc::execute_dpp(flags, exec_mask, mode, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return trig<Cosine>(flags, exec_mask, uint32_t(mode), d, source);
                             });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP |
                          GOC_ALU_HIGH_A | GOC_ALU_HIGH_D;
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
       (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL) {
-    goc::half_trig_x86_64_v3(Cosine, mask, mode, d[0], a[0]);
+    goc::half_trig_x86_64_v3(Cosine, exec_mask, mode, d[0], a[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -71,19 +71,19 @@ int trig(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
     result[lane] = output(goc::float_to_f16(goc::as_float(bits)), mode);
   }
   for (int lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = (d[0][lane] & ~(0xffffU << d_shift)) | (uint32_t(result[lane]) << d_shift);
   return GOC_SUCCESS;
 }
 
 } // namespace
 
-int goc_rdna4_v_sin_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_sin_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a) {
-  return trig<false>(flags, mask, mode, d, a);
+  return trig<false>(flags, exec_mask, mode, d, a);
 }
 
-int goc_rdna4_v_cos_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_cos_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a) {
-  return trig<true>(flags, mask, mode, d, a);
+  return trig<true>(flags, exec_mask, mode, d, a);
 }

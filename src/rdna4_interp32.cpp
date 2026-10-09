@@ -13,23 +13,23 @@
 namespace {
 
 template <bool P2>
-int run(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
-        const uint32_t *const *b, const uint32_t *const *c) {
+int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+        const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   const uint32_t known =
       GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C | GOC_ALU_CLAMP | GOC_INTERP_WAIT_EXP_MASK;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::interp32_x86_64_v4<P2>(mask, mode, d[0], a[0], b[0], c[0]);
+    goc::interp32_x86_64_v4<P2>(exec_mask, mode, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::interp32_x86_64_v3<P2>(mask, mode, d[0], a[0], b[0], c[0]);
+    goc::interp32_x86_64_v3<P2>(exec_mask, mode, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -42,7 +42,7 @@ int run(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d, const 
     result[lane] = goc::as_bits(goc::alu_output(std::fma(x, y, z), mode));
   }
   for (unsigned lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }

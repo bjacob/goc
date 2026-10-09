@@ -8,7 +8,7 @@
 
 namespace goc {
 
-uint32_t rcp_iflag_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a) {
+uint32_t rcp_iflag_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a) {
   auto exponent = _mm512_set1_epi32(0x7f800000), sign = _mm512_set1_epi32(int(0x80000000u)),
        zero = _mm512_setzero_si512();
   auto keep = _mm512_set1_epi32(mode & GOC_ALU_ABS_A ? 0x7fffffff : -1),
@@ -38,9 +38,9 @@ uint32_t rcp_iflag_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const ui
     bits = _mm512_castps_si512(value);
     bits = _mm512_mask_blend_epi32(_mm512_cmpeq_epi32_mask(_mm512_and_si512(bits, exponent), zero),
                                    bits, _mm512_and_si512(bits, sign));
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), bits);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), bits);
   }
-  return (zeros & mask) && !(mode & GOC_ALU_CLAMP) ? GOC_RDNA4_EXCEPTION_INT_DIV0 : 0;
+  return (zeros & exec_mask) && !(mode & GOC_ALU_CLAMP) ? GOC_RDNA4_EXCEPTION_INT_DIV0 : 0;
 }
 
 } // namespace goc

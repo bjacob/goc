@@ -12,7 +12,7 @@ namespace goc {
 namespace {
 
 template <bool FirstMaximum, bool SecondMaximum, bool Propagate, bool Median = false>
-void run(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uint32_t *b,
+void run(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uint32_t *b,
          const uint32_t *c) {
   const auto ka = _mm256_set1_epi32(mode & GOC_ALU_ABS_A ? INT32_MAX : -1);
   const auto kb = _mm256_set1_epi32(mode & GOC_ALU_ABS_B ? INT32_MAX : -1);
@@ -36,35 +36,36 @@ void run(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uin
     }
     if (mode & GOC_ALU_CLAMP)
       value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, _mm256_castps_si256(value));
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask,
+                           _mm256_castps_si256(value));
   }
 }
 
 } // namespace
 
-void minmax3_x86_64_v3(Minmax3 op, uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
-                       const uint32_t *b, const uint32_t *c) {
+void minmax3_x86_64_v3(Minmax3 op, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+                       const uint32_t *a, const uint32_t *b, const uint32_t *c) {
   switch (op) {
   case Minmax3::MedianNum:
-    return run<false, false, false, true>(mask, mode, d, a, b, c);
+    return run<false, false, false, true>(exec_mask, mode, d, a, b, c);
   case Minmax3::Min3Num:
-    return run<false, false, false>(mask, mode, d, a, b, c);
+    return run<false, false, false>(exec_mask, mode, d, a, b, c);
   case Minmax3::Max3Num:
-    return run<true, true, false>(mask, mode, d, a, b, c);
+    return run<true, true, false>(exec_mask, mode, d, a, b, c);
   case Minmax3::MinmaxNum:
-    return run<false, true, false>(mask, mode, d, a, b, c);
+    return run<false, true, false>(exec_mask, mode, d, a, b, c);
   case Minmax3::MaxminNum:
-    return run<true, false, false>(mask, mode, d, a, b, c);
+    return run<true, false, false>(exec_mask, mode, d, a, b, c);
   case Minmax3::Minimum3:
-    return run<false, false, true>(mask, mode, d, a, b, c);
+    return run<false, false, true>(exec_mask, mode, d, a, b, c);
   case Minmax3::Maximum3:
-    return run<true, true, true>(mask, mode, d, a, b, c);
+    return run<true, true, true>(exec_mask, mode, d, a, b, c);
   case Minmax3::MinimumMaximum:
-    return run<false, true, true>(mask, mode, d, a, b, c);
+    return run<false, true, true>(exec_mask, mode, d, a, b, c);
   case Minmax3::MaximumMinimum:
-    return run<true, false, true>(mask, mode, d, a, b, c);
+    return run<true, false, true>(exec_mask, mode, d, a, b, c);
   }
 }
 

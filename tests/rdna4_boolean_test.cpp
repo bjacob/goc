@@ -82,7 +82,7 @@ TEST(Boolean, MasksAliasesAndUnalignedStorage) {
               word = random();
           uint32_t mode = goc_test::boolean_mode(op, selection);
           int breg = same_sources ? 0 : 1;
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (int target = 0; target < 3; ++target) {
               uint32_t words[3][35], expected[3][35];
               for (int reg = 0; reg < 3; ++reg) {
@@ -90,13 +90,14 @@ TEST(Boolean, MasksAliasesAndUnalignedStorage) {
                 std::copy_n(original[reg], 35, expected[reg]);
               }
               for (int lane = 0; lane < 32; ++lane)
-                if ((mask >> lane) & 1)
+                if ((exec_mask >> lane) & 1)
                   expected[target][lane + 1] = goc_test::boolean_reference(
                       op, original[0][lane + 1], original[breg][lane + 1],
                       original[target][lane + 1], mode);
               const uint32_t *a[] = {words[0] + 1}, *b[] = {words[breg] + 1};
               uint32_t *d[] = {words[target] + 1};
-              ASSERT_EQ(goc_test::boolean_functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
+              ASSERT_EQ(goc_test::boolean_functions[op](cpu, exec_mask, mode, d, a, b),
+                        GOC_SUCCESS);
               for (int reg = 0; reg < 3; ++reg)
                 ASSERT_TRUE(std::equal(words[reg], words[reg] + 35, expected[reg]));
             }
@@ -112,17 +113,17 @@ TEST(Boolean, ValidationBeforeEmptyMaskAndUnchangedOutputs) {
       const uint32_t *a[] = {words[0]}, *b[] = {words[1]};
       uint32_t *d[] = {words[2]};
       uint32_t known = goc_test::boolean_mode(op, 7);
-      for (uint32_t mask : {0U, UINT32_MAX}) {
+      for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit)
           if (!(known & (uint32_t(1) << bit))) {
-            EXPECT_EQ(goc_test::boolean_functions[op](cpu, mask, uint32_t(1) << bit, d, a, b),
+            EXPECT_EQ(goc_test::boolean_functions[op](cpu, exec_mask, uint32_t(1) << bit, d, a, b),
                       GOC_ERROR_INVALID_FLAGS);
           }
-        EXPECT_EQ(goc_test::boolean_functions[op](cpu | (1ULL << 63), mask, known, d, a, b),
+        EXPECT_EQ(goc_test::boolean_functions[op](cpu | (1ULL << 63), exec_mask, known, d, a, b),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(goc_test::boolean_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
                                                       GOC_SEMANTICS_STRICT,
-                                                  mask, known, d, a, b),
+                                                  exec_mask, known, d, a, b),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (const auto &reg : words)

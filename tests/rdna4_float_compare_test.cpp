@@ -134,7 +134,7 @@ TEST(FloatCompare, ScalarOutputAliasesSourcesUnalignedAndMasks) {
           }
           uint32_t want = expected(op, m, flush, plain);
           for (uint64_t cpu = 0; cpu <= max_cpu; ++cpu)
-            for (uint32_t mask : rdna4_exec_masks())
+            for (uint32_t exec_mask : rdna4_exec_masks())
               for (unsigned target = 0; target < 9; ++target) {
                 uint32_t words[4][35], after[4][35], outside = 0;
                 std::memcpy(words, initial, sizeof(words));
@@ -142,17 +142,17 @@ TEST(FloatCompare, ScalarOutputAliasesSourcesUnalignedAndMasks) {
                 unsigned reg = target / 2, lane = target % 2 ? 32 : 1;
                 uint32_t *d = target == 8 ? &outside : &words[reg][lane];
                 if (target != 8)
-                  after[reg][lane] = want & mask;
+                  after[reg][lane] = want & exec_mask;
                 const uint32_t *a[] = {words[0] + 1, words[alias == 2 ? 0 : 1] + 1},
                                *b[] = {words[alias == 1 ? 0 : 2] + 1, words[alias == 1   ? 1
                                                                             : alias == 2 ? 2
                                                                                          : 3] +
                                                                           1};
                 ASSERT_EQ(goc_test::float_compare_functions[op](
-                              cpu | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), mask,
+                              cpu | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), exec_mask,
                               goc_test::float_compare_mode(m), d, a, b),
                           GOC_SUCCESS);
-                ASSERT_EQ(*d, want & mask)
+                ASSERT_EQ(*d, want & exec_mask)
                     << op << "/" << m << "/" << flush << "/" << alias << "/" << cpu;
                 ASSERT_EQ(std::memcmp(words, after, sizeof(words)), 0);
               }
@@ -217,7 +217,7 @@ TEST(FloatCompare, DppPredicatesSelectorsMasksAndAliases) {
       for (bool flush : {false, true})
         for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
           for (auto descriptor : goc_test::dpp_modes)
-            for (auto mask :
+            for (auto exec_mask :
                  (m == 0 || m == (op < 28 ? 63u : 15u) ? rdna4_exec_masks()
                                                        : std::vector<uint32_t>{UINT32_MAX}))
               for (unsigned shared = 0; shared < 2; ++shared)
@@ -233,7 +233,7 @@ TEST(FloatCompare, DppPredicatesSelectorsMasksAndAliases) {
                   unsigned br = shared ? 0 : 1;
                   for (unsigned lane = 0; lane < 32; ++lane) {
                     int source = 0;
-                    if (goc_test::dpp_source(descriptor, mask, lane, source)) {
+                    if (goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
                       uint32_t w[] = {source < 0 ? 0 : words[0][source + 1], 0, words[br][lane + 1],
                                       0};
                       want |= uint32_t(goc_test::float_compare_reference(op, m, flush, w)) << lane;
@@ -247,11 +247,11 @@ TEST(FloatCompare, DppPredicatesSelectorsMasksAndAliases) {
                   uint64_t semantics =
                       op & 1 ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0;
                   ASSERT_EQ(goc_test::float_compare_functions[op](
-                                cpu | semantics | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), mask,
-                                descriptor | goc_test::float_compare_mode(m), d, a, b),
+                                cpu | semantics | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0),
+                                exec_mask, descriptor | goc_test::float_compare_mode(m), d, a, b),
                             GOC_SUCCESS);
                   ASSERT_EQ(*d, want)
-                      << op << "/" << m << "/" << cpu << "/" << descriptor << "/" << mask;
+                      << op << "/" << m << "/" << cpu << "/" << descriptor << "/" << exec_mask;
                   ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0);
                 }
 }
@@ -292,7 +292,7 @@ TEST(FloatCompare, DppHardwareCorpusAndHostFpState) {
         uint64_t hash = goc_test::capture_hash_seed;
         for (bool flush : {true, false})
           for (unsigned batch = 0; batch < 4; ++batch)
-            for (auto mask : masks)
+            for (auto exec_mask : masks)
               for (unsigned op = 0; op < 56; ++op)
                 for (unsigned variant = 0; variant < (op < 28 ? 12u : 6u); ++variant)
                   for (auto descriptor : goc_test::dpp_modes) {
@@ -304,7 +304,8 @@ TEST(FloatCompare, DppHardwareCorpusAndHostFpState) {
                     const uint32_t *a[] = {av}, *b[] = {bv};
                     EXPECT_EQ(goc_test::float_compare_functions[op](
                                   cpu | semantics | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0),
-                                  mask, descriptor | goc_test::float_compare_mode(modes[variant]),
+                                  exec_mask,
+                                  descriptor | goc_test::float_compare_mode(modes[variant]),
                                   &output, a, b),
                               GOC_SUCCESS);
                     hash = goc_test::capture_hash_word(hash, output);

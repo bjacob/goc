@@ -22,7 +22,8 @@ __m512i population(__m512i x) {
 namespace goc {
 
 template <BitCount Op, int Lanes>
-void bit_count_x86_64_v4(ExecMask<Lanes> mask, uint32_t *d, const uint32_t *a, const uint32_t *b) {
+void bit_count_x86_64_v4(ExecMask<Lanes> exec_mask, uint32_t *d, const uint32_t *a,
+                         const uint32_t *b) {
   for (int lane = 0; lane < Lanes; lane += 16) {
     auto x = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(a + lane));
     if constexpr (Op == BitCount::Sign)
@@ -52,25 +53,25 @@ void bit_count_x86_64_v4(ExecMask<Lanes> mask, uint32_t *d, const uint32_t *a, c
       auto y = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(b + lane));
       result = _mm512_add_epi32(population(x), y);
     }
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), result);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), result);
   }
 }
 
-template void bit_count_x86_64_v4<BitCount::Leading, 32>(uint32_t mask, uint32_t *d,
+template void bit_count_x86_64_v4<BitCount::Leading, 32>(uint32_t exec_mask, uint32_t *d,
                                                          const uint32_t *a, const uint32_t *b);
-template void bit_count_x86_64_v4<BitCount::Trailing, 32>(uint32_t mask, uint32_t *d,
+template void bit_count_x86_64_v4<BitCount::Trailing, 32>(uint32_t exec_mask, uint32_t *d,
                                                           const uint32_t *a, const uint32_t *b);
-template void bit_count_x86_64_v4<BitCount::Sign, 32>(uint32_t mask, uint32_t *d, const uint32_t *a,
-                                                      const uint32_t *b);
-template void bit_count_x86_64_v4<BitCount::Population, 32>(uint32_t mask, uint32_t *d,
+template void bit_count_x86_64_v4<BitCount::Sign, 32>(uint32_t exec_mask, uint32_t *d,
+                                                      const uint32_t *a, const uint32_t *b);
+template void bit_count_x86_64_v4<BitCount::Population, 32>(uint32_t exec_mask, uint32_t *d,
                                                             const uint32_t *a, const uint32_t *b);
-template void bit_count_x86_64_v4<BitCount::MaskedLow, 32>(uint32_t mask, uint32_t *d,
+template void bit_count_x86_64_v4<BitCount::MaskedLow, 32>(uint32_t exec_mask, uint32_t *d,
                                                            const uint32_t *a, const uint32_t *b);
-template void bit_count_x86_64_v4<BitCount::MaskedHigh, 32>(uint32_t mask, uint32_t *d,
+template void bit_count_x86_64_v4<BitCount::MaskedHigh, 32>(uint32_t exec_mask, uint32_t *d,
                                                             const uint32_t *a, const uint32_t *b);
-template void bit_count_x86_64_v4<BitCount::MaskedLow, 64>(uint64_t mask, uint32_t *d,
+template void bit_count_x86_64_v4<BitCount::MaskedLow, 64>(uint64_t exec_mask, uint32_t *d,
                                                            const uint32_t *a, const uint32_t *b);
-template void bit_count_x86_64_v4<BitCount::MaskedHigh, 64>(uint64_t mask, uint32_t *d,
+template void bit_count_x86_64_v4<BitCount::MaskedHigh, 64>(uint64_t exec_mask, uint32_t *d,
                                                             const uint32_t *a, const uint32_t *b);
 
 } // namespace goc

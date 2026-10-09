@@ -13,20 +13,19 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (int error = goc::validate(flags, mode & ~GOC_ALU_CLAMP, true))
     return error;
-  uint32_t mask = exec_mask;
-  if (!mask) {
+  if (!exec_mask) {
     *carry = 0;
     return GOC_SUCCESS;
   }
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    *carry = goc::mad64_x86_64_v4<Signed>(mask, mode, d, a, b, c);
+    *carry = goc::mad64_x86_64_v4<Signed>(exec_mask, mode, d, a, b, c);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    *carry = goc::mad64_x86_64_v3<Signed>(mask, mode, d, a, b, c);
+    *carry = goc::mad64_x86_64_v3<Signed>(exec_mask, mode, d, a, b, c);
     return GOC_SUCCESS;
   }
 #endif
@@ -59,9 +58,9 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
   }
   for (unsigned reg = 0; reg < 2; ++reg)
     for (unsigned lane = 0; lane < 32; ++lane)
-      if ((mask >> lane) & 1)
+      if ((exec_mask >> lane) & 1)
         d[reg][lane] = uint32_t(result[lane] >> (32 * reg));
-  *carry = output_carry & mask;
+  *carry = output_carry & exec_mask;
   return GOC_SUCCESS;
 }
 

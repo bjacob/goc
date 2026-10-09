@@ -14,10 +14,10 @@ inline const char *const integer_add_names[] = {"v_add_nc_u32", "v_sub_nc_u32", 
 using IntegerAddFn = decltype(&goc_rdna4_v_add3_u32);
 
 template <auto Function>
-int integer_add_binary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int integer_add_binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *) {
-  return Function(flags, mask, mode, d, a, b);
+  return Function(flags, exec_mask, mode, d, a, b);
 }
 
 inline const IntegerAddFn integer_add_functions[] = {

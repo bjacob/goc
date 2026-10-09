@@ -116,7 +116,7 @@ TEST(Fp8Narrow, EveryModifierMaskAndWholeRegisterAlias) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < (op >= 2 ? 16u : 32u); ++variant)
         for (bool sat : {false, true})
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (unsigned breg = 0; breg < 2; ++breg)
               for (unsigned dreg = 0; dreg < 3; ++dreg) {
                 uint32_t storage[3][34], expected[3][34];
@@ -125,13 +125,13 @@ TEST(Fp8Narrow, EveryModifierMaskAndWholeRegisterAlias) {
                     storage[reg][word] = expected[reg][word] = random();
                 uint32_t mode = goc_test::fp8_narrow_mode(op, variant);
                 for (unsigned lane = 0; lane < 32; ++lane)
-                  if ((mask >> lane) & 1)
+                  if ((exec_mask >> lane) & 1)
                     expected[dreg][lane + 1] = goc_test::fp8_narrow_result(
                         op, storage[0][lane + 1], storage[breg][lane + 1], storage[dreg][lane + 1],
                         mode, sat);
                 const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1};
                 uint32_t *d[] = {storage[dreg] + 1};
-                ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), mask, mode, d, a, b),
+                ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), exec_mask, mode, d, a, b),
                           GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 3; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
@@ -207,7 +207,7 @@ TEST(Fp8Narrow, DppMasksAliasesAndGuards) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (unsigned variant : {0u, op >= 2 ? 8u : 16u, op >= 2 ? 15u : 31u})
           for (bool sat : {false, true})
-            for (uint32_t mask : rdna4_exec_masks())
+            for (uint32_t exec_mask : rdna4_exec_masks())
               for (unsigned breg = 0; breg < 2; ++breg)
                 for (unsigned dreg = 0; dreg < 3; ++dreg) {
                   uint32_t storage[3][34], expected[3][34];
@@ -217,15 +217,16 @@ TEST(Fp8Narrow, DppMasksAliasesAndGuards) {
                   uint64_t mode = descriptor | goc_test::fp8_narrow_mode(op, variant);
                   for (unsigned lane = 0; lane < 32; ++lane) {
                     int source = 0;
-                    if (goc_test::dpp_source(mode, mask, lane, source))
+                    if (goc_test::dpp_source(mode, exec_mask, lane, source))
                       expected[dreg][lane + 1] = goc_test::fp8_narrow_result(
                           op, source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
                           storage[dreg][lane + 1], uint32_t(mode), sat);
                   }
                   const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1};
                   uint32_t *d[] = {storage[dreg] + 1};
-                  ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), mask, mode, d, a, b),
-                            GOC_SUCCESS);
+                  ASSERT_EQ(
+                      functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), exec_mask, mode, d, a, b),
+                      GOC_SUCCESS);
                   for (unsigned reg = 0; reg < 3; ++reg)
                     for (unsigned word = 0; word < 34; ++word)
                       ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -242,7 +243,7 @@ TEST(Fp8Narrow, DppHardwareCorpus) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
     for (bool sat : {false, true})
-      for (auto mask : masks)
+      for (auto exec_mask : masks)
         for (unsigned op = 0; op < 4; ++op)
           for (auto descriptor : goc_test::dpp_modes)
             for (unsigned variant = 0; variant < (op >= 2 ? 16u : 32u); ++variant) {
@@ -254,7 +255,7 @@ TEST(Fp8Narrow, DppHardwareCorpus) {
               }
               const uint32_t *a[] = {av}, *b[] = {bv};
               uint32_t *d[] = {output};
-              ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), mask,
+              ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), exec_mask,
                                       descriptor | goc_test::fp8_narrow_mode(op, variant), d, a, b),
                         GOC_SUCCESS);
               for (auto word : output)

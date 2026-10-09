@@ -42,11 +42,11 @@ TEST(ScalarFma, ExecAndAllScalarAliases) {
           uint32_t expected = w[alias];
           ASSERT_EQ(goc_test::scalar_fma_call(k, flags, UINT32_MAX, 0, &expected, w[0], w[1]),
                     GOC_SUCCESS);
-          for (uint32_t mask : rdna4_exec_masks()) {
+          for (uint32_t exec_mask : rdna4_exec_masks()) {
             uint32_t words[] = {123, w[0], w[1], w[2], 456};
-            ASSERT_EQ(
-                goc_test::scalar_fma_call(k, flags, mask, 0, words + 1 + alias, words[1], words[2]),
-                GOC_SUCCESS);
+            ASSERT_EQ(goc_test::scalar_fma_call(k, flags, exec_mask, 0, words + 1 + alias, words[1],
+                                                words[2]),
+                      GOC_SUCCESS);
             EXPECT_EQ(goc_test::scalar_fp_canonical(words[1 + alias], k == 1),
                       goc_test::scalar_fp_canonical(expected, k == 1));
             for (unsigned j = 0; j < 3; ++j)

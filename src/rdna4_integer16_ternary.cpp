@@ -18,13 +18,13 @@ template <bool Signed> int64_t input(uint32_t word, int half) {
 }
 
 template <bool Signed, goc::Integer16Ternary Op = goc::Integer16Ternary::Mad, bool Packed = true>
-int ternary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int ternary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (mode >> 32) {
     if constexpr (!Packed) {
       return goc::execute_dpp(
-          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
-            return ternary<Signed, Op, Packed>(flags, effective, uint32_t(mode), d, source, b, c);
+          flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+            return ternary<Signed, Op, Packed>(flags, exec_mask, uint32_t(mode), d, source, b, c);
           });
     } else {
       return GOC_ERROR_INVALID_FLAGS;
@@ -38,11 +38,11 @@ int ternary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                    (Op == goc::Integer16Ternary::Mad ? GOC_ALU_CLAMP : 0);
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (mask == 0)
+  if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::integer16_ternary_x86_64_v3<Signed, Op, Packed>(mask, mode, d[0], a[0], b[0], c[0]);
+    goc::integer16_ternary_x86_64_v3<Signed, Op, Packed>(exec_mask, mode, d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -75,7 +75,7 @@ int ternary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
       result[lane] |= uint32_t(uint16_t(value)) << (16 * half);
     }
   for (int lane = 0; lane < 32; ++lane)
-    if (mask >> lane & 1) {
+    if (exec_mask >> lane & 1) {
       if constexpr (Packed) {
         d[0][lane] = result[lane];
       } else {

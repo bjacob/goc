@@ -25,7 +25,7 @@ template <bool Signed> __m256i high_product(__m256i a, __m256i b) {
 } // namespace
 
 template <int Bits, bool Signed, bool High>
-void integer_mul_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void integer_mul_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                            const uint32_t *b) {
   for (int lane = 0; lane < 32; lane += 8) {
     auto x = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane));
@@ -62,9 +62,9 @@ void integer_mul_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint
         }
       }
     }
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, value);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, value);
   }
 }
 

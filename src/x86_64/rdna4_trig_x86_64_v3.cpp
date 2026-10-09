@@ -10,7 +10,7 @@
 namespace goc {
 namespace {
 
-template <bool Cosine> void run(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a) {
+template <bool Cosine> void run(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a) {
   const __m256i keep = _mm256_set1_epi32(mode & GOC_ALU_ABS_A ? 0x7fffffff : -1);
   const __m256i flip = _mm256_set1_epi32(mode & GOC_ALU_NEG_A ? INT32_MIN : 0);
   const float scales[] = {1, 2, 4, 0.5f};
@@ -30,19 +30,22 @@ template <bool Cosine> void run(uint32_t mask, uint32_t mode, uint32_t *d, const
       value = _mm256_andnot_ps(
           _mm256_castsi256_ps(_mm256_cmpgt_epi32(_mm256_set1_epi32(0x800000), magnitude)), value);
     }
-    const __m256i active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                             _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, _mm256_castps_si256(value));
+    const __m256i lane_exec_mask =
+        _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                          _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask,
+                           _mm256_castps_si256(value));
   }
 }
 
 } // namespace
 
-void trig_x86_64_v3(bool cosine, uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a) {
+void trig_x86_64_v3(bool cosine, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+                    const uint32_t *a) {
   if (cosine)
-    run<true>(mask, mode, d, a);
+    run<true>(exec_mask, mode, d, a);
   else
-    run<false>(mask, mode, d, a);
+    run<false>(exec_mask, mode, d, a);
 }
 
 } // namespace goc

@@ -90,15 +90,15 @@ void fill(bool half, uint32_t (&words)[3][34], unsigned seed) {
   }
 }
 
-void run(bool half, uint64_t flags, uint32_t mask, uint64_t mode, int a, int b, int d,
+void run(bool half, uint64_t flags, uint32_t exec_mask, uint64_t mode, int a, int b, int d,
          uint32_t (&words)[3][34]) {
   uint32_t before[3][34];
   std::memcpy(before, words, sizeof(before));
   uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
-  ASSERT_EQ(functions[half](flags, mask, mode, p + d, p + a, p + b), GOC_SUCCESS);
+  ASSERT_EQ(functions[half](flags, exec_mask, mode, p + d, p + a, p + b), GOC_SUCCESS);
   for (int reg = 0; reg < 3; ++reg)
     for (int lane = 0; lane < 34; ++lane) {
-      if (reg == d && lane >= 1 && lane <= 32 && ((mask >> (lane - 1)) & 1)) {
+      if (reg == d && lane >= 1 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
         check(half, words[reg][lane],
               reference(half, before[a][lane], before[b][lane], before[d][lane], mode,
                         flags & GOC_FP16_OVFL),
@@ -142,17 +142,17 @@ TEST(Fmac, MasksAndAllAccumulatorAliases) {
       for (bool exact : {false, true})
         for (auto base_mode : modes)
           for (uint32_t selectors = 0; selectors < (half ? 8u : 1u); ++selectors)
-            for (auto mask : rdna4_exec_masks())
+            for (auto exec_mask : rdna4_exec_masks())
               for (int b : {0, 1})
                 for (int d = 0; d < 3; ++d) {
                   uint32_t mode =
                       base_mode | ((selectors & 3) << 9) | ((selectors & 4) ? GOC_ALU_HIGH_D : 0);
                   SCOPED_TRACE(::testing::Message() << half << '/' << cpu << '/' << mode << '/'
-                                                    << mask << '/' << b << '/' << d);
+                                                    << exec_mask << '/' << b << '/' << d);
                   uint32_t words[3][34];
                   fill(half, words, 429);
-                  run(half, cpu | (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL : 0), mask, mode, 0, b, d,
-                      words);
+                  run(half, cpu | (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL : 0), exec_mask, mode, 0,
+                      b, d, words);
                 }
 }
 
@@ -234,17 +234,18 @@ TEST(Fmac, ValidationAndZeroMasks) {
     uint32_t words[32];
     std::fill(words, words + 32, 0xfacecafe);
     auto p = words;
-    for (uint32_t mask : {0U, UINT32_MAX}) {
+    for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (unsigned bit = 0; bit < 32; ++bit)
         if ((1U << bit) & ~(half ? known16 : known32)) {
-          EXPECT_EQ(fn(0, mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(fn(0, exec_mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
         }
-      EXPECT_EQ(fn(1ULL << 63, mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p),
+      EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       if (!half) {
-        EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p),
-                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(
+            fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p),
+            GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
     }
     for (auto word : words)

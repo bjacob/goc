@@ -15,22 +15,22 @@
 namespace {
 
 template <goc::Unary Op>
-int unary(uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
+int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
           const uint32_t *const *a) {
   if (modifiers >> 32)
-    return goc::execute_dpp(flags, mask, modifiers, a,
-                            [&](uint32_t effective, const uint32_t *const *source) {
-                              return unary<Op>(flags, effective, uint32_t(modifiers), d, source);
+    return goc::execute_dpp(flags, exec_mask, modifiers, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return unary<Op>(flags, exec_mask, uint32_t(modifiers), d, source);
                             });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP |
                          GOC_ALU_HIGH_A | GOC_ALU_HIGH_D;
   if (int error = goc::validate(flags, modifiers & ~known))
     return error;
-  if (mask == 0)
+  if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::half_unary_x86_64_v3<Op>(bool(flags & GOC_FP16_OVFL), mask, modifiers, d[0], a[0]);
+    goc::half_unary_x86_64_v3<Op>(bool(flags & GOC_FP16_OVFL), exec_mask, modifiers, d[0], a[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -64,7 +64,7 @@ int unary(uint64_t flags, uint32_t mask, uint64_t modifiers, uint32_t *const *d,
     result[lane] = goc::float_to_f16(goc::alu_output_f16(value, modifiers), flags & GOC_FP16_OVFL);
   }
   for (int lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = (d[0][lane] & ~(0xffffU << d_shift)) | (uint32_t(result[lane]) << d_shift);
   return GOC_SUCCESS;
 }
@@ -121,7 +121,7 @@ int goc_rdna4_v_fract_f16(uint64_t flags, uint32_t exec_mask, uint64_t instructi
   return unary<goc::Unary::Fract>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_frexp_mant_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
-                               const uint32_t *const *a) {
-  return unary<goc::Unary::FrexpMant>(flags, mask, mode, d, a);
+int goc_rdna4_v_frexp_mant_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a) {
+  return unary<goc::Unary::FrexpMant>(flags, exec_mask, mode, d, a);
 }

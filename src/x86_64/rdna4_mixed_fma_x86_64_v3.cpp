@@ -38,7 +38,7 @@ __m128 input4(const uint32_t *p, uint32_t mode) {
 
 namespace goc {
 
-void mixed_fma_float_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void mixed_fma_float_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                                const uint32_t *b, const uint32_t *c) {
   for (int lane = 0; lane < 32; lane += 8) {
     auto x = input8(a + lane, mode), y = input8(b + lane, mode >> 1),
@@ -46,14 +46,16 @@ void mixed_fma_float_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const 
     auto result = _mm256_fmadd_ps(x, y, z);
     if (mode & GOC_ALU_CLAMP)
       result = _mm256_min_ps(_mm256_max_ps(result, _mm256_setzero_ps()), _mm256_set1_ps(1));
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, _mm256_castps_si256(result));
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask,
+                           _mm256_castps_si256(result));
   }
 }
 
-void mixed_fma_half_x86_64_v3(bool high, bool saturate, uint32_t mask, uint32_t mode, uint32_t *d,
-                              const uint32_t *a, const uint32_t *b, const uint32_t *c) {
+void mixed_fma_half_x86_64_v3(bool high, bool saturate, uint32_t exec_mask, uint32_t mode,
+                              uint32_t *d, const uint32_t *a, const uint32_t *b,
+                              const uint32_t *c) {
   for (int lane = 0; lane < 32; lane += 4) {
     auto x = input4(a + lane, mode), y = input4(b + lane, mode >> 1),
          z = input4(c + lane, mode >> 2);
@@ -63,8 +65,9 @@ void mixed_fma_half_x86_64_v3(bool high, bool saturate, uint32_t mask, uint32_t 
     auto output_mask = _mm_set1_epi32(int(uint32_t(65535) << shift));
     result = _mm_or_si128(_mm_sll_epi32(result, _mm_cvtsi32_si128(shift)),
                           _mm_andnot_si128(output_mask, original));
-    auto active = _mm_sllv_epi32(_mm_set1_epi32(int(mask >> lane)), _mm_setr_epi32(31, 30, 29, 28));
-    _mm_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask =
+        _mm_sllv_epi32(_mm_set1_epi32(int(exec_mask >> lane)), _mm_setr_epi32(31, 30, 29, 28));
+    _mm_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 

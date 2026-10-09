@@ -14,22 +14,22 @@
 namespace {
 
 template <bool Fp64>
-int ldexp(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
+int ldexp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
           const uint32_t *const *a, const uint32_t *const *b) {
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (mask == 0)
+  if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::ldexp_x86_64_v4(Fp64, mask, mode, d, a, b[0]);
+    goc::ldexp_x86_64_v4(Fp64, exec_mask, mode, d, a, b[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::ldexp_x86_64_v3(Fp64, mask, mode, d, a, b[0]);
+    goc::ldexp_x86_64_v3(Fp64, exec_mask, mode, d, a, b[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -67,26 +67,26 @@ int ldexp(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
   }
   for (int reg = 0; reg < (Fp64 ? 2 : 1); ++reg)
     for (int lane = 0; lane < 32; ++lane)
-      if ((mask >> lane) & 1)
+      if ((exec_mask >> lane) & 1)
         d[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
 }
 
 } // namespace
 
-int goc_rdna4_v_ldexp_f32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_ldexp_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
-    return goc::execute_dpp(flags, mask, mode, a,
-                            [&](uint32_t effective, const uint32_t *const *source) {
-                              return ldexp<false>(flags, effective, uint32_t(mode), d, source, b);
+    return goc::execute_dpp(flags, exec_mask, mode, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return ldexp<false>(flags, exec_mask, uint32_t(mode), d, source, b);
                             });
-  return ldexp<false>(flags, mask, mode, d, a, b);
+  return ldexp<false>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_ldexp_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_ldexp_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return ldexp<true>(flags, mask, mode, d, a, b);
+  return ldexp<true>(flags, exec_mask, mode, d, a, b);
 }

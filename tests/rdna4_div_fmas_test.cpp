@@ -100,7 +100,7 @@ TEST(DivFmas, MasksAndCrossRegisterAliases) {
   for (unsigned op = 0; op < 2; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 8; ++variant)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (unsigned first = 0; first < 8; first += (op ? 1 : 2))
             for (unsigned second = 0; second < (op ? 8u : 1u); ++second) {
               uint32_t data[8][34], expected[8][34], result[2][32], condition = random();
@@ -117,11 +117,11 @@ TEST(DivFmas, MasksAndCrossRegisterAliases) {
               unsigned dest[] = {first, second};
               for (unsigned reg = 0; reg < (op ? 2u : 1u); ++reg)
                 for (unsigned lane = 0; lane < 32; ++lane)
-                  if ((mask >> lane) & 1)
+                  if ((exec_mask >> lane) & 1)
                     expected[dest[reg]][lane + 1] = result[reg][lane];
-              ASSERT_EQ(
-                  functions[op](cpu | (variant & 1 ? exact : 0), mask, mode, d, a, b, c, condition),
-                  GOC_SUCCESS);
+              ASSERT_EQ(functions[op](cpu | (variant & 1 ? exact : 0), exec_mask, mode, d, a, b, c,
+                                      condition),
+                        GOC_SUCCESS);
               ASSERT_EQ(std::memcmp(data, expected, sizeof(data)), 0)
                   << op << "/" << cpu << "/" << variant << "/" << first << "/" << second;
             }

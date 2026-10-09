@@ -29,9 +29,9 @@ template <bool Signed> uint32_t truncate_integer(float x, uint32_t nan_result = 
 }
 
 template <Conversion32 Op>
-void conversion32_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a);
+void conversion32_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a);
 
 template <Conversion32 Op>
-void conversion32_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a);
+void conversion32_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a);
 
 } // namespace goc

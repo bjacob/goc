@@ -56,8 +56,8 @@ TEST(DivFixup, DppHalfModifiersMasksAndAliases) {
           initial[reg][lane] =
               uint32_t(goc_test::fixup_capture_values[0][(lane + reg * 3) % 16]) |
               (uint32_t(goc_test::fixup_capture_values[0][(lane * 7 + reg) % 16]) << 16);
-      for (uint32_t mask : rdna4_exec_masks()) {
-        if (mode != 0 && mode != 8191 && mask != UINT32_MAX)
+      for (uint32_t exec_mask : rdna4_exec_masks()) {
+        if (mode != 0 && mode != 8191 && exec_mask != UINT32_MAX)
           continue;
         for (bool shared : {false, true}) {
           if (shared && mode != 0 && mode != 8191)
@@ -69,7 +69,7 @@ TEST(DivFixup, DppHalfModifiersMasksAndAliases) {
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
               expected[lane] = initial[target][lane + 1];
-              if (goc_test::dpp_source(descriptor, mask, lane, source)) {
+              if (goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
                 uint32_t a = source < 0 ? 0 : initial[0][source + 1];
                 uint32_t b = initial[shared ? 0 : 1][lane + 1],
                          c = initial[shared ? 0 : 2][lane + 1];
@@ -88,7 +88,7 @@ TEST(DivFixup, DppHalfModifiersMasksAndAliases) {
                              *c[] = {words[shared ? 0 : 2] + 1};
               uint32_t *d[] = {words[target] + 1};
               ASSERT_EQ(functions[0](cpu | (mode & 1 ? GOC_FP16_OVFL : 0) | (shared ? exact : 0),
-                                     mask, descriptor | mode, d, a, b, c),
+                                     exec_mask, descriptor | mode, d, a, b, c),
                         GOC_SUCCESS);
               for (unsigned reg = 0; reg < 4; ++reg)
                 for (unsigned lane = 0; lane < 34; ++lane)
@@ -114,7 +114,7 @@ TEST(DivFixup, DppHalfHardwareCorpus) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : std::initializer_list<uint64_t>{0ULL, exact}) {
       uint64_t hash = goc_test::capture_hash_seed;
-      for (uint32_t mask : masks)
+      for (uint32_t exec_mask : masks)
         for (unsigned variant = 0; variant < 256; ++variant)
           for (uint64_t descriptor : goc_test::dpp_modes) {
             uint32_t words[4][32];
@@ -128,7 +128,7 @@ TEST(DivFixup, DppHalfHardwareCorpus) {
                             (variant & 128 ? 256 : 0) | (((variant >> 3) & 15) << 9);
             const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
             uint32_t *d[] = {words[3]};
-            ASSERT_EQ(functions[0](cpu | semantics, mask, descriptor | mode, d, a, b, c),
+            ASSERT_EQ(functions[0](cpu | semantics, exec_mask, descriptor | mode, d, a, b, c),
                       GOC_SUCCESS);
             for (uint32_t word : words[3])
               hash = goc_test::capture_hash_word(hash, word);
@@ -227,7 +227,7 @@ TEST(DivFixup, MasksAndCrossRegisterAliases) {
             (variant & 1 ? 63 : 0) | ((variant >> 1) << 6) | (variant & 1 ? GOC_ALU_CLAMP : 0);
         if (op == 0)
           mode |= (variant & 7) << 9 | (variant & 1 ? GOC_ALU_HIGH_D : 0);
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (unsigned first = 0; first < 8; first += (op == 2 ? 1 : 2))
             for (unsigned second = 0; second < (op == 2 ? 8u : 1u); ++second) {
               uint32_t data[8][34], expected[8][34];
@@ -239,14 +239,14 @@ TEST(DivFixup, MasksAndCrossRegisterAliases) {
               uint32_t *d[] = {data[first] + 1, data[second] + 1},
                        *gold[] = {expected[first] + 1, expected[second] + 1};
               for (unsigned lane = 0; lane < 32; ++lane)
-                if ((mask >> lane) & 1)
+                if ((exec_mask >> lane) & 1)
                   store(widths[op], gold, lane, mode,
                         goc_test::fixup_reference(widths[op], load(widths[op], a, lane, mode, 0),
                                                   load(widths[op], b, lane, mode, 1),
                                                   load(widths[op], c, lane, mode, 2), mode,
                                                   variant & 1));
-              ASSERT_EQ(functions[op](cpu | (variant & 1 ? GOC_FP16_OVFL | exact : 0), mask, mode,
-                                      d, a, b, c),
+              ASSERT_EQ(functions[op](cpu | (variant & 1 ? GOC_FP16_OVFL | exact : 0), exec_mask,
+                                      mode, d, a, b, c),
                         GOC_SUCCESS);
               for (unsigned reg = 0; reg < 8; ++reg)
                 for (unsigned word = 0; word < 34; ++word)

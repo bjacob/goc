@@ -10,13 +10,13 @@
 namespace {
 
 template <int Bits, goc::Shift Op>
-int shift(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int shift(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
           const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32) {
     if constexpr (Bits == 32) {
       return goc::execute_dpp(
-          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
-            return shift<Bits, Op>(flags, effective, uint32_t(mode), d, source, b);
+          flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+            return shift<Bits, Op>(flags, exec_mask, uint32_t(mode), d, source, b);
           });
     } else {
       return GOC_ERROR_INVALID_FLAGS;
@@ -25,11 +25,11 @@ int shift(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
 
   if (int error = goc::validate(flags, mode))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::shift_x86_64_v3<Bits, Op>(mask, d, a[0], b);
+    goc::shift_x86_64_v3<Bits, Op>(exec_mask, d, a[0], b);
     return GOC_SUCCESS;
   }
 #endif
@@ -56,45 +56,45 @@ int shift(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
   }
   for (int reg = 0; reg < Bits / 32; ++reg)
     for (int lane = 0; lane < 32; ++lane)
-      if ((mask >> lane) & 1)
+      if ((exec_mask >> lane) & 1)
         d[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
 }
 
 } // namespace
 
-int goc_rdna4_v_lshlrev_b32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_lshlrev_b32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  return shift<32, goc::Shift::Left>(flags, mask, mode, d, a, b);
+  return shift<32, goc::Shift::Left>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_lshrrev_b32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_lshrrev_b32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  return shift<32, goc::Shift::LogicalRight>(flags, mask, mode, d, a, b);
+  return shift<32, goc::Shift::LogicalRight>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_ashrrev_i32(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_ashrrev_i32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  return shift<32, goc::Shift::ArithmeticRight>(flags, mask, mode, d, a, b);
+  return shift<32, goc::Shift::ArithmeticRight>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_lshlrev_b64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_lshlrev_b64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return shift<64, goc::Shift::Left>(flags, mask, mode, d, a, b);
+  return shift<64, goc::Shift::Left>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_lshrrev_b64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_lshrrev_b64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return shift<64, goc::Shift::LogicalRight>(flags, mask, mode, d, a, b);
+  return shift<64, goc::Shift::LogicalRight>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_ashrrev_i64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_ashrrev_i64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return shift<64, goc::Shift::ArithmeticRight>(flags, mask, mode, d, a, b);
+  return shift<64, goc::Shift::ArithmeticRight>(flags, exec_mask, mode, d, a, b);
 }

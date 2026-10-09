@@ -125,17 +125,18 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     dpp_scalar_output |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   supports_dpp |= dpp_scalar_output;
   for (unsigned bit = 32; bit < 64; ++bit)
-    for (Mask exec : {Mask(0), Mask(~Mask(0))}) {
+    for (Mask exec_mask : {Mask(0), Mask(~Mask(0))}) {
       // A DPP enable bit alone is a valid descriptor (zero fields).
       if (supports_dpp && (bit == 32 || bit == 34)) {
         // Family tests supply required scalar outputs even for zero EXEC.
-        if (exec == 0 && !dpp_scalar_output) {
-          EXPECT_EQ(instruction(0, exec, 1ULL << bit, Operands{}...), GOC_SUCCESS);
+        if (exec_mask == 0 && !dpp_scalar_output) {
+          EXPECT_EQ(instruction(0, exec_mask, 1ULL << bit, Operands{}...), GOC_SUCCESS);
         }
         continue;
       }
       // Invalid flags must be rejected before reading even required scalar outputs.
-      EXPECT_EQ(instruction(0, exec, 1ULL << bit, Operands{}...), GOC_ERROR_INVALID_FLAGS) << bit;
+      EXPECT_EQ(instruction(0, exec_mask, 1ULL << bit, Operands{}...), GOC_ERROR_INVALID_FLAGS)
+          << bit;
     }
 }
 

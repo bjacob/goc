@@ -18,8 +18,8 @@ inline __m256i less_unsigned(__m256i a, __m256i b) {
 namespace goc {
 
 template <CarryOp Op, bool WithCarry>
-uint32_t carry_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
-                         const uint32_t *const *b, uint32_t input_carry) {
+uint32_t carry_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b, uint32_t input_carry) {
   uint32_t output_carry = 0;
   for (unsigned lane = 0; lane < 32; lane += 8) {
     auto av = _mm256_loadu_si256(
@@ -53,11 +53,11 @@ uint32_t carry_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, const
       auto limit = _mm256_set1_epi32(Op == CarryOp::Add ? -1 : 0);
       result = _mm256_blendv_epi8(result, limit, co);
     }
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d[0] + lane), active, result);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d[0] + lane), lane_exec_mask, result);
   }
-  return output_carry & mask;
+  return output_carry & exec_mask;
 }
 
 template uint32_t carry_x86_64_v3<CarryOp::Add, false>(uint32_t, uint32_t, uint32_t *const *,

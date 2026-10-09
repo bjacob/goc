@@ -36,7 +36,8 @@ inline uint32_t class_mode(unsigned m) {
          (m & 8 ? GOC_ALU_HIGH_B : 0);
 }
 
-inline bool class_reference(unsigned fmt, uint32_t lo, uint32_t hi, uint32_t mask, unsigned m) {
+inline bool class_reference(unsigned fmt, uint32_t lo, uint32_t hi, uint32_t exec_mask,
+                            unsigned m) {
   uint64_t raw = fmt == 2 ? (uint64_t(hi) << 32) | lo : lo;
   unsigned fraction_bits = fmt == 0   ? 10
                            : fmt == 1 ? 23
@@ -46,7 +47,7 @@ inline bool class_reference(unsigned fmt, uint32_t lo, uint32_t hi, uint32_t mas
                                       : 11;
   if (fmt == 0) {
     raw = (raw >> (m & 4 ? 16 : 0)) & 65535;
-    mask >>= m & 8 ? 16 : 0;
+    exec_mask >>= m & 8 ? 16 : 0;
   }
   uint64_t sign = 1ULL << (fraction_bits + exponent_bits);
   if (m & 1)
@@ -57,11 +58,11 @@ inline bool class_reference(unsigned fmt, uint32_t lo, uint32_t hi, uint32_t mas
   unsigned exponent = unsigned((raw >> fraction_bits) & ((1u << exponent_bits) - 1));
   bool negative = raw & sign, maximum = exponent == ((1u << exponent_bits) - 1);
   bool nan = maximum && fraction, quiet = (raw >> (fraction_bits - 1)) & 1;
-  return ((mask & 1) && nan && !quiet) || ((mask & 2) && nan && quiet) ||
-         ((mask & (negative ? 4 : 512)) && maximum && !fraction) ||
-         ((mask & (negative ? 8 : 256)) && exponent && !maximum) ||
-         ((mask & (negative ? 16 : 128)) && !exponent && fraction) ||
-         ((mask & (negative ? 32 : 64)) && !exponent && !fraction);
+  return ((exec_mask & 1) && nan && !quiet) || ((exec_mask & 2) && nan && quiet) ||
+         ((exec_mask & (negative ? 4 : 512)) && maximum && !fraction) ||
+         ((exec_mask & (negative ? 8 : 256)) && exponent && !maximum) ||
+         ((exec_mask & (negative ? 16 : 128)) && !exponent && fraction) ||
+         ((exec_mask & (negative ? 32 : 64)) && !exponent && !fraction);
 }
 
 inline void class_capture_inputs(unsigned fmt, unsigned start, uint32_t words[3][32]) {

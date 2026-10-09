@@ -20,7 +20,7 @@ __m256d load(const uint32_t *const *v, int lane, __m256i keep, __m256i flip) {
 }
 
 template <Fp64 Op>
-void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+void run(uint32_t exec_mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
          const uint32_t *const *b, const uint32_t *const *c) {
   auto ka = _mm256_set1_epi64x(mode & GOC_ALU_ABS_A ? INT64_MAX : -1);
   auto kb = _mm256_set1_epi64x(mode & GOC_ALU_ABS_B ? INT64_MAX : -1);
@@ -101,51 +101,51 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
   // Source halves can alias either output half, so delay all masked writes.
   for (int reg = 0; reg < 2; ++reg)
     for (int lane = 0; lane < 32; lane += 8) {
-      auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                      _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+      auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                              _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
       _mm256_maskstore_epi32(
-          reinterpret_cast<int *>(d[reg] + lane), active,
+          reinterpret_cast<int *>(d[reg] + lane), lane_exec_mask,
           _mm256_loadu_si256(reinterpret_cast<const __m256i *>(result[reg] + lane)));
     }
 }
 
 } // namespace
 
-void fp64_x86_64_v3(Fp64 op, uint32_t mask, uint32_t mode, uint32_t *const *d,
+void fp64_x86_64_v3(Fp64 op, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   switch (op) {
   case Fp64::FrexpMant:
-    return run<Fp64::FrexpMant>(mask, mode, d, a, b, c);
+    return run<Fp64::FrexpMant>(exec_mask, mode, d, a, b, c);
   case Fp64::Trunc:
-    return run<Fp64::Trunc>(mask, mode, d, a, b, c);
+    return run<Fp64::Trunc>(exec_mask, mode, d, a, b, c);
   case Fp64::Ceil:
-    return run<Fp64::Ceil>(mask, mode, d, a, b, c);
+    return run<Fp64::Ceil>(exec_mask, mode, d, a, b, c);
   case Fp64::Rndne:
-    return run<Fp64::Rndne>(mask, mode, d, a, b, c);
+    return run<Fp64::Rndne>(exec_mask, mode, d, a, b, c);
   case Fp64::Floor:
-    return run<Fp64::Floor>(mask, mode, d, a, b, c);
+    return run<Fp64::Floor>(exec_mask, mode, d, a, b, c);
   case Fp64::Fract:
-    return run<Fp64::Fract>(mask, mode, d, a, b, c);
+    return run<Fp64::Fract>(exec_mask, mode, d, a, b, c);
   case Fp64::Sqrt:
-    return run<Fp64::Sqrt>(mask, mode, d, a, b, c);
+    return run<Fp64::Sqrt>(exec_mask, mode, d, a, b, c);
   case Fp64::Rcp:
-    return run<Fp64::Rcp>(mask, mode, d, a, b, c);
+    return run<Fp64::Rcp>(exec_mask, mode, d, a, b, c);
   case Fp64::Rsq:
-    return run<Fp64::Rsq>(mask, mode, d, a, b, c);
+    return run<Fp64::Rsq>(exec_mask, mode, d, a, b, c);
   case Fp64::MinNum:
-    return run<Fp64::MinNum>(mask, mode, d, a, b, c);
+    return run<Fp64::MinNum>(exec_mask, mode, d, a, b, c);
   case Fp64::MaxNum:
-    return run<Fp64::MaxNum>(mask, mode, d, a, b, c);
+    return run<Fp64::MaxNum>(exec_mask, mode, d, a, b, c);
   case Fp64::Minimum:
-    return run<Fp64::Minimum>(mask, mode, d, a, b, c);
+    return run<Fp64::Minimum>(exec_mask, mode, d, a, b, c);
   case Fp64::Maximum:
-    return run<Fp64::Maximum>(mask, mode, d, a, b, c);
+    return run<Fp64::Maximum>(exec_mask, mode, d, a, b, c);
   case Fp64::Add:
-    return run<Fp64::Add>(mask, mode, d, a, b, c);
+    return run<Fp64::Add>(exec_mask, mode, d, a, b, c);
   case Fp64::Mul:
-    return run<Fp64::Mul>(mask, mode, d, a, b, c);
+    return run<Fp64::Mul>(exec_mask, mode, d, a, b, c);
   case Fp64::Fma:
-    return run<Fp64::Fma>(mask, mode, d, a, b, c);
+    return run<Fp64::Fma>(exec_mask, mode, d, a, b, c);
   }
 }
 

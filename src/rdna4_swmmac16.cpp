@@ -15,21 +15,20 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                          GOC_WMMA_NEG_HI_B | GOC_SWMMAC_INDEX_KEY_1;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  uint32_t mask = exec_mask;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
   goc::SwmmacFloatInputs input;
   goc::swmmac16_prepare<Bf16, Packed>(input, mode, d, a, b, index);
   bool saturate = (flags & GOC_FP16_OVFL) != 0;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::swmmac_float_x86_64_v4<Bf16, Packed>(mask, mode, d, input, saturate);
+    goc::swmmac_float_x86_64_v4<Bf16, Packed>(exec_mask, mode, d, input, saturate);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::swmmac_float_x86_64_v3<Bf16, Packed>(mask, mode, d, input, saturate);
+    goc::swmmac_float_x86_64_v3<Bf16, Packed>(exec_mask, mode, d, input, saturate);
     return GOC_SUCCESS;
   }
 #endif
@@ -38,7 +37,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   goc::swmmac_float_pack<Bf16, Packed>(result, input.acc, saturate);
   for (unsigned reg = 0; reg < (Packed ? 4u : 8u); ++reg)
     for (unsigned lane = 0; lane < 32; ++lane)
-      if ((mask >> lane) & 1)
+      if ((exec_mask >> lane) & 1)
         d[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
 }

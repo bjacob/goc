@@ -18,7 +18,7 @@ TEST(ScalarBits, HardwareResultsAndScc) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (unsigned seed = 0; seed < 2; ++seed)
-        for (uint32_t mask : {0U, UINT32_MAX, 0xaaaaaaaaU})
+        for (uint32_t exec_mask : {0U, UINT32_MAX, 0xaaaaaaaaU})
           for (unsigned op = 0; op < 30; ++op) {
             uint64_t hash = goc_test::capture_hash_seed;
             for (unsigned i = 0; i < 4096; ++i) {
@@ -27,25 +27,25 @@ TEST(ScalarBits, HardwareResultsAndScc) {
               uint64_t a = (uint64_t(w[1]) << 32) | w[0], b = (uint64_t(w[3]) << 32) | w[2],
                        d64 = 0;
               uint32_t d = 0, cc = seed;
-              ASSERT_EQ(goc_test::scalar_bits_call(op, cpu | semantics | GOC_SEMANTICS_STRICT, mask,
-                                                   0, &d, &d64, a, b, &cc),
+              ASSERT_EQ(goc_test::scalar_bits_call(op, cpu | semantics | GOC_SEMANTICS_STRICT,
+                                                   exec_mask, 0, &d, &d64, a, b, &cc),
                         GOC_SUCCESS);
               bool wide = op < 26 && (op & 1);
               for (uint32_t word : {wide ? uint32_t(d64) : d, wide ? uint32_t(d64 >> 32) : 0u, cc})
                 hash = goc_test::capture_hash_word(hash, word);
             }
             ASSERT_EQ(hash, goc_test::scalar_bits_hardware[seed][op])
-                << cpu << "/" << semantics << "/" << seed << "/" << mask << "/" << op;
+                << cpu << "/" << semantics << "/" << seed << "/" << exec_mask << "/" << op;
           }
 }
 
 TEST(ScalarBits, ExecAndOverlappingScalarOutputs) {
   for (unsigned op = 0; op < 30; ++op)
-    for (uint32_t mask : rdna4_exec_masks()) {
+    for (uint32_t exec_mask : rdna4_exec_masks()) {
       uint32_t d = 0, cc = 7;
       uint64_t wide = 0;
       const uint64_t a = 0x87654321abcdef01ULL, b = 0x1234567800000041ULL;
-      ASSERT_EQ(goc_test::scalar_bits_call(op, 0, mask, 0, &d, &wide, a, b, &cc), GOC_SUCCESS);
+      ASSERT_EQ(goc_test::scalar_bits_call(op, 0, exec_mask, 0, &d, &wide, a, b, &cc), GOC_SUCCESS);
       if (op < 26 && (op & 1)) {
         for (unsigned word = 0; word < 2; ++word) {
           uint64_t storage[] = {123, a, 456}, expected = wide;
@@ -54,8 +54,8 @@ TEST(ScalarBits, ExecAndOverlappingScalarOutputs) {
           if (op != 19)
             std::memcpy(reinterpret_cast<unsigned char *>(&expected) + word * sizeof(uint32_t), &cc,
                         sizeof(cc));
-          ASSERT_EQ(goc_test::scalar_bits_call(op, 0, mask, 0, nullptr, storage + 1, storage[1], b,
-                                               status),
+          ASSERT_EQ(goc_test::scalar_bits_call(op, 0, exec_mask, 0, nullptr, storage + 1,
+                                               storage[1], b, status),
                     GOC_SUCCESS);
           EXPECT_EQ(storage[1], expected);
           EXPECT_EQ(storage[0], 123u);
@@ -63,8 +63,8 @@ TEST(ScalarBits, ExecAndOverlappingScalarOutputs) {
         }
       } else {
         uint32_t storage[] = {123, uint32_t(a), 456};
-        ASSERT_EQ(goc_test::scalar_bits_call(op, 0, mask, 0, storage + 1, nullptr, storage[1], b,
-                                             storage + 1),
+        ASSERT_EQ(goc_test::scalar_bits_call(op, 0, exec_mask, 0, storage + 1, nullptr, storage[1],
+                                             b, storage + 1),
                   GOC_SUCCESS);
         EXPECT_EQ(storage[1], op == 18 ? d : cc);
         EXPECT_EQ(storage[0], 123u);

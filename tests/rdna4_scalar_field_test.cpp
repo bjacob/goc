@@ -18,7 +18,7 @@ TEST(ScalarField, HardwareResultsAndScc) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
       for (unsigned seed = 0; seed < 2; ++seed)
-        for (uint32_t mask : {0U, UINT32_MAX, 0xaaaaaaaaU})
+        for (uint32_t exec_mask : {0U, UINT32_MAX, 0xaaaaaaaaU})
           for (unsigned op = 0; op < 20; ++op) {
             uint64_t hash = goc_test::capture_hash_seed;
             for (unsigned i = 0; i < 16384; ++i) {
@@ -28,24 +28,24 @@ TEST(ScalarField, HardwareResultsAndScc) {
                        d64 = a;
               uint32_t d = uint32_t(a), cc = seed;
               ASSERT_EQ(goc_test::scalar_field_call(op, cpu | semantics | GOC_SEMANTICS_STRICT,
-                                                    mask, 0, &d, &d64, a, b, &cc),
+                                                    exec_mask, 0, &d, &d64, a, b, &cc),
                         GOC_SUCCESS);
               bool wide = (op == 2 || op == 3 || op == 5 || op == 17 || op == 19);
               for (uint32_t word : {wide ? uint32_t(d64) : d, wide ? uint32_t(d64 >> 32) : 0u, cc})
                 hash = goc_test::capture_hash_word(hash, word);
             }
             ASSERT_EQ(hash, goc_test::scalar_field_hardware[seed][op])
-                << cpu << "/" << semantics << "/" << seed << "/" << mask << "/" << op;
+                << cpu << "/" << semantics << "/" << seed << "/" << exec_mask << "/" << op;
           }
 }
 
 TEST(ScalarField, ExecAndAliasing) {
   const uint64_t a = 0x87654321abcdef01ULL;
   for (unsigned op = 0; op < 20; ++op)
-    for (uint32_t mask : rdna4_exec_masks()) {
+    for (uint32_t exec_mask : rdna4_exec_masks()) {
       uint32_t d = uint32_t(a), cc = 7;
       uint64_t wide = a;
-      ASSERT_EQ(goc_test::scalar_field_call(op, 0, mask, 0, &d, &wide, a, 0x3f0011, &cc),
+      ASSERT_EQ(goc_test::scalar_field_call(op, 0, exec_mask, 0, &d, &wide, a, 0x3f0011, &cc),
                 GOC_SUCCESS);
       bool wide_output = op == 2 || op == 3 || op == 5 || op == 17 || op == 19;
       bool writes_scc = op < 4 || (op >= 6 && op < 10);
@@ -56,8 +56,8 @@ TEST(ScalarField, ExecAndAliasing) {
           auto status = reinterpret_cast<uint32_t *>(bytes + 4 * word);
           if (writes_scc)
             std::memcpy(reinterpret_cast<unsigned char *>(&expected) + 4 * word, &cc, 4);
-          ASSERT_EQ(goc_test::scalar_field_call(op, 0, mask, 0, nullptr, storage + 1, storage[1],
-                                                0x3f0011, status),
+          ASSERT_EQ(goc_test::scalar_field_call(op, 0, exec_mask, 0, nullptr, storage + 1,
+                                                storage[1], 0x3f0011, status),
                     GOC_SUCCESS);
           EXPECT_EQ(storage[1], expected);
           EXPECT_EQ(storage[0], 123u);
@@ -65,13 +65,13 @@ TEST(ScalarField, ExecAndAliasing) {
         }
       } else {
         uint32_t storage[] = {123, uint32_t(a), 456};
-        ASSERT_EQ(goc_test::scalar_field_call(op, 0, mask, 0, storage + 1, nullptr, storage[1],
+        ASSERT_EQ(goc_test::scalar_field_call(op, 0, exec_mask, 0, storage + 1, nullptr, storage[1],
                                               0x3f0011, storage + 1),
                   GOC_SUCCESS);
         // 64-bit inputs remain by value even when the output is 32 bits.
         uint32_t expected = uint32_t(a), status = 7;
         uint64_t unused = 0;
-        ASSERT_EQ(goc_test::scalar_field_call(op, 0, mask, 0, &expected, &unused, uint32_t(a),
+        ASSERT_EQ(goc_test::scalar_field_call(op, 0, exec_mask, 0, &expected, &unused, uint32_t(a),
                                               0x3f0011, &status),
                   GOC_SUCCESS);
         EXPECT_EQ(storage[1], writes_scc ? status : expected);

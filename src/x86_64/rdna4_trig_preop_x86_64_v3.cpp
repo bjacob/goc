@@ -8,8 +8,8 @@
 
 namespace goc {
 
-void trig_preop_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *a_hi,
-                          const uint32_t *b) {
+void trig_preop_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *a_hi, const uint32_t *b) {
   uint32_t result[2][32];
   for (unsigned lane = 0; lane < 32; lane += 4) {
     auto a = _mm_loadu_si128(reinterpret_cast<const __m128i *>(a_hi + lane));
@@ -48,10 +48,10 @@ void trig_preop_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, cons
   }
   for (unsigned reg = 0; reg < 2; ++reg)
     for (unsigned lane = 0; lane < 32; lane += 8) {
-      auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                      _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+      auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                              _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
       auto value = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(result[reg] + lane));
-      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[reg] + lane), active, value);
+      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[reg] + lane), lane_exec_mask, value);
     }
 }
 

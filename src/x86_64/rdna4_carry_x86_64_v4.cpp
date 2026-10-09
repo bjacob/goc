@@ -9,8 +9,8 @@
 namespace goc {
 
 template <CarryOp Op, bool WithCarry>
-uint32_t carry_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
-                         const uint32_t *const *b, uint32_t input_carry) {
+uint32_t carry_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b, uint32_t input_carry) {
   uint32_t output_carry = 0;
   for (unsigned lane = 0; lane < 32; lane += 16) {
     auto av = _mm512_loadu_si512(
@@ -40,9 +40,9 @@ uint32_t carry_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d, const
     output_carry |= uint32_t(co) << lane;
     if (mode & GOC_ALU_CLAMP)
       result = _mm512_mask_mov_epi32(result, co, _mm512_set1_epi32(Op == CarryOp::Add ? -1 : 0));
-    _mm512_mask_storeu_epi32(d[0] + lane, __mmask16(mask >> lane), result);
+    _mm512_mask_storeu_epi32(d[0] + lane, __mmask16(exec_mask >> lane), result);
   }
-  return output_carry & mask;
+  return output_carry & exec_mask;
 }
 
 template uint32_t carry_x86_64_v4<CarryOp::Add, false>(uint32_t, uint32_t, uint32_t *const *,

@@ -8,7 +8,7 @@
 
 namespace goc {
 
-void mullit_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void mullit_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                       const uint32_t *b, const uint32_t *c) {
   auto bits = [](uint32_t x) { return _mm512_castsi512_ps(_mm512_set1_epi32(int(x))); };
   auto zero = _mm512_setzero_ps();
@@ -41,7 +41,7 @@ void mullit_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t 
     }
     if (mode & GOC_ALU_CLAMP)
       value = _mm512_min_ps(_mm512_max_ps(value, zero), _mm512_set1_ps(1.0f));
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), _mm512_castps_si512(value));
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), _mm512_castps_si512(value));
   }
 }
 

@@ -19,9 +19,9 @@ namespace {
 
 using Fn = decltype(&goc_rdna4_v_ldexp_f16);
 
-int frexp_exp(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int frexp_exp(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
               const uint32_t *const *a, const uint32_t *const *) {
-  return goc_rdna4_v_frexp_exp_i16_f16(flags, mask, mode, d, a);
+  return goc_rdna4_v_frexp_exp_i16_f16(flags, exec_mask, mode, d, a);
 }
 
 const Fn functions[] = {goc_rdna4_v_ldexp_f16, frexp_exp};
@@ -149,11 +149,11 @@ TEST(HalfExponent, AllModifiersMasksAndAliases) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < (op == 0 ? 256u : 128u); ++variant)
         for (bool saturate : {false, true})
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (int layout = 0; layout < (op == 0 ? 5 : 2); ++layout) {
               auto mode = modifiers(variant);
               SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << mode << '/'
-                                                << saturate << '/' << mask << '/' << layout);
+                                                << saturate << '/' << exec_mask << '/' << layout);
               uint32_t words[3][34], before[3][34];
               for (int reg = 0; reg < 3; ++reg) {
                 std::fill(words[reg], words[reg] + 34, 0xdeadbeef);
@@ -168,12 +168,12 @@ TEST(HalfExponent, AllModifiersMasksAndAliases) {
               int dest = layout % 3 == 0 ? 2 : layout % 3 - 1;
               int b = layout >= 3 ? 0 : 1;
               uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
-              ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), mask, mode, p + dest, p,
-                                      p + b),
+              ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask, mode,
+                                      p + dest, p, p + b),
                         GOC_SUCCESS);
               for (int reg = 0; reg < 3; ++reg)
                 for (int lane = 0; lane < 34; ++lane) {
-                  if (reg == dest && lane >= 1 && lane <= 32 && ((mask >> (lane - 1)) & 1)) {
+                  if (reg == dest && lane >= 1 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
                     check(op, words[reg][lane], before[reg][lane],
                           reference(op, before[0][lane], before[b][lane], mode, saturate), mode);
                   } else {
@@ -264,16 +264,16 @@ TEST(HalfExponent, ValidationAndSemantics) {
     std::fill(data, data + 32, 0xdeadbeef);
     auto p = data;
     uint32_t known = common_modes | (op == 0 ? GOC_ALU_HIGH_B : 0);
-    for (uint32_t mask : {0U, UINT32_MAX}) {
+    for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit) {
         if (!(known & (1U << bit))) {
-          EXPECT_EQ(functions[op](0, mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(functions[op](0, exec_mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
         }
       }
-      EXPECT_EQ(functions[op](1ULL << 63, mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(
-          functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p),
-          GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      EXPECT_EQ(functions[op](1ULL << 63, exec_mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0,
+                              &p, &p, &p),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (auto word : data)
       EXPECT_EQ(word, 0xdeadbeef);
@@ -291,11 +291,11 @@ TEST(HalfExponent, DppMasksAndAliases) {
       for (unsigned variant : {0u, 127u, op == 0 ? 255u : 73u})
         for (uint64_t descriptor : goc_test::dpp_modes)
           for (bool saturate : {false, true})
-            for (uint32_t mask : rdna4_exec_masks())
+            for (uint32_t exec_mask : rdna4_exec_masks())
               for (int layout = 0; layout < (op == 0 ? 5 : 2); ++layout) {
                 auto mode = modifiers(variant);
                 SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << mode << '/'
-                                                  << saturate << '/' << mask << '/' << layout);
+                                                  << saturate << '/' << exec_mask << '/' << layout);
                 uint32_t words[3][34], before[3][34];
                 for (int reg = 0; reg < 3; ++reg) {
                   std::fill(words[reg], words[reg] + 34, 0xdeadbeef);
@@ -310,14 +310,14 @@ TEST(HalfExponent, DppMasksAndAliases) {
                 int dest = layout % 3 == 0 ? 2 : layout % 3 - 1;
                 int b = layout >= 3 ? 0 : 1;
                 uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
-                ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), mask,
+                ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask,
                                         descriptor | mode, p + dest, p, p + b),
                           GOC_SUCCESS);
                 for (int reg = 0; reg < 3; ++reg)
                   for (int lane = 0; lane < 34; ++lane) {
                     int source = -1;
                     if (reg == dest && lane >= 1 && lane <= 32 &&
-                        goc_test::dpp_source(descriptor, mask, lane - 1, source)) {
+                        goc_test::dpp_source(descriptor, exec_mask, lane - 1, source)) {
                       check(op, words[reg][lane], before[reg][lane],
                             reference(op, source < 0 ? 0 : before[0][source + 1], before[b][lane],
                                       mode, saturate),
@@ -363,7 +363,7 @@ TEST(HalfExponent, DppHardwareCorpus) {
                              0x08008800, 0x3c00bc00, 0x00008000, 0x7bfffbff};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (uint32_t mask :
+    for (uint32_t exec_mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
       for (unsigned op = 0; op < 2; ++op)
         for (uint64_t descriptor : goc_test::dpp_modes)
@@ -375,7 +375,7 @@ TEST(HalfExponent, DppHardwareCorpus) {
               d[lane] = 0xdead0000u + lane;
             }
             auto pa = a, pb = b, pd = d;
-            ASSERT_EQ(functions[op](cpu, mask, descriptor | mode, &pd, &pa, &pb), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, descriptor | mode, &pd, &pa, &pb), GOC_SUCCESS);
             for (auto word : d)
               hash = goc_test::capture_hash_word(hash, word);
           }

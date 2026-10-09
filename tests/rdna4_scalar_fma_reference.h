@@ -46,15 +46,15 @@ inline void scalar_fma_inputs(unsigned i, bool half, uint32_t *w) {
 }
 
 // Variant 0/1 is FMAC; variants 2..13 / 14..25 are FMAAK / FMAMK literals.
-inline int scalar_fma_call(unsigned variant, uint64_t flags, uint32_t mask, uint64_t mode,
+inline int scalar_fma_call(unsigned variant, uint64_t flags, uint32_t exec_mask, uint64_t mode,
                            uint32_t *d, uint32_t a, uint32_t b) {
   if (variant == 0)
-    return goc_rdna4_s_fmac_f32(flags, mask, mode, d, a, b);
+    return goc_rdna4_s_fmac_f32(flags, exec_mask, mode, d, a, b);
   if (variant == 1)
-    return goc_rdna4_s_fmac_f16(flags, mask, mode, d, a, b);
+    return goc_rdna4_s_fmac_f16(flags, exec_mask, mode, d, a, b);
   if (variant < 14)
-    return goc_rdna4_s_fmaak_f32(flags, mask, mode, d, a, b, scalar_fma_literals[variant - 2]);
-  return goc_rdna4_s_fmamk_f32(flags, mask, mode, d, a, scalar_fma_literals[variant - 14], b);
+    return goc_rdna4_s_fmaak_f32(flags, exec_mask, mode, d, a, b, scalar_fma_literals[variant - 2]);
+  return goc_rdna4_s_fmamk_f32(flags, exec_mask, mode, d, a, scalar_fma_literals[variant - 14], b);
 }
 
 } // namespace goc_test

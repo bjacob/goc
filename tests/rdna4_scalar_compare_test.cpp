@@ -43,13 +43,13 @@ TEST(ScalarCompare, ExecIgnoredAndOutputMayOverlapEitherSourceWord) {
       goc_test::scalar_compare_inputs(sample, op, w);
       uint64_t a = (uint64_t(w[1]) << 32) | w[0], b = (uint64_t(w[3]) << 32) | w[2];
       ASSERT_EQ(goc_test::scalar_compare_call(op, 0, UINT32_MAX, 0, &expected, a, b), GOC_SUCCESS);
-      for (uint32_t mask : rdna4_exec_masks())
+      for (uint32_t exec_mask : rdna4_exec_masks())
         for (unsigned alias = 0; alias < 4; ++alias) {
           uint64_t words[] = {123, a, b, 456}, want[] = {123, a, b, 456};
           auto out = reinterpret_cast<uint32_t *>(reinterpret_cast<unsigned char *>(words + 1) +
                                                   alias * 4);
           std::memcpy(reinterpret_cast<unsigned char *>(want + 1) + alias * 4, &expected, 4);
-          ASSERT_EQ(goc_test::scalar_compare_call(op, 0, mask, 0, out, words[1], words[2]),
+          ASSERT_EQ(goc_test::scalar_compare_call(op, 0, exec_mask, 0, out, words[1], words[2]),
                     GOC_SUCCESS);
           for (unsigned j = 0; j < 4; ++j)
             EXPECT_EQ(words[j], want[j]);

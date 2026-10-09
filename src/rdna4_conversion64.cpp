@@ -12,7 +12,7 @@
 namespace {
 
 template <goc::Conversion64 Op>
-int convert(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
+int convert(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
             const uint32_t *const *a) {
   constexpr bool from_integer =
       Op == goc::Conversion64::SignedToDouble || Op == goc::Conversion64::UnsignedToDouble;
@@ -21,11 +21,11 @@ int convert(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
       GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | (from_integer ? 0 : GOC_ALU_NEG_A | GOC_ALU_ABS_A);
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::conversion64_x86_64_v4<Op>(mask, mode, d, a);
+    goc::conversion64_x86_64_v4<Op>(exec_mask, mode, d, a);
     return GOC_SUCCESS;
   }
 #endif
@@ -33,7 +33,7 @@ int convert(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
   // The AVX2 signed truncating candidate was roughly tied with baseline.
   if constexpr (Op != goc::Conversion64::DoubleToSigned) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::conversion64_x86_64_v3<Op>(mask, mode, d, a);
+      goc::conversion64_x86_64_v3<Op>(exec_mask, mode, d, a);
       return GOC_SUCCESS;
     }
   }
@@ -78,7 +78,7 @@ int convert(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
   }
   for (int reg = 0; reg < (to_double ? 2 : 1); ++reg)
     for (int lane = 0; lane < 32; ++lane)
-      if ((mask >> lane) & 1)
+      if ((exec_mask >> lane) & 1)
         d[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
 }

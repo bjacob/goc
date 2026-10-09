@@ -8,8 +8,8 @@
 
 namespace goc {
 
-void trig_preop_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *a_hi,
-                          const uint32_t *b) {
+void trig_preop_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *a_hi, const uint32_t *b) {
   uint32_t result[2][32];
   for (unsigned lane = 0; lane < 32; lane += 8) {
     auto a = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a_hi + lane));
@@ -42,7 +42,7 @@ void trig_preop_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d, cons
   }
   for (unsigned reg = 0; reg < 2; ++reg)
     for (unsigned lane = 0; lane < 32; lane += 16)
-      _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(mask >> lane),
+      _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(exec_mask >> lane),
                                _mm512_loadu_si512(result[reg] + lane));
 }
 

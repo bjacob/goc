@@ -103,7 +103,7 @@ TEST(Shift, MasksAndEveryDestinationAlias) {
           uint64_t value = original[source[1]][lane] | (uint64_t(original[source[2]][lane]) << 32);
           results[lane] = goc_test::shift_reference(bits, op % 3, original[source[0]][lane], value);
         }
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (int low = 0; low < 5; ++low)
             for (int high = 0; high < (bits == 64 ? 5 : 1); ++high) {
               uint32_t words[5][32], expected[5][32];
@@ -115,16 +115,16 @@ TEST(Shift, MasksAndEveryDestinationAlias) {
                              *bp[] = {words[source[1]], words[source[2]]};
               uint32_t *dp[] = {words[low], words[high]};
               for (int lane = 0; lane < 32; ++lane)
-                if ((mask >> lane) & 1) {
+                if ((exec_mask >> lane) & 1) {
                   expected[low][lane] = uint32_t(results[lane]);
                   if (bits == 64)
                     expected[high][lane] = uint32_t(results[lane] >> 32);
                 }
-              ASSERT_EQ(functions[op](cpu, mask, 0, dp, ap, bp), GOC_SUCCESS);
+              ASSERT_EQ(functions[op](cpu, exec_mask, 0, dp, ap, bp), GOC_SUCCESS);
               for (int reg = 0; reg < 5; ++reg)
                 for (int lane = 0; lane < 32; ++lane)
                   ASSERT_EQ(words[reg][lane], expected[reg][lane])
-                      << op << "/" << cpu << "/" << mask << "/" << low << "/" << high;
+                      << op << "/" << cpu << "/" << exec_mask << "/" << low << "/" << high;
             }
       }
 }
@@ -168,11 +168,11 @@ TEST(Shift, RejectsModifiersAndStrictExactBeforeEmptyMask) {
     uint32_t *dp[] = {d[0], d[1]};
     for (auto &reg : d)
       std::fill_n(reg, 32, 0xdeadbeef);
-    for (uint32_t mask : {0U, UINT32_MAX}) {
+    for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit)
-        EXPECT_EQ(fn(0, mask, uint32_t(1) << bit, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(1ULL << 63, mask, 0, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, dp, ap, bp),
+        EXPECT_EQ(fn(0, exec_mask, uint32_t(1) << bit, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, dp, ap, bp),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (const auto &reg : d)

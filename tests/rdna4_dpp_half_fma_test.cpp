@@ -36,7 +36,7 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t sem : {uint64_t{0}, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
       uint64_t hash = goc_test::capture_hash_seed;
-      for (uint32_t mask :
+      for (uint32_t exec_mask :
            {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
         for (unsigned op = 0; op < 2; ++op)
           for (uint64_t mode : modes(op)) {
@@ -48,12 +48,13 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
               d[lane] = values[(lane + 1) % 8];
             }
             auto pa = a, pb = b, pc = c, pd = d;
-            ASSERT_EQ(goc_test::half_fma_functions[op](cpu | sem, mask, mode, &pd, &pa, &pb, &pc),
-                      GOC_SUCCESS);
+            ASSERT_EQ(
+                goc_test::half_fma_functions[op](cpu | sem, exec_mask, mode, &pd, &pa, &pb, &pc),
+                GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
               uint32_t want = values[(lane + 1) % 8];
-              if (goc_test::dpp_source(mode, mask, lane, source))
+              if (goc_test::dpp_source(mode, exec_mask, lane, source))
                 want = goc_test::half_fma_result(op, source < 0 ? 0 : a[source], b[lane], c[lane],
                                                  uint32_t(mode), want);
               ASSERT_EQ(d[lane], want) << cpu << '/' << op << '/' << mode << '/' << lane;
@@ -84,11 +85,11 @@ TEST(DppHalfFma, MasksAliasesAndRandomWords) {
     for (uint64_t sem : {uint64_t{0}, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
       for (unsigned op = 0; op < 2; ++op)
         for (uint64_t mode : modes(op))
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (const auto &layout : layouts)
               for (unsigned dest = 0; dest < 4; ++dest) {
                 SCOPED_TRACE(::testing::Message()
-                             << cpu << '/' << op << '/' << mode << '/' << mask << '/' << dest);
+                             << cpu << '/' << op << '/' << mode << '/' << exec_mask << '/' << dest);
                 uint32_t words[4][34], before[4][34];
                 uint32_t seed = 231;
                 for (auto &reg : words) {
@@ -101,7 +102,7 @@ TEST(DppHalfFma, MasksAliasesAndRandomWords) {
                 }
                 std::memcpy(before, words, sizeof(words));
                 uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1, words[3] + 1};
-                ASSERT_EQ(goc_test::half_fma_functions[op](cpu | sem, mask, mode, p + dest,
+                ASSERT_EQ(goc_test::half_fma_functions[op](cpu | sem, exec_mask, mode, p + dest,
                                                            p + layout[0], p + layout[1],
                                                            p + layout[2]),
                           GOC_SUCCESS);
@@ -110,7 +111,7 @@ TEST(DppHalfFma, MasksAliasesAndRandomWords) {
                     uint32_t want = before[reg][index];
                     int source;
                     bool written = reg == dest && index > 0 && index < 33 &&
-                                   goc_test::dpp_source(mode, mask, index - 1, source);
+                                   goc_test::dpp_source(mode, exec_mask, index - 1, source);
                     if (written)
                       want = goc_test::half_fma_result(
                           op, source < 0 ? 0 : before[layout[0]][source + 1],
@@ -132,21 +133,21 @@ TEST(DppHalfFma, Validation) {
     for (uint64_t mode : modes(op)) {
       auto fn = goc_test::half_fma_functions[op];
       EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-      for (uint32_t mask : {0U, UINT32_MAX}) {
+      for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         if (op == 1) {
           for (uint32_t invalid : {GOC_ALU_NEG_C, GOC_ALU_ABS_C, GOC_ALU_HIGH_C})
-            EXPECT_EQ(fn(0, mask, mode | invalid, nullptr, nullptr, nullptr, nullptr),
+            EXPECT_EQ(fn(0, exec_mask, mode | invalid, nullptr, nullptr, nullptr, nullptr),
                       GOC_ERROR_INVALID_FLAGS);
         }
-        EXPECT_EQ(fn(0, mask, mode | (1u << 13), nullptr, nullptr, nullptr, nullptr),
+        EXPECT_EQ(fn(0, exec_mask, mode | (1u << 13), nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(0, mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr, nullptr),
+        EXPECT_EQ(fn(0, exec_mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(1ULL << 63, mask, mode, nullptr, nullptr, nullptr, nullptr),
+        EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(
-            fn((2ULL << 16) | GOC_SEMANTICS_STRICT, mask, mode, nullptr, nullptr, nullptr, nullptr),
-            GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, mode, nullptr, nullptr,
+                     nullptr, nullptr),
+                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
     }
 }

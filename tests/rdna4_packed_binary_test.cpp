@@ -63,15 +63,15 @@ void fill(uint32_t (&words)[3][34]) {
   }
 }
 
-void run(int op, uint64_t flags, uint32_t mask, uint64_t mode, int b, int d,
+void run(int op, uint64_t flags, uint32_t exec_mask, uint64_t mode, int b, int d,
          uint32_t (&words)[3][34]) {
   uint32_t before[3][34];
   std::memcpy(before, words, sizeof(before));
   uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
-  ASSERT_EQ(functions[op](flags, mask, mode, p + d, p, p + b), GOC_SUCCESS);
+  ASSERT_EQ(functions[op](flags, exec_mask, mode, p + d, p, p + b), GOC_SUCCESS);
   for (int reg = 0; reg < 3; ++reg)
     for (int lane = 0; lane < 34; ++lane) {
-      if (reg == d && lane >= 1 && lane <= 32 && ((mask >> (lane - 1)) & 1)) {
+      if (reg == d && lane >= 1 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
         check(words[reg][lane],
               reference(op, before[0][lane], before[b][lane], mode, flags & GOC_FP16_OVFL));
       } else {
@@ -132,14 +132,14 @@ TEST(PackedBinary, MasksAndAllWholeRegisterAliases) {
   for (int op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (auto mode : modes)
-        for (auto mask : rdna4_exec_masks())
+        for (auto exec_mask : rdna4_exec_masks())
           for (int b : {0, 1})
             for (int d = 0; d < 3; ++d) {
-              SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << mode << '/' << mask
-                                                << '/' << b << '/' << d);
+              SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << mode << '/'
+                                                << exec_mask << '/' << b << '/' << d);
               uint32_t words[3][34];
               fill(words);
-              run(op, cpu, mask, mode, b, d, words);
+              run(op, cpu, exec_mask, mode, b, d, words);
             }
 }
 
@@ -187,14 +187,14 @@ TEST(PackedBinary, ValidationAndSemantics) {
     uint32_t words[32];
     std::fill(words, words + 32, 0xfacecafe);
     auto p = words;
-    for (uint32_t mask : {0U, UINT32_MAX}) {
+    for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (unsigned bit = 0; bit < 32; ++bit) {
         if ((1U << bit) & ~known) {
-          EXPECT_EQ(fn(0, mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(fn(0, exec_mask, 1U << bit, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
         }
       }
-      EXPECT_EQ(fn(1ULL << 63, mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &p, &p, &p),
+      EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (auto word : words)

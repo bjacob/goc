@@ -24,21 +24,21 @@ double number(uint64_t value) {
   return result;
 }
 
-int call(int op, uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int call(int op, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (op == 0)
-    return goc_rdna4_v_add_f64(flags, mask, mode, d, a, b);
+    return goc_rdna4_v_add_f64(flags, exec_mask, mode, d, a, b);
   if (op == 1)
-    return goc_rdna4_v_mul_f64(flags, mask, mode, d, a, b);
+    return goc_rdna4_v_mul_f64(flags, exec_mask, mode, d, a, b);
   if (op == 3)
-    return goc_rdna4_v_min_num_f64(flags, mask, mode, d, a, b);
+    return goc_rdna4_v_min_num_f64(flags, exec_mask, mode, d, a, b);
   if (op == 4)
-    return goc_rdna4_v_max_num_f64(flags, mask, mode, d, a, b);
+    return goc_rdna4_v_max_num_f64(flags, exec_mask, mode, d, a, b);
   if (op == 5)
-    return goc_rdna4_v_minimum_f64(flags, mask, mode, d, a, b);
+    return goc_rdna4_v_minimum_f64(flags, exec_mask, mode, d, a, b);
   if (op == 6)
-    return goc_rdna4_v_maximum_f64(flags, mask, mode, d, a, b);
-  return goc_rdna4_v_fma_f64(flags, mask, mode, d, a, b, c);
+    return goc_rdna4_v_maximum_f64(flags, exec_mask, mode, d, a, b);
+  return goc_rdna4_v_fma_f64(flags, exec_mask, mode, d, a, b, c);
 }
 
 } // namespace
@@ -81,9 +81,9 @@ TEST(Fp64, AllModifiersMasksAndCrossHalfAliases) {
         expected[1][lane] = uint32_t(bits(want) >> 32);
       }
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (const auto &alias : aliases) {
-            SCOPED_TRACE(::testing::Message() << op << "/" << mode << "/" << cpu << "/" << mask
+            SCOPED_TRACE(::testing::Message() << op << "/" << mode << "/" << cpu << "/" << exec_mask
                                               << "/" << alias[0] << "/" << alias[1]);
             uint32_t storage[8][34], before[2][32];
             uint32_t *v[8];
@@ -96,12 +96,13 @@ TEST(Fp64, AllModifiersMasksAndCrossHalfAliases) {
             uint32_t *d[] = {v[alias[0]], v[alias[1]]};
             for (int reg = 0; reg < 2; ++reg)
               std::copy(d[reg], d[reg] + 32, before[reg]);
-            ASSERT_EQ(call(op, cpu, mask, mode, d, v, v + 2, v + 4), GOC_SUCCESS);
+            ASSERT_EQ(call(op, cpu, exec_mask, mode, d, v, v + 2, v + 4), GOC_SUCCESS);
             for (int reg = 0; reg < 2; ++reg)
               for (int lane = 0; lane < 32; ++lane) {
                 // When D halves share a buffer, the second register's write wins.
-                uint32_t want = (mask >> lane) & 1 ? expected[alias[0] == alias[1] ? 1 : reg][lane]
-                                                   : before[reg][lane];
+                uint32_t want = (exec_mask >> lane) & 1
+                                    ? expected[alias[0] == alias[1] ? 1 : reg][lane]
+                                    : before[reg][lane];
                 EXPECT_EQ(d[reg][lane], want);
               }
             for (const auto &reg : storage) {

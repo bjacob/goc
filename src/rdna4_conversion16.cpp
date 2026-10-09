@@ -40,12 +40,12 @@ uint16_t half_output(float value, bool saturate, uint32_t mode) {
 }
 
 template <goc::Conversion16 Op>
-int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a) {
   if (mode >> 32)
-    return goc::execute_dpp(flags, mask, mode, a,
-                            [&](uint32_t effective, const uint32_t *const *source) {
-                              return convert<Op>(flags, effective, uint32_t(mode), d, source);
+    return goc::execute_dpp(flags, exec_mask, mode, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return convert<Op>(flags, exec_mask, uint32_t(mode), d, source);
                             });
   constexpr bool from_integer =
       Op == goc::Conversion16::SignedToHalf || Op == goc::Conversion16::UnsignedToHalf;
@@ -56,17 +56,17 @@ int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                          (Op == goc::Conversion16::HalfToFloat ? 0 : GOC_ALU_HIGH_D);
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::conversion16_x86_64_v4<Op>(flags & GOC_FP16_OVFL, mask, mode, d[0], a[0]);
+    goc::conversion16_x86_64_v4<Op>(flags & GOC_FP16_OVFL, exec_mask, mode, d[0], a[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::conversion16_x86_64_v3<Op>(flags & GOC_FP16_OVFL, mask, mode, d[0], a[0]);
+    goc::conversion16_x86_64_v3<Op>(flags & GOC_FP16_OVFL, exec_mask, mode, d[0], a[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -105,7 +105,7 @@ int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
       result[lane] = (d[0][lane] & ~(uint32_t(65535) << sd)) | (result[lane] << sd);
   }
   for (int lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }

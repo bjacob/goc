@@ -16,21 +16,20 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                          (K == 32 ? GOC_SWMMAC_INDEX_KEY_1 : 0);
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;
-  uint32_t mask = exec_mask;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
   goc::SwmmacIntegerInputs input;
   goc::swmmac_integer_prepare<Bits, K>(input, mode, d, a, b, index);
   bool clamp = mode & GOC_WMMA_CLAMP;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::swmmac_integer_x86_64_v4(K, mask, clamp, d, input);
+    goc::swmmac_integer_x86_64_v4(K, exec_mask, clamp, d, input);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::swmmac_integer_x86_64_v3(K, mask, clamp, d, input);
+    goc::swmmac_integer_x86_64_v3(K, exec_mask, clamp, d, input);
     return GOC_SUCCESS;
   }
 #endif
@@ -50,7 +49,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
     }
   for (unsigned reg = 0; reg < 8; ++reg)
     for (unsigned lane = 0; lane < 32; ++lane)
-      if ((mask >> lane) & 1)
+      if ((exec_mask >> lane) & 1)
         d[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
 }

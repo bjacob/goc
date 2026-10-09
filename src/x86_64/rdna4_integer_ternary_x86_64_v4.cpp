@@ -8,8 +8,8 @@
 namespace goc {
 
 template <IntegerTernary Op>
-void integer_ternary_x86_64_v4(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
-                               const uint32_t *c) {
+void integer_ternary_x86_64_v4(uint32_t exec_mask, uint32_t *d, const uint32_t *a,
+                               const uint32_t *b, const uint32_t *c) {
   for (int lane = 0; lane < 32; lane += 16) {
     auto x = _mm512_loadu_si512(a + lane), y = _mm512_loadu_si512(b + lane),
          z = _mm512_loadu_si512(c + lane);
@@ -37,7 +37,7 @@ void integer_ternary_x86_64_v4(uint32_t mask, uint32_t *d, const uint32_t *a, co
           _mm512_and_si512(_mm512_ternarylogic_epi32(x, y, z, 0x14), _mm512_set1_epi8(1));
       result = _mm512_sub_epi8(_mm512_avg_epu8(x, y), correction);
     }
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), result);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), result);
   }
 }
 

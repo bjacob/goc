@@ -45,7 +45,7 @@ struct Ops {
 
   static V select(Mask m, V yes, V no) { return _mm512_mask_blend_epi64(m, no, yes); }
 
-  static Mask lane_mask(uint32_t mask) { return __mmask8(mask); }
+  static Mask lane_mask(uint32_t exec_mask) { return __mmask8(exec_mask); }
 
   static V load_words(const uint32_t *p) {
     return _mm512_cvtepu32_epi64(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(p)));
@@ -55,8 +55,8 @@ struct Ops {
     _mm256_storeu_si256(reinterpret_cast<__m256i *>(p), _mm512_cvtepi64_epi32(value));
   }
 
-  static void masked_words(uint32_t *d, const uint32_t *p, uint32_t mask) {
-    _mm256_mask_storeu_epi32(d, __mmask8(mask),
+  static void masked_words(uint32_t *d, const uint32_t *p, uint32_t exec_mask) {
+    _mm256_mask_storeu_epi32(d, __mmask8(exec_mask),
                              _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p)));
   }
 };
@@ -66,9 +66,10 @@ struct Ops {
 namespace goc {
 
 template <unsigned Width>
-void div_fmas_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
-                        const uint32_t *const *b, const uint32_t *const *c, uint32_t condition) {
-  division_vector_run<Width, Ops>(mask, mode, d, a, b, c, condition);
+void div_fmas_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+                        const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *c, uint32_t condition) {
+  division_vector_run<Width, Ops>(exec_mask, mode, d, a, b, c, condition);
 }
 
 template void div_fmas_x86_64_v4<32>(uint32_t, uint32_t, uint32_t *const *, const uint32_t *const *,

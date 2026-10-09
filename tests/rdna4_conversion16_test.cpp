@@ -123,7 +123,7 @@ TEST(Conversion16, EveryModifierMasksAliasesAndUnalignedStorage) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool sat : {false, true})
         for (unsigned variant = 0; variant < goc_test::conversion16_modes(op); ++variant)
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (bool alias : {false, true}) {
               uint32_t storage[2][34], original[2][34];
               for (int reg = 0; reg < 2; ++reg)
@@ -132,13 +132,13 @@ TEST(Conversion16, EveryModifierMasksAliasesAndUnalignedStorage) {
               uint32_t mode = goc_test::conversion16_mode(op, variant);
               const uint32_t *a[] = {storage[0] + 1};
               uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
-              ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), mask, mode, d, a),
+              ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), exec_mask, mode, d, a),
                         GOC_SUCCESS);
               for (int reg = 0; reg < 2; ++reg)
                 for (int word = 0; word < 34; ++word) {
                   uint32_t expected = original[reg][word];
                   if (reg == (alias ? 0 : 1) && word > 0 && word <= 32 &&
-                      ((mask >> (word - 1)) & 1)) {
+                      ((exec_mask >> (word - 1)) & 1)) {
                     expected = goc_test::conversion16_reference(op, original[0][word], expected,
                                                                 mode, sat);
                     ASSERT_TRUE(
@@ -203,7 +203,7 @@ TEST(Conversion16, DppMasksAliasesAndUnalignedStorage) {
         for (bool sat : {false, true})
           for (unsigned variant :
                {0u, goc_test::conversion16_modes(op) / 2, goc_test::conversion16_modes(op) - 1})
-            for (uint32_t mask : rdna4_exec_masks())
+            for (uint32_t exec_mask : rdna4_exec_masks())
               for (bool alias : {false, true}) {
                 uint32_t storage[2][34], original[2][34];
                 for (int reg = 0; reg < 2; ++reg)
@@ -212,15 +212,15 @@ TEST(Conversion16, DppMasksAliasesAndUnalignedStorage) {
                 uint32_t mode = goc_test::conversion16_mode(op, variant);
                 const uint32_t *a[] = {storage[0] + 1};
                 uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
-                ASSERT_EQ(
-                    functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), mask, descriptor | mode, d, a),
-                    GOC_SUCCESS);
+                ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), exec_mask,
+                                        descriptor | mode, d, a),
+                          GOC_SUCCESS);
                 for (int reg = 0; reg < 2; ++reg)
                   for (int word = 0; word < 34; ++word) {
                     uint32_t expected = original[reg][word];
                     int source;
                     if (reg == (alias ? 0 : 1) && word > 0 && word <= 32 &&
-                        goc_test::dpp_source(descriptor, mask, word - 1, source)) {
+                        goc_test::dpp_source(descriptor, exec_mask, word - 1, source)) {
                       expected = goc_test::conversion16_reference(
                           op, source < 0 ? 0u : original[0][source + 1], expected, mode, sat);
                       ASSERT_TRUE(
@@ -270,7 +270,7 @@ TEST(Conversion16, DppHardwareCorpus) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
     for (bool saturate : {false, true})
-      for (uint32_t mask :
+      for (uint32_t exec_mask :
            {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
         for (unsigned op = 0; op < 6; ++op)
           for (uint64_t descriptor : goc_test::dpp_modes)
@@ -284,13 +284,13 @@ TEST(Conversion16, DppHardwareCorpus) {
                 d[lane] = 0xdead0000u + lane;
               }
               auto pa = a, pd = d;
-              ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), mask, descriptor | mode,
-                                      &pd, &pa),
+              ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask,
+                                      descriptor | mode, &pd, &pa),
                         GOC_SUCCESS);
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source;
                 uint32_t want = 0xdead0000u + lane;
-                if (goc_test::dpp_source(descriptor, mask, lane, source)) {
+                if (goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
                   want = goc_test::conversion16_reference(op, source < 0 ? 0u : a[source], want,
                                                           mode, saturate);
                   EXPECT_TRUE(goc_test::conversion16_equal(op, d[lane], want, mode));

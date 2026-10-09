@@ -65,11 +65,11 @@ TEST(HalfUnary, AllModifiersMasksAndAliases) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 128; ++variant)
         for (bool saturate : {false, true})
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (bool alias : {false, true}) {
               auto mode = goc_test::half_unary_modifiers(variant);
               SCOPED_TRACE(::testing::Message() << op << '/' << cpu << '/' << mode << '/'
-                                                << saturate << '/' << mask << '/' << alias);
+                                                << saturate << '/' << exec_mask << '/' << alias);
               uint32_t words[2][34], before[2][34];
               for (int reg = 0; reg < 2; ++reg) {
                 std::fill(words[reg], words[reg] + 34, 0xdeadbeef);
@@ -80,12 +80,12 @@ TEST(HalfUnary, AllModifiersMasksAndAliases) {
               std::memcpy(before, words, sizeof(words));
               auto a = words[0] + 1, d = words[alias ? 0 : 1] + 1;
               ASSERT_EQ(goc_test::half_unary_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0),
-                                                           mask, mode, &d, &a),
+                                                           exec_mask, mode, &d, &a),
                         GOC_SUCCESS);
               for (int reg = 0; reg < 2; ++reg)
                 for (int lane = 0; lane < 34; ++lane) {
                   if (reg == (alias ? 0 : 1) && lane >= 1 && lane <= 32 &&
-                      ((mask >> (lane - 1)) & 1)) {
+                      ((exec_mask >> (lane - 1)) & 1)) {
                     check(op, words[reg][lane], before[reg][lane],
                           goc_test::half_unary_reference(op, before[0][lane], mode, saturate),
                           mode);
@@ -157,14 +157,14 @@ TEST(HalfUnary, ValidationAndSemantics) {
     uint32_t data[32];
     std::fill(data, data + 32, 0xdeadbeef);
     auto p = data;
-    for (uint32_t mask : {0U, UINT32_MAX}) {
+    for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (int bit = 0; bit < 32; ++bit) {
         if (!(goc_test::half_unary_known & (1U << bit))) {
-          EXPECT_EQ(fn(0, mask, 1U << bit, &p, &p), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(fn(0, exec_mask, 1U << bit, &p, &p), GOC_ERROR_INVALID_FLAGS);
         }
       }
-      EXPECT_EQ(fn(1ULL << 63, mask, 0, &p, &p), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &p, &p),
+      EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (auto word : data)
@@ -206,7 +206,7 @@ TEST(HalfUnary, HardwareExpLogRoundingAndOverflow) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (bool saturate : {false, true}) {
       uint64_t hash = goc_test::capture_hash_seed;
-      for (uint32_t mask :
+      for (uint32_t exec_mask :
            {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
         for (unsigned op : {7u, 8u})
           for (uint64_t descriptor : goc_test::dpp_modes)
@@ -218,13 +218,13 @@ TEST(HalfUnary, HardwareExpLogRoundingAndOverflow) {
               }
               auto pa = a, pd = d;
               ASSERT_EQ(goc_test::half_unary_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0),
-                                                           mask, descriptor | mode, &pd, &pa),
+                                                           exec_mask, descriptor | mode, &pd, &pa),
                         GOC_SUCCESS);
               unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source;
                 uint32_t want = 0xdead0000u + lane;
-                if (goc_test::dpp_source(descriptor | mode, mask, lane, source)) {
+                if (goc_test::dpp_source(descriptor | mode, exec_mask, lane, source)) {
                   uint32_t value = goc_test::half_unary_reference(op, source < 0 ? 0 : a[source],
                                                                   mode, saturate);
                   want = (want & ~(65535U << shift)) | (value << shift);

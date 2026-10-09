@@ -10,7 +10,8 @@
 namespace goc {
 
 template <IntegerAdd Op, bool Signed>
-void integer_add_sat_x86_64_v3(uint32_t mask, uint32_t *d, const uint32_t *a, const uint32_t *b) {
+void integer_add_sat_x86_64_v3(uint32_t exec_mask, uint32_t *d, const uint32_t *a,
+                               const uint32_t *b) {
   if constexpr (Op == IntegerAdd::Subrev) {
     const auto *temporary = a;
     a = b;
@@ -47,9 +48,9 @@ void integer_add_sat_x86_64_v3(uint32_t mask, uint32_t *d, const uint32_t *a, co
         result = _mm256_andnot_si256(borrow, result);
       }
     }
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 

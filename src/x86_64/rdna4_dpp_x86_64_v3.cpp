@@ -7,7 +7,8 @@
 
 namespace goc {
 
-void dpp8_x86_64_v3(uint32_t mask, uint32_t selectors, bool fi, uint32_t *out, const uint32_t *a) {
+void dpp8_x86_64_v3(uint32_t exec_mask, uint32_t selectors, bool fi, uint32_t *out,
+                    const uint32_t *a) {
   auto shifts = _mm256_setr_epi32(0, 3, 6, 9, 12, 15, 18, 21);
   auto index = _mm256_and_si256(_mm256_srlv_epi32(_mm256_set1_epi32(int(selectors)), shifts),
                                 _mm256_set1_epi32(7));
@@ -15,9 +16,10 @@ void dpp8_x86_64_v3(uint32_t mask, uint32_t selectors, bool fi, uint32_t *out, c
     auto value = _mm256_permutevar8x32_epi32(
         _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)), index);
     if (!fi) {
-      auto active = _mm256_and_si256(_mm256_srlv_epi32(_mm256_set1_epi32(int(mask >> lane)), index),
-                                     _mm256_set1_epi32(1));
-      value = _mm256_and_si256(value, _mm256_sub_epi32(_mm256_setzero_si256(), active));
+      auto lane_exec_mask =
+          _mm256_and_si256(_mm256_srlv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)), index),
+                           _mm256_set1_epi32(1));
+      value = _mm256_and_si256(value, _mm256_sub_epi32(_mm256_setzero_si256(), lane_exec_mask));
     }
     _mm256_storeu_si256(reinterpret_cast<__m256i *>(out + lane), value);
   }
@@ -47,7 +49,7 @@ __m256i dpp16_index(uint32_t ctrl, __m256i position) {
 }
 } // namespace
 
-uint32_t dpp16_x86_64_v3(uint32_t mask, uint32_t control, uint32_t valid_row, bool fi,
+uint32_t dpp16_x86_64_v3(uint32_t exec_mask, uint32_t control, uint32_t valid_row, bool fi,
                          uint32_t *out, const uint32_t *a) {
   auto positions = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
   auto index0 = dpp16_index(control, positions);
@@ -65,9 +67,10 @@ uint32_t dpp16_x86_64_v3(uint32_t mask, uint32_t control, uint32_t valid_row, bo
     auto valid = _mm256_cmpeq_epi32(
         _mm256_and_si256(_mm256_set1_epi32(int(valid_row >> (lane & 8))), bits), bits);
     if (!fi) {
-      auto active = _mm256_and_si256(_mm256_srlv_epi32(_mm256_set1_epi32(int(mask >> base)), index),
-                                     _mm256_set1_epi32(1));
-      valid = _mm256_and_si256(valid, _mm256_sub_epi32(_mm256_setzero_si256(), active));
+      auto lane_exec_mask =
+          _mm256_and_si256(_mm256_srlv_epi32(_mm256_set1_epi32(int(exec_mask >> base)), index),
+                           _mm256_set1_epi32(1));
+      valid = _mm256_and_si256(valid, _mm256_sub_epi32(_mm256_setzero_si256(), lane_exec_mask));
     }
     value = _mm256_and_si256(value, valid);
     readable |= uint32_t(_mm256_movemask_ps(_mm256_castsi256_ps(valid))) << lane;

@@ -117,7 +117,7 @@ TEST(Conversion32, MasksAliasesAndUnalignedStorage) {
   for (int op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < goc_test::conversion32_modes(op); ++variant)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (bool alias : {false, true}) {
             uint32_t storage[2][35], original[2][35];
             for (auto &reg : storage)
@@ -128,11 +128,12 @@ TEST(Conversion32, MasksAliasesAndUnalignedStorage) {
             const uint32_t *a[] = {storage[0] + 1};
             uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
             uint32_t mode = goc_test::conversion32_mode(op, variant);
-            ASSERT_EQ(functions[op](cpu, mask, mode, d, a), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, a), GOC_SUCCESS);
             for (int reg = 0; reg < 2; ++reg)
               for (int word = 0; word < 35; ++word) {
                 uint32_t expected = original[reg][word];
-                if (reg == (alias ? 0 : 1) && word >= 1 && word <= 32 && ((mask >> (word - 1)) & 1))
+                if (reg == (alias ? 0 : 1) && word >= 1 && word <= 32 &&
+                    ((exec_mask >> (word - 1)) & 1))
                   expected = goc_test::conversion32_reference(op, original[0][word], mode);
                 ASSERT_EQ(storage[reg][word], expected);
               }
@@ -192,7 +193,7 @@ TEST(Conversion32, DppModifiersMasksAliasesAndRandomWords) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t descriptor : goc_test::dpp_modes)
         for (unsigned variant = 0; variant < goc_test::conversion32_modes(op); ++variant)
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (bool alias : {false, true}) {
               uint32_t storage[2][35], original[2][35];
               for (auto &reg : storage)
@@ -203,13 +204,13 @@ TEST(Conversion32, DppModifiersMasksAliasesAndRandomWords) {
               const uint32_t *a[] = {storage[0] + 1};
               uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
               uint32_t mode = goc_test::conversion32_mode(op, variant);
-              ASSERT_EQ(functions[op](cpu, mask, descriptor | mode, d, a), GOC_SUCCESS);
+              ASSERT_EQ(functions[op](cpu, exec_mask, descriptor | mode, d, a), GOC_SUCCESS);
               for (int reg = 0; reg < 2; ++reg)
                 for (int word = 0; word < 35; ++word) {
                   uint32_t expected = original[reg][word];
                   int source;
                   if (reg == (alias ? 0 : 1) && word >= 1 && word <= 32 &&
-                      goc_test::dpp_source(descriptor, mask, word - 1, source))
+                      goc_test::dpp_source(descriptor, exec_mask, word - 1, source))
                     expected = goc_test::conversion32_reference(
                         op, source < 0 ? 0 : original[0][source + 1], mode);
                   ASSERT_EQ(storage[reg][word], expected);
@@ -224,7 +225,7 @@ TEST(Conversion32, HardwareOrdinaryAndDppCorpus) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (bool dpp : {false, true}) {
       uint64_t hash = goc_test::capture_hash_seed;
-      for (uint32_t mask :
+      for (uint32_t exec_mask :
            {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
         for (unsigned op = 0; op < 6; ++op)
           for (unsigned index = 0; index < (dpp ? 7u : 1u); ++index)
@@ -237,12 +238,12 @@ TEST(Conversion32, HardwareOrdinaryAndDppCorpus) {
                 d[lane] = 0xdead0000u + lane;
               }
               auto pa = a, pd = d;
-              ASSERT_EQ(functions[op](cpu, mask, descriptor | mode, &pd, &pa), GOC_SUCCESS);
+              ASSERT_EQ(functions[op](cpu, exec_mask, descriptor | mode, &pd, &pa), GOC_SUCCESS);
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source = lane;
                 uint32_t want = 0xdead0000u + lane;
-                if (dpp ? goc_test::dpp_source(descriptor, mask, lane, source)
-                        : ((mask >> lane) & 1))
+                if (dpp ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                        : ((exec_mask >> lane) & 1))
                   want = goc_test::conversion32_reference(op, source < 0 ? 0u : a[source], mode);
                 EXPECT_EQ(d[lane], want);
                 hash = goc_test::capture_hash_word(hash, d[lane]);

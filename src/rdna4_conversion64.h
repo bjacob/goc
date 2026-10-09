@@ -16,11 +16,11 @@ enum class Conversion64 {
 };
 
 template <Conversion64 Op>
-void conversion64_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d,
+void conversion64_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                             const uint32_t *const *a);
 
 template <Conversion64 Op>
-void conversion64_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d,
+void conversion64_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                             const uint32_t *const *a);
 
 } // namespace goc

@@ -14,8 +14,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *index) {
   if (int error = goc::validate(flags, mode & ~GOC_SWMMAC_INDEX_KEY_1))
     return error;
-  uint32_t mask = exec_mask;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
   goc::SwmmacFloatInputs input;
   unsigned key = mode & GOC_SWMMAC_INDEX_KEY_1 ? 16 : 0;
@@ -34,13 +33,13 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
       input.acc[row][col] = goc::as_float(d[row % 8][col + 16 * (row / 8)]);
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::swmmac_float_x86_64_v4<false, false>(mask, 0, d, input, false);
+    goc::swmmac_float_x86_64_v4<false, false>(exec_mask, 0, d, input, false);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::swmmac_float_x86_64_v3<false, false>(mask, 0, d, input, false);
+    goc::swmmac_float_x86_64_v3<false, false>(exec_mask, 0, d, input, false);
     return GOC_SUCCESS;
   }
 #endif
@@ -49,7 +48,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   goc::swmmac_float_pack<false, false>(result, input.acc, false);
   for (unsigned reg = 0; reg < 8; ++reg)
     for (unsigned lane = 0; lane < 32; ++lane)
-      if ((mask >> lane) & 1)
+      if ((exec_mask >> lane) & 1)
         d[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
 }

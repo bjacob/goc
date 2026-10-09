@@ -20,9 +20,9 @@ struct WaveInstruction<int (*)(uint64_t, uint32_t, uint64_t, Operands...)> {
 
   constexpr WaveInstruction(Wave64 fn) : wave64(fn) {}
 
-  int operator()(uint64_t flags, uint64_t mask, uint64_t mode, Operands... operands) const {
-    return wave32 ? wave32(flags, uint32_t(mask), mode, operands...)
-                  : wave64(flags, mask, mode, operands...);
+  int operator()(uint64_t flags, uint64_t exec_mask, uint64_t mode, Operands... operands) const {
+    return wave32 ? wave32(flags, uint32_t(exec_mask), mode, operands...)
+                  : wave64(flags, exec_mask, mode, operands...);
   }
 };
 

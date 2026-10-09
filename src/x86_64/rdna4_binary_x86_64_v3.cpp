@@ -12,7 +12,7 @@ namespace goc {
 namespace {
 
 template <Binary Op>
-void run(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uint32_t *b) {
+void run(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uint32_t *b) {
   const auto ka = _mm256_set1_epi32(mode & GOC_ALU_ABS_A ? INT32_MAX : -1);
   const auto kb = _mm256_set1_epi32(mode & GOC_ALU_ABS_B ? INT32_MAX : -1);
   const auto na = _mm256_set1_epi32(mode & GOC_ALU_NEG_A ? INT32_MIN : 0);
@@ -53,35 +53,36 @@ void run(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uin
     }
     if (mode & GOC_ALU_CLAMP)
       value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, _mm256_castps_si256(value));
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask,
+                           _mm256_castps_si256(value));
   }
 }
 
 } // namespace
 
-void binary_x86_64_v3(Binary op, uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void binary_x86_64_v3(Binary op, uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                       const uint32_t *b) {
   switch (op) {
   case Binary::Add:
-    return run<Binary::Add>(mask, mode, d, a, b);
+    return run<Binary::Add>(exec_mask, mode, d, a, b);
   case Binary::Sub:
-    return run<Binary::Sub>(mask, mode, d, a, b);
+    return run<Binary::Sub>(exec_mask, mode, d, a, b);
   case Binary::Subrev:
-    return run<Binary::Subrev>(mask, mode, d, a, b);
+    return run<Binary::Subrev>(exec_mask, mode, d, a, b);
   case Binary::MinNum:
-    return run<Binary::MinNum>(mask, mode, d, a, b);
+    return run<Binary::MinNum>(exec_mask, mode, d, a, b);
   case Binary::MaxNum:
-    return run<Binary::MaxNum>(mask, mode, d, a, b);
+    return run<Binary::MaxNum>(exec_mask, mode, d, a, b);
   case Binary::Minimum:
-    return run<Binary::Minimum>(mask, mode, d, a, b);
+    return run<Binary::Minimum>(exec_mask, mode, d, a, b);
   case Binary::Maximum:
-    return run<Binary::Maximum>(mask, mode, d, a, b);
+    return run<Binary::Maximum>(exec_mask, mode, d, a, b);
   case Binary::MulDx9Zero:
-    return run<Binary::MulDx9Zero>(mask, mode, d, a, b);
+    return run<Binary::MulDx9Zero>(exec_mask, mode, d, a, b);
   case Binary::Mul:
-    return run<Binary::Mul>(mask, mode, d, a, b);
+    return run<Binary::Mul>(exec_mask, mode, d, a, b);
   }
 }
 

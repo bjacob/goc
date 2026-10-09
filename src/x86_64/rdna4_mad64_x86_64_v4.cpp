@@ -9,8 +9,9 @@
 namespace goc {
 
 template <bool Signed>
-uint32_t mad64_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
-                         const uint32_t *const *b, const uint32_t *const *c) {
+uint32_t mad64_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
   uint32_t staged[2][32], output_carry = 0;
   for (unsigned lane = 0; lane < 32; lane += 8) {
     auto av =
@@ -54,9 +55,9 @@ uint32_t mad64_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d, const
   for (unsigned reg = 0; reg < 2; ++reg)
     for (unsigned lane = 0; lane < 32; lane += 16) {
       auto result = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(staged[reg] + lane));
-      _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(mask >> lane), result);
+      _mm512_mask_storeu_epi32(d[reg] + lane, __mmask16(exec_mask >> lane), result);
     }
-  return output_carry & mask;
+  return output_carry & exec_mask;
 }
 
 template uint32_t mad64_x86_64_v4<false>(uint32_t, uint32_t, uint32_t *const *,

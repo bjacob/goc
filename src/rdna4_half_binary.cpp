@@ -15,13 +15,13 @@
 namespace {
 
 template <goc::Binary Op, bool Packed = false>
-int binary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
            const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32) {
     if constexpr (!Packed) {
       return goc::execute_dpp(
-          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
-            return binary<Op, Packed>(flags, effective, uint32_t(mode), d, source, b);
+          flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+            return binary<Op, Packed>(flags, exec_mask, uint32_t(mode), d, source, b);
           });
     } else {
       return GOC_ERROR_INVALID_FLAGS;
@@ -36,11 +36,11 @@ int binary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
                                       GOC_ALU_HIGH_B | GOC_ALU_HIGH_D;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (mask == 0)
+  if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::half_binary_x86_64_v3<Op, Packed>(bool(flags & GOC_FP16_OVFL), mask, mode, d[0], a[0],
+    goc::half_binary_x86_64_v3<Op, Packed>(bool(flags & GOC_FP16_OVFL), exec_mask, mode, d[0], a[0],
                                            b[0]);
     return GOC_SUCCESS;
   }
@@ -81,7 +81,7 @@ int binary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
     }
   }
   for (int lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1) {
+    if ((exec_mask >> lane) & 1) {
       if constexpr (Packed)
         d[0][lane] = result[lane];
       else
@@ -92,84 +92,88 @@ int binary(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_add_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_add_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
-  return binary<goc::Binary::Add>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::Add>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_sub_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_sub_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
-  return binary<goc::Binary::Sub>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::Sub>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_subrev_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_subrev_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b) {
-  return binary<goc::Binary::Subrev>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::Subrev>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_mul_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_mul_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
-  return binary<goc::Binary::Mul>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::Mul>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_min_num_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_min_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  return binary<goc::Binary::MinNum>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::MinNum>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_max_num_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_max_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  return binary<goc::Binary::MaxNum>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::MaxNum>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_minimum_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_minimum_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  return binary<goc::Binary::Minimum>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::Minimum>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_maximum_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_maximum_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  return binary<goc::Binary::Maximum>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::Maximum>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_pk_add_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
-                           const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
-  return binary<goc::Binary::Add, true>(flags, mask, mode, d, a, b);
-}
-
-int goc_rdna4_v_pk_mul_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_pk_add_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return binary<goc::Binary::Mul, true>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::Add, true>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_pk_min_num_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
-                               const uint32_t *const *a, const uint32_t *const *b) {
+int goc_rdna4_v_pk_mul_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                           const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return binary<goc::Binary::MinNum, true>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::Mul, true>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_pk_max_num_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
-                               const uint32_t *const *a, const uint32_t *const *b) {
+int goc_rdna4_v_pk_min_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return binary<goc::Binary::MaxNum, true>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::MinNum, true>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_pk_minimum_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
-                               const uint32_t *const *a, const uint32_t *const *b) {
+int goc_rdna4_v_pk_max_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return binary<goc::Binary::Minimum, true>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::MaxNum, true>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_pk_maximum_f16(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
-                               const uint32_t *const *a, const uint32_t *const *b) {
+int goc_rdna4_v_pk_minimum_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return binary<goc::Binary::Maximum, true>(flags, mask, mode, d, a, b);
+  return binary<goc::Binary::Minimum, true>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_rdna4_v_pk_maximum_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return binary<goc::Binary::Maximum, true>(flags, exec_mask, mode, d, a, b);
 }

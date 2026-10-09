@@ -16,8 +16,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d, u
     return GOC_ERROR_INVALID_FLAGS;
   if (int error = goc::validate(flags, uint32_t(mode) & ~GOC_ALU_CLAMP, true))
     return error;
-  uint32_t mask = exec_mask;
-  if (!mask) {
+  if (!exec_mask) {
     *carry = 0;
     return GOC_SUCCESS;
   }
@@ -26,22 +25,22 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d, u
     const uint32_t *source = permuted;
     const uint32_t *input = Op == goc::CarryOp::Subrev ? b[0] : a[0];
     if (mode & GOC_DPP8)
-      goc::dpp8_source(flags, mask, mode, permuted, input);
+      goc::dpp8_source(flags, exec_mask, mode, permuted, input);
     else
-      mask = goc::dpp16_source(flags, mask, mode, permuted, input);
-    return run<Op, WithCarry>(flags, mask, uint32_t(mode), d, carry,
+      exec_mask = goc::dpp16_source(flags, exec_mask, mode, permuted, input);
+    return run<Op, WithCarry>(flags, exec_mask, uint32_t(mode), d, carry,
                               Op == goc::CarryOp::Subrev ? a : &source,
                               Op == goc::CarryOp::Subrev ? &source : b, input_carry);
   }
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    *carry = goc::carry_x86_64_v4<Op, WithCarry>(mask, mode, d, a, b, input_carry);
+    *carry = goc::carry_x86_64_v4<Op, WithCarry>(exec_mask, mode, d, a, b, input_carry);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    *carry = goc::carry_x86_64_v3<Op, WithCarry>(mask, mode, d, a, b, input_carry);
+    *carry = goc::carry_x86_64_v3<Op, WithCarry>(exec_mask, mode, d, a, b, input_carry);
     return GOC_SUCCESS;
   }
 #endif
@@ -62,9 +61,9 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d, u
     output_carry |= uint32_t(co) << lane;
   }
   for (unsigned lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
-  *carry = output_carry & mask;
+  *carry = output_carry & exec_mask;
   return GOC_SUCCESS;
 }
 

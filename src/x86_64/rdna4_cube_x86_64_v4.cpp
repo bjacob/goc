@@ -37,8 +37,8 @@ __m512i magnitude(__m512i raw) {
 namespace goc {
 
 template <Cube Op>
-void cube_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a, const uint32_t *b,
-                    const uint32_t *c) {
+void cube_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+                    const uint32_t *b, const uint32_t *c) {
   auto keep_a = _mm512_set1_epi32(mode & GOC_ALU_ABS_A ? INT32_MAX : -1);
   auto keep_b = _mm512_set1_epi32(mode & GOC_ALU_ABS_B ? INT32_MAX : -1);
   auto keep_c = _mm512_set1_epi32(mode & GOC_ALU_ABS_C ? INT32_MAX : -1);
@@ -104,7 +104,7 @@ void cube_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a
       auto positive = select(greater(result, infinity), zero, result);
       result = _mm512_min_epi32(_mm512_max_epi32(positive, zero), _mm512_set1_epi32(0x3f800000));
     }
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), result);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), result);
   }
 }
 

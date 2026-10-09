@@ -90,9 +90,9 @@ TEST(Arithmetic, AllCpuLevelsFmaGoldenAndAliasing) {
                              0x40000000, 0x00000000, 0x00400000, 0x00000000};
   for (uint64_t level = 0; level <= goc_init_cpu_flags(); ++level)
     for (int alias = 0; alias < 4; ++alias)
-      for (uint32_t mask : rdna4_exec_masks()) {
+      for (uint32_t exec_mask : rdna4_exec_masks()) {
         SCOPED_TRACE(::testing::Message()
-                     << "level=" << level << " alias=" << alias << " mask=" << mask);
+                     << "level=" << level << " alias=" << alias << " mask=" << exec_mask);
         uint32_t storage[4][34]; // Offsets avoid requiring SIMD alignment.
         uint32_t *ptrs[4];
         for (int j = 0; j < 4; ++j) {
@@ -107,10 +107,11 @@ TEST(Arithmetic, AllCpuLevelsFmaGoldenAndAliasing) {
         }
         std::array<uint32_t, 32> before;
         std::copy(ptrs[alias], ptrs[alias] + 32, before.begin());
-        ASSERT_EQ(goc_rdna4_v_fma_f32(level, mask, 0, &ptrs[alias], &ptrs[0], &ptrs[1], &ptrs[2]),
-                  0);
+        ASSERT_EQ(
+            goc_rdna4_v_fma_f32(level, exec_mask, 0, &ptrs[alias], &ptrs[0], &ptrs[1], &ptrs[2]),
+            0);
         for (int i = 0; i < 32; ++i)
-          EXPECT_EQ(ptrs[alias][i], ((mask >> i) & 1) ? golden[i % 8] : before[i]);
+          EXPECT_EQ(ptrs[alias][i], ((exec_mask >> i) & 1) ? golden[i % 8] : before[i]);
         for (int j = 0; j < 4; ++j) {
           EXPECT_EQ(storage[j][0], 0xdeadbeef);
           EXPECT_EQ(storage[j][33], 0xdeadbeef);
@@ -124,10 +125,10 @@ void check_fma_modifiers(bool dx9) {
   auto fn = dx9 ? goc_rdna4_v_fma_dx9_zero_f32 : goc_rdna4_v_fma_f32;
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint32_t modifiers = 0; modifiers < 512; ++modifiers)
-      for (uint32_t mask : rdna4_exec_masks())
+      for (uint32_t exec_mask : rdna4_exec_masks())
         for (int alias = 0; alias < 4; ++alias) {
           SCOPED_TRACE(::testing::Message()
-                       << cpu << "/" << modifiers << "/" << mask << "/" << alias);
+                       << cpu << "/" << modifiers << "/" << exec_mask << "/" << alias);
           uint32_t storage[4][34], original[32], expected[32];
           uint32_t *v[4];
           for (int reg = 0; reg < 4; ++reg) {
@@ -154,9 +155,9 @@ void check_fma_modifiers(bool dx9) {
             expected[lane] = goc::as_bits(want);
             original[lane] = v[alias][lane];
           }
-          ASSERT_EQ(fn(cpu, mask, modifiers, &v[alias], &v[0], &v[1], &v[2]), GOC_SUCCESS);
+          ASSERT_EQ(fn(cpu, exec_mask, modifiers, &v[alias], &v[0], &v[1], &v[2]), GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
-            EXPECT_EQ(v[alias][lane], ((mask >> lane) & 1) ? expected[lane] : original[lane]);
+            EXPECT_EQ(v[alias][lane], ((exec_mask >> lane) & 1) ? expected[lane] : original[lane]);
           for (const auto &reg : storage) {
             EXPECT_EQ(reg[0], 0xdeadbeef);
             EXPECT_EQ(reg[33], 0xdeadbeef);
@@ -266,11 +267,11 @@ TEST(Arithmetic, FmaAndFmacOmodHardwareBoundaries) {
       for (unsigned omod = 0; omod < 4; ++omod)
         for (unsigned clamp = 0; clamp < 2; ++clamp)
           for (unsigned neg = 0; neg < 2; ++neg)
-            for (uint32_t mask : rdna4_exec_masks())
+            for (uint32_t exec_mask : rdna4_exec_masks())
               for (int alias = 0; alias < (fmac ? 1 : 4); ++alias) {
                 SCOPED_TRACE(::testing::Message()
                              << cpu << '/' << fmac << '/' << omod << '/' << clamp << '/' << neg
-                             << '/' << mask << '/' << alias);
+                             << '/' << exec_mask << '/' << alias);
                 uint32_t words[4][34];
                 uint32_t *p[4];
                 for (int reg = 0; reg < 4; ++reg) {
@@ -287,11 +288,12 @@ TEST(Arithmetic, FmaAndFmacOmodHardwareBoundaries) {
                 std::copy(p[alias], p[alias] + 32, before);
                 uint64_t mode = (omod << 6) | (clamp ? GOC_ALU_CLAMP : 0) | neg;
                 int error =
-                    fmac ? goc_rdna4_v_fmac_f32(cpu, mask, mode, &p[alias], &p[1], &p[2])
-                         : goc_rdna4_v_fma_f32(cpu, mask, mode, &p[alias], &p[1], &p[2], &p[3]);
+                    fmac
+                        ? goc_rdna4_v_fmac_f32(cpu, exec_mask, mode, &p[alias], &p[1], &p[2])
+                        : goc_rdna4_v_fma_f32(cpu, exec_mask, mode, &p[alias], &p[1], &p[2], &p[3]);
                 ASSERT_EQ(error, GOC_SUCCESS);
                 for (int lane = 0; lane < 32; ++lane) {
-                  uint32_t want = (mask >> lane) & 1
+                  uint32_t want = (exec_mask >> lane) & 1
                                       ? goc_test::fma_omod_hardware[omod][clamp][neg][lane]
                                       : before[lane];
                   if ((want & 0x7fffffff) > 0x7f800000)
@@ -344,7 +346,7 @@ TEST(Arithmetic, Dx9DppHardwareCorpus) {
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (uint32_t mask : masks)
+    for (uint32_t exec_mask : masks)
       for (unsigned mode = 0; mode < 512; ++mode)
         for (uint64_t descriptor : goc_test::dpp_modes) {
           uint32_t words[4][32];
@@ -356,7 +358,7 @@ TEST(Arithmetic, Dx9DppHardwareCorpus) {
           }
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
-          ASSERT_EQ(goc_rdna4_v_fma_dx9_zero_f32(cpu, mask, descriptor | mode, d, a, b, c),
+          ASSERT_EQ(goc_rdna4_v_fma_dx9_zero_f32(cpu, exec_mask, descriptor | mode, d, a, b, c),
                     GOC_SUCCESS);
           for (uint32_t word : words[3]) {
             if ((word & 0x7fffffff) > 0x7f800000)
@@ -371,8 +373,8 @@ TEST(Arithmetic, Dx9DppHardwareCorpus) {
 TEST(Arithmetic, Dx9DppModifiersMasksAliasesAndGuards) {
   for (uint32_t mode = 0; mode < 512; ++mode)
     for (uint64_t descriptor : goc_test::dpp_modes)
-      for (uint32_t mask : rdna4_exec_masks()) {
-        if (mode != 0 && mode != 511 && mask != UINT32_MAX)
+      for (uint32_t exec_mask : rdna4_exec_masks()) {
+        if (mode != 0 && mode != 511 && exec_mask != UINT32_MAX)
           continue;
         for (bool shared : {false, true}) {
           uint32_t initial[4][34], expected[32], writes = 0;
@@ -381,7 +383,7 @@ TEST(Arithmetic, Dx9DppModifiersMasksAliasesAndGuards) {
               initial[reg][lane] = goc::as_bits(float(int((lane * (reg + 1)) % 17) - 8) * 0.25f);
           for (unsigned lane = 0; lane < 32; ++lane) {
             int source;
-            if (!goc_test::dpp_source(descriptor, mask, lane, source))
+            if (!goc_test::dpp_source(descriptor, exec_mask, lane, source))
               continue;
             writes |= 1u << lane;
             double input[] = {source < 0 ? 0.0 : goc::as_float(initial[0][source + 1]),
@@ -408,7 +410,7 @@ TEST(Arithmetic, Dx9DppModifiersMasksAliasesAndGuards) {
               const uint32_t *a[] = {words[0] + 1}, *b[] = {words[shared ? 0 : 1] + 1},
                              *c[] = {words[shared ? 0 : 2] + 1};
               uint32_t *d[] = {words[target] + 1};
-              ASSERT_EQ(goc_rdna4_v_fma_dx9_zero_f32(cpu, mask, descriptor | mode, d, a, b, c),
+              ASSERT_EQ(goc_rdna4_v_fma_dx9_zero_f32(cpu, exec_mask, descriptor | mode, d, a, b, c),
                         GOC_SUCCESS);
               for (unsigned reg = 0; reg < 4; ++reg)
                 for (unsigned lane = 0; lane < 34; ++lane) {

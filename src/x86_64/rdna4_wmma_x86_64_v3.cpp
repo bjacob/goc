@@ -10,7 +10,7 @@
 namespace {
 
 template <bool Bf16, bool Modified>
-void wmma(uint32_t mask, uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
+void wmma(uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
           const uint32_t *const *b, const uint32_t *const *c) {
   const uint32_t a_sign = ((modifiers & GOC_WMMA_NEG_LO_A) ? 0x8000U : 0) |
                           ((modifiers & GOC_WMMA_NEG_HI_A) ? 0x80000000U : 0);
@@ -71,14 +71,14 @@ void wmma(uint32_t mask, uint32_t modifiers, uint32_t *const *d, const uint32_t 
 
   // Stage all outputs before any stores, since D may overlap A, B or C.
   for (int lane = 0; lane < 32; lane += 8) {
-    __m256i active =
-        _mm256_setr_epi32(-int((mask >> lane) & 1), -int((mask >> (lane + 1)) & 1),
-                          -int((mask >> (lane + 2)) & 1), -int((mask >> (lane + 3)) & 1),
-                          -int((mask >> (lane + 4)) & 1), -int((mask >> (lane + 5)) & 1),
-                          -int((mask >> (lane + 6)) & 1), -int((mask >> (lane + 7)) & 1));
+    __m256i lane_exec_mask =
+        _mm256_setr_epi32(-int((exec_mask >> lane) & 1), -int((exec_mask >> (lane + 1)) & 1),
+                          -int((exec_mask >> (lane + 2)) & 1), -int((exec_mask >> (lane + 3)) & 1),
+                          -int((exec_mask >> (lane + 4)) & 1), -int((exec_mask >> (lane + 5)) & 1),
+                          -int((exec_mask >> (lane + 6)) & 1), -int((exec_mask >> (lane + 7)) & 1));
     for (int reg = 0; reg < 8; ++reg)
       _mm256_maskstore_epi32(
-          reinterpret_cast<int *>(d[reg] + lane), active,
+          reinterpret_cast<int *>(d[reg] + lane), lane_exec_mask,
           _mm256_loadu_si256(reinterpret_cast<const __m256i *>(result[reg] + lane)));
   }
 }
@@ -87,22 +87,22 @@ void wmma(uint32_t mask, uint32_t modifiers, uint32_t *const *d, const uint32_t 
 
 namespace goc {
 
-void wmma_f16_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *const *d,
+void wmma_f16_x86_64_v3(uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   if (modifiers)
-    wmma<false, true>(mask, modifiers, d, a, b, c);
+    wmma<false, true>(exec_mask, modifiers, d, a, b, c);
   else
-    wmma<false, false>(mask, 0, d, a, b, c);
+    wmma<false, false>(exec_mask, 0, d, a, b, c);
 }
 
-void wmma_bf16_x86_64_v3(uint32_t mask, uint32_t modifiers, uint32_t *const *d,
+void wmma_bf16_x86_64_v3(uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
   if (modifiers)
-    wmma<true, true>(mask, modifiers, d, a, b, c);
+    wmma<true, true>(exec_mask, modifiers, d, a, b, c);
   else
-    wmma<true, false>(mask, 0, d, a, b, c);
+    wmma<true, false>(exec_mask, 0, d, a, b, c);
 }
 
 } // namespace goc

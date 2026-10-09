@@ -44,11 +44,11 @@ TEST(Class, DppModifiersMasksAliasesAndFpState) {
                          : goc_test::class_edges32[lane % 16];
               initial[1][lane] = (lane * 0x9e3779b9u) ^ 0xa5a59669u;
             }
-            for (uint32_t mask : rdna4_exec_masks()) {
+            for (uint32_t exec_mask : rdna4_exec_masks()) {
               uint32_t want = 0;
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source;
-                if (goc_test::dpp_source(descriptor, mask, lane, source))
+                if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
                   want |= uint32_t(goc_test::class_reference(
                               op / 2, source < 0 ? 0 : initial[0][source + 1], 0,
                               initial[shared ? 0 : 1][lane + 1], m))
@@ -65,9 +65,9 @@ TEST(Class, DppModifiersMasksAliasesAndFpState) {
                       cpu | (shared ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                                           GOC_FP_FLUSH_INPUT_DENORMALS
                                     : 0);
-                  ASSERT_EQ(
-                      functions[op](flags, mask, descriptor | goc_test::class_mode(m), d, a, b),
-                      GOC_SUCCESS);
+                  ASSERT_EQ(functions[op](flags, exec_mask, descriptor | goc_test::class_mode(m), d,
+                                          a, b),
+                            GOC_SUCCESS);
                   ASSERT_EQ(*d, want) << op << "/" << m << "/" << descriptor << "/" << cpu;
                   for (unsigned r = 0; r < 2; ++r)
                     for (unsigned w = 0; w < 34; ++w)
@@ -112,7 +112,7 @@ TEST(Class, DppHardwareCorpus) {
       uint64_t hash = goc_test::capture_hash_seed;
       for (bool flush : {true, false})
         for (unsigned batch = 0; batch < 4; ++batch)
-          for (uint32_t mask : masks)
+          for (uint32_t exec_mask : masks)
             for (unsigned op = 0; op < 4; ++op)
               for (unsigned m = 0; m < (op < 2 ? 16u : 4u); ++m)
                 for (uint64_t descriptor : goc_test::dpp_modes) {
@@ -124,7 +124,7 @@ TEST(Class, DppHardwareCorpus) {
                   const uint32_t *a[] = {av}, *b[] = {bv};
                   ASSERT_EQ(
                       functions[op](cpu | semantics | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0),
-                                    mask, descriptor | goc_test::class_mode(m), &result, a, b),
+                                    exec_mask, descriptor | goc_test::class_mode(m), &result, a, b),
                       GOC_SUCCESS);
                   hash = goc_test::capture_hash_word(hash, result);
                 }
@@ -206,7 +206,7 @@ TEST(Class, ScalarOutputAliasesMasksAndUnalignedStorage) {
                           initial[source_alias ? 0 : 2][lane + 1], m))
                       << lane;
         for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (unsigned target = 0; target < 7; ++target) {
               uint32_t words[3][35], outside = 0x87654321;
               std::memcpy(words, initial, sizeof(words));
@@ -214,13 +214,14 @@ TEST(Class, ScalarOutputAliasesMasksAndUnalignedStorage) {
               uint32_t *result = target == 6 ? &outside : &words[reg_target][lane_target];
               const uint32_t *a[] = {words[0] + 1, words[source_alias ? 0 : 1] + 1},
                              *b[] = {words[source_alias ? 0 : 2] + 1};
-              ASSERT_EQ(functions[op](cpu, mask, goc_test::class_mode(m), result, a, b),
+              ASSERT_EQ(functions[op](cpu, exec_mask, goc_test::class_mode(m), result, a, b),
                         GOC_SUCCESS);
-              ASSERT_EQ(*result, expected & mask) << cpu << "/" << op << "/" << m << "/" << target;
+              ASSERT_EQ(*result, expected & exec_mask)
+                  << cpu << "/" << op << "/" << m << "/" << target;
               for (unsigned reg = 0; reg < 3; ++reg)
                 for (unsigned lane = 0; lane < 35; ++lane) {
                   uint32_t want = target != 6 && reg == reg_target && lane == lane_target
-                                      ? expected & mask
+                                      ? expected & exec_mask
                                       : initial[reg][lane];
                   ASSERT_EQ(words[reg][lane], want);
                 }

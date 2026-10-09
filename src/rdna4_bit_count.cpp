@@ -35,13 +35,13 @@ template <goc::BitCount Op> uint32_t evaluate(uint32_t a, uint32_t b, unsigned l
 }
 
 template <goc::BitCount Op, int Lanes>
-int bit_count(uint64_t flags, goc::ExecMask<Lanes> mask, uint64_t mode, uint32_t *const *d,
+int bit_count(uint64_t flags, goc::ExecMask<Lanes> exec_mask, uint64_t mode, uint32_t *const *d,
               const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32) {
     if constexpr (Lanes == 32) {
       return goc::execute_dpp(
-          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
-            return bit_count<Op, Lanes>(flags, effective, uint32_t(mode), d, source, b);
+          flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+            return bit_count<Op, Lanes>(flags, exec_mask, uint32_t(mode), d, source, b);
           });
     } else {
       return GOC_ERROR_INVALID_FLAGS;
@@ -50,7 +50,7 @@ int bit_count(uint64_t flags, goc::ExecMask<Lanes> mask, uint64_t mode, uint32_t
 
   if (int error = goc::validate(flags, mode))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
   const uint32_t *bp = nullptr;
   if constexpr (Op == goc::BitCount::Population || Op == goc::BitCount::MaskedLow ||
@@ -58,7 +58,7 @@ int bit_count(uint64_t flags, goc::ExecMask<Lanes> mask, uint64_t mode, uint32_t
     bp = b[0];
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::bit_count_x86_64_v4<Op, Lanes>(mask, d[0], a[0], bp);
+    goc::bit_count_x86_64_v4<Op, Lanes>(exec_mask, d[0], a[0], bp);
     return GOC_SUCCESS;
   }
 #endif
@@ -66,7 +66,7 @@ int bit_count(uint64_t flags, goc::ExecMask<Lanes> mask, uint64_t mode, uint32_t
   // Wave32 MBCNT_HI only copies B; AVX2 showed no substantial gain there.
   if constexpr (Op != goc::BitCount::MaskedHigh || Lanes != 32) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::bit_count_x86_64_v3<Op, Lanes>(mask, d[0], a[0], bp);
+      goc::bit_count_x86_64_v3<Op, Lanes>(exec_mask, d[0], a[0], bp);
       return GOC_SUCCESS;
     }
   }
@@ -75,7 +75,7 @@ int bit_count(uint64_t flags, goc::ExecMask<Lanes> mask, uint64_t mode, uint32_t
   for (int lane = 0; lane < Lanes; ++lane)
     result[lane] = evaluate<Op>(a[0][lane], bp ? bp[lane] : 0, unsigned(lane));
   for (int lane = 0; lane < Lanes; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }

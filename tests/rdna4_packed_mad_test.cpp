@@ -76,7 +76,7 @@ TEST(PackedMad, AllMasksModifiersAndWholeRegisterAliases) {
   for (int sign = 0; sign < 2; ++sign)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int mode = 0; mode < 128; ++mode)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           // Restricted growth indices enumerate all 15 partitions of A/B/C/D.
           for (int bi = 0; bi <= 1; ++bi)
             for (int ci = 0; ci <= bi + 1; ++ci)
@@ -87,17 +87,18 @@ TEST(PackedMad, AllMasksModifiersAndWholeRegisterAliases) {
                   for (int lane = 0; lane < 32; ++lane)
                     words[reg][lane] = 0x7af551d3u * (lane + reg * 32 + 1);
                 std::memcpy(saved, words, sizeof(words));
-                ASSERT_EQ(functions[sign](cpu, mask, mode_bits(mode), p + di, p, p + bi, p + ci),
-                          GOC_SUCCESS);
+                ASSERT_EQ(
+                    functions[sign](cpu, exec_mask, mode_bits(mode), p + di, p, p + bi, p + ci),
+                    GOC_SUCCESS);
                 for (int reg = 0; reg < 4; ++reg)
                   for (int lane = 0; lane < 32; ++lane) {
                     uint32_t expected =
-                        reg == di && (mask >> lane & 1)
+                        reg == di && (exec_mask >> lane & 1)
                             ? goc_test::packed_mad_reference(sign, saved[0][lane], saved[bi][lane],
                                                              saved[ci][lane], mode_bits(mode))
                             : saved[reg][lane];
                     ASSERT_EQ(words[reg][lane], expected)
-                        << sign << "/" << cpu << "/" << mode << "/" << mask;
+                        << sign << "/" << cpu << "/" << mode << "/" << exec_mask;
                   }
               }
 }

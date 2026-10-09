@@ -103,7 +103,7 @@ TEST(Fp8Conversion, EverySelectorMaskAndDestinationAliasLayout) {
   for (unsigned op = 0; op < 4; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned select = 0; select < (op >= 2 ? 2u : 4u); ++select)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (unsigned low = 0; low < 3; ++low)
             for (unsigned high = 0; high < (op >= 2 ? 3u : 1u); ++high) {
               uint32_t storage[3][34], expected[3][34];
@@ -112,7 +112,7 @@ TEST(Fp8Conversion, EverySelectorMaskAndDestinationAliasLayout) {
                   storage[reg][word] = expected[reg][word] = random();
               unsigned shift = select * (op >= 2 ? 16 : 8);
               for (unsigned lane = 0; lane < 32; ++lane)
-                if ((mask >> lane) & 1) {
+                if ((exec_mask >> lane) & 1) {
                   uint32_t raw = storage[0][lane + 1] >> shift;
                   expected[low][lane + 1] =
                       goc_test::fp8_conversion_reference(op & 1, uint8_t(raw));
@@ -122,9 +122,9 @@ TEST(Fp8Conversion, EverySelectorMaskAndDestinationAliasLayout) {
                 }
               const uint32_t *a[] = {storage[0] + 1};
               uint32_t *d[] = {storage[low] + 1, storage[high] + 1};
-              ASSERT_EQ(
-                  functions[op](cpu, mask, goc_test::fp8_conversion_mode(op >= 2, select), d, a),
-                  GOC_SUCCESS);
+              ASSERT_EQ(functions[op](cpu, exec_mask,
+                                      goc_test::fp8_conversion_mode(op >= 2, select), d, a),
+                        GOC_SUCCESS);
               for (unsigned reg = 0; reg < 3; ++reg)
                 for (unsigned word = 0; word < 34; ++word)
                   ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -186,7 +186,7 @@ TEST(Fp8Conversion, DppSelectorsMasksAliasesAndGuards) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (auto descriptor : goc_test::dpp_modes)
         for (unsigned select = 0; select < 4; ++select)
-          for (auto mask : rdna4_exec_masks())
+          for (auto exec_mask : rdna4_exec_masks())
             for (bool alias : {false, true}) {
               uint32_t storage[2][34], original[2][34];
               for (unsigned reg = 0; reg < 2; ++reg)
@@ -195,13 +195,13 @@ TEST(Fp8Conversion, DppSelectorsMasksAliasesAndGuards) {
               const uint32_t *a[] = {storage[0] + 1};
               uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
               uint64_t mode = descriptor | goc_test::fp8_conversion_mode(false, select);
-              ASSERT_EQ(functions[op](cpu, mask, mode, d, a), GOC_SUCCESS);
+              ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, a), GOC_SUCCESS);
               for (unsigned reg = 0; reg < 2; ++reg)
                 for (unsigned word = 0; word < 34; ++word) {
                   uint32_t expected = original[reg][word];
                   int source = 0;
                   if (reg == unsigned(alias ? 0 : 1) && word > 0 && word <= 32 &&
-                      goc_test::dpp_source(mode, mask, word - 1, source)) {
+                      goc_test::dpp_source(mode, exec_mask, word - 1, source)) {
                     uint32_t raw = source < 0 ? 0 : original[0][source + 1];
                     expected = goc_test::fp8_conversion_reference(op, uint8_t(raw >> (select * 8)));
                   }
@@ -221,8 +221,9 @@ TEST(Fp8Conversion, DppValidation) {
     }
     // RDNA4's two-result widening forms have no DPP encoding.
     for (unsigned op = 2; op < 4; ++op)
-      for (auto mask : {0ULL, 0xffffffffULL})
-        EXPECT_EQ(functions[op](0, mask, descriptor, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+      for (auto exec_mask : {0ULL, 0xffffffffULL})
+        EXPECT_EQ(functions[op](0, exec_mask, descriptor, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
   }
 }
 
@@ -240,7 +241,7 @@ TEST(Fp8Conversion, DppHardwareCorpusAndHostEnvironment) {
       int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
       uint64_t hash = goc_test::capture_hash_seed;
       for (unsigned batch = 0; batch < 8; ++batch)
-        for (auto mask : masks)
+        for (auto exec_mask : masks)
           for (unsigned op = 0; op < 2; ++op)
             for (auto descriptor : goc_test::dpp_modes)
               for (unsigned select = 0; select < 4; ++select) {
@@ -251,7 +252,7 @@ TEST(Fp8Conversion, DppHardwareCorpusAndHostEnvironment) {
                 }
                 const uint32_t *a[] = {input};
                 uint32_t *d[] = {output};
-                EXPECT_EQ(functions[op](cpu, mask,
+                EXPECT_EQ(functions[op](cpu, exec_mask,
                                         descriptor | goc_test::fp8_conversion_mode(false, select),
                                         d, a),
                           GOC_SUCCESS);

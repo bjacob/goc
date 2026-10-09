@@ -23,10 +23,10 @@ const Fn functions[] = {
     goc_rdna4_v_cvt_pk_norm_u16_f32,
     goc_rdna4_v_cvt_pk_norm_i16_f16,
     goc_rdna4_v_cvt_pk_norm_u16_f16,
-    [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
-       const uint32_t *const *) { return goc_rdna4_v_cvt_norm_i16_f16(f, m, i, d, a); },
-    [](uint64_t f, uint32_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
-       const uint32_t *const *) { return goc_rdna4_v_cvt_norm_u16_f16(f, m, i, d, a); }};
+    [](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+       const uint32_t *const *) { return goc_rdna4_v_cvt_norm_i16_f16(f, exec_mask, i, d, a); },
+    [](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
+       const uint32_t *const *) { return goc_rdna4_v_cvt_norm_u16_f16(f, exec_mask, i, d, a); }};
 
 ::testing::AssertionResult check(unsigned op, uint64_t flags, uint32_t mode, const uint32_t av[32],
                                  const uint32_t bv[32]) {
@@ -129,7 +129,7 @@ TEST(Normalized, EveryModifierMaskAndWholeRegisterAlias) {
   for (unsigned op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < goc_test::normalized_modes(op); ++variant)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (unsigned breg = 0; breg < (op < 4 ? 2u : 1u); ++breg)
             for (unsigned dreg = 0; dreg < 3; ++dreg) {
               uint32_t storage[3][34], expected[3][34];
@@ -138,13 +138,13 @@ TEST(Normalized, EveryModifierMaskAndWholeRegisterAlias) {
                   storage[reg][word] = expected[reg][word] = random();
               uint32_t mode = goc_test::normalized_mode(op, variant);
               for (unsigned lane = 0; lane < 32; ++lane)
-                if ((mask >> lane) & 1)
+                if ((exec_mask >> lane) & 1)
                   expected[dreg][lane + 1] = goc_test::normalized_reference(
                       op, storage[0][lane + 1], storage[breg][lane + 1], storage[dreg][lane + 1],
                       mode);
               const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1};
               uint32_t *d[] = {storage[dreg] + 1};
-              ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
+              ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, a, b), GOC_SUCCESS);
               for (unsigned reg = 0; reg < 3; ++reg)
                 for (unsigned word = 0; word < 34; ++word)
                   ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -203,7 +203,7 @@ TEST(Normalized, DppMasksAndWholeRegisterAliases) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (unsigned variant :
              {0u, goc_test::normalized_modes(op) / 2, goc_test::normalized_modes(op) - 1})
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (unsigned breg = 0; breg < (op < 4 ? 2u : 1u); ++breg)
               for (unsigned dreg = 0; dreg < 3; ++dreg) {
                 uint32_t storage[3][34], expected[3][34];
@@ -213,14 +213,14 @@ TEST(Normalized, DppMasksAndWholeRegisterAliases) {
                 uint64_t mode = descriptor | goc_test::normalized_mode(op, variant);
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (goc_test::dpp_source(mode, mask, lane, source))
+                  if (goc_test::dpp_source(mode, exec_mask, lane, source))
                     expected[dreg][lane + 1] = goc_test::normalized_reference(
                         op, source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
                         storage[dreg][lane + 1], uint32_t(mode));
                 }
                 const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1};
                 uint32_t *d[] = {storage[dreg] + 1};
-                ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
+                ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, a, b), GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 3; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
                     ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -274,7 +274,7 @@ TEST(Normalized, DppHardwareCorpus) {
   const uint32_t unary_modes[] = {0, 1, 8, 9, 256, 64, 128, 192, 512, 4096, 4608, 5065};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (auto mask : masks)
+    for (auto exec_mask : masks)
       for (unsigned op = 0; op < 6; ++op)
         for (auto descriptor : goc_test::dpp_modes)
           for (unsigned variant = 0; variant < (op < 2 ? 8u : 12u); ++variant) {
@@ -287,7 +287,7 @@ TEST(Normalized, DppHardwareCorpus) {
             const uint32_t *a[] = {av}, *b[] = {bv};
             uint32_t *d[] = {output};
             auto mode = descriptor | (op < 4 ? packed_modes[variant] : unary_modes[variant]);
-            ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, a, b), GOC_SUCCESS);
             for (auto word : output)
               hash = goc_test::capture_hash_word(hash, word);
           }

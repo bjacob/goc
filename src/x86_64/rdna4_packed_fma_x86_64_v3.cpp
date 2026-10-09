@@ -22,7 +22,7 @@ __m256i compute_half(__m256i a, __m256i b, __m256i c, bool saturate, uint32_t mo
 
 } // namespace
 
-void packed_fma_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32_t *d,
+void packed_fma_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                           const uint32_t *a, const uint32_t *b, const uint32_t *c) {
   uint32_t low_mode = packed_half_mode(mode, false), high_mode = packed_half_mode(mode, true);
   for (int lane = 0; lane < 32; lane += 8) {
@@ -32,9 +32,9 @@ void packed_fma_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32_t 
     auto low = compute_half(va, vb, vc, saturate, low_mode);
     auto high = compute_half(va, vb, vc, saturate, high_mode);
     auto result = _mm256_or_si256(low, _mm256_slli_epi32(high, 16));
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 

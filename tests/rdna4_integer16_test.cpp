@@ -68,7 +68,7 @@ TEST(Integer16, MasksModifiersAndAllWholeRegisterAliases) {
   for (int op = 0; op < 12; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int mode = 0; mode < (op < 4 ? 16 : 8); ++mode)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (const auto &layout : layouts) {
             uint32_t words[3][32], saved[3][32];
             for (int r = 0; r < 3; ++r)
@@ -78,17 +78,17 @@ TEST(Integer16, MasksModifiersAndAllWholeRegisterAliases) {
             const uint32_t *a[] = {words[layout[0]]}, *b[] = {words[layout[1]]};
             uint32_t *d[] = {words[layout[2]]};
             ASSERT_EQ(goc_test::integer16_functions[op](
-                          cpu, mask, goc_test::integer16_mode_bits(mode), d, a, b),
+                          cpu, exec_mask, goc_test::integer16_mode_bits(mode), d, a, b),
                       GOC_SUCCESS);
             for (int r = 0; r < 3; ++r)
               for (int lane = 0; lane < 32; ++lane) {
-                uint32_t expected = r == layout[2] && (mask >> lane & 1)
+                uint32_t expected = r == layout[2] && (exec_mask >> lane & 1)
                                         ? goc_test::integer16_reference(
                                               op, saved[layout[0]][lane], saved[layout[1]][lane],
                                               saved[r][lane], goc_test::integer16_mode_bits(mode))
                                         : saved[r][lane];
                 ASSERT_EQ(words[r][lane], expected)
-                    << op << "/" << cpu << "/" << mode << "/" << mask;
+                    << op << "/" << cpu << "/" << mode << "/" << exec_mask;
               }
           }
 }

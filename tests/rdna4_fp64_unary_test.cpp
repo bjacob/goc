@@ -135,9 +135,9 @@ TEST(Fp64Unary, AllModifiersMasksAndCrossHalfAliases) {
           source[1][lane] = uint32_t(inputs[lane] >> 32);
         }
         ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, pd, pa), GOC_SUCCESS);
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (const auto &alias : aliases) {
-            SCOPED_TRACE(::testing::Message() << op << "/" << mode << "/" << cpu << "/" << mask
+            SCOPED_TRACE(::testing::Message() << op << "/" << mode << "/" << cpu << "/" << exec_mask
                                               << "/" << alias[0] << "/" << alias[1]);
             uint32_t storage[4][34], before[2][32], *v[4];
             for (int reg = 0; reg < 4; ++reg) {
@@ -150,9 +150,9 @@ TEST(Fp64Unary, AllModifiersMasksAndCrossHalfAliases) {
             uint32_t *d[] = {v[alias[0]], v[alias[1]]};
             for (int reg = 0; reg < 2; ++reg)
               std::copy(d[reg], d[reg] + 32, before[reg]);
-            ASSERT_EQ(functions[op](cpu, mask, mode, d, v), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, v), GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane) {
-              if (!((mask >> lane) & 1)) {
+              if (!((exec_mask >> lane) & 1)) {
                 EXPECT_EQ(d[0][lane], before[0][lane]);
                 EXPECT_EQ(d[1][lane], before[1][lane]);
                 continue;

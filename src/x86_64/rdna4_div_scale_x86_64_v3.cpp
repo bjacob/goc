@@ -194,7 +194,7 @@ __m256i load(const uint32_t *const *v, unsigned lane, uint32_t mode, unsigned op
 namespace goc {
 
 template <unsigned Width>
-uint32_t div_scale_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d,
+uint32_t div_scale_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
   constexpr unsigned lanes = Width == 64 ? 4 : 8;
@@ -214,9 +214,9 @@ uint32_t div_scale_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d,
       _mm_storeu_si128(reinterpret_cast<__m128i *>(staged[1] + lane),
                        _mm256_extracti128_si256(words, 1));
     } else {
-      auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                      _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[0] + lane), active, result);
+      auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                              _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[0] + lane), lane_exec_mask, result);
     }
   }
   // Preserve cross-half aliases by committing D0 then D1 after all reads.
@@ -224,11 +224,11 @@ uint32_t div_scale_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d,
     for (unsigned reg = 0; reg < 2; ++reg)
       for (unsigned lane = 0; lane < 32; lane += 8) {
         auto result = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(staged[reg] + lane));
-        auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                        _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-        _mm256_maskstore_epi32(reinterpret_cast<int *>(d[reg] + lane), active, result);
+        auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                                _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+        _mm256_maskstore_epi32(reinterpret_cast<int *>(d[reg] + lane), lane_exec_mask, result);
       }
-  return conditions & mask;
+  return conditions & exec_mask;
 }
 
 template uint32_t div_scale_x86_64_v3<32>(uint32_t, uint32_t, uint32_t *const *,

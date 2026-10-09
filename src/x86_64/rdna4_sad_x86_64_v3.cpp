@@ -37,7 +37,7 @@ __m256i accumulate(__m256i sum, __m256i c, bool clamp) {
 } // namespace
 
 template <Sad Op>
-void sad_x86_64_v3(uint32_t mask, bool clamp, uint32_t *const *d, const uint32_t *const *a,
+void sad_x86_64_v3(uint32_t exec_mask, bool clamp, uint32_t *const *d, const uint32_t *const *a,
                    const uint32_t *b, const uint32_t *const *c) {
   constexpr int outputs = sad_outputs(Op);
   constexpr int bits = Op == Sad::U32 ? 32 : Op == Sad::U16 ? 16 : 8;
@@ -71,10 +71,10 @@ void sad_x86_64_v3(uint32_t mask, bool clamp, uint32_t *const *d, const uint32_t
     }
     // All inputs for these lanes precede every destination write, including
     // cross-register aliases and repeated destination addresses.
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
     for (int reg = 0; reg < outputs; ++reg)
-      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[reg] + lane), active, result[reg]);
+      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[reg] + lane), lane_exec_mask, result[reg]);
   }
 }
 

@@ -213,7 +213,7 @@ TEST(Sad, MasksAndEveryDestinationSourceAlias) {
               map[slot] = target;
               aliases.push_back(map);
             }
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (const auto &map : aliases) {
               uint32_t words[12][32], expected[12][32];
               for (int reg = 0; reg < 12; ++reg) {
@@ -226,13 +226,13 @@ TEST(Sad, MasksAndEveryDestinationSourceAlias) {
               uint32_t *d[] = {words[map[0]], words[map[1]], words[map[2]], words[map[3]]};
               for (int reg = 0; reg < outputs(op); ++reg)
                 for (int lane = 0; lane < 32; ++lane)
-                  if ((mask >> lane) & 1)
+                  if ((exec_mask >> lane) & 1)
                     expected[map[reg]][lane] = result[reg][lane];
-              ASSERT_EQ(functions[op](cpu, mask, clamp ? GOC_ALU_CLAMP : 0, d, a, b, c),
+              ASSERT_EQ(functions[op](cpu, exec_mask, clamp ? GOC_ALU_CLAMP : 0, d, a, b, c),
                         GOC_SUCCESS);
               for (int reg = 0; reg < 12; ++reg)
                 ASSERT_TRUE(std::equal(words[reg], words[reg] + 32, expected[reg]))
-                    << op << "/" << cpu << "/" << clamp << "/" << mask << "/" << reg;
+                    << op << "/" << cpu << "/" << clamp << "/" << exec_mask << "/" << reg;
             }
         }
 }
@@ -252,16 +252,16 @@ TEST(Sad, ValidationAndHostFpState) {
         const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2]},
                        *c[] = {words[3], words[4], words[5], words[6]};
         uint32_t *d[] = {words[7], words[8], words[9], words[10]};
-        for (uint32_t mask : {0U, UINT32_MAX}) {
+        for (uint32_t exec_mask : {0U, UINT32_MAX}) {
           for (int bit = 0; bit < 32; ++bit)
             if ((uint32_t(1) << bit) != GOC_ALU_CLAMP) {
-              EXPECT_EQ(functions[op](cpu, mask, uint32_t(1) << bit, d, a, b, c),
+              EXPECT_EQ(functions[op](cpu, exec_mask, uint32_t(1) << bit, d, a, b, c),
                         GOC_ERROR_INVALID_FLAGS);
             }
-          EXPECT_EQ(functions[op](cpu | (1ULL << 63), mask, 0, d, a, b, c),
+          EXPECT_EQ(functions[op](cpu | (1ULL << 63), exec_mask, 0, d, a, b, c),
                     GOC_ERROR_INVALID_FLAGS);
-          EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask,
-                                  0, d, a, b, c),
+          EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                  exec_mask, 0, d, a, b, c),
                     GOC_ERROR_UNSUPPORTED_SEMANTICS);
         }
         for (auto &reg : words)
@@ -281,7 +281,7 @@ TEST(Sad, DppClampMasksAliasesAndGuards) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (auto descriptor : goc_test::dpp_modes)
         for (bool clamp : {false, true})
-          for (auto mask : rdna4_exec_masks())
+          for (auto exec_mask : rdna4_exec_masks())
             for (unsigned breg = 0; breg < 2; ++breg)
               for (unsigned creg = 0; creg < 3; ++creg)
                 for (unsigned dreg = 0; dreg < 4; ++dreg) {
@@ -292,7 +292,7 @@ TEST(Sad, DppClampMasksAliasesAndGuards) {
                   uint64_t mode = descriptor | (clamp ? GOC_ALU_CLAMP : 0);
                   for (unsigned lane = 0; lane < 32; ++lane) {
                     int source = 0;
-                    if (goc_test::dpp_source(mode, mask, lane, source)) {
+                    if (goc_test::dpp_source(mode, exec_mask, lane, source)) {
                       uint32_t accumulator = storage[creg][lane + 1];
                       expected[dreg][lane + 1] =
                           goc_test::sad_reference(op, source < 0 ? 0 : storage[0][source + 1], 0,
@@ -302,7 +302,7 @@ TEST(Sad, DppClampMasksAliasesAndGuards) {
                   const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1},
                                  *c[] = {storage[creg] + 1};
                   uint32_t *d[] = {storage[dreg] + 1};
-                  ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b, c), GOC_SUCCESS);
+                  ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, a, b, c), GOC_SUCCESS);
                   for (unsigned reg = 0; reg < 4; ++reg)
                     for (unsigned word = 0; word < 34; ++word)
                       ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -333,7 +333,7 @@ TEST(Sad, DppHardwareCorpus) {
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (auto mask : masks)
+    for (auto exec_mask : masks)
       for (unsigned op = 0; op < 5; ++op)
         for (auto descriptor : goc_test::dpp_modes)
           for (bool clamp : {false, true}) {
@@ -347,7 +347,7 @@ TEST(Sad, DppHardwareCorpus) {
             const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
             uint32_t *d[] = {output};
             ASSERT_EQ(
-                functions[op](cpu, mask, descriptor | (clamp ? GOC_ALU_CLAMP : 0), d, a, b, c),
+                functions[op](cpu, exec_mask, descriptor | (clamp ? GOC_ALU_CLAMP : 0), d, a, b, c),
                 GOC_SUCCESS);
             for (auto word : output)
               hash = goc_test::capture_hash_word(hash, word);

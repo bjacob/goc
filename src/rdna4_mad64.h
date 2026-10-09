@@ -11,11 +11,13 @@
 namespace goc {
 
 template <bool Signed>
-uint32_t mad64_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
-                         const uint32_t *const *b, const uint32_t *const *c);
+uint32_t mad64_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c);
 
 template <bool Signed>
-uint32_t mad64_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
-                         const uint32_t *const *b, const uint32_t *const *c);
+uint32_t mad64_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c);
 
 } // namespace goc

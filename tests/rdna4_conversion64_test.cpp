@@ -161,7 +161,7 @@ TEST(Conversion64, MasksCrossHalfAliasesAndUnalignedStorage) {
   for (int op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < goc_test::conversion64_modes(op); ++variant)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (const auto &layout : layouts) {
             uint32_t storage[4][34], expected[4][34];
             for (int reg = 0; reg < 4; ++reg)
@@ -177,14 +177,14 @@ TEST(Conversion64, MasksCrossHalfAliasesAndUnalignedStorage) {
                 raw |= uint64_t(a[1][lane]) << 32;
               results[lane] = goc_test::conversion64_reference(op, raw, mode);
             }
-            ASSERT_EQ(functions[op](cpu, mask, mode, d, a), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, mode, d, a), GOC_SUCCESS);
             // Loose NaN payloads are unspecified. Check quiet-NaN classification
             // even when D0 == D1 leaves only the high word, then use the actual
             // payload for the whole-buffer preservation checks.
             uint64_t nan =
                 goc_test::conversion64_wide_output(op) ? 0x7ff8000000000000ULL : 0x7fc00000ULL;
             for (int lane = 0; lane < 32; ++lane)
-              if (((mask >> lane) & 1) && op != 2 && op != 3 &&
+              if (((exec_mask >> lane) & 1) && op != 2 && op != 3 &&
                   goc_test::conversion64_equal(op, results[lane], nan)) {
                 uint64_t actual = d[0][lane];
                 if (goc_test::conversion64_wide_output(op))
@@ -194,7 +194,7 @@ TEST(Conversion64, MasksCrossHalfAliasesAndUnalignedStorage) {
               }
             for (int reg = 0; reg < (goc_test::conversion64_wide_output(op) ? 2 : 1); ++reg)
               for (int lane = 0; lane < 32; ++lane)
-                if ((mask >> lane) & 1)
+                if ((exec_mask >> lane) & 1)
                   expected[layout[2 + reg]][lane + 1] = uint32_t(results[lane] >> (32 * reg));
             for (int reg = 0; reg < 4; ++reg)
               for (int word = 0; word < 34; ++word)

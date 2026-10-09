@@ -150,7 +150,7 @@ __m256i load(const uint32_t *const *v, unsigned lane, uint32_t mode, unsigned op
 namespace goc {
 
 template <unsigned Width>
-void fixup_x86_64_v3(uint32_t mask, uint32_t mode, bool saturate, uint32_t *const *d,
+void fixup_x86_64_v3(uint32_t exec_mask, uint32_t mode, bool saturate, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   constexpr unsigned lanes = Width == 64 ? 4 : 8;
   uint32_t staged[2][32];
@@ -170,9 +170,9 @@ void fixup_x86_64_v3(uint32_t mask, uint32_t mode, bool saturate, uint32_t *cons
         result = _mm256_or_si256(_mm256_andnot_si256(_mm256_set1_epi32(int(65535u << shift)), old),
                                  _mm256_sll_epi32(result, _mm_cvtsi32_si128(int(shift))));
       }
-      auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                      _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[0] + lane), active, result);
+      auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                              _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[0] + lane), lane_exec_mask, result);
     }
   }
   // Delay FP64 writes for cross-half aliases; D1 wins when D0 and D1 alias.
@@ -180,9 +180,9 @@ void fixup_x86_64_v3(uint32_t mask, uint32_t mode, bool saturate, uint32_t *cons
     for (unsigned reg = 0; reg < 2; ++reg)
       for (unsigned lane = 0; lane < 32; lane += 8) {
         auto result = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(staged[reg] + lane));
-        auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                        _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-        _mm256_maskstore_epi32(reinterpret_cast<int *>(d[reg] + lane), active, result);
+        auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                                _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+        _mm256_maskstore_epi32(reinterpret_cast<int *>(d[reg] + lane), lane_exec_mask, result);
       }
 }
 

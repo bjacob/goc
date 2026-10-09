@@ -20,7 +20,7 @@ constexpr bool sad_masked(Sad op) {
 constexpr int sad_outputs(Sad op) { return op == Sad::MaskedQuadU32 ? 4 : sad_quad(op) ? 2 : 1; }
 
 template <Sad Op>
-void sad_x86_64_v3(uint32_t mask, bool clamp, uint32_t *const *d, const uint32_t *const *a,
+void sad_x86_64_v3(uint32_t exec_mask, bool clamp, uint32_t *const *d, const uint32_t *const *a,
                    const uint32_t *b, const uint32_t *const *c);
 
 } // namespace goc

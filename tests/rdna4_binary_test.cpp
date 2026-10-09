@@ -29,10 +29,10 @@ TEST(Binary, AllModifiersMasksAliasesAndSpecialValues) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint32_t variant = 0; variant < 128; ++variant) {
         uint32_t mode = (variant & 3) | ((variant & 12) << 1) | ((variant & 112) << 2);
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (int alias = 0; alias < 3; ++alias) {
             SCOPED_TRACE(::testing::Message()
-                         << op << "/" << cpu << "/" << mode << "/" << mask << "/" << alias);
+                         << op << "/" << cpu << "/" << mode << "/" << exec_mask << "/" << alias);
             uint32_t storage[3][34], before[32];
             uint32_t *v[3];
             for (int reg = 0; reg < 3; ++reg) {
@@ -44,9 +44,9 @@ TEST(Binary, AllModifiersMasksAliasesAndSpecialValues) {
               v[1][lane] = values[(lane * 5 + 3) % 21];
               before[lane] = v[alias][lane];
             }
-            ASSERT_EQ(functions[op](cpu, mask, mode, &v[alias], &v[0], &v[1]), GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu, exec_mask, mode, &v[alias], &v[0], &v[1]), GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane) {
-              if (!((mask >> lane) & 1)) {
+              if (!((exec_mask >> lane) & 1)) {
                 EXPECT_EQ(v[alias][lane], before[lane]);
                 continue;
               }

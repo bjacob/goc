@@ -8,7 +8,7 @@
 namespace goc {
 
 template <int Bits, Shift Op>
-void shift_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *a,
+void shift_x86_64_v3(uint32_t exec_mask, uint32_t *const *d, const uint32_t *a,
                      const uint32_t *const *b) {
   for (int lane = 0; lane < 32; lane += 8) {
     const __m256i count =
@@ -48,11 +48,12 @@ void shift_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *a,
     }
     // Both source halves and the count have been read before either store,
     // including when D aliases B in reverse order or both D halves coincide.
-    const __m256i active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                             _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d[0] + lane), active, low);
+    const __m256i lane_exec_mask =
+        _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                          _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d[0] + lane), lane_exec_mask, low);
     if constexpr (Bits == 64)
-      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[1] + lane), active, high);
+      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[1] + lane), lane_exec_mask, high);
   }
 }
 

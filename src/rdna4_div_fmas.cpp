@@ -15,18 +15,17 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
         uint32_t condition) {
   if (int error = goc::validate(flags, mode & ~511u, true))
     return error;
-  uint32_t mask = exec_mask;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::div_fmas_x86_64_v4<Width>(mask, mode, d, a, b, c, condition);
+    goc::div_fmas_x86_64_v4<Width>(exec_mask, mode, d, a, b, c, condition);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::div_fmas_x86_64_v3<Width>(mask, mode, d, a, b, c, condition);
+    goc::div_fmas_x86_64_v3<Width>(exec_mask, mode, d, a, b, c, condition);
     return GOC_SUCCESS;
   }
 #endif
@@ -43,7 +42,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   }
   for (unsigned reg = 0; reg < (Width == 64 ? 2u : 1u); ++reg)
     for (unsigned lane = 0; lane < 32; ++lane)
-      if ((mask >> lane) & 1)
+      if ((exec_mask >> lane) & 1)
         d[reg][lane] = uint32_t(result[lane] >> (Width == 64 ? 32 * reg : 0));
   return GOC_SUCCESS;
 }

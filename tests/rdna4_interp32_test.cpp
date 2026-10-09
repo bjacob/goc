@@ -58,7 +58,7 @@ TEST(Interp32, HardwareReadsInactiveSourceLanes) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned mi = 0; mi < 36; ++mi) {
       const uint32_t first[] = {0, UINT32_MAX, 0x55555555, 0xaaaaaaaa};
-      uint32_t mask = mi < 4 ? first[mi] : 1u << (mi - 4);
+      uint32_t exec_mask = mi < 4 ? first[mi] : 1u << (mi - 4);
       uint64_t digest = goc_test::capture_hash_seed;
       for (unsigned op = 0; op < 2; ++op)
         for (unsigned m = 0; m < 16; ++m) {
@@ -66,7 +66,8 @@ TEST(Interp32, HardwareReadsInactiveSourceLanes) {
           goc_test::interp32_capture_inputs(words);
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
-          ASSERT_EQ(functions[op](cpu, mask, goc_test::interp32_mode(m), d, a, b, c), GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu, exec_mask, goc_test::interp32_mode(m), d, a, b, c),
+                    GOC_SUCCESS);
           hash_words(digest, words[3]);
         }
       EXPECT_EQ(digest, goc_test::interp32_masked_digests[mi]) << cpu << "/" << mi;
@@ -80,22 +81,23 @@ TEST(Interp32, MasksModifiersAliasesAndUnalignedStorage) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (const auto &source : sources)
           for (unsigned target = 0; target < 4; ++target)
-            for (uint32_t mask : rdna4_exec_masks()) {
+            for (uint32_t exec_mask : rdna4_exec_masks()) {
               uint32_t words[4][35], expected[4][35];
               for (unsigned reg = 0; reg < 4; ++reg)
                 for (unsigned lane = 0; lane < 35; ++lane)
                   words[reg][lane] = expected[reg][lane] =
                       goc_test::interp32_bits(float(int(lane * 3 + reg * 17) - 45) * 0.125f);
               for (unsigned lane = 0; lane < 32; ++lane)
-                if ((mask >> lane) & 1)
+                if ((exec_mask >> lane) & 1)
                   expected[target][lane + 1] = goc_test::interp32_bits(
                       goc_test::interp32_reference(op, words[source[0]] + 1, words[source[1]] + 1,
                                                    words[source[2]] + 1, lane, m));
               const uint32_t *a[] = {words[source[0]] + 1}, *b[] = {words[source[1]] + 1},
                              *c[] = {words[source[2]] + 1};
               uint32_t *d[] = {words[target] + 1};
-              ASSERT_EQ(functions[op](cpu, mask, goc_test::interp32_mode(m, m % 8), d, a, b, c),
-                        GOC_SUCCESS);
+              ASSERT_EQ(
+                  functions[op](cpu, exec_mask, goc_test::interp32_mode(m, m % 8), d, a, b, c),
+                  GOC_SUCCESS);
               for (unsigned reg = 0; reg < 4; ++reg)
                 ASSERT_TRUE(std::equal(words[reg], words[reg] + 35, expected[reg]))
                     << cpu << "/" << op << "/" << m << "/" << target;

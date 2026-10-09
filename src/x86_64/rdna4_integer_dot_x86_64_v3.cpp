@@ -12,7 +12,7 @@ namespace {
 // Widen pairs to signed 16-bit factors, including unsigned bytes up to 255.
 // The full dot fits int32; only the final addition of C can overflow.
 template <int Bits, bool Unsigned>
-void dot(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, const uint32_t *b,
+void dot(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, const uint32_t *b,
          const uint32_t *c) {
   const auto sign_a =
       _mm256_set1_epi32(!Unsigned && (modifiers & GOC_DOT_SIGNED_A) ? 1 << (Bits - 1) : 0);
@@ -48,26 +48,26 @@ void dot(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, cons
         result = _mm256_blendv_epi8(result, limit, _mm256_srai_epi32(overflow, 31));
       }
     }
-    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
-                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                            _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 
 } // namespace
 
-void integer_dot_x86_64_v3(int bits, bool unsigned_acc, uint32_t mask, uint32_t modifiers,
+void integer_dot_x86_64_v3(int bits, bool unsigned_acc, uint32_t exec_mask, uint32_t modifiers,
                            uint32_t *d, const uint32_t *a, const uint32_t *b, const uint32_t *c) {
   if (bits == 8) {
     if (unsigned_acc)
-      dot<8, true>(mask, modifiers, d, a, b, c);
+      dot<8, true>(exec_mask, modifiers, d, a, b, c);
     else
-      dot<8, false>(mask, modifiers, d, a, b, c);
+      dot<8, false>(exec_mask, modifiers, d, a, b, c);
   } else {
     if (unsigned_acc)
-      dot<4, true>(mask, modifiers, d, a, b, c);
+      dot<4, true>(exec_mask, modifiers, d, a, b, c);
     else
-      dot<4, false>(mask, modifiers, d, a, b, c);
+      dot<4, false>(exec_mask, modifiers, d, a, b, c);
   }
 }
 

@@ -9,7 +9,7 @@
 namespace goc {
 
 template <bool Half>
-void cndmask_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void cndmask_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                        const uint32_t *b, uint32_t condition) {
   const uint32_t sign = Half ? 0x8000 : 0x80000000;
   unsigned sa = Half && (mode & GOC_ALU_HIGH_A) ? 16 : 0;
@@ -36,7 +36,7 @@ void cndmask_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t
       value =
           _mm512_or_si512(value, _mm512_andnot_si512(_mm512_set1_epi32(int(65535u << sd)), old));
     }
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), value);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), value);
   }
 }
 

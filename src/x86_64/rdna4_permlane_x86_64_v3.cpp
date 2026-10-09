@@ -8,7 +8,7 @@
 
 namespace goc {
 template <bool Cross, bool Var>
-void permlane_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void permlane_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                         const uint32_t *b, uint32_t lo, uint32_t hi) {
   __m256i results[4];
   auto ones = _mm256_set1_epi32(1);
@@ -30,19 +30,20 @@ void permlane_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_
         _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + base + 8)), index);
     auto value = _mm256_blendv_epi8(low, high, _mm256_cmpgt_epi32(index, _mm256_set1_epi32(7)));
     if (!(mode & GOC_PERMLANE_FI)) {
-      auto active =
-          _mm256_and_si256(_mm256_srlv_epi32(_mm256_set1_epi32(int(mask >> base)), index), ones);
+      auto lane_exec_mask = _mm256_and_si256(
+          _mm256_srlv_epi32(_mm256_set1_epi32(int(exec_mask >> base)), index), ones);
       auto fallback = mode & GOC_PERMLANE_BOUND_CTRL
                           ? _mm256_setzero_si256()
                           : _mm256_loadu_si256(reinterpret_cast<const __m256i *>(d + lane));
-      value = _mm256_blendv_epi8(fallback, value, _mm256_sub_epi32(_mm256_setzero_si256(), active));
+      value = _mm256_blendv_epi8(fallback, value,
+                                 _mm256_sub_epi32(_mm256_setzero_si256(), lane_exec_mask));
     }
     results[lane / 8] = value;
   }
   // Defer every store until both source rows and all indices have been read.
   for (unsigned lane = 0; lane < 32; lane += 8) {
     auto enabled =
-        _mm256_cmpeq_epi32(_mm256_and_si256(_mm256_set1_epi32(int(mask >> lane)), bits), bits);
+        _mm256_cmpeq_epi32(_mm256_and_si256(_mm256_set1_epi32(int(exec_mask >> lane)), bits), bits);
     _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), enabled, results[lane / 8]);
   }
 }

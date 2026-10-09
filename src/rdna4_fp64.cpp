@@ -11,7 +11,7 @@
 namespace {
 
 template <goc::Fp64 Op>
-int arithmetic(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
+int arithmetic(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   uint32_t known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if constexpr (goc::fp64_sources(Op) >= 2)
@@ -20,11 +20,11 @@ int arithmetic(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
     known |= GOC_ALU_ABS_C | GOC_ALU_NEG_C;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
-  if (mask == 0)
+  if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::fp64_x86_64_v3(Op, mask, mode, d, a, b, c);
+    goc::fp64_x86_64_v3(Op, exec_mask, mode, d, a, b, c);
     return GOC_SUCCESS;
   }
 #endif
@@ -80,122 +80,122 @@ int arithmetic(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
   // Stage both halves before any destination write, including cross-half aliases.
   for (int reg = 0; reg < 2; ++reg)
     for (int lane = 0; lane < 32; ++lane)
-      if ((mask >> lane) & 1)
+      if ((exec_mask >> lane) & 1)
         d[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
 }
 
 } // namespace
 
-int goc_rdna4_v_add_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_add_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Add>(flags, mask, mode, d, a, b, nullptr);
+  return arithmetic<goc::Fp64::Add>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
-int goc_rdna4_v_mul_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_mul_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Mul>(flags, mask, mode, d, a, b, nullptr);
+  return arithmetic<goc::Fp64::Mul>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
-int goc_rdna4_v_fma_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_fma_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Fma>(flags, mask, mode, d, a, b, c);
+  return arithmetic<goc::Fp64::Fma>(flags, exec_mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_trunc_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_trunc_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Trunc>(flags, mask, mode, d, a, nullptr, nullptr);
+  return arithmetic<goc::Fp64::Trunc>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
-int goc_rdna4_v_ceil_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_ceil_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Ceil>(flags, mask, mode, d, a, nullptr, nullptr);
+  return arithmetic<goc::Fp64::Ceil>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
-int goc_rdna4_v_rndne_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_rndne_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Rndne>(flags, mask, mode, d, a, nullptr, nullptr);
+  return arithmetic<goc::Fp64::Rndne>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
-int goc_rdna4_v_floor_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_floor_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Floor>(flags, mask, mode, d, a, nullptr, nullptr);
+  return arithmetic<goc::Fp64::Floor>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
-int goc_rdna4_v_fract_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_fract_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Fract>(flags, mask, mode, d, a, nullptr, nullptr);
+  return arithmetic<goc::Fp64::Fract>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
-int goc_rdna4_v_sqrt_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_sqrt_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Sqrt>(flags, mask, mode, d, a, nullptr, nullptr);
+  return arithmetic<goc::Fp64::Sqrt>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
-int goc_rdna4_v_rcp_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_rcp_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Rcp>(flags, mask, mode, d, a, nullptr, nullptr);
+  return arithmetic<goc::Fp64::Rcp>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
-int goc_rdna4_v_rsq_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_rsq_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Rsq>(flags, mask, mode, d, a, nullptr, nullptr);
+  return arithmetic<goc::Fp64::Rsq>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
 
-int goc_rdna4_v_min_num_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_min_num_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::MinNum>(flags, mask, mode, d, a, b, nullptr);
+  return arithmetic<goc::Fp64::MinNum>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
-int goc_rdna4_v_max_num_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_max_num_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::MaxNum>(flags, mask, mode, d, a, b, nullptr);
+  return arithmetic<goc::Fp64::MaxNum>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
-int goc_rdna4_v_minimum_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_minimum_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Minimum>(flags, mask, mode, d, a, b, nullptr);
+  return arithmetic<goc::Fp64::Minimum>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
-int goc_rdna4_v_maximum_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int goc_rdna4_v_maximum_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::Maximum>(flags, mask, mode, d, a, b, nullptr);
+  return arithmetic<goc::Fp64::Maximum>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
-int goc_rdna4_v_frexp_mant_f64(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
-                               const uint32_t *const *a) {
+int goc_rdna4_v_frexp_mant_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a) {
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return arithmetic<goc::Fp64::FrexpMant>(flags, mask, mode, d, a, nullptr, nullptr);
+  return arithmetic<goc::Fp64::FrexpMant>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }

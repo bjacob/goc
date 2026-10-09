@@ -38,10 +38,10 @@ TEST(HalfDot, AllModifiersHalfSelectionsMasksAndAliases) {
       for (unsigned variant = 0; variant < 256; ++variant) {
         uint32_t mode = (variant & 63) | (variant & 64 ? GOC_ALU_HIGH_C : 0) |
                         (variant & 128 ? GOC_ALU_HIGH_D : 0);
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (int alias = 0; alias < 4; ++alias) {
-            SCOPED_TRACE(::testing::Message()
-                         << brain << "/" << cpu << "/" << variant << "/" << mask << "/" << alias);
+            SCOPED_TRACE(::testing::Message() << brain << "/" << cpu << "/" << variant << "/"
+                                              << exec_mask << "/" << alias);
             uint32_t storage[4][34], expected[32], before[32];
             uint32_t *v[4];
             for (int reg = 0; reg < 4; ++reg) {
@@ -69,10 +69,10 @@ TEST(HalfDot, AllModifiersHalfSelectionsMasksAndAliases) {
               expected[lane] =
                   (before[lane] & ~(0xffffu << shift)) | (uint32_t(encode(result, brain)) << shift);
             }
-            ASSERT_EQ(functions[brain](cpu, mask, mode, &v[alias], &v[0], &v[1], &v[2]),
+            ASSERT_EQ(functions[brain](cpu, exec_mask, mode, &v[alias], &v[0], &v[1], &v[2]),
                       GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane)
-              EXPECT_EQ(v[alias][lane], ((mask >> lane) & 1) ? expected[lane] : before[lane]);
+              EXPECT_EQ(v[alias][lane], ((exec_mask >> lane) & 1) ? expected[lane] : before[lane]);
             for (const auto &reg : storage) {
               EXPECT_EQ(reg[0], 0xdeadbeef);
               EXPECT_EQ(reg[33], 0xdeadbeef);
@@ -153,12 +153,12 @@ TEST(HalfDot, Validation) {
     uint32_t a[32] = {}, d[32];
     std::fill(d, d + 32, 0xdeadbeef);
     auto pa = a, pd = d;
-    for (uint32_t mask : {0U, UINT32_MAX}) {
+    for (uint32_t exec_mask : {0U, UINT32_MAX}) {
       for (uint32_t invalid : {GOC_ALU_CLAMP, GOC_ALU_OMOD_2, 1U << 31})
-        EXPECT_EQ(fn(0, mask, invalid, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(
-          fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0, &pd, &pa, &pa, &pa),
-          GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(fn(0, exec_mask, invalid, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &pd, &pa,
+                   &pa, &pa),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (auto word : d)
       EXPECT_EQ(word, 0xdeadbeef);
@@ -182,15 +182,15 @@ TEST(HalfDot, RandomEncodingsSimdMatchesScalar) {
         }
         uint32_t mode = rng() & (63 | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D);
         uint64_t fp = trial & 1 ? GOC_FP16_OVFL : 0;
-        uint32_t mask = rdna4_exec_masks()[trial % rdna4_exec_masks().size()];
+        uint32_t exec_mask = rdna4_exec_masks()[trial % rdna4_exec_masks().size()];
         auto pa = a, pb = b, pc = c, pr = ref, pd = result;
-        ASSERT_EQ(functions[brain](fp, mask, mode, &pr, &pa, &pb, &pc), GOC_SUCCESS);
-        ASSERT_EQ(functions[brain](fp | cpu, mask, mode, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+        ASSERT_EQ(functions[brain](fp, exec_mask, mode, &pr, &pa, &pb, &pc), GOC_SUCCESS);
+        ASSERT_EQ(functions[brain](fp | cpu, exec_mask, mode, &pd, &pa, &pb, &pc), GOC_SUCCESS);
         int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
         for (int lane = 0; lane < 32; ++lane) {
           uint16_t expected = uint16_t(ref[lane] >> shift),
                    actual = uint16_t(result[lane] >> shift);
-          if (((mask >> lane) & 1) && (expected & 0x7fff) > (brain ? 0x7f80 : 0x7c00)) {
+          if (((exec_mask >> lane) & 1) && (expected & 0x7fff) > (brain ? 0x7f80 : 0x7c00)) {
             EXPECT_GT(actual & 0x7fff, brain ? 0x7f80 : 0x7c00);
             EXPECT_EQ(result[lane] & ~(0xffffu << shift), ref[lane] & ~(0xffffu << shift));
           } else {
@@ -211,7 +211,7 @@ TEST(HalfDot, DppModifiersMasksAliasesAndGuards) {
               (variant == 0 || variant == 63 || variant == 64 || variant == 128 || variant == 255)
                   ? rdna4_exec_masks()
                   : std::vector<uint32_t>{UINT32_MAX};
-          for (auto mask : masks)
+          for (auto exec_mask : masks)
             for (unsigned alias = 0; alias < 4; ++alias) {
               uint32_t storage[4][34], expected[4][34];
               int values[3][32][2];
@@ -238,7 +238,7 @@ TEST(HalfDot, DppModifiersMasksAliasesAndGuards) {
                 std::copy_n(storage[reg], 34, expected[reg]);
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source = 0;
-                if (!goc_test::dpp_source(mode, mask, lane, source))
+                if (!goc_test::dpp_source(mode, exec_mask, lane, source))
                   continue;
                 int a0 = source < 0 ? 0 : values[0][source][0],
                     a1 = source < 0 ? 0 : values[0][source][1];
@@ -251,11 +251,11 @@ TEST(HalfDot, DppModifiersMasksAliasesAndGuards) {
               const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[1] + 1},
                              *c[] = {storage[2] + 1};
               uint32_t *d[] = {storage[alias] + 1};
-              ASSERT_EQ(functions[brain](cpu, mask, mode, d, a, b, c), GOC_SUCCESS);
+              ASSERT_EQ(functions[brain](cpu, exec_mask, mode, d, a, b, c), GOC_SUCCESS);
               for (unsigned reg = 0; reg < 4; ++reg)
                 for (unsigned word = 0; word < 34; ++word)
                   ASSERT_EQ(storage[reg][word], expected[reg][word])
-                      << brain << "/" << cpu << "/" << mode << "/" << mask;
+                      << brain << "/" << cpu << "/" << mode << "/" << exec_mask;
             }
         }
 }
@@ -284,7 +284,7 @@ TEST(HalfDot, DppHardwareCorpus) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
     for (bool sat : {false, true})
-      for (auto mask : masks)
+      for (auto exec_mask : masks)
         for (unsigned brain = 0; brain < 2; ++brain)
           for (auto descriptor : goc_test::dpp_modes)
             for (auto mode : modes) {
@@ -297,8 +297,8 @@ TEST(HalfDot, DppHardwareCorpus) {
               }
               const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
               uint32_t *d[] = {output};
-              ASSERT_EQ(functions[brain](cpu | (sat ? GOC_FP16_OVFL : 0), mask, descriptor | mode,
-                                         d, a, b, c),
+              ASSERT_EQ(functions[brain](cpu | (sat ? GOC_FP16_OVFL : 0), exec_mask,
+                                         descriptor | mode, d, a, b, c),
                         GOC_SUCCESS);
               for (auto word : output)
                 hash = goc_test::capture_hash_word(hash, word);

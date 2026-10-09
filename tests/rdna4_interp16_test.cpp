@@ -61,19 +61,20 @@ TEST(Interp16, MasksAliasesUnalignedStorageAndWaits) {
                   op, initial[source[0]] + 1, initial[source[1]] + 1, initial[source[2]] + 1,
                   initial[target][lane + 1], lane, m, ovfl);
             for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-              for (uint32_t mask : rdna4_exec_masks()) {
+              for (uint32_t exec_mask : rdna4_exec_masks()) {
                 uint32_t words[4][35];
                 std::memcpy(words, initial, sizeof(words));
                 const uint32_t *a[] = {words[source[0]] + 1}, *b[] = {words[source[1]] + 1},
                                *c[] = {words[source[2]] + 1};
                 uint32_t *d[] = {words[target] + 1};
-                ASSERT_EQ(functions[op](cpu | (ovfl ? GOC_FP16_OVFL : 0), mask,
+                ASSERT_EQ(functions[op](cpu | (ovfl ? GOC_FP16_OVFL : 0), exec_mask,
                                         goc_test::interp16_mode(op, m, m % 8), d, a, b, c),
                           GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 4; ++reg)
                   for (unsigned lane = 0; lane < 35; ++lane) {
                     uint32_t want = initial[reg][lane], got = words[reg][lane];
-                    if (reg == target && lane > 0 && lane <= 32 && ((mask >> (lane - 1)) & 1)) {
+                    if (reg == target && lane > 0 && lane <= 32 &&
+                        ((exec_mask >> (lane - 1)) & 1)) {
                       want = goc_test::interp16_canonical(op, m, result[lane - 1]);
                       got = goc_test::interp16_canonical(op, m, got);
                     }

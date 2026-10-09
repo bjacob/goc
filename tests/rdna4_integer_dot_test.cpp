@@ -68,10 +68,10 @@ TEST(IntegerDot, AllModifiersCpuLevelsMasksAliasesAndBoundaryInputs) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (uint64_t semantics :
              {uint64_t{0}, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
-          for (uint32_t mask : rdna4_exec_masks())
+          for (uint32_t exec_mask : rdna4_exec_masks())
             for (int alias = 0; alias < 4; ++alias) {
               SCOPED_TRACE(::testing::Message()
-                           << op << "/" << mode << "/" << cpu << "/" << mask << "/" << alias);
+                           << op << "/" << mode << "/" << cpu << "/" << exec_mask << "/" << alias);
               uint32_t storage[4][34], before[32];
               uint32_t *v[4];
               for (int r = 0; r < 4; ++r) {
@@ -81,10 +81,11 @@ TEST(IntegerDot, AllModifiersCpuLevelsMasksAliasesAndBoundaryInputs) {
                   std::copy(inputs[r], inputs[r] + 32, v[r]);
               }
               std::copy(v[alias], v[alias] + 32, before);
-              ASSERT_EQ(functions[op](cpu | semantics, mask, flags, &v[alias], &v[0], &v[1], &v[2]),
-                        GOC_SUCCESS);
+              ASSERT_EQ(
+                  functions[op](cpu | semantics, exec_mask, flags, &v[alias], &v[0], &v[1], &v[2]),
+                  GOC_SUCCESS);
               for (int i = 0; i < 32; ++i) {
-                uint32_t want = ((mask >> i) & 1)
+                uint32_t want = ((exec_mask >> i) & 1)
                                     ? reference(op, flags, inputs[0][i], inputs[1][i], inputs[2][i])
                                     : before[i];
                 EXPECT_EQ(v[alias][i], want);
@@ -132,12 +133,13 @@ TEST(IntegerDot, ValidationAndFpEnvironment) {
       std::fill(words, words + 32, 0x7f800001);
       std::fill(dest, dest + 32, 0xdeadbeef);
       auto p = words, d = dest;
-      for (uint32_t mask : {0U, UINT32_MAX}) {
-        EXPECT_EQ(functions[op](cpu, mask, 1u << 31, &d, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, mask, 0, &d, &p, &p, &p),
-                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      for (uint32_t exec_mask : {0U, UINT32_MAX}) {
+        EXPECT_EQ(functions[op](cpu, exec_mask, 1u << 31, &d, &p, &p, &p), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(
+            functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &d, &p, &p, &p),
+            GOC_ERROR_UNSUPPORTED_SEMANTICS);
         if (op & 1) {
-          EXPECT_EQ(functions[op](cpu, mask, GOC_DOT_SIGNED_A, &d, &p, &p, &p),
+          EXPECT_EQ(functions[op](cpu, exec_mask, GOC_DOT_SIGNED_A, &d, &p, &p, &p),
                     GOC_ERROR_INVALID_FLAGS);
         }
       }

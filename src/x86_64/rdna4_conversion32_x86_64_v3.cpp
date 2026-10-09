@@ -9,7 +9,7 @@
 namespace goc {
 
 template <Conversion32 Op>
-void conversion32_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a) {
+void conversion32_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a) {
   constexpr bool to_float =
       Op == Conversion32::SignedToFloat || Op == Conversion32::UnsignedToFloat;
   const auto zero = _mm256_setzero_ps();
@@ -58,9 +58,10 @@ void conversion32_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uin
         result = _mm256_blendv_epi8(result, nan_result, _mm256_castps_si256(nan));
       }
     }
-    auto active = _mm256_set1_epi32(int(mask >> lane));
-    active = _mm256_sllv_epi32(active, _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
-    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+    auto lane_exec_mask = _mm256_set1_epi32(int(exec_mask >> lane));
+    lane_exec_mask =
+        _mm256_sllv_epi32(lane_exec_mask, _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 

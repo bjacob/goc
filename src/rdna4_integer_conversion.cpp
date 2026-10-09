@@ -21,20 +21,20 @@ template <bool Unsigned> uint32_t narrow(uint32_t raw) {
 }
 
 template <bool Unsigned, bool Packed>
-int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
+int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a, const uint32_t *const *b) {
   if (mode >> 32)
     return goc::execute_dpp(
-        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
-          return convert<Unsigned, Packed>(flags, effective, uint32_t(mode), d, source, b);
+        flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+          return convert<Unsigned, Packed>(flags, exec_mask, uint32_t(mode), d, source, b);
         });
   if (int error = goc::validate(flags, mode & ~(Packed ? 0 : GOC_ALU_HIGH_A)))
     return error;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::integer_conversion_x86_64_v4<Unsigned, Packed>(mask, mode, d[0], a[0],
+    goc::integer_conversion_x86_64_v4<Unsigned, Packed>(exec_mask, mode, d[0], a[0],
                                                         Packed ? b[0] : nullptr);
     return GOC_SUCCESS;
   }
@@ -42,7 +42,7 @@ int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
 #if defined(GOC_HAVE_X86_64_V3)
   if constexpr (Packed) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::integer_conversion_x86_64_v3<Unsigned>(mask, d[0], a[0], b[0]);
+      goc::integer_conversion_x86_64_v3<Unsigned>(exec_mask, d[0], a[0], b[0]);
       return GOC_SUCCESS;
     }
   }
@@ -57,7 +57,7 @@ int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
     }
   }
   for (unsigned lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }

@@ -54,11 +54,11 @@ fixup_value(typename DivisionFormat<Width>::Bits p, typename DivisionFormat<Widt
 }
 
 template <unsigned Width>
-void fixup_x86_64_v3(uint32_t mask, uint32_t mode, bool saturate, uint32_t *const *d,
+void fixup_x86_64_v3(uint32_t exec_mask, uint32_t mode, bool saturate, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c);
 
 template <unsigned Width>
-void fixup_x86_64_v4(uint32_t mask, uint32_t mode, bool saturate, uint32_t *const *d,
+void fixup_x86_64_v4(uint32_t exec_mask, uint32_t mode, bool saturate, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c);
 
 } // namespace goc

@@ -126,21 +126,22 @@ TEST(Cube, EveryModifierMaskAndDestinationAlias) {
         result[lane] = goc_test::cube_reference(op, original[0][lane + 1], original[1][lane + 1],
                                                 original[2][lane + 1], mode);
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (unsigned alias = 0; alias < 4; ++alias) {
             uint32_t storage[4][34];
             std::memcpy(storage, original, sizeof(storage));
             const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[1] + 1},
                            *c[] = {storage[2] + 1};
             uint32_t *d[] = {storage[alias] + 1};
-            ASSERT_EQ(
-                functions[op](cpu | GOC_FP16_OVFL | (mode & 1 ? exact : 0), mask, mode, d, a, b, c),
-                GOC_SUCCESS);
+            ASSERT_EQ(functions[op](cpu | GOC_FP16_OVFL | (mode & 1 ? exact : 0), exec_mask, mode,
+                                    d, a, b, c),
+                      GOC_SUCCESS);
             for (unsigned reg = 0; reg < 4; ++reg)
               for (unsigned word = 0; word < 34; ++word) {
-                uint32_t want = reg == alias && word > 0 && word < 33 && ((mask >> (word - 1)) & 1)
-                                    ? result[word - 1]
-                                    : original[reg][word];
+                uint32_t want =
+                    reg == alias && word > 0 && word < 33 && ((exec_mask >> (word - 1)) & 1)
+                        ? result[word - 1]
+                        : original[reg][word];
                 ASSERT_EQ(storage[reg][word], want)
                     << op << "/" << mode << "/" << cpu << "/" << alias;
               }
@@ -240,7 +241,7 @@ TEST(Cube, DppModifiersMasksAliasesAndGuards) {
         for (auto descriptor : goc_test::dpp_modes) {
           bool endpoints = m == 0 || m == 511;
           auto masks = endpoints ? rdna4_exec_masks() : std::vector<uint32_t>{UINT32_MAX};
-          for (auto mask : masks)
+          for (auto exec_mask : masks)
             for (unsigned sharing = 0; sharing < (endpoints ? 4u : 1u); ++sharing)
               for (unsigned target = 0; target < 4; ++target) {
                 unsigned br = sharing == 1 || sharing == 2 ? 0 : 1;
@@ -250,7 +251,7 @@ TEST(Cube, DppModifiersMasksAliasesAndGuards) {
                 std::memcpy(expected, initial, sizeof(expected));
                 for (unsigned lane = 0; lane < 32; ++lane) {
                   int source = 0;
-                  if (goc_test::dpp_source(descriptor, mask, lane, source))
+                  if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
                     expected[target][lane + 1] =
                         goc_test::cube_reference(op, source < 0 ? 0 : initial[0][source + 1],
                                                  initial[br][lane + 1], initial[cr][lane + 1], m);
@@ -260,9 +261,9 @@ TEST(Cube, DppModifiersMasksAliasesAndGuards) {
                 uint32_t *d[] = {words[target] + 1};
                 uint64_t semantics =
                     m & 1 ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0;
-                ASSERT_EQ(fn(cpu | semantics, mask, descriptor | m, d, a, b, c), GOC_SUCCESS);
+                ASSERT_EQ(fn(cpu | semantics, exec_mask, descriptor | m, d, a, b, c), GOC_SUCCESS);
                 ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0)
-                    << op << "/" << cpu << "/" << m << "/" << descriptor << "/" << mask;
+                    << op << "/" << cpu << "/" << m << "/" << descriptor << "/" << exec_mask;
               }
         }
     ++op;
@@ -296,7 +297,7 @@ TEST(Cube, DppHardwareCorpusAndHostFpState) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, exact}) {
         uint64_t hash = goc_test::capture_hash_seed;
-        for (auto mask : masks)
+        for (auto exec_mask : masks)
           for (auto fn : functions)
             for (unsigned variant = 0; variant < 64; ++variant)
               for (auto descriptor : goc_test::dpp_modes) {
@@ -310,7 +311,8 @@ TEST(Cube, DppHardwareCorpusAndHostFpState) {
                 }
                 const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
                 uint32_t *d[] = {output};
-                EXPECT_EQ(fn(cpu | semantics, mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
+                EXPECT_EQ(fn(cpu | semantics, exec_mask, descriptor | mode, d, a, b, c),
+                          GOC_SUCCESS);
                 for (auto word : output)
                   hash = goc_test::capture_hash_word(hash, word);
               }

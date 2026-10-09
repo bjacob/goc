@@ -16,19 +16,18 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   if (int error = goc::validate(flags, mode & ~(GOC_PERMLANE_FI | GOC_PERMLANE_BOUND_CTRL), true,
                                 GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
-  uint32_t mask = exec_mask;
-  if (!mask)
+  if (!exec_mask)
     return GOC_SUCCESS;
   const uint32_t *indices = Var ? b[0] : nullptr;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::permlane_x86_64_v4<Cross, Var>(mask, mode, d[0], a[0], indices, lo, hi);
+    goc::permlane_x86_64_v4<Cross, Var>(exec_mask, mode, d[0], a[0], indices, lo, hi);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::permlane_x86_64_v3<Cross, Var>(mask, mode, d[0], a[0], indices, lo, hi);
+    goc::permlane_x86_64_v3<Cross, Var>(exec_mask, mode, d[0], a[0], indices, lo, hi);
     return GOC_SUCCESS;
   }
 #endif
@@ -36,11 +35,11 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   for (unsigned lane = 0; lane < 32; ++lane) {
     unsigned sel = Var ? indices[lane] : ((lane & 8 ? hi : lo) >> ((lane & 7) * 4));
     unsigned source = ((lane & 16) ^ (Cross ? 16 : 0)) | (sel & 15);
-    bool readable = ((mask >> source) & 1) || (mode & GOC_PERMLANE_FI);
+    bool readable = ((exec_mask >> source) & 1) || (mode & GOC_PERMLANE_FI);
     result[lane] = readable ? a[0][source] : (mode & GOC_PERMLANE_BOUND_CTRL ? 0 : d[0][lane]);
   }
   for (unsigned lane = 0; lane < 32; ++lane)
-    if ((mask >> lane) & 1)
+    if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }

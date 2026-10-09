@@ -74,7 +74,7 @@ TEST(ByteConversion, EveryModifierMasksAliasesAndUnalignedStorage) {
   for (unsigned byte = 0; byte < 4; ++byte)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 8; ++variant)
-        for (uint32_t mask : rdna4_exec_masks())
+        for (uint32_t exec_mask : rdna4_exec_masks())
           for (bool alias : {false, true}) {
             uint32_t storage[2][34], original[2][34];
             for (unsigned reg = 0; reg < 2; ++reg)
@@ -83,12 +83,12 @@ TEST(ByteConversion, EveryModifierMasksAliasesAndUnalignedStorage) {
             const uint32_t *a[] = {storage[0] + 1};
             uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
             uint32_t mode = goc_test::byte_conversion_mode(variant);
-            ASSERT_EQ(functions[byte](cpu, mask, mode, d, a), GOC_SUCCESS);
+            ASSERT_EQ(functions[byte](cpu, exec_mask, mode, d, a), GOC_SUCCESS);
             for (unsigned reg = 0; reg < 2; ++reg)
               for (unsigned word = 0; word < 34; ++word) {
                 uint32_t expected = original[reg][word];
                 if (reg == unsigned(alias ? 0 : 1) && word > 0 && word <= 32 &&
-                    ((mask >> (word - 1)) & 1))
+                    ((exec_mask >> (word - 1)) & 1))
                   expected = goc_test::byte_conversion_reference(byte, original[0][word], mode);
                 ASSERT_EQ(storage[reg][word], expected) << byte << "/" << cpu << "/" << variant;
               }
@@ -157,7 +157,7 @@ TEST(ByteConversion, DppModifiersMasksAliasesAndGuards) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (auto descriptor : goc_test::dpp_modes)
         for (unsigned variant = 0; variant < 8; ++variant)
-          for (auto mask : rdna4_exec_masks())
+          for (auto exec_mask : rdna4_exec_masks())
             for (bool alias : {false, true}) {
               uint32_t storage[2][34], original[2][34];
               for (unsigned reg = 0; reg < 2; ++reg)
@@ -166,13 +166,13 @@ TEST(ByteConversion, DppModifiersMasksAliasesAndGuards) {
               const uint32_t *a[] = {storage[0] + 1};
               uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
               auto mode = descriptor | goc_test::byte_conversion_mode(variant);
-              ASSERT_EQ(ops[op](cpu, mask, mode, d, a), GOC_SUCCESS);
+              ASSERT_EQ(ops[op](cpu, exec_mask, mode, d, a), GOC_SUCCESS);
               for (unsigned reg = 0; reg < 2; ++reg)
                 for (unsigned word = 0; word < 34; ++word) {
                   uint32_t expected = original[reg][word];
                   int source = 0;
                   if (reg == unsigned(alias ? 0 : 1) && word > 0 && word <= 32 &&
-                      goc_test::dpp_source(mode, mask, word - 1, source)) {
+                      goc_test::dpp_source(mode, exec_mask, word - 1, source)) {
                     auto raw = source < 0 ? 0 : original[0][source + 1];
                     expected = op < 4 ? goc_test::byte_conversion_reference(op, raw, uint32_t(mode))
                                       : goc_test::nibble_offset_reference(raw, uint32_t(mode));
@@ -202,7 +202,7 @@ TEST(ByteConversion, DppHardwareCorpus) {
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
-    for (auto mask : masks)
+    for (auto exec_mask : masks)
       for (auto fn : ops)
         for (auto descriptor : goc_test::dpp_modes)
           for (unsigned variant = 0; variant < 8; ++variant) {
@@ -213,8 +213,9 @@ TEST(ByteConversion, DppHardwareCorpus) {
             }
             const uint32_t *a[] = {input};
             uint32_t *d[] = {output};
-            ASSERT_EQ(fn(cpu, mask, descriptor | goc_test::byte_conversion_mode(variant), d, a),
-                      GOC_SUCCESS);
+            ASSERT_EQ(
+                fn(cpu, exec_mask, descriptor | goc_test::byte_conversion_mode(variant), d, a),
+                GOC_SUCCESS);
             for (auto word : output)
               hash = goc_test::capture_hash_word(hash, word);
           }

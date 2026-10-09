@@ -8,7 +8,7 @@
 
 namespace goc {
 template <bool Cross, bool Var>
-void permlane_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+void permlane_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                         const uint32_t *b, uint32_t lo, uint32_t hi) {
   __m512i results[2];
   auto ones = _mm512_set1_epi32(1);
@@ -28,20 +28,20 @@ void permlane_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_
     unsigned base = (lane & 16) ^ (Cross ? 16 : 0);
     auto value = _mm512_permutexvar_epi32(index, _mm512_loadu_si512(a + base));
     if (!(mode & GOC_PERMLANE_FI)) {
-      auto active =
-          _mm512_and_si512(_mm512_srlv_epi32(_mm512_set1_epi32(int(mask >> base)), index), ones);
+      auto lane_exec_mask = _mm512_and_si512(
+          _mm512_srlv_epi32(_mm512_set1_epi32(int(exec_mask >> base)), index), ones);
       auto fallback = mode & GOC_PERMLANE_BOUND_CTRL
                           ? _mm512_setzero_si512()
                           : _mm512_loadu_si512(reinterpret_cast<const __m512i *>(d + lane));
-      value = _mm512_mask_blend_epi32(_mm512_cmpneq_epi32_mask(active, _mm512_setzero_si512()),
-                                      fallback, value);
+      value = _mm512_mask_blend_epi32(
+          _mm512_cmpneq_epi32_mask(lane_exec_mask, _mm512_setzero_si512()), fallback, value);
     }
     results[lane / 16] = value;
   }
   // Defer every store until both source rows and all indices have been read.
   for (unsigned lane = 0; lane < 32; lane += 16) {
     (void)bits;
-    _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), results[lane / 16]);
+    _mm512_mask_storeu_epi32(d + lane, __mmask16(exec_mask >> lane), results[lane / 16]);
   }
 }
 
