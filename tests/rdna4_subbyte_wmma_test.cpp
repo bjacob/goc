@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_integer_wmma_capture.h"
 #include "rdna4_integer_wmma_hardware.h"
 #include "rdna4_subbyte_golden.h"
 
@@ -323,7 +324,7 @@ TEST(SubbyteWmma, IntegerHardwareStagedClampCorpus) {
       for (unsigned sample = 0; sample < 16; ++sample)
         for (unsigned mode = 0; mode < 8; ++mode) {
           uint32_t data[15][32], result[8][32];
-          goc_test::dense_integer_capture_inputs(sample, data);
+          goc_test::integer_wmma_capture_inputs(sample, data);
           const uint32_t *a[] = {data[0], data[1]}, *b[] = {data[2], data[3]}, *c[8];
           uint32_t *d[8];
           for (unsigned reg = 0; reg < 8; ++reg) {

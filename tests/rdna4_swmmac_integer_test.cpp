@@ -3,6 +3,7 @@
 #include "capture_hash.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_integer_wmma_capture.h"
 #include "rdna4_swmmac_integer_hardware.h"
 
 #include <cstring>
@@ -25,7 +26,7 @@ struct Registers {
   uint32_t *d[8];
 
   explicit Registers(unsigned /*op*/, unsigned sample = 0) {
-    goc_test::swmmac_integer_capture_inputs(sample, data);
+    goc_test::integer_wmma_capture_inputs(sample, data);
     for (unsigned reg = 0; reg < 2; ++reg)
       a[reg] = data[reg];
     for (unsigned reg = 0; reg < 4; ++reg)
@@ -37,6 +38,19 @@ struct Registers {
 };
 
 } // namespace
+
+TEST(SwmmacInteger, CaptureInputsKeepSeedAndDrawOrder) {
+  const uint64_t expected[] = {UINT64_C(0x7689d9af055e43b6), UINT64_C(0x1fadfb09a98d158f)};
+  for (unsigned i = 0; i < 2; ++i) {
+    uint32_t data[15][32];
+    goc_test::integer_wmma_capture_inputs(i ? 15 : 0, data);
+    uint64_t hash = goc_test::capture_hash_seed;
+    for (const auto &reg : data)
+      for (uint32_t word : reg)
+        hash = goc_test::capture_hash_bytes(hash, word, 4);
+    EXPECT_EQ(hash, expected[i]);
+  }
+}
 
 TEST(SwmmacInteger, HardwareAllModifiers) {
   for (unsigned op = 0; op < 3; ++op)

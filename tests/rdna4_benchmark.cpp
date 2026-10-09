@@ -37,6 +37,7 @@
 #include "rdna4_integer_minmax_reference.h"
 #include "rdna4_integer_mul_reference.h"
 #include "rdna4_integer_ternary_reference.h"
+#include "rdna4_integer_wmma_capture.h"
 #include "rdna4_interp16_reference.h"
 #include "rdna4_interp32_reference.h"
 #include "rdna4_mad64_reference.h"
@@ -3562,7 +3563,7 @@ bool benchmark_swmmac_integer(uint64_t cpu, int iterations, int min_ms) {
     for (bool modified : {false, true}) {
       unsigned variant = modified ? (op == 2 ? 7u : 15u) : 0;
       uint32_t initial[15][32];
-      goc_test::swmmac_integer_capture_inputs(0, initial);
+      goc_test::integer_wmma_capture_inputs(0, initial);
       SparseRegisters r;
       r.regs = 8;
       r.expected = goc_test::swmmac_integer_capture_digests[op][0][variant];
