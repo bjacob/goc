@@ -499,6 +499,4 @@ static const uint64_t dense_integer_capture_digests[3][16][8] = {
     },
 };
 
-// Reproduce the captured physical operands.
-
 } // namespace goc_test

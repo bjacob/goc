@@ -756,6 +756,4 @@ static const uint64_t swmmac_integer_capture_digests[3][16][16] = {
     },
 };
 
-// Reproduce the captured physical operands.
-
 } // namespace goc_test
