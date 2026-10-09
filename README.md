@@ -449,7 +449,26 @@ a higher-precision reference. These forms support loose semantics and require
 host nearest-even rounding with denormals enabled; FP exception flags may change.
 Pinned-core Ryzen 9 7950X3D timings show 4.39–5.13x for v3 and 17.19–19.38x
 for v4 versus scalar, including NEG and CLAMP (seven samples, each at least
-10 ms). Mixed FP16 interpolation forms remain to be implemented.
+10 ms).
+
+Mixed FP16 interpolation adds `v_interp_p10_f16_f32`, `v_interp_p2_f16_f32`
+and their `p10_rtz`/`p2_rtz` variants with the same quad broadcasts. P10 reads
+FP16 A/C, FP32 B and produces FP32; P2 reads FP16 A, FP32 B/C and rounds directly
+to FP16, preserving the other destination half. NEG, CLAMP, half selectors,
+WAIT_EXP and finite-overflow saturation remain on the SIMD paths. RTZ forms
+round toward zero; finite FP16 overflow already saturates under RTZ.
+
+The scalar and v3 paths share the existing mixed-FMA rounding machinery derived
+from rocjitsu. P10 uses eight FP32 SIMD lanes; P2 uses four FP64 lanes for its
+intermediate arithmetic, retaining discarded-bit information before narrowing.
+RTZ P10 temporarily changes and restores the x86 thread's rounding control;
+all forms require host nearest-even rounding with denormals enabled. Tests
+compare 524,288 GPU-captured results (canonicalizing NaN payloads), an independent
+integer FMA oracle, rounding boundaries, modifiers, masks, aliases, half
+preservation, overflow settings and restoration of host rounding. Pinned-core
+Ryzen 9 7950X3D measurements show 5.76–5.96x for P10, 11.99–12.38x for RTZ
+P10, and 3.78–4.10x for the P2 forms versus scalar, including modifiers
+(seven samples, each at least 10 ms).
 
 Conditional selection (`v_cndmask_b32` and `v_cndmask_b16`) selects B for set
 bits in a separate wave32 condition mask and A for clear bits. EXEC independently

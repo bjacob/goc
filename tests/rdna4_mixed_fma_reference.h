@@ -44,7 +44,8 @@ inline bool bit(const Magnitude &a, int position) {
   return position >= 0 && ((a[unsigned(position) / 64] >> (unsigned(position) % 64)) & 1);
 }
 
-inline uint32_t pack(const Magnitude &a, bool negative, bool half, bool saturate) {
+inline uint32_t pack(const Magnitude &a, bool negative, bool half, bool saturate,
+                     bool rtz = false) {
   uint32_t sign = negative ? (half ? 0x8000 : 0x80000000) : 0;
   int top = 639;
   while (top >= 0 && !bit(a, top))
@@ -63,13 +64,14 @@ inline uint32_t pack(const Magnitude &a, bool negative, bool half, bool saturate
   int tail = (shift - 1) % 64;
   if (tail)
     sticky |= (a[(shift - 1) / 64] & ((UINT64_C(1) << tail) - 1)) != 0;
-  significand += bit(a, shift - 1) && (sticky || (significand & 1));
+  if (!rtz)
+    significand += bit(a, shift - 1) && (sticky || (significand & 1));
   if (significand == (uint32_t(1) << precision)) {
     significand >>= 1;
     ++exponent;
   }
   if (exponent > max_exp)
-    return sign | (half ? (saturate ? 0x7bff : 0x7c00) : 0x7f800000);
+    return sign | (half ? ((saturate || rtz) ? 0x7bff : 0x7c00) : (rtz ? 0x7f7fffff : 0x7f800000));
   if (exponent < min_exp)
     return sign | significand;
   return sign | (uint32_t(exponent + (half ? 15 : 127)) << (precision - 1)) |
@@ -104,7 +106,7 @@ inline Number decode(uint32_t raw, uint32_t mode, int operand) {
 }
 
 inline uint32_t evaluate(int output, uint32_t a, uint32_t b, uint32_t c, uint32_t before,
-                         uint32_t mode, bool saturate) {
+                         uint32_t mode, bool saturate, bool rtz = false) {
   auto x = decode(a, mode, 0), y = decode(b, mode, 1), z = decode(c, mode, 2);
   uint32_t special = 0;
   if ((!x.significand && !x.infinity && !x.nan && y.infinity) ||
@@ -134,7 +136,7 @@ inline uint32_t evaluate(int output, uint32_t a, uint32_t b, uint32_t c, uint32_
       negative = compare(product, addend) < 0 ? z.negative : false;
       sum = add(addend, product, true);
     }
-    result = pack(sum, negative, output != 0, saturate);
+    result = pack(sum, negative, output != 0, saturate, rtz);
   }
   if (mode & GOC_ALU_CLAMP) {
     uint32_t sign = output ? 0x8000 : 0x80000000;

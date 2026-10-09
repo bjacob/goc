@@ -17,6 +17,7 @@ check_cxx_compiler_flag("${goc_avx512vnni_check_flags}" GOC_COMPILER_AVX512VNNI)
 foreach(target IN LISTS goc_library_targets)
   if(GOC_COMPILER_X86_64_V3)
     set(goc_x86_64_v3_sources
+      ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_interp16_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_interp32_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_trig_preop_x86_64_v3.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/rdna4_mullit_x86_64_v3.cpp

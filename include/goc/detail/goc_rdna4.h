@@ -38,6 +38,32 @@ GOC_API int goc_rdna4_v_interp_p2_f32(uint64_t flags, uint64_t exec_mask,
                                       const uint32_t *const *a, const uint32_t *const *b,
                                       const uint32_t *const *c);
 
+// Mixed FP16 interpolation uses the same quad broadcasts as the FP32 forms.
+// A is FP16, B is FP32. P10 reads FP16 C and writes FP32 D; P2 reads FP32 C
+// and writes FP16 D, preserving the other destination half. Supports NEG_A/B/C,
+// CLAMP, WAIT_EXP and HIGH_A; also HIGH_C for P10 or HIGH_D for P2. No ABS/OMOD.
+// RTZ forms round toward zero; other forms round nearest-even. GOC_FP16_OVFL
+// saturates finite P2 overflow; RTZ P2 already saturates finite overflow.
+// Input infinities remain infinite unless clamped. Loose semantics only;
+// host nearest-even rounding and enabled denormals are required. Host rounding
+// mode is preserved; exception flags may change. NaN payloads are unspecified.
+GOC_API int goc_rdna4_v_interp_p10_f16_f32(uint64_t flags, uint64_t exec_mask,
+                                           uint32_t instruction_flags, uint32_t *const *d,
+                                           const uint32_t *const *a, const uint32_t *const *b,
+                                           const uint32_t *const *c);
+GOC_API int goc_rdna4_v_interp_p2_f16_f32(uint64_t flags, uint64_t exec_mask,
+                                          uint32_t instruction_flags, uint32_t *const *d,
+                                          const uint32_t *const *a, const uint32_t *const *b,
+                                          const uint32_t *const *c);
+GOC_API int goc_rdna4_v_interp_p10_rtz_f16_f32(uint64_t flags, uint64_t exec_mask,
+                                               uint32_t instruction_flags, uint32_t *const *d,
+                                               const uint32_t *const *a, const uint32_t *const *b,
+                                               const uint32_t *const *c);
+GOC_API int goc_rdna4_v_interp_p2_rtz_f16_f32(uint64_t flags, uint64_t exec_mask,
+                                              uint32_t instruction_flags, uint32_t *const *d,
+                                              const uint32_t *const *a, const uint32_t *const *b,
+                                              const uint32_t *const *c);
+
 // Select B where the corresponding condition bit is set, A otherwise. Each
 // operand uses one VGPR. ABS_A/B clear source sign bits, then NEG_A/B toggle
 // them; all other payload bits, including signaling NaNs, are preserved.
