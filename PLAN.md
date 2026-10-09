@@ -408,6 +408,9 @@ Their integer FMA intermediate supplies inexact/underflow/overflow classificatio
 `CLAMP` suppresses all flags and output scaling suppresses underflow/inexact.
 Packed results accumulate exceptions from both selected halves. Loose SIMD
 paths skip all of this work.
+FP16/32 `SIN`/`COS` report invalid, input-denormal, underflow, and inexact flags.
+Their hardware corpora cover every FP16 encoding, FP32 exponent/mantissa patterns,
+and FP32 neighborhoods around underflow, quarter turns, zeros, and NaNs.
 Other affected instructions reject requested
 reporting in non-loose modes before accessing operands, even for empty
 `exec_mask`, with precedence over other validation errors. Null retains existing

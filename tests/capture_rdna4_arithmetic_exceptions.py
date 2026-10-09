@@ -24,11 +24,12 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("output", type=Path)
-parser.add_argument("family", choices=("div_fixup", "fma", "pk_fma", "pk_fmac", "sin", "cos"))
+parser.add_argument("family", choices=("div_fixup", "div_fmas", "fma", "pk_fma", "pk_fmac", "sin", "cos"))
 parser.add_argument("width", type=int, choices=(16, 32, 64))
+parser.add_argument("--boundaries", action="store_true", help="FP32 SIN/COS boundary corpus")
 args = parser.parse_args()
 out, family, width = args.output, args.family, args.width
-if ("fma" in family and width != 16) or (family in ("sin", "cos") and width == 64):
+if (family in ("fma", "pk_fma", "pk_fmac") and width != 16) or (family in ("sin", "cos") and width == 64):
     parser.error("unsupported family/width combination")
 out.mkdir(parents=True, exist_ok=True)
 n = 65536 if family in ("sin", "cos") else 8192
@@ -61,6 +62,14 @@ for i in range(n):
             row = [x | (((x * 0x9e37 + 0x1234) & 65535) << 16) for x in row]
     if family in ("sin", "cos"):
         row = [i if width == 16 else (i << 16) | ((i * 0x9e37) & 65535), 0, 0]
+    if args.boundaries:
+        if width != 32 or family not in ("sin", "cos"):
+            parser.error("--boundaries requires FP32 SIN/COS")
+        anchors = [0, 0x00145f30, 0x00800000, 0x3e800000, 0x3f000000,
+                   0x3f800000, 0x4a000000, 0x7f800000,
+                   0x80000000, 0x80145f30, 0x80800000, 0xbe800000, 0xbf000000,
+                   0xbf800000, 0x7fc00000, 0xff800000]
+        row = [(anchors[i // 4096] + (i % 4096) - 2048) & 0xffffffff, 0, 0]
     inputs += row
 (out / "inputs.bin").write_bytes(struct.pack("<" + "Q" * len(inputs), *inputs))
 source = r'''#include <hip/hip_runtime.h>
@@ -97,6 +106,8 @@ for m in range(16):
         "s_setreg_imm32_b32 hwreg(18), 0",
     ]
     assembly += [f"v_mov_b32 v{j}, %{j + 3}" for j in range(6)]
+    if family == "div_fmas":
+        assembly += ["s_bitcmp1_b32 %9, 23", "s_cselect_b32 vcc_lo, -1, 0", "s_mov_b32 vcc_hi, 0"]
     assembly += [
         "v_mov_b32 v6, v4" if family == "pk_fmac" else "v_mov_b32 v6, 0",
         "v_mov_b32 v7, 0", "s_nop 2", instruction, "s_waitcnt_depctr 0", "s_nop 7",
@@ -107,7 +118,7 @@ for m in range(16):
     source += r'''
 : "=&s"(status), "=&v"(lo), "=&v"(hi)
 : "v"(uint32_t(a)),"v"(uint32_t(a>>32)),"v"(uint32_t(b)),"v"(uint32_t(b>>32)),"v"(uint32_t(c)),"v"(uint32_t(c>>32)),"s"(fp_mode)
-: "s7","v0","v1","v2","v3","v4","v5","v6","v7");
+: "vcc","s7","v0","v1","v2","v3","v4","v5","v6","v7");
 '''
     source += f"""if(threadIdx.x==0){{
   out[({m}*{n}+i)*3]=lo;

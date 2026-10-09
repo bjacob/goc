@@ -1,0 +1,126 @@
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include <stdint.h>
+
+namespace goc_test {
+
+// RX 9070 gfx1201, MODE 0xf0, both FP16_OVFL settings agree.
+// All 65,536 half encodings; 65,536 FP32 sign/exponent/mantissa patterns;
+// 65,536 FP32 values surrounding zero, underflow, quarter turns and NaNs.
+// Rows: sin16, cos16, sin32, cos32, sin32 boundaries, cos32 boundaries.
+// Columns: OMOD (bits 0:1), CLAMP (bit 2), -abs(source) (bit 3).
+// Regenerate with capture_rdna4_arithmetic_exceptions.py [--boundaries].
+static const uint64_t trig_exception_hashes[6][16] = {
+    {
+        0x913b970847c228c5ULL,
+        0x2388c177ea20a725ULL,
+        0x2388c177ea20a725ULL,
+        0x2388c177ea20a725ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0x913b970847c228c5ULL,
+        0x2388c177ea20a725ULL,
+        0x2388c177ea20a725ULL,
+        0x2388c177ea20a725ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+    },
+    {
+        0xe20e76a163b6a725ULL,
+        0x2388c177ea20a725ULL,
+        0x2388c177ea20a725ULL,
+        0x2388c177ea20a725ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xe20e76a163b6a725ULL,
+        0x2388c177ea20a725ULL,
+        0x2388c177ea20a725ULL,
+        0x2388c177ea20a725ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+    },
+    {
+        0xf472e5e37b9f5087ULL,
+        0x6630cf06614107a7ULL,
+        0x6630cf06614107a7ULL,
+        0x6630cf06614107a7ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xf472e5e37b9f5087ULL,
+        0x6630cf06614107a7ULL,
+        0x6630cf06614107a7ULL,
+        0x6630cf06614107a7ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+    },
+    {
+        0x07408432d8c13fa5ULL,
+        0xd261d664c585b3a5ULL,
+        0xd261d664c585b3a5ULL,
+        0xd261d664c585b3a5ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0x07408432d8c13fa5ULL,
+        0xd261d664c585b3a5ULL,
+        0xd261d664c585b3a5ULL,
+        0xd261d664c585b3a5ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+    },
+    {
+        0xec1035f557143b25ULL,
+        0x2958919ada813b25ULL,
+        0x2958919ada813b25ULL,
+        0x2958919ada813b25ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xec1035f557143b25ULL,
+        0x2958919ada813b25ULL,
+        0x2958919ada813b25ULL,
+        0x2958919ada813b25ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+    },
+    {
+        0x2c0c7ae323853b25ULL,
+        0x80dba0b0a97d3b25ULL,
+        0x80dba0b0a97d3b25ULL,
+        0x80dba0b0a97d3b25ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0x2c0c7ae323853b25ULL,
+        0x80dba0b0a97d3b25ULL,
+        0x80dba0b0a97d3b25ULL,
+        0x80dba0b0a97d3b25ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+        0xeb05052ea5b62325ULL,
+    },
+};
+
+} // namespace goc_test

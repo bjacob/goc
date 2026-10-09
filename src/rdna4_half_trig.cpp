@@ -5,6 +5,7 @@
 #include "internal.h"
 #include "rdna4_dpp.h"
 #include "rdna4_trig.h"
+#include "rdna4_trig_exceptions.h"
 #include "rdna4_trig_model.h"
 
 #include <stdint.h>
@@ -39,12 +40,12 @@ uint16_t output(uint16_t bits, uint32_t mode) {
 
 template <bool Cosine>
 int trig(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-         const uint32_t *const *a) {
+         const uint32_t *const *a, uint32_t *excp_flag_user) {
   if (mode >> 32)
-    return goc::execute_dpp(flags, exec_mask, mode, a,
-                            [&](uint32_t exec_mask, const uint32_t *const *source) {
-                              return trig<Cosine>(flags, exec_mask, uint32_t(mode), d, source);
-                            });
+    return goc::execute_dpp(
+        flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+          return trig<Cosine>(flags, exec_mask, uint32_t(mode), d, source, excp_flag_user);
+        });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP |
                          GOC_ALU_HIGH_A | GOC_ALU_HIGH_D;
   if (int error = goc::validate(flags, mode & ~known, true))
@@ -60,6 +61,8 @@ int trig(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
 #endif
   const int a_shift = mode & GOC_ALU_HIGH_A ? 16 : 0;
   const int d_shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
+  bool report = excp_flag_user && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
+  uint32_t exceptions = 0;
   uint16_t result[32];
   for (int lane = 0; lane < 32; ++lane) {
     uint16_t half = uint16_t(a[0][lane] >> a_shift);
@@ -68,11 +71,16 @@ int trig(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
     if (mode & GOC_ALU_NEG_A)
       half ^= 0x8000;
     uint32_t bits = goc::trig::evaluate(goc::as_bits(goc::f16_to_float(half)), Cosine);
-    result[lane] = output(goc::float_to_f16(goc::as_float(bits)), mode);
+    uint16_t rounded = goc::float_to_f16(goc::as_float(bits));
+    result[lane] = output(rounded, mode);
+    if (report && ((exec_mask >> lane) & 1))
+      exceptions |= goc::trig::exceptions<16>(half, rounded, Cosine, mode);
   }
   for (int lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
       d[0][lane] = (d[0][lane] & ~(0xffffU << d_shift)) | (uint32_t(result[lane]) << d_shift);
+  if (report)
+    *excp_flag_user |= exceptions;
   return GOC_SUCCESS;
 }
 
@@ -80,14 +88,14 @@ int trig(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
 
 int goc_rdna4_v_sin_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return trig<false>(flags, exec_mask, mode, d, a);
+  return trig<false>(flags, exec_mask, mode, d, a, excp_flag_user);
 }
 
 int goc_rdna4_v_cos_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return trig<true>(flags, exec_mask, mode, d, a);
+  return trig<true>(flags, exec_mask, mode, d, a, excp_flag_user);
 }

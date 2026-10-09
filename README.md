@@ -2155,7 +2155,12 @@ classification, without consulting host exception flags. Packed operations OR
 the flags from both selected halves. Hardware flag corpora cover FMA and packed
 FMA/FMAC, with separate API tests for literals, DPP, masks, aliases, and host FP
 controls. `CLAMP` suppresses all flags; output scaling suppresses underflow/inexact.
-Loose SIMD paths retain their existing dispatch and skip reporting.
+Loose SIMD paths retain their existing dispatch and skip reporting. FP16/32
+`SIN`/`COS` reporting is also implemented, with exhaustive FP16 inputs, a broad
+FP32 corpus, and FP32 boundary neighborhoods (12,582,912 captured flag reads).
+Quarter turns are exact; other finite inputs report inexact. FP32 cosine treats
+subnormal inputs as exact zero for reporting, unlike FP16 cosine. `CLAMP` and
+output scaling suppress flags as above.
 
 In loose mode, other affected instructions leave the register unchanged. Loose
 semantics require no optional global-state output, even with a non-null pointer.

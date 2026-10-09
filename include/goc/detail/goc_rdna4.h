@@ -31,7 +31,7 @@ extern "C" {
 // Loose mode never returns GOC_ERROR_UNSUPPORTED_GLOBAL_STATE.
 // Reporting is implemented for floating comparisons, scalar rounding,
 // FP16 FMA/FMAC/literal/packed forms, V_DIV_FIXUP_F16/F32/F64, and
-// V_RCP_IFLAG_F32. Other
+// FP16/32 SIN/COS, and V_RCP_IFLAG_F32. Other
 // non-loose requests with a non-NULL pointer return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE
 // before operand access, even for empty EXEC, before other validation. NULL opts
 // out of reporting in every mode and preserves numerical paths and validation.
