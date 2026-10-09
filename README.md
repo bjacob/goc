@@ -781,6 +781,15 @@ parts of D and support source ABS/NEG, full EXEC masking and every whole-registe
 alias. `GOC_FP16_OVFL` saturates finite overflow while preserving the input
 infinity behavior. Input NaNs produce canonical `0xff` (FP8) or `0xfe` (BF8).
 
+DPP8/DPP16 permute A before modifiers, leaving B (including stochastic seeds)
+in its original lane. Both SIMD paths retain all modifiers, byte/half selection
+and overflow saturation. Tests match 344,064 RX 9070 outputs across every
+modifier and both overflow modes, cross masks and aliases with guard words,
+and verify host FP-state preservation in every rounding mode. Full-EXEC
+benchmarks include DPP8 reversal and DPP16 row shift. Pinned Ryzen 9 7950X3D
+measurements showed v3 at 22.3–34.3 ns (2.15–4.72x scalar) and v4 at
+11.4–21.4 ns (3.93–7.26x), using seven samples of at least 10 ms each.
+
 The conversion model adapts rocjitsu's integer rounding logic, with RX 9070
 captures establishing RDNA4-specific NaN, infinity and stochastic-underflow
 behavior. Subnormal stochastic conversion first aligns the significand,

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_fp8_conversion_reference.h"
 #include "rdna4_fp8_narrow_hardware.h"
@@ -196,4 +197,116 @@ TEST(Fp8Narrow, ValidationAndSemanticFallback) {
       for (auto word : output)
         EXPECT_EQ(word, op >= 2 ? 0xdeadbe00u : 0xdead0000u);
     }
+}
+
+TEST(Fp8Narrow, DppMasksAliasesAndGuards) {
+  std::mt19937 random(93321);
+  for (auto descriptor : goc_test::dpp_modes)
+    for (unsigned op = 0; op < 4; ++op)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned variant : {0u, op >= 2 ? 8u : 16u, op >= 2 ? 15u : 31u})
+          for (bool sat : {false, true})
+            for (uint64_t mask : rdna4_exec_masks())
+              for (unsigned breg = 0; breg < 2; ++breg)
+                for (unsigned dreg = 0; dreg < 3; ++dreg) {
+                  uint32_t storage[3][34], expected[3][34];
+                  for (unsigned reg = 0; reg < 3; ++reg)
+                    for (unsigned word = 0; word < 34; ++word)
+                      storage[reg][word] = expected[reg][word] = random();
+                  uint64_t mode = descriptor | goc_test::fp8_narrow_mode(op, variant);
+                  for (unsigned lane = 0; lane < 32; ++lane) {
+                    int source = 0;
+                    if (goc_test::dpp_source(mode, uint32_t(mask), lane, source))
+                      expected[dreg][lane + 1] = goc_test::fp8_narrow_result(
+                          op, source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
+                          storage[dreg][lane + 1], uint32_t(mode), sat);
+                  }
+                  const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1};
+                  uint32_t *d[] = {storage[dreg] + 1};
+                  ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), mask, mode, d, a, b),
+                            GOC_SUCCESS);
+                  for (unsigned reg = 0; reg < 3; ++reg)
+                    for (unsigned word = 0; word < 34; ++word)
+                      ASSERT_EQ(storage[reg][word], expected[reg][word])
+                          << op << "/" << cpu << "/" << variant;
+                }
+}
+
+// RX 9070: every modifier, both overflow modes, seven descriptors, eight masks.
+TEST(Fp8Narrow, DppHardwareCorpus) {
+  const uint32_t values[] = {0x3f880000, 0xbf900001, 0x43f00000, 0x47700000,
+                             0x7f800001, 0xff800000, 0x33800000, 0x3f800001};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (bool sat : {false, true})
+      for (auto mask : masks)
+        for (unsigned op = 0; op < 4; ++op)
+          for (auto descriptor : goc_test::dpp_modes)
+            for (unsigned variant = 0; variant < (op >= 2 ? 16u : 32u); ++variant) {
+              uint32_t av[32], bv[32], output[32];
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                av[lane] = values[lane % 8];
+                bv[lane] = values[(lane + 3) % 8];
+                output[lane] = 0xdead0000u + lane;
+              }
+              const uint32_t *a[] = {av}, *b[] = {bv};
+              uint32_t *d[] = {output};
+              ASSERT_EQ(functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), mask,
+                                      descriptor | goc_test::fp8_narrow_mode(op, variant), d, a, b),
+                        GOC_SUCCESS);
+              for (auto word : output)
+                hash = (hash ^ word) * UINT64_C(1099511628211);
+            }
+    EXPECT_EQ(hash, UINT64_C(0x2e9896b81273f725)) << cpu;
+  }
+}
+
+TEST(Fp8Narrow, DppValidation) {
+  for (auto fn : functions)
+    for (auto descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_CLAMP)})
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+    }
+}
+
+TEST(Fp8Narrow, DppHostFloatingPointState) {
+  fenv_t saved;
+  ASSERT_EQ(std::fegetenv(&saved), 0);
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+    EXPECT_EQ(std::fesetround(rounding), 0);
+    for (auto descriptor : goc_test::dpp_modes)
+      for (unsigned op = 0; op < 4; ++op)
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned variant = 0; variant < (op >= 2 ? 16u : 32u); ++variant) {
+            uint32_t av[32], bv[32], dv[32], expected[32];
+            uint64_t mode = descriptor | goc_test::fp8_narrow_mode(op, variant);
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              av[lane] = goc_test::fp8_narrow_captures[lane * 3].source;
+              bv[lane] = 0x7fffffff;
+              dv[lane] = 0xabcdef12;
+            }
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              int source = 0;
+              expected[lane] = dv[lane];
+              if (goc_test::dpp_source(mode, UINT32_MAX, lane, source))
+                expected[lane] = goc_test::fp8_narrow_result(
+                    op, source < 0 ? 0 : av[source], bv[lane], dv[lane], uint32_t(mode), true);
+            }
+            const uint32_t *a[] = {av}, *b[] = {bv};
+            uint32_t *d[] = {dv};
+            EXPECT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
+            EXPECT_EQ(std::feraiseexcept(FE_INEXACT | FE_INVALID), 0);
+            int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
+            EXPECT_EQ(functions[op](cpu | GOC_FP16_OVFL, UINT32_MAX, mode, d, a, b), GOC_SUCCESS);
+            EXPECT_EQ(std::fegetround(), rounding);
+            EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
+            for (unsigned lane = 0; lane < 32; ++lane)
+              EXPECT_EQ(dv[lane], expected[lane]);
+          }
+  }
+  EXPECT_EQ(std::fesetenv(&saved), 0);
 }

@@ -1739,6 +1739,8 @@ GOC_API int goc_rdna4_v_cubema_f32(uint64_t flags, uint64_t exec_mask, uint64_t 
                                    uint32_t *const *d, const uint32_t *const *a,
                                    const uint32_t *const *b, const uint32_t *const *c);
 
+// DPP8/DPP16 permute A before modifiers; B remains in its original lane,
+// including when B is the stochastic seed.
 // Narrow FP32 to OCP E4M3FN (FP8) / E5M2 (BF8). Each operand is one VGPR.
 // PK rounds A/B to nearest-even into the low/high bytes of the destination half
 // selected by HIGH_D, preserving the other half. Supports A/B ABS/NEG.

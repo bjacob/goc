@@ -3,14 +3,20 @@
 #include "rdna4_fp8_narrow.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <stdint.h>
 
 namespace {
 
 template <bool Bf8, bool Stochastic>
-int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int convert(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32)
+    return goc::execute_dpp(
+        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+          return convert<Bf8, Stochastic>(flags, effective, uint32_t(mode), d, source, b);
+        });
   const uint32_t known =
       GOC_ALU_ABS_A | GOC_ALU_NEG_A |
       (Stochastic ? GOC_CVT_BYTE_3 : GOC_ALU_ABS_B | GOC_ALU_NEG_B | GOC_ALU_HIGH_D);
@@ -56,28 +62,20 @@ int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 int goc_rdna4_v_cvt_pk_fp8_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<false, false>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_cvt_pk_bf8_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<true, false>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_cvt_sr_fp8_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<false, true>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_cvt_sr_bf8_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<true, true>(flags, mask, mode, d, a, b);
 }
