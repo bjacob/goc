@@ -34,6 +34,7 @@
 #include "rdna4_packed_conversion_reference.h"
 #include "rdna4_packed_integer_reference.h"
 #include "rdna4_packed_mad_reference.h"
+#include "rdna4_permlane_reference.h"
 #include "rdna4_pseudo_scalar_hardware.h"
 #include "rdna4_pseudo_scalar_reference.h"
 #include "rdna4_rcp_iflag_reference.h"
@@ -1336,6 +1337,52 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
         if (simd < 0)
           return false;
         print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_permlane(uint64_t cpu, int iterations, int min_ms) {
+  const char *names[] = {"v_permlane16_b32", "v_permlanex16_b32", "v_permlane16_var_b32",
+                         "v_permlanex16_var_b32"};
+  for (unsigned op = 0; op < 4; ++op)
+    for (unsigned mode : {0u, 3u}) {
+      Registers r;
+      r.output_regs = 1;
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        r.data[0][lane] = 0xabc00000 + lane;
+        r.data[4][lane] = lane * 7 + 3;
+      }
+      for (unsigned lane = 0; lane < 32; ++lane)
+        r.expected[128 * (lane / 16) + lane % 16] = goc_test::permlane_reference(
+            op, UINT32_MAX, mode, lane, r.data[0], r.data[4], 0, 0x12345678, 0x9abcdef0);
+      auto fn = [op](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
+        return goc_test::permlane_call(op, flags, mask, mode, d, a, b, 0x12345678, 0x9abcdef0);
+      };
+      double scalar = measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      const char *label = mode ? "FI/bound_ctrl" : "none";
+      print_result(names[op], "exact", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_CPU_X86_64_V3, r, iterations,
+                              min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "exact", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_CPU_X86_64_V4, r, iterations,
+                              min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "exact", label, "x86-64-v4", simd, scalar / simd);
       }
 #endif
     }
@@ -4583,7 +4630,8 @@ int main(int argc, char **argv) {
       !benchmark_float_compare(cpu, iterations, min_ms) ||
       !benchmark_integer_compare(cpu, iterations, min_ms) ||
       !benchmark_class(cpu, iterations, min_ms) || !benchmark_interp16(cpu, iterations, min_ms) ||
-      !benchmark_interp32(cpu, iterations, min_ms) || !benchmark_cndmask(cpu, iterations, min_ms) ||
+      !benchmark_interp32(cpu, iterations, min_ms) ||
+      !benchmark_permlane(cpu, iterations, min_ms) || !benchmark_cndmask(cpu, iterations, min_ms) ||
       !benchmark_trig_preop(cpu, iterations, min_ms) ||
       !benchmark_mullit(cpu, iterations, min_ms) || !benchmark_pack(cpu, iterations, min_ms) ||
       !benchmark_swmmac_integer(cpu, iterations, min_ms) ||

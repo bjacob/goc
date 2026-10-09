@@ -1509,6 +1509,18 @@ preserving SCC and all host FP state. Tests exhaust every low 16-bit pattern,
 match 786,432 GFX1201 result/SCC triples, and cover aliases, EXEC, and errors.
 Both semantics and scalar benchmarks are available.
 
+The four wave32 lane permutations (`v_permlane16_b32`, `v_permlanex16_b32`,
+and their `_var` forms) support scalar, AVX2, and AVX-512 paths, including FI
+and BOUND_CTRL. Selectors may come from two scalar words or one VGPR. Inactive
+source lanes either supply their value, produce zero, or preserve the destination,
+as selected by the flags; inactive destinations remain unchanged. Every path
+supports whole-register aliasing and both semantics without modifying host FP
+state. Tests compare a 65,536-result GFX1201 hardware corpus and exercise all
+single-lane EXEC patterns, random masks and selectors, and in-place permutations.
+On the Ryzen 9 7950X3D, pinned CPU-8 measurements (seven samples, at least
+10 ms each) show AVX2 at 11.8–13.2 ns/wave (2.3–3.3× scalar) and AVX-512
+at 2.4–5.2 ns/wave (5.9–14.3×), including FI/BOUND_CTRL configurations.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU

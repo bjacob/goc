@@ -18,6 +18,37 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// PERMLANE flags are a bit field. FI permits reading inactive source lanes.
+// Otherwise BOUND_CTRL selects zero for an inactive source; without it the
+// destination is preserved. Neither flag enables inactive destination lanes.
+static const uint32_t GOC_PERMLANE_FI = (UINT32_C(1) << 0);
+static const uint32_t GOC_PERMLANE_BOUND_CTRL = (UINT32_C(1) << 1);
+
+// Wave32 lane permutations support both semantics and preserve all host FP state.
+// Guest FP flags have no effect. Each source index is its low four bits; the
+// ordinary forms select within each group of 16 lanes, and X forms select from
+// the other group. Whole-register aliasing, including d == a or b, is supported.
+
+// Indices are successive nibbles of lo (lanes 0..7) and hi (8..15), repeated.
+GOC_API int goc_rdna4_v_permlane16_b32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, uint32_t lo, uint32_t hi);
+
+// Indices are successive nibbles of lo (lanes 0..7) and hi (8..15), repeated.
+GOC_API int goc_rdna4_v_permlanex16_b32(uint64_t flags, uint64_t exec_mask,
+                                        uint32_t instruction_flags, uint32_t *const *d,
+                                        const uint32_t *const *a, uint32_t lo, uint32_t hi);
+
+// Indices come from each destination lane of b.
+GOC_API int goc_rdna4_v_permlane16_var_b32(uint64_t flags, uint64_t exec_mask,
+                                           uint32_t instruction_flags, uint32_t *const *d,
+                                           const uint32_t *const *a, const uint32_t *const *b);
+
+// Indices come from each destination lane of b.
+GOC_API int goc_rdna4_v_permlanex16_var_b32(uint64_t flags, uint64_t exec_mask,
+                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            const uint32_t *const *a, const uint32_t *const *b);
+
 // Scalar packing/selection ignores EXEC, including zero EXEC; output pointers
 // are required. Inputs are passed by value and may come from destination storage.
 // Both loose and empirical exact semantics are supported; instruction_flags must
