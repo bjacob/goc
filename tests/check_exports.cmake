@@ -8,6 +8,8 @@ if(VARIANT STREQUAL "static")
   set(expected consumer_cpu_flags)
 else()
   set(expected
+    goc_rdna4_v_sin_f32
+    goc_rdna4_v_cos_f32
     goc_rdna4_v_min3_num_f16
     goc_rdna4_v_max3_num_f16
     goc_rdna4_v_minmax_num_f16

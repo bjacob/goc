@@ -18,6 +18,17 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// FP32 sine/cosine of inputs measured in turns: sin(2*pi*A), cos(2*pi*A).
+// Supports ABS_A, NEG_A, OMOD and CLAMP. Empirical exact semantics use the
+// captured RDNA3/4 integer model with denormals preserved and NaNs quieted;
+// all host floating-point state is preserved. Output scaling uses nearest-even
+// rounding, followed by CLAMP. Active OMOD flushes subnormal outputs and both
+// signed zeros to +0. Loose semantics currently use the same model.
+GOC_API int goc_rdna4_v_sin_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+GOC_API int goc_rdna4_v_cos_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
 // FP16 fused multiply-add: selected halves of A/B/C/D, all ALU source/output
 // modifiers and GOC_FP16_OVFL. Preserves the other D half and inactive lanes.
 // Arithmetic rounds to FP16 before OMOD; active OMOD flushes tiny arithmetic
