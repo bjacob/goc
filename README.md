@@ -789,6 +789,8 @@ The borrowed rocjitsu bit-level model supports both loose and empirical exact
 semantics on every path. A/B/C hold X/Y/Z; face IDs are 0/1 for positive/negative
 X, 2/3 for Y and 4/5 for Z. Z wins magnitude ties, then Y, then X. The major-axis
 instruction returns twice the **signed** major component.
+DPP8/DPP16 permutes X before its modifiers; Y and Z retain their lanes.
+Both semantics keep the existing SIMD paths with every DPP/modifier combination.
 
 Comparisons flush subnormal magnitudes, while coordinate selection preserves
 selected source bits and quiets NaNs. Nonzero OMOD flushes subnormal inputs and
@@ -796,6 +798,12 @@ outputs independently of host FP settings; zero and NaN handling follows the
 captured hardware rules. All source ABS/NEG, OMOD and CLAMP combinations stay
 vectorized. The implementation uses integer operations throughout, preserving
 host FP state and providing identical results under every host rounding mode.
+DPP tests add 458,752 raw GPU results including NaN payloads and signed zeros,
+plus all 512 modifiers, masks, shared sources, destination aliases and guards.
+The capture matches in both semantics under every host rounding mode while
+preserving existing host exception flags.
+Pinned DPP timings are 26.6–33.2 ns on v3 (2.41–5.89× scalar) and
+18.6–26.1 ns on v4 (3.35–8.24×), including mixed modifiers.
 
 RX 9070 captures matched the model for 87,040 outputs. Regression tests retain
 32 literal input/output cases and compact output digests covering the complete

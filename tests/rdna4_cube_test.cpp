@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_cube_hardware.h"
 #include "rdna4_cube_reference.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <algorithm>
@@ -11,6 +12,7 @@
 #include <gtest/gtest.h>
 #include <random>
 #include <stdint.h>
+#include <vector>
 
 namespace {
 
@@ -204,4 +206,100 @@ TEST(Cube, ValidationAndSemanticFallback) {
       EXPECT_EQ(fn(cpu | (2 * GOC_SEMANTICS_EXACT_EMPIRICAL), UINT32_MAX, 0, d, a, a, a),
                 GOC_SUCCESS);
     }
+}
+
+// DPP permutes X before the source modifiers; Y and Z retain their lanes.
+TEST(Cube, DppModifiersMasksAliasesAndGuards) {
+  std::mt19937 random(615739);
+  uint32_t initial[4][34];
+  for (auto &reg : initial)
+    for (auto &word : reg)
+      word = random();
+  unsigned op = 0;
+  for (auto fn : functions) {
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint32_t m = 0; m < 512; ++m)
+        for (auto descriptor : goc_test::dpp_modes) {
+          bool endpoints = m == 0 || m == 511;
+          auto masks = endpoints ? rdna4_exec_masks() : std::vector<uint64_t>{UINT32_MAX};
+          for (auto mask : masks)
+            for (unsigned sharing = 0; sharing < (endpoints ? 4u : 1u); ++sharing)
+              for (unsigned target = 0; target < 4; ++target) {
+                unsigned br = sharing == 1 || sharing == 2 ? 0 : 1;
+                unsigned cr = sharing == 2 ? 0 : sharing == 3 ? 1 : 2;
+                uint32_t words[4][34], expected[4][34];
+                std::memcpy(words, initial, sizeof(words));
+                std::memcpy(expected, initial, sizeof(expected));
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  int source = 0;
+                  if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+                    expected[target][lane + 1] =
+                        goc_test::cube_reference(op, source < 0 ? 0 : initial[0][source + 1],
+                                                 initial[br][lane + 1], initial[cr][lane + 1], m);
+                }
+                const uint32_t *a[] = {words[0] + 1}, *b[] = {words[br] + 1},
+                               *c[] = {words[cr] + 1};
+                uint32_t *d[] = {words[target] + 1};
+                uint64_t semantics =
+                    m & 1 ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0;
+                ASSERT_EQ(fn(cpu | semantics, mask, descriptor | m, d, a, b, c), GOC_SUCCESS);
+                ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0)
+                    << op << "/" << cpu << "/" << m << "/" << descriptor << "/" << mask;
+              }
+        }
+    ++op;
+  }
+}
+
+TEST(Cube, DppValidation) {
+  for (auto fn : functions)
+    for (auto descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 9})
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+    }
+}
+
+// RX 9070: eight EXEC masks, four operations, 64 modifier combinations and
+// seven DPP descriptors. Raw-word digest preserves NaN payloads and zero signs.
+TEST(Cube, DppHardwareCorpusAndHostFpState) {
+  const uint32_t values[] = {0x00000001, 0x807fffff, 0x00800000, 0x80000000,
+                             0x7f800001, 0xff800000, 0x3f800000, 0xff7fffff};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  const uint32_t signs[] = {0, 1, 2, 4, 8, 16, 32, 63};
+  std::fenv_t saved;
+  ASSERT_EQ(std::fegetenv(&saved), 0);
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+    std::fesetround(rounding);
+    std::feclearexcept(FE_ALL_EXCEPT);
+    std::feraiseexcept(FE_INVALID | FE_INEXACT);
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, exact}) {
+        uint64_t hash = UINT64_C(14695981039346656037);
+        for (auto mask : masks)
+          for (auto fn : functions)
+            for (unsigned variant = 0; variant < 64; ++variant)
+              for (auto descriptor : goc_test::dpp_modes) {
+                uint32_t av[32], bv[32], cv[32], output[32];
+                uint32_t mode = signs[variant % 8] | ((variant / 8) << 6);
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  av[lane] = values[lane % 8];
+                  bv[lane] = values[(lane + 3) % 8];
+                  cv[lane] = values[(lane + 5) % 8];
+                  output[lane] = 0xdead0000u + lane;
+                }
+                const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
+                uint32_t *d[] = {output};
+                EXPECT_EQ(fn(cpu | semantics, mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
+                for (auto word : output)
+                  hash = (hash ^ word) * UINT64_C(1099511628211);
+              }
+        EXPECT_EQ(hash, UINT64_C(0xb1d0cbb608c5c005)) << cpu << "/" << semantics;
+        EXPECT_EQ(std::fegetround(), rounding);
+        EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
+      }
+  }
+  std::fesetenv(&saved);
 }

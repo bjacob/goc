@@ -1724,6 +1724,7 @@ GOC_API int goc_rdna4_v_div_fixup_f64(uint64_t flags, uint64_t exec_mask,
 // then Y, then X. Comparisons flush subnormals; SC/TC copy selected source bits
 // and quiet NaNs. A zero or unordered major axis is treated as nonnegative.
 // MA doubles the signed major axis with nearest-even overflow and +0 for zeros.
+// DPP8/DPP16 permutes A before source modifiers; B/C retain their lanes.
 // Supports all source ABS/NEG, OMOD and CLAMP. Nonzero OMOD flushes subnormal
 // inputs/outputs, maps input zeros to +0 and preserves NaN sign/payload.
 // Supports loose and empirical exact semantics.
