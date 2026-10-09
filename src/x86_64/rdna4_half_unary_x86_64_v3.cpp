@@ -23,6 +23,15 @@ void half_unary_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32_t 
     auto x = half_input<false>(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)),
                                a_shift, mode);
     auto value = unary_value<Op, true>(x);
+    if constexpr (Op == Unary::Log) {
+      if (saturate)
+        value = _mm256_blendv_ps(value, _mm256_set1_ps(-65504),
+                                 _mm256_cmp_ps(x, _mm256_setzero_ps(), _CMP_EQ_OQ));
+    }
+    if constexpr (Op == Unary::Exp || Op == Unary::Log) {
+      if (mode & GOC_ALU_OMOD_HALF)
+        value = half_input<false>(half_narrow<false>(value, saturate), 0, 0);
+    }
     if (mode & GOC_ALU_OMOD_HALF)
       value = _mm256_mul_ps(prepare_omod_f16(value, mode), scale);
     if (mode & GOC_ALU_CLAMP)
@@ -54,5 +63,10 @@ template void half_unary_x86_64_v3<Unary::Fract>(bool, uint32_t, uint32_t, uint3
                                                  const uint32_t *);
 template void half_unary_x86_64_v3<Unary::FrexpMant>(bool, uint32_t, uint32_t, uint32_t *,
                                                      const uint32_t *);
+
+template void half_unary_x86_64_v3<Unary::Exp>(bool, uint32_t, uint32_t, uint32_t *,
+                                               const uint32_t *);
+template void half_unary_x86_64_v3<Unary::Log>(bool, uint32_t, uint32_t, uint32_t *,
+                                               const uint32_t *);
 
 } // namespace goc

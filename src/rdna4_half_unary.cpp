@@ -29,12 +29,10 @@ int unary(uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
   if (uint32_t(mask) == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
-  if constexpr (Op != goc::Unary::Exp && Op != goc::Unary::Log) {
-    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::half_unary_x86_64_v3<Op>(bool(flags & GOC_FP16_OVFL), uint32_t(mask), modifiers, d[0],
-                                    a[0]);
-      return GOC_SUCCESS;
-    }
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::half_unary_x86_64_v3<Op>(bool(flags & GOC_FP16_OVFL), uint32_t(mask), modifiers, d[0],
+                                  a[0]);
+    return GOC_SUCCESS;
   }
 #endif
   int a_shift = modifiers & GOC_ALU_HIGH_A ? 16 : 0;
@@ -50,6 +48,15 @@ int unary(uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
         x = std::clamp(x, -64.0f, 64.0f);
     }
     float value = goc::unary_value<Op>(x);
+    if constexpr (Op == goc::Unary::Log) {
+      if (x == 0 && (flags & GOC_FP16_OVFL))
+        value = -65504;
+    }
+    if constexpr (Op == goc::Unary::Exp || Op == goc::Unary::Log) {
+      // RDNA4 SFU EXP/LOG round to the architectural half before OMOD.
+      if (modifiers & GOC_ALU_OMOD_HALF)
+        value = goc::f16_to_float(goc::float_to_f16(value, flags & GOC_FP16_OVFL));
+    }
     if constexpr (Op == goc::Unary::Fract) {
       // Keep a fraction strictly below one after FP16 rounding.
       if (value > 0x1.ffcp-1f)

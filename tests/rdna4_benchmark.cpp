@@ -910,7 +910,7 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
         return false;
       print_result(names[op], "loose", mode, "scalar", scalar, 1);
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if ((op < 7 || op >= 9) && cpu >= GOC_CPU_X86_64_V3) {
+      if (cpu >= GOC_CPU_X86_64_V3) {
         double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
         if (simd < 0)
           return false;
@@ -1844,7 +1844,7 @@ bool benchmark_dpp_integer16_ternary(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_dpp_half_unary(uint64_t cpu, int iterations, int min_ms) {
-  for (unsigned op : {2u, 4u, 5u, 10u})
+  for (unsigned op : {2u, 4u, 5u, 7u, 8u, 10u})
     for (unsigned descriptor : {0u, 5u})
       for (unsigned modified = 0; modified < 2; ++modified) {
         uint64_t mode =

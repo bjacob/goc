@@ -1812,13 +1812,27 @@ canonicalized. Tests cover every modifier combination in both overflow modes,
 all EXEC patterns, in-place and separate outputs, guards, random encodings, and
 preservation of inactive lanes and the other destination half. Unary OMOD now
 uses the shared FP16 tiny-result correction, including ordinary non-DPP calls.
-Rounding, SQRT/RCP/RSQ, FRACT, and FREXP mantissa retain their AVX2 arithmetic
-paths with every supported modifier; EXP/LOG currently retain scalar math.
-Full-EXEC DPP benchmarks cover RNDNE, SQRT, RCP, and FREXP mantissa, with default
+All eleven operations have AVX2 arithmetic paths with every supported modifier,
+including EXP/LOG. EXP uses a reduced-interval polynomial; LOG uses exponent
+extraction and an odd-power logarithm series. Both operate on eight lanes and
+retain the existing one-half-encoding loose-accuracy allowance.
+Full-EXEC DPP benchmarks cover RNDNE, SQRT, RCP, EXP, LOG, and FREXP mantissa, with default
 and combined modifiers. On the Ryzen 9 7950X3D, these cases measure
-20.9–26.9 ns on AVX2 (4.4–9.4× scalar speed) and 20.1–25.9 ns with AVX-512
-permutation plus AVX2 arithmetic (4.6–9.8×), using seven pinned samples of at
+20.8–53.4 ns on AVX2 (4.2–9.3× scalar speed) and 20.2–52.2 ns with AVX-512
+permutation plus AVX2 arithmetic (4.3–9.5×), using seven pinned samples of at
 least 10 ms each.
+
+FP16 EXP/LOG round to FP16 before OMOD, as in rocjitsu's captured model.
+For example, EXP(16) overflows before halving: the default result stays infinity,
+while `GOC_FP16_OVFL` produces 32752 after halving the saturated half result.
+LOG of either signed zero produces -65504 with `GOC_FP16_OVFL`, rather than
+negative infinity. Scalar and SIMD paths both implement these rules. Two new
+GFX1201 captures check 107,520 results with both overflow modes and DPP; an
+exhaustive test checks every half input across every output scaling/clamp and
+overflow setting. All source modifiers, selectors, EXEC patterns, and aliases
+continue to use the same SIMD path. Ordinary EXP/LOG benchmarks measure
+24.5–40.6 ns on AVX2 (6.1–9.5× scalar speed), including combined modifiers;
+their DPP variants measure 30.4–53.4 ns (4.2–8.8×).
 
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes

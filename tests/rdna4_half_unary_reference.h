@@ -26,6 +26,11 @@ inline uint16_t half_unary_reference(int op, uint32_t input, uint32_t mode, bool
   if (mode & GOC_ALU_NEG_A)
     x = -x;
   double result = goc_test::half_unary(op, x);
+  if (op == 7 || op == 8) {
+    if (op == 8 && x == 0 && saturate)
+      result = -65504;
+    result = goc_test::half_value(goc_test::half_bits(result, saturate));
+  }
   const double scales[] = {1, 2, 4, 0.5};
   if (mode & GOC_ALU_OMOD_HALF) {
     if (std::abs(result) < 0x1p-14)
