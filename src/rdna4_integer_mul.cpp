@@ -4,6 +4,7 @@
 #include "rdna4_integer_mul.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <algorithm>
 #include <stdint.h>
@@ -17,8 +18,19 @@ template <int Bits> int64_t signed_value(uint32_t value) {
 }
 
 template <int Bits, bool Signed, bool High>
-int multiply(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int multiply(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
              const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32) {
+    if constexpr (Bits == 24) {
+      return goc::execute_dpp(
+          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+            return multiply<Bits, Signed, High>(flags, effective, uint32_t(mode), d, source, b);
+          });
+    } else {
+      return GOC_ERROR_INVALID_FLAGS;
+    }
+  }
+
   const uint32_t known = Bits == 24 && !High ? GOC_ALU_CLAMP : 0;
   if (int error = goc::validate(flags, mode & ~known))
     return error;
@@ -84,31 +96,23 @@ int goc_rdna4_v_mul_hi_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruct
 int goc_rdna4_v_mul_i32_i24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return multiply<24, true, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_mul_hi_i32_i24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return multiply<24, true, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_mul_u32_u24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return multiply<24, false, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_mul_hi_u32_u24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return multiply<24, false, true>(flags, exec_mask, instruction_flags, d, a, b);
 }

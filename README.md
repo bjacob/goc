@@ -1698,6 +1698,18 @@ these cases measure 17.5–22.3 ns on x86-64-v3 (1.8–3.3× scalar speed) and
 8.9–12.3 ns on x86-64-v4 (3.5–5.5×), using seven pinned samples of at least 10 ms
 each.
 
+DPP8/DPP16 also support the four signed/unsigned 24-bit multiply operations,
+including high-half results and CLAMP for the low-result forms. A GFX1201
+capture checks 10,752 results. Independent tests combine wrapping/saturating
+modes with all EXEC patterns, source/destination aliases, boundary and random
+words, and host FP-state preservation. AVX2 and AVX-512 arithmetic remain
+available for every supported modifier combination. Benchmarks cover all four
+operations and both DPP kinds with full EXEC. The full-width MUL_LO_U32,
+MUL_HI_U32, and MUL_HI_I32 instructions have no DPP encoding on gfx120x and
+continue to reject these flags. On the Ryzen 9 7950X3D, the supported DPP cases
+measure 18.5–24.0 ns on AVX2 (1.8–3.6× scalar speed) and 9.6–14.3 ns on AVX-512
+(3.5–5.2×), using seven pinned samples of at least 10 ms each.
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal
