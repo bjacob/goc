@@ -1454,6 +1454,8 @@ GOC_API int goc_rdna4_v_trig_preop_f64(uint64_t flags, uint64_t exec_mask,
 // unscaled values to +0 and tiny scaled values to signed zero; CLAMP then
 // maps to [0,1], including NaN/-0 to +0. Each operand uses one VGPR.
 // Supports all A/B/C ABS/NEG, OMOD and CLAMP modifiers; loose semantics only.
+// DPP8/DPP16 permute A before source modifiers. B and C retain their lanes;
+// inactive or DPP-filtered destinations remain unchanged.
 // Host nearest-even rounding with denormals enabled is required; exception
 // flags may change. NaN payloads are unspecified.
 GOC_API int goc_rdna4_v_mullit_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,

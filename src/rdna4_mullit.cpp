@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_alu.h"
+#include "rdna4_dpp.h"
 
 #include <cmath>
 #include <stdint.h>
@@ -12,7 +13,10 @@ int goc_rdna4_v_mullit_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruct
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
   if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
+    return goc::execute_dpp(
+        flags, exec_mask, instruction_flags, a, [&](uint64_t mask, const uint32_t *const *source) {
+          return goc_rdna4_v_mullit_f32(flags, mask, uint32_t(instruction_flags), d, source, b, c);
+        });
   if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(0x1ff)))
     return error;
   if (!uint32_t(exec_mask))

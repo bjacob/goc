@@ -713,6 +713,13 @@ plus all 512 modifiers crossed with EXEC masks, unaligned storage and every
 whole-register destination/source alias. Pinned-core Ryzen 9 7950X3D timings
 measured 3.17–3.70x for v3 and 8.02–9.67x for v4 versus scalar, including
 ABS/NEG, scaling and CLAMP (seven samples, each at least 10 ms).
+DPP8/DPP16 permute A before source modifiers, leaving B/C in their lanes.
+Both SIMD paths remain available with every modifier. DPP tests cover all 512
+modifiers, shared sources, destination aliases and guards, plus 917,504 GPU
+result words across eight EXEC masks and seven descriptors (NaNs canonicalized).
+Pinned-core DPP8/DPP16 timings are 22.8–27.9 ns for v3 (3.12–3.87x scalar)
+and 12.6–17.5 ns for v4 (5.65–6.19x), including source/output modifiers
+(seven samples, each at least 10 ms).
 
 Wide integer MAD covers `v_mad_co_u64_u32` and `v_mad_co_i64_i32`, the RDNA4
 names for unsigned/signed 32x32 multiplication plus a 64-bit accumulator. A/B use
