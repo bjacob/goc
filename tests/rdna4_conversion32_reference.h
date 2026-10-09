@@ -8,6 +8,10 @@
 
 namespace goc_test {
 
+inline const char *const conversion32_names[] = {"v_cvt_f32_i32",         "v_cvt_f32_u32",
+                                                 "v_cvt_i32_f32",         "v_cvt_u32_f32",
+                                                 "v_cvt_nearest_i32_f32", "v_cvt_floor_i32_f32"};
+
 inline uint32_t conversion32_mode(int op, unsigned variant) {
   if (op < 2)
     return ((variant & 3) << 6) | (variant & 4 ? GOC_ALU_CLAMP : 0);
@@ -59,7 +63,7 @@ inline uint32_t conversion32_reference(int op, uint32_t raw, uint32_t mode) {
   uint32_t fraction = raw & 0x7fffff;
   unsigned biased = (raw >> 23) & 255;
   if (biased == 255 && fraction)
-    return 0;
+    return op >= 4 ? (negative ? 0x80000000 : 0x7fffffff) : 0;
   if (op == 3 && negative)
     return 0;
   int exponent = int(biased) - 127;

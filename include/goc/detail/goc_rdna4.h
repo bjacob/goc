@@ -1962,9 +1962,12 @@ GOC_API int goc_rdna4_v_cvt_f32_f64(uint64_t flags, uint64_t exec_mask, uint64_t
 // FP32/integer conversions, one VGPR per operand. Loose semantics only.
 // Integer-to-FP32 conversion uses host nearest-even rounding, followed by OMOD
 // and CLAMP; source ABS/NEG are invalid. Float-to-integer conversion saturates
-// to the destination range, maps NaNs to zero, and supports ABS/NEG. CLAMP is
-// accepted but does not affect integer results. Truncating float-to-integer
-// forms also accept OMOD without numeric scaling; GPU exceptions are not modeled.
+// to the destination range and supports ABS/NEG. Truncating forms map NaNs to
+// zero; nearest/floor forms map them to the signed limit selected by the NaN sign
+// after source modifiers. CLAMP is accepted but does not affect integer results.
+// Truncating forms also accept OMOD without numeric scaling. GPU exceptions are
+// not modeled.
+// All six forms support DPP8/DPP16 on A.
 
 GOC_API int goc_rdna4_v_cvt_f32_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a);

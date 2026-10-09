@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_conversion32_reference.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <algorithm>
@@ -45,10 +46,10 @@ TEST(Conversion32, LiteralRoundingAndSaturationWitnesses) {
        0x7fffffff, 0x80000000, 0x7fffffff, 0x7fffffff},
       {0, 0, 1, 0, 2, 0, 0, 0, 0xffffffff, 0, 0, 0, 0x7fffff80, 0x80000000, 0, 0xffffff00,
        0xffffffff},
-      {1, 0, 2, 0xffffffff, 3, 0xfffffffe, 0, 0, 0x7fffffff, 0x80000000, 0, 0, 0x7fffff80,
-       0x7fffffff, 0x80000000, 0x7fffffff, 0x7fffffff},
-      {0, 0xffffffff, 1, 0xfffffffe, 2, 0xfffffffd, 0, 0xffffffff, 0x7fffffff, 0x80000000, 0, 0,
-       0x7fffff80, 0x7fffffff, 0x80000000, 0x7fffffff, 0x7fffffff}};
+      {1, 0, 2, 0xffffffff, 3, 0xfffffffe, 0, 0, 0x7fffffff, 0x80000000, 0x7fffffff, 0x80000000,
+       0x7fffff80, 0x7fffffff, 0x80000000, 0x7fffffff, 0x7fffffff},
+      {0, 0xffffffff, 1, 0xfffffffe, 2, 0xfffffffd, 0, 0xffffffff, 0x7fffffff, 0x80000000,
+       0x7fffffff, 0x80000000, 0x7fffff80, 0x7fffffff, 0x80000000, 0x7fffffff, 0x7fffffff}};
   for (int op = 2; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       uint32_t input[32], output[32];
@@ -183,4 +184,92 @@ TEST(Conversion32, FloatToIntegerIgnoresHostRounding) {
       }
   }
   EXPECT_EQ(std::fesetenv(&original), 0);
+}
+
+TEST(Conversion32, DppModifiersMasksAliasesAndRandomWords) {
+  std::mt19937 random(162);
+  for (int op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t descriptor : goc_test::dpp_modes)
+        for (unsigned variant = 0; variant < goc_test::conversion32_modes(op); ++variant)
+          for (uint64_t mask : rdna4_exec_masks())
+            for (bool alias : {false, true}) {
+              uint32_t storage[2][35], original[2][35];
+              for (auto &reg : storage)
+                for (auto &word : reg)
+                  word = random();
+              std::copy(&storage[0][0], &storage[0][0] + 35, original[0]);
+              std::copy(&storage[1][0], &storage[1][0] + 35, original[1]);
+              const uint32_t *a[] = {storage[0] + 1};
+              uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
+              uint32_t mode = goc_test::conversion32_mode(op, variant);
+              ASSERT_EQ(functions[op](cpu, mask, descriptor | mode, d, a), GOC_SUCCESS);
+              for (int reg = 0; reg < 2; ++reg)
+                for (int word = 0; word < 35; ++word) {
+                  uint32_t expected = original[reg][word];
+                  int source;
+                  if (reg == (alias ? 0 : 1) && word >= 1 && word <= 32 &&
+                      goc_test::dpp_source(descriptor, uint32_t(mask), word - 1, source))
+                    expected = goc_test::conversion32_reference(
+                        op, source < 0 ? 0 : original[0][source + 1], mode);
+                  ASSERT_EQ(storage[reg][word], expected);
+                }
+            }
+}
+
+TEST(Conversion32, HardwareOrdinaryAndDppCorpus) {
+  const uint32_t values[] = {0,          1,          0xffffffff, 0x80000000, 0x01000001, 0x7fffffff,
+                             0x3f000000, 0xbf000000, 0x3fc00000, 0xbfc00000, 0x4effffff, 0xcf000000,
+                             0x4f800000, 0xff800000, 0x7f800001, 0x80000001};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (bool dpp : {false, true}) {
+      uint64_t hash = UINT64_C(14695981039346656037);
+      for (uint32_t mask :
+           {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
+        for (unsigned op = 0; op < 6; ++op)
+          for (unsigned index = 0; index < (dpp ? 7u : 1u); ++index)
+            for (unsigned variant = 0; variant < 8; ++variant) {
+              uint64_t descriptor = dpp ? goc_test::dpp_modes[index] : 0;
+              uint32_t a[32], d[32];
+              uint32_t mode = goc_test::conversion32_mode(op, variant);
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                a[lane] = values[lane % 16];
+                d[lane] = 0xdead0000u + lane;
+              }
+              auto pa = a, pd = d;
+              ASSERT_EQ(functions[op](cpu, mask, descriptor | mode, &pd, &pa), GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                int source = lane;
+                uint32_t want = 0xdead0000u + lane;
+                if (dpp ? goc_test::dpp_source(descriptor, mask, lane, source)
+                        : ((mask >> lane) & 1))
+                  want = goc_test::conversion32_reference(op, source < 0 ? 0u : a[source], mode);
+                EXPECT_EQ(d[lane], want);
+                hash = (hash ^ d[lane]) * UINT64_C(1099511628211);
+              }
+            }
+      EXPECT_EQ(hash, dpp ? UINT64_C(0x4fc3a683d5b1e3b5) : UINT64_C(0x87a638b369ca680d));
+    }
+}
+
+TEST(Conversion32, DppValidation) {
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_HIGH_A, nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | (UINT64_C(1) << 36), nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+      if (op < 2) {
+        EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_NEG_A, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+      }
+      if (op >= 4) {
+        EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_OMOD_2, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+      }
+      EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
+                              descriptor, nullptr, nullptr),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    }
 }

@@ -955,9 +955,10 @@ unmodified and modified full-EXEC workloads.
 
 Six 32-bit numeric conversions cover `v_cvt_f32_i32`, `v_cvt_f32_u32`,
 `v_cvt_i32_f32`, `v_cvt_u32_f32`, `v_cvt_nearest_i32_f32`, and
-`v_cvt_floor_i32_f32`. Float-to-integer conversions saturate overflow and map
-NaNs to zero. The ordinary forms truncate; `NEAREST` breaks ties toward positive
-infinity, and `FLOOR` rounds downward. Integer-to-FP32 uses host nearest-even
+`v_cvt_floor_i32_f32`. Float-to-integer conversions saturate overflow.
+The truncating forms map NaNs to zero; `NEAREST` and `FLOOR` map them to
+`INT32_MIN` or `INT32_MAX` according to the sign after ABS/NEG. `NEAREST`
+breaks ties toward positive infinity, and `FLOOR` rounds downward. Integer-to-FP32 uses host nearest-even
 rounding followed by OMOD/CLAMP. Float-to-integer accepts ABS/NEG; CLAMP is a
 numeric no-op, as is OMOD on the two truncating forms. The explicit rounding
 forms reject OMOD. GPU exception reporting is not modeled. These entry points
@@ -971,6 +972,16 @@ literal tie/overflow/NaN witnesses, precision boundaries, random words, all
 modifiers, all mask patterns, unaligned storage, and in-place aliases. They also
 check that float-to-integer rounding is independent of the host rounding mode.
 Benchmark rows exercise full EXEC with default and modified operands.
+All six instructions also support DPP8/DPP16 with the same low modifiers,
+FI, boundary behavior, and row/bank filtering. DPP retains the existing CPU
+arithmetic dispatch. Tests cross all modifiers and EXEC patterns with separate
+and aliased unaligned destinations, preserving inactive words and guards exactly.
+Two GFX1201 captures check 98,304 ordinary/DPP results, including NaN saturation,
+rounding ties, integer precision boundaries, and integer overflow.
+Full-EXEC DPP benchmarks on a Ryzen 9 7950X3D measure 18.2–23.4 ns for the
+four AVX2 arithmetic paths (1.9–5.1× scalar speed) and 8.3–12.5 ns for all six
+AVX-512 paths (3.5–10.4×), including combined modifiers. Measurements use seven
+pinned-core samples of at least 10 ms each.
 
 FP32 `FRACT` computes `x - floor(x)` and caps it at `0x3f7fffff` before
 output modifiers, so tiny negative inputs stay strictly below one. Scalar/v3

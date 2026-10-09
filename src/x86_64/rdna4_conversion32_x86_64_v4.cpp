@@ -54,7 +54,13 @@ void conversion32_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uin
           x = _mm512_floor_ps(x);
         result = _mm512_cvttps_epi32(x);
         result = _mm512_mask_mov_epi32(result, overflow, _mm512_set1_epi32(INT32_MAX));
-        result = _mm512_mask_mov_epi32(result, nan, _mm512_setzero_si512());
+        if constexpr (Op == Conversion32::Nearest || Op == Conversion32::Floor) {
+          auto nan_result =
+              _mm512_xor_si512(_mm512_srai_epi32(raw, 31), _mm512_set1_epi32(INT32_MAX));
+          result = _mm512_mask_mov_epi32(result, nan, nan_result);
+        } else {
+          result = _mm512_mask_mov_epi32(result, nan, _mm512_setzero_si512());
+        }
       }
     }
     _mm512_mask_storeu_epi32(d + lane, __mmask16(mask >> lane), result);

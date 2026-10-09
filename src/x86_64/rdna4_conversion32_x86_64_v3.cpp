@@ -53,7 +53,9 @@ void conversion32_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *d, const uin
         result = _mm256_cvttps_epi32(x);
         result =
             _mm256_blendv_epi8(result, _mm256_set1_epi32(INT32_MAX), _mm256_castps_si256(overflow));
-        result = _mm256_andnot_si256(_mm256_castps_si256(nan), result);
+        auto nan_result =
+            _mm256_xor_si256(_mm256_srai_epi32(raw, 31), _mm256_set1_epi32(INT32_MAX));
+        result = _mm256_blendv_epi8(result, nan_result, _mm256_castps_si256(nan));
       }
     }
     auto active = _mm256_set1_epi32(int(mask >> lane));

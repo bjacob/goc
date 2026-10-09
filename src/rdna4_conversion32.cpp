@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_alu.h"
+#include "rdna4_dpp.h"
 
 #include <cmath>
 #include <stdint.h>
@@ -11,8 +12,13 @@
 namespace {
 
 template <goc::Conversion32 Op>
-int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int convert(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a) {
+  if (mode >> 32)
+    return goc::execute_dpp(flags, mask, mode, a,
+                            [&](uint32_t effective, const uint32_t *const *source) {
+                              return convert<Op>(flags, effective, uint32_t(mode), d, source);
+                            });
   constexpr bool to_float =
       Op == goc::Conversion32::SignedToFloat || Op == goc::Conversion32::UnsignedToFloat;
   const uint32_t known =
@@ -54,6 +60,9 @@ int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
       // codegen/execute/sema_lower.py conversion models. Classify before
       // casting: out-of-range floating-to-integer casts are undefined in C++.
       float x = goc::alu_input(raw, mode);
+      uint32_t nan_result = 0;
+      if constexpr (Op == goc::Conversion32::Nearest || Op == goc::Conversion32::Floor)
+        nan_result = (goc::as_bits(x) >> 31) ? uint32_t(INT32_MIN) : uint32_t(INT32_MAX);
       if constexpr (Op == goc::Conversion32::Nearest) {
         float rounded = std::floor(x);
         if (x - rounded >= 0.5f)
@@ -65,7 +74,7 @@ int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
       if constexpr (Op == goc::Conversion32::FloatToUnsigned)
         result[lane] = !(x > 0) ? 0 : x >= 4294967296.0f ? UINT32_MAX : uint32_t(x);
       else
-        result[lane] = std::isnan(x)         ? 0
+        result[lane] = std::isnan(x)         ? nan_result
                        : x >= 2147483648.0f  ? uint32_t(INT32_MAX)
                        : x <= -2147483648.0f ? uint32_t(INT32_MIN)
                                              : uint32_t(int32_t(x));
@@ -83,42 +92,30 @@ int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 int goc_rdna4_v_cvt_f32_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion32::SignedToFloat>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_cvt_f32_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion32::UnsignedToFloat>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_cvt_i32_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion32::FloatToSigned>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_cvt_u32_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion32::FloatToUnsigned>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_cvt_nearest_i32_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion32::Nearest>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_cvt_floor_i32_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                   uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion32::Floor>(flags, exec_mask, instruction_flags, d, a);
 }
