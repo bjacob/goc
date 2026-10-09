@@ -2841,7 +2841,9 @@ static const uint32_t GOC_MIX_F16_B = (UINT32_C(1) << 14);
 static const uint32_t GOC_MIX_F16_C = (UINT32_C(1) << 15);
 
 // Wave32 mixed FMA: one VGPR per operand; supports source ABS/NEG, source
-// format/half selectors, and CLAMP. OMOD and HIGH_D are invalid. MIX_F32
+// format/half selectors, and CLAMP. DPP8/DPP16 permute A before format/half
+// selection and modifiers; B and C retain their lanes. OMOD and HIGH_D are
+// invalid. MIX_F32
 // produces FP32; MIXLO/MIXHI round directly to FP16 and preserve the other
 // destination half. GOC_FP16_OVFL saturates finite FP16 overflow only.
 // Loose semantics require host nearest-even arithmetic with denormals enabled.

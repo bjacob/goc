@@ -4,6 +4,7 @@
 #include "float_formats.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 #include "rdna4_half_fma_scalar.h"
 #include "rdna4_mixed_fma_scalar.h"
 
@@ -13,8 +14,13 @@
 namespace {
 
 template <goc::MixedFma Dst>
-int mixed_fma(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int mixed_fma(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (mode >> 32)
+    return goc::execute_dpp(
+        flags, mask, mode, a, [&](uint64_t filtered, const uint32_t *const *source) {
+          return mixed_fma<Dst>(flags, filtered, uint32_t(mode), d, source, b, c);
+        });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C | GOC_ALU_ABS_A |
                          GOC_ALU_ABS_B | GOC_ALU_ABS_C | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
                          GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_MIX_F16_A | GOC_MIX_F16_B |
@@ -61,23 +67,17 @@ int mixed_fma(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 int goc_rdna4_v_fma_mix_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return mixed_fma<goc::MixedFma::Float>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_fma_mixlo_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, const uint32_t *const *b,
                               const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return mixed_fma<goc::MixedFma::Low>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_fma_mixhi_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, const uint32_t *const *b,
                               const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return mixed_fma<goc::MixedFma::High>(flags, mask, mode, d, a, b, c);
 }

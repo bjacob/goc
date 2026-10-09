@@ -1499,6 +1499,14 @@ semantics only. Tests use an independent 640-bit integer oracle and cover all
 modifiers, every FP16 source encoding, all finite half midpoints with tiny
 positive/negative perturbations, captured NaN and fused-cancellation witnesses,
 EXEC masks, whole-register aliases, and hostile host FP settings.
+All three mixed-FMA forms support DPP8/DPP16 on A before format/half selection
+and ABS/NEG; B and C retain their lanes. DPP preserves the unused destination
+half and stays on the v3 path with source modifiers and overflow control. Tests
+cover every modifier combination with seven descriptors, EXEC masks, shared
+sources, output aliases and guards, plus 688,128 GPU-captured result words.
+Pinned-core DPP8/DPP16 benchmarks, including format selection and modifiers,
+measure 23.3–29.5 ns for v3 FP32 output (3.95–5.56x scalar) and 67.9–86.9 ns
+for FP16 output (3.97–4.69x), using seven samples of at least 10 ms each.
 
 FP16/FP32 `FMAMK` and `FMAAK` take a scalar literal by value, in assembly
 operand order: `D, A, literal, B` for multiply-literal and `D, A, B, literal`

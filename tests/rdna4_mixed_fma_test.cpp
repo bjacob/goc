@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_half_reference.h"
 #include "rdna4_mixed_fma_reference.h"
@@ -60,6 +61,113 @@ bool equal(int op, uint32_t got, uint32_t want, bool exact) {
 }
 
 } // namespace
+
+TEST(MixedFma, DppAllModifiers) {
+  for (int op = 0; op < 3; ++op)
+    for (unsigned index = 0; index < 8192; ++index)
+      for (uint64_t descriptor : goc_test::dpp_modes) {
+        uint32_t input[4][32], want[32];
+        for (unsigned reg = 0; reg < 4; ++reg)
+          for (unsigned lane = 0; lane < 32; ++lane)
+            input[reg][lane] = values[(lane * 7 + reg * 5) % 24];
+        uint32_t mode = goc_test::mixed_fma_reference::mode(index);
+        bool saturate = index & 1;
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          int source;
+          want[lane] = input[3][lane];
+          if (goc_test::dpp_source(descriptor, UINT32_MAX, lane, source))
+            want[lane] = goc_test::mixed_fma_reference::evaluate(
+                op, source < 0 ? 0 : input[0][source], input[1][lane], input[2][lane],
+                input[3][lane], mode, saturate);
+        }
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          uint32_t output[32];
+          std::copy_n(input[3], 32, output);
+          uint32_t *d[] = {output};
+          const uint32_t *a[] = {input[0]}, *b[] = {input[1]}, *c[] = {input[2]};
+          ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
+                                  descriptor | mode, d, a, b, c),
+                    GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 32; ++lane)
+            ASSERT_TRUE(equal(op, output[lane], want[lane], false))
+                << op << "/" << index << "/" << descriptor << "/" << cpu << "/" << lane;
+        }
+      }
+}
+
+TEST(MixedFma, DppHardwareCorpus) {
+  // RX 9070/gfx1201, MODE 0xf0: all input format/half combinations with
+  // ABS/NEG and CLAMP, eight EXEC masks, and seven DPP descriptors.
+  const uint32_t inputs[] = {0x3c003800, 0xbc00b800, 0x40003c00, 0xc000bc00,
+                             0x3f800000, 0xbf800000, 0,          0x80000000};
+  const uint32_t masks[] = {UINT32_MAX, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (uint32_t mask : masks)
+      for (int op = 0; op < 3; ++op)
+        for (unsigned variant = 0; variant < 128; ++variant)
+          for (uint64_t descriptor : goc_test::dpp_modes) {
+            uint32_t words[4][32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              words[0][lane] = inputs[lane % 8];
+              words[1][lane] = inputs[(lane + 3) % 8];
+              words[2][lane] = inputs[(lane + 5) % 8];
+              words[3][lane] = 0xdead0000u + lane;
+            }
+            uint32_t mode = ((variant & 7) << 3) | ((variant >> 3) & 7) |
+                            ((variant & 64) ? GOC_ALU_CLAMP : 0) | (((variant >> 3) & 7) << 9) |
+                            ((variant & 7) << 13);
+            const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+            uint32_t *d[] = {words[3]};
+            ASSERT_EQ(functions[op](cpu, mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
+            for (uint32_t word : words[3])
+              hash = (hash ^ word) * UINT64_C(1099511628211);
+          }
+    EXPECT_EQ(hash, UINT64_C(0x67b9a4c5cebf1238));
+  }
+}
+
+TEST(MixedFma, DppMasksAliasesAndGuards) {
+  for (int op = 0; op < 3; ++op)
+    for (unsigned index : {0u, 1u, 85u, 1023u, 4096u, 8191u})
+      for (uint64_t descriptor : goc_test::dpp_modes)
+        for (uint64_t mask : rdna4_exec_masks())
+          for (bool shared : {false, true})
+            for (unsigned target = 0; target < 4; ++target) {
+              uint32_t initial[4][34], want[32];
+              for (unsigned reg = 0; reg < 4; ++reg)
+                for (unsigned lane = 0; lane < 34; ++lane)
+                  initial[reg][lane] = values[(lane * 7 + reg * 5) % 24];
+              uint32_t mode = goc_test::mixed_fma_reference::mode(index);
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                int source;
+                want[lane] = initial[target][lane + 1];
+                if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+                  want[lane] = goc_test::mixed_fma_reference::evaluate(
+                      op, source < 0 ? 0 : initial[0][source + 1],
+                      initial[shared ? 0 : 1][lane + 1], initial[shared ? 0 : 2][lane + 1],
+                      want[lane], mode, true);
+              }
+              for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+                uint32_t words[4][34];
+                std::memcpy(words, initial, sizeof(words));
+                uint32_t *d[] = {words[target] + 1};
+                const uint32_t *a[] = {words[0] + 1}, *b[] = {words[shared ? 0 : 1] + 1},
+                               *c[] = {words[shared ? 0 : 2] + 1};
+                uint64_t flags = cpu | GOC_FP16_OVFL;
+                if (op && shared)
+                  flags |= GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+                ASSERT_EQ(functions[op](flags, mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
+                for (unsigned reg = 0; reg < 4; ++reg)
+                  for (unsigned lane = 0; lane < 34; ++lane) {
+                    uint32_t expected = reg == target && lane > 0 && lane < 33 ? want[lane - 1]
+                                                                               : initial[reg][lane];
+                    ASSERT_TRUE(equal(op, words[reg][lane], expected, op && shared));
+                  }
+              }
+            }
+}
 
 TEST(MixedFma, BoundaryTriplesAndRandomWords) {
   for (int op = 0; op < 3; ++op)
