@@ -1,0 +1,137 @@
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include "goc/goc.h"
+
+#include <stdint.h>
+
+namespace goc_test {
+
+inline bool conversion64_wide_output(int op) { return op < 2 || op == 4; }
+
+inline unsigned conversion64_modes(int op) { return op < 2 ? 8 : 32; }
+
+inline uint32_t conversion64_mode(int op, unsigned variant) {
+  if (op < 2)
+    return ((variant & 3) << 6) | (variant & 4 ? GOC_ALU_CLAMP : 0);
+  return (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
+         (variant & 4 ? GOC_ALU_CLAMP : 0) | ((variant >> 3) << 6);
+}
+
+inline uint64_t conversion_round_right(uint64_t value, int shift) {
+  if (shift <= 0)
+    return value << -shift;
+  if (shift >= 64)
+    return 0; // Inputs have at most 53 significant bits.
+  uint64_t quotient = value >> shift, remainder = value & ((UINT64_C(1) << shift) - 1);
+  uint64_t half = UINT64_C(1) << (shift - 1);
+  return quotient + (remainder > half || (remainder == half && (quotient & 1)));
+}
+
+inline uint64_t conversion_encode(bool negative, uint64_t significand, int scale, unsigned fraction,
+                                  int bias) {
+  // Integer-only packing: significand * 2^scale, rounded to nearest-even at
+  // the destination precision, with separate normal/subnormal exponent ranges.
+  uint64_t sign = negative ? (uint64_t(2 * bias + 2) << fraction) : 0;
+  uint64_t infinity = uint64_t(2 * bias + 1) << fraction;
+  if (!significand)
+    return sign;
+  int top = 0;
+  for (uint64_t copy = significand; copy >>= 1;)
+    ++top;
+  int exponent = top + scale;
+  if (exponent > bias)
+    return sign | infinity;
+  if (exponent < 1 - bias)
+    exponent = 1 - bias;
+  uint64_t rounded = conversion_round_right(significand, exponent - int(fraction) - scale);
+  if (rounded >= (UINT64_C(2) << fraction)) {
+    rounded >>= 1;
+    ++exponent;
+  }
+  if (exponent > bias)
+    return sign | infinity;
+  uint64_t encoded_exp = rounded < (UINT64_C(1) << fraction) ? 0 : uint64_t(exponent + bias);
+  return sign | (encoded_exp << fraction) | (rounded & ((UINT64_C(1) << fraction) - 1));
+}
+
+inline uint64_t conversion_reencode(uint64_t raw, unsigned source_fraction, int source_bias,
+                                    unsigned destination_fraction, int destination_bias,
+                                    int scaling = 0) {
+  uint64_t significand = raw & ((UINT64_C(1) << source_fraction) - 1);
+  unsigned exponent = unsigned((raw >> source_fraction) & unsigned(2 * source_bias + 1));
+  bool negative = (raw >> source_fraction) >= unsigned(2 * source_bias + 2);
+  if (exponent == unsigned(2 * source_bias + 1)) {
+    uint64_t sign = negative ? (uint64_t(2 * destination_bias + 2) << destination_fraction) : 0;
+    uint64_t special = sign | (uint64_t(2 * destination_bias + 1) << destination_fraction);
+    return significand ? special | (UINT64_C(1) << (destination_fraction - 1)) : special;
+  }
+  int scale = (exponent ? int(exponent) - source_bias : 1 - source_bias) - int(source_fraction);
+  if (exponent)
+    significand |= UINT64_C(1) << source_fraction;
+  return conversion_encode(negative, significand, scale + scaling, destination_fraction,
+                           destination_bias);
+}
+
+inline uint64_t conversion64_reference(int op, uint64_t raw, uint32_t mode) {
+  uint64_t output;
+  if (op < 2) {
+    bool negative = op == 0 && (uint32_t(raw) >> 31);
+    uint32_t magnitude = negative ? uint32_t(0) - uint32_t(raw) : uint32_t(raw);
+    output = conversion_encode(negative, magnitude, 0, 52, 1023);
+  } else {
+    uint64_t sign = op == 4 ? UINT64_C(0x80000000) : UINT64_C(0x8000000000000000);
+    if (mode & GOC_ALU_ABS_A)
+      raw &= ~sign;
+    if (mode & GOC_ALU_NEG_A)
+      raw ^= sign;
+    if (op == 2 || op == 3) {
+      bool negative = raw >> 63;
+      unsigned exponent = unsigned((raw >> 52) & 2047);
+      uint64_t fraction = raw & UINT64_C(0xfffffffffffff);
+      if ((exponent == 2047 && fraction) || (op == 3 && negative) || exponent < 1023)
+        return 0;
+      uint64_t limit = op == 3    ? UINT64_C(0xffffffff)
+                       : negative ? UINT64_C(0x80000000)
+                                  : UINT64_C(0x7fffffff);
+      uint64_t magnitude =
+          exponent >= 1055 ? limit : (fraction | (UINT64_C(1) << 52)) >> (1075 - exponent);
+      if (magnitude > limit)
+        magnitude = limit;
+      return negative ? uint32_t(0) - uint32_t(magnitude) : uint32_t(magnitude);
+    }
+    output = op == 4 ? conversion_reencode(raw, 23, 127, 52, 1023)
+                     : conversion_reencode(raw, 52, 1023, 23, 127);
+  }
+  unsigned fraction = conversion64_wide_output(op) ? 52 : 23;
+  int bias = conversion64_wide_output(op) ? 1023 : 127;
+  const int scales[] = {0, 1, 2, -1};
+  output = conversion_reencode(output, fraction, bias, fraction, bias, scales[(mode >> 6) & 3]);
+  if (mode & GOC_ALU_CLAMP) {
+    uint64_t one = uint64_t(bias) << fraction;
+    uint64_t infinity = uint64_t(2 * bias + 1) << fraction;
+    if (output >= (uint64_t(2 * bias + 2) << fraction) || output > infinity)
+      output = 0;
+    else if (output > one)
+      output = one;
+  }
+  return output;
+}
+
+inline bool conversion64_equal(int op, uint64_t actual, uint64_t expected) {
+  if (actual == expected)
+    return true;
+  if (op == 2 || op == 3)
+    return false;
+  unsigned fraction = conversion64_wide_output(op) ? 52 : 23;
+  uint64_t bias = conversion64_wide_output(op) ? 1023 : 127;
+  uint64_t infinity = (2 * bias + 1) << fraction;
+  uint64_t quiet = UINT64_C(1) << (fraction - 1);
+  uint64_t magnitude_mask = ((2 * bias + 2) << fraction) - 1;
+  // Loose semantics require quiet NaNs, without fixing their payload or sign.
+  return (actual & magnitude_mask) > infinity && (expected & magnitude_mask) > infinity &&
+         (actual & quiet) && (expected & quiet);
+}
+
+} // namespace goc_test

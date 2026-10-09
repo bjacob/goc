@@ -375,6 +375,27 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Six FP64 conversions cover `v_cvt_f64_i32`, `v_cvt_f64_u32`,
+`v_cvt_i32_f64`, `v_cvt_u32_f64`, `v_cvt_f64_f32`, and `v_cvt_f32_f64`.
+FP64 operands occupy two VGPRs, low word first. Source/destination halves may
+alias in any combination; if destination halves share storage, the high word
+wins. Integer inputs convert exactly to FP64 before output scaling and CLAMP.
+FP64-to-integer truncates with saturation and NaN-to-zero, accepting source
+ABS/NEG and numerically ignoring CLAMP/OMOD. FP32/FP64 conversions support all
+32 ABS/NEG/OMOD/CLAMP combinations. Narrowing rounds to FP32 before applying
+OMOD, including cases where scaling first would avoid overflow or underflow.
+All six currently expose loose semantics only.
+
+Eight-lane x86-64-v4 paths cover all six; four-lane v3 paths cover all except
+signed FP64-to-integer, whose candidate was roughly tied with baseline.
+No supported modifier forces an otherwise available SIMD path to scalar.
+Tests use an independent integer-bit reference, literal rounding/saturation
+witnesses, narrowing midpoints across the FP32 range, every source exponent,
+random full words, all modifiers, and all 32 source/destination layouts crossed
+with 85 EXEC masks. They also check unaligned storage, validation without writes,
+and host-rounding independence for integer outputs. Benchmark rows compare
+unmodified and modified full-EXEC workloads.
+
 Six 32-bit numeric conversions cover `v_cvt_f32_i32`, `v_cvt_f32_u32`,
 `v_cvt_i32_f32`, `v_cvt_u32_f32`, `v_cvt_nearest_i32_f32`, and
 `v_cvt_floor_i32_f32`. Float-to-integer conversions saturate overflow and map

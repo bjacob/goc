@@ -5,6 +5,7 @@
 #include "rdna4_bitfield_reference.h"
 #include "rdna4_boolean_reference.h"
 #include "rdna4_conversion32_reference.h"
+#include "rdna4_conversion64_reference.h"
 #include "rdna4_dense_golden.h"
 #include "rdna4_half_reference.h"
 #include "rdna4_integer16_reference.h"
@@ -1297,6 +1298,68 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_conversion64(uint64_t cpu, int iterations, int min_ms) {
+  using Unary = decltype(&goc_rdna4_v_cvt_f64_i32);
+  const Unary functions[] = {goc_rdna4_v_cvt_f64_i32, goc_rdna4_v_cvt_f64_u32,
+                             goc_rdna4_v_cvt_i32_f64, goc_rdna4_v_cvt_u32_f64,
+                             goc_rdna4_v_cvt_f64_f32, goc_rdna4_v_cvt_f32_f64};
+  const char *names[] = {"v_cvt_f64_i32", "v_cvt_f64_u32", "v_cvt_i32_f64",
+                         "v_cvt_u32_f64", "v_cvt_f64_f32", "v_cvt_f32_f64"};
+  const uint64_t double_inputs[] = {0x3ff8000000000000, 0xbff8000000000000, 0x41dfffffffffffff,
+                                    0xc1e0000000100000, 0x41efffffffffffff, 0x41f0000000000000,
+                                    0x3fe0000000000000, 0xbfe0000000000000};
+  const uint32_t float_inputs[] = {0x3fc00000, 0xbfc00000, 0x4effffff, 0xcf000001,
+                                   0x4f7fffff, 0x4f800000, 0x3f000000, 0xbf000000};
+  for (int op = 0; op < 6; ++op)
+    for (bool modified : {false, true}) {
+      uint32_t mode =
+          modified ? goc_test::conversion64_mode(op, goc_test::conversion64_modes(op) - 1) : 0;
+      Registers r;
+      r.output_regs = goc_test::conversion64_wide_output(op) ? 2 : 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        uint64_t raw = op < 2    ? uint32_t(lane) * 134217757u
+                       : op == 4 ? float_inputs[lane % 8]
+                                 : double_inputs[lane % 8];
+        r.data[0][lane] = uint32_t(raw);
+        r.data[1][lane] = uint32_t(raw >> 32);
+        uint64_t expected = goc_test::conversion64_reference(op, raw, mode);
+        for (int reg = 0; reg < r.output_regs; ++reg)
+          r.expected[128 * (lane / 16) + 16 * reg + lane % 16] = uint32_t(expected >> (32 * reg));
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *,
+                          const uint32_t *const *) {
+        return functions[op](flags, mask, modifiers, d, a);
+      };
+      const char *label = !modified ? "none"
+                          : op < 2  ? "half/clamp"
+                          : op < 4  ? "ABS/NEG/OMOD/clamp"
+                                    : "ABS/NEG/half/clamp";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (op != 2 && cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_conversion32(uint64_t cpu, int iterations, int min_ms) {
   using Unary = decltype(&goc_rdna4_v_cvt_f32_i32);
   const Unary functions[] = {goc_rdna4_v_cvt_f32_i32,         goc_rdna4_v_cvt_f32_u32,
@@ -2447,7 +2510,8 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave");
-  if (!benchmark_conversion32(cpu, iterations, min_ms) ||
+  if (!benchmark_conversion64(cpu, iterations, min_ms) ||
+      !benchmark_conversion32(cpu, iterations, min_ms) ||
       !benchmark_integer_mad(cpu, iterations, min_ms) ||
       !benchmark_integer16_ternary(cpu, iterations, min_ms) ||
       !benchmark_integer16(cpu, iterations, min_ms) ||

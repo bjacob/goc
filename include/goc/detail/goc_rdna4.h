@@ -18,6 +18,32 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// FP64 conversions: FP64 operands use two VGPRs, low word first; FP32 and
+// integer operands use one. Loose semantics only. Integer inputs reject ABS/NEG;
+// floating inputs support ABS/NEG. Floating outputs round to the destination
+// format before OMOD and CLAMP. Host nearest-even rounding and enabled denormals
+// are required. Integer outputs truncate, saturate overflow, map NaNs to zero,
+// and accept CLAMP/OMOD without numeric effect; GPU exceptions are not modeled.
+// Destination halves may alias each other; the high word wins in active lanes.
+
+GOC_API int goc_rdna4_v_cvt_f64_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_f64_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_i32_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_u32_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_f64_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_f32_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
 // FP32/integer conversions, one VGPR per operand. Loose semantics only.
 // Integer-to-FP32 conversion uses host nearest-even rounding, followed by OMOD
 // and CLAMP; source ABS/NEG are invalid. Float-to-integer conversion saturates
