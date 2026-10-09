@@ -14,6 +14,7 @@
 #include "rdna4_cube_reference.h"
 #include "rdna4_dense_golden.h"
 #include "rdna4_div_fixup_reference.h"
+#include "rdna4_float_compare_reference.h"
 #include "rdna4_fp8_conversion_reference.h"
 #include "rdna4_fp8_narrow_reference.h"
 #include "rdna4_half_reference.h"
@@ -274,9 +275,11 @@ void print_csv_field(const char *text) {
 
 // Print a header or result row in the selected output format.
 void print_columns(const char *instruction, const char *semantics, const char *instruction_flags,
-                   const char *path, const char *time, const char *speedup, const char *wave) {
+                   const char *path, const char *time, const char *speedup, const char *wave,
+                   const char *fp_state = "none") {
   if (csv_output) {
-    const char *fields[] = {instruction, wave, semantics, instruction_flags, path, time, speedup};
+    const char *fields[] = {instruction, wave, semantics, instruction_flags,
+                            fp_state,    path, time,      speedup};
     for (unsigned i = 0; i < sizeof(fields) / sizeof(fields[0]); ++i) {
       if (i)
         std::putchar(',');
@@ -287,14 +290,15 @@ void print_columns(const char *instruction, const char *semantics, const char *i
   }
   // Longest current mnemonic: 27 characters, with three spare. Other widths
   // accommodate headers, flag combinations, CPU names, and timing headroom.
-  std::printf("%-30s %4s %-9s %-20s %-18s %10s %9s\n", instruction, wave, semantics,
-              instruction_flags, path, time, speedup);
+  std::printf("%-30s %4s %-9s %-20s %-14s %-18s %10s %9s\n", instruction, wave, semantics,
+              instruction_flags, fp_state, path, time, speedup);
 }
 
 // Print fixed-precision timing and speedup; negative speedup is absent in CSV
 // and displayed as "--" in the table.
 void print_result(const char *instruction, const char *semantics, const char *instruction_flags,
-                  const char *path, double time, double speedup, int wave = 32) {
+                  const char *path, double time, double speedup, int wave = 32,
+                  const char *fp_state = "none") {
   char time_text[64], speedup_text[64];
   std::snprintf(time_text, sizeof(time_text), "%.1f", time);
   if (speedup < 0)
@@ -302,7 +306,7 @@ void print_result(const char *instruction, const char *semantics, const char *in
   else
     std::snprintf(speedup_text, sizeof(speedup_text), csv_output ? "%.2f" : "%.2fx", speedup);
   print_columns(instruction, semantics, instruction_flags, path, time_text, speedup_text,
-                wave == 64 ? "64" : "32");
+                wave == 64 ? "64" : "32", fp_state);
 }
 
 bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t modifiers) {
@@ -924,14 +928,15 @@ bool benchmark_mixed_fma(uint64_t cpu, int iterations, int min_ms) {
           measure(functions[op], GOC_CPU_BASELINE | GOC_FP16_OVFL, r, iterations, min_ms, mode);
       if (scalar < 0)
         return false;
-      print_result(names[op], "loose", labels[variant], "scalar", scalar, 1);
+      print_result(names[op], "loose", labels[variant], "scalar", scalar, 1, 32, "fp16-ovfl");
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
       if (cpu >= GOC_CPU_X86_64_V3) {
         double simd =
             measure(functions[op], GOC_CPU_X86_64_V3 | GOC_FP16_OVFL, r, iterations, min_ms, mode);
         if (simd < 0)
           return false;
-        print_result(names[op], "loose", labels[variant], "x86-64-v3", simd, scalar / simd);
+        print_result(names[op], "loose", labels[variant], "x86-64-v3", simd, scalar / simd, 32,
+                     "fp16-ovfl");
       }
 #endif
       if (op) {
@@ -940,7 +945,7 @@ bool benchmark_mixed_fma(uint64_t cpu, int iterations, int min_ms) {
                                r, iterations, min_ms, mode);
         if (exact < 0)
           return false;
-        print_result(names[op], "exact", labels[variant], "scalar", exact, 1);
+        print_result(names[op], "exact", labels[variant], "scalar", exact, 1, 32, "fp16-ovfl");
       }
     }
   (void)cpu;
@@ -1443,6 +1448,66 @@ bool benchmark_interp32(uint64_t cpu, int iterations, int min_ms) {
         if (simd < 0)
           return false;
         print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_float_compare(uint64_t cpu, int iterations, int min_ms) {
+  struct CompareRegisters : Registers {
+    uint32_t result = 0, want = 0;
+
+    CompareRegisters() { output_regs = 0; }
+
+    bool correct() const { return result == want; }
+  };
+
+  for (unsigned op = 0; op < 84; ++op)
+    for (unsigned config = 0; config < 3; ++config) {
+      unsigned m = config ? (op < 28 ? 63 : 15) : 0;
+      bool flush = config == 2;
+      CompareRegisters r;
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        uint32_t w[4];
+        goc_test::float_compare_inputs(op / 28, 128 + lane, w);
+        r.data[0][lane] = w[0];
+        r.data[1][lane] = w[1];
+        r.data[4][lane] = w[2];
+        r.data[5][lane] = w[3];
+        r.want |= uint32_t(goc_test::float_compare_reference(op, m, flush, w)) << lane;
+      }
+      auto fn = [&r, op, flush](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *,
+                                const uint32_t *const *a, const uint32_t *const *b,
+                                const uint32_t *const *) {
+        return goc_test::float_compare_functions[op](flags | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                                         GOC_SEMANTICS_STRICT |
+                                                         (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0),
+                                                     mask, mode, &r.result, a, b);
+      };
+      auto name = goc_test::float_compare_names[op];
+      const char *label = m ? (op < 28 ? "ABS/NEG/high" : "ABS/NEG") : "none",
+                 *state = flush ? "flush-input" : "none";
+      uint32_t mode = goc_test::float_compare_mode(m);
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(name, "exact", label, "scalar", scalar, 1, 32, state);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "exact", label, "x86-64-v3", simd, scalar / simd, 32, state);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "exact", label, "x86-64-v4", simd, scalar / simd, 32, state);
       }
 #endif
     }
@@ -2228,19 +2293,20 @@ bool benchmark_div_fixup(uint64_t cpu, int iterations, int min_ms) {
         if (op == 2)
           r.expected[128 * (lane / 16) + 16 + lane % 16] = uint32_t(output >> 32);
       }
-      const char *label = modified ? (op == 0 ? "mixed/high/sat" : "mixed/half/clamp") : "none";
+      const char *label = modified ? (op == 0 ? "mixed/high" : "mixed/half/clamp") : "none";
       double scalar =
           measure(functions[op], GOC_CPU_BASELINE | semantics | fp, r, iterations, min_ms, mode);
       if (scalar < 0)
         return false;
-      print_result(names[op], "exact", label, "scalar", scalar, 1);
+      print_result(names[op], "exact", label, "scalar", scalar, 1, 32, fp ? "fp16-ovfl" : "none");
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
       if (cpu >= GOC_CPU_X86_64_V3) {
         double simd =
             measure(functions[op], GOC_CPU_X86_64_V3 | semantics | fp, r, iterations, min_ms, mode);
         if (simd < 0)
           return false;
-        print_result(names[op], "exact", label, "x86-64-v3", simd, scalar / simd);
+        print_result(names[op], "exact", label, "x86-64-v3", simd, scalar / simd, 32,
+                     fp ? "fp16-ovfl" : "none");
       }
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
@@ -2249,7 +2315,8 @@ bool benchmark_div_fixup(uint64_t cpu, int iterations, int min_ms) {
             measure(functions[op], GOC_CPU_X86_64_V4 | semantics | fp, r, iterations, min_ms, mode);
         if (simd < 0)
           return false;
-        print_result(names[op], "exact", label, "x86-64-v4", simd, scalar / simd);
+        print_result(names[op], "exact", label, "x86-64-v4", simd, scalar / simd, 32,
+                     fp ? "fp16-ovfl" : "none");
       }
 #endif
     }
@@ -2333,17 +2400,18 @@ bool benchmark_fp8_narrow(uint64_t cpu, int iterations, int min_ms) {
       auto call = [&](uint64_t f, uint64_t m, uint32_t i, uint32_t *const *d,
                       const uint32_t *const *a, const uint32_t *const *b,
                       const uint32_t *const *) { return functions[op](f, m, i, d, a, b); };
-      const char *label = modified ? (op >= 2 ? "NEG/ABS/byte3/sat" : "mixed/high/sat") : "none";
+      const char *label = modified ? (op >= 2 ? "NEG/ABS/byte3" : "mixed/high") : "none";
       double scalar = measure(call, GOC_CPU_BASELINE | fp, r, iterations, min_ms, mode);
       if (scalar < 0)
         return false;
-      print_result(names[op], "loose", label, "scalar", scalar, 1);
+      print_result(names[op], "loose", label, "scalar", scalar, 1, 32, fp ? "fp16-ovfl" : "none");
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
       if (cpu >= GOC_CPU_X86_64_V3) {
         double simd = measure(call, GOC_CPU_X86_64_V3 | fp, r, iterations, min_ms, mode);
         if (simd < 0)
           return false;
-        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd, 32,
+                     fp ? "fp16-ovfl" : "none");
       }
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
@@ -2351,7 +2419,8 @@ bool benchmark_fp8_narrow(uint64_t cpu, int iterations, int min_ms) {
         double simd = measure(call, GOC_CPU_X86_64_V4 | fp, r, iterations, min_ms, mode);
         if (simd < 0)
           return false;
-        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
+        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd, 32,
+                     fp ? "fp16-ovfl" : "none");
       }
 #endif
     }
@@ -2715,13 +2784,13 @@ bool benchmark_conversion16(uint64_t cpu, int iterations, int min_ms) {
       double scalar = measure(fn, GOC_CPU_BASELINE | GOC_FP16_OVFL, r, iterations, min_ms, mode);
       if (scalar < 0)
         return false;
-      print_result(names[op], "loose", label, "scalar", scalar, 1);
+      print_result(names[op], "loose", label, "scalar", scalar, 1, 32, "fp16-ovfl");
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
       if (cpu >= GOC_CPU_X86_64_V3) {
         double simd = measure(fn, GOC_CPU_X86_64_V3 | GOC_FP16_OVFL, r, iterations, min_ms, mode);
         if (simd < 0)
           return false;
-        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd, 32, "fp16-ovfl");
       }
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
@@ -2729,7 +2798,7 @@ bool benchmark_conversion16(uint64_t cpu, int iterations, int min_ms) {
         double simd = measure(fn, GOC_CPU_X86_64_V4 | GOC_FP16_OVFL, r, iterations, min_ms, mode);
         if (simd < 0)
           return false;
-        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
+        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd, 32, "fp16-ovfl");
       }
 #endif
     }
@@ -3948,8 +4017,9 @@ int main(int argc, char **argv) {
       "matching instruction-flags settings.\n");
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
-                "Wave");
-  if (!benchmark_integer_compare(cpu, iterations, min_ms) ||
+                "Wave", "FP state");
+  if (!benchmark_float_compare(cpu, iterations, min_ms) ||
+      !benchmark_integer_compare(cpu, iterations, min_ms) ||
       !benchmark_class(cpu, iterations, min_ms) || !benchmark_interp16(cpu, iterations, min_ms) ||
       !benchmark_interp32(cpu, iterations, min_ms) || !benchmark_cndmask(cpu, iterations, min_ms) ||
       !benchmark_trig_preop(cpu, iterations, min_ms) ||

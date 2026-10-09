@@ -69,8 +69,8 @@ paths are explicitly skipped. A corresponding `_shared` executable is built
 when `GOC_SHARED` is enabled; use it instead for a shared-only build and omit
 `cpuinfo`, which is static-only.
 
-Every path checks all outputs against independent dense matrix goldens before
-and after timing. The floating-point workload uses fixed small-integer matrices
+Every workload checks its outputs against independent goldens before and after
+timing. Floating-point WMMA workloads use fixed small-integer matrices
 and compares no modifiers, `NEG_LO_A` alone, and a mixed case
 (`NEG_HI_A | NEG_LO_B | ABS_C | NEG_C`). Modified floating-point rows use loose
 semantics and independent integer matrix references.
@@ -79,6 +79,9 @@ with signedness and CLAMP as labeled. All workloads run with full EXEC, separate
 C/D storage and hot buffers. FMA uses independent integer goldens.
 The `Instruction` column uses standard instruction mnemonics, including operand types.
 The `Wave` column distinguishes wave32 and wave64 workloads.
+The `FP state` column records guest FP settings separately from instruction
+modifiers; `flush-input` selects `GOC_FP_FLUSH_INPUT_DENORMALS`, and
+`fp16-ovfl` selects `GOC_FP16_OVFL`.
 Pass `--csv` for comma-separated output on stdout, with one header row and
 numeric speedup ratios (empty when unavailable). Explanatory text goes to stderr.
 For example:
@@ -469,6 +472,32 @@ preservation, overflow settings and restoration of host rounding. Pinned-core
 Ryzen 9 7950X3D measurements show 5.76–5.96x for P10, 11.99–12.38x for RTZ
 P10, and 3.78–4.10x for the P2 forms versus scalar, including modifiers
 (seven samples, each at least 10 ms).
+
+Floating-point comparison supports all 14 RDNA4 predicates for FP16/FP32/FP64,
+including CMP and CMPX (84 entry points). CMP returns a scalar condition mask;
+CMPX returns replacement EXEC. Both clear inactive bits, and their scalar output
+may alias any input word. ABS/NEG and independent FP16 source-half selectors
+remain on every SIMD path. Both semantics use the raw integer ordering model
+borrowed from rocjitsu, with signed zeros equal and the prescribed ordered or
+unordered behavior for every NaN, including signaling NaNs.
+
+`GOC_FP_FLUSH_INPUT_DENORMALS` flushes guest input subnormals to signed zero
+after source modifiers. Its default value preserves them. This setting is
+independent of host DAZ/FTZ and rounding, and these comparisons preserve the
+complete host FP environment. CLASS also accepts the flag but still classifies
+raw encodings. Other instructions reject it until their flushing behavior is
+implemented. GPU output-denormal controls do not affect scalar comparison masks.
+
+The v3 path processes eight FP16/FP32 or four FP64 lanes; v4 processes sixteen
+or eight respectively. Tests check 6,881,280 GPU-captured masks covering every
+predicate, modifier, half selector, five EXEC masks and all four GPU denormal
+modes. Independent tests cover boundary pairs, every FP16 encoding, source and
+output aliases, unaligned storage, further EXEC masks, invalid flags, and host
+rounding/denormal/exception-state preservation. The benchmark includes default,
+modified, and modified-with-input-flushing cases for every instruction.
+Pinned-core Ryzen 9 7950X3D timings show 3.70–8.13x for v3 and 4.82–12.23x
+for v4 versus scalar, including input flushing (seven samples, each at least
+10 ms). FP64 gains alone are 3.70–4.70x and 4.82–6.62x respectively.
 
 Integer comparison supports LT/EQ/LE/GT/NE/GE for signed and unsigned
 16-, 32- and 64-bit operands, including every corresponding CMPX form (72 entry

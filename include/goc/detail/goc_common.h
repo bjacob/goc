@@ -33,6 +33,12 @@ static const uint64_t GOC_SEMANTICS_STRICT = (UINT64_C(1) << 18);
 // of the host floating-point environment.
 static const uint64_t GOC_FP16_OVFL = (UINT64_C(1) << 19);
 
+// Flush guest input subnormals to signed zero. Currently supported by floating
+// comparisons; CLASS accepts it without changing raw classification. Other
+// instructions reject this flag until their input flushing is implemented.
+// Independent of host FP settings; zero preserves guest input subnormals.
+static const uint64_t GOC_FP_FLUSH_INPUT_DENORMALS = (UINT64_C(1) << 20);
+
 // Status codes returned by instruction emulation functions.
 static const int GOC_SUCCESS = 0;
 static const int GOC_ERROR_UNSUPPORTED_SEMANTICS = 1;

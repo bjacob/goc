@@ -22,10 +22,12 @@ inline uint32_t as_bits(float f) {
   return v;
 }
 
-inline int validate(uint64_t flags, uint32_t instruction_flags, bool supports_exact = false) {
+inline int validate(uint64_t flags, uint32_t instruction_flags, bool supports_exact = false,
+                    uint64_t supported_fp_flags = 0) {
   constexpr uint64_t known =
       GOC_CPU_MASK | GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT | GOC_FP16_OVFL;
-  if ((flags & ~known) || (flags & GOC_CPU_MASK) > GOC_CPU_ZEN4 || instruction_flags)
+  if ((flags & ~(known | supported_fp_flags)) || (flags & GOC_CPU_MASK) > GOC_CPU_ZEN4 ||
+      instruction_flags)
     return GOC_ERROR_INVALID_FLAGS;
   if ((flags & GOC_SEMANTICS_MASK) &&
       !(supports_exact && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) &&
