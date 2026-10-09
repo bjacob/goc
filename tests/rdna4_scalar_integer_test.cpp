@@ -118,3 +118,58 @@ TEST(ScalarInteger, HostFpStatePreserved) {
   }
   EXPECT_EQ(std::fesetenv(&saved), 0);
 }
+
+TEST(ScalarInteger, SignExtendExhaustiveHardware) {
+  // GFX1201 / HIP 7.13: every low 16-bit pattern with changing upper bits.
+  // Full/empty/alternating EXEC and incoming SCC 0/1 yielded identical results
+  // and preserved SCC: 786432 result/SCC triples checked against signed values.
+  const uint64_t hashes[] = {UINT64_C(0x03ad8958c79f2325), UINT64_C(0x41d0f9b5b59f2325)};
+  const auto functions = {goc_rdna4_s_sext_i32_i8, goc_rdna4_s_sext_i32_i16};
+  unsigned op = 0;
+  for (auto fn : functions) {
+    unsigned modulus = op ? 65536 : 256;
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+        uint64_t hash = UINT64_C(14695981039346656037);
+        for (unsigned i = 0; i < 65536; ++i) {
+          uint32_t a = i | ((i * 0x9e37u) << 16), d;
+          ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, &d, a), GOC_SUCCESS);
+          int value = int(i % modulus);
+          if (value >= int(modulus / 2))
+            value -= int(modulus);
+          ASSERT_EQ(d, uint32_t(value));
+          hash = (hash ^ d) * UINT64_C(1099511628211);
+        }
+        EXPECT_EQ(hash, hashes[op]);
+      }
+    ++op;
+  }
+}
+
+TEST(ScalarInteger, SignExtendExecAliasesFlagsAndHostState) {
+  fenv_t saved;
+  ASSERT_EQ(std::fegetenv(&saved), 0);
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+    ASSERT_EQ(std::fesetround(rounding), 0);
+    std::feclearexcept(FE_ALL_EXCEPT);
+    std::feraiseexcept(FE_DIVBYZERO);
+    int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
+    for (auto fn : {goc_rdna4_s_sext_i32_i8, goc_rdna4_s_sext_i32_i16}) {
+      for (uint64_t mask : rdna4_exec_masks()) {
+        uint32_t words[] = {123, 0xabcdffff, 456};
+        ASSERT_EQ(fn(0, mask, 0, words + 1, words[1]), GOC_SUCCESS);
+        EXPECT_EQ(words[1], UINT32_MAX);
+        EXPECT_EQ(words[0], 123u);
+        EXPECT_EQ(words[2], 456u);
+      }
+      uint32_t d = 123;
+      for (unsigned bit = 0; bit < 32; ++bit)
+        EXPECT_EQ(fn(0, 0, 1u << bit, &d, 0), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(UINT64_C(1) << 63, 0, 0, &d, 0), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(d, 123u);
+      EXPECT_EQ(std::fegetround(), rounding);
+      EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
+    }
+  }
+  EXPECT_EQ(std::fesetenv(&saved), 0);
+}

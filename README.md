@@ -1504,6 +1504,11 @@ Tests match 270,336 GFX1201 result/SCC triples and cover every input bit, all
 65,536 quad-presence patterns, source/output overlap, SCC and EXEC behavior.
 All eleven operations have scalar benchmarks.
 
+Scalar `s_sext_i32_i8` and `s_sext_i32_i16` sign-extend low register bits while
+preserving SCC and all host FP state. Tests exhaust every low 16-bit pattern,
+match 786,432 GFX1201 result/SCC triples, and cover aliases, EXEC, and errors.
+Both semantics and scalar benchmarks are available.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU

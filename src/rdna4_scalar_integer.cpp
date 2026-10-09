@@ -230,3 +230,21 @@ int goc_rdna4_s_mulk_i32(uint64_t flags, uint64_t exec_mask, uint32_t instructio
   *d = result;
   return GOC_SUCCESS;
 }
+
+int goc_rdna4_s_sext_i32_i8(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                            uint32_t *d, uint32_t a) {
+  (void)exec_mask;
+  if (int error = goc::validate(flags, instruction_flags, true))
+    return error;
+  *d = ((a & 255u) ^ 128u) - 128u;
+  return GOC_SUCCESS;
+}
+
+int goc_rdna4_s_sext_i32_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                             uint32_t *d, uint32_t a) {
+  (void)exec_mask;
+  if (int error = goc::validate(flags, instruction_flags, true))
+    return error;
+  *d = ((a & 65535u) ^ 32768u) - 32768u;
+  return GOC_SUCCESS;
+}

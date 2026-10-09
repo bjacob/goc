@@ -705,6 +705,14 @@ GOC_API int goc_rdna4_s_sub_co_ci_u32(uint64_t flags, uint64_t exec_mask,
                                       uint32_t instruction_flags, uint32_t *d, uint32_t a,
                                       uint32_t b, uint32_t *scc, uint32_t input_scc);
 
+// Sign-extend the low 8 bits to 32 bits; preserves SCC.
+GOC_API int goc_rdna4_s_sext_i32_i8(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a);
+
+// Sign-extend the low 16 bits to 32 bits; preserves SCC.
+GOC_API int goc_rdna4_s_sext_i32_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *d, uint32_t a);
+
 // Absolute value modulo 2^32; SCC is result != 0.
 GOC_API int goc_rdna4_s_abs_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                                 uint32_t *d, uint32_t a, uint32_t *scc);

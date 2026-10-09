@@ -1777,6 +1777,34 @@ bool benchmark_scalar_field(int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_scalar_sign_extend(int iterations, int min_ms) {
+  struct ScalarRegisters : Registers {
+    uint32_t result = 0, want = 0;
+
+    ScalarRegisters() { output_regs = 0; }
+
+    bool correct() const { return result == want; }
+  };
+
+  const auto functions = {goc_rdna4_s_sext_i32_i8, goc_rdna4_s_sext_i32_i16};
+  const char *names[] = {"s_sext_i32_i8", "s_sext_i32_i16"};
+  unsigned op = 0;
+  for (auto function : functions) {
+    ScalarRegisters r;
+    r.want = op ? 0xffff8081u : 0xffffff81u;
+    auto fn = [&r, function](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *,
+                             const uint32_t *const *, const uint32_t *const *,
+                             const uint32_t *const *) {
+      return function(flags, mask, mode, &r.result, 0xabcd8081);
+    };
+    double scalar = measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL, r, iterations, min_ms, 0);
+    if (scalar < 0)
+      return false;
+    print_result(names[op++], "exact", "none", "scalar", scalar, 1);
+  }
+  return true;
+}
+
 bool benchmark_scalar_pack(int iterations, int min_ms) {
   struct ScalarRegisters : Registers {
     uint32_t result = 0, cc = 1;
@@ -4544,8 +4572,9 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave", "FP state");
-  if (!benchmark_rcp_iflag(cpu, iterations, min_ms) || !benchmark_scalar_pack(iterations, min_ms) ||
-      !benchmark_scalar_compare(iterations, min_ms) ||
+  if (!benchmark_rcp_iflag(cpu, iterations, min_ms) ||
+      !benchmark_scalar_sign_extend(iterations, min_ms) ||
+      !benchmark_scalar_pack(iterations, min_ms) || !benchmark_scalar_compare(iterations, min_ms) ||
       !benchmark_scalar_convert(iterations, min_ms) ||
       !benchmark_scalar_round(iterations, min_ms) || !benchmark_scalar_fma(iterations, min_ms) ||
       !benchmark_scalar_fp(iterations, min_ms) || !benchmark_scalar_field(iterations, min_ms) ||
