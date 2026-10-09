@@ -1457,6 +1457,15 @@ Extraction clips widths at the operand boundary; count sentinels, SCC effects,
 empty EXEC, and overlapping outputs are tested. All 20 instructions have scalar
 benchmarks; each produces one scalar result per wave.
 
+Scalar FP16/FP32 ADD, SUB, MUL, MIN_NUM, MAX_NUM, MINIMUM and MAXIMUM support
+independent guest input/output denormal flushing and FP16 finite-overflow
+saturation. They use loose semantics with host nearest-even rounding and enabled
+denormals. GFX1201 tests cover 2,752,512 result/SCC pairs across all eight FP
+states, including a dedicated multiplication-underflow grid. Scalar min/max
+ignores output flushing. Multiplication tininess detection precedes destination
+subnormal rounding; tests cover values that otherwise round up to normal.
+All 14 instructions have scalar benchmarks, including nondefault FP states.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU

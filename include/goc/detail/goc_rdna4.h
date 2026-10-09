@@ -18,6 +18,73 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Scalar FP16/FP32 binary arithmetic executes once per wave and ignores EXEC,
+// including zero EXEC; d is required. Inputs are raw IEEE bits. FP16 reads the
+// low halves and writes a zero upper half. instruction_flags must be zero.
+// Loose semantics only; NaN signs/payloads are unspecified. Requires host
+// nearest-even rounding and enabled denormals. Preserves host rounding but may
+// change exception flags. SCC is unchanged. Errors leave d unchanged.
+// Guest input flushing applies to every operation. Guest output flushing applies
+// to add/subtract/multiply; min/max ignore it. FP16_OVFL saturates finite FP16
+// overflow. Multiplication flushes tiny results before destination subnormal
+// rounding, so a value that would round up to the smallest normal may flush.
+
+// Sum of a and b.
+GOC_API int goc_rdna4_s_add_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b);
+
+// Sum of a and b.
+GOC_API int goc_rdna4_s_add_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b);
+
+// Difference a - b.
+GOC_API int goc_rdna4_s_sub_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b);
+
+// Difference a - b.
+GOC_API int goc_rdna4_s_sub_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b);
+
+// Product of a and b.
+GOC_API int goc_rdna4_s_mul_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b);
+
+// Product of a and b.
+GOC_API int goc_rdna4_s_mul_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b);
+
+// Minimum; a single NaN selects the numeric operand; -0 sorts below +0.
+GOC_API int goc_rdna4_s_min_num_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a, uint32_t b);
+
+// Minimum; a single NaN selects the numeric operand; -0 sorts below +0.
+GOC_API int goc_rdna4_s_min_num_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a, uint32_t b);
+
+// Maximum; a single NaN selects the numeric operand; -0 sorts below +0.
+GOC_API int goc_rdna4_s_max_num_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a, uint32_t b);
+
+// Maximum; a single NaN selects the numeric operand; -0 sorts below +0.
+GOC_API int goc_rdna4_s_max_num_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a, uint32_t b);
+
+// Minimum; either NaN yields NaN; -0 sorts below +0.
+GOC_API int goc_rdna4_s_minimum_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a, uint32_t b);
+
+// Minimum; either NaN yields NaN; -0 sorts below +0.
+GOC_API int goc_rdna4_s_minimum_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a, uint32_t b);
+
+// Maximum; either NaN yields NaN; -0 sorts below +0.
+GOC_API int goc_rdna4_s_maximum_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a, uint32_t b);
+
+// Maximum; either NaN yields NaN; -0 sorts below +0.
+GOC_API int goc_rdna4_s_maximum_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a, uint32_t b);
+
 // Scalar bitfields and counts ignore EXEC, including zero EXEC; output pointers
 // are required. Both loose and empirical exact semantics are supported, and
 // instruction_flags must be zero. All host FP state is preserved. SCC outputs
