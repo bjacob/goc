@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_conversion64.h"
 #include "x86_64/rdna4_alu_x86_64_v3.h"
+#include "x86_64/rdna4_alu_x86_64_v4.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -45,7 +46,10 @@ void conversion64_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *const *d,
       value = _mm512_castsi512_pd(raw);
     }
     if constexpr (to_double) {
-      value = _mm512_mul_pd(value, _mm512_set1_pd(scales[(mode >> 6) & 3]));
+      if (mode & GOC_ALU_OMOD_HALF) {
+        value = prepare_omod_f64(value, mode);
+        value = _mm512_mul_pd(value, _mm512_set1_pd(scales[(mode >> 6) & 3]));
+      }
       if (mode & GOC_ALU_CLAMP)
         value = _mm512_min_pd(_mm512_max_pd(value, zero), _mm512_set1_pd(1));
       auto raw = _mm512_castpd_si512(value);

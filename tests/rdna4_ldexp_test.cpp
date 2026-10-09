@@ -36,15 +36,14 @@ template <typename T, typename U> U reference(U input, int exponent, uint32_t mo
   // Long double has enough range for every finite FP32/FP64 boundary. Clamp
   // extreme exponents first; they have already forced overflow or underflow.
   long double wide = std::ldexp(static_cast<long double>(value), std::clamp(exponent, -4096, 4096));
-  if constexpr (sizeof(T) == sizeof(float))
-    if ((mode & GOC_ALU_OMOD_HALF) && std::abs(wide) < std::ldexp(1.0L, -126))
-      wide = 0;
+  if ((mode & GOC_ALU_OMOD_HALF) &&
+      std::abs(wide) < std::ldexp(1.0L, sizeof(T) == sizeof(float) ? -126 : -1022))
+    wide = 0;
   value = T(wide);
-  const T scale[] = {T(1), T(2), T(4), T(0.5)};
   if constexpr (sizeof(T) == sizeof(float))
     value = goc_test::omod_f32_reference(value, mode);
-  else if (mode & GOC_ALU_OMOD_HALF)
-    value *= scale[(mode >> 6) & 3];
+  else
+    value = goc_test::omod_f64_reference(value, mode);
   if (mode & GOC_ALU_CLAMP)
     value = !(value > 0) ? T(0) : value > 1 ? T(1) : value;
   U result;

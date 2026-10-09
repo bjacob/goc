@@ -52,7 +52,10 @@ void conversion64_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d,
       value = _mm256_castsi256_pd(raw);
     }
     if constexpr (to_double) {
-      value = _mm256_mul_pd(value, _mm256_set1_pd(scales[(mode >> 6) & 3]));
+      if (mode & GOC_ALU_OMOD_HALF) {
+        value = prepare_omod_f64(value, mode);
+        value = _mm256_mul_pd(value, _mm256_set1_pd(scales[(mode >> 6) & 3]));
+      }
       if (mode & GOC_ALU_CLAMP)
         value = _mm256_min_pd(_mm256_max_pd(value, zero), _mm256_set1_pd(1));
       auto raw = _mm256_castpd_si256(value);

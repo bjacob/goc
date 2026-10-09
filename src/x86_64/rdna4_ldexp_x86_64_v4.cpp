@@ -29,8 +29,14 @@ void run(uint32_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const
       auto exponent =
           _mm512_cvtepi32_pd(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(b + lane)));
       auto value = _mm512_scalef_pd(_mm512_castsi512_pd(bits), exponent);
-      if (mode & GOC_ALU_OMOD_HALF)
+      if (mode & GOC_ALU_OMOD_HALF) {
+        auto exact_exponent = _mm512_add_pd(_mm512_getexp_pd(_mm512_castsi512_pd(bits)), exponent);
+        auto tiny_before_rounding =
+            _mm512_cmp_pd_mask(exact_exponent, _mm512_set1_pd(-1022), _CMP_LT_OQ);
+        value = _mm512_mask_mov_pd(value, tiny_before_rounding, _mm512_setzero_pd());
+        value = prepare_omod_f64(value, mode);
         value = _mm512_mul_pd(value, _mm512_set1_pd(scales[(mode >> 6) & 3]));
+      }
       if (mode & GOC_ALU_CLAMP)
         value = _mm512_min_pd(_mm512_max_pd(value, _mm512_setzero_pd()), _mm512_set1_pd(1));
       bits = _mm512_castpd_si512(value);

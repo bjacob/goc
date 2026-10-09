@@ -37,7 +37,16 @@ int ldexp(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
     int32_t exponent;
     std::memcpy(&exponent, b[0] + lane, sizeof(exponent));
     if constexpr (Fp64) {
-      double value = std::ldexp(goc::fp64_input(a, lane, mode), exponent);
+      double input = goc::fp64_input(a, lane, mode);
+      double value = std::ldexp(input, exponent);
+      if ((mode & GOC_ALU_OMOD_HALF) && std::abs(value) == 0x1p-1022) {
+        // A tiny exact result can round up to minimum normal. Detect this
+        // from the source exponent without relying on wider host FP types.
+        int source_exponent;
+        std::frexp(input, &source_exponent);
+        if (int64_t(source_exponent) + exponent <= -1022)
+          value = 0;
+      }
       uint64_t bits = goc::double_bits(goc::fp64_output(value, mode));
       result[0][lane] = uint32_t(bits);
       result[1][lane] = uint32_t(bits >> 32);

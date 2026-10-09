@@ -78,3 +78,38 @@ TEST(OutputScaling, LdexpAndConversionsHardwareBoundaries) {
           EXPECT_EQ(hash, hardware_hashes[set][op]);
         }
 }
+
+TEST(OutputScaling, WideConversionsHardwareBoundaries) {
+  // RX 9070, gfx1201, MODE=0xf0. Same input words as inputs32.
+  // FP32 widening covers ABS/NEG; integer widening only encodes OMOD/CLAMP.
+  const uint64_t hashes[] = {UINT64_C(0xe618186b9bac389d), UINT64_C(0xf8126ee2eef77260),
+                             UINT64_C(0xab3308cda26a2808)};
+  using Fn = decltype(&goc_rdna4_v_cvt_f64_f32);
+  const Fn functions[] = {goc_rdna4_v_cvt_f64_f32, goc_rdna4_v_cvt_f64_i32,
+                          goc_rdna4_v_cvt_f64_u32};
+  const unsigned aliases[][2] = {{1, 2}, {0, 1}, {1, 0}};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned op = 0; op < 3; ++op)
+      for (const auto &alias : aliases) {
+        SCOPED_TRACE(::testing::Message()
+                     << cpu << '/' << op << '/' << alias[0] << '/' << alias[1]);
+        uint64_t hash = UINT64_C(14695981039346656037);
+        for (unsigned v = 0; v < (op == 0 ? 32u : 8u); ++v) {
+          uint32_t words[3][32] = {};
+          std::memcpy(words[0], inputs32, sizeof(inputs32));
+          uint32_t *p[] = {words[0], words[1], words[2]};
+          uint32_t *d[] = {p[alias[0]], p[alias[1]]};
+          uint64_t mode = op == 0 ? (v & 1) | ((v & 2) << 2) | ((v & 12) << 4) | ((v & 16) << 4)
+                                  : ((v >> 1) << 6) | ((v & 1) << 8);
+          ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, d, p), GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            uint64_t raw = d[0][lane] | (uint64_t(d[1][lane]) << 32);
+            if ((raw & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000))
+              raw = UINT64_C(0x7ff8000000000000);
+            for (unsigned shift = 0; shift < 64; shift += 8)
+              hash = (hash ^ ((raw >> shift) & 255)) * UINT64_C(1099511628211);
+          }
+        }
+        EXPECT_EQ(hash, hashes[op]);
+      }
+}

@@ -128,8 +128,14 @@ void run64(uint32_t mode, uint32_t result[2][32], const uint32_t *const *a, cons
         _mm256_set1_epi64x(INT64_C(0x8000000000000)));
     bits = _mm256_blendv_epi8(bits, _mm256_or_si256(raw, quiet), special);
     auto value = _mm256_castsi256_pd(bits);
-    if (mode & GOC_ALU_OMOD_HALF)
+    if (mode & GOC_ALU_OMOD_HALF) {
+      auto finite = _mm256_cmpgt_epi64(_mm256_set1_epi64x(INT64_C(0x7ff0000000000000)), magnitude);
+      auto tiny_before_rounding =
+          _mm256_and_si256(finite, _mm256_cmpgt_epi64(_mm256_set1_epi64x(1), exponent));
+      value = _mm256_andnot_pd(_mm256_castsi256_pd(tiny_before_rounding), value);
+      value = prepare_omod_f64(value, mode);
       value = _mm256_mul_pd(value, _mm256_set1_pd(scales[(mode >> 6) & 3]));
+    }
     if (mode & GOC_ALU_CLAMP)
       value = _mm256_min_pd(_mm256_max_pd(value, _mm256_setzero_pd()), _mm256_set1_pd(1));
     bits = _mm256_castpd_si256(value);

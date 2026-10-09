@@ -1128,8 +1128,9 @@ check all output modifiers with NEG and CLAMP and cross-half aliases. The
 thirteen non-transcendental operations use raw-result comparisons (NaN payloads
 are ignored); SQRT/RCP/RSQ use numerical comparisons because the hardware
 instructions themselves provide approximations substantially below FP64
-precision. FP64 LDEXP and FP64-output conversions still need their separate
-OMOD boundary corrections. With ABS/NEG/OMOD/CLAMP, these sixteen FP64
+precision. FP64 LDEXP and FP64-output conversions also apply these output
+rules on scalar, AVX2, and AVX-512 paths, with additional hardware captures
+covering all applicable modifiers. With ABS/NEG/OMOD/CLAMP, these sixteen FP64
 AVX2 arithmetic paths measure 1.9–3.4× scalar speed on the Ryzen 9 7950X3D.
 
 FP32/FP64 `LDEXP` scales A by an integer power of two held in one B VGPR.
@@ -1139,7 +1140,16 @@ combinations without falling back to scalar. B is an integer and has no
 floating-point modifiers. The v3 path adjusts exponents and rounds underflowing
 results once; v4 uses native vector scaling. Tests cover every exponent field,
 subnormal rounding ties, extreme signed exponents, special values, masks and
-aliases, including FP64 destination halves that overwrite A or B.
+aliases, including FP64 destination halves that overwrite A or B. Both widths
+check tininess before rounding when OMOD is active, including results that
+would round up to minimum normal. The FP64 scalar check uses the source
+exponent and does not require an extended-precision host type. GPU captures
+also verify that active OMOD converts negative zero to positive zero when
+widening FP32 to FP64; integer widening remains unchanged numerically.
+With modifiers enabled, FP64 LDEXP measures 63.5 ns on AVX2 and 12.3 ns on
+AVX-512 (2.2× and 11.3× scalar speed on the Ryzen 9 7950X3D). FP32-to-FP64
+conversion measures 26.9 ns and 8.2 ns (2.0× and 6.7×); its unmodified AVX2
+path is roughly tied with scalar.
 
 FP32 `LDEXP` and FP64-to-FP32 conversion apply the FP32 OMOD zero/denormal
 rules on all scalar and SIMD paths. Active OMOD also flushes an exact tiny

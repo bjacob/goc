@@ -103,3 +103,37 @@ TEST(Fp64Output, HardwareModifiersAndCrossHalfAliases) {
         }
       }
 }
+
+TEST(Fp64Output, LdexpHardwareBoundaries) {
+  // Same gfx1201 capture and inputs as the arithmetic corpus, exponent 0/-1.
+  const uint64_t hashes[] = {UINT64_C(0x91b37a3decfcf2a5), UINT64_C(0xad1830abf629d830)};
+  const unsigned aliases[][2] = {{3, 4}, {0, 1}, {1, 0}, {2, 0}, {1, 2}};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned set = 0; set < 2; ++set)
+      for (const auto &alias : aliases) {
+        SCOPED_TRACE(::testing::Message()
+                     << cpu << '/' << set << '/' << alias[0] << '/' << alias[1]);
+        uint64_t hash = UINT64_C(14695981039346656037);
+        for (unsigned v = 0; v < 16; ++v) {
+          uint32_t words[5][32] = {};
+          uint32_t *p[] = {words[0], words[1], words[2], words[3], words[4]};
+          uint32_t *d[] = {p[alias[0]], p[alias[1]]};
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            uint64_t raw = goc_test::fp64_omod_inputs[lane];
+            words[0][lane] = uint32_t(raw);
+            words[1][lane] = uint32_t(raw >> 32);
+            words[2][lane] = set ? UINT32_MAX : 0;
+          }
+          uint64_t mode = ((v >> 2) << 6) | (v & 2 ? GOC_ALU_CLAMP : 0) | (v & 1);
+          ASSERT_EQ(goc_rdna4_v_ldexp_f64(cpu, UINT32_MAX, mode, d, p, p + 2), GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            uint64_t raw = d[0][lane] | (uint64_t(d[1][lane]) << 32);
+            if ((raw & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000))
+              raw = UINT64_C(0x7ff8000000000000);
+            for (unsigned shift = 0; shift < 64; shift += 8)
+              hash = (hash ^ ((raw >> shift) & 255)) * UINT64_C(1099511628211);
+          }
+        }
+        EXPECT_EQ(hash, hashes[set]);
+      }
+}

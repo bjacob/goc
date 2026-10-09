@@ -114,6 +114,9 @@ inline uint64_t conversion64_reference(int op, uint64_t raw, uint32_t mode) {
     else if ((mode & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF && magnitude < 0x01000000)
       output &= 0x80000000;
   }
+  if (conversion64_wide_output(op) && (mode & GOC_ALU_OMOD_HALF) &&
+      !(output & UINT64_C(0x7fffffffffffffff)))
+    output = 0;
   const int scales[] = {0, 1, 2, -1};
   output = conversion_reencode(output, fraction, bias, fraction, bias, scales[(mode >> 6) & 3]);
   if (mode & GOC_ALU_CLAMP) {

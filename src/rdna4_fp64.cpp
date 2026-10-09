@@ -74,7 +74,7 @@ int arithmetic(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
       if (value > limit)
         value = limit;
     }
-    uint64_t bits = goc::double_bits(goc::fp64_arithmetic_output(value, mode));
+    uint64_t bits = goc::double_bits(goc::fp64_output(value, mode));
     result[0][lane] = uint32_t(bits);
     result[1][lane] = uint32_t(bits >> 32);
   }
