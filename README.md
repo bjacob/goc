@@ -375,6 +375,19 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Division pre-scaling covers `v_div_scale_f32` and `v_div_scale_f64`, with loose
+and empirical exact semantics adapted from rocjitsu. B is the denominator, C the
+numerator, and A must equal B or C after source NEG modifiers. The result includes
+a `uint32_t` scalar condition mask in addition to the scaled VGPR value. Inactive
+condition bits are cleared, even for zero EXEC, while inactive VGPR lanes remain
+unchanged. NEG, OMOD and CLAMP stay on SIMD paths; ABS is not supported by this
+instruction encoding. FP64 supports cross-half aliases. Host FP rounding and
+exception state are preserved. Tests compare 147,456 GPU-captured value/condition
+pairs across all modifiers and both source roles, and exercise masks, aliases,
+random inputs and all host rounding modes. Pinned-core Ryzen 9 7950X3D measurements
+show 2.21–3.97x speedups for v3 and 3.66–6.40x for v4, including modified forms
+(seven samples per case, each at least 10 ms).
+
 Division fixup covers `v_div_fixup_f16`, `v_div_fixup_f32`, and
 `v_div_fixup_f64`. A supplies a provisional quotient, B the original denominator,
 and C the original numerator. These instructions repair the quotient's sign and

@@ -5,6 +5,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_div_fixup.h"
+#include "rdna4_division.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -75,7 +76,7 @@ template <bool Wide> struct Ops {
 
 template <unsigned Width>
 __m256i value(__m256i a, __m256i b, __m256i c, uint32_t mode, bool saturate) {
-  using F = goc::FixupFormat<Width>;
+  using F = goc::DivisionFormat<Width>;
   using O = Ops<Width == 64>;
   auto zero = O::set(0), inf = O::set(F::infinity), signbit = O::set(F::sign),
        magmask = O::set(F::sign - 1);
@@ -122,7 +123,7 @@ __m256i value(__m256i a, __m256i b, __m256i c, uint32_t mode, bool saturate) {
 
 template <unsigned Width>
 __m256i load(const uint32_t *const *v, unsigned lane, uint32_t mode, unsigned operand) {
-  using F = goc::FixupFormat<Width>;
+  using F = goc::DivisionFormat<Width>;
   using O = Ops<Width == 64>;
   __m256i result;
   if constexpr (Width == 64) {

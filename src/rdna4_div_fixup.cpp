@@ -3,6 +3,7 @@
 #include "rdna4_div_fixup.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_division.h"
 
 #include <stdint.h>
 
@@ -28,7 +29,7 @@ int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
     return GOC_SUCCESS;
   }
 #endif
-  using T = typename goc::FixupFormat<Width>::Bits;
+  using T = typename goc::DivisionFormat<Width>::Bits;
   T result[32];
   for (unsigned lane = 0; lane < 32; ++lane) {
     T av = a[0][lane], bv = b[0][lane], cv = c[0][lane];

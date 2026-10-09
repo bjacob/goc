@@ -93,6 +93,11 @@ following the above pattern. Each such function shall take the following functio
     of suitable width. For example, MFMA instructions with `CBSZ`, `ABID`, etc modes.
     Do combine all such flags into a single unsigned integer, rather than passing
     multiple short integers.
+* Scalar register outputs use pointers to their raw unsigned integer values, in
+  assembly operand order. Wave32 condition outputs use `uint32_t *`. Their EXEC
+  behavior follows the instruction: `v_div_scale_f32` and `v_div_scale_f64` clear
+  inactive condition bits, including writing zero for zero EXEC. Their scalar
+  output pointer must therefore remain writable even when VGPR pointers may be null.
 * For each VGPR operand of the GPU instruction, a pointer to the array of pointers
   representing the VGPRs backing that operand: `const uint32_t *const *` for inputs,
   and `uint32_t *const *` for outputs. Input pointers permit reads only; writes use

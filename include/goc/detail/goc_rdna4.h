@@ -18,6 +18,27 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Division pre-scaling. A must equal B (denominator) or C (numerator) after
+// source NEG modifiers. Writes the pre-scaled value to D and the per-lane
+// post-scaling condition to condition (the wave32 SDST operand).
+// Supports source NEG, OMOD and CLAMP; ABS is not encoded by these instructions.
+// Condition bits for inactive lanes are cleared. Even zero EXEC writes zero to
+// condition, so that pointer must always be writable; VGPR pointers may then be
+// null. The condition is written after VGPR outputs. Errors leave both unchanged.
+// FP32 uses one VGPR per operand; FP64 uses low/high pairs, with D1 winning if
+// D0/D1 alias. Supports all whole-register aliases, loose and empirical exact
+// semantics, nearest-even rounding and denormals. Results preserve host FP state
+// and do not depend on it. GOC_FP16_OVFL has no effect.
+GOC_API int goc_rdna4_v_div_scale_f32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      uint32_t *condition, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_div_scale_f64(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      uint32_t *condition, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c);
+
 // Division fixup: A is a provisional quotient, B the original denominator,
 // C the original numerator. Repairs sign, propagates C/B NaNs in that order,
 // and handles zero/infinity cases and extreme FP32/FP64 exponent underflow.
