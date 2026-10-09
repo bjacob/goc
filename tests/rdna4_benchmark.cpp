@@ -24,7 +24,6 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <initializer_list>
 #include <random>
@@ -2410,19 +2409,21 @@ int main(int argc, char **argv) {
   int iterations = 128;
   int min_ms = 10;
   bool have_iterations = false;
+  bool have_min_ms = false;
   for (int arg = 1; arg < argc; ++arg) {
     if (std::strcmp(argv[arg], "--csv") == 0 && !csv_output) {
       csv_output = true;
+    } else if (std::strcmp(argv[arg], "--min-ms") == 0 && !have_min_ms && arg + 1 < argc &&
+               nonnegative_integer(argv[arg + 1], min_ms)) {
+      have_min_ms = true;
+      ++arg;
     } else if (!have_iterations && nonnegative_integer(argv[arg], iterations) && iterations > 0) {
       have_iterations = true;
     } else {
-      std::fprintf(stderr, "Usage: %s [--csv] [positive initial iterations]\n", argv[0]);
-      return 2;
-    }
-  }
-  if (const char *value = std::getenv("GOC_BENCH_MIN_MS")) {
-    if (!nonnegative_integer(value, min_ms)) {
-      std::fprintf(stderr, "GOC_BENCH_MIN_MS must be a nonnegative integer in milliseconds.\n");
+      std::fprintf(
+          stderr,
+          "Usage: %s [--csv] [--min-ms nonnegative milliseconds] [positive initial iterations]\n",
+          argv[0]);
       return 2;
     }
   }

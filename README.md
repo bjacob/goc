@@ -87,15 +87,16 @@ For example:
 ../goc-build/tests/goc_rdna4_benchmark_static --csv > results.csv
 ```
 
-`--csv` can appear before or after the optional initial iteration count.
+`--csv` and `--min-ms` can appear before or after the optional initial iteration count.
 Speedups compare paths with the same instruction, wave size, semantics and instruction flags.
 Timings include public API dispatch, input conversions and output stores. Each
 reported time is the median of seven samples after warmup. Each path starts at 128 calls (overridable by the
 positional argument) and doubles the count until the timed batch takes at least
 10 ms. Shorter batches are discarded. Subsequent samples retain that count and
 double again if necessary, so every accepted sample meets the minimum duration.
-Set `GOC_BENCH_MIN_MS` to a nonnegative integer to override the minimum milliseconds,
-for example `GOC_BENCH_MIN_MS=50 ../goc-build/tests/goc_rdna4_benchmark_static`.
+Pass `--min-ms` with a nonnegative integer to override the minimum milliseconds,
+for example `../goc-build/tests/goc_rdna4_benchmark_static --min-ms 50`.
+Benchmark controls are command-line arguments; no environment variables are read.
 CTest uses a 0 ms minimum and starts at one call per sample for its correctness
 smoke check, with no speedup assertion. Zero disables the minimum-duration
 requirement; warmup and output checks still run.

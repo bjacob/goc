@@ -1,7 +1,6 @@
 # Validate the benchmark's machine-readable output against its human-readable
 # table, without comparing noisy timings or requiring particular CPU backends.
-set(ENV{GOC_BENCH_MIN_MS} 0)
-execute_process(COMMAND "${BENCHMARK}" 1
+execute_process(COMMAND "${BENCHMARK}" --min-ms 0 1
   RESULT_VARIABLE status OUTPUT_VARIABLE table ERROR_VARIABLE error)
 if(NOT status EQUAL 0)
   message(FATAL_ERROR "Table benchmark failed: ${error}")
@@ -37,9 +36,9 @@ endif()
 
 foreach(order csv_first csv_last)
   if(order STREQUAL csv_first)
-    set(arguments --csv 1)
+    set(arguments --csv --min-ms 0 1)
   else()
-    set(arguments 1 --csv)
+    set(arguments 1 --min-ms 0 --csv)
   endif()
   execute_process(COMMAND "${BENCHMARK}" ${arguments}
     RESULT_VARIABLE status OUTPUT_VARIABLE csv ERROR_VARIABLE error)
@@ -66,7 +65,9 @@ foreach(order csv_first csv_last)
   endif()
 endforeach()
 
-foreach(arguments IN ITEMS "--csv;--csv" "--csv;0" "--csv;-1" "--csv;garbage" "1;2" "--unknown")
+foreach(arguments IN ITEMS "--csv;--csv" "--csv;0" "--csv;-1" "--csv;garbage" "1;2" "--unknown"
+    "--min-ms" "--min-ms;-1" "--min-ms;no" "--min-ms;1.5"
+    "--min-ms;2147483648" "--min-ms;--csv" "--min-ms;0;--min-ms;0")
   execute_process(COMMAND "${BENCHMARK}" ${arguments}
     RESULT_VARIABLE status OUTPUT_VARIABLE output ERROR_VARIABLE error)
   if(NOT status EQUAL 2 OR NOT output STREQUAL "")
