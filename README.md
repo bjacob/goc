@@ -2131,10 +2131,13 @@ are not duplicated.
 **Only `v_rcp_iflag_f32` currently implements exception generation.** It
 accumulates integer-divide-by-zero flags on all CPU paths. In loose mode, other
 affected instructions execute normally and leave the register unchanged. Loose
-reporting may be incomplete or inaccurate and never returns
-`GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`; callers cannot rely on hardware-faithful flags.
+semantics require no optional global-state output, even with a non-null pointer.
+SIMD paths are expected to skip reporting to preserve performance. Loose arithmetic
+need not match hardware, so its exception flags cannot be relied on to match
+hardware either. Loose mode never returns `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`.
 
-In non-loose mode, a non-null pointer requires faithful reporting, regardless of
+Faithful optional global-state output is required only in bit-exact mode with a
+non-null pointer, regardless of
 `GOC_SEMANTICS_STRICT`. Where unavailable, the call returns
 `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE` before operand access or other validation,
 leaving all outputs unchanged, including for empty EXEC. The host FP environment

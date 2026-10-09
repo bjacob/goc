@@ -51,6 +51,7 @@ static const int GOC_ERROR_UNSUPPORTED_SEMANTICS = 1;
 static const int GOC_ERROR_INVALID_FLAGS = 2;
 
 // Faithful updates to a requested implicit architectural register are unavailable.
+// Applies only to non-loose semantics with a non-NULL global-state output pointer.
 static const int GOC_ERROR_UNSUPPORTED_GLOBAL_STATE = 3;
 
 // Returns CPU capability flags for features usable on this machine, accounting

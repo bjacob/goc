@@ -368,25 +368,38 @@ to any such global state, not only exception flags.
 `uint32_t *excp_flag_user` represents RDNA4's wave-wide sticky exception register.
 A non-null pointer accumulates newly generated bits with bitwise OR; existing bits
 are never cleared. Only participating lanes contribute, following each
-instruction's execution rules. `NULL` opts out. Storage must not overlap operands, except where explicitly permitted by an
-instruction contract (currently `V_RCP_IFLAG_F32`).
+instruction's execution rules. `NULL` opts out. Storage must not overlap operands, except where explicitly
+permitted by an instruction contract (currently `V_RCP_IFLAG_F32`).
 Every API error preserves every output, including this register. Guest exception
 reporting must never rely on changing or sampling the host FP environment.
 
-Loose semantics never return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`, even for a
-non-null pointer. Reporting may be incomplete or inaccurate; callers must not
-rely on hardware-faithful exception state. Unimplemented reporting leaves the
-register unchanged. Any reported bits still accumulate with OR.
+Faithful optional global-state output is required **only when bit-exact semantics
+are requested and the corresponding output pointer is non-null**, independently
+of `GOC_SEMANTICS_STRICT`. A null pointer opts out in every semantics mode; it
+creates no obligation to compute that register's update. This rule concerns
+optional global-state outputs, not ordinary instruction results such as comparison
+masks or `SCC`, which remain required.
 
-Non-loose semantics require faithful reporting when requested, independently of
-`GOC_SEMANTICS_STRICT`; lack of reporting cannot silently fall back to loose
-exception behavior. The initial API migration reserves the parameter on
-exception-producing instructions. `V_RCP_IFLAG_F32` retains its implemented
-integer-divide-by-zero reporting. For other affected instructions, non-loose
-semantics with a non-null pointer return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`
-before accessing operands, even for empty `exec_mask`, with precedence over
-other validation errors. Null retains existing validation, numerical behavior,
-and SIMD dispatch. Implement and hardware-test exception generation incrementally.
+In loose semantics there is **no requirement to produce any optional global-state
+output**, even with a non-null pointer. SIMD paths are expected to skip this work
+and leave the register unchanged. Do not add exception classification, reductions,
+scalar fallbacks, or other reporting overhead to loose SIMD paths merely because
+an output pointer was supplied. Loose arithmetic does not promise to match GPU
+arithmetic, so deriving exception flags from those approximate results cannot
+provide a hardware-faithful exception history; spending performance on that goal
+would be futile without also implementing the hardware's arithmetic semantics.
+Loose mode never returns `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`. Existing inexpensive
+reporting may remain, but callers must not rely on its completeness or accuracy.
+Any exception bits that are reported still accumulate with OR.
+
+For bit-exact semantics with a non-null pointer, unavailable faithful updates
+return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`; they must not silently fall back to
+loose reporting. Currently, `V_RCP_IFLAG_F32` retains its implemented
+integer-divide-by-zero reporting. Other affected instructions reject requested
+reporting in non-loose modes before accessing operands, even for empty
+`exec_mask`, with precedence over other validation errors. Null retains existing
+validation, numerical behavior, and SIMD dispatch. Implement and hardware-test
+exception generation incrementally for bit-exact semantics.
 
 The classification uses the [RDNA4 ISA reference](https://www.amd.com/content/dam/amd/en/documents/radeon-tech-docs/instruction-set-architectures/rdna4-instruction-set-architecture.pdf)
 (§3.4.10, §6.8, §7.7, §7.11, §12.3 and instruction descriptions), cross-checked

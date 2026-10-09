@@ -83,8 +83,16 @@ lowercase ISA register name and its native-width unsigned integer type. A null
 pointer opts out. Apply the register's specified update semantics: in particular,
 EXCP_FLAG_USER is a wave-wide uint32_t accumulated with bitwise OR, not cleared
 or overwritten. Only participating lanes contribute. Leave all outputs unchanged
-on API errors. Loose semantics allow incomplete or inaccurate global-state updates:
-never return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE in loose mode, even with a non-null
-pointer. Unimplemented loose updates leave the register unchanged. In exact
-mode, requested global-state updates must be faithful or return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE,
-regardless of whether GOC_SEMANTICS_STRICT is set.
+on API errors. Faithful optional global-state output is required only for bit-exact
+semantics with a non-null output pointer, regardless of GOC_SEMANTICS_STRICT.
+Otherwise there is no requirement to compute the update. Ordinary instruction
+results, including comparison masks and SCC, remain required.
+
+In loose semantics, SIMD paths are expected to skip optional global-state updates
+and leave the register unchanged, even when its pointer is non-null. Do not add
+reporting work or sacrifice SIMD performance to produce exception flags from loose
+arithmetic: its results need not match hardware, so those flags cannot provide a
+faithful hardware exception history. Existing inexpensive reporting may remain,
+but loose-mode callers cannot rely on its completeness or accuracy. Never return
+GOC_ERROR_UNSUPPORTED_GLOBAL_STATE in loose mode. For bit-exact semantics with a
+non-null pointer, return that error if faithful updates are unavailable.
