@@ -2640,6 +2640,7 @@ GOC_API int goc_rdna4_v_frexp_mant_f64(uint64_t flags, uint64_t exec_mask,
 // finite nonzero inputs satisfy A = FREXP_MANT(A) * 2^D, including subnormals.
 // A ABS/NEG, OMOD and CLAMP are accepted but do not change the integer result.
 // Supports loose semantics; D may alias either whole source VGPR.
+// The FP32 form supports DPP8/DPP16 on A and preserves the host FP environment.
 GOC_API int goc_rdna4_v_frexp_exp_i32_f32(uint64_t flags, uint64_t exec_mask,
                                           uint64_t instruction_flags, uint32_t *const *d,
                                           const uint32_t *const *a);

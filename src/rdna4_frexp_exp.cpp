@@ -3,6 +3,7 @@
 #include "rdna4_frexp_exp.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 #include "rdna4_fp64.h"
 
 #include <cmath>
@@ -29,14 +30,24 @@ int frexp_exp(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
   uint32_t result[32];
   for (int lane = 0; lane < 32; ++lane) {
     // Match rocjitsu's frexp exponent model, including zero for NaNs/infinities.
-    double value;
-    if constexpr (Fp64)
-      value = goc::as_double(uint64_t(a[0][lane]) | (uint64_t(a[1][lane]) << 32));
-    else
-      value = goc::as_float(a[0][lane]);
     int exponent = 0;
-    if (value != 0 && std::isfinite(value))
-      std::frexp(value, &exponent);
+    if constexpr (Fp64) {
+      double value = goc::as_double(uint64_t(a[0][lane]) | (uint64_t(a[1][lane]) << 32));
+      if (value != 0 && std::isfinite(value))
+        std::frexp(value, &exponent);
+    } else {
+      uint32_t magnitude = a[0][lane] & 0x7fffffffu;
+      unsigned field = magnitude >> 23;
+      if (field && field != 255)
+        exponent = int(field) - 126;
+      else if (!field && magnitude) {
+        exponent = -149;
+        while (magnitude) {
+          ++exponent;
+          magnitude >>= 1;
+        }
+      }
+    }
     result[lane] = uint32_t(exponent);
   }
   for (int lane = 0; lane < 32; ++lane)
@@ -50,7 +61,10 @@ int frexp_exp(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 int goc_rdna4_v_frexp_exp_i32_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                   const uint32_t *const *a) {
   if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
+    return goc::execute_dpp(flags, mask, mode, a,
+                            [&](uint32_t effective, const uint32_t *const *source) {
+                              return frexp_exp<false>(flags, effective, uint32_t(mode), d, source);
+                            });
   return frexp_exp<false>(flags, mask, mode, d, a);
 }
 

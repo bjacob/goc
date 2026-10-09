@@ -39,12 +39,13 @@ template <bool Fp64> void run(uint32_t mask, uint32_t *d, const uint32_t *const 
           _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(a[0] + lane)),
                            _mm256_set1_epi32(INT32_MAX));
       auto subnormal = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x00800000), magnitude);
-      auto small = _mm256_and_si256(magnitude, subnormal);
-      auto scaled =
-          _mm256_castps_si256(_mm256_mul_ps(_mm256_castsi256_ps(small), _mm256_set1_ps(0x1p24f)));
-      auto normalized = _mm256_blendv_epi8(magnitude, scaled, subnormal);
-      auto exponent = _mm256_sub_epi32(_mm256_srli_epi32(normalized, 23), _mm256_set1_epi32(126));
-      exponent = _mm256_sub_epi32(exponent, _mm256_and_si256(subnormal, _mm256_set1_epi32(24)));
+      // The 23-bit integer significand converts exactly in every rounding mode,
+      // including when host DAZ is enabled; never consume an FP32 subnormal.
+      auto fraction = _mm256_and_si256(magnitude, _mm256_set1_epi32(0x007fffff));
+      auto leading = _mm256_srli_epi32(_mm256_castps_si256(_mm256_cvtepi32_ps(fraction)), 23);
+      auto exponent = _mm256_blendv_epi8(
+          _mm256_sub_epi32(_mm256_srli_epi32(magnitude, 23), _mm256_set1_epi32(126)),
+          _mm256_sub_epi32(leading, _mm256_set1_epi32(275)), subnormal);
       auto special =
           _mm256_or_si256(_mm256_cmpeq_epi32(magnitude, _mm256_setzero_si256()),
                           _mm256_cmpgt_epi32(magnitude, _mm256_set1_epi32(0x7f800000 - 1)));

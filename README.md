@@ -1119,6 +1119,17 @@ infinity and NaN inputs return zero. Both scalar and v3 paths handle subnormals;
 ABS/NEG, OMOD and CLAMP are accepted without changing the integer result.
 Tests cover all 32 modifier combinations, every exponent field and subnormal
 leading-bit position, special values, masks, and aliases with either FP64 half.
+The FP32 form also supports DPP8/DPP16 with all existing low modifiers, FI,
+boundary behavior, and row/bank filtering. A GFX1201 capture checks 14,336
+results, including subnormal and signaling-NaN inputs. Scalar and eight-lane
+AVX2 paths extract the exponent without interpreting NaNs as floating-point
+values; SIMD normalizes subnormal significands using an exact integer-to-float
+conversion. Tests check host rounding and exception-state preservation under
+all modifiers, ordinary and DPP execution, masks, and source/destination aliases.
+On a Ryzen 9 7950X3D, full-EXEC FP32 DPP benchmarks measure 16.7–20.4 ns
+on AVX2 (2.7–3.1× scalar speed) and 17.1–18.9 ns with AVX-512 permutation
+plus AVX2 arithmetic (2.9–3.0×), including combined modifiers. Measurements
+use seven pinned-core samples of at least 10 ms each.
 
 FP64 ADD/MUL/FMA, rounding, FRACT, min/max, FREXP mantissa, and SQRT/RCP/RSQ
 now apply hardware-checked OMOD zero/denormal rules on scalar and AVX2 paths.
