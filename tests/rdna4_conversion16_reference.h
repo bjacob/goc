@@ -9,6 +9,9 @@
 
 namespace goc_test {
 
+inline const char *const conversion16_names[] = {"v_cvt_f16_i16", "v_cvt_f16_u16", "v_cvt_i16_f16",
+                                                 "v_cvt_u16_f16", "v_cvt_f16_f32", "v_cvt_f32_f16"};
+
 inline unsigned conversion16_modes(int op) { return op < 2 ? 32 : op < 4 ? 128 : 64; }
 
 inline uint32_t conversion16_mode(int op, unsigned variant) {

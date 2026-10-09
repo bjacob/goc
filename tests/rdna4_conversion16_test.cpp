@@ -4,6 +4,7 @@
 #include "rdna4_conversion16_hardware.h"
 #include "rdna4_conversion16_reference.h"
 #include "rdna4_conversion64_reference.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <algorithm>
@@ -192,4 +193,135 @@ TEST(Conversion16, IntegerOutputsIgnoreHostRounding) {
       }
   }
   EXPECT_EQ(std::fesetenv(&original), 0);
+}
+
+TEST(Conversion16, DppMasksAliasesAndUnalignedStorage) {
+  std::mt19937 random(8773);
+  for (int op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t descriptor : goc_test::dpp_modes)
+        for (bool sat : {false, true})
+          for (unsigned variant :
+               {0u, goc_test::conversion16_modes(op) / 2, goc_test::conversion16_modes(op) - 1})
+            for (uint64_t mask : rdna4_exec_masks())
+              for (bool alias : {false, true}) {
+                uint32_t storage[2][34], original[2][34];
+                for (int reg = 0; reg < 2; ++reg)
+                  for (int word = 0; word < 34; ++word)
+                    storage[reg][word] = original[reg][word] = random();
+                uint32_t mode = goc_test::conversion16_mode(op, variant);
+                const uint32_t *a[] = {storage[0] + 1};
+                uint32_t *d[] = {storage[alias ? 0 : 1] + 1};
+                ASSERT_EQ(
+                    functions[op](cpu | (sat ? GOC_FP16_OVFL : 0), mask, descriptor | mode, d, a),
+                    GOC_SUCCESS);
+                for (int reg = 0; reg < 2; ++reg)
+                  for (int word = 0; word < 34; ++word) {
+                    uint32_t expected = original[reg][word];
+                    int source;
+                    if (reg == (alias ? 0 : 1) && word > 0 && word <= 32 &&
+                        goc_test::dpp_source(descriptor, uint32_t(mask), word - 1, source)) {
+                      expected = goc_test::conversion16_reference(
+                          op, source < 0 ? 0u : original[0][source + 1], expected, mode, sat);
+                      ASSERT_TRUE(
+                          goc_test::conversion16_equal(op, storage[reg][word], expected, mode))
+                          << op << "/" << cpu << "/" << mode;
+                    } else {
+                      ASSERT_EQ(storage[reg][word], expected);
+                    }
+                  }
+              }
+}
+
+TEST(Conversion16, DppEveryModifier) {
+  std::mt19937 random(603);
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (bool saturate : {false, true})
+        for (uint64_t descriptor : goc_test::dpp_modes)
+          for (unsigned variant = 0; variant < goc_test::conversion16_modes(op); ++variant) {
+            uint32_t mode = goc_test::conversion16_mode(op, variant);
+            uint32_t a[32], d[32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              a[lane] = random();
+              d[lane] = 0xdeadbeef;
+            }
+            auto pa = a, pd = d;
+            ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
+                                    descriptor | mode, &pd, &pa),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              int source;
+              if (goc_test::dpp_source(descriptor, UINT32_MAX, lane, source)) {
+                uint32_t want = goc_test::conversion16_reference(op, source < 0 ? 0u : a[source],
+                                                                 0xdeadbeef, mode, saturate);
+                EXPECT_TRUE(goc_test::conversion16_equal(op, d[lane], want, mode));
+              } else {
+                EXPECT_EQ(d[lane], 0xdeadbeef);
+              }
+            }
+          }
+}
+
+TEST(Conversion16, DppHardwareCorpus) {
+  const uint32_t values[] = {0x00018001, 0x03ff83ff, 0x04008400, 0x04018401, 0x7bfffbff, 0x7c00fc00,
+                             0x7e007c01, 0x80000000, 0x3f800000, 0xbf000000, 0x387fefff, 0x387ff000,
+                             0x387ff001, 0x477ff000, 0x7f800001, 0xff800001};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (bool saturate : {false, true})
+      for (uint32_t mask :
+           {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
+        for (unsigned op = 0; op < 6; ++op)
+          for (uint64_t descriptor : goc_test::dpp_modes)
+            for (unsigned variant :
+                 {0u, 1u, 2u, 3u, 4u, 7u, 8u, 16u, goc_test::conversion16_modes(op) / 2,
+                  goc_test::conversion16_modes(op) - 1}) {
+              uint32_t mode = goc_test::conversion16_mode(op, variant);
+              uint32_t a[32], d[32];
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                a[lane] = values[lane % 16];
+                d[lane] = 0xdead0000u + lane;
+              }
+              auto pa = a, pd = d;
+              ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), mask, descriptor | mode,
+                                      &pd, &pa),
+                        GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                int source;
+                uint32_t want = 0xdead0000u + lane;
+                if (goc_test::dpp_source(descriptor, mask, lane, source)) {
+                  want = goc_test::conversion16_reference(op, source < 0 ? 0u : a[source], want,
+                                                          mode, saturate);
+                  EXPECT_TRUE(goc_test::conversion16_equal(op, d[lane], want, mode));
+                } else {
+                  EXPECT_EQ(d[lane], want);
+                }
+                uint32_t word = d[lane];
+                unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
+                if (op == 5) {
+                  if ((word & 0x7fffffff) > 0x7f800000)
+                    word = 0x7fc00000;
+                } else if (op != 2 && op != 3 && ((word >> shift) & 0x7fff) > 0x7c00) {
+                  word = (word & ~(UINT32_C(65535) << shift)) | (UINT32_C(0x7e00) << shift);
+                }
+                hash = (hash ^ word) * UINT64_C(1099511628211);
+              }
+            }
+    EXPECT_EQ(hash, UINT64_C(0x6e08f00f982b6b95));
+  }
+}
+
+TEST(Conversion16, DppValidation) {
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | (UINT64_C(1) << 36), nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
+                              descriptor, nullptr, nullptr),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    }
 }

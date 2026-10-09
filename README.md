@@ -931,6 +931,17 @@ Benchmark rows use full EXEC, overflow saturation enabled, and both default
 and modified instructions. On the development Ryzen 9 7950X3D, pinned-core
 measurements gave 4.12–10.28x for v3 and 11.07–19.01x for v4 versus scalar
 across those workloads (seven samples, each at least 10 ms).
+All six FP16 conversion forms support DPP8/DPP16 on A before half selection,
+including FI, boundary handling, row/bank filtering, and every existing low
+modifier. A further GFX1201 capture checks 215,040 results in both overflow
+modes, covering half selection, OMOD, CLAMP, source signs, rounding boundaries,
+NaNs, and eight EXEC patterns. DPP tests cover every modifier combination and
+masked aliases with unaligned storage; inactive lanes and the unselected
+half remain unchanged. All modifiers retain the existing SIMD arithmetic paths.
+Full-EXEC DPP benchmarks on the Ryzen 9 7950X3D measure 19.7–34.2 ns on AVX2
+(3.8–9.2× scalar speed) and 9.5–29.4 ns on AVX-512 (6.8–12.4×), including
+combined modifiers and overflow saturation, using seven pinned-core samples
+of at least 10 ms each.
 
 Six FP64 conversions cover `v_cvt_f64_i32`, `v_cvt_f64_u32`,
 `v_cvt_i32_f64`, `v_cvt_u32_f64`, `v_cvt_f64_f32`, and `v_cvt_f32_f64`.
