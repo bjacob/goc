@@ -35,6 +35,7 @@ set(goc_sources
   rdna4_pack.cpp
   rdna4_swmmac_integer.cpp
   rdna4_swmmac8.cpp
+  rdna4_swmmac_float.cpp
   rdna4_swmmac16.cpp
   rdna4_mad64.cpp
   rdna4_carry.cpp

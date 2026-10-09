@@ -5,7 +5,6 @@
 #include "internal.h"
 #include "rdna4_swmmac_float.h"
 
-#include <cmath>
 #include <stdint.h>
 
 namespace {
@@ -45,13 +44,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
     return GOC_SUCCESS;
   }
 #endif
-  for (unsigned row = 0; row < 16; ++row)
-    for (unsigned col = 0; col < 16; ++col) {
-      float acc = input.acc[row][col];
-      for (unsigned ck = 0; ck < 16; ++ck)
-        acc = std::fma(input.a[row][ck], input.b[input.selected[row][ck]][col], acc);
-      input.acc[row][col] = acc;
-    }
+  goc::swmmac_float_accumulate(0, input);
   uint32_t result[8][32];
   goc::swmmac_float_pack<false, false>(result, input.acc, false);
   for (unsigned reg = 0; reg < 8; ++reg)

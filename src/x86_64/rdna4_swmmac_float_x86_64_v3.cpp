@@ -8,9 +8,10 @@
 
 namespace goc {
 
-template <bool Bf16, bool Packed>
-void swmmac_float_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d,
-                            SwmmacFloatInputs &input, bool saturate) {
+namespace {
+
+// Accumulate decoded inputs in sparse K order, independent of the output format.
+[[gnu::noinline]] void accumulate(uint32_t mode, SwmmacFloatInputs &input) {
   const uint32_t flip[] = {mode & GOC_WMMA_NEG_LO_B ? 0x80000000u : 0,
                            mode & GOC_WMMA_NEG_HI_B ? 0x80000000u : 0};
   for (unsigned row = 0; row < 16; ++row)
@@ -23,6 +24,14 @@ void swmmac_float_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d,
       }
       _mm256_storeu_ps(input.acc[row] + col, acc);
     }
+}
+
+} // namespace
+
+template <bool Bf16, bool Packed>
+void swmmac_float_x86_64_v3(uint32_t mask, uint32_t mode, uint32_t *const *d,
+                            SwmmacFloatInputs &input, bool saturate) {
+  accumulate(mode, input);
   uint32_t result[Packed ? 4 : 8][32];
   swmmac_float_pack<Bf16, Packed>(result, input.acc, saturate);
   for (unsigned reg = 0; reg < (Packed ? 4u : 8u); ++reg)

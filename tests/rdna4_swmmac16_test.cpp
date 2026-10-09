@@ -172,3 +172,33 @@ TEST(Swmmac16, FiniteOverflowAndInfinity) {
               EXPECT_EQ(r.d[reg][lane], want | (want << 16));
         }
 }
+
+TEST(Swmmac16, AccumulatorAndPairNegationAcrossOutputFormats) {
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < 3; ++variant) {
+        Registers r(op);
+        uint32_t one = op & 1 ? 0x3f803f80 : 0x3c003c00;
+        for (unsigned reg = 0; reg < 12; ++reg)
+          for (unsigned lane = 0; lane < 32; ++lane)
+            r.data[reg][lane] = one;
+        for (unsigned reg = 12; reg < 20; ++reg)
+          for (unsigned lane = 0; lane < 32; ++lane)
+            r.data[reg][lane] = op >= 2 ? 0x40004000 : 0x40000000; // Initial accumulator: 2.
+        for (unsigned lane = 0; lane < 32; ++lane)
+          r.data[20][lane] = 0x44444444; // Select increasing positions 0 and 1.
+        uint32_t flags = variant == 0   ? 0
+                         : variant == 1 ? GOC_WMMA_NEG_LO_B
+                                        : GOC_WMMA_NEG_LO_B | GOC_WMMA_NEG_HI_B;
+        ASSERT_EQ(functions[op](cpu, UINT32_MAX, flags, r.d, r.a, r.b, r.index), GOC_SUCCESS);
+        // Sixteen products of one: 2+16, 2+8-8, or 2-16.
+        const uint32_t fp32[] = {0x41900000, 0x40000000, 0xc1600000};
+        const uint32_t fp16[] = {0x4c80, 0x4000, 0xcb00};
+        uint32_t expected = op < 2    ? fp32[variant]
+                            : op == 2 ? fp16[variant] * 0x10001u
+                                      : (fp32[variant] >> 16) * 0x10001u;
+        for (unsigned reg = 0; reg < (op >= 2 ? 4u : 8u); ++reg)
+          for (unsigned lane = 0; lane < 32; ++lane)
+            ASSERT_EQ(r.d[reg][lane], expected) << op << '/' << cpu << '/' << variant;
+      }
+}

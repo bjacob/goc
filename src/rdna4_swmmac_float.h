@@ -21,6 +21,10 @@ struct SwmmacFloatInputs {
   uint8_t selected[16][16];
 };
 
+// Accumulate all decoded products in sparse K order, applying B negation by pair position.
+// Updates only input.acc; input arrays must already include any A modifiers.
+void swmmac_float_accumulate(uint32_t mode, SwmmacFloatInputs &input);
+
 // Decode all input registers and the initial accumulator before destination
 // writes. Each metadata pair must contain two increasing positions in [0,3].
 template <bool Bf16, bool Packed>

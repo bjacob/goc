@@ -4,7 +4,6 @@
 #include "internal.h"
 #include "rdna4_swmmac_float.h"
 
-#include <cmath>
 #include <stdint.h>
 
 namespace {
@@ -34,18 +33,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
     return GOC_SUCCESS;
   }
 #endif
-  const uint32_t flip[] = {mode & GOC_WMMA_NEG_LO_B ? 0x80000000u : 0,
-                           mode & GOC_WMMA_NEG_HI_B ? 0x80000000u : 0};
-  for (unsigned row = 0; row < 16; ++row)
-    for (unsigned col = 0; col < 16; ++col) {
-      float acc = input.acc[row][col];
-      for (unsigned ck = 0; ck < 16; ++ck) {
-        float bv =
-            goc::as_float(goc::as_bits(input.b[input.selected[row][ck]][col]) ^ flip[ck & 1]);
-        acc = std::fma(input.a[row][ck], bv, acc);
-      }
-      input.acc[row][col] = acc;
-    }
+  goc::swmmac_float_accumulate(mode, input);
   uint32_t result[Packed ? 4 : 8][32];
   goc::swmmac_float_pack<Bf16, Packed>(result, input.acc, saturate);
   for (unsigned reg = 0; reg < (Packed ? 4u : 8u); ++reg)
