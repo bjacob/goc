@@ -597,6 +597,9 @@ inactive bits are zero. The 16-bit forms support independent source-half
 selection. The scalar destination may alias any input word, with all source
 reads completed before its write. These integer models follow rocjitsu and
 support both semantics while preserving all host FP state.
+The 48 forms with 16/32-bit operands also support DPP8/DPP16 on A before
+half selection. B stays in its original lane, and DPP-filtered result bits
+are zero for both CMP and CMPX. The 64-bit forms have no DPP encoding.
 
 Both SIMD paths retain all modifiers. Comparisons process eight lanes on v3
 and sixteen on v4, including 64-bit inputs: high-word ordering and unsigned
@@ -608,6 +611,12 @@ Pinned-core Ryzen 9 7950X3D timings show 1.24–7.12x for v3 and 1.26–9.62x
 for v4 versus baseline, including half selectors (seven samples, each at least
 10 ms). Simple 32-bit predicates have the smallest gains because the baseline
 compiler already lowers them efficiently.
+DPP tests match 26,880 GPU-captured masks across all 48 forms and selectors,
+with unchanged results and host FP state under every rounding mode. Tests cover all EXEC
+masks, shared sources, scalar output aliases, guards and invalid descriptors.
+Full-EXEC benchmarks sample DPP8/DPP16 LT/EQ for each supported width and sign.
+Pinned DPP samples take 8.0–12.7 ns on v3 (2.70–5.07× scalar) and
+9.8–12.3 ns on v4 (2.74–4.45×), including half selection.
 
 Floating-point classification (`v_cmp_class_f16/f32/f64` and their CMPX forms)
 tests raw source encodings against the ten-bit class mask in B. CMP returns a

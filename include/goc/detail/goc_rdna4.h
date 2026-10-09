@@ -1135,7 +1135,9 @@ GOC_API int goc_rdna4_v_cmpx_nlt_f64(uint64_t flags, uint64_t exec_mask, uint64_
 // mask (CMPX) to d. Inactive bits are zero, including for empty EXEC. d is always
 // required and may alias any input word. Zero EXEC permits null VGPR pointers.
 // A/B use one VGPR for 16/32 bits or a low/high pair for 64 bits. The 16-bit
-// forms support HIGH_A/HIGH_B; other instruction flags are rejected. Errors
+// forms support HIGH_A/HIGH_B. The 16/32-bit forms support DPP8/DPP16 on A
+// before half selection, with B in its original lane; filtered output bits are
+// zero. The 64-bit forms reject DPP. Other instruction flags are rejected. Errors
 // leave d unchanged. Supports loose and empirical-exact semantics. All host FP
 // state is preserved; inputs are interpreted as two's-complement or unsigned.
 GOC_API int goc_rdna4_v_cmp_lt_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,

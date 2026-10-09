@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_integer_compare_hardware.h"
 #include "rdna4_integer_compare_reference.h"
@@ -13,6 +14,103 @@
 #if defined(__x86_64__) || defined(_M_X64)
 #include <immintrin.h>
 #endif
+
+TEST(IntegerCompare, DppPredicatesSelectorsMasksAndAliases) {
+  for (unsigned op = 0; op < 48; ++op)
+    for (unsigned m = 0; m < (op < 24 ? 4u : 1u); ++m)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (auto descriptor : goc_test::dpp_modes)
+          for (auto mask : rdna4_exec_masks())
+            for (unsigned shared = 0; shared < 2; ++shared)
+              for (unsigned target = 0; target < 5; ++target) {
+                uint32_t words[2][34], expected[2][34], outside = 0xdeadbeef, want = 0;
+                for (unsigned word = 0; word < 34; ++word) {
+                  uint32_t w[4];
+                  goc_test::integer_compare_inputs(op / 24, 256 + word, w);
+                  words[0][word] = expected[0][word] = w[0];
+                  words[1][word] = expected[1][word] = w[2];
+                }
+                unsigned br = shared ? 0 : 1;
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  int source = 0;
+                  if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source)) {
+                    uint32_t w[] = {source < 0 ? 0 : words[0][source + 1], 0, words[br][lane + 1],
+                                    0};
+                    want |= uint32_t(goc_test::integer_compare_reference(op, m, w)) << lane;
+                  }
+                }
+                unsigned reg = target / 2, word = target % 2 ? 32 : 1;
+                uint32_t *d = target < 4 ? words[reg] + word : &outside;
+                if (target < 4)
+                  expected[reg][word] = want;
+                const uint32_t *a[] = {words[0] + 1}, *b[] = {words[br] + 1};
+                uint64_t semantics =
+                    op & 1 ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0;
+                ASSERT_EQ(goc_test::integer_compare_functions[op](
+                              cpu | semantics, mask, descriptor | goc_test::integer_compare_mode(m),
+                              d, a, b),
+                          GOC_SUCCESS);
+                ASSERT_EQ(*d, want)
+                    << op << "/" << m << "/" << cpu << "/" << descriptor << "/" << mask;
+                ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0);
+              }
+}
+
+TEST(IntegerCompare, DppValidationAndZeroExec) {
+  for (unsigned op = 0; op < 72; ++op)
+    for (auto descriptor : goc_test::dpp_modes) {
+      uint32_t d = 0xdeadbeef;
+      auto fn = goc_test::integer_compare_functions[op];
+      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1)}) {
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, &d, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(d, 0xdeadbeefu);
+      }
+      EXPECT_EQ(fn(0, UINT64_C(0xffffffff00000000), descriptor, &d, nullptr, nullptr),
+                op < 48 ? GOC_SUCCESS : GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(d, op < 48 ? 0u : 0xdeadbeefu);
+    }
+}
+
+// RX 9070: four input batches, eight EXEC masks, every integer CMP/CMPX
+// predicate and half selector for 16/32-bit operands, seven DPP descriptors.
+TEST(IntegerCompare, DppHardwareCorpusAndHostFpState) {
+  const uint32_t values[] = {0,          UINT32_MAX, 0x00018000, 0x80000001,
+                             0x7fffffff, 0x80008000, 0x7fff7fff, 0xffff0000};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  std::fenv_t saved;
+  ASSERT_EQ(std::fegetenv(&saved), 0);
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+    std::fesetround(rounding);
+    std::feclearexcept(FE_ALL_EXCEPT);
+    std::feraiseexcept(FE_INVALID | FE_INEXACT);
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+        uint64_t hash = UINT64_C(14695981039346656037);
+        for (unsigned batch = 0; batch < 4; ++batch)
+          for (auto mask : masks)
+            for (unsigned op = 0; op < 48; ++op)
+              for (unsigned m = 0; m < (op < 24 ? 4u : 1u); ++m)
+                for (auto descriptor : goc_test::dpp_modes) {
+                  uint32_t av[32], bv[32], output = 0xdeadbeef;
+                  for (unsigned lane = 0; lane < 32; ++lane) {
+                    av[lane] = values[(lane + batch) % 8];
+                    bv[lane] = values[(lane * 3 + batch * 5) % 8];
+                  }
+                  const uint32_t *a[] = {av}, *b[] = {bv};
+                  EXPECT_EQ(goc_test::integer_compare_functions[op](
+                                cpu | semantics, mask,
+                                descriptor | goc_test::integer_compare_mode(m), &output, a, b),
+                            GOC_SUCCESS);
+                  hash = (hash ^ output) * UINT64_C(1099511628211);
+                }
+        EXPECT_EQ(hash, UINT64_C(0xb530b3f6ab40c985)) << cpu << "/" << semantics;
+        EXPECT_EQ(std::fegetround(), rounding);
+        EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
+      }
+  }
+  std::fesetenv(&saved);
+}
 
 TEST(IntegerCompare, HardwarePredicatesWidthsModifiersAndExec) {
   const uint32_t masks[] = {UINT32_MAX, 0, 0x55555555, 0xaaaaaaaa, 1};
