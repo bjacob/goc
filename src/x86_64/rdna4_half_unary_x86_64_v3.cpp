@@ -24,7 +24,7 @@ void half_unary_x86_64_v3(bool saturate, uint32_t mask, uint32_t mode, uint32_t 
                                a_shift, mode);
     auto value = unary_value<Op, true>(x);
     if (mode & GOC_ALU_OMOD_HALF)
-      value = _mm256_mul_ps(value, scale);
+      value = _mm256_mul_ps(prepare_omod_f16(value, mode), scale);
     if (mode & GOC_ALU_CLAMP)
       value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
     auto result = _mm256_sll_epi32(half_narrow<false>(value, saturate), _mm_cvtsi32_si128(d_shift));

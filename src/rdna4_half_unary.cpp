@@ -5,6 +5,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_alu.h"
+#include "rdna4_dpp.h"
 #include "rdna4_unary.h"
 
 #include <algorithm>
@@ -14,8 +15,13 @@
 namespace {
 
 template <goc::Unary Op>
-int unary(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+int unary(uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
           const uint32_t *const *a) {
+  if (modifiers >> 32)
+    return goc::execute_dpp(flags, mask, modifiers, a,
+                            [&](uint32_t effective, const uint32_t *const *source) {
+                              return unary<Op>(flags, effective, uint32_t(modifiers), d, source);
+                            });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP |
                          GOC_ALU_HIGH_A | GOC_ALU_HIGH_D;
   if (int error = goc::validate(flags, modifiers & ~known))
@@ -49,7 +55,7 @@ int unary(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
       if (value > 0x1.ffcp-1f)
         value = 0x1.ffcp-1f;
     }
-    result[lane] = goc::float_to_f16(goc::alu_output(value, modifiers), flags & GOC_FP16_OVFL);
+    result[lane] = goc::float_to_f16(goc::alu_output_f16(value, modifiers), flags & GOC_FP16_OVFL);
   }
   for (int lane = 0; lane < 32; ++lane)
     if ((mask >> lane) & 1)
@@ -62,77 +68,55 @@ int unary(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
 
 int goc_rdna4_v_trunc_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return unary<goc::Unary::Trunc>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_ceil_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return unary<goc::Unary::Ceil>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_rndne_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return unary<goc::Unary::Rndne>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_floor_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return unary<goc::Unary::Floor>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_sqrt_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return unary<goc::Unary::Sqrt>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_rcp_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return unary<goc::Unary::Rcp>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_rsq_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return unary<goc::Unary::Rsq>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_exp_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return unary<goc::Unary::Exp>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_log_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return unary<goc::Unary::Log>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_fract_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return unary<goc::Unary::Fract>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_rdna4_v_frexp_mant_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return unary<goc::Unary::FrexpMant>(flags, mask, mode, d, a);
 }

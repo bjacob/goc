@@ -1805,6 +1805,21 @@ Ryzen 9 7950X3D, these cases measure 30.6–54.5 ns on AVX2 (9.7–11.8× scalar
 speed) and 30.5–53.5 ns with AVX-512 permutation plus AVX2 arithmetic
 (10.1–11.9×), using seven pinned samples of at least 10 ms each.
 
+All eleven FP16 unary operations now support DPP8/DPP16 with source NEG/ABS,
+OMOD/CLAMP, and source/destination half selectors. Two GFX1201 captures check
+473,088 results across normal and underflow-boundary inputs, with NaN payloads
+canonicalized. Tests cover every modifier combination in both overflow modes,
+all EXEC patterns, in-place and separate outputs, guards, random encodings, and
+preservation of inactive lanes and the other destination half. Unary OMOD now
+uses the shared FP16 tiny-result correction, including ordinary non-DPP calls.
+Rounding, SQRT/RCP/RSQ, FRACT, and FREXP mantissa retain their AVX2 arithmetic
+paths with every supported modifier; EXP/LOG currently retain scalar math.
+Full-EXEC DPP benchmarks cover RNDNE, SQRT, RCP, and FREXP mantissa, with default
+and combined modifiers. On the Ryzen 9 7950X3D, these cases measure
+20.9–26.9 ns on AVX2 (4.4–9.4× scalar speed) and 20.1–25.9 ns with AVX-512
+permutation plus AVX2 arithmetic (4.6–9.8×), using seven pinned samples of at
+least 10 ms each.
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal
