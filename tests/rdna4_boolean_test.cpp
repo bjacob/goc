@@ -17,9 +17,9 @@
 namespace {
 
 using Fn = decltype(&goc_rdna4_v_and_b32);
-const Fn functions[] = {goc_rdna4_v_and_b32,     goc_rdna4_v_or_b32,     goc_rdna4_v_xor_b32,
-                        goc_test::boolean_not32, goc_rdna4_v_and_b16,    goc_rdna4_v_or_b16,
-                        goc_rdna4_v_xor_b16,     goc_test::boolean_not16};
+const Fn functions[] = {goc_rdna4_v_and_b32,     goc_rdna4_v_or_b32,      goc_rdna4_v_xor_b32,
+                        goc_test::boolean_not32, goc_rdna4_v_and_b16,     goc_rdna4_v_or_b16,
+                        goc_rdna4_v_xor_b16,     goc_test::boolean_not16, goc_rdna4_v_xnor_b32};
 
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t mode, uint32_t words[3][32]) {
   uint32_t expected[32];
@@ -40,9 +40,9 @@ const Fn functions[] = {goc_rdna4_v_and_b32,     goc_rdna4_v_or_b32,     goc_rdn
 } // namespace
 
 TEST(Boolean, TruthTablesAtEveryBitAndSelector) {
-  for (int op = 0; op < 8; ++op)
+  for (int op = 0; op < 9; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (unsigned selection = 0; selection < (op < 4 ? 1u : 8u); ++selection)
+      for (unsigned selection = 0; selection < ((op < 4 || op == 8) ? 1u : 8u); ++selection)
         for (unsigned truth = 0; truth < 4; ++truth)
           for (bool surrounding : {false, true}) {
             uint32_t words[3][32];
@@ -57,15 +57,15 @@ TEST(Boolean, TruthTablesAtEveryBitAndSelector) {
 }
 
 TEST(Boolean, EveryHalfEncodingAndRandomFullWords) {
-  for (int op = 0; op < 8; ++op)
+  for (int op = 0; op < 9; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (unsigned selection = 0; selection < (op < 4 ? 1u : 8u); ++selection) {
+      for (unsigned selection = 0; selection < ((op < 4 || op == 8) ? 1u : 8u); ++selection) {
         std::mt19937 random(9384);
         for (unsigned start = 0; start < 65536; start += 32) {
           uint32_t words[3][32];
           for (unsigned lane = 0; lane < 32; ++lane) {
             unsigned value = start + lane;
-            words[0][lane] = op < 4 ? random() : value | ((65535 - value) << 16);
+            words[0][lane] = (op < 4 || op == 8) ? random() : value | ((65535 - value) << 16);
             words[1][lane] = random();
             words[2][lane] = random();
           }
@@ -75,9 +75,9 @@ TEST(Boolean, EveryHalfEncodingAndRandomFullWords) {
 }
 
 TEST(Boolean, MasksAliasesAndUnalignedStorage) {
-  for (int op = 0; op < 8; ++op)
+  for (int op = 0; op < 9; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (unsigned selection = 0; selection < (op < 4 ? 1u : 8u); ++selection)
+      for (unsigned selection = 0; selection < ((op < 4 || op == 8) ? 1u : 8u); ++selection)
         for (bool same_sources : {false, true}) {
           std::mt19937 random(678);
           uint32_t original[3][35];
@@ -108,7 +108,7 @@ TEST(Boolean, MasksAliasesAndUnalignedStorage) {
 }
 
 TEST(Boolean, ValidationBeforeEmptyMaskAndUnchangedOutputs) {
-  for (int op = 0; op < 8; ++op)
+  for (int op = 0; op < 9; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       uint32_t words[3][32];
       for (auto &reg : words)
@@ -150,9 +150,9 @@ TEST(Boolean, HostFpStateIsPreserved) {
       _mm_setcsr((_mm_getcsr() & ~0x8040u) | (flush ? 0x8040u : 0));
       unsigned before = _mm_getcsr();
 #endif
-      for (int op = 0; op < 8; ++op)
+      for (int op = 0; op < 9; ++op)
         for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-          for (unsigned selection = 0; selection < (op < 4 ? 1u : 8u); ++selection) {
+          for (unsigned selection = 0; selection < ((op < 4 || op == 8) ? 1u : 8u); ++selection) {
             uint32_t words[3][32];
             for (auto &reg : words)
               std::fill_n(reg, 32, 0x7f800001);

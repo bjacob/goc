@@ -26,6 +26,10 @@ inline uint32_t bitfield_reference(int op, uint32_t a, uint32_t b, uint32_t c) {
       value = bit >= offset && bit - offset < a % 32;
     if (op == 4)
       value = (a >> (31 - bit)) & 1;
+    if (op == 5 || op == 6) {
+      unsigned source = bit + (op == 5 ? c % 32 : (c % 4) * 8);
+      value = source < 32 ? (b >> source) & 1 : (a >> (source - 32)) & 1;
+    }
     result |= uint32_t(value) << bit;
   }
   return result;

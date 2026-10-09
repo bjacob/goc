@@ -34,6 +34,8 @@ void boolean_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint32_t
       result = _mm512_or_si512(x, y);
     if constexpr (Op == Boolean::Xor)
       result = _mm512_xor_si512(x, y);
+    if constexpr (Op == Boolean::Xnor)
+      result = _mm512_xor_si512(_mm512_xor_si512(x, y), _mm512_set1_epi32(-1));
     if constexpr (Op == Boolean::Not)
       result = _mm512_xor_si512(x, _mm512_set1_epi32(-1));
     if constexpr (Half) {
@@ -61,5 +63,8 @@ template void boolean_x86_64_v4<Boolean::Xor, true>(uint32_t mask, uint32_t mode
                                                     const uint32_t *a, const uint32_t *b);
 template void boolean_x86_64_v4<Boolean::Not, true>(uint32_t mask, uint32_t mode, uint32_t *d,
                                                     const uint32_t *a, const uint32_t *b);
+
+template void boolean_x86_64_v4<Boolean::Xnor, false>(uint32_t, uint32_t, uint32_t *,
+                                                      const uint32_t *, const uint32_t *);
 
 } // namespace goc

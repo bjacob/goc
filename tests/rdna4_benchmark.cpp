@@ -1009,14 +1009,15 @@ bool benchmark_bit_count(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_boolean(uint64_t cpu, int iterations, int min_ms) {
   using Binary = decltype(&goc_rdna4_v_and_b32);
-  const Binary functions[] = {goc_rdna4_v_and_b32,     goc_rdna4_v_or_b32,     goc_rdna4_v_xor_b32,
-                              goc_test::boolean_not32, goc_rdna4_v_and_b16,    goc_rdna4_v_or_b16,
-                              goc_rdna4_v_xor_b16,     goc_test::boolean_not16};
-  const char *names[] = {"v_and_b32", "v_or_b32", "v_xor_b32", "v_not_b32",
-                         "v_and_b16", "v_or_b16", "v_xor_b16", "v_not_b16"};
-  for (int op = 0; op < 8; ++op)
+  const Binary functions[] = {
+      goc_rdna4_v_and_b32,     goc_rdna4_v_or_b32,      goc_rdna4_v_xor_b32,
+      goc_test::boolean_not32, goc_rdna4_v_and_b16,     goc_rdna4_v_or_b16,
+      goc_rdna4_v_xor_b16,     goc_test::boolean_not16, goc_rdna4_v_xnor_b32};
+  const char *names[] = {"v_and_b32", "v_or_b32",  "v_xor_b32", "v_not_b32", "v_and_b16",
+                         "v_or_b16",  "v_xor_b16", "v_not_b16", "v_xnor_b32"};
+  for (int op = 0; op < 9; ++op)
     for (bool modified : {false, true}) {
-      if (op < 4 && modified)
+      if ((op < 4 || op == 8) && modified)
         continue;
       uint32_t mode = goc_test::boolean_mode(op, modified ? 7 : 0);
       Registers r;
@@ -1053,10 +1054,13 @@ bool benchmark_boolean(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_bitfield(uint64_t cpu, int iterations, int min_ms) {
-  const Wmma functions[] = {goc_rdna4_v_bfe_u32, goc_rdna4_v_bfe_i32, goc_rdna4_v_bfi_b32,
-                            goc_test::bitfield_mask, goc_test::bitfield_reverse};
-  const char *names[] = {"v_bfe_u32", "v_bfe_i32", "v_bfi_b32", "v_bfm_b32", "v_bfrev_b32"};
-  for (int op = 0; op < 5; ++op) {
+  const Wmma functions[] = {goc_rdna4_v_bfe_u32,        goc_rdna4_v_bfe_i32,
+                            goc_rdna4_v_bfi_b32,        goc_test::bitfield_mask,
+                            goc_test::bitfield_reverse, goc_rdna4_v_alignbit_b32,
+                            goc_rdna4_v_alignbyte_b32};
+  const char *names[] = {"v_bfe_u32",   "v_bfe_i32",      "v_bfi_b32",      "v_bfm_b32",
+                         "v_bfrev_b32", "v_alignbit_b32", "v_alignbyte_b32"};
+  for (int op = 0; op < 7; ++op) {
     Registers r;
     r.output_regs = 1;
     std::mt19937 random(452);

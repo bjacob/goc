@@ -17,8 +17,10 @@
 namespace {
 
 using Fn = decltype(&goc_rdna4_v_bfe_u32);
-const Fn functions[] = {goc_rdna4_v_bfe_u32, goc_rdna4_v_bfe_i32, goc_rdna4_v_bfi_b32,
-                        goc_test::bitfield_mask, goc_test::bitfield_reverse};
+const Fn functions[] = {goc_rdna4_v_bfe_u32,        goc_rdna4_v_bfe_i32,
+                        goc_rdna4_v_bfi_b32,        goc_test::bitfield_mask,
+                        goc_test::bitfield_reverse, goc_rdna4_v_alignbit_b32,
+                        goc_rdna4_v_alignbyte_b32};
 
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t words[4][32]) {
   uint32_t expected[32];
@@ -43,7 +45,7 @@ TEST(Bitfield, BoundaryTriplesAndRandomValues) {
   const uint32_t edges[] = {0,          1,          31,         32,         63,         64,
                             0x7fffffff, 0x80000000, 0xffffffff, 0xfffffffe, 0xff00ff00, 0x00ff00ff,
                             0x01010101, 0xfefefefe, 0x55555555, 0xaaaaaaaa};
-  for (int op = 0; op < 5; ++op)
+  for (int op = 0; op < 7; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       std::mt19937 random(1023);
       for (int start = 0; start < 8192; start += 32) {
@@ -119,7 +121,7 @@ TEST(Bitfield, LiteralBoundaryResults) {
 
 TEST(Bitfield, MasksAndWholeRegisterAliases) {
   const int sources[][3] = {{0, 1, 2}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}};
-  for (int op = 0; op < 5; ++op)
+  for (int op = 0; op < 7; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (const auto &source : sources) {
         std::mt19937 random(560);
@@ -165,7 +167,7 @@ TEST(Bitfield, ValidationAndHostFpState) {
       _mm_setcsr((_mm_getcsr() & ~0x8040u) | (flush ? 0x8040u : 0));
       unsigned before = _mm_getcsr();
 #endif
-      for (int op = 0; op < 5; ++op)
+      for (int op = 0; op < 7; ++op)
         for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
           uint32_t words[4][32];
           for (auto &reg : words)
@@ -197,4 +199,21 @@ TEST(Bitfield, ValidationAndHostFpState) {
 #if defined(__x86_64__) || defined(_M_X64)
   _mm_setcsr(saved_mxcsr);
 #endif
+}
+
+TEST(Bitfield, AlignmentEveryConcatenatedBitAndShift) {
+  for (int op : {5, 6})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned bit = 0; bit < 64; ++bit)
+        for (bool inverted : {false, true}) {
+          uint64_t source = (UINT64_C(1) << bit) ^ (inverted ? UINT64_MAX : 0);
+          uint32_t words[4][32];
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            words[0][lane] = uint32_t(source >> 32);
+            words[1][lane] = uint32_t(source);
+            // Ignored high bits must not turn a wrapped shift into a zero result.
+            words[2][lane] = 0xffffffe0u | lane;
+          }
+          ASSERT_TRUE(check(op, cpu, words));
+        }
 }

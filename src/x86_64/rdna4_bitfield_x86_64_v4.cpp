@@ -35,6 +35,13 @@ void bitfield_x86_64_v4(uint32_t mask, uint32_t *d, const uint32_t *a, const uin
     }
     if constexpr (Op == Bitfield::Insert)
       result = _mm512_ternarylogic_epi32(x, y, z, 0xca);
+    if constexpr (Op == Bitfield::AlignBit || Op == Bitfield::AlignByte) {
+      auto shift = _mm512_and_si512(z, _mm512_set1_epi32(Op == Bitfield::AlignBit ? 31 : 3));
+      if constexpr (Op == Bitfield::AlignByte)
+        shift = _mm512_slli_epi32(shift, 3);
+      auto inverse = _mm512_sub_epi32(_mm512_set1_epi32(32), shift);
+      result = _mm512_or_si512(_mm512_srlv_epi32(y, shift), _mm512_sllv_epi32(x, inverse));
+    }
     if constexpr (Op == Bitfield::Mask)
       result = _mm512_sllv_epi32(
           _mm512_sub_epi32(
@@ -68,5 +75,10 @@ template void bitfield_x86_64_v4<Bitfield::Mask>(uint32_t mask, uint32_t *d, con
                                                  const uint32_t *b, const uint32_t *c);
 template void bitfield_x86_64_v4<Bitfield::Reverse>(uint32_t mask, uint32_t *d, const uint32_t *a,
                                                     const uint32_t *b, const uint32_t *c);
+
+template void bitfield_x86_64_v4<Bitfield::AlignBit>(uint32_t, uint32_t *, const uint32_t *,
+                                                     const uint32_t *, const uint32_t *);
+template void bitfield_x86_64_v4<Bitfield::AlignByte>(uint32_t, uint32_t *, const uint32_t *,
+                                                      const uint32_t *, const uint32_t *);
 
 } // namespace goc

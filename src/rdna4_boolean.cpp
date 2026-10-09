@@ -40,6 +40,8 @@ int boolean(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
       result[lane] = x | y;
     if constexpr (Op == goc::Boolean::Xor)
       result[lane] = x ^ y;
+    if constexpr (Op == goc::Boolean::Xnor)
+      result[lane] = ~(x ^ y);
     if constexpr (Op == goc::Boolean::Not)
       result[lane] = ~x;
     if constexpr (Half)
@@ -92,4 +94,9 @@ int goc_rdna4_v_xor_b16(uint64_t flags, uint64_t exec_mask, uint32_t instruction
 int goc_rdna4_v_not_b16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a) {
   return boolean<goc::Boolean::Not, true>(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_rdna4_v_xnor_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return boolean<goc::Boolean::Xnor, false>(flags, exec_mask, instruction_flags, d, a, b);
 }

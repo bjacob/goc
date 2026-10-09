@@ -18,6 +18,24 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Bitwise equivalence: D = ~(A ^ B). Each operand uses one VGPR. No
+// instruction modifiers apply; loose semantics only. Host FP state is preserved.
+GOC_API int goc_rdna4_v_xnor_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b);
+
+// Extract the low 32 bits of the concatenation A:B shifted right by C & 31
+// bits (ALIGNBIT), or (C & 3) bytes (ALIGNBYTE). Each operand uses one VGPR.
+// No instruction modifiers apply; loose semantics only. Host FP state is preserved.
+GOC_API int goc_rdna4_v_alignbit_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_alignbyte_b32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      const uint32_t *const *c);
+
 // Sparse integer 2:4 WMMA with signed 32-bit in/out accumulator D (8 VGPRs).
 // A/B use 2/4 VGPRs for K=32 IU8 and K=64 IU4, or 1/2 for K=32 IU4;
 // index uses one VGPR. Metadata pairs must select strictly increasing positions.

@@ -21,6 +21,10 @@ template <goc::Bitfield Op> uint32_t evaluate(uint32_t a, uint32_t b, uint32_t c
     uint32_t sign_bit = (uint32_t(1) << width) >> 1;
     return (field ^ sign_bit) - sign_bit;
   }
+  if constexpr (Op == goc::Bitfield::AlignBit || Op == goc::Bitfield::AlignByte) {
+    unsigned shift = Op == goc::Bitfield::AlignBit ? c & 31 : (c & 3) * 8;
+    return uint32_t(((uint64_t(a) << 32) | b) >> shift);
+  }
   if constexpr (Op == goc::Bitfield::Insert)
     return (a & b) | (~a & c);
   if constexpr (Op == goc::Bitfield::Mask)
@@ -99,4 +103,16 @@ int goc_rdna4_v_bfrev_b32(uint64_t flags, uint64_t exec_mask, uint32_t instructi
                           uint32_t *const *d, const uint32_t *const *a) {
   return bitfield<goc::Bitfield::Reverse>(flags, exec_mask, instruction_flags, d, a, nullptr,
                                           nullptr);
+}
+
+int goc_rdna4_v_alignbit_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c) {
+  return bitfield<goc::Bitfield::AlignBit>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_rdna4_v_alignbyte_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c) {
+  return bitfield<goc::Bitfield::AlignByte>(flags, exec_mask, instruction_flags, d, a, b, c);
 }

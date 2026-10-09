@@ -193,8 +193,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_mbcnt_lo_u32_b32` (wave32 and wave64), `v_mbcnt_hi_u32_b32` (wave64) | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_mbcnt_hi_u32_b32` (wave32) | Scalar, x86-64-v4 | Not implemented |
 | `v_and_b16`, `v_or_b16`, `v_xor_b16`, `v_not_b16` | Scalar, x86-64-v4 | Not implemented |
-| `v_and_b32`, `v_or_b32`, `v_xor_b32`, `v_not_b32` | Scalar, x86-64-v4 | Not implemented |
-| `v_bfe_u32`, `v_bfe_i32`, `v_bfm_b32`, `v_bfrev_b32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
+| `v_and_b32`, `v_or_b32`, `v_xor_b32`, `v_not_b32`, `v_xnor_b32` | Scalar, x86-64-v4 | Not implemented |
+| `v_bfe_u32`, `v_bfe_i32`, `v_bfm_b32`, `v_bfrev_b32`, `v_alignbit_b32`, `v_alignbyte_b32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_bfi_b32` | Scalar, x86-64-v4 | Not implemented |
 | `v_lshl_add_u32`, `v_add_lshl_u32`, `v_lshl_or_b32`, `v_lerp_u8` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_and_or_b32`, `v_or3_b32`, `v_xor3_b32`, `v_xad_u32` | Scalar, x86-64-v4 | Not implemented |
@@ -800,7 +800,7 @@ positions, complements, all population counts, accumulator wrapping, sentinel
 results, EXEC masks and aliases, including an in-place LO/HI sequence that
 constructs physical lane numbers under sparse EXEC masks. No modifiers apply.
 
-AND, OR, XOR, and NOT support 16-bit and 32-bit values. The 16-bit forms
+AND, OR, XOR, and NOT support 16-bit and 32-bit values; XNOR supports 32-bit values. The 16-bit forms
 select source and destination halves with `HIGH_A`, `HIGH_B` (binary forms),
 and `HIGH_D`, preserving the other destination half. The 32-bit forms have
 no instruction modifiers. SIMD processes sixteen lanes on v4, including every
@@ -816,13 +816,19 @@ creation, and reversal. `BFE` takes its offset from `B` and width from `C`;
 five bits, so width 32 produces zero. Signed extraction first sign-extends the
 source beyond bit 31, then sign-extends the selected field. `BFI` selects bits
 from `B` wherever `A` is set and from `C` elsewhere. `BFREV` reverses all 32 bits.
+`ALIGNBIT` extracts the low word of the concatenation `A:B` shifted right by
+`C & 31` bits; `ALIGNBYTE` shifts it by `(C & 3) * 8` bits. A zero shift
+returns `B`, and high count bits are ignored.
 These rules follow rocjitsu's integer helpers. No instruction modifiers apply;
 all host FP state is preserved. Eight-lane v3 and sixteen-lane v4 paths use
 variable shifts, Boolean operations, and byte lookup/shuffle reversal. `BFI`
 uses scalar on v3 because its AVX2 candidate showed little benefit; v4 uses
 native ternary logic. Independent per-bit tests cover every offset, width and
 source bit, signed boundary crossings, ignored high count bits, truth tables,
-EXEC masks, and whole-register aliases.
+EXEC masks, and whole-register aliases. Alignment tests exercise every bit of
+the 64-bit concatenation at every shift. Pinned-core Ryzen 9 7950X3D measurements
+show 1.31x for alignment on v3, 4.75–4.89x on v4, and 3.61x for XNOR on v4
+(seven samples, each at least 10 ms).
 
 Combined integer instructions include shift/add, add/shift, shift/OR, AND/OR,
 three-input OR/XOR, and XOR/add. Shifts mask their count to five bits, and
