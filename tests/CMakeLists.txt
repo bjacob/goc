@@ -54,6 +54,7 @@ foreach(declaration IN LISTS goc_rdna4_reporting_declarations)
      symbol MATCHES "^goc_rdna4_(s_cmp|v_cmpx?)_[a-z]+_f(16|32|64)$" OR
      symbol MATCHES "^goc_rdna4_v_(fma|fmac|fmamk|fmaak|pk_fma|pk_fmac)_f16$" OR
      symbol MATCHES "^goc_rdna4_v_(sin|cos)_f(16|32)$" OR
+     symbol MATCHES "^goc_rdna4_v_fma_mix(lo|hi)_f16$" OR
      symbol MATCHES "^goc_rdna4_v_div_fmas_f(32|64)$" OR
      symbol MATCHES "^goc_rdna4_v_div_fixup_f(16|32|64)$" OR
      symbol MATCHES "^goc_rdna4_s_(ceil|floor|trunc|rndne)_f(16|32)$")

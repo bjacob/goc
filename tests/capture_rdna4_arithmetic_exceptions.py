@@ -25,10 +25,11 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("output", type=Path)
-parser.add_argument("family", choices=("div_fixup", "div_fmas", "fma_mixlo", "fma_mixhi", "fma", "pk_fma", "pk_fmac", "sin", "cos"))
+parser.add_argument("family", choices=("div_fixup", "div_fmas", "dot2_f32_f16", "dot2_f32_bf16", "fma_mixlo", "fma_mixhi", "fma", "pk_fma", "pk_fmac", "sin", "cos"))
 parser.add_argument("width", type=int, choices=(16, 32, 64))
 parser.add_argument("--boundaries", action="store_true", help="FP32 SIN/COS boundary corpus")
 parser.add_argument("--rounding-boundaries", action="store_true", help="FMA underflow/overflow corpus")
+parser.add_argument("--mix-high", action="store_true", help="mixed FMA high halves and source modifiers")
 args = parser.parse_args()
 out, family, width = args.output, args.family, args.width
 if (family in ("fma", "pk_fma", "pk_fmac") and width != 16) or (family in ("sin", "cos") and width == 64):
@@ -37,6 +38,8 @@ out.mkdir(parents=True, exist_ok=True)
 n = 65536 if family in ("sin", "cos") else 8192
 input_width = 32 if family.startswith("fma_mix") else width
 frac, bias = {16: (10, 15), 32: (23, 127), 64: (52, 1023)}[input_width]
+if family == "dot2_f32_bf16":
+    frac, bias = 7, 127
 sign = 1 << (input_width - 1)
 inf = (2 * bias + 1) << frac
 one = bias << frac
@@ -63,6 +66,17 @@ for i in range(n):
                    for j, x in enumerate(row)]
         else:
             row = [x | (((x * 0x9e37 + 0x1234) & 65535) << 16) for x in row]
+    if family.startswith("dot2_"):
+        if i < 4096:
+            row[:2] = [x | (values[(((i >> (8 - j * 4)) & 15) + 5) % 16] << 16)
+                       for j, x in enumerate(row[:2])]
+            fp32 = [0, 0x80000000, 1, 0x80000001, 0x7fffff, 0x800000,
+                    0x3f800000, 0xbf800000, 0x40000000, 0x7f7fffff, 0x7effffff,
+                    0x7f800000, 0xff800000, 0x7f800001, 0xffc00003, 0x1000000]
+            row[2] = fp32[i & 15]
+        else:
+            row[:2] = [x | (((x * 0x9e37 + 0x1234) & 65535) << 16) for x in row[:2]]
+            row[2] = (state * 0x2545f4914f6cdd1d) & 0xffffffff
     if family in ("sin", "cos"):
         row = [i if width == 16 else (i << 16) | ((i * 0x9e37) & 65535), 0, 0]
     if args.boundaries:
@@ -106,8 +120,16 @@ for m in range(16):
         operands = operands[:1]
     dest = "v[6:7]" if width == 64 else "v6"
     instruction = f"v_{family}_f{width} {dest}, " + ", ".join(operands)
-    if family.startswith("fma_mix"):
-        instruction = f"v_{family}_f16 v6, v0, v2, v4"
+    if family.startswith("dot2_"):
+        instruction = f"v_{family} v6, v0, v2, v4"
+        instruction += " op_sel:[1,1,0] op_sel_hi:[0,0,0]" if m & 8 else ""
+        instruction += " neg_lo:[1,0,1]" if m & 1 else ""
+        instruction += " neg_hi:[0,1,0]" if m & 2 else ""
+        instruction += " clamp" if m & 4 else ""
+    elif family.startswith("fma_mix"):
+        sources = "-v0, |v2|, -|v4|" if args.mix_high else "v0, v2, v4"
+        instruction = f"v_{family}_f16 v6, {sources}"
+        instruction += " op_sel:[1,1,1]" if args.mix_high else ""
         instruction += f" op_sel_hi:[{m & 1},{(m >> 1) & 1},{(m >> 2) & 1}]"
         instruction += " clamp" if m & 8 else ""
     elif family.startswith("pk_"):

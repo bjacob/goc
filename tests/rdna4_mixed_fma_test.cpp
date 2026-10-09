@@ -45,7 +45,12 @@ bool equal(int op, uint32_t got, uint32_t want, bool exact) {
   std::copy_n(input[3], 32, out);
   const uint32_t *a[] = {input[0]}, *b[] = {input[1]}, *c[] = {input[2]};
   uint32_t *d[] = {out};
-  int status = functions[op](flags, UINT32_MAX, mode, d, a, b, c, nullptr);
+  uint32_t exceptions = 0x80000000;
+  int status = functions[op](
+      flags, UINT32_MAX, mode, d, a, b, c,
+      op && (flags & GOC_SEMANTICS_MASK) <= GOC_SEMANTICS_EXACT_EMPIRICAL ? &exceptions : nullptr);
+  if (exceptions != 0x80000000)
+    return ::testing::AssertionFailure() << "unexpected mixed FMA exception flags";
   if (status != GOC_SUCCESS)
     return ::testing::AssertionFailure() << "status " << status;
   for (int lane = 0; lane < 32; ++lane) {
@@ -446,4 +451,41 @@ TEST(MixedFma, AlternatingDestinationHalvesPreservePriorWrites) {
         ASSERT_EQ(output[lane], expected[lane]) << cpu << '/' << step << '/' << lane;
     }
   }
+}
+
+TEST(MixedFma, NoExceptionHardwareCorpora) {
+  // RX 9070 gfx1201, capture_rdna4_arithmetic_exceptions.py fma_mixlo/fma_mixhi 16,
+  // with and without --mix-high: all 1,048,576 flag reads are zero. This includes
+  // all eight source-format combinations, both output halves, FP16_OVFL, CLAMP,
+  // source modifiers, 4,096 edge triples and 4,096 pseudorandom triples.
+  const uint32_t inputs[] = {0,          0x80000000, 1,          0x80000001, 0x007fffff, 0x00800000,
+                             0x3f800000, 0xbf800000, 0x40000000, 0x7f7fffff, 0x7effffff, 0x7f800000,
+                             0xff800000, 0x7f800001, 0xffc00003, 0x01000000};
+  for (unsigned op = 1; op < 3; ++op)
+    for (unsigned variant = 0; variant < 64; ++variant) {
+      uint32_t mode =
+          ((variant & 7) << 13) | (variant & 8 ? GOC_ALU_CLAMP : 0) |
+          (variant & 16 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_NEG_A |
+                              GOC_ALU_NEG_C | GOC_ALU_ABS_B | GOC_ALU_ABS_C
+                        : 0);
+      uint64_t flags =
+          GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT | (variant & 32 ? GOC_FP16_OVFL : 0);
+      for (unsigned i = 0; i < 8192; ++i) {
+        uint32_t words[4][32] = {};
+        uint64_t state = uint64_t(i) * 0x9e3779b97f4a7c15ULL;
+        for (unsigned operand = 0; operand < 3; ++operand) {
+          state ^= state >> 12;
+          state ^= state << 25;
+          state ^= state >> 27;
+          words[operand][0] = i < 4096 ? inputs[(i >> (8 - operand * 4)) & 15]
+                                       : uint32_t(state * 0x2545f4914f6cdd1dULL);
+        }
+        const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+        uint32_t *d[] = {words[3]}, exceptions = 0x80000055;
+        ASSERT_EQ(functions[op](flags | (i % (goc_init_cpu_flags() + 1)), 1, mode, d, a, b, c,
+                                &exceptions),
+                  GOC_SUCCESS);
+        EXPECT_EQ(exceptions, 0x80000055);
+      }
+    }
 }

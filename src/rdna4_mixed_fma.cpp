@@ -74,10 +74,13 @@ int goc_rdna4_v_fma_mix_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, u
   return mixed_fma<goc::MixedFma::Float>(flags, exec_mask, mode, d, a, b, c);
 }
 
+// RX 9070 MIXLO/MIXHI do not generate exception flags, including invalid
+// arithmetic and overflow. A requested update therefore leaves the register
+// unchanged; the numerical path and its validation are unchanged.
 int goc_rdna4_v_fma_mixlo_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, const uint32_t *const *b,
                               const uint32_t *const *c, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return mixed_fma<goc::MixedFma::Low>(flags, exec_mask, mode, d, a, b, c);
 }
@@ -85,7 +88,7 @@ int goc_rdna4_v_fma_mixlo_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode,
 int goc_rdna4_v_fma_mixhi_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, const uint32_t *const *b,
                               const uint32_t *const *c, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return mixed_fma<goc::MixedFma::High>(flags, exec_mask, mode, d, a, b, c);
 }

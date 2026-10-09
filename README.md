@@ -2164,6 +2164,10 @@ output scaling suppress flags as above. FP32/64 `DIV_FMAS` also reports overflow
 underflow, and inexact, including per-lane conditional scaling. Hardware suppresses
 invalid/input-denormal flags for these instructions. Additional FMA16 and
 `DIV_FMAS` captures bracket underflow/overflow rounding boundaries.
+`FMA_MIXLO_F16`/`FMA_MIXHI_F16` accept reporting but leave the register unchanged:
+all 1,048,576 hardware flag reads are zero, including invalid arithmetic and
+overflow with every source-format combination, both half selections, source
+modifiers, clamp, and saturation.
 
 In loose mode, other affected instructions leave the register unchanged. Loose
 semantics require no optional global-state output, even with a non-null pointer.

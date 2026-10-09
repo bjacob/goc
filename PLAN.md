@@ -415,6 +415,9 @@ FP32/64 `DIV_FMAS` report overflow, underflow and inexact after conditional
 post-scaling; hardware suppresses invalid/input-denormal flags. Integer guard and
 sticky bits supply reporting, with additional FMA16/DIV_FMAS hardware captures
 around underflow and overflow rounding boundaries.
+FP16 `FMA_MIXLO`/`FMA_MIXHI` accept reporting and leave the register unchanged:
+1,048,576 hardware flag reads are zero, including invalid arithmetic, overflow,
+source-format/half selection, modifiers, and saturation.
 Other affected instructions reject requested
 reporting in non-loose modes before accessing operands, even for empty
 `exec_mask`, with precedence over other validation errors. Null retains existing
