@@ -164,6 +164,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_{i32,u32}`, `v_max3_{i32,u32}`, `v_minmax_{i32,u32}`, `v_maxmin_{i32,u32}`, `v_med3_{i32,u32}` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_sin_f16`, `v_cos_f16` | Scalar, x86-64-v3; half selectors and all modifiers | Rounded captured RDNA3/4 integer model |
 | `v_sin_f32`, `v_cos_f32` | Scalar, x86-64-v3 | Captured RDNA3/4 integer model |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
 | `v_dot4_f32_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar, x86-64-v3 | Not implemented |
@@ -365,6 +366,17 @@ results under every host rounding mode and x86 denormal-control setting.
 Benchmarks compare full-wave default and modified calls against independent
 mathematical references; only these approximate FP32 rows use a numerical
 tolerance instead of bitwise output comparisons.
+
+FP16 `SIN` and `COS` share that model and the eight-lane SIMD evaluation,
+with `HIGH_A/D` selectors and all 128 modifier combinations. They round the
+trig result to FP16 before OMOD; active OMOD flushes tiny values before scaling
+and tiny rounded outputs afterward. The other destination half is preserved.
+Exact semantics preserve all host FP state. Exhaustive tests cover every half
+encoding against digests generated directly from rocjitsu, and verify loose
+SIMD outputs within one half-precision ULP of the model. Further tests cover
+all modifiers, half selectors, aliases, masks, host FP settings, and literal
+OMOD underflow boundaries. `GOC_FP16_OVFL` is accepted but has no effect because
+finite trig outputs and their permitted scaling cannot overflow FP16.
 
 FP32/FP64 `FREXP_MANT` extracts a signed binary significand with magnitude in
 [0.5, 1) for finite nonzero inputs. Subnormals are normalized on the SIMD path;

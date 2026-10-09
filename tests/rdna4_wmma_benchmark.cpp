@@ -829,6 +829,57 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_half_trig(uint64_t cpu, int iterations, int min_ms) {
+  using Unary = decltype(&goc_rdna4_v_sin_f16);
+  const Unary functions[] = {goc_rdna4_v_sin_f16, goc_rdna4_v_cos_f16};
+  const char *names[] = {"f16/sin", "f16/cos"};
+  for (int op = 0; op < 2; ++op)
+    for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D |
+                                                GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        double input = double(lane * 37 - 600) / 512;
+        uint16_t code = goc_test::half_bits(input);
+        r.data[0][lane] = modifiers ? (uint32_t(code) << 16) | 0x7c01 : 0x7c010000 | code;
+        r.data[16][lane] = 0xfacecafe;
+        double phase = std::remainder(modifiers ? -input : input, 1.0);
+        double angle = phase * 6.283185307179586476925286766559;
+        uint16_t want = goc_test::half_bits(op ? std::cos(angle) : std::sin(angle));
+        if (modifiers) {
+          double rounded = goc_test::half_value(want);
+          rounded = std::abs(rounded) < 0x1p-14 ? 0 : rounded * 0.5;
+          want = goc_test::half_bits(rounded);
+          if ((want & 0x7fff) < 0x400)
+            want = 0;
+          want = goc_test::half_bits(std::min(1.0, std::max(0.0, goc_test::half_value(want))));
+        }
+        r.expected[128 * (lane / 16) + lane % 16] =
+            modifiers ? (uint32_t(want) << 16) | 0xcafe : 0xface0000 | want;
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *,
+                          const uint32_t *const *) {
+        return functions[op](flags, mask, mode, d, a);
+      };
+      const char *mode = modifiers ? "NEG/hi/half/clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", mode, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
   using Unary = decltype(&goc_rdna4_v_sin_f32);
   const Unary functions[] = {goc_rdna4_v_sin_f32, goc_rdna4_v_cos_f32};
@@ -1997,8 +2048,9 @@ int main(int argc, char **argv) {
     return 1;
   }
   if (!benchmark_half_exponent(cpu, iterations, min_ms) ||
-      !benchmark_trig(cpu, iterations, min_ms) || !benchmark_half_unary(cpu, iterations, min_ms) ||
-      !benchmark_unary(cpu, iterations, min_ms) || !benchmark_frexp_exp(cpu, iterations, min_ms)) {
+      !benchmark_half_trig(cpu, iterations, min_ms) || !benchmark_trig(cpu, iterations, min_ms) ||
+      !benchmark_half_unary(cpu, iterations, min_ms) || !benchmark_unary(cpu, iterations, min_ms) ||
+      !benchmark_frexp_exp(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }

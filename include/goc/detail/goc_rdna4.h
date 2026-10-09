@@ -30,6 +30,18 @@ GOC_API int goc_rdna4_v_sin_f32(uint64_t flags, uint64_t exec_mask, uint32_t ins
 GOC_API int goc_rdna4_v_cos_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
 
+// FP16 sine/cosine of inputs measured in turns. Supports ABS_A, NEG_A, OMOD,
+// CLAMP and HIGH_A/D; preserves the unselected D half. Rounds to FP16 before
+// OMOD. Active OMOD flushes tiny inputs to scaling and tiny scaled results to
+// +0. Empirical exact semantics use rocjitsu's captured model with denormals
+// preserved; all host floating-point state is preserved.
+// Loose SIMD semantics require host nearest-even rounding with denormals enabled.
+// GOC_FP16_OVFL is accepted and has no effect on the bounded finite results.
+GOC_API int goc_rdna4_v_sin_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+GOC_API int goc_rdna4_v_cos_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
 // FP16 fused multiply-add: selected halves of A/B/C/D, all ALU source/output
 // modifiers and GOC_FP16_OVFL. Preserves the other D half and inactive lanes.
 // Arithmetic rounds to FP16 before OMOD; active OMOD flushes tiny arithmetic
