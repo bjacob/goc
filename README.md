@@ -375,6 +375,27 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+`v_cvt_off_f32_i4` interprets the low nibble as signed i4 and converts it to
+FP32 divided by 16, then applies OMOD/CLAMP. Higher source bits are ignored.
+`v_cvt_pk_u8_f32` rounds FP32 A to nearest-even, saturates to [0,255], maps
+NaNs to zero, and replaces byte `(B & 3)` of C. Its ABS/NEG modifiers apply only
+to A; CLAMP is accepted without numeric effect. Per-lane byte selection uses
+SIMD variable shifts and stays vectorized with every supported modifier.
+Both expose loose semantics with scalar, eight-lane v3 and sixteen-lane v4
+paths, full EXEC masking and all source/destination aliases.
+
+RX 9070 (`gfx1201`) captures of 36 inputs across eight instruction/modifier
+combinations establish these rules. In particular, byte packing rounds 1.5 to
+2, whereas rocjitsu's current handler truncates. Tests preserve those hardware
+results and cover every nibble, FP32 neighbors of every byte-rounding midpoint,
+all byte positions and modifiers, ignored selector/source bits, 85 masks,
+unaligned storage and every whole-register alias layout. Results are independent
+of host rounding; nibble-offset conversion also preserves FP exception flags.
+Benchmarks use full EXEC, mixed per-lane byte positions, and default/modified
+instructions. On the development Ryzen 9 7950X3D, pinned-core timings showed
+1.11–5.13x for v3 and 5.02–18.63x for v4 versus scalar (seven samples, each
+at least 10 ms); v3's larger offset-conversion gain is on the modified workload.
+
 Integer conversions cover `v_cvt_i32_i16`, `v_cvt_u32_u16`,
 `v_cvt_pk_i16_i32`, and `v_cvt_pk_u16_u32`. Widening selects either source
 half with `GOC_ALU_HIGH_A` and sign- or zero-extends it. Packing follows

@@ -18,6 +18,25 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Convert A's signed low nibble to FP32 divided by 16, then apply OMOD/CLAMP.
+// Each operand holds one VGPR; higher source bits are ignored. Supports loose
+// semantics, full EXEC masking and whole-register aliasing. Results are exact
+// under all host rounding modes, preserving host FP state.
+GOC_API int goc_rdna4_v_cvt_off_f32_i4(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a);
+
+// Convert FP32 A to an unsigned byte with nearest-even rounding, saturation
+// to [0,255] and NaN-to-zero. Insert it into byte (B & 3) of C and write D;
+// each operand holds one VGPR. Supports A ABS/NEG; CLAMP is accepted without
+// numeric effect. Loose semantics, full EXEC masking and all whole-register
+// aliases are supported. Host rounding does not affect results; exceptions may
+// change. GOC_FP16_OVFL has no effect.
+GOC_API int goc_rdna4_v_cvt_pk_u8_f32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      const uint32_t *const *c);
+
 // Integer widening and saturating packing, with one VGPR per operand. Widening
 // selects the low/high A half with HIGH_A, then sign- or zero-extends to D.
 // Packing saturates each 32-bit source to the signed/unsigned 16-bit range,
