@@ -3,6 +3,7 @@
 #include "rdna4_integer_ternary.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <stdint.h>
 
@@ -36,8 +37,14 @@ template <goc::IntegerTernary Op> uint32_t evaluate(uint32_t a, uint32_t b, uint
 }
 
 template <goc::IntegerTernary Op>
-int ternary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int ternary(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (mode >> 32)
+    return goc::execute_dpp(flags, mask, mode, a,
+                            [&](uint32_t effective, const uint32_t *const *source) {
+                              return ternary<Op>(flags, effective, uint32_t(mode), d, source, b, c);
+                            });
+
   if (int error = goc::validate(flags, mode))
     return error;
   if (!uint32_t(mask))
@@ -58,8 +65,19 @@ int ternary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
   }
 #endif
   uint32_t result[32];
-  for (int lane = 0; lane < 32; ++lane)
-    result[lane] = evaluate<Op>(a[0][lane], b[0][lane], c[0][lane]);
+  if constexpr (Op == goc::IntegerTernary::ShiftAdd || Op == goc::IntegerTernary::AddShift ||
+                Op == goc::IntegerTernary::ShiftOr) {
+    // Clang's baseline vector shifts use FP conversions for powers of two;
+    // converting 2^31 raises FE_INVALID. Explicit SIMD paths use integer shifts.
+#if defined(__clang__)
+#pragma clang loop vectorize(disable) interleave(disable) unroll(disable)
+#endif
+    for (int lane = 0; lane < 32; ++lane)
+      result[lane] = evaluate<Op>(a[0][lane], b[0][lane], c[0][lane]);
+  } else {
+    for (int lane = 0; lane < 32; ++lane)
+      result[lane] = evaluate<Op>(a[0][lane], b[0][lane], c[0][lane]);
+  }
   for (int lane = 0; lane < 32; ++lane)
     if ((mask >> lane) & 1)
       d[0][lane] = result[lane];
@@ -71,63 +89,47 @@ int ternary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 int goc_rdna4_v_lshl_add_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::ShiftAdd>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_add_lshl_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::AddShift>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_lshl_or_b32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::ShiftOr>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_and_or_b32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::AndOr>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_or3_b32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::Or3>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_xor3_b32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::Xor3>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_xad_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::XorAdd>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_lerp_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::Lerp>(flags, mask, mode, d, a, b, c);
 }

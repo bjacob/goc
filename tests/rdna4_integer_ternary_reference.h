@@ -3,9 +3,21 @@
 #ifndef GOC_TEST_RDNA4_INTEGER_TERNARY_REFERENCE_H_
 #define GOC_TEST_RDNA4_INTEGER_TERNARY_REFERENCE_H_
 
+#include "goc/goc.h"
+
 #include <stdint.h>
 
 namespace goc_test {
+
+inline const char *const integer_ternary_names[] = {
+    "v_lshl_add_u32", "v_add_lshl_u32", "v_lshl_or_b32", "v_and_or_b32",
+    "v_or3_b32",      "v_xor3_b32",     "v_xad_u32",     "v_lerp_u8"};
+
+using IntegerTernaryFn = decltype(&goc_rdna4_v_lshl_add_u32);
+inline const IntegerTernaryFn integer_ternary_functions[] = {
+    goc_rdna4_v_lshl_add_u32, goc_rdna4_v_add_lshl_u32, goc_rdna4_v_lshl_or_b32,
+    goc_rdna4_v_and_or_b32,   goc_rdna4_v_or3_b32,      goc_rdna4_v_xor3_b32,
+    goc_rdna4_v_xad_u32,      goc_rdna4_v_lerp_u8};
 
 // op: shift/add, add/shift, shift/OR, AND/OR, OR3, XOR3, XOR/add, byte LERP.
 // Wide arithmetic and per-bit truth tables are independent of the SIMD forms.

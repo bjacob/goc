@@ -16,11 +16,6 @@
 
 namespace {
 
-using Fn = decltype(&goc_rdna4_v_lshl_add_u32);
-const Fn functions[] = {goc_rdna4_v_lshl_add_u32, goc_rdna4_v_add_lshl_u32, goc_rdna4_v_lshl_or_b32,
-                        goc_rdna4_v_and_or_b32,   goc_rdna4_v_or3_b32,      goc_rdna4_v_xor3_b32,
-                        goc_rdna4_v_xad_u32,      goc_rdna4_v_lerp_u8};
-
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t words[4][32]) {
   uint32_t expected[32];
   for (int lane = 0; lane < 32; ++lane)
@@ -28,7 +23,7 @@ const Fn functions[] = {goc_rdna4_v_lshl_add_u32, goc_rdna4_v_add_lshl_u32, goc_
         goc_test::integer_ternary_reference(op, words[0][lane], words[1][lane], words[2][lane]);
   const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
   uint32_t *d[] = {words[3]};
-  int status = functions[op](flags, UINT32_MAX, 0, d, a, b, c);
+  int status = goc_test::integer_ternary_functions[op](flags, UINT32_MAX, 0, d, a, b, c);
   if (status != GOC_SUCCESS)
     return ::testing::AssertionFailure() << "status " << status;
   for (int lane = 0; lane < 32; ++lane)
@@ -126,7 +121,8 @@ TEST(IntegerTernary, LiteralStageOrderAndByteOverflow) {
         std::fill_n(words[reg], 32, cases[op][reg]);
       const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
       uint32_t *d[] = {words[3]};
-      ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, d, a, b, c), GOC_SUCCESS);
+      ASSERT_EQ(goc_test::integer_ternary_functions[op](cpu, UINT32_MAX, 0, d, a, b, c),
+                GOC_SUCCESS);
       for (uint32_t value : words[3])
         EXPECT_EQ(value, cases[op][3]);
     }
@@ -158,7 +154,8 @@ TEST(IntegerTernary, MasksAndWholeRegisterAliases) {
             const uint32_t *a[] = {words[source[0]]}, *b[] = {words[source[1]]},
                            *c[] = {words[source[2]]};
             uint32_t *d[] = {words[target]};
-            ASSERT_EQ(functions[op](cpu, mask, 0, d, a, b, c), GOC_SUCCESS);
+            ASSERT_EQ(goc_test::integer_ternary_functions[op](cpu, mask, 0, d, a, b, c),
+                      GOC_SUCCESS);
             for (int reg = 0; reg < 4; ++reg)
               ASSERT_TRUE(std::equal(words[reg], words[reg] + 32, expected[reg]));
           }
@@ -189,18 +186,26 @@ TEST(IntegerTernary, ValidationAndHostFpState) {
           uint32_t *d[] = {words[3]};
           for (uint64_t mask : {UINT64_C(0), UINT64_MAX}) {
             for (int bit = 0; bit < 32; ++bit)
-              EXPECT_EQ(functions[op](cpu, mask, uint32_t(1) << bit, d, a, b, c),
+              EXPECT_EQ(goc_test::integer_ternary_functions[op](cpu, mask, uint32_t(1) << bit, d, a,
+                                                                b, c),
                         GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), mask, 0, d, a, b, c),
+            EXPECT_EQ(goc_test::integer_ternary_functions[op](cpu | (UINT64_C(1) << 63), mask, 0, d,
+                                                              a, b, c),
                       GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                    mask, 0, d, a, b, c),
+            EXPECT_EQ(goc_test::integer_ternary_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                                                  GOC_SEMANTICS_STRICT,
+                                                              mask, 0, d, a, b, c),
                       GOC_ERROR_UNSUPPORTED_SEMANTICS);
           }
           for (const auto &reg : words)
             for (uint32_t value : reg)
               EXPECT_EQ(value, 0x7f800001);
           EXPECT_TRUE(check(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_FP16_OVFL, words));
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            words[1][lane] = lane;
+            words[2][lane] = 31 - lane;
+          }
+          EXPECT_TRUE(check(op, cpu, words));
         }
       EXPECT_EQ(std::fegetround(), rounding);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);

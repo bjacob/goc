@@ -1654,6 +1654,20 @@ and unsigned binary MIN and ternary MED3 with full EXEC. On the Ryzen 9 7950X3D,
 these cases measure 17.7–22.2 ns on AVX2 (1.9–2.4× scalar speed) and 8.0–11.2 ns
 on AVX-512 (3.7–5.2×), using seven pinned samples of at least 10 ms each.
 
+DPP8/DPP16 also cover the eight combined integer operations: LSHL_ADD,
+ADD_LSHL, LSHL_OR, AND_OR, OR3, XOR3, XAD (XOR/add), and byte LERP. A GFX1201
+capture checks 14,336 results; independent tests combine all source-equality
+patterns and destination aliases with every EXEC pattern, integer boundaries,
+and random words. Host FP state is preserved. Existing AVX2 paths for combined
+shifts and LERP, and AVX-512 paths for all eight operations, remain available
+with DPP. The benchmark covers LSHL_ADD, AND_OR, and LERP with full EXEC.
+The baseline combined-shift loops explicitly prevent Clang from replacing
+integer shifts with FP conversions that raise `FE_INVALID` at shift count 31;
+regression tests cover this boundary with and without DPP, and every count
+without DPP. On the Ryzen 9 7950X3D, the DPP benchmark cases measure
+17.8–21.9 ns on x86-64-v3 (1.9–2.8× scalar speed) and 8.2–11.5 ns on
+x86-64-v4 (3.7–6.4×), using seven pinned samples of at least 10 ms each.
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal
