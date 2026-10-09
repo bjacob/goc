@@ -9,6 +9,15 @@
 
 namespace goc {
 
+// Replace FP32 subnormals with zero of the same sign.
+inline __m512 flush_denorm_f32(__m512 value) {
+  auto bits = _mm512_castps_si512(value);
+  auto magnitude = _mm512_and_si512(bits, _mm512_set1_epi32(INT32_MAX));
+  auto tiny = _mm512_cmplt_epi32_mask(magnitude, _mm512_set1_epi32(0x00800000));
+  auto sign = _mm512_and_si512(bits, _mm512_set1_epi32(INT32_MIN));
+  return _mm512_mask_mov_ps(value, tiny, _mm512_castsi512_ps(sign));
+}
+
 // Prepare FP32 results for a nonzero OMOD: tiny values become +0, while
 // halving normal values below twice minimum normal produces signed zero.
 inline __m512 prepare_omod_f32(__m512 value, uint32_t mode) {

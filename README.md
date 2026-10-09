@@ -382,10 +382,16 @@ x86-64-v3 and x86-64-v4 paths. Tests cross all 512 modifier combinations with
 85 masks, all CPU levels and output aliasing each source; literal bit patterns
 add fused-rounding, signed-zero, subnormal, overflow and NaN-clamping cases.
 The DX9 FMA variant has the same scalar/v3/v4 paths and full modifier/mask/alias
-coverage. If either factor is signed zero, it selects modified C before output
-scaling and CLAMP. Without output modifiers, the selected C retains its signed
-zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
-a literal fused-rounding witness for nonzero products.
+coverage. It flushes all three inputs and the result to signed zero regardless
+of guest denormal mode. If either flushed factor is zero, the product becomes
+positive zero before addition to C. Thus a negative-zero C produces positive
+zero in RNE, and an addend signaling NaN is quieted. OMOD and CLAMP apply after
+this arithmetic. Input/output flush flags are accepted and redundant here.
+A GFX1201 capture checks 262,144 results across all 512 modifiers and all four
+hardware denormal modes; tests cover every destination alias, exceptional
+factors and accumulators, output-underflow boundaries, and fused rounding.
+With NEG/ABS/OMOD, DX9 FMA measures 18.4 ns on AVX2 and 8.9 ns on
+AVX-512 (6.2× and 12.7× scalar speed on the Ryzen 9 7950X3D).
 
 Sparse WMMA covers the four FP16/BF16 `v_swmmac_*_16x16x32_*` forms,
 with FP32 or matching packed output. D is the in/out accumulator, A contains
@@ -1581,8 +1587,8 @@ and 7.0 ns on AVX-512 (5.3× and 12.6× scalar speed).
 Other FP families still need this OMOD boundary audit, and other applicable
 instructions still need DPP support. FP32 unary operations now also have the
 OMOD correction and mandatory transcendental denormal flushing described above.
-DX9 FMA still needs forced-denormal-flush corrections and positive-zero-product
-addition rather than direct selection of the addend.
+DX9 FMA now also has mandatory denormal flushing and positive-zero-product
+addition, validated independently across all hardware denormal modes.
 
 All public instruction entry points take a 64-bit `instruction_flags` value.
 Existing modifier bits keep their meanings. The extra width accommodates the

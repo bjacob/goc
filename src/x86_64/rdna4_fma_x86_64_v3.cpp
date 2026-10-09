@@ -41,16 +41,21 @@ void run(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, cons
           _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(c + i)), keep_c),
           flip_c));
     }
-    auto result = _mm256_fmadd_ps(va, vb, vc);
     if constexpr (Dx9Zero) {
+      va = flush_denorm_f32(va);
+      vb = flush_denorm_f32(vb);
+      vc = flush_denorm_f32(vc);
       auto zero = _mm256_setzero_ps();
       auto has_zero =
           _mm256_or_ps(_mm256_cmp_ps(va, zero, _CMP_EQ_OQ), _mm256_cmp_ps(vb, zero, _CMP_EQ_OQ));
-      result = _mm256_blendv_ps(result, vc, has_zero);
+      va = _mm256_blendv_ps(va, zero, has_zero);
+      vb = _mm256_blendv_ps(vb, _mm256_set1_ps(1), has_zero);
     }
+    auto result = _mm256_fmadd_ps(va, vb, vc);
+    if constexpr (Dx9Zero)
+      result = flush_denorm_f32(result);
     if (modifiers & GOC_ALU_OMOD_HALF) {
-      if constexpr (!Dx9Zero)
-        result = prepare_omod_f32(result, modifiers);
+      result = prepare_omod_f32(result, modifiers);
       result = _mm256_mul_ps(result, scale);
     }
     if (modifiers & GOC_ALU_CLAMP)

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// DX9 flushing and zero-product addition follow rocjitsu fp_mode::arithmetic.
 
 #include "goc/goc.h"
 #include "internal.h"
@@ -14,7 +15,9 @@ namespace {
 template <bool Dx9Zero>
 int fma(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(0x1ff)))
+  constexpr uint64_t fp_flags =
+      Dx9Zero ? GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS : 0;
+  if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(0x1ff), false, fp_flags))
     return error;
   if (uint32_t(exec_mask) == 0)
     return GOC_SUCCESS;
@@ -46,13 +49,19 @@ int fma(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags, uint32_t
     float x = goc::alu_input(a[0][lane], instruction_flags);
     float y = goc::alu_input(b[0][lane], instruction_flags >> 1);
     float z = goc::alu_input(c[0][lane], instruction_flags >> 2);
-    float value;
+    if constexpr (Dx9Zero) {
+      x = goc::flush_denorm_f32(x);
+      y = goc::flush_denorm_f32(y);
+      z = goc::flush_denorm_f32(z);
+      if (x == 0 || y == 0) {
+        x = 0;
+        y = 1;
+      }
+    }
+    float value = std::fma(x, y, z);
     if constexpr (Dx9Zero)
-      value = (x == 0 || y == 0) ? z : std::fma(x, y, z);
-    else
-      value = std::fma(x, y, z);
-    result[lane] = goc::as_bits((Dx9Zero ? goc::alu_output(value, instruction_flags)
-                                         : goc::alu_output_f32(value, instruction_flags)));
+      value = goc::flush_denorm_f32(value);
+    result[lane] = goc::as_bits(goc::alu_output_f32(value, instruction_flags));
   }
 
   for (int lane = 0; lane < 32; ++lane)

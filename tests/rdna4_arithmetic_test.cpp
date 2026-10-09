@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dx9_hardware.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_fma_omod_hardware.h"
 #include "rdna4_omod_reference.h"
@@ -120,7 +121,6 @@ namespace {
 
 void check_fma_modifiers(bool dx9) {
   auto fn = dx9 ? goc_rdna4_v_fma_dx9_zero_f32 : goc_rdna4_v_fma_f32;
-  const float scales[] = {1, 2, 4, 0.5f};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint32_t modifiers = 0; modifiers < 512; ++modifiers)
       for (uint64_t mask : rdna4_exec_masks())
@@ -146,9 +146,8 @@ void check_fma_modifiers(bool dx9) {
             // product/sum, independent of the implementation's FP32 FMA.
             float want = float(inputs[0] * inputs[1] + inputs[2]);
             if (dx9 && (inputs[0] == 0 || inputs[1] == 0))
-              want = float(inputs[2]);
-            want = dx9 ? want * scales[modifiers >> 6 & 3]
-                       : goc_test::omod_f32_reference(want, modifiers);
+              want = float(0.0 + inputs[2]);
+            want = goc_test::omod_f32_reference(want, modifiers);
             if (modifiers & GOC_ALU_CLAMP)
               want = std::min(1.0f, std::max(0.0f, want));
             expected[lane] = goc::as_bits(want);
@@ -193,11 +192,10 @@ TEST(Arithmetic, FmaModifierSpecialValues) {
     }
 }
 
-TEST(Arithmetic, Dx9FmaZeroSelectionWithEveryModifierAndAlias) {
+TEST(Arithmetic, Dx9FmaZeroProductAdditionWithEveryModifierAndAlias) {
   const uint32_t values[] = {0,          0x80000000, 1,          0x80000001, 0x3f800000, 0xbf800000,
                              0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000, 0x7fc12345, 0xffc12345,
                              0x7f812345, 0xff812345, 0x3f000000, 0xbf000000};
-  const double scales[] = {1, 2, 4, 0.5};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint32_t mode = 0; mode < 512; ++mode)
       for (bool reverse : {false, true})
@@ -217,12 +215,13 @@ TEST(Arithmetic, Dx9FmaZeroSelectionWithEveryModifierAndAlias) {
               want &= 0x7fffffff;
             if (mode & GOC_ALU_NEG_C)
               want ^= 0x80000000;
-            if (mode & GOC_ALU_OMOD_HALF) {
-              if ((want & 0x7fffffff) > 0x7f800000)
-                want |= 0x00400000;
-              else
-                want = goc::as_bits(float(double(goc::as_float(want)) * scales[(mode >> 6) & 3]));
-            }
+            // The zero product is positive; adding a flushed signed zero
+            // gives +0 in RNE. An addend NaN is quieted by the addition.
+            if ((want & 0x7fffffff) < 0x00800000)
+              want = 0;
+            else if ((want & 0x7fffffff) > 0x7f800000)
+              want |= 0x00400000;
+            want = goc::as_bits(goc_test::omod_f32_reference(goc::as_float(want), mode));
             if (mode & GOC_ALU_CLAMP) {
               float value = goc::as_float(want);
               want = !(value > 0) ? 0 : value > 1 ? 0x3f800000 : want;
@@ -304,4 +303,33 @@ TEST(Arithmetic, FmaAndFmacOmodHardwareBoundaries) {
                   EXPECT_EQ(reg[33], 0xdeadbeefu);
                 }
               }
+}
+
+TEST(Arithmetic, Dx9HardwareAllModifiersAndDenormalModes) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned fp = 0; fp < 4; ++fp)
+      for (unsigned set = 0; set < 4; ++set)
+        for (unsigned alias = 0; alias < 4; ++alias) {
+          SCOPED_TRACE(::testing::Message() << cpu << '/' << fp << '/' << set << '/' << alias);
+          uint64_t hash = UINT64_C(14695981039346656037);
+          uint64_t flags = cpu | (fp & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                           (fp & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+          for (uint32_t mode = 0; mode < 512; ++mode) {
+            uint32_t words[4][32] = {};
+            for (unsigned lane = 0; lane < 32; ++lane)
+              goc_test::dx9_hardware_inputs(set, lane, words[0][lane], words[1][lane],
+                                            words[2][lane]);
+            uint32_t *p[] = {words[0], words[1], words[2], words[3]};
+            ASSERT_EQ(goc_rdna4_v_fma_dx9_zero_f32(flags, UINT32_MAX, mode, &p[alias], &p[0], &p[1],
+                                                   &p[2]),
+                      GOC_SUCCESS);
+            for (uint32_t value : words[alias]) {
+              if ((value & 0x7fffffff) > 0x7f800000)
+                value = 0x7fc00000;
+              for (unsigned shift = 0; shift < 32; shift += 8)
+                hash = (hash ^ ((value >> shift) & 255)) * UINT64_C(1099511628211);
+            }
+          }
+          EXPECT_EQ(hash, goc_test::dx9_hardware_hashes[set]);
+        }
 }

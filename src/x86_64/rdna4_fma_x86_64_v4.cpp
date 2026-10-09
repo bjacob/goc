@@ -38,16 +38,21 @@ void run(uint32_t mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, cons
       vc = _mm512_castsi512_ps(
           _mm512_xor_si512(_mm512_and_si512(_mm512_loadu_si512(c + i), keep_c), flip_c));
     }
-    auto result = _mm512_fmadd_ps(va, vb, vc);
     if constexpr (Dx9Zero) {
+      va = flush_denorm_f32(va);
+      vb = flush_denorm_f32(vb);
+      vc = flush_denorm_f32(vc);
       auto zero = _mm512_setzero_ps();
       auto has_zero =
           _mm512_cmp_ps_mask(va, zero, _CMP_EQ_OQ) | _mm512_cmp_ps_mask(vb, zero, _CMP_EQ_OQ);
-      result = _mm512_mask_mov_ps(result, has_zero, vc);
+      va = _mm512_mask_mov_ps(va, has_zero, zero);
+      vb = _mm512_mask_mov_ps(vb, has_zero, _mm512_set1_ps(1));
     }
+    auto result = _mm512_fmadd_ps(va, vb, vc);
+    if constexpr (Dx9Zero)
+      result = flush_denorm_f32(result);
     if (modifiers & GOC_ALU_OMOD_HALF) {
-      if constexpr (!Dx9Zero)
-        result = prepare_omod_f32(result, modifiers);
+      result = prepare_omod_f32(result, modifiers);
       result = _mm512_mul_ps(result, scale);
     }
     if (modifiers & GOC_ALU_CLAMP)

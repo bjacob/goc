@@ -194,17 +194,17 @@ struct Registers {
       }
       float want = float(a * b + c);
       if (dx9 && (a == 0 || b == 0))
-        want = modifiers && c == 0 ? -0.0f : float(c);
+        want = float(c);
       if (modifiers)
         want *= 0.5f;
       expected[128 * (lane / 16) + lane % 16] = bits(want);
     }
     if (dx9) {
-      // Zero times a positive factor selects C's negative zero unchanged.
+      // The positive zero product adds to negative zero, producing +0 in RNE.
       data[0][0] = 0;
       data[4][0] = 0x40000000;
       data[8][0] = 0x80000000;
-      expected[0] = modifiers ? 0 : 0x80000000;
+      expected[0] = 0;
     }
   }
 
