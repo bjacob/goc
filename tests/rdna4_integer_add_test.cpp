@@ -156,3 +156,25 @@ TEST(IntegerAdd, ValidationAndFpEnvironment) {
       }
     }
 }
+
+TEST(IntegerAdd, SignedSaturationMixedLaneSigns) {
+  const uint32_t a_values[] = {0x7fffffff, 0x80000000, 0x7fffffff, 0x80000000,
+                               0x40000000, 0xc0000000, 0,          0xffffffff};
+  const uint32_t b_values[] = {1, 0xffffffff, 0xffffffff, 1, 0x40000000, 0xc0000001, 0x80000000, 1};
+  const uint32_t expected[] = {0x7fffffff, 0x80000000, 0x7ffffffe, 0x80000001,
+                               0x7fffffff, 0x80000001, 0x80000000, 0};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint32_t mask : rdna4_exec_masks()) {
+      uint32_t a[32], b[32];
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        a[lane] = a_values[lane % 8];
+        b[lane] = b_values[lane % 8];
+      }
+      // Adjacent lanes need opposite saturation limits; D also aliases A.
+      uint32_t *d = a;
+      const uint32_t *ap = a, *bp = b;
+      ASSERT_EQ(goc_rdna4_v_add_nc_i32(cpu, mask, GOC_ALU_CLAMP, &d, &ap, &bp), GOC_SUCCESS);
+      for (unsigned lane = 0; lane < 32; ++lane)
+        EXPECT_EQ(a[lane], (mask >> lane & 1) ? expected[lane % 8] : a_values[lane % 8]);
+    }
+}

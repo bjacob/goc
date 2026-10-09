@@ -9,6 +9,13 @@
 
 namespace goc {
 
+// Clamp the wrapped sum of signed 32-bit lanes to the signed range.
+inline __m256i saturate_signed_sum(__m256i x, __m256i y, __m256i sum) {
+  auto overflow = _mm256_and_si256(_mm256_xor_si256(x, sum), _mm256_xor_si256(y, sum));
+  auto limit = _mm256_xor_si256(_mm256_srai_epi32(x, 31), _mm256_set1_epi32(0x7fffffff));
+  return _mm256_blendv_epi8(sum, limit, _mm256_srai_epi32(overflow, 31));
+}
+
 // Replace FP32 subnormals with zero of the same sign.
 inline __m256 flush_denorm_f32(__m256 value) {
   auto bits = _mm256_castps_si256(value);

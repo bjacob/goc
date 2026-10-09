@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_integer_add.h"
+#include "x86_64/rdna4_alu_x86_64_v3.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -23,16 +24,14 @@ void integer_add_sat_x86_64_v3(uint32_t mask, uint32_t *d, const uint32_t *a, co
       result = _mm256_add_epi32(x, y);
     else
       result = _mm256_sub_epi32(x, y);
-    if constexpr (Signed) {
+    if constexpr (Signed && Op == IntegerAdd::Add) {
+      result = saturate_signed_sum(x, y, result);
+    } else if constexpr (Signed) {
       auto different_inputs = _mm256_xor_si256(x, y);
       auto different_result = _mm256_xor_si256(x, result);
       __m256i overflow;
-      // Addition overflows when equal-sign inputs produce the opposite sign;
-      // subtraction overflows when opposite-sign inputs flip A's sign.
-      if constexpr (Op == IntegerAdd::Add)
-        overflow = _mm256_andnot_si256(different_inputs, different_result);
-      else
-        overflow = _mm256_and_si256(different_inputs, different_result);
+      // Subtraction overflows when opposite-sign inputs flip A's sign.
+      overflow = _mm256_and_si256(different_inputs, different_result);
       overflow = _mm256_srai_epi32(overflow, 31);
       auto saturated = _mm256_xor_si256(_mm256_set1_epi32(INT32_MAX), _mm256_srai_epi32(x, 31));
       result = _mm256_or_si256(_mm256_and_si256(overflow, saturated),

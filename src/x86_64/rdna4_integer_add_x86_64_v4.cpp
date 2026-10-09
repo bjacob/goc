@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_integer_add.h"
+#include "x86_64/rdna4_alu_x86_64_v4.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -26,16 +27,14 @@ void integer_add_x86_64_v4(uint32_t mask, uint32_t mode, uint32_t *d, const uint
     if constexpr (Op == IntegerAdd::Add3) {
       result = _mm512_add_epi32(result, _mm512_loadu_si512(c + lane));
     } else if (mode & GOC_ALU_CLAMP) {
-      if constexpr (Signed) {
+      if constexpr (Signed && Op == IntegerAdd::Add) {
+        result = saturate_signed_sum(x, y, result);
+      } else if constexpr (Signed) {
         auto different_inputs = _mm512_xor_si512(x, y);
         auto different_result = _mm512_xor_si512(x, result);
         __m512i overflow;
-        // Addition overflows when equal-sign inputs produce the opposite sign;
-        // subtraction overflows when opposite-sign inputs flip A's sign.
-        if constexpr (Op == IntegerAdd::Add)
-          overflow = _mm512_andnot_si512(different_inputs, different_result);
-        else
-          overflow = _mm512_and_si512(different_inputs, different_result);
+        // Subtraction overflows when opposite-sign inputs flip A's sign.
+        overflow = _mm512_and_si512(different_inputs, different_result);
         overflow = _mm512_srai_epi32(overflow, 31);
         auto saturated = _mm512_xor_si512(_mm512_set1_epi32(INT32_MAX), _mm512_srai_epi32(x, 31));
         result = _mm512_or_si512(_mm512_and_si512(overflow, saturated),

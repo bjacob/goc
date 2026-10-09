@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "rdna4_swmmac_integer.h"
+#include "x86_64/rdna4_alu_x86_64_v4.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -22,13 +23,8 @@ void swmmac_integer_x86_64_v4(unsigned k, uint32_t mask, bool clamp, uint32_t *c
           sum = _mm512_add_epi32(sum, _mm512_mullo_epi32(_mm512_set1_epi32(input.a[row][ck]), b));
         }
         auto next = _mm512_add_epi32(acc, sum);
-        if (clamp) {
-          auto overflow =
-              _mm512_and_si512(_mm512_xor_si512(acc, next), _mm512_xor_si512(sum, next));
-          auto limit = _mm512_xor_si512(_mm512_srai_epi32(acc, 31), _mm512_set1_epi32(0x7fffffff));
-          next = _mm512_mask_mov_epi32(
-              next, _mm512_cmp_epi32_mask(overflow, _mm512_setzero_si512(), _MM_CMPINT_LT), limit);
-        }
+        if (clamp)
+          next = saturate_signed_sum(acc, sum, next);
         acc = next;
       }
       _mm512_storeu_si512(reinterpret_cast<__m512i *>(result[row % 8] + col + 16 * (row / 8)), acc);
