@@ -27,9 +27,10 @@ static const uint64_t GOC_SEMANTICS_EXACT_EMPIRICAL = (UINT64_C(1) << 16);
 // Require support for the selected semantics instead of falling back to loose.
 static const uint64_t GOC_SEMANTICS_STRICT = (UINT64_C(1) << 18);
 
-// GPU MODE.FP16_OVFL: saturate finite FP16 overflow to the largest finite value.
-// Otherwise finite overflow produces infinity. Does not change input infinities
-// or BF16/FP32 results, and is independent of the host floating-point environment.
+// GPU MODE.FP16_OVFL: saturate finite overflow to the largest finite value for
+// supporting FP16/FP8/BF8 instructions. Otherwise use the format's overflow encoding.
+// Does not change input-infinity handling or BF16/FP32 results, and is independent
+// of the host floating-point environment.
 static const uint64_t GOC_FP16_OVFL = (UINT64_C(1) << 19);
 
 // Status codes returned by instruction emulation functions.

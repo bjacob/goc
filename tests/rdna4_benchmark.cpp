@@ -8,6 +8,7 @@
 #include "rdna4_conversion16_reference.h"
 #include "rdna4_conversion32_reference.h"
 #include "rdna4_conversion64_reference.h"
+#include "rdna4_cube_reference.h"
 #include "rdna4_dense_golden.h"
 #include "rdna4_fp8_conversion_reference.h"
 #include "rdna4_fp8_narrow_reference.h"
@@ -1298,6 +1299,57 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
         if (simd < 0)
           return false;
         print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_cube(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {goc_rdna4_v_cubeid_f32, goc_rdna4_v_cubesc_f32, goc_rdna4_v_cubetc_f32,
+                            goc_rdna4_v_cubema_f32};
+  const char *names[] = {"v_cubeid_f32", "v_cubesc_f32", "v_cubetc_f32", "v_cubema_f32"};
+  const uint32_t values[] = {0x3f800000, 0xc0000000, 0x40800000, 0x3f000000, 0xc0a00000, 0,
+                             0x3e800000, 0xc0400000, 0x3f800001, 0xbf800000, 0x40400000, 0x40000000,
+                             0xbe800000, 0x80000000, 0x3fc00000, 0xc0200000};
+  const uint64_t semantics = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+  for (unsigned op = 0; op < 4; ++op)
+    for (bool modified : {false, true}) {
+      uint32_t mode = modified ? GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_ABS_B | GOC_ALU_NEG_C |
+                                     GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP
+                               : 0;
+      Registers r;
+      r.output_regs = 1;
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        r.data[0][lane] = values[lane % 16];
+        r.data[4][lane] = values[(lane * 3 + 5) % 16];
+        r.data[8][lane] = values[(lane * 7 + 9) % 16];
+        r.expected[128 * (lane / 16) + lane % 16] =
+            goc_test::cube_reference(op, r.data[0][lane], r.data[4][lane], r.data[8][lane], mode);
+      }
+      const char *label = modified ? "mixed/half/clamp" : "none";
+      double scalar =
+          measure(functions[op], GOC_CPU_BASELINE | semantics, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "exact", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd =
+            measure(functions[op], GOC_CPU_X86_64_V3 | semantics, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "exact", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd =
+            measure(functions[op], GOC_CPU_X86_64_V4 | semantics, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "exact", label, "x86-64-v4", simd, scalar / simd);
       }
 #endif
     }
@@ -2946,7 +2998,7 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave");
-  if (!benchmark_fp8_narrow(cpu, iterations, min_ms) ||
+  if (!benchmark_cube(cpu, iterations, min_ms) || !benchmark_fp8_narrow(cpu, iterations, min_ms) ||
       !benchmark_byte_pack(cpu, iterations, min_ms) ||
       !benchmark_integer_conversion(cpu, iterations, min_ms) ||
       !benchmark_normalized(cpu, iterations, min_ms) ||

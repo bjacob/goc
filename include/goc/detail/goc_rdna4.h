@@ -18,6 +18,32 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Cube-map face ID, S/T coordinates and signed doubled major axis, respectively.
+// A/B/C contain X/Y/Z in one VGPR each; D holds one VGPR. Z wins magnitude ties,
+// then Y, then X. Comparisons flush subnormals; SC/TC copy selected source bits
+// and quiet NaNs. A zero or unordered major axis is treated as nonnegative.
+// MA doubles the signed major axis with nearest-even overflow and +0 for zeros.
+// Supports all source ABS/NEG, OMOD and CLAMP. Nonzero OMOD flushes subnormal
+// inputs/outputs, maps input zeros to +0 and preserves NaN sign/payload.
+// Supports loose and empirical exact semantics.
+// Full EXEC masking and all whole-register aliases are supported. Host FP state
+// is preserved and does not affect results; GOC_FP16_OVFL has no effect.
+GOC_API int goc_rdna4_v_cubeid_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_cubesc_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_cubetc_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_cubema_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, const uint32_t *const *c);
+
 // Narrow FP32 to OCP E4M3FN (FP8) / E5M2 (BF8). Each operand is one VGPR.
 // PK rounds A/B to nearest-even into the low/high bytes of the destination half
 // selected by HIGH_D, preserving the other half. Supports A/B ABS/NEG.

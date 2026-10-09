@@ -375,6 +375,30 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Cube-map arithmetic covers `v_cubeid_f32`, `v_cubesc_f32`, `v_cubetc_f32`,
+and `v_cubema_f32`, with scalar, eight-lane v3 and sixteen-lane v4 paths.
+The borrowed rocjitsu bit-level model supports both loose and empirical exact
+semantics on every path. A/B/C hold X/Y/Z; face IDs are 0/1 for positive/negative
+X, 2/3 for Y and 4/5 for Z. Z wins magnitude ties, then Y, then X. The major-axis
+instruction returns twice the **signed** major component.
+
+Comparisons flush subnormal magnitudes, while coordinate selection preserves
+selected source bits and quiets NaNs. Nonzero OMOD flushes subnormal inputs and
+outputs independently of host FP settings; zero and NaN handling follows the
+captured hardware rules. All source ABS/NEG, OMOD and CLAMP combinations stay
+vectorized. The implementation uses integer operations throughout, preserving
+host FP state and providing identical results under every host rounding mode.
+
+RX 9070 captures matched the model for 87,040 outputs. Regression tests retain
+32 literal input/output cases and compact output digests covering the complete
+4,096-input Cartesian hardware corpus across 20 instruction/modifier cases.
+Independent numeric references test all 512 modifier combinations, exceptional
+values and random bit patterns; mask/alias tests cross every modifier with all
+85 EXEC masks and every destination alias. Benchmarks use full masks and default
+or mixed modifiers. Pinned-core measurements on the development Ryzen 9 7950X3D
+showed 2.42–6.48x for v3 and 4.29–11.99x for v4 versus scalar (seven samples,
+each at least 10 ms).
+
 FP8/BF8 narrowing covers `v_cvt_pk_fp8_f32`, `v_cvt_pk_bf8_f32`,
 `v_cvt_sr_fp8_f32`, and `v_cvt_sr_bf8_f32`. Packed forms round two FP32
 sources to nearest-even and replace the selected destination half. Stochastic
