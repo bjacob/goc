@@ -18,6 +18,34 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Division fixup: A is a provisional quotient, B the original denominator,
+// C the original numerator. Repairs sign, propagates C/B NaNs in that order,
+// and handles zero/infinity cases and extreme FP32/FP64 exponent underflow.
+// FP16/FP32 operands hold one VGPR each; FP64 operands use low/high VGPR pairs.
+// FP16 supports HIGH_A/B/C/D and preserves the unselected D half. FP64 writes
+// D[0] before D[1], so D[1] wins if both destination pointers alias.
+// Supports all source ABS/NEG, OMOD and CLAMP. Nonzero OMOD flushes subnormals
+// before scaling, maps existing zeros to +0 and preserves signed underflow zero.
+// FP16_OVFL saturates FP16 provisional-quotient overflow before OMOD and finite
+// scaling overflow; exceptional B/C cases retain their infinity/NaN behavior.
+// Loose and empirical exact semantics use fixed nearest-even rounding with
+// input/output denormals enabled. All EXEC masks and whole-register aliases
+// are supported; results are independent of host FP state and preserve it.
+GOC_API int goc_rdna4_v_div_fixup_f16(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_div_fixup_f32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_div_fixup_f64(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      const uint32_t *const *c);
+
 // Cube-map face ID, S/T coordinates and signed doubled major axis, respectively.
 // A/B/C contain X/Y/Z in one VGPR each; D holds one VGPR. Z wins magnitude ties,
 // then Y, then X. Comparisons flush subnormals; SC/TC copy selected source bits

@@ -375,6 +375,34 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Division fixup covers `v_div_fixup_f16`, `v_div_fixup_f32`, and
+`v_div_fixup_f64`. A supplies a provisional quotient, B the original denominator,
+and C the original numerator. These instructions repair the quotient's sign and
+exceptional cases; they do not compute a general division. C's NaN takes priority
+over B's NaN. FP32/FP64 also implement the extreme encoded-exponent underflow
+shortcut. FP16 supports all source/destination half selectors and preserves the
+unselected destination half; FP64 uses low/high VGPR pairs with full cross-half
+alias support and D1 winning if the two destination pointers coincide.
+
+The rocjitsu-derived bit model supports loose and empirical exact semantics,
+all source ABS/NEG, OMOD and CLAMP, and `GOC_FP16_OVFL` for FP16. Hardware captures
+establish two FP16 details beyond rocjitsu's promoted model: OMOD flushes a
+subnormal provisional result before scaling, and saturation of a nonfinite
+provisional quotient for finite nonzero operands happens before OMOD. Integer-only
+scalar and SIMD paths preserve host FP state and retain vectorization for every
+modifier. V3 processes eight FP16/FP32 or four FP64 lanes; v4 processes sixteen
+FP16/FP32 or eight FP64 lanes.
+
+Tests verify 122,880 captured RX 9070 outputs using compact digests of three
+4,096-input Cartesian corpora across ten modifier/overflow configurations.
+Independent numeric references cover all 8,192 FP16 selector/modifier combinations,
+all 512 FP32/FP64 modifier combinations, both saturation settings, special values
+and random bits. Additional coverage includes 85 EXEC masks, unaligned storage,
+all FP64 destination-pair aliases, shared sources and host rounding/exception
+preservation. Pinned-core benchmarks on the development Ryzen 9 7950X3D measured
+2.01–4.01x for v3 and 3.66–8.44x for v4 versus scalar (seven samples, each at
+least 10 ms), including nondefault modifiers.
+
 Cube-map arithmetic covers `v_cubeid_f32`, `v_cubesc_f32`, `v_cubetc_f32`,
 and `v_cubema_f32`, with scalar, eight-lane v3 and sixteen-lane v4 paths.
 The borrowed rocjitsu bit-level model supports both loose and empirical exact
