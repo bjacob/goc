@@ -75,10 +75,12 @@ int dot(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t
 
 } // namespace
 
+// RX 9070 DOT2 does not generate EXCP_FLAG_USER updates, including NaNs,
+// denormals and overflow. Reporting leaves the register unchanged.
 int goc_rdna4_v_dot2_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return dot<false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
@@ -87,7 +89,7 @@ int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint32_t exec_mask, uint64_t instr
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c,
                               uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return dot<true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }

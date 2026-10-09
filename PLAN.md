@@ -418,6 +418,8 @@ around underflow and overflow rounding boundaries.
 FP16 `FMA_MIXLO`/`FMA_MIXHI` accept reporting and leave the register unchanged:
 1,048,576 hardware flag reads are zero, including invalid arithmetic, overflow,
 source-format/half selection, modifiers, and saturation.
+`DOT2_F32_F16`/`DOT2_F32_BF16` likewise leave the register unchanged, validated
+with 524,288 hardware flag reads across packed selections, negation, and clamp.
 Other affected instructions reject requested
 reporting in non-loose modes before accessing operands, even for empty
 `exec_mask`, with precedence over other validation errors. Null retains existing

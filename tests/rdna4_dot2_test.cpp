@@ -61,9 +61,11 @@ TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
                     expected[lane] = goc::as_bits(float(x0 * y0 + x1 * y1 + c));
                   }
                   std::copy(v[alias], v[alias] + 32, before);
+                  uint32_t exceptions = 0x80000055;
                   ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode, &v[alias],
-                               &v[0], &v[1], &v[2], nullptr),
+                               &v[0], &v[1], &v[2], &exceptions),
                             GOC_SUCCESS);
+                  EXPECT_EQ(exceptions, 0x80000055);
                   for (int lane = 0; lane < 32; ++lane)
                     EXPECT_EQ(v[alias][lane],
                               (exec_mask >> lane & 1) ? expected[lane] : before[lane]);
@@ -196,7 +198,10 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
                                *c[] = {storage[2] + 1};
                 uint32_t *d[] = {storage[alias] + 1};
                 auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
-                ASSERT_EQ(fn(cpu | semantics, exec_mask, mode, d, a, b, c, nullptr), GOC_SUCCESS);
+                uint32_t exceptions = 0x80000055;
+                ASSERT_EQ(fn(cpu | semantics, exec_mask, mode, d, a, b, c, &exceptions),
+                          GOC_SUCCESS);
+                EXPECT_EQ(exceptions, 0x80000055);
                 for (unsigned reg = 0; reg < 4; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
                     ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -253,4 +258,66 @@ TEST(Dot2, DppHardwareCorpus) {
             }
       EXPECT_EQ(hash, 0xd46ee8a52b583d85ULL) << cpu << "/" << semantics;
     }
+}
+
+TEST(Dot2, NoExceptionHardwareCorpora) {
+  // RX 9070 gfx1201, capture_rdna4_arithmetic_exceptions.py dot2_f32_f16/bf16 16:
+  // all 524,288 flag reads are zero. Both FP16_OVFL settings, sixteen modifiers,
+  // 4,096 edge triples and 4,096 random triples, with distinct packed halves.
+  const uint32_t accumulators[] = {0,          0x80000000, 1,          0x80000001,
+                                   0x7fffff,   0x800000,   0x3f800000, 0xbf800000,
+                                   0x40000000, 0x7f7fffff, 0x7effffff, 0x7f800000,
+                                   0xff800000, 0x7f800001, 0xffc00003, 0x1000000};
+  for (bool brain : {false, true}) {
+    unsigned fraction = brain ? 7 : 10, bias = brain ? 127 : 15;
+    uint32_t infinity = (2 * bias + 1) << fraction, one = bias << fraction;
+    const uint32_t values[] = {0,
+                               0x8000,
+                               1,
+                               0x8001,
+                               (1U << fraction) - 1,
+                               1U << fraction,
+                               one,
+                               0x8000 | one,
+                               one + (1U << fraction),
+                               infinity - 1,
+                               infinity - 1 - (1U << fraction),
+                               infinity,
+                               0x8000 | infinity,
+                               infinity | 1,
+                               0x8000 | infinity | (1U << (fraction - 1)) | 3,
+                               2U << fraction};
+    auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
+    for (unsigned variant = 0; variant < 32; ++variant) {
+      uint32_t mode =
+          (variant & 1 ? GOC_DOT_NEG_LO_A | GOC_DOT_NEG_C : 0) |
+          (variant & 2 ? GOC_DOT_NEG_HI_B : 0) | (variant & 4 ? GOC_DOT_CLAMP : 0) |
+          (variant & 8 ? GOC_DOT_LO_A_HIGH | GOC_DOT_LO_B_HIGH | GOC_DOT_HI_A_LOW | GOC_DOT_HI_B_LOW
+                       : 0);
+      for (unsigned i = 0; i < 8192; ++i) {
+        uint32_t words[4][32] = {};
+        uint64_t state = uint64_t(i) * 0x9e3779b97f4a7c15ULL;
+        for (unsigned operand = 0; operand < 3; ++operand) {
+          state ^= state >> 12;
+          state ^= state << 25;
+          state ^= state >> 27;
+          uint32_t random = uint32_t(state * 0x2545f4914f6cdd1dULL);
+          unsigned index = (i >> (8 - 4 * operand)) & 15;
+          if (operand == 2)
+            words[operand][0] = i < 4096 ? accumulators[index] : random;
+          else {
+            uint32_t lo = i < 4096 ? values[index] : uint16_t(random);
+            uint32_t hi = i < 4096 ? values[(index + 5) % 16] : ((lo * 0x9e37 + 0x1234) & 65535);
+            words[operand][0] = lo | (hi << 16);
+          }
+        }
+        const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+        uint32_t *d[] = {words[3]}, exceptions = 0x80000055;
+        uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                         (variant & 16 ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
+        ASSERT_EQ(fn(flags, 1, mode, d, a, b, c, &exceptions), GOC_SUCCESS);
+        EXPECT_EQ(exceptions, 0x80000055);
+      }
+    }
+  }
 }

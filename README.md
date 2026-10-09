@@ -2167,7 +2167,9 @@ invalid/input-denormal flags for these instructions. Additional FMA16 and
 `FMA_MIXLO_F16`/`FMA_MIXHI_F16` accept reporting but leave the register unchanged:
 all 1,048,576 hardware flag reads are zero, including invalid arithmetic and
 overflow with every source-format combination, both half selections, source
-modifiers, clamp, and saturation.
+modifiers, clamp, and saturation. `DOT2_F32_F16`/`DOT2_F32_BF16` likewise leave
+the register unchanged, validated with 524,288 hardware flag reads across packed
+selections, negation, clamp, and saturation.
 
 In loose mode, other affected instructions leave the register unchanged. Loose
 semantics require no optional global-state output, even with a non-null pointer.
