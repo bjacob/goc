@@ -106,32 +106,44 @@ int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_cvt_f16_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cvt_f16_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion16::SignedToHalf>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_cvt_f16_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cvt_f16_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion16::UnsignedToHalf>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_cvt_i16_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cvt_i16_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion16::HalfToSigned>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_cvt_u16_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cvt_u16_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion16::HalfToUnsigned>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_cvt_f16_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cvt_f16_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion16::FloatToHalf>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_rdna4_v_cvt_f32_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cvt_f32_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion16::HalfToFloat>(flags, exec_mask, instruction_flags, d, a);
 }

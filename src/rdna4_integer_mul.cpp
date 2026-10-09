@@ -60,41 +60,55 @@ int multiply(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_mul_lo_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_mul_lo_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return multiply<32, false, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_mul_hi_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_mul_hi_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return multiply<32, false, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_mul_hi_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_mul_hi_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return multiply<32, true, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_mul_i32_i24(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_mul_i32_i24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return multiply<24, true, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_mul_hi_i32_i24(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_mul_hi_i32_i24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return multiply<24, true, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_mul_u32_u24(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_mul_u32_u24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return multiply<24, false, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_mul_hi_u32_u24(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_mul_hi_u32_u24(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return multiply<24, false, true>(flags, exec_mask, instruction_flags, d, a, b);
 }

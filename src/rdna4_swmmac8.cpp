@@ -64,29 +64,37 @@ int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
 } // namespace
 
 int goc_rdna4_v_swmmac_f32_16x16x32_fp8_fp8(uint64_t flags, uint64_t exec_mask,
-                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            uint64_t instruction_flags, uint32_t *const *d,
                                             const uint32_t *const *a, const uint32_t *const *b,
                                             const uint32_t *const *index) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<false, false>(flags, exec_mask, instruction_flags, d, a, b, index);
 }
 
 int goc_rdna4_v_swmmac_f32_16x16x32_fp8_bf8(uint64_t flags, uint64_t exec_mask,
-                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            uint64_t instruction_flags, uint32_t *const *d,
                                             const uint32_t *const *a, const uint32_t *const *b,
                                             const uint32_t *const *index) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<false, true>(flags, exec_mask, instruction_flags, d, a, b, index);
 }
 
 int goc_rdna4_v_swmmac_f32_16x16x32_bf8_fp8(uint64_t flags, uint64_t exec_mask,
-                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            uint64_t instruction_flags, uint32_t *const *d,
                                             const uint32_t *const *a, const uint32_t *const *b,
                                             const uint32_t *const *index) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<true, false>(flags, exec_mask, instruction_flags, d, a, b, index);
 }
 
 int goc_rdna4_v_swmmac_f32_16x16x32_bf8_bf8(uint64_t flags, uint64_t exec_mask,
-                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            uint64_t instruction_flags, uint32_t *const *d,
                                             const uint32_t *const *a, const uint32_t *const *b,
                                             const uint32_t *const *index) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<true, true>(flags, exec_mask, instruction_flags, d, a, b, index);
 }

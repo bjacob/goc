@@ -20,9 +20,9 @@ const Fn functions[] = {
     goc_rdna4_v_cvt_pk_norm_u16_f32,
     goc_rdna4_v_cvt_pk_norm_i16_f16,
     goc_rdna4_v_cvt_pk_norm_u16_f16,
-    [](uint64_t f, uint64_t m, uint32_t i, uint32_t *const *d, const uint32_t *const *a,
+    [](uint64_t f, uint64_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
        const uint32_t *const *) { return goc_rdna4_v_cvt_norm_i16_f16(f, m, i, d, a); },
-    [](uint64_t f, uint64_t m, uint32_t i, uint32_t *const *d, const uint32_t *const *a,
+    [](uint64_t f, uint64_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
        const uint32_t *const *) { return goc_rdna4_v_cvt_norm_u16_f16(f, m, i, d, a); }};
 
 ::testing::AssertionResult check(unsigned op, uint64_t flags, uint32_t mode, const uint32_t av[32],

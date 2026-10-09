@@ -58,22 +58,28 @@ int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
 } // namespace
 
 int goc_rdna4_v_swmmac_i32_16x16x32_iu8(uint64_t flags, uint64_t exec_mask,
-                                        uint32_t instruction_flags, uint32_t *const *d,
+                                        uint64_t instruction_flags, uint32_t *const *d,
                                         const uint32_t *const *a, const uint32_t *const *b,
                                         const uint32_t *const *index) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<8, 32>(flags, exec_mask, instruction_flags, d, a, b, index);
 }
 
 int goc_rdna4_v_swmmac_i32_16x16x32_iu4(uint64_t flags, uint64_t exec_mask,
-                                        uint32_t instruction_flags, uint32_t *const *d,
+                                        uint64_t instruction_flags, uint32_t *const *d,
                                         const uint32_t *const *a, const uint32_t *const *b,
                                         const uint32_t *const *index) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<4, 32>(flags, exec_mask, instruction_flags, d, a, b, index);
 }
 
 int goc_rdna4_v_swmmac_i32_16x16x64_iu4(uint64_t flags, uint64_t exec_mask,
-                                        uint32_t instruction_flags, uint32_t *const *d,
+                                        uint64_t instruction_flags, uint32_t *const *d,
                                         const uint32_t *const *a, const uint32_t *const *b,
                                         const uint32_t *const *index) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<4, 64>(flags, exec_mask, instruction_flags, d, a, b, index);
 }

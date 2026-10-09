@@ -68,50 +68,66 @@ int ternary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_lshl_add_u32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_lshl_add_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::ShiftAdd>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_add_lshl_u32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_add_lshl_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::AddShift>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_lshl_or_b32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_lshl_or_b32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::ShiftOr>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_and_or_b32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_and_or_b32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::AndOr>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_or3_b32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_or3_b32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::Or3>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_xor3_b32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_xor3_b32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::Xor3>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_xad_u32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_xad_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::XorAdd>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_lerp_u8(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_lerp_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return ternary<goc::IntegerTernary::Lerp>(flags, mask, mode, d, a, b, c);
 }

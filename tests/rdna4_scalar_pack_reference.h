@@ -13,7 +13,7 @@ inline const char *const scalar_pack_names[] = {
     "s_bitreplicate_b64_b32", "s_cselect_b32",     "s_cselect_b64",     "s_quadmask_b32",
     "s_quadmask_b64",         "s_wqm_b32",         "s_wqm_b64"};
 
-inline int scalar_pack_call(unsigned op, uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *d,
+inline int scalar_pack_call(unsigned op, uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *d,
                             uint64_t *d64, uint64_t a, uint64_t b, uint32_t *scc,
                             uint32_t input_scc) {
   switch (op) {

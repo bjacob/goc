@@ -23,7 +23,7 @@ double number(uint64_t value) {
   return result;
 }
 
-int call(int op, uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int call(int op, uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (op == 0)
     return goc_rdna4_v_add_f64(flags, mask, mode, d, a, b);

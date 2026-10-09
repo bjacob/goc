@@ -16,7 +16,7 @@ namespace {
 
 using Fn = decltype(&goc_rdna4_v_ldexp_f16);
 
-int frexp_exp(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int frexp_exp(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
               const uint32_t *const *a, const uint32_t *const *) {
   return goc_rdna4_v_frexp_exp_i16_f16(flags, mask, mode, d, a);
 }

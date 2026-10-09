@@ -74,32 +74,44 @@ int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *d, const ui
 
 } // namespace
 
-int goc_rdna4_v_cmp_class_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cmp_class_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<16>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_cmp_class_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cmp_class_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<32>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_cmp_class_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cmp_class_f64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<64>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_cmpx_class_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cmpx_class_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<16>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_cmpx_class_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cmpx_class_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<32>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_cmpx_class_f64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_cmpx_class_f64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<64>(flags, exec_mask, instruction_flags, d, a, b);
 }

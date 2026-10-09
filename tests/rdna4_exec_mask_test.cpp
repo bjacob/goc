@@ -13,19 +13,19 @@ namespace {
 using Instruction = decltype(&goc_rdna4_v_fma_f32);
 
 template <auto Fn>
-int unary(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+int unary(uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
           const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
   return Fn(flags, mask, modifiers, d, a);
 }
 
 template <auto Fn>
-int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int binary(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
            const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
   return Fn(flags, mask, mode, d, a, b);
 }
 
 template <bool Half, bool Multiply>
-int literal_fma(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int literal_fma(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                 const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
   if constexpr (Half) {
     if constexpr (Multiply)

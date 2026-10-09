@@ -35,7 +35,7 @@ inline void scalar_compare_inputs(unsigned i, unsigned op, uint32_t *w) {
   }
 }
 
-inline int scalar_compare_call(unsigned op, uint64_t flags, uint64_t mask, uint32_t mode,
+inline int scalar_compare_call(unsigned op, uint64_t flags, uint64_t mask, uint64_t mode,
                                uint32_t *scc, uint64_t a, uint64_t b) {
   switch (op) {
   case 0:

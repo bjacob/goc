@@ -18,7 +18,7 @@ const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3c0
                            0x3c01, 0x3bff, 0x3800, 0xb800, 0x4000, 0xc000, 0xbc00,
                            0x7bff, 0xfbff, 0x7c00, 0xfc00, 0x7c01, 0xfe12};
 
-int call(bool accumulate, uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int call(bool accumulate, uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   return accumulate ? goc_rdna4_v_pk_fmac_f16(flags, mask, mode, d, a, b)
                     : goc_rdna4_v_pk_fma_f16(flags, mask, mode, d, a, b, c);
@@ -68,7 +68,7 @@ void fill(uint32_t (&words)[4][34]) {
   }
 }
 
-void run(bool accumulate, uint64_t flags, uint64_t mask, uint32_t mode, int a, int b, int c, int d,
+void run(bool accumulate, uint64_t flags, uint64_t mask, uint64_t mode, int a, int b, int c, int d,
          uint32_t (&words)[4][34]) {
   uint32_t before[4][34];
   std::memcpy(before, words, sizeof(before));

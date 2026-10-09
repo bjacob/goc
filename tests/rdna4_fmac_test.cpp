@@ -89,7 +89,7 @@ void fill(bool half, uint32_t (&words)[3][34], unsigned seed) {
   }
 }
 
-void run(bool half, uint64_t flags, uint64_t mask, uint32_t mode, int a, int b, int d,
+void run(bool half, uint64_t flags, uint64_t mask, uint64_t mode, int a, int b, int d,
          uint32_t (&words)[3][34]) {
   uint32_t before[3][34];
   std::memcpy(before, words, sizeof(before));

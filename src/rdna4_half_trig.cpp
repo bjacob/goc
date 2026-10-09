@@ -73,12 +73,16 @@ int trig(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_sin_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_sin_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return trig<false>(flags, mask, mode, d, a);
 }
 
-int goc_rdna4_v_cos_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_cos_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return trig<true>(flags, mask, mode, d, a);
 }

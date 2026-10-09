@@ -45,26 +45,34 @@ int dot(uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_dot4_f32_fp8_fp8(uint64_t flags, uint64_t mask, uint32_t modifiers,
+int goc_rdna4_v_dot4_f32_fp8_fp8(uint64_t flags, uint64_t mask, uint64_t modifiers,
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b, const uint32_t *const *c) {
+  if (modifiers >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return dot<false, false>(flags, mask, modifiers, d, a, b, c);
 }
 
-int goc_rdna4_v_dot4_f32_fp8_bf8(uint64_t flags, uint64_t mask, uint32_t modifiers,
+int goc_rdna4_v_dot4_f32_fp8_bf8(uint64_t flags, uint64_t mask, uint64_t modifiers,
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b, const uint32_t *const *c) {
+  if (modifiers >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return dot<false, true>(flags, mask, modifiers, d, a, b, c);
 }
 
-int goc_rdna4_v_dot4_f32_bf8_fp8(uint64_t flags, uint64_t mask, uint32_t modifiers,
+int goc_rdna4_v_dot4_f32_bf8_fp8(uint64_t flags, uint64_t mask, uint64_t modifiers,
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b, const uint32_t *const *c) {
+  if (modifiers >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return dot<true, false>(flags, mask, modifiers, d, a, b, c);
 }
 
-int goc_rdna4_v_dot4_f32_bf8_bf8(uint64_t flags, uint64_t mask, uint32_t modifiers,
+int goc_rdna4_v_dot4_f32_bf8_bf8(uint64_t flags, uint64_t mask, uint64_t modifiers,
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b, const uint32_t *const *c) {
+  if (modifiers >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return dot<true, true>(flags, mask, modifiers, d, a, b, c);
 }

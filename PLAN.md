@@ -89,8 +89,8 @@ following the above pattern. Each such function shall take the following functio
     standard floating-point type as appropriate.
   - Operands shall be enumerated in the same order as in the assembly syntax.
   - Instructions that have mode/flag bits, can pass them here, typically as a
-    `instruction_flags` parameter before other instruction operands, an unsigned integer
-    of suitable width. For example, MFMA instructions with `CBSZ`, `ABID`, etc modes.
+    `instruction_flags` parameter before other instruction operands, a `uint64_t`.
+    For example, MFMA instructions pass `CBSZ`, `ABID`, and related modes this way.
     Do combine all such flags into a single unsigned integer, rather than passing
     multiple short integers.
 * Implicit scalar inputs are passed by value after the explicit instruction
@@ -129,7 +129,7 @@ Example:
 int goc_rdna4_v_wmma_f32_16x16x16_f16(
   uint64_t flags,
   uint64_t exec_mask,
-  uint32_t instruction_flags,  // NEG and NEG_HI bits go here.
+  uint64_t instruction_flags,  // NEG and NEG_HI bits go here.
   uint32_t *const * vgpr_d,
   const uint32_t *const * vgpr_a,
   const uint32_t *const * vgpr_b,

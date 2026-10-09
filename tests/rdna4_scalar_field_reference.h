@@ -41,7 +41,7 @@ inline void scalar_field_inputs(unsigned i, uint32_t *w) {
   }
 }
 
-inline int scalar_field_call(unsigned op, uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *d,
+inline int scalar_field_call(unsigned op, uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *d,
                              uint64_t *d64, uint64_t a, uint32_t b, uint32_t *scc) {
   switch (op) {
   case 0:

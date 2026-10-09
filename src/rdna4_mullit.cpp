@@ -8,9 +8,11 @@
 #include <cmath>
 #include <stdint.h>
 
-int goc_rdna4_v_mullit_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_mullit_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(0x1ff)))
     return error;
   if (!uint32_t(exec_mask))

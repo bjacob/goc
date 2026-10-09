@@ -56,14 +56,18 @@ int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
 
 } // namespace
 
-int goc_rdna4_v_fma_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_fma_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_fmac_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_fmac_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A | GOC_ALU_HIGH_B |
                          GOC_ALU_HIGH_D;
@@ -75,12 +79,16 @@ int goc_rdna4_v_fmac_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t 
   return run(flags, mask, mode, d, a, b, d);
 }
 
-int goc_rdna4_v_fmamk_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_fmamk_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, uint16_t literal, const uint32_t *const *b) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<goc::FmaOperands::MultiplyLiteral>(flags, mask, mode, d, a, b, nullptr, literal);
 }
 
-int goc_rdna4_v_fmaak_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_fmaak_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b, uint16_t literal) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<goc::FmaOperands::AddLiteral>(flags, mask, mode, d, a, b, nullptr, literal);
 }

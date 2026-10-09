@@ -24,7 +24,7 @@ const uint16_t special16[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x
                               0x3c01, 0x3bff, 0x3800, 0xb800, 0x4000, 0xc000, 0xbc00,
                               0x7bff, 0xfbff, 0x7c00, 0xfc00, 0x7c01, 0xfe12};
 
-int call(bool half, bool multiply, uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int call(bool half, bool multiply, uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, uint32_t literal) {
   if (half)
     return multiply ? goc_rdna4_v_fmamk_f16(flags, mask, mode, d, a, uint16_t(literal), b)
@@ -72,7 +72,7 @@ void check(bool half, uint32_t actual, uint32_t before, uint32_t want, uint32_t 
 
 uint32_t selectors(unsigned bits) { return ((bits & 3) << 9) | ((bits & 4) ? GOC_ALU_HIGH_D : 0); }
 
-void run(bool half, bool multiply, uint64_t flags, uint64_t mask, uint32_t mode, int a, int b,
+void run(bool half, bool multiply, uint64_t flags, uint64_t mask, uint64_t mode, int a, int b,
          int d, uint32_t literal, uint32_t (&words)[3][34]) {
   uint32_t before[3][34];
   std::memcpy(before, words, sizeof(before));

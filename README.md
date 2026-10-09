@@ -1521,6 +1521,13 @@ On the Ryzen 9 7950X3D, pinned CPU-8 measurements (seven samples, at least
 10 ms each) show AVX2 at 11.8–13.2 ns/wave (2.3–3.3× scalar) and AVX-512
 at 2.4–5.2 ns/wave (5.9–14.3×), including FI/BOUND_CTRL configurations.
 
+All public instruction entry points take a 64-bit `instruction_flags` value.
+Existing modifier bits keep their meanings. The extra width accommodates the
+24-bit DPP8 lane selector together with arithmetic modifiers; unsupported upper
+bits currently return `GOC_ERROR_INVALID_FLAGS` before operand access. An API-wide
+test covers this rejection contract for all 669 wave32/wave64 entry points.
+Function-pointer adapters must use `uint64_t` for this parameter too.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU

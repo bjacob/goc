@@ -14,9 +14,9 @@ namespace {
 
 using Fn = decltype(&goc_rdna4_v_cvt_pk_i16_i32);
 const Fn functions[] = {
-    [](uint64_t f, uint64_t m, uint32_t i, uint32_t *const *d, const uint32_t *const *a,
+    [](uint64_t f, uint64_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
        const uint32_t *const *) { return goc_rdna4_v_cvt_i32_i16(f, m, i, d, a); },
-    [](uint64_t f, uint64_t m, uint32_t i, uint32_t *const *d, const uint32_t *const *a,
+    [](uint64_t f, uint64_t m, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
        const uint32_t *const *) { return goc_rdna4_v_cvt_u32_u16(f, m, i, d, a); },
     goc_rdna4_v_cvt_pk_i16_i32, goc_rdna4_v_cvt_pk_u16_u32};
 

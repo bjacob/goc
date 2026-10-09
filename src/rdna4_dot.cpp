@@ -68,14 +68,18 @@ int dot(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *con
 
 } // namespace
 
-int goc_rdna4_v_dot2_f32_f16(uint64_t flags, uint64_t mask, uint32_t instruction_flags,
+int goc_rdna4_v_dot2_f32_f16(uint64_t flags, uint64_t mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return dot<false>(flags, mask, instruction_flags, d, a, b, c);
 }
 
-int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint64_t mask, uint32_t instruction_flags,
+int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint64_t mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return dot<true>(flags, mask, instruction_flags, d, a, b, c);
 }

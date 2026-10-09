@@ -59,9 +59,11 @@ constexpr std::array<uint64_t, 2370> trig_preop_table = make_table();
 
 } // namespace goc
 
-int goc_rdna4_v_trig_preop_f64(uint64_t flags, uint64_t exec_mask, uint32_t mode,
+int goc_rdna4_v_trig_preop_f64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   const uint32_t known =
       GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_2 | GOC_ALU_OMOD_4 | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known, true))

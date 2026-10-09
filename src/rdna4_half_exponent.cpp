@@ -68,12 +68,16 @@ int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
 
 } // namespace
 
-int goc_rdna4_v_ldexp_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_ldexp_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<true>(flags, mask, mode, d, a, b);
 }
 
-int goc_rdna4_v_frexp_exp_i16_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_frexp_exp_i16_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                   const uint32_t *const *a) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return run<false>(flags, mask, mode, d, a, nullptr);
 }

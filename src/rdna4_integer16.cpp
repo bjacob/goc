@@ -84,138 +84,186 @@ int arithmetic(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_pk_add_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_add_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Add, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_pk_sub_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_sub_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Sub, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_pk_add_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_add_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Add, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_pk_sub_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_sub_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Sub, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_pk_min_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_min_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Min, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_pk_max_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_max_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Max, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_pk_min_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_min_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Min, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_pk_max_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_max_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Max, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_pk_mul_lo_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_mul_lo_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Mul, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_pk_lshlrev_b16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_lshlrev_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::ShiftLeft, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_pk_lshrrev_b16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_lshrrev_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::ShiftRight, false>(flags, exec_mask, instruction_flags, d, a,
                                                        b);
 }
 
-int goc_rdna4_v_pk_ashrrev_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_pk_ashrrev_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::ShiftRight, true>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_add_nc_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_add_nc_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Add, true, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_sub_nc_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_sub_nc_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Sub, true, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_add_nc_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_add_nc_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Add, false, false>(flags, exec_mask, instruction_flags, d, a,
                                                        b);
 }
 
-int goc_rdna4_v_sub_nc_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_sub_nc_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Sub, false, false>(flags, exec_mask, instruction_flags, d, a,
                                                        b);
 }
 
-int goc_rdna4_v_min_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_min_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Min, true, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_max_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_max_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Max, true, false>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
-int goc_rdna4_v_min_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_min_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Min, false, false>(flags, exec_mask, instruction_flags, d, a,
                                                        b);
 }
 
-int goc_rdna4_v_max_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_max_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Max, false, false>(flags, exec_mask, instruction_flags, d, a,
                                                        b);
 }
 
-int goc_rdna4_v_mul_lo_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_mul_lo_u16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::Mul, false, false>(flags, exec_mask, instruction_flags, d, a,
                                                        b);
 }
 
-int goc_rdna4_v_lshlrev_b16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_lshlrev_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::ShiftLeft, false, false>(flags, exec_mask, instruction_flags, d,
                                                              a, b);
 }
 
-int goc_rdna4_v_lshrrev_b16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_lshrrev_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::ShiftRight, false, false>(flags, exec_mask, instruction_flags,
                                                               d, a, b);
 }
 
-int goc_rdna4_v_ashrrev_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+int goc_rdna4_v_ashrrev_i16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a,
                             const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Integer16::ShiftRight, true, false>(flags, exec_mask, instruction_flags, d,
                                                              a, b);
 }

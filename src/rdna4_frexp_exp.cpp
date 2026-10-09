@@ -47,12 +47,16 @@ int frexp_exp(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_frexp_exp_i32_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_frexp_exp_i32_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                   const uint32_t *const *a) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return frexp_exp<false>(flags, mask, mode, d, a);
 }
 
-int goc_rdna4_v_frexp_exp_i32_f64(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_frexp_exp_i32_f64(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                   const uint32_t *const *a) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return frexp_exp<true>(flags, mask, mode, d, a);
 }

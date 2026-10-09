@@ -58,20 +58,26 @@ int mixed_fma(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 } // namespace
 
-int goc_rdna4_v_fma_mix_f32(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_fma_mix_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return mixed_fma<goc::MixedFma::Float>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_fma_mixlo_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_fma_mixlo_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, const uint32_t *const *b,
                               const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return mixed_fma<goc::MixedFma::Low>(flags, mask, mode, d, a, b, c);
 }
 
-int goc_rdna4_v_fma_mixhi_f16(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int goc_rdna4_v_fma_mixhi_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, const uint32_t *const *b,
                               const uint32_t *const *c) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
   return mixed_fma<goc::MixedFma::High>(flags, mask, mode, d, a, b, c);
 }

@@ -40,6 +40,11 @@ int goc_test_c_api(void) {
   if (status != GOC_ERROR_INVALID_FLAGS || d[0] != 0x41d00000)
     return 0;
 
+  status = goc_rdna4_v_fma_f32(0, 1, UINT64_C(1) << 63, &pd, input_vgprs(&pa), input_vgprs(&pb),
+                               input_vgprs(&pc));
+  if (status != GOC_ERROR_INVALID_FLAGS || d[0] != 0x41d00000)
+    return 0;
+
   // Literal arguments follow assembly order and carry raw floating-point bits.
   const uint32_t *ra = a, *rb = b;
   status = goc_rdna4_v_fmamk_f32(0, 1, 0, &pd, &ra, 0x40000000, &rb);
