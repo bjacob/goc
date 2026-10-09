@@ -33,7 +33,11 @@ int mixed_fma(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
       Dst != goc::MixedFma::Float && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
 #if defined(GOC_HAVE_X86_64_V3)
   if (!exact && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::mixed_fma_x86_64_v3<Dst>(flags & GOC_FP16_OVFL, mask, mode, d[0], a[0], b[0], c[0]);
+    if constexpr (Dst == goc::MixedFma::Float)
+      goc::mixed_fma_float_x86_64_v3(mask, mode, d[0], a[0], b[0], c[0]);
+    else
+      goc::mixed_fma_half_x86_64_v3(Dst == goc::MixedFma::High, flags & GOC_FP16_OVFL, mask, mode,
+                                    d[0], a[0], b[0], c[0]);
     return GOC_SUCCESS;
   }
 #endif

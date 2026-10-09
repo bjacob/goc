@@ -423,3 +423,30 @@ TEST(MixedFma, ExactPreservesHostStateAndErrorsPrecedeEmptyMask) {
   _mm_setcsr(saved_mxcsr);
 #endif
 }
+
+TEST(MixedFma, AlternatingDestinationHalvesPreservePriorWrites) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint32_t a[32], b[32], c[32], output[32], expected[32];
+    std::fill_n(a, 32, 0x3f800000); // 1
+    std::fill_n(b, 32, 0x40000000); // 2
+    std::fill_n(c, 32, 0x40400000); // 3
+    std::fill_n(output, 32, 0xdeadbeef);
+    std::copy_n(output, 32, expected);
+    const uint32_t *pa = a, *pb = b, *pc = c;
+    uint32_t *pd = output;
+    for (unsigned step = 0; step < 8; ++step) {
+      bool high = step & 1;
+      uint32_t mask = step & 2 ? 0xaaaaaaaa : 0x55555555;
+      uint32_t mode = step & 4 ? GOC_ALU_NEG_A : 0;
+      uint32_t half = mode ? 0x3c00 : 0x4500; // -1*2+3 = 1; 1*2+3 = 5.
+      unsigned shift = high ? 16 : 0;
+      for (unsigned lane = 0; lane < 32; ++lane)
+        if ((mask >> lane) & 1)
+          expected[lane] = (expected[lane] & ~(65535u << shift)) | (half << shift);
+      auto instruction = high ? goc_rdna4_v_fma_mixhi_f16 : goc_rdna4_v_fma_mixlo_f16;
+      ASSERT_EQ(instruction(cpu, mask, mode, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+      for (unsigned lane = 0; lane < 32; ++lane)
+        ASSERT_EQ(output[lane], expected[lane]) << cpu << '/' << step << '/' << lane;
+    }
+  }
+}
