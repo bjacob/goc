@@ -179,6 +179,28 @@ GOC_API int goc_rdna4_v_ashrrev_i16(uint64_t flags, uint64_t exec_mask, uint32_t
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b);
 
+// Integer multiply-add with 32-bit C/D: one VGPR per operand. The 16-bit
+// forms support HIGH_A/B; the 24-bit forms discard A/B's upper byte. Signed
+// forms sign-extend the selected factors and interpret C as signed 32-bit.
+// CLAMP saturates the full product plus C to the result's 32-bit range;
+// otherwise results wrap. Other instruction flags are invalid. Loose semantics
+// only; independent of host FP state. Whole-register aliases are supported.
+GOC_API int goc_rdna4_v_mad_u32_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_mad_i32_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_mad_u32_u24(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_mad_i32_i24(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c);
+
 // Ordinary 16-bit ternary arithmetic: one VGPR per operand. HIGH_A/B/C/D
 // select source and destination halves; the other D half is preserved.
 // MAD supports CLAMP after full-precision A * B + C, otherwise wrapping.

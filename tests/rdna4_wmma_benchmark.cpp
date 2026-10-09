@@ -5,6 +5,7 @@
 #include "rdna4_half_reference.h"
 #include "rdna4_integer16_reference.h"
 #include "rdna4_integer16_ternary_reference.h"
+#include "rdna4_integer_mad_reference.h"
 #include "rdna4_packed_integer_reference.h"
 #include "rdna4_packed_mad_reference.h"
 #include "rdna4_subbyte_golden.h"
@@ -915,6 +916,43 @@ bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
         if (simd < 0)
           return false;
         print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_integer_mad(uint64_t cpu, int iterations, int min_ms) {
+  using Fn = decltype(&goc_rdna4_v_mad_i32_i16);
+  const Fn functions[] = {goc_rdna4_v_mad_u32_u16, goc_rdna4_v_mad_i32_i16, goc_rdna4_v_mad_u32_u24,
+                          goc_rdna4_v_mad_i32_i24};
+  const char *names[] = {"u16/mad32", "i16/mad32", "u24/mad32", "i24/mad32"};
+  for (int op = 0; op < 4; ++op)
+    for (bool modified : {false, true}) {
+      uint32_t mode = modified ? GOC_ALU_CLAMP | (op < 2 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0) : 0;
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        r.data[0][lane] = 0x81171521u * (lane + 1);
+        r.data[4][lane] = 0xb43d7357u * (lane + 3);
+        r.data[8][lane] = 0x6b271231u * (lane + 7);
+        r.data[16][lane] = 0xfacecafe;
+        r.expected[128 * (lane / 16) + lane % 16] = goc_test::integer_mad_reference(
+            op, r.data[0][lane], r.data[4][lane], r.data[8][lane], mode);
+      }
+      const char *name = names[op];
+      const char *label = modified ? (op < 2 ? "high/clamp" : "clamp") : "none";
+      double scalar = measure(functions[op], GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(name, "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(functions[op], GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(name, "loose", label, "x86-64-v3", simd, scalar / simd);
       }
 #endif
     }
@@ -1853,7 +1891,8 @@ int main(int argc, char **argv) {
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
   std::puts("DOT2 output widths: f16,b16 = 16-bit; fp16,bf16 = FP32.");
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
-  if (!benchmark_integer16_ternary(cpu, iterations, min_ms) ||
+  if (!benchmark_integer_mad(cpu, iterations, min_ms) ||
+      !benchmark_integer16_ternary(cpu, iterations, min_ms) ||
       !benchmark_integer16(cpu, iterations, min_ms) ||
       !benchmark_packed_mad(cpu, iterations, min_ms) ||
       !benchmark_packed_integer(cpu, iterations, min_ms) ||

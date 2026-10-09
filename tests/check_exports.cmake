@@ -138,6 +138,10 @@ else()
     goc_rdna4_v_max3_i16
     goc_rdna4_v_med3_i16
     goc_rdna4_v_med3_u16
+    goc_rdna4_v_mad_u32_u16
+    goc_rdna4_v_mad_i32_i16
+    goc_rdna4_v_mad_u32_u24
+    goc_rdna4_v_mad_i32_i24
     goc_rdna4_v_pk_mad_i16
     goc_rdna4_v_pk_mad_u16
     goc_rdna4_v_add_nc_i16
