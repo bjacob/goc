@@ -34,6 +34,7 @@
 #include "rdna4_swmmac16_hardware.h"
 #include "rdna4_swmmac8_hardware.h"
 #include "rdna4_swmmac_integer_hardware.h"
+#include "rdna4_trig_preop_hardware.h"
 
 #include <algorithm>
 #include <array>
@@ -1314,6 +1315,51 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
       }
 #endif
     }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_trig_preop(uint64_t cpu, int iterations, int min_ms) {
+  for (bool modified : {false, true}) {
+    unsigned compact = modified ? 31 : 0;
+    uint32_t mode = goc_test::trig_preop_mode(compact);
+    Registers r;
+    r.output_regs = 2;
+    for (unsigned lane = 0; lane < 32; ++lane) {
+      r.data[0][lane] = 0xabcdef;
+      r.data[1][lane] = goc_test::trig_preop_exponent(lane) << 20;
+      r.data[4][lane] = goc_test::trig_preop_selector(lane);
+      for (unsigned reg = 0; reg < 2; ++reg)
+        r.expected[128 * (lane / 16) + 16 * reg + lane % 16] =
+            uint32_t(goc_test::trig_preop_samples[compact][lane] >> (32 * reg));
+    }
+    auto fn = [](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                 const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
+      return goc_rdna4_v_trig_preop_f64(
+          flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, mode, d, a, b);
+    };
+    const char *label = modified ? "ABS/NEG/half/clamp" : "none";
+    double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+    if (scalar < 0)
+      return false;
+    print_result("v_trig_preop_f64", "exact", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+    if (cpu >= GOC_CPU_X86_64_V3) {
+      double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+      if (simd < 0)
+        return false;
+      print_result("v_trig_preop_f64", "exact", label, "x86-64-v3", simd, scalar / simd);
+    }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+    if (cpu >= GOC_CPU_X86_64_V4) {
+      double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+      if (simd < 0)
+        return false;
+      print_result("v_trig_preop_f64", "exact", label, "x86-64-v4", simd, scalar / simd);
+    }
+#endif
+  }
   (void)cpu;
   return true;
 }
@@ -3649,7 +3695,8 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave");
-  if (!benchmark_mullit(cpu, iterations, min_ms) || !benchmark_pack(cpu, iterations, min_ms) ||
+  if (!benchmark_trig_preop(cpu, iterations, min_ms) ||
+      !benchmark_mullit(cpu, iterations, min_ms) || !benchmark_pack(cpu, iterations, min_ms) ||
       !benchmark_swmmac_integer(cpu, iterations, min_ms) ||
       !benchmark_swmmac8(cpu, iterations, min_ms) || !benchmark_swmmac16(cpu, iterations, min_ms) ||
       !benchmark_mad64(cpu, iterations, min_ms) || !benchmark_carry(cpu, iterations, min_ms) ||

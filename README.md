@@ -432,6 +432,24 @@ Ryzen 9 7950X3D measurements show 1.39–1.86x for v3 and 1.77–2.34x for v4,
 including signed CLAMP and index-key selection; the accumulator reset is included
 in every path's timing (seven samples, each at least 10 ms).
 
+Trigonometric range reduction (`v_trig_preop_f64`) supports scalar, four-lane
+x86-64-v3 and eight-lane x86-64-v4 table lookups, including ABS/NEG, OMOD and
+CLAMP. Both loose and empirical-exact semantics use an integer implementation
+that preserves host FP state. The table model comes from rocjitsu, with two
+GFX1201 corrections: the binary expansion ends at bit 1184, and OMOD flushes a
+subnormal lookup result before scaling as well as flushing a tiny scaled result.
+Only A's encoded exponent and B's low five bits affect the result; input NaNs
+and infinities use their encoded exponent too.
+
+Tests check all 2,097,152 combinations of exponent, selector and modifiers
+against GPU-captured digests. A second GPU capture with varied fraction bits,
+including NaNs, produced identical results. Mask/alias tests cover all 25
+assignments of the two destination registers among five backing registers,
+including duplicate destinations, plus unaligned storage and host rounding and
+exception-state preservation. Pinned-core Ryzen 9 7950X3D measurements show
+1.48–1.59x for v3 and 3.65–3.80x for v4 versus scalar, including ABS/NEG,
+scaling and CLAMP (seven samples, each at least 10 ms).
+
 Lighting multiply (`v_mullit_f32`) supports all 512 combinations of source
 ABS/NEG, output scaling and CLAMP on scalar, eight-lane v3 and sixteen-lane v4.
 After source modifiers, invalid lighting inputs (nonpositive/NaN C, or B equal

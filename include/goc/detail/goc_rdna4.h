@@ -18,6 +18,17 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Trigonometric range-reduction table lookup. A is an FP64 VGPR pair, B is
+// one integer VGPR (only its low five bits select the segment), and D is an
+// FP64 VGPR pair. Only A's encoded exponent affects the lookup, including
+// for infinities and NaNs. ABS_A/NEG_A are accepted and have no effect.
+// Supports OMOD and CLAMP; OMOD flushes tiny results before and after scaling.
+// Supports loose and empirical-exact semantics. Preserves all host FP state.
+// If destination VGPRs alias, the high word is written last.
+GOC_API int goc_rdna4_v_trig_preop_f64(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
 // Lighting multiply. After ABS/NEG source modifiers, return -FLT_MAX if B is
 // -FLT_MAX, -infinity or NaN, or C is nonpositive or NaN. Otherwise return +0
 // if either factor is zero, or A*B. OMOD scales the result, flushing tiny
