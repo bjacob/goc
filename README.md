@@ -375,6 +375,25 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Packed FP32 conversions cover `v_cvt_pk_rtz_f16_f32`, `v_cvt_pk_i16_f32`,
+and `v_cvt_pk_u16_f32`: A converts into the low destination half, B into the
+high half. All source ABS/NEG combinations stay on the scalar, eight-lane v3
+and sixteen-lane v4 paths. CLAMP is accepted without numeric effect, as is
+OMOD for the FP16 RTZ form. Integer forms truncate, saturate overflow and map
+NaNs to zero. RTZ borrows rocjitsu's `f32_to_f16_rtz` integer conversion,
+quieting source NaNs to match RDNA4; finite overflow saturates regardless of
+`GOC_FP16_OVFL`. All three expose loose semantics independent of host rounding.
+
+Sixteen literal input pairs captured on the RX 9070 (`gfx1201`) verify nine
+opcode/modifier combinations with `FP16_OVFL` both clear and set. Tests also
+cover every FP32 exponent, every FP16 boundary and adjacent FP32 values,
+random words, all modifiers, and 85 EXEC masks crossed with whole-register
+aliases and unaligned storage. The RTZ reference independently searches the
+FP16 representable values; integer conversion uses an integer-significand
+reference. Benchmarks compare default and modified full-EXEC workloads. On the
+development Ryzen 9 7950X3D, pinned-core measurements showed 1.16–3.95x for v3
+and 3.99–14.28x for v4 versus scalar (seven samples, each at least 10 ms).
+
 FP8/BF8 expansion covers `v_cvt_f32_fp8`, `v_cvt_f32_bf8`,
 `v_cvt_pk_f32_fp8`, and `v_cvt_pk_f32_bf8`, borrowing rocjitsu's OCP E4M3FN
 and E5M2 decoders. Single-result forms accept `GOC_CVT_BYTE_0` through

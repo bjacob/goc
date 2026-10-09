@@ -18,6 +18,27 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Pack two FP32 source VGPRs into one 16-bit-pair destination: A goes to the
+// low half, B to the high half. Supports ABS/NEG on A/B, full EXEC masking and
+// whole-register aliases. Loose semantics only. CLAMP is accepted without
+// numeric effect. The FP16 RTZ form also accepts and ignores OMOD, truncates
+// toward zero, saturates finite overflow and quiets NaNs while retaining payload
+// bits. Integer forms truncate and saturate to the destination range, with NaNs
+// mapping to zero. GOC_FP16_OVFL has no effect. Results do not depend on host
+// rounding mode; host FP exception flags may change.
+
+GOC_API int goc_rdna4_v_cvt_pk_rtz_f16_f32(uint64_t flags, uint64_t exec_mask,
+                                           uint32_t instruction_flags, uint32_t *const *d,
+                                           const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_cvt_pk_i16_f32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_cvt_pk_u16_f32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b);
+
 // FP8/BF8 single-result conversion byte selector, an enumeration encoded in
 // instruction_flags bits 16-17. Byte 0 is the least significant input byte.
 static const uint32_t GOC_CVT_BYTE_0 = (UINT32_C(0) << 16);
