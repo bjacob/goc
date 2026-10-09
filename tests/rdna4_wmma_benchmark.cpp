@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_dense_golden.h"
 #include "rdna4_half_reference.h"
+#include "rdna4_packed_integer_reference.h"
 #include "rdna4_subbyte_golden.h"
 
 #include <algorithm>
@@ -918,6 +919,49 @@ bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
   return true;
 }
 
+bool benchmark_packed_integer(uint64_t cpu, int iterations, int min_ms) {
+  using Binary = decltype(&goc_rdna4_v_pk_add_f16);
+  const Binary functions[] = {
+      goc_rdna4_v_pk_add_i16, goc_rdna4_v_pk_sub_i16, goc_rdna4_v_pk_add_u16,
+      goc_rdna4_v_pk_sub_u16, goc_rdna4_v_pk_min_i16, goc_rdna4_v_pk_max_i16,
+      goc_rdna4_v_pk_min_u16, goc_rdna4_v_pk_max_u16, goc_rdna4_v_pk_mul_lo_u16};
+  const char *names[] = {"i16/padd", "i16/psub", "u16/padd", "u16/psub", "i16/pmin",
+                         "i16/pmax", "u16/pmin", "u16/pmax", "u16/pmul"};
+  for (int op = 0; op < 9; ++op)
+    for (bool modified : {false, true}) {
+      uint32_t mode =
+          modified ? GOC_PK_LO_A_HIGH | GOC_PK_HI_A_LOW | GOC_PK_LO_B_HIGH | GOC_PK_CLAMP : 0;
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        r.data[0][lane] = 0x83171521u * (lane + 1);
+        r.data[4][lane] = 0xb43d7357u * (lane + 3);
+        r.expected[128 * (lane / 16) + lane % 16] =
+            goc_test::packed_integer_reference(op, r.data[0][lane], r.data[4][lane], mode);
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *) {
+        return functions[op](flags, mask, modifiers, d, a, b);
+      };
+      const char *label = modified ? "select/clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
 bool benchmark_packed_binary(uint64_t cpu, int iterations, int min_ms) {
   using Binary = decltype(&goc_rdna4_v_pk_add_f16);
   const Binary functions[] = {goc_rdna4_v_pk_add_f16,     goc_rdna4_v_pk_mul_f16,
@@ -1682,7 +1726,8 @@ int main(int argc, char **argv) {
   std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
   std::puts("DOT2 output widths: f16,b16 = 16-bit; fp16,bf16 = FP32.");
   print_columns("Input", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup");
-  if (!benchmark_packed_binary(cpu, iterations, min_ms) ||
+  if (!benchmark_packed_integer(cpu, iterations, min_ms) ||
+      !benchmark_packed_binary(cpu, iterations, min_ms) ||
       !benchmark_packed_fma(cpu, iterations, min_ms) ||
       !benchmark_literal_fma(cpu, iterations, min_ms) || !benchmark_fmac(cpu, iterations, min_ms) ||
       !benchmark_half_fma(cpu, iterations, min_ms) ||

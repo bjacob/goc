@@ -125,6 +125,48 @@ GOC_API int goc_rdna4_v_pk_maximum_f16(uint64_t flags, uint64_t exec_mask,
                                        uint32_t instruction_flags, uint32_t *const *d,
                                        const uint32_t *const *a, const uint32_t *const *b);
 
+// Packed integer binary arithmetic: one VGPR per operand, two 16-bit results
+// per lane. Supports GOC_PK_* half selectors for A/B and GOC_PK_CLAMP. CLAMP
+// saturates ADD/SUB to the signed/unsigned 16-bit range; min/max and multiply
+// ignore it. Without CLAMP, ADD/SUB wrap. Multiply keeps the low 16 bits.
+// Negation and C flags are invalid. Both results read original inputs even
+// when D aliases A/B. Loose semantics only; independent of host FP state.
+GOC_API int goc_rdna4_v_pk_add_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_sub_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_add_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_sub_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_min_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_max_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_min_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_max_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_pk_mul_lo_u16(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b);
+
 // Packed source negation: independent for the low and high result calculations.
 static const uint32_t GOC_PK_NEG_LO_A = (UINT32_C(1) << 0);
 static const uint32_t GOC_PK_NEG_LO_B = (UINT32_C(1) << 1);
@@ -133,7 +175,8 @@ static const uint32_t GOC_PK_NEG_HI_A = (UINT32_C(1) << 3);
 static const uint32_t GOC_PK_NEG_HI_B = (UINT32_C(1) << 4);
 static const uint32_t GOC_PK_NEG_HI_C = (UINT32_C(1) << 5);
 
-// Packed floating output clamp: each result to [0, 1], with NaNs and -0 to +0.
+// Packed output clamp: floats to [0, 1], with NaNs and -0 to +0;
+// integer ADD/SUB saturate to their result range.
 static const uint32_t GOC_PK_CLAMP = (UINT32_C(1) << 6);
 
 // Packed half selectors flip the default choice for each result calculation.
