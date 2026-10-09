@@ -18,6 +18,35 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// FP8/BF8 single-result conversion byte selector, an enumeration encoded in
+// instruction_flags bits 16-17. Byte 0 is the least significant input byte.
+static const uint32_t GOC_CVT_BYTE_0 = (UINT32_C(0) << 16);
+static const uint32_t GOC_CVT_BYTE_1 = (UINT32_C(1) << 16);
+static const uint32_t GOC_CVT_BYTE_2 = (UINT32_C(2) << 16);
+static const uint32_t GOC_CVT_BYTE_3 = (UINT32_C(3) << 16);
+
+// FP8 (OCP E4M3FN) / BF8 (OCP E5M2) to FP32, loose semantics. A holds one
+// VGPR. Single-result forms select one byte with GOC_CVT_BYTE_* and write D[0].
+// Packed forms select the low/high A half with GOC_ALU_HIGH_A and write its
+// two bytes to D[0]/D[1], respectively. If D halves alias, D[1] wins. Supports
+// whole-register source/destination aliases and EXEC masking. No ABS/NEG,
+// OMOD or CLAMP. Finite results are exact; NaNs become sign-preserving quiet
+// NaNs. All host rounding modes give the same bits and preserve FP state.
+
+GOC_API int goc_rdna4_v_cvt_f32_fp8(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_f32_bf8(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_pk_f32_fp8(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cvt_pk_f32_bf8(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a);
+
 // Unsigned byte-to-FP32 conversions: one VGPR per operand. The mnemonic's
 // byte index selects bits [8*index, 8*index+7] of A. Supports OMOD and CLAMP;
 // source ABS/NEG and half selectors are invalid. All results are exactly

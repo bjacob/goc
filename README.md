@@ -375,6 +375,24 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+FP8/BF8 expansion covers `v_cvt_f32_fp8`, `v_cvt_f32_bf8`,
+`v_cvt_pk_f32_fp8`, and `v_cvt_pk_f32_bf8`, borrowing rocjitsu's OCP E4M3FN
+and E5M2 decoders. Single-result forms accept `GOC_CVT_BYTE_0` through
+`GOC_CVT_BYTE_3`; packed forms accept `GOC_ALU_HIGH_A` and write the selected
+half's two bytes into two FP32 VGPRs. They reject ABS/NEG, OMOD and CLAMP.
+All selectors remain on the eight-lane v3 and sixteen-lane v4 paths. Finite
+values expand exactly, including subnormals and signed zeros; NaNs become
+sign-preserving canonical quiet NaNs. These APIs expose loose semantics and
+preserve the host FP environment under every rounding mode.
+
+Tests cover every byte encoding, every packed byte pair, all selectors,
+unselected bits, and all source/destination alias layouts crossed with 85 EXEC
+masks and unaligned storage. If the two destinations alias, the second wins.
+Literal format-boundary cases complement an independent integer-significand
+reference. Benchmarks use full EXEC with default and upper-byte/half selectors.
+On the development Ryzen 9 7950X3D, pinned-core timings showed 2.46–3.26x for
+v3 and 9.22–13.88x for v4 versus scalar (seven samples, each at least 10 ms).
+
 The four `v_cvt_f32_ubyte0` through `v_cvt_f32_ubyte3` instructions extract
 one unsigned byte from a VGPR and convert it to FP32, following rocjitsu's
 byte-conversion handlers. All eight OMOD/CLAMP combinations stay on the

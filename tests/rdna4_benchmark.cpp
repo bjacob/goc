@@ -9,6 +9,7 @@
 #include "rdna4_conversion32_reference.h"
 #include "rdna4_conversion64_reference.h"
 #include "rdna4_dense_golden.h"
+#include "rdna4_fp8_conversion_reference.h"
 #include "rdna4_half_reference.h"
 #include "rdna4_integer16_reference.h"
 #include "rdna4_integer16_ternary_reference.h"
@@ -1293,6 +1294,56 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
         if (simd < 0)
           return false;
         print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_fp8_conversion(uint64_t cpu, int iterations, int min_ms) {
+  using Unary = decltype(&goc_rdna4_v_cvt_f32_fp8);
+  const Unary functions[] = {goc_rdna4_v_cvt_f32_fp8, goc_rdna4_v_cvt_f32_bf8,
+                             goc_rdna4_v_cvt_pk_f32_fp8, goc_rdna4_v_cvt_pk_f32_bf8};
+  const char *names[] = {"v_cvt_f32_fp8", "v_cvt_f32_bf8", "v_cvt_pk_f32_fp8", "v_cvt_pk_f32_bf8"};
+  for (unsigned op = 0; op < 4; ++op)
+    for (bool upper : {false, true}) {
+      bool packed = op >= 2;
+      unsigned selection = upper ? (packed ? 1 : 3) : 0;
+      uint32_t mode = goc_test::fp8_conversion_mode(packed, selection);
+      Registers r;
+      r.output_regs = packed ? 2 : 1;
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        uint32_t raw = lane * 0x072f0311u;
+        r.data[0][lane] = raw;
+        for (int reg = 0; reg < r.output_regs; ++reg)
+          r.expected[128 * (lane / 16) + 16 * reg + lane % 16] = goc_test::fp8_conversion_reference(
+              op & 1, uint8_t(raw >> (selection * (packed ? 16 : 8) + 8 * reg)));
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *,
+                          const uint32_t *const *) {
+        return functions[op](flags, mask, modifiers, d, a);
+      };
+      const char *label = upper ? (packed ? "HIGH_A" : "byte:3") : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
       }
 #endif
     }
@@ -2621,7 +2672,8 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave");
-  if (!benchmark_byte_conversion(cpu, iterations, min_ms) ||
+  if (!benchmark_fp8_conversion(cpu, iterations, min_ms) ||
+      !benchmark_byte_conversion(cpu, iterations, min_ms) ||
       !benchmark_conversion16(cpu, iterations, min_ms) ||
       !benchmark_conversion64(cpu, iterations, min_ms) ||
       !benchmark_conversion32(cpu, iterations, min_ms) ||
