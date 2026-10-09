@@ -2987,6 +2987,8 @@ GOC_API int goc_rdna4_v_frexp_mant_f16(uint64_t flags, uint64_t exec_mask,
                                        uint64_t instruction_flags, uint32_t *const *d,
                                        const uint32_t *const *a);
 
+// DPP8/DPP16 permute the complete A word before modifiers; B/C stay in their
+// original lanes.
 // True16 DOT2: A/B each hold two packed factors; C supplies one selected half.
 // D replaces only its selected half, preserving the other half. Supports all
 // six GOC_ALU ABS/NEG flags and HIGH_C/HIGH_D, without OMOD or CLAMP.

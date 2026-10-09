@@ -301,6 +301,16 @@ all 256 modifier/half-selector combinations with 85 masks and aliases, literal
 rounding/overflow cases, and random scalar/SIMD comparisons. Benchmark rows
 use the full mnemonics to distinguish these 16-bit-output instructions.
 
+Both true16 DOT2 forms support DPP8/DPP16: the complete packed A word is
+permuted before ABS/NEG, while B and C stay in their original lanes. C/D half
+selection and the untouched destination half remain supported on the v3 path.
+Tests exercise every modifier combination, cross representative combinations
+with 85 masks and aliases, and match 86,016 RX 9070 output words for exactly
+representable finite inputs. Full-EXEC benchmarks include DPP8 reversal and
+DPP16 row shift with combined modifiers. Pinned Ryzen 9 7950X3D measurements
+put FP16 DPP at 26.5–30.1 ns on v3 (9.01–10.19x scalar) and BF16 DPP at
+30.1–33.7 ns (2.45–2.69x), using seven samples of at least 10 ms each.
+
 FP16/BF16 DOT2 supports independent negation of each selected A/B half and C.
 The four half-selection flags can swap or replicate halves; zero flags select
 low then high as before. Loose v3 paths retain SIMD for every modifier combination;

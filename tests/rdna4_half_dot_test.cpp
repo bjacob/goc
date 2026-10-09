@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <initializer_list>
 #include <random>
 #include <stdint.h>
+#include <vector>
 
 namespace {
 
@@ -195,4 +197,110 @@ TEST(HalfDot, RandomEncodingsSimdMatchesScalar) {
           }
         }
       }
+}
+
+TEST(HalfDot, DppModifiersMasksAliasesAndGuards) {
+  for (int brain = 0; brain < 2; ++brain)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (auto descriptor : goc_test::dpp_modes)
+        for (unsigned variant = 0; variant < 256; ++variant) {
+          uint64_t mode = descriptor | (variant & 63) | (variant & 64 ? GOC_ALU_HIGH_C : 0) |
+                          (variant & 128 ? GOC_ALU_HIGH_D : 0);
+          auto masks =
+              (variant == 0 || variant == 63 || variant == 64 || variant == 128 || variant == 255)
+                  ? rdna4_exec_masks()
+                  : std::vector<uint64_t>{UINT32_MAX};
+          for (auto mask : masks)
+            for (unsigned alias = 0; alias < 4; ++alias) {
+              uint32_t storage[4][34], expected[4][34];
+              int values[3][32][2];
+              for (unsigned reg = 0; reg < 4; ++reg)
+                std::fill_n(storage[reg], 34, 0xdeadbeef);
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                int raw[3][2] = {{int(lane % 5) - 2, int(lane % 3) - 1},
+                                 {int(lane % 7) - 3, int(lane % 5) - 2},
+                                 {int(lane) - 16, 16 - int(lane)}};
+                for (unsigned reg = 0; reg < 3; ++reg) {
+                  storage[reg][lane + 1] =
+                      encode(raw[reg][0], brain) | (uint32_t(encode(raw[reg][1], brain)) << 16);
+                  for (unsigned half = 0; half < 2; ++half) {
+                    int v = raw[reg][half];
+                    if (mode & (8u << reg))
+                      v = std::abs(v);
+                    if (mode & (1u << reg))
+                      v = -v;
+                    values[reg][lane][half] = v;
+                  }
+                }
+              }
+              for (unsigned reg = 0; reg < 4; ++reg)
+                std::copy_n(storage[reg], 34, expected[reg]);
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                int source = 0;
+                if (!goc_test::dpp_source(mode, uint32_t(mask), lane, source))
+                  continue;
+                int a0 = source < 0 ? 0 : values[0][source][0],
+                    a1 = source < 0 ? 0 : values[0][source][1];
+                int result = a0 * values[1][lane][0] + a1 * values[1][lane][1] +
+                             values[2][lane][bool(mode & GOC_ALU_HIGH_C)];
+                unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
+                expected[alias][lane + 1] = (expected[alias][lane + 1] & ~(0xffffu << shift)) |
+                                            (uint32_t(encode(result, brain)) << shift);
+              }
+              const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[1] + 1},
+                             *c[] = {storage[2] + 1};
+              uint32_t *d[] = {storage[alias] + 1};
+              ASSERT_EQ(functions[brain](cpu, mask, mode, d, a, b, c), GOC_SUCCESS);
+              for (unsigned reg = 0; reg < 4; ++reg)
+                for (unsigned word = 0; word < 34; ++word)
+                  ASSERT_EQ(storage[reg][word], expected[reg][word])
+                      << brain << "/" << cpu << "/" << mode << "/" << mask;
+            }
+        }
+}
+
+TEST(HalfDot, DppValidation) {
+  for (auto fn : functions)
+    for (auto descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_CLAMP), uint64_t(GOC_ALU_HIGH_A),
+                           uint64_t(GOC_ALU_HIGH_B)})
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+    }
+}
+
+// RX 9070 finite binary-exact inputs, all FI/BOUND pairs and both overflow modes.
+TEST(HalfDot, DppHardwareCorpus) {
+  const uint32_t values[2][8] = {{0x3c00bc00, 0x4000c000, 0x4200c200, 0x4400c400, 0x00003c00,
+                                  0x3800b800, 0x4500c500, 0x4600c600},
+                                 {0x3f80bf80, 0x4000c000, 0x4040c040, 0x4080c080, 0x00003f80,
+                                  0x3f00bf00, 0x40a0c0a0, 0x40c0c0c0}};
+  const uint32_t modes[] = {0, 1, 2, 4, 8, 16, 32, 63, 2048, 4096, 6144, 6207};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (bool sat : {false, true})
+      for (auto mask : masks)
+        for (unsigned brain = 0; brain < 2; ++brain)
+          for (auto descriptor : goc_test::dpp_modes)
+            for (auto mode : modes) {
+              uint32_t av[32], bv[32], cv[32], output[32];
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                av[lane] = values[brain][lane % 8];
+                bv[lane] = values[brain][(lane + 3) % 8];
+                cv[lane] = values[brain][(lane + 5) % 8];
+                output[lane] = 0xdead0000u + lane;
+              }
+              const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
+              uint32_t *d[] = {output};
+              ASSERT_EQ(functions[brain](cpu | (sat ? GOC_FP16_OVFL : 0), mask, descriptor | mode,
+                                         d, a, b, c),
+                        GOC_SUCCESS);
+              for (auto word : output)
+                hash = (hash ^ word) * UINT64_C(1099511628211);
+            }
+    EXPECT_EQ(hash, UINT64_C(0xf79822666bfa7c45)) << cpu;
+  }
 }

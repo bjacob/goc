@@ -4,6 +4,7 @@
 #include "float_formats.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 #include "rdna4_simd.h"
 
 #include <stdint.h>
@@ -24,8 +25,13 @@ template <bool Bf16> float input(uint16_t bits, uint32_t mode) {
 }
 
 template <bool Bf16>
-int dot(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+int dot(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *c) {
+  if (mode >> 32)
+    return goc::execute_dpp(flags, mask, mode, a,
+                            [&](uint32_t effective, const uint32_t *const *source) {
+                              return dot<Bf16>(flags, effective, uint32_t(mode), d, source, b, c);
+                            });
   // Six ABS/NEG bits, plus C and D half selectors.
   if (int error = goc::validate(flags, mode & ~(UINT32_C(63) | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D)))
     return error;
@@ -66,15 +72,11 @@ int dot(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
 int goc_rdna4_v_dot2_f16_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot<false>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_dot2_bf16_bf16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b,
                                const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot<true>(flags, mask, mode, d, a, b, c);
 }
