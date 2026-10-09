@@ -4171,50 +4171,62 @@ bool benchmark_normalized(uint64_t cpu, int iterations, int min_ms) {
                              0xbe800000, 0xbf800000, 0x3727c5ac, 0x3dcccccd};
   const uint32_t halves[] = {0, 0x3800, 0x3bff, 0x3c00, 0xb400, 0xbc00, 1, 0x2e66};
   for (unsigned op = 0; op < 6; ++op)
-    for (bool modified : {false, true}) {
-      uint32_t mode =
-          modified ? goc_test::normalized_mode(op, goc_test::normalized_modes(op) - 1) : 0;
-      Registers r;
-      r.output_regs = 1;
-      for (unsigned lane = 0; lane < 32; ++lane) {
-        r.data[0][lane] =
-            op < 2 ? floats[lane % 8] : halves[lane % 8] | (halves[(lane + 3) % 8] << 16);
-        r.data[4][lane] = op < 2 ? floats[(lane + 5) % 8]
-                                 : halves[(lane + 5) % 8] | (halves[(lane + 1) % 8] << 16);
-        r.data[16][lane] = 0xa5a5a5a5;
-        r.expected[128 * (lane / 16) + lane % 16] =
-            goc_test::normalized_reference(op, r.data[0][lane], r.data[4][lane], 0xa5a5a5a5, mode);
-      }
-      const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
-                          const uint32_t *const *a, const uint32_t *const *b,
-                          const uint32_t *const *) {
-        return functions[op](flags, mask, modifiers, d, a, b);
-      };
-      const char *label = !modified ? "none"
-                          : op < 2  ? "ABS/NEG/clamp"
-                          : op < 4  ? "ABS/NEG/hi/clamp"
-                                    : "ABS/NEG/hi/OMOD/cl";
-      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
-      if (scalar < 0)
-        return false;
-      print_result(names[op], "loose", label, "scalar", scalar, 1);
-#if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if (cpu >= GOC_CPU_X86_64_V3) {
-        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
-        if (simd < 0)
+    for (int descriptor : {-1, 0, 5})
+      for (bool modified : {false, true}) {
+        uint64_t mode =
+            modified ? goc_test::normalized_mode(op, goc_test::normalized_modes(op) - 1) : 0;
+        if (descriptor >= 0)
+          mode |= goc_test::dpp_modes[descriptor];
+        Registers r;
+        r.output_regs = 1;
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          r.data[0][lane] =
+              op < 2 ? floats[lane % 8] : halves[lane % 8] | (halves[(lane + 3) % 8] << 16);
+          r.data[4][lane] = op < 2 ? floats[(lane + 5) % 8]
+                                   : halves[(lane + 5) % 8] | (halves[(lane + 1) % 8] << 16);
+          r.data[16][lane] = 0xa5a5a5a5;
+          int source = int(lane);
+          if (descriptor >= 0)
+            goc_test::dpp_source(mode, UINT32_MAX, lane, source);
+          uint32_t selected = source < 0 ? 0
+                              : op < 2   ? floats[source % 8]
+                                         : halves[source % 8] | (halves[(source + 3) % 8] << 16);
+          r.expected[128 * (lane / 16) + lane % 16] = goc_test::normalized_reference(
+              op, selected, r.data[4][lane], 0xa5a5a5a5, uint32_t(mode));
+        }
+        const auto fn = [&](uint64_t flags, uint64_t mask, uint64_t modifiers, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *) {
+          return functions[op](flags, mask, modifiers, d, a, b);
+        };
+        const char *label = !modified ? "none"
+                            : op < 2  ? "ABS/NEG/clamp"
+                            : op < 4  ? "ABS/NEG/hi/clamp"
+                                      : "ABS/NEG/hi/OMOD/cl";
+        if (descriptor >= 0)
+          label = descriptor == 0 ? (modified ? "DPP8/modified" : "DPP8")
+                                  : (modified ? "DPP16/modified" : "DPP16");
+        double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+        if (scalar < 0)
           return false;
-        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
-      }
+        print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+        if (cpu >= GOC_CPU_X86_64_V3) {
+          double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+        }
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
-      if (cpu >= GOC_CPU_X86_64_V4) {
-        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
-        if (simd < 0)
-          return false;
-        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
-      }
+        if (cpu >= GOC_CPU_X86_64_V4) {
+          double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
+        }
 #endif
-    }
+      }
   (void)cpu;
   return true;
 }

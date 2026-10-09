@@ -853,6 +853,14 @@ into the two destination halves; unary forms preserve the unselected half.
 Source ABS/NEG and applicable half selectors remain on the scalar, eight-lane
 v3 and sixteen-lane v4 paths. CLAMP has no numeric effect; unary OMOD is also
 accepted without numeric effect. All six expose loose semantics.
+DPP8/DPP16 permute A before modifiers and half selection, while B remains in
+its original lane. All six forms retain their SIMD paths with DPP, including
+unary destination-half preservation. Tests cover all modifier combinations,
+85 masks with aliases and guards, and 114,688 RX 9070 captured output words.
+Full-EXEC benchmarks include DPP8 reversal and DPP16 row shift. Pinned Ryzen 9
+7950X3D measurements across these cases showed v3 at 23.1–33.7 ns (4.76–7.30x
+scalar) and v4 at 12.9–22.6 ns (7.90–10.09x), using seven samples of at least
+10 ms each.
 
 The scalar model borrows rocjitsu's exact double product. SIMD borrows its
 `round_normalized_simd` FMA-residual correction: a rounded FP32 product can

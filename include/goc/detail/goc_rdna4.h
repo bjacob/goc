@@ -1809,7 +1809,8 @@ GOC_API int goc_rdna4_v_cvt_pk_u16_u32(uint64_t flags, uint64_t exec_mask,
                                        uint64_t instruction_flags, uint32_t *const *d,
                                        const uint32_t *const *a, const uint32_t *const *b);
 
-// Normalized conversions scale by 32767 (signed) or 65535 (unsigned), round
+// DPP8/DPP16 permute A before modifiers and half selection; B stays in its
+// original lane. Normalized conversions scale by 32767 (signed) or 65535 (unsigned), round
 // once to nearest-even, and saturate to [-32767,32767] or [0,65535]. NaNs map
 // to zero. All operands hold one VGPR. Packed forms put A/B in D's low/high
 // halves; unary forms preserve the unselected D half. Floating sources support

@@ -4,6 +4,7 @@
 #include "float_formats.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <cmath>
 #include <stdint.h>
@@ -32,8 +33,13 @@ template <bool Unsigned, bool Half> uint16_t normalized(uint32_t raw, uint32_t m
 }
 
 template <bool Unsigned, goc::NormalizedForm Form>
-int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int convert(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32)
+    return goc::execute_dpp(
+        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+          return convert<Unsigned, Form>(flags, effective, uint32_t(mode), d, source, b);
+        });
   constexpr bool unary = Form == goc::NormalizedForm::Half;
   constexpr bool half = Form != goc::NormalizedForm::PackedFloat;
   const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_CLAMP |
@@ -78,8 +84,6 @@ int convert(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 int goc_rdna4_v_cvt_pk_norm_i16_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<false, goc::NormalizedForm::PackedFloat>(flags, exec_mask, instruction_flags, d, a,
                                                           b);
 }
@@ -87,8 +91,6 @@ int goc_rdna4_v_cvt_pk_norm_i16_f32(uint64_t flags, uint64_t exec_mask, uint64_t
 int goc_rdna4_v_cvt_pk_norm_u16_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<true, goc::NormalizedForm::PackedFloat>(flags, exec_mask, instruction_flags, d, a,
                                                          b);
 }
@@ -96,8 +98,6 @@ int goc_rdna4_v_cvt_pk_norm_u16_f32(uint64_t flags, uint64_t exec_mask, uint64_t
 int goc_rdna4_v_cvt_pk_norm_i16_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<false, goc::NormalizedForm::PackedHalf>(flags, exec_mask, instruction_flags, d, a,
                                                          b);
 }
@@ -105,24 +105,18 @@ int goc_rdna4_v_cvt_pk_norm_i16_f16(uint64_t flags, uint64_t exec_mask, uint64_t
 int goc_rdna4_v_cvt_pk_norm_u16_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<true, goc::NormalizedForm::PackedHalf>(flags, exec_mask, instruction_flags, d, a,
                                                         b);
 }
 
 int goc_rdna4_v_cvt_norm_i16_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                  uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<false, goc::NormalizedForm::Half>(flags, exec_mask, instruction_flags, d, a,
                                                    nullptr);
 }
 
 int goc_rdna4_v_cvt_norm_u16_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                  uint32_t *const *d, const uint32_t *const *a) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return convert<true, goc::NormalizedForm::Half>(flags, exec_mask, instruction_flags, d, a,
                                                   nullptr);
 }

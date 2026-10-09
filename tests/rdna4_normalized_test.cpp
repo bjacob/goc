@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_normalized_hardware.h"
 #include "rdna4_normalized_reference.h"
@@ -194,4 +195,103 @@ TEST(Normalized, ValidationAndSemanticFallback) {
       for (unsigned sem = 0; sem < 4; ++sem)
         ASSERT_TRUE(check(op, cpu | (uint64_t(sem) << 16), 0, input, input));
     }
+}
+
+TEST(Normalized, DppMasksAndWholeRegisterAliases) {
+  std::mt19937 random(8147);
+  for (auto descriptor : goc_test::dpp_modes)
+    for (unsigned op = 0; op < 6; ++op)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned variant :
+             {0u, goc_test::normalized_modes(op) / 2, goc_test::normalized_modes(op) - 1})
+          for (uint64_t mask : rdna4_exec_masks())
+            for (unsigned breg = 0; breg < (op < 4 ? 2u : 1u); ++breg)
+              for (unsigned dreg = 0; dreg < 3; ++dreg) {
+                uint32_t storage[3][34], expected[3][34];
+                for (unsigned reg = 0; reg < 3; ++reg)
+                  for (unsigned word = 0; word < 34; ++word)
+                    storage[reg][word] = expected[reg][word] = random();
+                uint64_t mode = descriptor | goc_test::normalized_mode(op, variant);
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  int source = 0;
+                  if (goc_test::dpp_source(mode, uint32_t(mask), lane, source))
+                    expected[dreg][lane + 1] = goc_test::normalized_reference(
+                        op, source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
+                        storage[dreg][lane + 1], uint32_t(mode));
+                }
+                const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1};
+                uint32_t *d[] = {storage[dreg] + 1};
+                ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
+                for (unsigned reg = 0; reg < 3; ++reg)
+                  for (unsigned word = 0; word < 34; ++word)
+                    ASSERT_EQ(storage[reg][word], expected[reg][word])
+                        << op << "/" << cpu << "/" << variant;
+              }
+}
+
+TEST(Normalized, DppEveryModifier) {
+  std::mt19937 random(9431);
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (auto descriptor : goc_test::dpp_modes)
+        for (unsigned variant = 0; variant < goc_test::normalized_modes(op); ++variant) {
+          uint32_t av[32], bv[32], original[32], output[32];
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            av[lane] = random();
+            bv[lane] = random();
+            output[lane] = original[lane] = random();
+          }
+          auto mode = descriptor | goc_test::normalized_mode(op, variant);
+          const uint32_t *a[] = {av}, *b[] = {bv};
+          uint32_t *d[] = {output};
+          ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, d, a, b), GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            int source = 0;
+            uint32_t expected = original[lane];
+            if (goc_test::dpp_source(mode, UINT32_MAX, lane, source))
+              expected = goc_test::normalized_reference(op, source < 0 ? 0 : av[source], bv[lane],
+                                                        original[lane], uint32_t(mode));
+            ASSERT_EQ(output[lane], expected) << op << "/" << cpu << "/" << mode;
+          }
+        }
+}
+
+TEST(Normalized, DppValidation) {
+  for (auto fn : functions)
+    for (auto descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(fn(0, 0, descriptor | (UINT64_C(1) << 36), nullptr, nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+    }
+}
+
+// RX 9070: six forms, source/destination selectors, modifiers and eight EXEC masks.
+TEST(Normalized, DppHardwareCorpus) {
+  const uint32_t values[] = {0x3800b800, 0x3bffbc00, 0x00018001, 0x7e00fc00,
+                             0x3f000000, 0xbf000000, 0x3f7fffff, 0x7f800001};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  const uint32_t packed_modes[] = {0, 1, 8, 9, 2, 16, 27, 283, 512, 1024, 1536, 1819};
+  const uint32_t unary_modes[] = {0, 1, 8, 9, 256, 64, 128, 192, 512, 4096, 4608, 5065};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (auto mask : masks)
+      for (unsigned op = 0; op < 6; ++op)
+        for (auto descriptor : goc_test::dpp_modes)
+          for (unsigned variant = 0; variant < (op < 2 ? 8u : 12u); ++variant) {
+            uint32_t av[32], bv[32], output[32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              av[lane] = values[lane % 8];
+              bv[lane] = values[(lane + 3) % 8];
+              output[lane] = 0xdead0000u + lane;
+            }
+            const uint32_t *a[] = {av}, *b[] = {bv};
+            uint32_t *d[] = {output};
+            auto mode = descriptor | (op < 4 ? packed_modes[variant] : unary_modes[variant]);
+            ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b), GOC_SUCCESS);
+            for (auto word : output)
+              hash = (hash ^ word) * UINT64_C(1099511628211);
+          }
+    EXPECT_EQ(hash, UINT64_C(0x711fcd0f84aa5615)) << cpu;
+  }
 }
