@@ -18,6 +18,30 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Reverse shifts: shift B by the count in A. A is one VGPR. B and D are one
+// VGPR for 32-bit forms or two VGPRs (low word first) for 64-bit forms. Counts
+// wrap modulo 32 or 64. ASHR replicates the sign bit; logical shifts insert
+// zero bits. Instruction flags must be zero. Loose semantics only; preserves
+// all host floating-point state.
+GOC_API int goc_rdna4_v_lshlrev_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_lshrrev_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_ashrrev_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_lshlrev_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_lshrrev_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+GOC_API int goc_rdna4_v_ashrrev_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
 // FP32 sine/cosine of inputs measured in turns: sin(2*pi*A), cos(2*pi*A).
 // Supports ABS_A, NEG_A, OMOD and CLAMP. Empirical exact semantics use the
 // captured RDNA3/4 integer model with denormals preserved and NaNs quieted;

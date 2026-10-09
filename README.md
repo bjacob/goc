@@ -175,6 +175,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_i16`, `v_min3_u16`, `v_max3_i16`, `v_max3_u16`, `v_med3_i16`, `v_med3_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
 | `v_add_nc_i16`, `v_sub_nc_i16`, `v_add_nc_u16`, `v_sub_nc_u16` | Scalar, x86-64-v3; half selectors and saturation | Not implemented |
 | `v_min_i16`, `v_max_i16`, `v_min_u16`, `v_max_u16`, `v_mul_lo_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
+| `v_lshlrev_b32`, `v_lshrrev_b32`, `v_ashrrev_i32` | Scalar, x86-64-v3 | Not implemented |
+| `v_lshlrev_b64`, `v_lshrrev_b64`, `v_ashrrev_i64` | Scalar, x86-64-v3 | Not implemented |
 | `v_lshlrev_b16`, `v_lshrrev_b16`, `v_ashrrev_i16` | Scalar, x86-64-v3; half selectors | Not implemented |
 | `v_pk_mad_i16`, `v_pk_mad_u16` | Scalar, x86-64-v3; all half selectors and saturation | Not implemented |
 | `v_pk_lshlrev_b16`, `v_pk_lshrrev_b16`, `v_pk_ashrrev_i16` | Scalar, x86-64-v3; all half selectors | Not implemented |
@@ -377,6 +379,15 @@ SIMD outputs within one half-precision ULP of the model. Further tests cover
 all modifiers, half selectors, aliases, masks, host FP settings, and literal
 OMOD underflow boundaries. `GOC_FP16_OVFL` is accepted but has no effect because
 finite trig outputs and their permitted scaling cannot overflow FP16.
+
+The 32- and 64-bit reverse shifts (`LSHLREV`, `LSHRREV`, `ASHRREV`) take
+the shift count in `A` and the value in `B`. Counts wrap modulo the value width.
+The 64-bit forms use two VGPRs for `B` and `D`, low word first, and one for `A`.
+Eight-lane v3 paths operate directly on the separate low/high words, including
+arithmetic sign extension across the 32-bit boundary. No instruction modifiers
+apply. Both scalar and SIMD preserve all host FP state. Tests cover every
+count and bit position, random full-width counts, single-active/inactive-lane
+masks, and every destination alias with the count or either value half.
 
 FP32/FP64 `FREXP_MANT` extracts a signed binary significand with magnitude in
 [0.5, 1) for finite nonzero inputs. Subnormals are normalized on the SIMD path;

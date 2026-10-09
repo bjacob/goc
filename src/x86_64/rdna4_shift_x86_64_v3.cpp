@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+
+#include "rdna4_shift.h"
+
+#include <immintrin.h>
+#include <stdint.h>
+
+namespace goc {
+
+template <int Bits, Shift Op>
+void shift_x86_64_v3(uint32_t mask, uint32_t *const *d, const uint32_t *a,
+                     const uint32_t *const *b) {
+  for (int lane = 0; lane < 32; lane += 8) {
+    const __m256i count =
+        _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)),
+                         _mm256_set1_epi32(Bits - 1));
+    const __m256i lo = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(b[0] + lane));
+    __m256i low, high;
+    if constexpr (Bits == 32) {
+      if constexpr (Op == Shift::Left)
+        low = _mm256_sllv_epi32(lo, count);
+      if constexpr (Op == Shift::LogicalRight)
+        low = _mm256_srlv_epi32(lo, count);
+      if constexpr (Op == Shift::ArithmeticRight)
+        low = _mm256_srav_epi32(lo, count);
+    } else {
+      const __m256i hi = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(b[1] + lane));
+      const __m256i complement = _mm256_sub_epi32(_mm256_set1_epi32(32), count);
+      const __m256i excess = _mm256_sub_epi32(count, _mm256_set1_epi32(32));
+      // AVX2 logical shifts zero lanes whose unsigned count is >=32. That
+      // also covers negative complement/excess counts and the count=0 seam.
+      if constexpr (Op == Shift::Left) {
+        low = _mm256_sllv_epi32(lo, count);
+        high = _mm256_or_si256(
+            _mm256_sllv_epi32(hi, count),
+            _mm256_or_si256(_mm256_srlv_epi32(lo, complement), _mm256_sllv_epi32(lo, excess)));
+      } else {
+        low = _mm256_or_si256(_mm256_srlv_epi32(lo, count), _mm256_sllv_epi32(hi, complement));
+        if constexpr (Op == Shift::LogicalRight) {
+          low = _mm256_or_si256(low, _mm256_srlv_epi32(hi, excess));
+          high = _mm256_srlv_epi32(hi, count);
+        } else {
+          low = _mm256_blendv_epi8(low, _mm256_srav_epi32(hi, excess),
+                                   _mm256_cmpgt_epi32(count, _mm256_set1_epi32(31)));
+          high = _mm256_srav_epi32(hi, count);
+        }
+      }
+    }
+    // Both source halves and the count have been read before either store,
+    // including when D aliases B in reverse order or both D halves coincide.
+    const __m256i active = _mm256_sllv_epi32(_mm256_set1_epi32(int(mask >> lane)),
+                                             _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d[0] + lane), active, low);
+    if constexpr (Bits == 64)
+      _mm256_maskstore_epi32(reinterpret_cast<int *>(d[1] + lane), active, high);
+  }
+}
+
+template void shift_x86_64_v3<32, Shift::Left>(uint32_t, uint32_t *const *, const uint32_t *,
+                                               const uint32_t *const *);
+template void shift_x86_64_v3<32, Shift::LogicalRight>(uint32_t, uint32_t *const *,
+                                                       const uint32_t *, const uint32_t *const *);
+template void shift_x86_64_v3<32, Shift::ArithmeticRight>(uint32_t, uint32_t *const *,
+                                                          const uint32_t *,
+                                                          const uint32_t *const *);
+template void shift_x86_64_v3<64, Shift::Left>(uint32_t, uint32_t *const *, const uint32_t *,
+                                               const uint32_t *const *);
+template void shift_x86_64_v3<64, Shift::LogicalRight>(uint32_t, uint32_t *const *,
+                                                       const uint32_t *, const uint32_t *const *);
+template void shift_x86_64_v3<64, Shift::ArithmeticRight>(uint32_t, uint32_t *const *,
+                                                          const uint32_t *,
+                                                          const uint32_t *const *);
+
+} // namespace goc

@@ -8,6 +8,7 @@
 #include "rdna4_integer_mad_reference.h"
 #include "rdna4_packed_integer_reference.h"
 #include "rdna4_packed_mad_reference.h"
+#include "rdna4_shift_reference.h"
 #include "rdna4_subbyte_golden.h"
 
 #include <algorithm>
@@ -825,6 +826,50 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
       }
 #endif
     }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_shift(uint64_t cpu, int iterations, int min_ms) {
+  using Binary = decltype(&goc_rdna4_v_lshlrev_b32);
+  const Binary functions[] = {goc_rdna4_v_lshlrev_b32, goc_rdna4_v_lshrrev_b32,
+                              goc_rdna4_v_ashrrev_i32, goc_rdna4_v_lshlrev_b64,
+                              goc_rdna4_v_lshrrev_b64, goc_rdna4_v_ashrrev_i64};
+  const char *names[] = {"b32/shl", "b32/shr", "i32/ashr", "b64/shl", "b64/shr", "i64/ashr"};
+  for (int op = 0; op < 6; ++op) {
+    Registers r;
+    int width = op < 3 ? 32 : 64;
+    r.output_regs = width / 32;
+    std::mt19937 random(861);
+    for (int lane = 0; lane < 32; ++lane) {
+      r.data[0][lane] = (random() & ~UINT32_C(63)) | uint32_t((lane * 7) % 64);
+      r.data[4][lane] = random();
+      r.data[5][lane] = random();
+      uint64_t value = r.data[4][lane] | (uint64_t(r.data[5][lane]) << 32);
+      uint64_t expected = goc_test::shift_reference(width, op % 3, r.data[0][lane], value);
+      int index = 128 * (lane / 16) + lane % 16;
+      r.expected[index] = uint32_t(expected);
+      if (width == 64)
+        r.expected[index + 16] = uint32_t(expected >> 32);
+    }
+    const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                        const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *) {
+      return functions[op](flags, mask, mode, d, a, b);
+    };
+    double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, 0);
+    if (scalar < 0)
+      return false;
+    print_result(names[op], "loose", "none", "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+    if (cpu >= GOC_CPU_X86_64_V3) {
+      double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, 0);
+      if (simd < 0)
+        return false;
+      print_result(names[op], "loose", "none", "x86-64-v3", simd, scalar / simd);
+    }
+#endif
+  }
   (void)cpu;
   return true;
 }
@@ -2048,9 +2093,9 @@ int main(int argc, char **argv) {
     return 1;
   }
   if (!benchmark_half_exponent(cpu, iterations, min_ms) ||
-      !benchmark_half_trig(cpu, iterations, min_ms) || !benchmark_trig(cpu, iterations, min_ms) ||
-      !benchmark_half_unary(cpu, iterations, min_ms) || !benchmark_unary(cpu, iterations, min_ms) ||
-      !benchmark_frexp_exp(cpu, iterations, min_ms)) {
+      !benchmark_shift(cpu, iterations, min_ms) || !benchmark_half_trig(cpu, iterations, min_ms) ||
+      !benchmark_trig(cpu, iterations, min_ms) || !benchmark_half_unary(cpu, iterations, min_ms) ||
+      !benchmark_unary(cpu, iterations, min_ms) || !benchmark_frexp_exp(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }
