@@ -18,6 +18,16 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// DPP8 permutes source A within each group of eight lanes before arithmetic
+// modifiers. Pack eight 3-bit lane indices into bits 40..63, index 0 first, and
+// set GOC_DPP8. Without FI, an inactive source supplies positive zero; FI reads
+// its stored value. Inactive destinations remain unchanged. Currently supported
+// by v_fma_f32 and v_fmac_f32, including their arithmetic modifiers and aliases.
+static const uint64_t GOC_DPP8 = (UINT64_C(1) << 32);
+static const uint64_t GOC_DPP_FI = (UINT64_C(1) << 33);
+static const uint32_t GOC_DPP8_SELECT_SHIFT = 40;
+static const uint64_t GOC_DPP8_SELECT_MASK = (UINT64_C(0xffffff) << 40);
+
 // PERMLANE flags are a bit field. FI permits reading inactive source lanes.
 // Otherwise BOUND_CTRL selects zero for an inactive source; without it the
 // destination is preserved. Neither flag enables inactive destination lanes.

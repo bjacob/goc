@@ -238,7 +238,7 @@ bool nonnegative_integer(const char *text, int &value) {
 // or iteration-count overflow. Every accepted sample spans at least min_ms.
 template <typename Instruction, typename RegisterFile>
 double measure(Instruction fn, uint64_t flags, RegisterFile &r, int initial_iterations, int min_ms,
-               uint32_t modifiers, uint64_t mask = UINT32_MAX) {
+               uint64_t modifiers, uint64_t mask = UINT32_MAX) {
   uint64_t iterations = uint64_t(initial_iterations);
   const auto call = [&] { return fn(flags, mask, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8); };
   for (int warmup = 0; warmup < 32; ++warmup)
@@ -1340,6 +1340,52 @@ bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
       }
 #endif
     }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_dpp8(uint64_t cpu, int iterations, int min_ms) {
+  for (bool modified : {false, true}) {
+    uint32_t selectors = 0;
+    for (unsigned i = 0; i < 8; ++i)
+      selectors |= (7 - i) << (3 * i);
+    uint64_t mode = GOC_DPP8 | (uint64_t(selectors) << GOC_DPP8_SELECT_SHIFT) |
+                    (modified ? GOC_DPP_FI | GOC_ALU_NEG_A | GOC_ALU_OMOD_2 : 0);
+    Registers r;
+    r.output_regs = 1;
+    for (unsigned lane = 0; lane < 32; ++lane) {
+      r.data[0][lane] = bits(float(lane + 1));
+      r.data[4][lane] = bits(2);
+      r.data[8][lane] = bits(float(100 + lane));
+    }
+    for (unsigned lane = 0; lane < 32; ++lane) {
+      unsigned src = lane ^ 7;
+      float value = modified ? float((100 + int(lane) - 2 * int(src + 1)) * 2)
+                             : float(100 + lane + 2 * (src + 1));
+      r.expected[128 * (lane / 16) + lane % 16] = bits(value);
+    }
+    const char *label = modified ? "DPP8/FI/NEG/mul2" : "DPP8";
+    double scalar = measure(goc_rdna4_v_fma_f32, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+    if (scalar < 0)
+      return false;
+    print_result("v_fma_f32", "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+    if (cpu >= GOC_CPU_X86_64_V3) {
+      double simd = measure(goc_rdna4_v_fma_f32, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+      if (simd < 0)
+        return false;
+      print_result("v_fma_f32", "loose", label, "x86-64-v3", simd, scalar / simd);
+    }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+    if (cpu >= GOC_CPU_X86_64_V4) {
+      double simd = measure(goc_rdna4_v_fma_f32, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+      if (simd < 0)
+        return false;
+      print_result("v_fma_f32", "loose", label, "x86-64-v4", simd, scalar / simd);
+    }
+#endif
+  }
   (void)cpu;
   return true;
 }
@@ -4630,7 +4676,7 @@ int main(int argc, char **argv) {
       !benchmark_float_compare(cpu, iterations, min_ms) ||
       !benchmark_integer_compare(cpu, iterations, min_ms) ||
       !benchmark_class(cpu, iterations, min_ms) || !benchmark_interp16(cpu, iterations, min_ms) ||
-      !benchmark_interp32(cpu, iterations, min_ms) ||
+      !benchmark_interp32(cpu, iterations, min_ms) || !benchmark_dpp8(cpu, iterations, min_ms) ||
       !benchmark_permlane(cpu, iterations, min_ms) || !benchmark_cndmask(cpu, iterations, min_ms) ||
       !benchmark_trig_preop(cpu, iterations, min_ms) ||
       !benchmark_mullit(cpu, iterations, min_ms) || !benchmark_pack(cpu, iterations, min_ms) ||

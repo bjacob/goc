@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_alu.h"
+#include "rdna4_dpp.h"
 #include "rdna4_simd.h"
 
 #include <cmath>
@@ -59,6 +60,27 @@ int fma(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags, uint32_t
   return GOC_SUCCESS;
 }
 
+int fma_with_dpp(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+                 const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+                 uint32_t known) {
+  const uint64_t dpp_bits = GOC_DPP8 | GOC_DPP_FI | GOC_DPP8_SELECT_MASK;
+  if (mode & ~(uint64_t(known) | dpp_bits))
+    return GOC_ERROR_INVALID_FLAGS;
+  if ((mode >> 32) && !(mode & GOC_DPP8))
+    return GOC_ERROR_INVALID_FLAGS;
+  if (int error = goc::validate(flags, 0))
+    return error;
+  if (!uint32_t(mask))
+    return GOC_SUCCESS;
+  if (mode & GOC_DPP8) {
+    uint32_t permuted[32];
+    const uint32_t *source = permuted;
+    goc::dpp8_source(flags, uint32_t(mask), mode, permuted, a[0]);
+    return fma<false>(flags, mask, uint32_t(mode), d, &source, b, c);
+  }
+  return fma<false>(flags, mask, uint32_t(mode), d, a, b, c);
+}
+
 template <bool Multiply>
 int literal_fma(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
                 const uint32_t *const *a, const uint32_t *const *b, uint32_t literal) {
@@ -95,9 +117,7 @@ int literal_fma(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d
 int goc_rdna4_v_fma_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
-  return fma<false>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return fma_with_dpp(flags, exec_mask, instruction_flags, d, a, b, c, 0x1ff);
 }
 
 int goc_rdna4_v_fma_dx9_zero_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
@@ -110,13 +130,9 @@ int goc_rdna4_v_fma_dx9_zero_f32(uint64_t flags, uint64_t exec_mask, uint64_t in
 
 int goc_rdna4_v_fmac_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  if (int error = goc::validate(flags, mode & ~known))
-    return error;
-  return fma<false>(flags, mask, mode, d, a, b, d);
+  return fma_with_dpp(flags, mask, mode, d, a, b, d, known);
 }
 
 int goc_rdna4_v_fmamk_f32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,

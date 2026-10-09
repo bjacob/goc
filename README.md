@@ -1521,10 +1521,25 @@ On the Ryzen 9 7950X3D, pinned CPU-8 measurements (seven samples, at least
 10 ms each) show AVX2 at 11.8–13.2 ns/wave (2.3–3.3× scalar) and AVX-512
 at 2.4–5.2 ns/wave (5.9–14.3×), including FI/BOUND_CTRL configurations.
 
+FP32 `v_fma_f32` and `v_fmac_f32` now accept DPP8 lane permutations. Set
+`GOC_DPP8` and pack eight 3-bit selectors at `GOC_DPP8_SELECT_SHIFT`; add
+`GOC_DPP_FI` to fetch inactive source lanes instead of substituting positive
+zero. Permutation precedes ABS/NEG and preserves the existing arithmetic,
+clamp, EXEC, and whole-register aliasing behavior. Both AVX2 and AVX-512 paths
+remain active with every supported modifier combination. The DX9-zero FMA
+variant has no DPP encoding and rejects these flags.
+
+DPP8 tests include a 16,384-result GFX1201 FMA/FMAC capture, all arithmetic
+modifier combinations, random selectors, EXEC patterns, and aliases. Pinned
+CPU-8 measurements on the Ryzen 9 7950X3D (seven samples of at least 10 ms)
+measure 16.5–17.4 ns/wave for AVX2 (5.3–6.9× scalar) and 7.3 ns/wave for
+AVX-512 (12.7–15.8×), including FI/NEG/output scaling. DPP16 and DPP support
+for the other applicable arithmetic instructions remain to be implemented.
+
 All public instruction entry points take a 64-bit `instruction_flags` value.
 Existing modifier bits keep their meanings. The extra width accommodates the
 24-bit DPP8 lane selector together with arithmetic modifiers; unsupported upper
-bits currently return `GOC_ERROR_INVALID_FLAGS` before operand access. An API-wide
+bits return `GOC_ERROR_INVALID_FLAGS` before operand access. An API-wide
 test covers this rejection contract for all 669 wave32/wave64 entry points.
 Function-pointer adapters must use `uint64_t` for this parameter too.
 
