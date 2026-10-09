@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_dot_fixtures.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <stdint.h>
+#include <vector>
 
 TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
   const uint16_t f16[] = {0xc000, 0xbc00, 0x3c00, 0x4000};
@@ -135,4 +137,116 @@ TEST(Dot2, SimdSpecialValuesAndEveryExecMask) {
             }
           }
         }
+}
+
+TEST(Dot2, DppModifiersMasksAndAliases) {
+  const uint16_t codes[2][4] = {{0xc000, 0xbc00, 0x3c00, 0x4000}, {0xc000, 0xbf80, 0x3f80, 0x4000}};
+  const int values[] = {-2, -1, 1, 2};
+  for (unsigned brain = 0; brain < 2; ++brain)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (auto descriptor : goc_test::dpp_modes)
+          for (unsigned variant = 0; variant < 1024; ++variant) {
+            uint64_t mode = descriptor | (variant & 31) | ((variant & 992) << 1);
+            auto masks = (variant == 0 || variant == 1023) ? rdna4_exec_masks()
+                                                           : std::vector<uint64_t>{UINT32_MAX};
+            for (auto mask : masks)
+              for (unsigned alias = 0; alias < 4; ++alias) {
+                uint32_t storage[4][34], expected[4][34];
+                int factors[2][32][2];
+                for (unsigned reg = 0; reg < 4; ++reg)
+                  std::fill_n(storage[reg], 34, 0xdeadbeef);
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  for (unsigned reg = 0; reg < 2; ++reg) {
+                    unsigned low = (lane + reg) % 4, high = (lane / 4 + 2 * reg) % 4;
+                    storage[reg][lane + 1] =
+                        codes[brain][low] | (uint32_t(codes[brain][high]) << 16);
+                    factors[reg][lane][0] = values[low];
+                    factors[reg][lane][1] = values[high];
+                  }
+                  storage[2][lane + 1] = goc::as_bits(float(int(lane) - 16));
+                }
+                for (unsigned reg = 0; reg < 4; ++reg)
+                  std::copy_n(storage[reg], 34, expected[reg]);
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  int source = 0;
+                  if (!goc_test::dpp_source(mode, uint32_t(mask), lane, source))
+                    continue;
+                  int a0 = source < 0 ? 0 : factors[0][source][bool(mode & GOC_DOT_LO_A_HIGH)];
+                  int a1 = source < 0 ? 0 : factors[0][source][!bool(mode & GOC_DOT_HI_A_LOW)];
+                  int b0 = factors[1][lane][bool(mode & GOC_DOT_LO_B_HIGH)];
+                  int b1 = factors[1][lane][!bool(mode & GOC_DOT_HI_B_LOW)];
+                  int c = int(lane) - 16;
+                  if (mode & GOC_DOT_NEG_LO_A)
+                    a0 = -a0;
+                  if (mode & GOC_DOT_NEG_HI_A)
+                    a1 = -a1;
+                  if (mode & GOC_DOT_NEG_LO_B)
+                    b0 = -b0;
+                  if (mode & GOC_DOT_NEG_HI_B)
+                    b1 = -b1;
+                  if (mode & GOC_DOT_NEG_C)
+                    c = -c;
+                  expected[alias][lane + 1] = goc::as_bits(float(a0 * b0 + a1 * b1 + c));
+                }
+                const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[1] + 1},
+                               *c[] = {storage[2] + 1};
+                uint32_t *d[] = {storage[alias] + 1};
+                auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
+                ASSERT_EQ(fn(cpu | semantics, mask, mode, d, a, b, c), GOC_SUCCESS);
+                for (unsigned reg = 0; reg < 4; ++reg)
+                  for (unsigned word = 0; word < 34; ++word)
+                    ASSERT_EQ(storage[reg][word], expected[reg][word])
+                        << brain << "/" << cpu << "/" << semantics << "/" << mode;
+              }
+          }
+}
+
+TEST(Dot2, DppValidation) {
+  for (auto fn : {goc_rdna4_v_dot2_f32_f16, goc_rdna4_v_dot2_f32_bf16})
+    for (auto descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 5})
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+    }
+}
+
+// RX 9070 finite inputs with exact products and sums. Exact semantics retain
+// zero signs; loose semantics may produce either sign of a zero result.
+TEST(Dot2, DppHardwareCorpus) {
+  const uint32_t values[2][8] = {{0x3c00bc00, 0x4000c000, 0x4200c200, 0x4400c400, 0x00003c00,
+                                  0x3800b800, 0x4500c500, 0x4600c600},
+                                 {0x3f80bf80, 0x4000c000, 0x4040c040, 0x4080c080, 0x00003f80,
+                                  0x3f00bf00, 0x40a0c0a0, 0x40c0c0c0}};
+  const uint32_t signs[] = {0, 1, 2, 4, 8, 16, 31, 64, 95};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+      uint64_t hash = UINT64_C(14695981039346656037);
+      for (auto mask : masks)
+        for (unsigned brain = 0; brain < 2; ++brain)
+          for (auto descriptor : goc_test::dpp_modes)
+            for (unsigned variant = 0; variant < 25; ++variant) {
+              uint32_t mode = variant < 9 ? signs[variant] : ((variant - 9) << 7) | 85;
+              uint32_t av[32], bv[32], cv[32], output[32];
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                av[lane] = values[brain][lane % 8];
+                bv[lane] = values[brain][(lane + 3) % 8];
+                cv[lane] = goc::as_bits(float(int(lane) - 16));
+                output[lane] = 0xdead0000u + lane;
+              }
+              const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
+              uint32_t *d[] = {output};
+              auto fn = brain ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
+              ASSERT_EQ(fn(cpu | semantics, mask, descriptor | mode, d, a, b, c), GOC_SUCCESS);
+              for (auto word : output) {
+                if (semantics == GOC_SEMANTICS_LOOSE && !(word & 0x7fffffff))
+                  word = 0;
+                hash = (hash ^ word) * UINT64_C(1099511628211);
+              }
+            }
+      EXPECT_EQ(hash, UINT64_C(0xd46ee8a52b583d85)) << cpu << "/" << semantics;
+    }
 }

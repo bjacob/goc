@@ -288,6 +288,16 @@ byte pairs for every format combination, modifier combination and CPU level.
 Strict exact requests are rejected. Each combination has unmodified and
 ABS_C/NEG_C benchmark rows, labeled with its full `v_dot4_f32_*` mnemonic.
 
+The FP32-result `v_dot2_f32_f16` and `v_dot2_f32_bf16` forms also support
+DPP8/DPP16 in loose and borrowed exact semantics. A's packed word is permuted
+before sign/half selection, while B and C stay in their original lanes.
+Tests cover every modifier combination, masks, aliases and guards, plus
+89,600 RX 9070 output words for exactly representable inputs. Exact semantics
+match every captured bit; loose comparisons allow either sign of zero.
+Full-EXEC benchmarks include DPP8/DPP16 with source negation and half selection.
+On the Ryzen 9 7950X3D, pinned x86-64-v3 measurements take 23.4–26.9 ns
+for FP16 (7.41–8.37× scalar) and 21.7–25.9 ns for BF16 (5.78–6.84×).
+
 The true16 `v_dot2_f16_f16` and `v_dot2_bf16_bf16` instructions instead use
 `GOC_ALU_` ABS/NEG modifiers on each whole operand, `GOC_ALU_HIGH_C` for
 the accumulator half, and `GOC_ALU_HIGH_D` for the destination half. The

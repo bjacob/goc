@@ -5630,36 +5630,48 @@ bool benchmark_fp8_dot(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_dot2(uint64_t cpu, int iterations, int min_ms) {
   for (bool bf16 : {false, true})
-    for (uint32_t modifiers :
-         {UINT32_C(0), GOC_DOT_NEG_LO_A, GOC_DOT_LO_A_HIGH | GOC_DOT_NEG_HI_B}) {
-      Registers r;
-      r.output_regs = 1;
-      for (int lane = 0; lane < 32; ++lane) {
-        r.data[0][lane] = bf16 ? 0x40003f80 : 0x40003c00; // 1,2
-        r.data[4][lane] = bf16 ? 0x40804040 : 0x44004200; // 3,4
-        int c = lane - 16;
-        r.data[8][lane] = bits(float(c));
-        int dot = modifiers == 0 ? 11 : modifiers == GOC_DOT_NEG_LO_A ? 5 : -2;
-        r.expected[128 * (lane / 16) + lane % 16] = bits(float(dot + c));
-      }
-      Wmma fn = bf16 ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
-      const char *name = bf16 ? "v_dot2_f32_bf16" : "v_dot2_f32_f16";
-      const char *mode = modifiers == 0                  ? "none"
-                         : modifiers == GOC_DOT_NEG_LO_A ? "NEG_LO_A"
-                                                         : "select/NEG_HI_B";
-      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
-      if (scalar < 0)
-        return false;
-      print_result(name, "loose", mode, "scalar", scalar, 1);
-#if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if (cpu >= GOC_CPU_X86_64_V3) {
-        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
-        if (simd < 0)
+    for (int descriptor : {-1, 0, 5})
+      for (uint32_t modifiers :
+           {UINT32_C(0), GOC_DOT_NEG_LO_A, GOC_DOT_LO_A_HIGH | GOC_DOT_NEG_HI_B}) {
+        uint64_t instruction_flags = modifiers;
+        if (descriptor >= 0)
+          instruction_flags |= goc_test::dpp_modes[descriptor];
+        Registers r;
+        r.output_regs = 1;
+        for (int lane = 0; lane < 32; ++lane) {
+          r.data[0][lane] = bf16 ? 0x40003f80 : 0x40003c00; // 1,2
+          r.data[4][lane] = bf16 ? 0x40804040 : 0x44004200; // 3,4
+          int c = lane - 16;
+          r.data[8][lane] = bits(float(c));
+          int dot = modifiers == 0 ? 11 : modifiers == GOC_DOT_NEG_LO_A ? 5 : -2;
+          int source = lane;
+          if (descriptor >= 0)
+            goc_test::dpp_source(instruction_flags, UINT32_MAX, unsigned(lane), source);
+          if (source < 0)
+            dot = 0;
+          r.expected[128 * (lane / 16) + lane % 16] = bits(float(dot + c));
+        }
+        Wmma fn = bf16 ? goc_rdna4_v_dot2_f32_bf16 : goc_rdna4_v_dot2_f32_f16;
+        const char *name = bf16 ? "v_dot2_f32_bf16" : "v_dot2_f32_f16";
+        const char *mode = modifiers == 0                  ? "none"
+                           : modifiers == GOC_DOT_NEG_LO_A ? "NEG_LO_A"
+                                                           : "select/NEG_HI_B";
+        if (descriptor >= 0)
+          mode = descriptor == 0 ? (modifiers ? "DPP8/modified" : "DPP8")
+                                 : (modifiers ? "DPP16/modified" : "DPP16");
+        double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, instruction_flags);
+        if (scalar < 0)
           return false;
-        print_result(name, "loose", mode, "x86-64-v3", simd, scalar / simd);
-      }
+        print_result(name, "loose", mode, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+        if (cpu >= GOC_CPU_X86_64_V3) {
+          double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, instruction_flags);
+          if (simd < 0)
+            return false;
+          print_result(name, "loose", mode, "x86-64-v3", simd, scalar / simd);
+        }
 #endif
-    }
+      }
   (void)cpu;
   return true;
 }

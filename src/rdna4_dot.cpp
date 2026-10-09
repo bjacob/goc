@@ -4,6 +4,7 @@
 #include "float_formats.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 #include "rdna4_simd.h"
 
 #include <array>
@@ -13,8 +14,13 @@
 namespace {
 
 template <bool Bf16>
-int dot(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *const *d,
+int dot(uint64_t flags, uint64_t mask, uint64_t instruction_flags, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return goc::execute_dpp(
+        flags, mask, instruction_flags, a, [&](uint32_t effective, const uint32_t *const *source) {
+          return dot<Bf16>(flags, effective, uint32_t(instruction_flags), d, source, b, c);
+        });
   // Bits 0..4: negation; bit 6: CLAMP; bits 7..10: half selection.
   if (int error = goc::validate(flags, instruction_flags & ~UINT32_C(0x7df), true))
     return error;
@@ -71,15 +77,11 @@ int dot(uint64_t flags, uint64_t mask, uint32_t instruction_flags, uint32_t *con
 int goc_rdna4_v_dot2_f32_f16(uint64_t flags, uint64_t mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot<false>(flags, mask, instruction_flags, d, a, b, c);
 }
 
 int goc_rdna4_v_dot2_f32_bf16(uint64_t flags, uint64_t mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot<true>(flags, mask, instruction_flags, d, a, b, c);
 }

@@ -3048,6 +3048,8 @@ static const uint32_t GOC_DOT_LO_B_HIGH = (UINT32_C(1) << 8);
 static const uint32_t GOC_DOT_HI_A_LOW = (UINT32_C(1) << 9);
 static const uint32_t GOC_DOT_HI_B_LOW = (UINT32_C(1) << 10);
 
+// DPP8/DPP16 permute the complete A word before sign and half selection;
+// B/C remain in their original lanes. Supported in loose and exact semantics.
 // RDNA4 DOT2: A/B each hold two packed 16-bit factors in one VGPR;
 // C/D each hold one FP32 value per lane. Loose and exact modes are supported.
 // Supports all floating DOT2 sign/half-selection flags. GOC_DOT_CLAMP is
