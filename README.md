@@ -432,6 +432,25 @@ Ryzen 9 7950X3D measurements show 1.39–1.86x for v3 and 1.77–2.34x for v4,
 including signed CLAMP and index-key selection; the accumulator reset is included
 in every path's timing (seven samples, each at least 10 ms).
 
+FP32 interpolation (`v_interp_p10_f32`, `v_interp_p2_f32`) broadcasts parameter
+values within each four-lane quad, then performs an FMA. P10 takes A from quad
+lane 1 and C from quad lane 0; P2 takes A from quad lane 2 and C from the current
+lane. B always comes from the current lane. The broadcasts read inactive source
+lanes too, while EXEC controls destination writes. NEG_A/B/C and CLAMP stay on
+both eight-lane v3 and sixteen-lane v4 paths. All eight WAIT_EXP values are
+accepted; this scheduling field has no effect on synchronous CPU execution.
+
+The implementation follows sections 12.3 and 16.13 of the
+[AMD RDNA4 ISA guide](https://www.amd.com/content/dam/amd/en/documents/radeon-tech-docs/instruction-set-architectures/rdna4-instruction-set-architecture.pdf).
+Tests compare 8,192 GPU-captured results across modifiers and wait counts, and
+36,864 results across empty/full/alternating/single-lane EXEC masks. Further tests
+cover aliases, unaligned storage, special values and random FP32 inputs against
+a higher-precision reference. These forms support loose semantics and require
+host nearest-even rounding with denormals enabled; FP exception flags may change.
+Pinned-core Ryzen 9 7950X3D timings show 4.39–5.13x for v3 and 17.19–19.38x
+for v4 versus scalar, including NEG and CLAMP (seven samples, each at least
+10 ms). Mixed FP16 interpolation forms remain to be implemented.
+
 Conditional selection (`v_cndmask_b32` and `v_cndmask_b16`) selects B for set
 bits in a separate wave32 condition mask and A for clear bits. EXEC independently
 controls destination writes. ABS/NEG modify only source sign bits; all payload

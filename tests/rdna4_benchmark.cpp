@@ -21,6 +21,7 @@
 #include "rdna4_integer_conversion_reference.h"
 #include "rdna4_integer_mad_reference.h"
 #include "rdna4_integer_ternary_reference.h"
+#include "rdna4_interp32_reference.h"
 #include "rdna4_mad64_reference.h"
 #include "rdna4_mixed_fma_reference.h"
 #include "rdna4_mullit_reference.h"
@@ -1356,6 +1357,50 @@ bool benchmark_cndmask(uint64_t cpu, int iterations, int min_ms) {
         if (simd < 0)
           return false;
         print_result(name, "loose", label, "x86-64-v4", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_interp32(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {goc_rdna4_v_interp_p10_f32, goc_rdna4_v_interp_p2_f32};
+  const char *names[] = {"v_interp_p10_f32", "v_interp_p2_f32"};
+  for (unsigned op = 0; op < 2; ++op)
+    for (bool modified : {false, true}) {
+      unsigned compact = modified ? 13 : 0;
+      uint32_t mode = goc_test::interp32_mode(compact, modified ? 7 : 0);
+      Registers r;
+      r.output_regs = 1;
+      uint32_t inputs[4][32];
+      goc_test::interp32_capture_inputs(inputs);
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        for (unsigned reg = 0; reg < 3; ++reg)
+          r.data[4 * reg][lane] = inputs[reg][lane];
+        r.expected[128 * (lane / 16) + lane % 16] = goc_test::interp32_bits(
+            goc_test::interp32_reference(op, inputs[0], inputs[1], inputs[2], lane, compact));
+      }
+      auto fn = functions[op];
+      const char *label = modified ? "NEG/clamp/wait7" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+      if (cpu >= GOC_CPU_X86_64_V4) {
+        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
       }
 #endif
     }
@@ -3739,7 +3784,7 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave");
-  if (!benchmark_cndmask(cpu, iterations, min_ms) ||
+  if (!benchmark_interp32(cpu, iterations, min_ms) || !benchmark_cndmask(cpu, iterations, min_ms) ||
       !benchmark_trig_preop(cpu, iterations, min_ms) ||
       !benchmark_mullit(cpu, iterations, min_ms) || !benchmark_pack(cpu, iterations, min_ms) ||
       !benchmark_swmmac_integer(cpu, iterations, min_ms) ||

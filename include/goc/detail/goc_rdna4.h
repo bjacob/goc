@@ -18,6 +18,26 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Interpolation wait-count field (0..7). Accepted for every interpolation
+// instruction; it has no effect on synchronous CPU execution.
+static const uint32_t GOC_INTERP_WAIT_EXP_SHIFT = 13;
+static const uint32_t GOC_INTERP_WAIT_EXP_MASK = (UINT32_C(7) << 13);
+
+// Quad-local interpolation. For lane L and Q=L&~3, P10 computes
+// fma(A[Q+1],B[L],C[Q]); P2 computes fma(A[Q+2],B[L],C[L]). Source lanes are
+// read even if inactive in EXEC. Each operand uses one VGPR; whole VGPRs may
+// alias. Supports NEG_A/B/C, CLAMP and WAIT_EXP, with no ABS or OMOD.
+// Loose semantics only. Requires host nearest-even rounding and denormals
+// enabled; exception flags may change. NaN payloads are unspecified.
+GOC_API int goc_rdna4_v_interp_p10_f32(uint64_t flags, uint64_t exec_mask,
+                                       uint32_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b,
+                                       const uint32_t *const *c);
+GOC_API int goc_rdna4_v_interp_p2_f32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      const uint32_t *const *c);
+
 // Select B where the corresponding condition bit is set, A otherwise. Each
 // operand uses one VGPR. ABS_A/B clear source sign bits, then NEG_A/B toggle
 // them; all other payload bits, including signaling NaNs, are preserved.
