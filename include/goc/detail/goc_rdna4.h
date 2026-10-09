@@ -1786,10 +1786,12 @@ GOC_API int goc_rdna4_v_cvt_pk_u8_f32(uint64_t flags, uint64_t exec_mask,
                                       const uint32_t *const *a, const uint32_t *const *b,
                                       const uint32_t *const *c);
 
-// Integer widening and saturating packing, with one VGPR per operand. Widening
-// selects the low/high A half with HIGH_A, then sign- or zero-extends to D.
+// DPP8/DPP16 permute A before half selection or saturation; B stays in its
+// original lane. Integer widening and saturating packing use one VGPR per
+// operand. Widening selects the low/high A half with HIGH_A, then sign- or zero-extends to D.
 // Packing saturates each 32-bit source to the signed/unsigned 16-bit range,
-// placing A in D's low half and B in its high half; no flags are accepted.
+// placing A in D's low half and B in its high half; no numeric modifiers
+// are accepted.
 // Supports loose semantics, full EXEC masking and whole-register aliases.
 // Preserves all host FP state. GOC_FP16_OVFL has no effect.
 

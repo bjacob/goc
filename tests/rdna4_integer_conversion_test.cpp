@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_integer_conversion_reference.h"
 
@@ -147,5 +148,73 @@ TEST(IntegerConversion, ValidationAndSemanticFallback) {
         for (auto word : output)
           EXPECT_EQ(word, 0u);
       }
+    }
+}
+
+TEST(IntegerConversion, DppMasksAliasesAndUnalignedFullWords) {
+  std::mt19937 random(8877);
+  for (auto descriptor : goc_test::dpp_modes)
+    for (unsigned op = 0; op < 4; ++op)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned select = 0; select < (op < 2 ? 2u : 1u); ++select)
+          for (uint64_t mask : rdna4_exec_masks())
+            for (unsigned breg = 0; breg < (op >= 2 ? 2u : 1u); ++breg)
+              for (unsigned dreg = 0; dreg < 3; ++dreg) {
+                uint32_t storage[3][34], expected[3][34];
+                for (unsigned reg = 0; reg < 3; ++reg)
+                  for (unsigned word = 0; word < 34; ++word)
+                    storage[reg][word] = expected[reg][word] = random();
+                uint64_t mode = descriptor | (select ? GOC_ALU_HIGH_A : 0);
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  int source = 0;
+                  if (goc_test::dpp_source(mode, uint32_t(mask), lane, source))
+                    expected[dreg][lane + 1] = goc_test::integer_conversion_reference(
+                        op, source < 0 ? 0 : storage[0][source + 1], storage[breg][lane + 1],
+                        uint32_t(mode));
+                }
+                const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1};
+                uint32_t *d[] = {storage[dreg] + 1};
+                ASSERT_EQ(functions[op](cpu | GOC_FP16_OVFL, mask, mode, d, a, b), GOC_SUCCESS);
+                for (unsigned reg = 0; reg < 3; ++reg)
+                  for (unsigned word = 0; word < 34; ++word)
+                    ASSERT_EQ(storage[reg][word], expected[reg][word]);
+              }
+}
+
+// RX 9070 capture, including source half selectors and preserved destinations.
+TEST(IntegerConversion, DppHardwareCorpus) {
+  const uint32_t values[] = {0, 1, 0xffffffff, 0x7fff, 0x8000, 0x10000, 0xffff7fff, 0x80000000};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (auto mask : masks)
+      for (unsigned op = 0; op < 4; ++op)
+        for (auto descriptor : goc_test::dpp_modes)
+          for (unsigned select = 0; select < (op < 2 ? 2u : 1u); ++select) {
+            uint32_t av[32], bv[32], output[32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              av[lane] = values[lane % 8];
+              bv[lane] = values[(lane + 3) % 8];
+              output[lane] = 0xdead0000u + lane;
+            }
+            const uint32_t *a[] = {av}, *b[] = {bv};
+            uint32_t *d[] = {output};
+            ASSERT_EQ(functions[op](cpu, mask, descriptor | (select ? GOC_ALU_HIGH_A : 0), d, a, b),
+                      GOC_SUCCESS);
+            for (auto word : output)
+              hash = (hash ^ word) * UINT64_C(1099511628211);
+          }
+    EXPECT_EQ(hash, UINT64_C(0x1520b5b44ef7c66a)) << cpu;
+  }
+}
+
+TEST(IntegerConversion, DppValidation) {
+  for (auto fn : functions)
+    for (auto descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_ABS_A), uint64_t(GOC_ALU_CLAMP)})
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
     }
 }

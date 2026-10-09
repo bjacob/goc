@@ -834,6 +834,16 @@ full EXEC and both half selectors where applicable. On the development Ryzen 9
 7950X3D, pinned-core measurements showed 1.21–1.43x for v3 packing and
 3.82–6.14x for v4 versus scalar (seven samples, each at least 10 ms).
 
+All four integer conversions also support DPP8/DPP16. Source A is permuted
+before widening's half selection or packing's saturation; B stays in its
+original lane. Tests cross seven descriptors with half selectors, 85 masks,
+source/destination aliases and unaligned storage, and match 10,752 words
+captured on the RX 9070. Full-EXEC benchmarks cover DPP8 reversal and DPP16
+row shift without leaving the applicable SIMD arithmetic paths. Pinned Ryzen 9
+7950X3D measurements showed v3 packing at 18.3–21.6 ns (2.00–2.38x scalar),
+and v4 across all four conversions at 11.3–14.4 ns (2.81–3.98x), with seven
+samples of at least 10 ms each.
+
 Normalized conversions cover `v_cvt_pk_norm_i16_f32`, `v_cvt_pk_norm_u16_f32`,
 `v_cvt_pk_norm_i16_f16`, `v_cvt_pk_norm_u16_f16`, `v_cvt_norm_i16_f16`, and
 `v_cvt_norm_u16_f16`. Signed results scale by 32767 and saturate to
