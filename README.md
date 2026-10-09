@@ -79,6 +79,15 @@ with signedness and CLAMP as labeled. All workloads run with full EXEC, separate
 C/D storage and hot buffers. FMA uses independent integer goldens.
 The `Instruction` column uses standard instruction mnemonics, including operand types.
 The `Wave` column distinguishes wave32 and wave64 workloads.
+Pass `--csv` for comma-separated output on stdout, with one header row and
+numeric speedup ratios (empty when unavailable). Explanatory text goes to stderr.
+For example:
+
+```sh
+../goc-build/tests/goc_rdna4_benchmark_static --csv > results.csv
+```
+
+`--csv` can appear before or after the optional initial iteration count.
 Speedups compare paths with the same instruction, wave size, semantics and instruction flags.
 Timings include public API dispatch, input conversions and output stores. Each
 reported time is the median of seven samples after warmup. Each path starts at 128 calls (overridable by the

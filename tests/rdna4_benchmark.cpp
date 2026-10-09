@@ -234,22 +234,51 @@ double measure(Instruction fn, uint64_t flags, RegisterFile &r, int initial_iter
   return samples[samples.size() / 2];
 }
 
-// Print one table row using the same column widths for headings and results.
+bool csv_output = false;
+
+// Print one CSV field, quoting embedded commas, quotes, and newlines.
+void print_csv_field(const char *text) {
+  bool quoted = std::strpbrk(text, ",\"\r\n") != nullptr;
+  if (quoted)
+    std::putchar('"');
+  for (; *text; ++text) {
+    if (*text == '"')
+      std::putchar('"');
+    std::putchar(*text);
+  }
+  if (quoted)
+    std::putchar('"');
+}
+
+// Print a header or result row in the selected output format.
 void print_columns(const char *instruction, const char *semantics, const char *instruction_flags,
                    const char *path, const char *time, const char *speedup, const char *wave) {
-  std::printf("%-36s %4s %-10s %-18s %-20s %12s %11s\n", instruction, wave, semantics,
+  if (csv_output) {
+    const char *fields[] = {instruction, wave, semantics, instruction_flags, path, time, speedup};
+    for (unsigned i = 0; i < sizeof(fields) / sizeof(fields[0]); ++i) {
+      if (i)
+        std::putchar(',');
+      print_csv_field(fields[i]);
+    }
+    std::putchar('\n');
+    return;
+  }
+  // Longest current mnemonic: 27 characters, with three spare. Other widths
+  // accommodate headers, flag combinations, CPU names, and timing headroom.
+  std::printf("%-30s %4s %-9s %-20s %-18s %10s %9s\n", instruction, wave, semantics,
               instruction_flags, path, time, speedup);
 }
 
-// Print a result with fixed decimal precision; a negative speedup prints "--".
+// Print fixed-precision timing and speedup; negative speedup is absent in CSV
+// and displayed as "--" in the table.
 void print_result(const char *instruction, const char *semantics, const char *instruction_flags,
                   const char *path, double time, double speedup, int wave = 32) {
   char time_text[64], speedup_text[64];
   std::snprintf(time_text, sizeof(time_text), "%.1f", time);
   if (speedup < 0)
-    std::snprintf(speedup_text, sizeof(speedup_text), "--");
+    std::snprintf(speedup_text, sizeof(speedup_text), "%s", csv_output ? "" : "--");
   else
-    std::snprintf(speedup_text, sizeof(speedup_text), "%.2fx", speedup);
+    std::snprintf(speedup_text, sizeof(speedup_text), csv_output ? "%.2f" : "%.2fx", speedup);
   print_columns(instruction, semantics, instruction_flags, path, time_text, speedup_text,
                 wave == 64 ? "64" : "32");
 }
@@ -292,7 +321,8 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t mod
   (void)cpu;
   (void)accelerated;
   if (!ran_simd)
-    std::printf("%-6s SIMD unavailable in this build or on this host; skipped.\n", format);
+    std::fprintf(csv_output ? stderr : stdout,
+                 "%s SIMD unavailable in this build or on this host; skipped.\n", format);
 
   if (modifiers)
     return true;
@@ -2379,13 +2409,16 @@ bool benchmark_integer_dot(uint64_t cpu, int iterations, int min_ms) {
 int main(int argc, char **argv) {
   int iterations = 128;
   int min_ms = 10;
-  if (argc > 2) {
-    std::fprintf(stderr, "Usage: %s [positive initial iterations]\n", argv[0]);
-    return 2;
-  }
-  if (argc == 2 && (!nonnegative_integer(argv[1], iterations) || iterations == 0)) {
-    std::fprintf(stderr, "Initial iterations must be a positive integer.\n");
-    return 2;
+  bool have_iterations = false;
+  for (int arg = 1; arg < argc; ++arg) {
+    if (std::strcmp(argv[arg], "--csv") == 0 && !csv_output) {
+      csv_output = true;
+    } else if (!have_iterations && nonnegative_integer(argv[arg], iterations) && iterations > 0) {
+      have_iterations = true;
+    } else {
+      std::fprintf(stderr, "Usage: %s [--csv] [positive initial iterations]\n", argv[0]);
+      return 2;
+    }
   }
   if (const char *value = std::getenv("GOC_BENCH_MIN_MS")) {
     if (!nonnegative_integer(value, min_ms)) {
@@ -2395,16 +2428,22 @@ int main(int argc, char **argv) {
   }
 
   uint64_t cpu = goc_init_cpu_flags();
-  std::printf("RDNA4 instruction benchmarks; CPU flags 0x%llx\n",
-              static_cast<unsigned long long>(cpu));
-  std::printf("Median of 7 samples, each at least %d ms, after warmup.\n", min_ms);
-  std::printf("Start at %d calls; double until the minimum duration is reached.\n", iterations);
-  std::puts("Fixed inputs, full EXEC, separate C/D, hot buffers; all outputs checked.");
-  std::puts("Timings include public API dispatch, input conversions and output stores.");
-  std::puts("FP rows: loose speedups, exact scalar separately. Integer WMMA rows: exact. Speedups "
-            "compare "
-            "matching instruction-flags settings.");
-  std::puts("mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.");
+  FILE *messages = csv_output ? stderr : stdout;
+  std::fprintf(messages, "RDNA4 instruction benchmarks; CPU flags 0x%llx\n",
+               static_cast<unsigned long long>(cpu));
+  std::fprintf(messages, "Median of 7 samples, each at least %d ms, after warmup.\n", min_ms);
+  std::fprintf(messages, "Start at %d calls; double until the minimum duration is reached.\n",
+               iterations);
+  std::fprintf(messages,
+               "Fixed inputs, full EXEC, separate C/D, hot buffers; all outputs checked.\n");
+  std::fprintf(messages,
+               "Timings include public API dispatch, input conversions and output stores.\n");
+  std::fprintf(
+      messages,
+      "FP rows: loose speedups, exact scalar separately. Integer WMMA rows: exact. Speedups "
+      "compare "
+      "matching instruction-flags settings.\n");
+  std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave");
   if (!benchmark_conversion32(cpu, iterations, min_ms) ||

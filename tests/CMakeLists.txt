@@ -56,6 +56,9 @@ foreach(library IN LISTS goc_library_targets)
   add_test(NAME ${variant}.rdna4_benchmark COMMAND ${benchmark} 1)
   set_tests_properties(${variant}.rdna4_benchmark PROPERTIES
     ENVIRONMENT "GOC_BENCH_MIN_MS=0")
+  add_test(NAME ${variant}.rdna4_benchmark_output
+    COMMAND ${CMAKE_COMMAND} -DBENCHMARK=$<TARGET_FILE:${benchmark}>
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/check_rdna4_benchmark_output.cmake)
 endforeach()
 
 if(GOC_STATIC)
