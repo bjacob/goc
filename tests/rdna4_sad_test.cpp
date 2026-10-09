@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_sad_reference.h"
 
@@ -270,4 +271,84 @@ TEST(Sad, ValidationAndHostFpState) {
     EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
   }
   std::fesetenv(&saved);
+}
+
+TEST(Sad, DppClampMasksAliasesAndGuards) {
+  std::mt19937 random(7351);
+  for (int op = 0; op < 5; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (auto descriptor : goc_test::dpp_modes)
+        for (bool clamp : {false, true})
+          for (auto mask : rdna4_exec_masks())
+            for (unsigned breg = 0; breg < 2; ++breg)
+              for (unsigned creg = 0; creg < 3; ++creg)
+                for (unsigned dreg = 0; dreg < 4; ++dreg) {
+                  uint32_t storage[4][34], expected[4][34];
+                  for (unsigned reg = 0; reg < 4; ++reg)
+                    for (unsigned word = 0; word < 34; ++word)
+                      storage[reg][word] = expected[reg][word] = random();
+                  uint64_t mode = descriptor | (clamp ? GOC_ALU_CLAMP : 0);
+                  for (unsigned lane = 0; lane < 32; ++lane) {
+                    int source = 0;
+                    if (goc_test::dpp_source(mode, uint32_t(mask), lane, source)) {
+                      uint32_t accumulator = storage[creg][lane + 1];
+                      expected[dreg][lane + 1] =
+                          goc_test::sad_reference(op, source < 0 ? 0 : storage[0][source + 1], 0,
+                                                  storage[breg][lane + 1], &accumulator, clamp)[0];
+                    }
+                  }
+                  const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1},
+                                 *c[] = {storage[creg] + 1};
+                  uint32_t *d[] = {storage[dreg] + 1};
+                  ASSERT_EQ(functions[op](cpu, mask, mode, d, a, b, c), GOC_SUCCESS);
+                  for (unsigned reg = 0; reg < 4; ++reg)
+                    for (unsigned word = 0; word < 34; ++word)
+                      ASSERT_EQ(storage[reg][word], expected[reg][word])
+                          << op << "/" << cpu << "/" << mode;
+                }
+}
+
+TEST(Sad, DppValidation) {
+  for (auto descriptor : goc_test::dpp_modes) {
+    for (unsigned op = 0; op < 5; ++op) {
+      EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      for (auto invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_NEG_A), uint64_t(GOC_ALU_HIGH_A)})
+        EXPECT_EQ(functions[op](0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+    }
+    for (unsigned op = 5; op < 8; ++op)
+      EXPECT_EQ(functions[op](0, 0, descriptor, nullptr, nullptr, nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+  }
+}
+
+// RX 9070: five operations, seven descriptors, CLAMP off/on and eight EXEC masks.
+TEST(Sad, DppHardwareCorpus) {
+  const uint32_t values[] = {0,          0xffffffff, 0x00ff00ff, 0xff00ff00,
+                             0x80008000, 0x7fff7fff, 0xfffffffe, 1};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    uint64_t hash = UINT64_C(14695981039346656037);
+    for (auto mask : masks)
+      for (unsigned op = 0; op < 5; ++op)
+        for (auto descriptor : goc_test::dpp_modes)
+          for (bool clamp : {false, true}) {
+            uint32_t av[32], bv[32], cv[32], output[32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              av[lane] = values[lane % 8];
+              bv[lane] = values[(lane + 3) % 8];
+              cv[lane] = values[(lane + 5) % 8];
+              output[lane] = 0xdead0000u + lane;
+            }
+            const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
+            uint32_t *d[] = {output};
+            ASSERT_EQ(
+                functions[op](cpu, mask, descriptor | (clamp ? GOC_ALU_CLAMP : 0), d, a, b, c),
+                GOC_SUCCESS);
+            for (auto word : output)
+              hash = (hash ^ word) * UINT64_C(1099511628211);
+          }
+    EXPECT_EQ(hash, UINT64_C(0x9a854a2e5f977214)) << cpu;
+  }
 }

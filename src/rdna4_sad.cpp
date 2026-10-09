@@ -5,6 +5,7 @@
 #include "rdna4_sad.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <algorithm>
 #include <stdint.h>
@@ -24,8 +25,17 @@ template <int Bits, bool Masked> uint32_t difference(uint32_t a, uint32_t b) {
 }
 
 template <goc::Sad Op>
-int sad(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+int sad(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *c) {
+  if (mode >> 32) {
+    if constexpr (goc::sad_quad(Op))
+      return GOC_ERROR_INVALID_FLAGS;
+    else
+      return goc::execute_dpp(flags, mask, mode, a,
+                              [&](uint32_t effective, const uint32_t *const *source) {
+                                return sad<Op>(flags, effective, uint32_t(mode), d, source, b, c);
+                              });
+  }
   if (int error = goc::validate(flags, mode & ~GOC_ALU_CLAMP))
     return error;
   if (!uint32_t(mask))
@@ -73,63 +83,47 @@ int sad(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
 int goc_rdna4_v_sad_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return sad<goc::Sad::U8>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_sad_hi_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return sad<goc::Sad::HighU8>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_sad_u16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return sad<goc::Sad::U16>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_sad_u32(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return sad<goc::Sad::U32>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_msad_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return sad<goc::Sad::MaskedU8>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_qsad_pk_u16_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                const uint32_t *const *a, const uint32_t *const *b,
                                const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return sad<goc::Sad::QuadU16>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_mqsad_pk_u16_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return sad<goc::Sad::MaskedQuadU16>(flags, mask, mode, d, a, b, c);
 }
 
 int goc_rdna4_v_mqsad_u32_u8(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return sad<goc::Sad::MaskedQuadU32>(flags, mask, mode, d, a, b, c);
 }

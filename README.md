@@ -1187,6 +1187,15 @@ two `C`/`D` VGPRs; `U32` uses four. Saturation and wrapping apply independently
 to each accumulator. Tests cover every byte pair and halfword encoding,
 overflow boundaries, all masked-byte patterns, sliding windows, the unused
 high source byte, and destination/source aliases under varied EXEC masks.
+The five single-result SAD/MSAD forms also support DPP8/DPP16, permuting A
+while B and C remain in their original lanes. CLAMP stays on the v3 path.
+Tests match 17,920 RX 9070 outputs and cross all seven descriptors with both
+CLAMP settings, 85 EXEC masks, source/destination aliases and guard words.
+Quad forms have no RDNA4 DPP encoding and continue to reject DPP flags.
+Full-EXEC benchmarks cover DPP8 reversal and DPP16 row shift. Pinned Ryzen 9
+7950X3D measurements put these DPP cases at 18.6–23.1 ns on v3 (1.81–3.16x
+scalar), using seven samples of at least 10 ms each.
+
 The arithmetic and saturation rules follow rocjitsu's existing SAD helpers.
 
 The 32- and 64-bit reverse shifts (`LSHLREV`, `LSHRREV`, `ASHRREV`) take

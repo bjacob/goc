@@ -2061,7 +2061,8 @@ GOC_API int goc_rdna4_v_lerp_u8(uint64_t flags, uint64_t exec_mask, uint64_t ins
 // SAD_U32 one full-word difference. SAD_HI_U8 shifts the byte sum left by 16
 // before accumulation. MSAD_U8 omits differences where the corresponding B
 // byte is zero. These forms use one VGPR for each operand.
-// GOC_ALU_CLAMP saturates the final unsigned accumulation; all other instruction
+// GOC_ALU_CLAMP saturates the final unsigned accumulation. DPP8/DPP16 permute
+// A before arithmetic; B and C stay in their original lanes. Other instruction
 // flags are invalid. Loose semantics only; preserves all host FP state.
 GOC_API int goc_rdna4_v_sad_u8(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
