@@ -179,6 +179,45 @@ GOC_API int goc_rdna4_v_ashrrev_i16(uint64_t flags, uint64_t exec_mask, uint32_t
                                     uint32_t *const *d, const uint32_t *const *a,
                                     const uint32_t *const *b);
 
+// Ordinary 16-bit ternary arithmetic: one VGPR per operand. HIGH_A/B/C/D
+// select source and destination halves; the other D half is preserved.
+// MAD supports CLAMP after full-precision A * B + C, otherwise wrapping.
+// MIN3/MAX3 select the smallest/largest of all three signed/unsigned inputs.
+// MED3 selects the middle value. CLAMP is invalid for MIN3/MAX3/MED3.
+// No other instruction flags are valid.
+// Loose semantics only; independent of host floating-point state.
+GOC_API int goc_rdna4_v_mad_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_mad_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_min3_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_min3_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_max3_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_max3_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_med3_u16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_med3_i16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c);
+
 // Packed integer binary arithmetic: one VGPR per operand, two 16-bit results
 // per lane. Supports GOC_PK_* half selectors for A/B and GOC_PK_CLAMP. CLAMP
 // saturates ADD/SUB to the signed/unsigned 16-bit range; min/max and multiply

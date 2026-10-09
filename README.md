@@ -167,6 +167,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
 | `v_dot4_f32_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar, x86-64-v3 | Not implemented |
 | `v_pk_add_i16`, `v_pk_sub_i16`, `v_pk_add_u16`, `v_pk_sub_u16` | Scalar, x86-64-v3; all half selectors and saturation | Not implemented |
+| `v_mad_i16`, `v_mad_u16` | Scalar, x86-64-v3; half selectors and saturation | Not implemented |
+| `v_min3_i16`, `v_min3_u16`, `v_max3_i16`, `v_max3_u16`, `v_med3_i16`, `v_med3_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
 | `v_add_nc_i16`, `v_sub_nc_i16`, `v_add_nc_u16`, `v_sub_nc_u16` | Scalar, x86-64-v3; half selectors and saturation | Not implemented |
 | `v_min_i16`, `v_max_i16`, `v_min_u16`, `v_max_u16`, `v_mul_lo_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
 | `v_lshlrev_b16`, `v_lshrrev_b16`, `v_ashrrev_i16` | Scalar, x86-64-v3; half selectors | Not implemented |
@@ -388,6 +390,13 @@ Saturation stays on SIMD by checking the high product word against the low
 word's sign extension, or against zero for unsigned products. Tests include
 literal high-word results, saturation thresholds, upper-byte noise, random
 products, masks, aliases and host FP-environment preservation.
+
+Ordinary 16-bit signed/unsigned MAD, three-input min/max and median use
+`GOC_ALU_HIGH_A/B/C/D` to select each source and destination half, preserving
+the other destination half. MAD also accepts CLAMP after full-precision
+multiply-add. Scalar and AVX2 paths support every modifier, mask and alias.
+Tests cover every source encoding, boundary triples, all 15 whole-register
+alias layouts, every modifier, masks and literal saturation/selection witnesses.
 
 Ordinary 16-bit integer ADD/SUB, min/max, low-word multiply and shifts select
 one A/B half and write one D half through `GOC_ALU_HIGH_A/B/D`. The other D half

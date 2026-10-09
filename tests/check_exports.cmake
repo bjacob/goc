@@ -130,6 +130,14 @@ else()
     goc_rdna4_v_pk_lshlrev_b16
     goc_rdna4_v_pk_lshrrev_b16
     goc_rdna4_v_pk_ashrrev_i16
+    goc_rdna4_v_mad_u16
+    goc_rdna4_v_mad_i16
+    goc_rdna4_v_min3_u16
+    goc_rdna4_v_min3_i16
+    goc_rdna4_v_max3_u16
+    goc_rdna4_v_max3_i16
+    goc_rdna4_v_med3_i16
+    goc_rdna4_v_med3_u16
     goc_rdna4_v_pk_mad_i16
     goc_rdna4_v_pk_mad_u16
     goc_rdna4_v_add_nc_i16
