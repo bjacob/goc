@@ -8,6 +8,36 @@ if(VARIANT STREQUAL "static")
   set(expected consumer_cpu_flags)
 else()
   set(expected
+    goc_rdna4_s_and_b32
+    goc_rdna4_s_and_b64
+    goc_rdna4_s_or_b32
+    goc_rdna4_s_or_b64
+    goc_rdna4_s_xor_b32
+    goc_rdna4_s_xor_b64
+    goc_rdna4_s_nand_b32
+    goc_rdna4_s_nand_b64
+    goc_rdna4_s_nor_b32
+    goc_rdna4_s_nor_b64
+    goc_rdna4_s_xnor_b32
+    goc_rdna4_s_xnor_b64
+    goc_rdna4_s_and_not1_b32
+    goc_rdna4_s_and_not1_b64
+    goc_rdna4_s_or_not1_b32
+    goc_rdna4_s_or_not1_b64
+    goc_rdna4_s_not_b32
+    goc_rdna4_s_not_b64
+    goc_rdna4_s_brev_b32
+    goc_rdna4_s_brev_b64
+    goc_rdna4_s_lshl_b32
+    goc_rdna4_s_lshl_b64
+    goc_rdna4_s_lshr_b32
+    goc_rdna4_s_lshr_b64
+    goc_rdna4_s_ashr_i32
+    goc_rdna4_s_ashr_i64
+    goc_rdna4_s_lshl1_add_u32
+    goc_rdna4_s_lshl2_add_u32
+    goc_rdna4_s_lshl3_add_u32
+    goc_rdna4_s_lshl4_add_u32
     goc_rdna4_s_add_co_u32
     goc_rdna4_s_sub_co_u32
     goc_rdna4_s_add_co_i32

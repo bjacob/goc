@@ -1442,6 +1442,14 @@ hardware-verified correction: `s_absdiff_i32` wraps subtraction before ABS.
 Tests cover 983,040 GFX1201 result/SCC triples, every signed immediate, aliasing,
 and host FP-state preservation. Benchmarks include all 20 instructions.
 
+Scalar bitwise arithmetic also includes AND/OR/XOR and complemented forms,
+NOT, bit reversal, logical/arithmetic shifts in 32 and 64 bits, and four fused
+shift-add forms. Models borrowed from rocjitsu match 737,280 GFX1201 captured
+result/SCC triples. Shift counts wrap to the operand width; bit reversal leaves
+SCC unchanged. Tests cover overlapping scalar outputs, empty EXEC, every shift
+count, and host FP-state preservation. These single-result operations use scalar
+paths on all CPU levels and are included in the benchmark.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU

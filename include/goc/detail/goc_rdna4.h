@@ -18,6 +18,136 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Scalar bitwise and shift instructions ignore EXEC, including zero EXEC.
+// Output pointers are required; all host FP state is preserved. Both loose and
+// empirical exact semantics are supported. instruction_flags must be zero.
+// SCC, when present, is written after d and wins on overlapping storage, including
+// a 32-bit word within a 64-bit destination. Errors leave all outputs unchanged.
+
+// 32-bit and; SCC is result != 0.
+GOC_API int goc_rdna4_s_and_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// 64-bit and; SCC is result != 0.
+GOC_API int goc_rdna4_s_and_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+
+// 32-bit or; SCC is result != 0.
+GOC_API int goc_rdna4_s_or_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                               uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// 64-bit or; SCC is result != 0.
+GOC_API int goc_rdna4_s_or_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                               uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+
+// 32-bit xor; SCC is result != 0.
+GOC_API int goc_rdna4_s_xor_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// 64-bit xor; SCC is result != 0.
+GOC_API int goc_rdna4_s_xor_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+
+// 32-bit nand; SCC is result != 0.
+GOC_API int goc_rdna4_s_nand_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// 64-bit nand; SCC is result != 0.
+GOC_API int goc_rdna4_s_nand_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+
+// 32-bit nor; SCC is result != 0.
+GOC_API int goc_rdna4_s_nor_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// 64-bit nor; SCC is result != 0.
+GOC_API int goc_rdna4_s_nor_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+
+// 32-bit xnor; SCC is result != 0.
+GOC_API int goc_rdna4_s_xnor_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// 64-bit xnor; SCC is result != 0.
+GOC_API int goc_rdna4_s_xnor_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+
+// 32-bit and_not1; SCC is result != 0.
+GOC_API int goc_rdna4_s_and_not1_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// 64-bit and_not1; SCC is result != 0.
+GOC_API int goc_rdna4_s_and_not1_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+
+// 32-bit or_not1; SCC is result != 0.
+GOC_API int goc_rdna4_s_or_not1_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// 64-bit or_not1; SCC is result != 0.
+GOC_API int goc_rdna4_s_or_not1_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint64_t *d, uint64_t a, uint64_t b, uint32_t *scc);
+
+// 32-bit not; SCC is result != 0.
+GOC_API int goc_rdna4_s_not_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *d, uint32_t a, uint32_t *scc);
+
+// 64-bit not; SCC is result != 0.
+GOC_API int goc_rdna4_s_not_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint64_t *d, uint64_t a, uint32_t *scc);
+
+// 32-bit bit reversal; leaves SCC unchanged.
+GOC_API int goc_rdna4_s_brev_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *d, uint32_t a);
+
+// 64-bit bit reversal; leaves SCC unchanged.
+GOC_API int goc_rdna4_s_brev_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint64_t *d, uint64_t a);
+
+// 32-bit left shift by b modulo 32; SCC is result != 0.
+GOC_API int goc_rdna4_s_lshl_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// 64-bit left shift by b modulo 64; SCC is result != 0.
+GOC_API int goc_rdna4_s_lshl_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint64_t *d, uint64_t a, uint32_t b, uint32_t *scc);
+
+// 32-bit logical right shift by b modulo 32; SCC is result != 0.
+GOC_API int goc_rdna4_s_lshr_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// 64-bit logical right shift by b modulo 64; SCC is result != 0.
+GOC_API int goc_rdna4_s_lshr_b64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint64_t *d, uint64_t a, uint32_t b, uint32_t *scc);
+
+// 32-bit arithmetic right shift by b modulo 32; SCC is result != 0.
+GOC_API int goc_rdna4_s_ashr_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *d, uint32_t a, uint32_t b, uint32_t *scc);
+
+// 64-bit arithmetic right shift by b modulo 64; SCC is result != 0.
+GOC_API int goc_rdna4_s_ashr_i64(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint64_t *d, uint64_t a, uint32_t b, uint32_t *scc);
+
+// Low 32 bits of (a << 1) + b; SCC indicates that the full sum exceeds UINT32_MAX.
+GOC_API int goc_rdna4_s_lshl1_add_u32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                      uint32_t b, uint32_t *scc);
+
+// Low 32 bits of (a << 2) + b; SCC indicates that the full sum exceeds UINT32_MAX.
+GOC_API int goc_rdna4_s_lshl2_add_u32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                      uint32_t b, uint32_t *scc);
+
+// Low 32 bits of (a << 3) + b; SCC indicates that the full sum exceeds UINT32_MAX.
+GOC_API int goc_rdna4_s_lshl3_add_u32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                      uint32_t b, uint32_t *scc);
+
+// Low 32 bits of (a << 4) + b; SCC indicates that the full sum exceeds UINT32_MAX.
+GOC_API int goc_rdna4_s_lshl4_add_u32(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *d, uint32_t a,
+                                      uint32_t b, uint32_t *scc);
+
 // Scalar-register integer arithmetic executes once per wave and ignores EXEC,
 // including zero EXEC. Scalar output pointers are required. Both loose and
 // empirical exact semantics are supported; instruction_flags must be zero.
