@@ -6,6 +6,7 @@
 #include "internal.h"
 #include "rdna4_alu.h"
 #include "rdna4_binary.h"
+#include "rdna4_dpp.h"
 #include "rdna4_minmax.h"
 #include "rdna4_packed_alu.h"
 
@@ -14,8 +15,19 @@
 namespace {
 
 template <goc::Binary Op, bool Packed = false>
-int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int binary(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
            const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32) {
+    if constexpr (!Packed) {
+      return goc::execute_dpp(
+          flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+            return binary<Op, Packed>(flags, effective, uint32_t(mode), d, source, b);
+          });
+    } else {
+      return GOC_ERROR_INVALID_FLAGS;
+    }
+  }
+
   const uint32_t known = Packed ? GOC_PK_NEG_LO_A | GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A |
                                       GOC_PK_NEG_HI_B | GOC_PK_CLAMP | GOC_PK_LO_A_HIGH |
                                       GOC_PK_LO_B_HIGH | GOC_PK_HI_A_LOW | GOC_PK_HI_B_LOW
@@ -33,7 +45,7 @@ int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
     return GOC_SUCCESS;
   }
 #endif
-  uint32_t modes[] = {Packed ? goc::packed_half_mode(mode, false) : mode,
+  uint32_t modes[] = {Packed ? goc::packed_half_mode(mode, false) : uint32_t(mode),
                       goc::packed_half_mode(mode, true)};
   int d_shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
   uint32_t result[32];
@@ -63,6 +75,15 @@ int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
         value = goc::minmax<false, true>(x, y);
       if constexpr (Op == goc::Binary::Maximum)
         value = goc::minmax<true, true>(x, y);
+      if (m & GOC_ALU_OMOD_HALF) {
+        uint32_t bits = goc::as_bits(value), magnitude = bits & 0x7fffffffu;
+        // OMOD flushes an unscaled FP16 tiny result to positive zero. Halving
+        // a normal result into the subnormal range retains its sign instead.
+        if (magnitude < 0x38800000u)
+          value = 0;
+        else if ((m & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF && magnitude < 0x39000000u)
+          value = goc::as_float(bits & 0x80000000u);
+      }
       result[lane] |= uint32_t(goc::float_to_f16(goc::alu_output(value, m), flags & GOC_FP16_OVFL))
                       << (16 * half);
     }
@@ -81,57 +102,41 @@ int binary(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 int goc_rdna4_v_add_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return binary<goc::Binary::Add>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_sub_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return binary<goc::Binary::Sub>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_subrev_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return binary<goc::Binary::Subrev>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_mul_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return binary<goc::Binary::Mul>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_min_num_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return binary<goc::Binary::MinNum>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_max_num_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return binary<goc::Binary::MaxNum>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_minimum_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return binary<goc::Binary::Minimum>(flags, mask, mode, d, a, b);
 }
 
 int goc_rdna4_v_maximum_f16(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b) {
-  if (mode >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return binary<goc::Binary::Maximum>(flags, mask, mode, d, a, b);
 }
 

@@ -1760,6 +1760,20 @@ cases measure 20.0–25.5 ns on AVX2 (2.1–4.3× scalar speed) and
 19.4–24.8 ns with AVX-512 permutation plus AVX2 arithmetic (2.2–4.5×), using
 seven pinned samples of at least 10 ms each.
 
+All eight non-packed FP16 binary operations (ADD/SUB/SUBREV/MUL and the four
+min/max variants) now support DPP8/DPP16 with NEG/ABS, OMOD, CLAMP, and half
+selectors. Tests cover all 1,024 modifier combinations in both FP16 overflow
+modes, plus EXEC masks, aliases, random encodings, and destination-half preservation.
+Two GFX1201 captures check 458,752 results, including zeros and subnormal boundaries.
+They also corrected FP16 binary OMOD behavior: an unscaled tiny result becomes
+positive zero; halving a normal result into the subnormal range gives signed zero.
+The correction applies with and without DPP on scalar and AVX2 paths. Packed
+forms retain their separate modifier contract. Full-EXEC benchmarks cover ADD,
+SUBREV, MUL, and MINIMUM with default and combined modifiers. On the Ryzen 9
+7950X3D, these measure 23.3–34.5 ns on AVX2 (4.5–7.6× scalar speed) and
+22.6–34.4 ns with AVX-512 permutation plus AVX2 arithmetic (4.5–7.8×), using
+seven pinned samples of at least 10 ms each.
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal

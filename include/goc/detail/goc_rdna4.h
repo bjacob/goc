@@ -35,6 +35,7 @@ extern "C" {
 // The 16-bit AND/OR/XOR/NOT and non-packed integer arithmetic forms support
 // DPP with their source/destination selectors and applicable CLAMP modifiers.
 // This includes non-packed 16-bit MAD, MIN3, MAX3, and MED3.
+// FP16 ADD/SUB/SUBREV/MUL and binary min/max support DPP with all modifiers.
 static const uint64_t GOC_DPP8 = (UINT64_C(1) << 32);
 static const uint64_t GOC_DPP_FI = (UINT64_C(1) << 33);
 static const uint32_t GOC_DPP8_SELECT_SHIFT = 40;
