@@ -813,6 +813,33 @@ static const uint32_t GOC_ALU_HIGH_B = (UINT32_C(1) << 10);
 static const uint32_t GOC_ALU_HIGH_C = (UINT32_C(1) << 11);
 static const uint32_t GOC_ALU_HIGH_D = (UINT32_C(1) << 12);
 
+// Mixed FMA source formats: unset means FP32; set means FP16 in the half
+// selected by GOC_ALU_HIGH_A/B/C. Half selectors are ignored for FP32 sources.
+static const uint32_t GOC_MIX_F16_A = (UINT32_C(1) << 13);
+static const uint32_t GOC_MIX_F16_B = (UINT32_C(1) << 14);
+static const uint32_t GOC_MIX_F16_C = (UINT32_C(1) << 15);
+
+// Wave32 mixed FMA: one VGPR per operand; supports source ABS/NEG, source
+// format/half selectors, and CLAMP. OMOD and HIGH_D are invalid. MIX_F32
+// produces FP32; MIXLO/MIXHI round directly to FP16 and preserve the other
+// destination half. GOC_FP16_OVFL saturates finite FP16 overflow only.
+// Loose semantics require host nearest-even arithmetic with denormals enabled.
+// FP16-output forms also support empirical-exact scalar semantics and preserve
+// host FP state in that mode. EXEC masks and whole-register aliases are supported.
+GOC_API int goc_rdna4_v_fma_mix_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_fma_mixlo_f16(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      const uint32_t *const *c);
+
+GOC_API int goc_rdna4_v_fma_mixhi_f16(uint64_t flags, uint64_t exec_mask,
+                                      uint32_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      const uint32_t *const *c);
+
 // Binary FP16 arithmetic: one VGPR per operand, with independently selected
 // source and destination halves. Preserves the other destination half and all
 // inactive lanes; D may alias a whole source VGPR. Supports source ABS/NEG,

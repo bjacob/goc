@@ -149,6 +149,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_num_f32`, `v_max3_num_f32`, `v_minmax_num_f32`, `v_maxmin_num_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_minimum3_f32`, `v_maximum3_f32`, `v_minimummaximum_f32`, `v_maximumminimum_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_med3_num_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_fma_mix_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_fma_mixlo_f16`, `v_fma_mixhi_f16` | Scalar, x86-64-v3 | Scalar, rocjitsu-derived direct FP16 rounding |
 | `v_fma_f32`, `v_fma_dx9_zero_f32` | Scalar, AVX2/FMA, AVX-512 | Not implemented |
 | `v_add_f64`, `v_mul_f64`, `v_fma_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_min_num_f64`, `v_max_num_f64`, `v_minimum_f64`, `v_maximum_f64` | Scalar, x86-64-v3 | Not implemented |
@@ -583,6 +585,29 @@ cover every flag combination and half encoding, random triples, overflow policy,
 masks, all whole-register aliases, explicit cross-half alias witnesses, packed
 rocjitsu hardware cases and exact host-environment preservation. Packed FMAC
 benchmarks include the same fixed-accumulator reset as ordinary FMAC.
+
+Mixed FMA supports FP32 output (`FMA_MIX_F32`) or one selected FP16 output
+half (`FMA_MIXLO_F16` / `FMA_MIXHI_F16`), preserving the other half.
+Each source independently selects FP32 or FP16 using `GOC_MIX_F16_A/B/C`;
+FP16 sources use `GOC_ALU_HIGH_A/B/C` to select their half, while FP32
+sources ignore those selectors. ABS/NEG and CLAMP complete the 8,192 modifier
+combinations, all supported by scalar and SIMD paths. OMOD and `HIGH_D` do
+not apply. `GOC_FP16_OVFL` controls finite FP16 overflow without changing
+infinities or FP32 outputs.
+
+The v3 FP32-output path processes eight lanes with native FMA. FP16 outputs
+use four FP64 lanes: the FP32 product is exact in FP64, and an error-free sum
+retains the addend residual before direct FP16 rounding. This borrows
+rocjitsu's `fma_f32_to_f16_nearest_environment` and `mixed_fma_simd.h` model;
+it avoids double rounding even when an FP32 subnormal perturbs an exact FP16
+midpoint. Exceptional FP16 lanes use the scalar NaN/invalid-product policy.
+An empirical-exact scalar mode for the FP16 outputs preserves host rounding,
+flush controls and exception state; it widens FP32 encodings through integer
+bits so host DAZ cannot discard an input. FP32 output currently offers loose
+semantics only. Tests use an independent 640-bit integer oracle and cover all
+modifiers, every FP16 source encoding, all finite half midpoints with tiny
+positive/negative perturbations, captured NaN and fused-cancellation witnesses,
+EXEC masks, whole-register aliases, and hostile host FP settings.
 
 FP16/FP32 `FMAMK` and `FMAAK` take a scalar literal by value, in assembly
 operand order: `D, A, literal, B` for multiply-literal and `D, A, B, literal`

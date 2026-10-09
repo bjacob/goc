@@ -10,6 +10,7 @@
 #include "rdna4_integer16_ternary_reference.h"
 #include "rdna4_integer_mad_reference.h"
 #include "rdna4_integer_ternary_reference.h"
+#include "rdna4_mixed_fma_reference.h"
 #include "rdna4_packed_integer_reference.h"
 #include "rdna4_packed_mad_reference.h"
 #include "rdna4_sad_reference.h"
@@ -828,6 +829,61 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
         print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
       }
 #endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_mixed_fma(uint64_t cpu, int iterations, int min_ms) {
+  const Wmma functions[] = {goc_rdna4_v_fma_mix_f32, goc_rdna4_v_fma_mixlo_f16,
+                            goc_rdna4_v_fma_mixhi_f16};
+  const char *names[] = {"f32/mix", "f16/mixlo", "f16/mixhi"};
+  const uint32_t modes[] = {0,
+                            GOC_MIX_F16_A | GOC_MIX_F16_C | GOC_ALU_HIGH_A | GOC_ALU_NEG_A |
+                                GOC_ALU_ABS_B | GOC_ALU_CLAMP,
+                            GOC_MIX_F16_A | GOC_MIX_F16_B | GOC_MIX_F16_C | GOC_ALU_HIGH_B};
+  const char *labels[] = {"none", "fp16 A/C+mods", "fp16 all"};
+  for (int op = 0; op < 3; ++op)
+    for (int variant = 0; variant < 3; ++variant) {
+      uint32_t mode = modes[variant];
+      Registers r;
+      r.output_regs = 1;
+      for (int lane = 0; lane < 32; ++lane) {
+        for (int source = 0; source < 3; ++source) {
+          uint32_t raw = bits(float(lane - source * 8) * 0.0625f);
+          if (mode & (GOC_MIX_F16_A << source)) {
+            uint16_t lo = goc_test::half_bits(double(lane - source * 8) * 0.0625);
+            uint16_t hi = goc_test::half_bits(double(source * 3 - lane) * 0.125);
+            raw = lo | (uint32_t(hi) << 16);
+          }
+          r.data[source * 4][lane] = raw;
+        }
+        r.data[16][lane] = 0xfacecafe;
+        r.expected[128 * (lane / 16) + lane % 16] = goc_test::mixed_fma_reference::evaluate(
+            op, r.data[0][lane], r.data[4][lane], r.data[8][lane], r.data[16][lane], mode, true);
+      }
+      double scalar =
+          measure(functions[op], GOC_CPU_BASELINE | GOC_FP16_OVFL, r, iterations, min_ms, mode);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", labels[variant], "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
+        double simd =
+            measure(functions[op], GOC_CPU_X86_64_V3 | GOC_FP16_OVFL, r, iterations, min_ms, mode);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", labels[variant], "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+      if (op) {
+        double exact = measure(functions[op],
+                               GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT | GOC_FP16_OVFL,
+                               r, iterations, min_ms, mode);
+        if (exact < 0)
+          return false;
+        print_result(names[op], "exact", labels[variant], "scalar", exact, 1);
+      }
     }
   (void)cpu;
   return true;
@@ -2331,6 +2387,7 @@ int main(int argc, char **argv) {
   }
   if (!benchmark_half_exponent(cpu, iterations, min_ms) ||
       !benchmark_integer_ternary(cpu, iterations, min_ms) ||
+      !benchmark_mixed_fma(cpu, iterations, min_ms) ||
       !benchmark_bit_count(cpu, iterations, min_ms) ||
       !benchmark_boolean(cpu, iterations, min_ms) || !benchmark_bitfield(cpu, iterations, min_ms) ||
       !benchmark_sad(cpu, iterations, min_ms) || !benchmark_shift(cpu, iterations, min_ms) ||
