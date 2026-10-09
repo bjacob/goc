@@ -3282,51 +3282,63 @@ bool benchmark_class(uint64_t cpu, int iterations, int min_ms) {
     bool correct() const { return result == want; }
   };
 
-  for (unsigned op = 0; op < 6; ++op)
-    for (bool modified : {false, true}) {
-      unsigned compact = modified ? (op < 2 ? 15 : 3) : 0;
-      uint32_t mode = goc_test::class_mode(compact);
-      ClassRegisters r;
-      for (unsigned lane = 0; lane < 32; ++lane) {
-        uint64_t value = op < 2 ? uint64_t(goc_test::class_edges16[lane % 16]) |
-                                      (uint64_t(goc_test::class_edges16[(lane + 7) % 16]) << 16)
-                         : op < 4 ? goc_test::class_edges32[lane % 16]
-                                  : goc_test::class_edges64[lane % 16];
-        r.data[0][lane] = uint32_t(value);
-        r.data[1][lane] = uint32_t(value >> 32);
-        r.data[4][lane] = (lane * 0x9e3779b9u) ^ 0xa5a59669u;
-        r.want |= uint32_t(goc_test::class_reference(op / 2, r.data[0][lane], r.data[1][lane],
-                                                     r.data[4][lane], compact))
-                  << lane;
-      }
-      auto fn = [&r, op, &functions](uint64_t flags, uint64_t mask, uint64_t mode,
-                                     uint32_t *const *, const uint32_t *const *a,
-                                     const uint32_t *const *b, const uint32_t *const *) {
-        return functions[op](flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask,
-                             mode, &r.result, a, b);
-      };
-      const char *label = modified ? (op < 2 ? "ABS/NEG/high" : "ABS/NEG") : "none";
-      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
-      if (scalar < 0)
-        return false;
-      print_result(names[op], "exact", label, "scalar", scalar, 1);
-#if defined(GOC_BENCH_HAVE_X86_64_V3)
-      if (cpu >= GOC_CPU_X86_64_V3) {
-        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
-        if (simd < 0)
+  for (int descriptor : {-1, 0, 5})
+    for (unsigned op = 0; op < 6; ++op)
+      for (bool modified : {false, true}) {
+        if (descriptor >= 0 && op >= 4)
+          continue;
+        unsigned compact = modified ? (op < 2 ? 15 : 3) : 0;
+        uint64_t mode =
+            goc_test::class_mode(compact) | (descriptor < 0 ? 0 : goc_test::dpp_modes[descriptor]);
+        ClassRegisters r;
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          uint64_t value = op < 2 ? uint64_t(goc_test::class_edges16[lane % 16]) |
+                                        (uint64_t(goc_test::class_edges16[(lane + 7) % 16]) << 16)
+                           : op < 4 ? goc_test::class_edges32[lane % 16]
+                                    : goc_test::class_edges64[lane % 16];
+          r.data[0][lane] = uint32_t(value);
+          r.data[1][lane] = uint32_t(value >> 32);
+          r.data[4][lane] = (lane * 0x9e3779b9u) ^ 0xa5a59669u;
+        }
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          int source = int(lane);
+          if (descriptor >= 0 && !goc_test::dpp_source(mode, UINT32_MAX, lane, source))
+            continue;
+          r.want |= uint32_t(goc_test::class_reference(op / 2, source < 0 ? 0 : r.data[0][source],
+                                                       r.data[1][lane], r.data[4][lane], compact))
+                    << lane;
+        }
+        auto fn = [&r, op, &functions](uint64_t flags, uint64_t mask, uint64_t mode,
+                                       uint32_t *const *, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *) {
+          return functions[op](flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask,
+                               mode, &r.result, a, b);
+        };
+        const char *label = modified ? (op < 2 ? "ABS/NEG/high" : "ABS/NEG") : "none";
+        if (descriptor >= 0)
+          label = descriptor == 0 ? (modified ? "DPP8/modified" : "DPP8")
+                                  : (modified ? "DPP16/modified" : "DPP16");
+        double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+        if (scalar < 0)
           return false;
-        print_result(names[op], "exact", label, "x86-64-v3", simd, scalar / simd);
-      }
+        print_result(names[op], "exact", label, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+        if (cpu >= GOC_CPU_X86_64_V3) {
+          double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(names[op], "exact", label, "x86-64-v3", simd, scalar / simd);
+        }
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
-      if (cpu >= GOC_CPU_X86_64_V4) {
-        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
-        if (simd < 0)
-          return false;
-        print_result(names[op], "exact", label, "x86-64-v4", simd, scalar / simd);
-      }
+        if (cpu >= GOC_CPU_X86_64_V4) {
+          double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(names[op], "exact", label, "x86-64-v4", simd, scalar / simd);
+        }
 #endif
-    }
+      }
   (void)cpu;
   return true;
 }

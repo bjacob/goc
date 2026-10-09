@@ -111,6 +111,9 @@ void check_high_flags(const char *name,
   for (unsigned op = 0; op < 56; ++op)
     dpp_scalar_output |=
         std::strcmp(name + sizeof("goc_rdna4_") - 1, goc_test::float_compare_names[op]) == 0;
+  for (auto mnemonic :
+       {"v_cmp_class_f16", "v_cmpx_class_f16", "v_cmp_class_f32", "v_cmpx_class_f32"})
+    dpp_scalar_output |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   supports_dpp |= dpp_scalar_output;
   for (unsigned bit = 32; bit < 64; ++bit)
     for (uint64_t exec : {UINT64_C(0), UINT64_MAX}) {

@@ -1343,6 +1343,8 @@ static const uint32_t GOC_CLASS_POS_INF = (UINT32_C(1) << 9);
 // A uses one VGPR for FP16/FP32 or a low/high pair for FP64; B uses one VGPR.
 // Supports ABS_A/NEG_A. FP16 also supports HIGH_A and HIGH_B, selecting source
 // halves. Only B's low ten selected bits matter. Signaling NaNs are not quieted.
+// FP16/FP32 support DPP8/DPP16 on A before modifiers and half selection;
+// B stays in its lane and filtered result bits are zero. FP64 rejects DPP.
 // Supports loose and empirical-exact semantics, independently of denormal
 // controls. All host FP state is preserved.
 GOC_API int goc_rdna4_v_cmp_class_f16(uint64_t flags, uint64_t exec_mask,

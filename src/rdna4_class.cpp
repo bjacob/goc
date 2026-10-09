@@ -5,23 +5,41 @@
 #include "rdna4_class.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <stdint.h>
 
 namespace {
 
 template <unsigned Bits>
-int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *const *a,
+int run(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *d, const uint32_t *const *a,
         const uint32_t *const *b) {
+  if (mode >> 32) {
+    if constexpr (Bits == 64)
+      return GOC_ERROR_INVALID_FLAGS;
+    if (!(mode & (GOC_DPP8 | GOC_DPP16)) || !goc::valid_dpp(mode))
+      return GOC_ERROR_INVALID_FLAGS;
+  }
   const uint32_t known =
       GOC_ALU_ABS_A | GOC_ALU_NEG_A | (Bits == 16 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0);
-  if (int error = goc::validate(flags, mode & ~known, true,
+  if (int error = goc::validate(flags, uint32_t(mode) & ~known, true,
                                 GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   uint32_t mask = uint32_t(exec_mask);
   if (!mask) {
     *d = 0;
     return GOC_SUCCESS;
+  }
+  if constexpr (Bits != 64) {
+    if (mode >> 32) {
+      uint32_t permuted[32];
+      const uint32_t *source = permuted;
+      if (mode & GOC_DPP8)
+        goc::dpp8_source(flags, mask, mode, permuted, a[0]);
+      else
+        mask = goc::dpp16_source(flags, mask, mode, permuted, a[0]);
+      return run<Bits>(flags, mask, uint32_t(mode), d, &source, b);
+    }
   }
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
@@ -76,42 +94,30 @@ int run(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *d, const ui
 
 int goc_rdna4_v_cmp_class_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<16>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_cmp_class_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<32>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_cmp_class_f64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<64>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_cmpx_class_f16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<16>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_cmpx_class_f32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<32>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_rdna4_v_cmpx_class_f64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<64>(flags, exec_mask, instruction_flags, d, a, b);
 }

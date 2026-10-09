@@ -638,6 +638,9 @@ v4 paths. Both semantics use the integer class model borrowed from rocjitsu,
 preserving host rounding, denormal controls and exception flags. Subnormals
 remain a distinct class even when GPU denormal flushing is enabled; signaling
 NaNs are classified without quieting them.
+The four FP16/FP32 forms support DPP8/DPP16 on A before modifiers and half
+selection. B retains its lane, and DPP-filtered result bits are zero. FP64 has
+no DPP encoding. Source modifiers and DPP retain both SIMD paths.
 
 Tests compare 983,040 GPU-captured masks across all three formats, CMP/CMPX,
 modifiers, five EXEC masks and both GPU denormal modes. Further tests cover all
@@ -646,6 +649,12 @@ larger set of EXEC masks, invalid flags and complete host FP-state preservation.
 Pinned-core Ryzen 9 7950X3D measurements show 5.25–6.67x for v3 and
 6.73–9.45x for v4 versus scalar, including ABS/NEG and half selection (seven
 samples, each at least 10 ms).
+DPP tests check another 17,920 GPU masks with every source modifier, seven
+descriptors and both denormal modes. Independent tests cover EXEC masks, shared
+sources, scalar-output aliases and guards under all host rounding modes.
+Pinned-core DPP8/DPP16 timings, including modified cases, are 11.5–16.0 ns
+for v3 (4.41–5.89x scalar) and 15.1–17.1 ns for v4 (4.03–4.89x),
+using seven samples of at least 10 ms each. v3 is faster for these workloads.
 
 Conditional selection (`v_cndmask_b32` and `v_cndmask_b16`) selects B for set
 bits in a separate wave32 condition mask and A for clear bits. EXEC independently

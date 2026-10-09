@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_class_hardware.h"
 #include "rdna4_class_reference.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <cfenv>
@@ -20,6 +21,114 @@ const Fn functions[] = {goc_rdna4_v_cmp_class_f16, goc_rdna4_v_cmpx_class_f16,
                         goc_rdna4_v_cmp_class_f32, goc_rdna4_v_cmpx_class_f32,
                         goc_rdna4_v_cmp_class_f64, goc_rdna4_v_cmpx_class_f64};
 } // namespace
+
+TEST(Class, DppModifiersMasksAliasesAndFpState) {
+  fenv_t saved;
+  std::fegetenv(&saved);
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+    std::fesetround(rounding);
+    std::feclearexcept(FE_ALL_EXCEPT);
+    std::feraiseexcept(FE_INVALID | FE_INEXACT);
+    for (unsigned op = 0; op < 4; ++op)
+      for (unsigned m = 0; m < (op < 2 ? 16u : 4u); ++m)
+        for (uint64_t descriptor : goc_test::dpp_modes)
+          for (bool shared : {false, true}) {
+            uint32_t initial[2][34];
+            for (unsigned lane = 0; lane < 34; ++lane) {
+              initial[0][lane] =
+                  op < 2 ? uint32_t(goc_test::class_edges16[lane % 16]) |
+                               (uint32_t(goc_test::class_edges16[(lane + 7) % 16]) << 16)
+                         : goc_test::class_edges32[lane % 16];
+              initial[1][lane] = (lane * 0x9e3779b9u) ^ 0xa5a59669u;
+            }
+            for (uint64_t mask : rdna4_exec_masks()) {
+              uint32_t want = 0;
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                int source;
+                if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+                  want |= uint32_t(goc_test::class_reference(
+                              op / 2, source < 0 ? 0 : initial[0][source + 1], 0,
+                              initial[shared ? 0 : 1][lane + 1], m))
+                          << lane;
+              }
+              for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+                for (unsigned target = 0; target < 5; ++target) {
+                  uint32_t words[2][34], outside = 0xdeadbeef;
+                  std::memcpy(words, initial, sizeof(words));
+                  unsigned reg = target / 2, word = target & 1 ? 32 : 1;
+                  uint32_t *d = target == 4 ? &outside : &words[reg][word];
+                  const uint32_t *a[] = {words[0] + 1}, *b[] = {words[shared ? 0 : 1] + 1};
+                  uint64_t flags =
+                      cpu | (shared ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                                          GOC_FP_FLUSH_INPUT_DENORMALS
+                                    : 0);
+                  ASSERT_EQ(
+                      functions[op](flags, mask, descriptor | goc_test::class_mode(m), d, a, b),
+                      GOC_SUCCESS);
+                  ASSERT_EQ(*d, want) << op << "/" << m << "/" << descriptor << "/" << cpu;
+                  for (unsigned r = 0; r < 2; ++r)
+                    for (unsigned w = 0; w < 34; ++w)
+                      ASSERT_EQ(words[r][w],
+                                target != 4 && r == reg && w == word ? want : initial[r][w]);
+                }
+            }
+          }
+    EXPECT_EQ(std::fegetround(), rounding);
+    EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
+  }
+  std::fesetenv(&saved);
+}
+
+TEST(Class, DppValidationAndZeroExec) {
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t descriptor : goc_test::dpp_modes) {
+      uint32_t result = 0xdeadbeef;
+      EXPECT_EQ(
+          functions[op](0, UINT64_C(0xffffffff00000000), descriptor, &result, nullptr, nullptr),
+          op < 4 ? GOC_SUCCESS : GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(result, op < 4 ? 0u : 0xdeadbeef);
+      for (uint64_t invalid : {UINT64_C(1) << 36, uint64_t(GOC_ALU_NEG_B)}) {
+        result = 0xdeadbeef;
+        EXPECT_EQ(functions[op](0, UINT32_MAX, descriptor | invalid, &result, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(result, 0xdeadbeef);
+      }
+    }
+}
+
+TEST(Class, DppHardwareCorpus) {
+  // RX 9070/gfx1201: 17,920 masks, MODE 0 and 0xf0, CMP/CMPX,
+  // every source modifier and seven DPP descriptors. FNV hashes raw masks.
+  const uint32_t values[][8] = {
+      {0x80000000, 0x80010001, 0x83ff03ff, 0x84000400, 0xbc003c00, 0xfc007c00, 0xfe007e00,
+       0xfc017c01},
+      {0, 0x80000000, 1, 0x80000001, 0x3f800000, 0xbf800000, 0x7f800000, 0x7f800001}};
+  const uint32_t masks[] = {UINT32_MAX, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {UINT64_C(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
+      uint64_t hash = UINT64_C(14695981039346656037);
+      for (bool flush : {true, false})
+        for (unsigned batch = 0; batch < 4; ++batch)
+          for (uint32_t mask : masks)
+            for (unsigned op = 0; op < 4; ++op)
+              for (unsigned m = 0; m < (op < 2 ? 16u : 4u); ++m)
+                for (uint64_t descriptor : goc_test::dpp_modes) {
+                  uint32_t av[32], bv[32], result = 0xdeadbeef;
+                  for (unsigned lane = 0; lane < 32; ++lane) {
+                    av[lane] = values[op / 2][(lane + batch) % 8];
+                    bv[lane] = ((lane + batch * 32) * 0x9e3779b9u) ^ 0xa5a59669u;
+                  }
+                  const uint32_t *a[] = {av}, *b[] = {bv};
+                  ASSERT_EQ(
+                      functions[op](cpu | semantics | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0),
+                                    mask, descriptor | goc_test::class_mode(m), &result, a, b),
+                      GOC_SUCCESS);
+                  hash = (hash ^ result) * UINT64_C(1099511628211);
+                }
+      EXPECT_EQ(hash, UINT64_C(0xb8f5447c269df6e5)) << cpu << "/" << semantics;
+    }
+}
 
 TEST(Class, HardwareFormatsModifiersExecAndCmpx) {
   const uint32_t masks[] = {UINT32_MAX, 0, 0x55555555, 0xaaaaaaaa, 1};
