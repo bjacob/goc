@@ -54,7 +54,8 @@ TEST(Trig, CapturedResultsWithEveryModifier) {
           if ((mode & 2) && (input >> 31))
             continue;
           uint32_t a[32], d[32];
-          std::fill_n(a, 32, input);
+          for (int lane = 0; lane < 32; ++lane)
+            a[lane] = input | ((mode & 2) && (lane & 1) ? 0x80000000 : 0);
           const uint32_t *ap[] = {a};
           uint32_t *dp[] = {d};
           ASSERT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
@@ -94,6 +95,36 @@ TEST(Trig, FullRangeRandomInputsAndIntervalBoundaries) {
         }
       }
     }
+}
+
+TEST(Trig, LooseMatchesScalarWithEveryModifier) {
+  for (int op = 0; op < 2; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (int mode = 0; mode < 32; ++mode) {
+        std::mt19937 random(8287);
+        for (int start = 0; start < 8192; start += 32) {
+          uint32_t a[32], reference[32], actual[32];
+          for (int lane = 0; lane < 32; ++lane)
+            a[lane] = start == 0 ? goc_test::trig_golden[lane][0] : uint32_t(random());
+          const uint32_t *ap[] = {a};
+          uint32_t *rp[] = {reference}, *dp[] = {actual};
+          ASSERT_EQ(
+              functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, modifiers(mode), rp, ap),
+              GOC_SUCCESS);
+          ASSERT_EQ(functions[op](cpu, UINT32_MAX, modifiers(mode), dp, ap), GOC_SUCCESS);
+          for (int lane = 0; lane < 32; ++lane) {
+            uint32_t magnitude = reference[lane] & 0x7fffffff;
+            if (!magnitude || magnitude >= 0x7f800000) {
+              ASSERT_EQ(actual[lane], reference[lane]) << op << "/" << cpu << "/" << mode;
+            } else {
+              const float scales[] = {1, 2, 4, 0.5f};
+              ASSERT_NEAR(goc::as_float(actual[lane]), goc::as_float(reference[lane]),
+                          3e-7f * scales[(mode >> 2) & 3])
+                  << op << "/" << cpu << "/" << mode << "/" << a[lane];
+            }
+          }
+        }
+      }
 }
 
 TEST(Trig, EveryMaskAliasesAndModifier) {

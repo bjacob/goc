@@ -164,6 +164,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_{i32,u32}`, `v_max3_{i32,u32}`, `v_minmax_{i32,u32}`, `v_maxmin_{i32,u32}`, `v_med3_{i32,u32}` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_sin_f32`, `v_cos_f32` | Scalar, x86-64-v3 | Captured RDNA3/4 integer model |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
 | `v_dot4_f32_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar, x86-64-v3 | Not implemented |
 | `v_pk_add_i16`, `v_pk_sub_i16`, `v_pk_add_u16`, `v_pk_sub_u16` | Scalar, x86-64-v3; all half selectors and saturation | Not implemented |
@@ -350,6 +351,20 @@ a literal fused-rounding witness for nonzero products.
 FP32 `FRACT` computes `x - floor(x)` and caps it at `0x3f7fffff` before
 output modifiers, so tiny negative inputs stay strictly below one. Scalar/v3
 paths support all 32 modifiers, with literal boundary and signed-zero tests.
+
+FP32 `SIN` and `COS` take inputs in turns (`sin(2*pi*x)` and `cos(2*pi*x)`).
+Integer range reduction handles all finite FP32 encodings, including values too
+large for a float-to-integer conversion. Empirical exact semantics borrow
+rocjitsu's captured RDNA3/4 staged integer model and preserve the entire host
+floating-point environment. The eight-lane v3 loose path shares its coefficients
+but evaluates the cubic polynomials with vector FMA. All 32 ABS/NEG/OMOD/CLAMP
+combinations stay on SIMD. Active OMOD flushes subnormal outputs and signed
+zeros to positive zero. Tests include 35 hardware-captured cases, interval
+boundaries, random raw encodings, all modifiers, masks and aliases, and exact
+results under every host rounding mode and x86 denormal-control setting.
+Benchmarks compare full-wave default and modified calls against independent
+mathematical references; only these approximate FP32 rows use a numerical
+tolerance instead of bitwise output comparisons.
 
 FP32/FP64 `FREXP_MANT` extracts a signed binary significand with magnitude in
 [0.5, 1) for finite nonzero inputs. Subnormals are normalized on the SIMD path;

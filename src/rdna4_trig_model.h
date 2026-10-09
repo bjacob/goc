@@ -8,6 +8,7 @@
 /// Integer SIN/COS reduction and staged approximation from RDNA3/4 captures.
 /// Adapted from rocjitsu lib/util/include/util/amdgpu_trig.h for C++17.
 
+#include "rdna4_trig_coefficients.h"
 #include "uint128.h"
 
 #include <algorithm>
@@ -33,43 +34,7 @@ struct Coefficient {
   int32_t cubic;
 };
 
-// Coefficients use units of 2^-26. The first table approximates sine, the
-// second cosine, in sixteen intervals covering the first octant. Staged
-// integer arithmetic follows captures from gfx1100 and gfx1201; it avoids
-// dependence on host rounding, denormal controls, or libm argument reduction.
-static const Coefficient coefficients[2][16] = {{{0, 3294200, 0, -1322},
-                                                 {3292874, 3290232, -3968, -1320},
-                                                 {6577818, 3278340, -7928, -1312},
-                                                 {9846914, 3258548, -11864, -1304},
-                                                 {13092288, 3230908, -15778, -1290},
-                                                 {16306122, 3195480, -19650, -1274},
-                                                 {19480674, 3152356, -23476, -1256},
-                                                 {22608294, 3101636, -27246, -1234},
-                                                 {25681450, 3043444, -30948, -1210},
-                                                 {28692736, 2977924, -34576, -1182},
-                                                 {31634898, 2905224, -38122, -1152},
-                                                 {34500850, 2825532, -41576, -1118},
-                                                 {37283686, 2739032, -44928, -1082},
-                                                 {39976702, 2645928, -48176, -1042},
-                                                 {42573412, 2546452, -51304, -1002},
-                                                 {45067558, 2440844, -54310, -958}},
-                                                {{67108864, 0, -80872, 32},
-                                                 {67028028, -161636, -80774, 98},
-                                                 {66785716, -322884, -80482, 162},
-                                                 {66382510, -483352, -79996, 226},
-                                                 {65819384, -642664, -79318, 290},
-                                                 {65097694, -800416, -78448, 352},
-                                                 {64219178, -956248, -77390, 414},
-                                                 {63185952, -1109776, -76144, 476},
-                                                 {62000504, -1260628, -74716, 536},
-                                                 {60665694, -1408448, -73104, 594},
-                                                 {59184734, -1552872, -71320, 652},
-                                                 {57561192, -1693552, -69364, 708},
-                                                 {55798980, -1830152, -67242, 762},
-                                                 {53902344, -1962348, -64956, 814},
-                                                 {51875852, -2089812, -62514, 864},
-                                                 {49724388, -2212244, -59922, 912}}};
-
+// Round an unsigned fixed-point integer right shift to nearest, ties to even.
 inline uint64_t round_even(U128 value, unsigned shift) {
   if (!shift)
     return static_cast<uint64_t>(value);
@@ -159,7 +124,9 @@ inline uint32_t evaluate(uint32_t bits, bool cosine, unsigned denorm = 3, bool q
   unsigned table = unsigned(cosine) ^ (quadrant & 1) ^ unsigned(reflected);
   unsigned index = (reduced - unsigned(reflected)) >> 24;
   uint32_t fraction = reduced - (index << 24);
-  const auto c = coefficients[table][index];
+  const unsigned column = table * 16 + index;
+  const Coefficient c = {coefficients[0][column], coefficients[1][column], coefficients[2][column],
+                         coefficients[3][column]};
   uint32_t result;
   if (table && reduced - unsigned(reflected) < 46592)
     result = 0x3f800000;

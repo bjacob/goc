@@ -23,7 +23,8 @@ extern "C" {
 // captured RDNA3/4 integer model with denormals preserved and NaNs quieted;
 // all host floating-point state is preserved. Output scaling uses nearest-even
 // rounding, followed by CLAMP. Active OMOD flushes subnormal outputs and both
-// signed zeros to +0. Loose semantics currently use the same model.
+// signed zeros to +0. Loose SIMD semantics approximate the captured polynomial
+// and require host nearest-even rounding with denormals enabled.
 GOC_API int goc_rdna4_v_sin_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
 GOC_API int goc_rdna4_v_cos_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,

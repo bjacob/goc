@@ -38,6 +38,8 @@ struct Registers {
   uint32_t *v[24];
   uint32_t expected[256];
   int output_regs = 8;
+  // Nonzero only for approximate FP32 math benchmarks. Other rows remain bit-exact.
+  float absolute_tolerance = 0;
 
   Registers() {
     for (int reg = 0; reg < 24; ++reg)
@@ -165,8 +167,18 @@ struct Registers {
       for (int col = 0; col < 16; ++col)
         if (row % 8 < output_regs) {
           int lane = col + 16 * (row / 8);
-          if (data[16 + row % 8][lane] != expected[row * 16 + col])
-            return false;
+          uint32_t actual_bits = data[16 + row % 8][lane];
+          uint32_t expected_bits = expected[row * 16 + col];
+          if (actual_bits != expected_bits) {
+            if (absolute_tolerance == 0)
+              return false;
+            float actual, want;
+            std::memcpy(&actual, &actual_bits, sizeof(actual));
+            std::memcpy(&want, &expected_bits, sizeof(want));
+            if (!std::isfinite(actual) || !std::isfinite(want) ||
+                std::abs(actual - want) > absolute_tolerance)
+              return false;
+          }
         }
     return true;
   }
@@ -806,6 +818,48 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
       print_result(names[op], "loose", mode, "scalar", scalar, 1);
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
       if ((op < 7 || op >= 9) && cpu >= GOC_CPU_X86_64_V3) {
+        double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
+        if (simd < 0)
+          return false;
+        print_result(names[op], "loose", mode, "x86-64-v3", simd, scalar / simd);
+      }
+#endif
+    }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
+  using Unary = decltype(&goc_rdna4_v_sin_f32);
+  const Unary functions[] = {goc_rdna4_v_sin_f32, goc_rdna4_v_cos_f32};
+  const char *names[] = {"f32/sin", "f32/cos"};
+  for (int op = 0; op < 2; ++op)
+    for (uint32_t modifiers : {UINT32_C(0), GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP}) {
+      Registers r;
+      r.output_regs = 1;
+      r.absolute_tolerance = 3e-7f;
+      for (int lane = 0; lane < 32; ++lane) {
+        float input = float(lane * 193 - 3021) / 1024;
+        r.data[0][lane] = bits(input);
+        double phase = std::remainder(double(modifiers ? -input : input), 1.0);
+        double angle = phase * 6.283185307179586476925286766559;
+        double want = op ? std::cos(angle) : std::sin(angle);
+        if (modifiers)
+          want = std::min(1.0, std::max(0.0, want * 0.5));
+        r.expected[128 * (lane / 16) + lane % 16] = bits(float(want));
+      }
+      const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *,
+                          const uint32_t *const *) {
+        return functions[op](flags, mask, mode, d, a);
+      };
+      const char *mode = modifiers ? "NEG_A / half/clamp" : "none";
+      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
+      if (scalar < 0)
+        return false;
+      print_result(names[op], "loose", mode, "scalar", scalar, 1);
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+      if (cpu >= GOC_CPU_X86_64_V3) {
         double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, modifiers);
         if (simd < 0)
           return false;
@@ -1943,8 +1997,8 @@ int main(int argc, char **argv) {
     return 1;
   }
   if (!benchmark_half_exponent(cpu, iterations, min_ms) ||
-      !benchmark_half_unary(cpu, iterations, min_ms) || !benchmark_unary(cpu, iterations, min_ms) ||
-      !benchmark_frexp_exp(cpu, iterations, min_ms)) {
+      !benchmark_trig(cpu, iterations, min_ms) || !benchmark_half_unary(cpu, iterations, min_ms) ||
+      !benchmark_unary(cpu, iterations, min_ms) || !benchmark_frexp_exp(cpu, iterations, min_ms)) {
     std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }

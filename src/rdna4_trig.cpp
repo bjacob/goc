@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "rdna4_trig.h"
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_trig_model.h"
@@ -42,6 +43,13 @@ int trig(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
     return error;
   if (!uint32_t(mask))
     return GOC_SUCCESS;
+#if defined(GOC_HAVE_X86_64_V3)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
+      (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL) {
+    goc::trig_x86_64_v3(Cosine, uint32_t(mask), mode, d[0], a[0]);
+    return GOC_SUCCESS;
+  }
+#endif
   uint32_t result[32];
   for (int lane = 0; lane < 32; ++lane) {
     uint32_t bits = a[0][lane];
