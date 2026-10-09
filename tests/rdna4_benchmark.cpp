@@ -2410,41 +2410,51 @@ bool benchmark_permlane(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_cndmask(uint64_t cpu, int iterations, int min_ms) {
   for (bool half : {false, true})
-    for (bool modified : {false, true}) {
-      unsigned compact = modified ? (half ? 119 : 7) : 0;
-      uint32_t mode = goc_test::cndmask_mode(compact);
-      Registers r;
-      r.output_regs = 1;
-      const uint32_t condition = 0x96969696;
-      for (unsigned lane = 0; lane < 32; ++lane) {
-        r.data[0][lane] = (lane * 0x7395a831u) ^ 0xa7925163u;
-        r.data[4][lane] = (lane * 0x83a1459du) ^ 0x5389d241u;
-        r.expected[128 * (lane / 16) + lane % 16] =
-            goc_test::cndmask_reference(half, r.data[0][lane], r.data[4][lane], r.data[16][lane],
-                                        compact, (condition >> lane) & 1);
-      }
-      auto fn = [half](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
-                       const uint32_t *const *a, const uint32_t *const *b,
-                       const uint32_t *const *) {
-        return (half ? goc_rdna4_v_cndmask_b16 : goc_rdna4_v_cndmask_b32)(flags, mask, mode, d, a,
-                                                                          b, condition);
-      };
-      const char *name = half ? "v_cndmask_b16" : "v_cndmask_b32";
-      const char *label = modified ? (half ? "ABS/NEG/high" : "ABS/NEG") : "none";
-      double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
-      if (scalar < 0)
-        return false;
-      print_result(name, "loose", label, "scalar", scalar, 1);
+    for (bool modified : {false, true})
+      for (int descriptor : {-1, 0, 5}) {
+        unsigned compact = modified ? (half ? 119 : 7) : 0;
+        uint64_t mode = goc_test::cndmask_mode(compact) |
+                        (descriptor < 0 ? 0 : goc_test::dpp_modes[descriptor]);
+        Registers r;
+        r.output_regs = 1;
+        const uint32_t condition = 0x96969696;
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          r.data[0][lane] = (lane * 0x7395a831u) ^ 0xa7925163u;
+          r.data[4][lane] = (lane * 0x83a1459du) ^ 0x5389d241u;
+        }
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          int source = int(lane);
+          if (descriptor >= 0)
+            goc_test::dpp_source(mode, UINT32_MAX, lane, source);
+          r.expected[128 * (lane / 16) + lane % 16] =
+              goc_test::cndmask_reference(half, source < 0 ? 0 : r.data[0][source], r.data[4][lane],
+                                          r.data[16][lane], compact, (condition >> lane) & 1);
+        }
+        auto fn = [half](uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *) {
+          return (half ? goc_rdna4_v_cndmask_b16 : goc_rdna4_v_cndmask_b32)(flags, mask, mode, d, a,
+                                                                            b, condition);
+        };
+        const char *name = half ? "v_cndmask_b16" : "v_cndmask_b32";
+        const char *label = modified ? (half ? "ABS/NEG/high" : "ABS/NEG") : "none";
+        if (descriptor >= 0)
+          label = descriptor == 0 ? (modified ? "DPP8/modified" : "DPP8")
+                                  : (modified ? "DPP16/modified" : "DPP16");
+        double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+        if (scalar < 0)
+          return false;
+        print_result(name, "loose", label, "scalar", scalar, 1);
 
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
-      if (cpu >= GOC_CPU_X86_64_V4) {
-        double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
-        if (simd < 0)
-          return false;
-        print_result(name, "loose", label, "x86-64-v4", simd, scalar / simd);
-      }
+        if (cpu >= GOC_CPU_X86_64_V4) {
+          double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+          if (simd < 0)
+            return false;
+          print_result(name, "loose", label, "x86-64-v4", simd, scalar / simd);
+        }
 #endif
-    }
+      }
   (void)cpu;
   return true;
 }

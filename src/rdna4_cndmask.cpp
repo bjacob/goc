@@ -5,14 +5,20 @@
 #include "rdna4_cndmask.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <stdint.h>
 
 namespace {
 
 template <bool Half>
-int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
+int run(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, uint32_t condition) {
+  if (mode >> 32)
+    return goc::execute_dpp(
+        flags, mask, mode, a, [&](uint32_t effective, const uint32_t *const *source) {
+          return run<Half>(flags, effective, uint32_t(mode), d, source, b, condition);
+        });
   const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_ABS_B | GOC_ALU_NEG_A | GOC_ALU_NEG_B |
                          (Half ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D : 0);
   if (int error = goc::validate(flags, mode & ~known))
@@ -55,15 +61,11 @@ int run(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d, const 
 int goc_rdna4_v_cndmask_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             uint32_t condition) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<false>(flags, exec_mask, instruction_flags, d, a, b, condition);
 }
 
 int goc_rdna4_v_cndmask_b16(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             uint32_t condition) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return run<true>(flags, exec_mask, instruction_flags, d, a, b, condition);
 }

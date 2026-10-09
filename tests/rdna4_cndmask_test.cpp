@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_cndmask_hardware.h"
 #include "rdna4_cndmask_reference.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <cstring>
 #include <gtest/gtest.h>
 #include <stdint.h>
+#include <vector>
 
 namespace {
 
@@ -136,6 +138,122 @@ TEST(Cndmask, InvalidFlagsAndHostFpState) {
         EXPECT_EQ(std::fegetround(), rounding);
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
       }
+  }
+  std::fesetenv(&saved);
+}
+
+TEST(Cndmask, DppModifiersMasksAliasesAndGuards) {
+  for (unsigned half = 0; half < 2; ++half)
+    for (unsigned m = 0; m < (half ? 128u : 16u); ++m)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (auto descriptor : goc_test::dpp_modes) {
+          auto masks = (m == 0 || m == (half ? 127u : 15u)) ? rdna4_exec_masks()
+                                                            : std::vector<uint64_t>{UINT32_MAX};
+          for (auto mask : masks)
+            for (unsigned source_b : {0u, 1u})
+              for (unsigned target = 0; target < 3; ++target) {
+                uint32_t words[3][34], expected[3][34];
+                for (unsigned reg = 0; reg < 3; ++reg)
+                  for (unsigned word = 0; word < 34; ++word)
+                    words[reg][word] = expected[reg][word] =
+                        (word * 0x7395a831u) ^ (reg * 0xa7925163u);
+                uint32_t condition = (m * 0x9e3779b9u) ^ 0x96969696u;
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  int source = 0;
+                  if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source))
+                    expected[target][lane + 1] = goc_test::cndmask_reference(
+                        half, source < 0 ? 0 : words[0][source + 1], words[source_b][lane + 1],
+                        words[target][lane + 1], m, (condition >> lane) & 1);
+                }
+                const uint32_t *a[] = {words[0] + 1}, *b[] = {words[source_b] + 1};
+                uint32_t *d[] = {words[target] + 1};
+                ASSERT_EQ(functions[half](cpu, mask, descriptor | goc_test::cndmask_mode(m), d, a,
+                                          b, condition),
+                          GOC_SUCCESS);
+                ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0)
+                    << half << "/" << m << "/" << cpu << "/" << descriptor << "/" << mask;
+              }
+        }
+}
+
+TEST(Cndmask, DppEveryConditionBitIndependentOfExec) {
+  for (unsigned half = 0; half < 2; ++half)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (auto descriptor : goc_test::dpp_modes)
+        for (auto condition : rdna4_exec_masks())
+          for (uint32_t mask : {0xaaaaaaaau, 0x55555555u}) {
+            unsigned m = half ? 127 : 15;
+            uint32_t av[32], bv[32], output[32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              av[lane] = 0xfc017f81u + lane;
+              bv[lane] = 0x7c01ff81u - lane;
+              output[lane] = 0x12345678;
+            }
+            const uint32_t *a[] = {av}, *b[] = {bv};
+            uint32_t *d[] = {output};
+            ASSERT_EQ(functions[half](cpu, mask, descriptor | goc_test::cndmask_mode(m), d, a, b,
+                                      uint32_t(condition)),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              int source = 0;
+              uint32_t want = 0x12345678;
+              if (goc_test::dpp_source(descriptor, mask, lane, source))
+                want = goc_test::cndmask_reference(half, source < 0 ? 0 : av[source], bv[lane],
+                                                   want, m, (condition >> lane) & 1);
+              ASSERT_EQ(output[lane], want)
+                  << half << "/" << cpu << "/" << descriptor << "/" << lane;
+            }
+          }
+}
+
+TEST(Cndmask, DppValidation) {
+  for (auto fn : functions)
+    for (auto descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr, UINT32_MAX), GOC_SUCCESS);
+      for (auto invalid : {UINT64_C(1) << 36, UINT64_C(1) << 6})
+        EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, UINT32_MAX),
+                  GOC_ERROR_INVALID_FLAGS);
+    }
+}
+
+// RX 9070 capture: three condition masks, eight EXEC masks, every source
+// modifier and half selector, seven DPP descriptors, 32 lanes per instruction.
+TEST(Cndmask, DppHardwareCorpusAndHostFpState) {
+  const uint32_t values[] = {0x00000001, 0x807fffff, 0x00800000, 0x80000000,
+                             0x7f800001, 0xff800000, 0x3f800000, 0xff7fffff};
+  const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  std::fenv_t saved;
+  ASSERT_EQ(std::fegetenv(&saved), 0);
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+    std::fesetround(rounding);
+    std::feclearexcept(FE_ALL_EXCEPT);
+    std::feraiseexcept(FE_INVALID | FE_DIVBYZERO);
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      uint64_t hash = UINT64_C(14695981039346656037);
+      for (uint32_t condition : {0u, UINT32_MAX, 0x96969696u})
+        for (auto mask : masks)
+          for (unsigned half = 0; half < 2; ++half)
+            for (unsigned m = 0; m < (half ? 128u : 16u); ++m)
+              for (auto descriptor : goc_test::dpp_modes) {
+                uint32_t av[32], bv[32], output[32];
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  av[lane] = values[lane % 8];
+                  bv[lane] = values[(lane + 3) % 8];
+                  output[lane] = 0xdead0000u + lane;
+                }
+                const uint32_t *a[] = {av}, *b[] = {bv};
+                uint32_t *d[] = {output};
+                EXPECT_EQ(functions[half](cpu, mask, descriptor | goc_test::cndmask_mode(m), d, a,
+                                          b, condition),
+                          GOC_SUCCESS);
+                for (auto word : output)
+                  hash = (hash ^ word) * UINT64_C(1099511628211);
+              }
+      EXPECT_EQ(hash, UINT64_C(0x237a7524109b1925)) << cpu;
+      EXPECT_EQ(std::fegetround(), rounding);
+      EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_DIVBYZERO);
+    }
   }
   std::fesetenv(&saved);
 }

@@ -1409,6 +1409,8 @@ GOC_API int goc_rdna4_v_interp_p2_rtz_f16_f32(uint64_t flags, uint64_t exec_mask
 // them; all other payload bits, including signaling NaNs, are preserved.
 // The B16 form also supports HIGH_A/B/D: selected source halves are written to
 // the selected destination half, preserving the other half. No OMOD or CLAMP.
+// DPP8/DPP16 permutes A before source modifiers and half selection; B and
+// the condition mask remain in their original lanes.
 // Loose semantics only; all host FP state is preserved.
 GOC_API int goc_rdna4_v_cndmask_b32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a,

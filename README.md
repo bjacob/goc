@@ -626,7 +626,13 @@ source/destination half selector and preserves the unwritten destination half.
 Both forms preserve host FP state and have scalar and sixteen-lane v4 paths
 with all their modifiers. AVX2 candidates did not provide a substantial gain,
 so v3 CPUs use the portable path. OMOD and CLAMP are not supported by these
-instructions.
+instructions. DPP8/DPP16 permutes A before source modifiers and half
+selection, while B and the condition mask retain their original lanes.
+An additional 774,144 GPU results cover DPP with every modifier, independent
+condition/EXEC masks, and both destination halves. DPP tests also cover source
+and destination aliases, every condition-bit position and host FP state.
+Pinned DPP timings on v4 are 9.2–12.3 ns for B32 (3.51–4.45× scalar)
+and 10.4–13.3 ns for B16 (2.97–3.65×), including modified instructions.
 
 Tests compare all source-modifier and half-selector combinations against
 18,874,368 GPU-captured outputs, covering every FP16 input encoding and both
