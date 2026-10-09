@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "float_bits.h"
 #include "internal.h"
 
 #include <stdint.h>
@@ -10,24 +11,25 @@ namespace goc {
 
 // IEEE selection orders -0 below +0. Number variants ignore even signaling NaNs
 // when the other operand is numeric; propagating variants prefer signaling NaNs.
-template <bool Maximum, bool Propagate> float minmax(float x, float y) {
-  uint32_t a = goc::as_bits(x), b = goc::as_bits(y);
-  bool an = (a & 0x7fffffff) > 0x7f800000, bn = (b & 0x7fffffff) > 0x7f800000;
+template <bool Maximum, bool Propagate, typename Float> Float minmax(Float x, Float y) {
+  using Bits = FloatBits<Float>;
+  typename Bits::UInt a = Bits::bits(x), b = Bits::bits(y);
+  bool an = (a & Bits::magnitude) > Bits::infinity, bn = (b & Bits::magnitude) > Bits::infinity;
   if constexpr (Propagate) {
-    if (an && !(a & 0x00400000))
-      return goc::as_float(a | 0x00400000);
-    if (bn && !(b & 0x00400000))
-      return goc::as_float(b | 0x00400000);
+    if (an && !(a & Bits::quiet))
+      return Bits::value(a | Bits::quiet);
+    if (bn && !(b & Bits::quiet))
+      return Bits::value(b | Bits::quiet);
     if (an || bn)
-      return goc::as_float((an ? a : b) | 0x00400000);
+      return Bits::value((an ? a : b) | Bits::quiet);
   } else {
     if (an)
-      return bn ? goc::as_float(a | 0x00400000) : y;
+      return bn ? Bits::value(a | Bits::quiet) : y;
     if (bn)
       return x;
   }
   if (x == y)
-    return goc::as_float(Maximum ? (a & b) : (a | b));
+    return Bits::value(Maximum ? (a & b) : (a | b));
   return (Maximum ? x > y : x < y) ? x : y;
 }
 

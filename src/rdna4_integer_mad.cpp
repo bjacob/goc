@@ -4,17 +4,13 @@
 #include "rdna4_integer_mad.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_bits.h"
 #include "rdna4_dpp.h"
 
 #include <algorithm>
 #include <stdint.h>
 
 namespace {
-
-template <int Bits, bool Signed> int64_t input(uint32_t bits) {
-  bits &= uint32_t((UINT64_C(1) << Bits) - 1);
-  return int64_t(bits) - (Signed && (bits & (UINT32_C(1) << (Bits - 1))) ? INT64_C(1) << Bits : 0);
-}
 
 template <int Bits, bool Signed>
 int mad(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
@@ -40,8 +36,9 @@ int mad(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d, const 
   const int sb = Bits == 16 && (mode & GOC_ALU_HIGH_B) ? 16 : 0;
   uint32_t result[32];
   for (int lane = 0; lane < 32; ++lane) {
-    int64_t value = input<Bits, Signed>(a[0][lane] >> sa) * input<Bits, Signed>(b[0][lane] >> sb) +
-                    input<32, Signed>(c[0][lane]);
+    int64_t value = goc::extend_integer<Bits, Signed>(a[0][lane] >> sa) *
+                        goc::extend_integer<Bits, Signed>(b[0][lane] >> sb) +
+                    goc::extend_integer<32, Signed>(c[0][lane]);
     if (mode & GOC_ALU_CLAMP)
       value = std::clamp(value, Signed ? int64_t(INT32_MIN) : INT64_C(0),
                          Signed ? int64_t(INT32_MAX) : int64_t(UINT32_MAX));

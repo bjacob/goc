@@ -3,6 +3,7 @@
 #include "rdna4_fp64.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_minmax.h"
 
 #include <cmath>
 #include <stdint.h>
@@ -40,13 +41,13 @@ int arithmetic(uint64_t flags, uint32_t mask, uint32_t mode, uint32_t *const *d,
     if constexpr (Op == goc::Fp64::Fma)
       value = std::fma(x, y, goc::fp64_input(c, lane, mode >> 2));
     if constexpr (Op == goc::Fp64::MinNum)
-      value = goc::fp64_minmax<false, false>(x, y);
+      value = goc::minmax<false, false>(x, y);
     if constexpr (Op == goc::Fp64::MaxNum)
-      value = goc::fp64_minmax<true, false>(x, y);
+      value = goc::minmax<true, false>(x, y);
     if constexpr (Op == goc::Fp64::Minimum)
-      value = goc::fp64_minmax<false, true>(x, y);
+      value = goc::minmax<false, true>(x, y);
     if constexpr (Op == goc::Fp64::Maximum)
-      value = goc::fp64_minmax<true, true>(x, y);
+      value = goc::minmax<true, true>(x, y);
     if constexpr (Op == goc::Fp64::FrexpMant) {
       uint64_t magnitude = goc::double_bits(x) & UINT64_C(0x7fffffffffffffff);
       int exponent;

@@ -5,6 +5,7 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_bits.h"
 
 #include <stdint.h>
 
@@ -165,8 +166,8 @@ int goc_rdna4_s_mul_hi_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  int64_t x = int64_t(a) - ((a & 0x80000000u) ? INT64_C(0x100000000) : 0);
-  int64_t y = int64_t(b) - ((b & 0x80000000u) ? INT64_C(0x100000000) : 0);
+  int64_t x = goc::extend_integer<32, true>(a);
+  int64_t y = goc::extend_integer<32, true>(b);
   uint32_t result = uint64_t(x * y) >> 32;
   *d = result;
   return GOC_SUCCESS;
@@ -242,7 +243,7 @@ int goc_rdna4_s_sext_i32_i8(uint64_t flags, uint32_t exec_mask, uint64_t instruc
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  *d = ((a & 255u) ^ 128u) - 128u;
+  *d = goc::sign_extend_word<8>(a);
   return GOC_SUCCESS;
 }
 
@@ -253,6 +254,6 @@ int goc_rdna4_s_sext_i32_i16(uint64_t flags, uint32_t exec_mask, uint64_t instru
   (void)exec_mask;
   if (int error = goc::validate(flags, instruction_flags, true))
     return error;
-  *d = ((a & 65535u) ^ 32768u) - 32768u;
+  *d = goc::sign_extend_word<16>(a);
   return GOC_SUCCESS;
 }

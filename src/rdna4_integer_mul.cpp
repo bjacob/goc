@@ -4,18 +4,13 @@
 #include "rdna4_integer_mul.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_bits.h"
 #include "rdna4_dpp.h"
 
 #include <algorithm>
 #include <stdint.h>
 
 namespace {
-
-template <int Bits> int64_t signed_value(uint32_t value) {
-  if constexpr (Bits == 24)
-    value &= 0x00ffffff;
-  return int64_t(value) - ((value & (UINT32_C(1) << (Bits - 1))) ? (INT64_C(1) << Bits) : 0);
-}
 
 template <int Bits, bool Signed, bool High>
 int multiply(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
@@ -52,7 +47,8 @@ int multiply(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
   for (int lane = 0; lane < 32; ++lane) {
     uint64_t product;
     if constexpr (Signed) {
-      int64_t value = signed_value<Bits>(a[0][lane]) * signed_value<Bits>(b[0][lane]);
+      int64_t value =
+          goc::extend_integer<Bits, true>(a[0][lane]) * goc::extend_integer<Bits, true>(b[0][lane]);
       if (mode & GOC_ALU_CLAMP)
         value = std::clamp(value, int64_t(INT32_MIN), int64_t(INT32_MAX));
       product = uint64_t(value);

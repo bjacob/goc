@@ -305,3 +305,40 @@ TEST(Fp64, MinMaxLiteralNaNPriorityAndZeros) {
           EXPECT_EQ(d[0][lane] | (uint64_t(d[1][lane]) << 32), test[op + 2]);
       }
 }
+
+TEST(Fp64, MinmaxNaNPriorityAcrossPrecisions) {
+  using Fn = decltype(&goc_rdna4_v_min_num_f32);
+  const Fn instructions[2][4] = {{goc_rdna4_v_min_num_f32, goc_rdna4_v_max_num_f32,
+                                  goc_rdna4_v_minimum_f32, goc_rdna4_v_maximum_f32},
+                                 {goc_rdna4_v_min_num_f64, goc_rdna4_v_max_num_f64,
+                                  goc_rdna4_v_minimum_f64, goc_rdna4_v_maximum_f64}};
+  // A, B, expected number result, expected propagating result. Payloads and
+  // signs remain observable; signaling NaNs take precedence only when propagating.
+  const uint64_t cases[2][4][4] = {
+      {{0x7f800001, 0x7fc00002, 0x7fc00001, 0x7fc00001},
+       {0x7fc00001, 0x7f800002, 0x7fc00001, 0x7fc00002},
+       {0xffc00001, 0x3f800000, 0x3f800000, 0xffc00001},
+       {0x3f800000, 0xff800002, 0x3f800000, 0xffc00002}},
+      {{0x7ff0000000000001, 0x7ff8000000000002, 0x7ff8000000000001, 0x7ff8000000000001},
+       {0x7ff8000000000001, 0x7ff0000000000002, 0x7ff8000000000001, 0x7ff8000000000002},
+       {0xfff8000000000001, 0x3ff0000000000000, 0x3ff0000000000000, 0xfff8000000000001},
+       {0x3ff0000000000000, 0xfff0000000000002, 0x3ff0000000000000, 0xfff8000000000002}}};
+  for (unsigned format = 0; format < 2; ++format)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned op = 0; op < 4; ++op)
+        for (const auto &sample : cases[format]) {
+          uint32_t a[2][32], b[2][32], output[2][32] = {};
+          for (unsigned reg = 0; reg < 2; ++reg)
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              a[reg][lane] = uint32_t(sample[0] >> (32 * reg));
+              b[reg][lane] = uint32_t(sample[1] >> (32 * reg));
+            }
+          const uint32_t *pa[] = {a[0], a[1]}, *pb[] = {b[0], b[1]};
+          uint32_t *pd[] = {output[0], output[1]};
+          ASSERT_EQ(instructions[format][op](cpu, UINT32_MAX, 0, pd, pa, pb), GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            uint64_t actual = output[0][lane] | (uint64_t(output[1][lane]) << 32);
+            EXPECT_EQ(actual, sample[op < 2 ? 2 : 3]) << format << '/' << cpu << '/' << op;
+          }
+        }
+}

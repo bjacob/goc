@@ -177,3 +177,26 @@ TEST(ScalarInteger, SignExtendExecAliasesFlagsAndHostState) {
   }
   EXPECT_EQ(std::fesetenv(&saved), 0);
 }
+
+TEST(ScalarInteger, VectorSigned24DiscardsEveryUpperByte) {
+  const uint32_t inputs[] = {0x007fffff, 0x00800000, 0x00ffffff};
+  const uint32_t expected[] = {0x007fffff, 0xff800000, 0xffffffff};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned sample = 0; sample < 3; ++sample)
+      for (unsigned group = 0; group < 8; ++group) {
+        uint32_t a[32], b[32], c[32], output[32];
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          a[lane] = ((group * 32 + lane) << 24) | inputs[sample];
+          b[lane] = 1;
+          c[lane] = 0;
+        }
+        const uint32_t *pa = a, *pb = b, *pc = c;
+        uint32_t *pd = output;
+        ASSERT_EQ(goc_rdna4_v_mul_i32_i24(cpu, UINT32_MAX, 0, &pd, &pa, &pb), GOC_SUCCESS);
+        for (uint32_t value : output)
+          EXPECT_EQ(value, expected[sample]);
+        ASSERT_EQ(goc_rdna4_v_mad_i32_i24(cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+        for (uint32_t value : output)
+          EXPECT_EQ(value, expected[sample]);
+      }
+}

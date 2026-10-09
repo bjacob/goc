@@ -6,6 +6,29 @@
 
 namespace goc {
 
+// Sign-extend a low-bit field to a 32-bit raw register word.
+template <unsigned Bits> uint32_t sign_extend_word(uint32_t value) {
+  static_assert(Bits > 0 && Bits <= 32);
+  constexpr uint32_t sign = UINT32_C(1) << (Bits - 1);
+  return ((value & (UINT32_MAX >> (32 - Bits))) ^ sign) - sign;
+}
+
+// Decode the low Bits bits as a signed or unsigned integer, discarding higher bits.
+template <unsigned Bits, bool Signed> int64_t extend_integer(uint32_t value) {
+  static_assert(Bits > 0 && Bits <= 32);
+  value &= UINT32_MAX >> (32 - Bits);
+  if constexpr (Signed) {
+    constexpr uint32_t sign = UINT32_C(1) << (Bits - 1);
+    if constexpr (Bits <= 16)
+      return int64_t(value ^ sign) - sign;
+    else
+      // Keep the wider-field form that avoids slower GCC high-product lowering.
+      return int64_t(value) - ((value & sign) ? INT64_C(1) << Bits : 0);
+  } else {
+    return value;
+  }
+}
+
 // Number of set bits in an unsigned 32- or 64-bit word.
 template <typename T> uint32_t bit_population(T x) {
   x -= (x >> 1) & T(UINT64_C(0x5555555555555555));

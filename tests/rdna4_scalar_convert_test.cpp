@@ -109,3 +109,34 @@ TEST(ScalarConvert, ErrorsAndHostRounding) {
   }
   EXPECT_EQ(std::fesetenv(&saved), 0);
 }
+
+TEST(ScalarConvert, TruncationBoundariesAcrossScalarAndVector) {
+  // Input bits, signed result, unsigned result. Include the neighbors on both
+  // sides of the signed boundary and below the unsigned saturation boundary.
+  const uint32_t cases[][3] = {{0x4effffff, 0x7fffff80, 0x7fffff80},
+                               {0x4f000000, 0x7fffffff, 0x80000000},
+                               {0x4f7fffff, 0x7fffffff, 0xffffff00},
+                               {0x4f800000, 0x7fffffff, 0xffffffff},
+                               {0xceffffff, 0x80000080, 0},
+                               {0xcf000000, 0x80000000, 0},
+                               {0x7fc00001, 0, 0},
+                               {0xffc00001, 0, 0}};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (const auto &sample : cases) {
+      uint32_t scalar, input[32], output[32];
+      for (uint32_t &word : input)
+        word = sample[0];
+      const uint32_t *a = input;
+      uint32_t *d = output;
+      ASSERT_EQ(goc_rdna4_s_cvt_i32_f32(cpu, 0, 0, &scalar, sample[0]), GOC_SUCCESS);
+      EXPECT_EQ(scalar, sample[1]);
+      ASSERT_EQ(goc_rdna4_v_cvt_i32_f32(cpu, UINT32_MAX, 0, &d, &a), GOC_SUCCESS);
+      for (uint32_t word : output)
+        EXPECT_EQ(word, sample[1]);
+      ASSERT_EQ(goc_rdna4_s_cvt_u32_f32(cpu, 0, 0, &scalar, sample[0]), GOC_SUCCESS);
+      EXPECT_EQ(scalar, sample[2]);
+      ASSERT_EQ(goc_rdna4_v_cvt_u32_f32(cpu, UINT32_MAX, 0, &d, &a), GOC_SUCCESS);
+      for (uint32_t word : output)
+        EXPECT_EQ(word, sample[2]);
+    }
+}

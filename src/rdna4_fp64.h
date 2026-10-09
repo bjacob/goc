@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include "float_bits.h"
 #include "goc/goc.h"
 
-#include <cstring>
 #include <stdint.h>
 
 namespace goc {
@@ -44,41 +44,9 @@ constexpr int fp64_sources(Fp64 op) {
   }
 }
 
-inline double as_double(uint64_t bits) {
-  double value;
-  std::memcpy(&value, &bits, sizeof(value));
-  return value;
-}
+inline double as_double(uint64_t bits) { return FloatBits<double>::value(bits); }
 
-inline uint64_t double_bits(double value) {
-  uint64_t bits;
-  std::memcpy(&bits, &value, sizeof(bits));
-  return bits;
-}
-
-// IEEE selection orders -0 below +0. Number variants ignore even signaling NaNs
-// when the other operand is numeric; propagating variants prefer signaling NaNs.
-template <bool Maximum, bool Propagate> double fp64_minmax(double x, double y) {
-  uint64_t a = double_bits(x), b = double_bits(y);
-  bool an = (a & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000),
-       bn = (b & UINT64_C(0x7fffffffffffffff)) > UINT64_C(0x7ff0000000000000);
-  if constexpr (Propagate) {
-    if (an && !(a & UINT64_C(0x0008000000000000)))
-      return as_double(a | UINT64_C(0x0008000000000000));
-    if (bn && !(b & UINT64_C(0x0008000000000000)))
-      return as_double(b | UINT64_C(0x0008000000000000));
-    if (an || bn)
-      return as_double((an ? a : b) | UINT64_C(0x0008000000000000));
-  } else {
-    if (an)
-      return bn ? as_double(a | UINT64_C(0x0008000000000000)) : y;
-    if (bn)
-      return x;
-  }
-  if (x == y)
-    return as_double(Maximum ? (a & b) : (a | b));
-  return (Maximum ? x > y : x < y) ? x : y;
-}
+inline uint64_t double_bits(double value) { return FloatBits<double>::bits(value); }
 
 // Round to an integral FP64 value, ties to even, preserving signed zero and
 // quieting NaNs. Adapted from the rocjitsu-derived FP32 rndne helper.

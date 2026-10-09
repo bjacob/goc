@@ -6,9 +6,10 @@
 #include "float_formats.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_bits.h"
+#include "rdna4_conversion32.h"
 #include "rdna4_half_conversion.h"
 
-#include <cmath>
 #include <stdint.h>
 
 namespace {
@@ -32,7 +33,7 @@ int run(uint64_t flags, uint32_t mode, uint32_t *d, uint32_t a, uint32_t b = 0) 
   constexpr bool from_integer = Op == Convert::SignedToFloat || Op == Convert::UnsignedToFloat;
   if constexpr (from_integer) {
     if constexpr (Op == Convert::SignedToFloat)
-      *d = goc::as_bits(float(int64_t(a) - (a >> 31 ? INT64_C(0x100000000) : 0)));
+      *d = goc::as_bits(float(goc::extend_integer<32, true>(a)));
     else
       *d = goc::as_bits(float(a));
   } else {
@@ -52,13 +53,9 @@ int run(uint64_t flags, uint32_t mode, uint32_t *d, uint32_t a, uint32_t b = 0) 
       a |= half ? 0x200 : 0x400000;
     float x = half ? goc::f16_to_float(uint16_t(a)) : goc::as_float(a);
     if constexpr (Op == Convert::FloatToSigned) {
-      // Classify before casting to avoid undefined out-of-range conversions.
-      *d = std::isnan(x)        ? 0
-           : x >= 2147483648.f  ? 0x7fffffff
-           : x <= -2147483648.f ? 0x80000000
-                                : uint32_t(int32_t(x));
+      *d = goc::truncate_integer<true>(x);
     } else if constexpr (Op == Convert::FloatToUnsigned) {
-      *d = !(x > 0) ? 0 : x >= 4294967296.f ? UINT32_MAX : uint32_t(x);
+      *d = goc::truncate_integer<false>(x);
     } else if constexpr (half) {
       *d = goc::as_bits(x);
     } else {

@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_alu.h"
+#include "rdna4_bits.h"
 #include "rdna4_dpp.h"
 
 #include <cmath>
@@ -51,7 +52,7 @@ int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
     if constexpr (to_float) {
       float x;
       if constexpr (Op == goc::Conversion32::SignedToFloat)
-        x = float(int64_t(raw) - (raw >> 31 ? INT64_C(4294967296) : 0));
+        x = float(goc::extend_integer<32, true>(raw));
       else
         x = float(raw);
       result[lane] = goc::as_bits(goc::alu_output(x, mode));
@@ -71,13 +72,7 @@ int convert(uint64_t flags, uint32_t mask, uint64_t mode, uint32_t *const *d,
       }
       if constexpr (Op == goc::Conversion32::Floor)
         x = std::floor(x);
-      if constexpr (Op == goc::Conversion32::FloatToUnsigned)
-        result[lane] = !(x > 0) ? 0 : x >= 4294967296.0f ? UINT32_MAX : uint32_t(x);
-      else
-        result[lane] = std::isnan(x)         ? nan_result
-                       : x >= 2147483648.0f  ? uint32_t(INT32_MAX)
-                       : x <= -2147483648.0f ? uint32_t(INT32_MIN)
-                                             : uint32_t(int32_t(x));
+      result[lane] = goc::truncate_integer<Op != goc::Conversion32::FloatToUnsigned>(x, nan_result);
       // Integer CLAMP and the truncating opcodes' OMOD do not scale or
       // clamp numeric results. GPU exception reporting is not modeled.
     }
