@@ -18,6 +18,33 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Sparse integer 2:4 WMMA with signed 32-bit in/out accumulator D (8 VGPRs).
+// A/B use 2/4 VGPRs for K=32 IU8 and K=64 IU4, or 1/2 for K=32 IU4;
+// index uses one VGPR. Metadata pairs must select strictly increasing positions.
+// SIGNED_A/B select signed factors. CLAMP saturates after each of two product
+// groups: compressed positions 0..7 then 8..15 for K=32; positions 0..7 and
+// 16..23, then 8..15 and 24..31 for K=64. Without CLAMP results wrap modulo 2^32.
+// K=32 accepts GOC_SWMMAC_INDEX_KEY_1; K=64 consumes all 32 metadata bits and
+// rejects it. Supports loose and empirical exact semantics; host FP state is
+// preserved. GOC_FP16_OVFL has no effect. All inputs and D are read before
+// ascending destination-register stores; last store wins aliases. EXEC masks
+// only stores; high bits are ignored. Zero effective EXEC permits null pointers.
+// Errors leave destinations unchanged.
+GOC_API int goc_rdna4_v_swmmac_i32_16x16x32_iu8(uint64_t flags, uint64_t exec_mask,
+                                                uint32_t instruction_flags, uint32_t *const *d,
+                                                const uint32_t *const *a, const uint32_t *const *b,
+                                                const uint32_t *const *index);
+
+GOC_API int goc_rdna4_v_swmmac_i32_16x16x32_iu4(uint64_t flags, uint64_t exec_mask,
+                                                uint32_t instruction_flags, uint32_t *const *d,
+                                                const uint32_t *const *a, const uint32_t *const *b,
+                                                const uint32_t *const *index);
+
+GOC_API int goc_rdna4_v_swmmac_i32_16x16x64_iu4(uint64_t flags, uint64_t exec_mask,
+                                                uint32_t instruction_flags, uint32_t *const *d,
+                                                const uint32_t *const *a, const uint32_t *const *b,
+                                                const uint32_t *const *index);
+
 // Sparse FP8/BF8 2:4 matrix multiply-accumulate into FP32 D. A uses two
 // VGPRs, B four, index one, and in/out D eight. FP8 is E4M3FN; BF8 is E5M2.
 // Metadata pairs must contain strictly increasing positions in each group of

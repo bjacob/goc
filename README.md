@@ -406,6 +406,24 @@ BF8 infinities and both formats' NaNs. Pinned-core timings on the same CPU
 measured 7.30–8.17x for v3 and 7.77–8.75x for v4, including index-key selection
 and the per-call accumulator reset (seven samples, each at least 10 ms).
 
+Sparse integer WMMA covers `v_swmmac_i32_16x16x32_iu8`,
+`v_swmmac_i32_16x16x32_iu4`, and `v_swmmac_i32_16x16x64_iu4`, with signed or
+unsigned factors, CLAMP, loose and empirical exact semantics, and scalar/v3/v4
+paths. K=32 supports both index keys; K=64 consumes all metadata bits and rejects
+index-key selection. The in/out accumulator uses eight VGPRs. Inputs are read
+before masked stores, and host FP state is preserved.
+
+GPU captures establish two-stage CLAMP behavior: K=32 saturates after compressed
+positions 0–7 and again after 8–15. K=64 saturates after positions 0–7 plus 16–23,
+then after 8–15 plus 24–31. This differs from rocjitsu's current final-sum model.
+Tests check 163,840 captured results across every modifier combination, plus
+EXEC masks, aliases, and a literal witness where the two stages cancel
+mathematically but intermediate saturation changes the result. V3 processes
+eight columns and v4 sixteen, with modifiers retained on both paths. Pinned-core
+Ryzen 9 7950X3D measurements show 1.39–1.86x for v3 and 1.77–2.34x for v4,
+including signed CLAMP and index-key selection; the accumulator reset is included
+in every path's timing (seven samples, each at least 10 ms).
+
 Wide integer MAD covers `v_mad_co_u64_u32` and `v_mad_co_i64_i32`, the RDNA4
 names for unsigned/signed 32x32 multiplication plus a 64-bit accumulator. A/B use
 one VGPR each; C/D use low/high pairs. CLAMP saturates to the corresponding
