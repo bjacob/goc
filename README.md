@@ -1474,6 +1474,14 @@ all eight FP states, cancellation, tininess boundaries, EXEC and aliases.
 Loose semantics require host nearest-even rounding and enabled denormals.
 All four instructions have benchmarks with default and nondefault FP settings.
 
+Scalar FP16/FP32 CEIL, FLOOR, TRUNC and RNDNE use integer rounding derived from
+rocjitsu's nearest-even model. Both semantics are supported, with all host FP
+state preserved independently of host rounding. Tests match 12,582,912 raw
+GFX1201 result/SCC pairs, including every FP16 pattern under all eight FP states.
+Signed zeros and NaN payloads/signs are preserved while signaling NaNs quiet.
+Input flushing is supported; output flushing and FP16 overflow saturation have
+no effect. Benchmarks cover all eight instructions and input-flush variants.
+
 RDNA4 coverage still needs remaining scalar-register arithmetic, dual-operation
 forms, data-permutation modifiers, and a complete wave64/FP-mode audit. Instruction
 name coverage alone does not establish complete architectural support. Other GPU

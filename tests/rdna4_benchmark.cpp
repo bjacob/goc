@@ -43,6 +43,7 @@
 #include "rdna4_scalar_fma_reference.h"
 #include "rdna4_scalar_fp_reference.h"
 #include "rdna4_scalar_integer_reference.h"
+#include "rdna4_scalar_round_reference.h"
 #include "rdna4_shift_reference.h"
 #include "rdna4_subbyte_golden.h"
 #include "rdna4_swmmac16_hardware.h"
@@ -1514,6 +1515,42 @@ bool benchmark_rcp_iflag(uint64_t cpu, int iterations, int min_ms) {
 #endif
   }
   (void)cpu;
+  return true;
+}
+
+bool benchmark_scalar_round(int iterations, int min_ms) {
+  struct ScalarRegisters : Registers {
+    uint32_t result = 0, want = 0;
+
+    ScalarRegisters() { output_regs = 0; }
+
+    bool correct() const { return result == want; }
+  };
+
+  // GFX1201 capture: FP32 sample 10 / FP16 sample 0x3e01.
+  const uint32_t gold[8][2] = {{0x40000000u, 0x40000000u}, {0x00004000u, 0x00004000u},
+                               {0x3f800000u, 0x3f800000u}, {0x00003c00u, 0x00003c00u},
+                               {0x3f800000u, 0x3f800000u}, {0x00003c00u, 0x00003c00u},
+                               {0x40000000u, 0x40000000u}, {0x00004000u, 0x00004000u}};
+  for (unsigned op = 0; op < 8; ++op)
+    for (unsigned state = 0; state < 2; ++state) {
+      ScalarRegisters r;
+      r.want = gold[op][state];
+      uint32_t w[2];
+      goc_test::scalar_round_inputs(op & 1 ? 0x3e01 : 10, op & 1, w);
+      auto fn = [&r, op, &w](uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *,
+                             const uint32_t *const *, const uint32_t *const *,
+                             const uint32_t *const *) {
+        return goc_test::scalar_round_functions[op](flags, mask, mode, &r.result, w[0]);
+      };
+      double scalar =
+          measure(fn, GOC_SEMANTICS_EXACT_EMPIRICAL | (state ? GOC_FP_FLUSH_INPUT_DENORMALS : 0), r,
+                  iterations, min_ms, 0);
+      if (scalar < 0)
+        return false;
+      print_result(goc_test::scalar_round_names[op], "exact", "none", "scalar", scalar, 1, 32,
+                   state ? "flush-input" : "none");
+    }
   return true;
 }
 
@@ -4376,7 +4413,8 @@ int main(int argc, char **argv) {
   std::fprintf(messages, "mixed = NEG_HI_A | NEG_LO_B | ABS_C | NEG_C.\n");
   print_columns("Instruction", "Semantics", "Instruction flags", "CPU path", "ns/wave", "Speedup",
                 "Wave", "FP state");
-  if (!benchmark_rcp_iflag(cpu, iterations, min_ms) || !benchmark_scalar_fma(iterations, min_ms) ||
+  if (!benchmark_rcp_iflag(cpu, iterations, min_ms) ||
+      !benchmark_scalar_round(iterations, min_ms) || !benchmark_scalar_fma(iterations, min_ms) ||
       !benchmark_scalar_fp(iterations, min_ms) || !benchmark_scalar_field(iterations, min_ms) ||
       !benchmark_scalar_bits(iterations, min_ms) || !benchmark_scalar_integer(iterations, min_ms) ||
       !benchmark_pseudo_scalar(iterations, min_ms) ||

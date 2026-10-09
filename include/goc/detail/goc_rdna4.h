@@ -18,6 +18,46 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Scalar rounding ignores EXEC, including zero EXEC; d is required. Inputs and
+// outputs are raw IEEE bits. FP16 reads the low half and writes a zero upper
+// half. Signed zero and NaN payload/sign bits survive; signaling NaNs are quieted.
+// Both loose and empirical exact semantics are supported. instruction_flags must
+// be zero. Guest input flushing applies; output flushing and FP16_OVFL have no
+// effect. Preserves all host FP state and SCC, independently of host rounding.
+// Inputs may originate from d storage. Errors leave d unchanged.
+
+// Round to an integral value toward positive infinity.
+GOC_API int goc_rdna4_s_ceil_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *d, uint32_t a);
+
+// Round to an integral value toward positive infinity.
+GOC_API int goc_rdna4_s_ceil_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                 uint32_t *d, uint32_t a);
+
+// Round to an integral value toward negative infinity.
+GOC_API int goc_rdna4_s_floor_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+
+// Round to an integral value toward negative infinity.
+GOC_API int goc_rdna4_s_floor_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+
+// Round to an integral value toward zero.
+GOC_API int goc_rdna4_s_trunc_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+
+// Round to an integral value toward zero.
+GOC_API int goc_rdna4_s_trunc_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+
+// Round to an integral value to nearest, with ties to even.
+GOC_API int goc_rdna4_s_rndne_f32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+
+// Round to an integral value to nearest, with ties to even.
+GOC_API int goc_rdna4_s_rndne_f16(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                  uint32_t *d, uint32_t a);
+
 // Scalar fused multiply-add ignores EXEC, including zero EXEC; d is required.
 // Operands and literals are raw IEEE bits. FP16 reads low halves and writes a
 // zero upper half. Rounds once to the destination format. SCC is unchanged.
