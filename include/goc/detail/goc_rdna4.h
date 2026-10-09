@@ -18,6 +18,43 @@ extern "C" {
 // on error are unchanged. Loose FP32 paths require host nearest-even rounding
 // with denormals enabled. Integer arithmetic paths preserve all host FP state.
 
+// Sparse 2:4 matrix multiply-accumulate. D is both the initial accumulator and
+// destination; A holds 16 compressed elements per row, B the dense 32x16 matrix,
+// and index holds packed 2-bit positions. Within each four-element K group the
+// two selected positions must be strictly increasing. A uses four VGPRs, B eight,
+// index one, and D eight for FP32 or four for packed FP16/BF16 output.
+// GOC_SWMMAC_INDEX_KEY_1 selects the upper instead of lower 16 metadata bits in
+// each lane. Supports GOC_WMMA_NEG_LO_A/B and GOC_WMMA_NEG_HI_A/B; these negate
+// the first/second member of each selected pair, including B after selection.
+// No C modifiers or CLAMP apply. Loose semantics accumulate selected products
+// with FP32 FMA, then round packed outputs to nearest-even. Host FP state must
+// provide nearest-even rounding with denormals enabled; exception flags may change.
+// GOC_FP16_OVFL saturates finite overflow when narrowing to FP16; otherwise it
+// has no effect. Exact semantics are unsupported. All inputs and D are read
+// before ascending destination-register stores; the last store wins aliases.
+// EXEC masks only destination stores; every lane's source data may be read.
+// Zero effective EXEC permits null pointers. Errors leave all destinations unchanged.
+GOC_API int goc_rdna4_v_swmmac_f32_16x16x32_f16(uint64_t flags, uint64_t exec_mask,
+                                                uint32_t instruction_flags, uint32_t *const *d,
+                                                const uint32_t *const *a, const uint32_t *const *b,
+                                                const uint32_t *const *index);
+
+GOC_API int goc_rdna4_v_swmmac_f32_16x16x32_bf16(uint64_t flags, uint64_t exec_mask,
+                                                 uint32_t instruction_flags, uint32_t *const *d,
+                                                 const uint32_t *const *a, const uint32_t *const *b,
+                                                 const uint32_t *const *index);
+
+GOC_API int goc_rdna4_v_swmmac_f16_16x16x32_f16(uint64_t flags, uint64_t exec_mask,
+                                                uint32_t instruction_flags, uint32_t *const *d,
+                                                const uint32_t *const *a, const uint32_t *const *b,
+                                                const uint32_t *const *index);
+
+GOC_API int goc_rdna4_v_swmmac_bf16_16x16x32_bf16(uint64_t flags, uint64_t exec_mask,
+                                                  uint32_t instruction_flags, uint32_t *const *d,
+                                                  const uint32_t *const *a,
+                                                  const uint32_t *const *b,
+                                                  const uint32_t *const *index);
+
 // Multiply two 32-bit lanes and add a 64-bit accumulator. A/B use one VGPR;
 // C/D use low/high pairs. The scalar output contains bit 64 of the full sum:
 // unsigned carry for U64, or the sign of the mathematical 65-bit sum for I64.
@@ -1523,6 +1560,9 @@ static const uint32_t GOC_WMMA_NEG_C = (UINT32_C(1) << 2);
 static const uint32_t GOC_WMMA_NEG_HI_A = (UINT32_C(1) << 3);
 static const uint32_t GOC_WMMA_NEG_HI_B = (UINT32_C(1) << 4);
 static const uint32_t GOC_WMMA_ABS_C = (UINT32_C(1) << 5);
+
+// Sparse WMMA metadata selector. This bit selects the upper half of each index VGPR lane.
+static const uint32_t GOC_SWMMAC_INDEX_KEY_1 = (UINT32_C(1) << 7);
 
 // Wave32 16x16x16 WMMA: A/B each contain 4 VGPRs of packed 16-bit
 // elements; C/D each contain 8 VGPRs of FP32 elements. GoC applies exec_mask

@@ -375,6 +375,25 @@ scaling and CLAMP. Without output modifiers, the selected C retains its signed
 zero and NaN bits. Dedicated tests cross every modifier with exceptional factors and accumulators, and retain
 a literal fused-rounding witness for nonzero products.
 
+Sparse WMMA covers the four FP16/BF16 `v_swmmac_*_16x16x32_*` forms,
+with FP32 or matching packed output. D is the in/out accumulator, A contains
+2:4 compressed rows, B is dense, and a separate index VGPR selects positions.
+Both index keys and all A/B low/high negation combinations are supported on
+scalar, x86-64-v3 (eight columns) and x86-64-v4 (sixteen columns) paths.
+The B negation modifiers apply to selected pair positions. Metadata pairs must
+contain strictly increasing positions; malformed sparse metadata is outside the
+API contract. These forms expose loose FP32 FMA accumulation, with nearest-even
+packed narrowing and `GOC_FP16_OVFL` support for finite FP16 overflow.
+
+Tests retain GPU digests for 32,768 logical results across all four forms and
+all 32 modifier combinations. They cover every EXEC lane, overlapping inputs
+and destinations (including the index register), duplicate destinations,
+packed-rounding ties and finite overflow versus infinity. All operands are
+snapshotted before masked stores. Benchmarks include resetting the accumulator
+on every call, equally for all CPU paths. Pinned-core Ryzen 9 7950X3D timings
+measured 4.77–11.19x for v3 and 4.81–11.84x for v4 versus scalar, including
+negation and index-key selection (seven samples, each at least 10 ms).
+
 Wide integer MAD covers `v_mad_co_u64_u32` and `v_mad_co_i64_i32`, the RDNA4
 names for unsigned/signed 32x32 multiplication plus a 64-bit accumulator. A/B use
 one VGPR each; C/D use low/high pairs. CLAMP saturates to the corresponding
