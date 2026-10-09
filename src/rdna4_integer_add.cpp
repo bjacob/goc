@@ -3,6 +3,7 @@
 #include "rdna4_integer_add.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rdna4_dpp.h"
 
 #include <algorithm>
 #include <stdint.h>
@@ -14,8 +15,18 @@ template <bool Signed> int64_t value(uint32_t bits) {
 }
 
 template <goc::IntegerAdd Op, bool Signed>
-int arithmetic(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
+int arithmetic(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
                const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (mode >> 32) {
+    // GFX1201 applies SUBREV's DPP to B before subtracting lane-local A.
+    constexpr bool reverse = Op == goc::IntegerAdd::Subrev;
+    return goc::execute_dpp(
+        flags, mask, mode, reverse ? b : a, [&](uint32_t effective, const uint32_t *const *source) {
+          return arithmetic<Op, Signed>(flags, effective, uint32_t(mode), d, reverse ? a : source,
+                                        reverse ? source : b, c);
+        });
+  }
+
   constexpr bool three = Op == goc::IntegerAdd::Add3;
   const uint32_t known = three ? 0 : GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known))
@@ -65,16 +76,12 @@ int arithmetic(uint64_t flags, uint64_t mask, uint32_t mode, uint32_t *const *d,
 
 int goc_rdna4_v_add_nc_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::IntegerAdd::Add, false>(flags, exec_mask, instruction_flags, d, a, b,
                                                  nullptr);
 }
 
 int goc_rdna4_v_sub_nc_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::IntegerAdd::Sub, false>(flags, exec_mask, instruction_flags, d, a, b,
                                                  nullptr);
 }
@@ -82,24 +89,18 @@ int goc_rdna4_v_sub_nc_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruct
 int goc_rdna4_v_subrev_nc_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::IntegerAdd::Subrev, false>(flags, exec_mask, instruction_flags, d, a, b,
                                                     nullptr);
 }
 
 int goc_rdna4_v_add_nc_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::IntegerAdd::Add, true>(flags, exec_mask, instruction_flags, d, a, b,
                                                 nullptr);
 }
 
 int goc_rdna4_v_sub_nc_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::IntegerAdd::Sub, true>(flags, exec_mask, instruction_flags, d, a, b,
                                                 nullptr);
 }
@@ -107,7 +108,5 @@ int goc_rdna4_v_sub_nc_i32(uint64_t flags, uint64_t exec_mask, uint64_t instruct
 int goc_rdna4_v_add3_u32(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::IntegerAdd::Add3, false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }

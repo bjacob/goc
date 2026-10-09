@@ -1681,6 +1681,23 @@ DPP. Benchmarks cover signed BFE, BFM, and PERM with full EXEC. On the Ryzen 9
 and 9.1–12.6 ns on x86-64-v4 (4.3–8.8×), using seven pinned samples of at least
 10 ms each.
 
+DPP8/DPP16 also support 32-bit unsigned ADD_NC/SUB_NC/SUBREV_NC, signed
+ADD_NC/SUB_NC, and ADD3. The five binary operations support CLAMP together with
+DPP; ADD3 retains wrapping semantics. SUBREV_NC_U32 permutes B and subtracts
+lane-local A, as observed on GFX1201 in both VOP2 and VOP3 encodings, while the
+other operations permute A.
+A GFX1201 capture checks 19,712 results,
+including saturation boundaries. Independent tests combine both modifier modes
+with all EXEC patterns and source/destination aliases, and check host FP-state
+preservation. AVX2 saturation and all existing AVX-512 arithmetic paths remain
+available; wrapping arithmetic at the v3 CPU level retains the baseline arithmetic
+with AVX2 permutation. Benchmarks cover signed/unsigned addition and unsigned
+reverse subtraction with and
+without CLAMP and both DPP kinds, using full EXEC. On the Ryzen 9 7950X3D,
+these cases measure 17.5–22.3 ns on x86-64-v3 (1.8–3.3× scalar speed) and
+8.9–12.3 ns on x86-64-v4 (3.5–5.5×), using seven pinned samples of at least 10 ms
+each.
+
 The hardware probes also corrected OMOD behavior in the 18 binary/ternary operations,
 with and without DPP: an unscaled FP32 subnormal or either zero sign becomes
 positive zero; halving a normal magnitude below twice the minimum normal

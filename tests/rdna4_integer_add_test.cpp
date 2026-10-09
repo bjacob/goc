@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
+#include "rdna4_integer_add_reference.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -10,44 +11,6 @@
 #include <initializer_list>
 #include <random>
 #include <stdint.h>
-
-namespace {
-
-using Fn = decltype(&goc_rdna4_v_add3_u32);
-
-template <auto Function>
-int binary(uint64_t flags, uint64_t mask, uint64_t mode, uint32_t *const *d,
-           const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
-  return Function(flags, mask, mode, d, a, b);
-}
-
-const Fn functions[] = {binary<goc_rdna4_v_add_nc_u32>,    binary<goc_rdna4_v_sub_nc_u32>,
-                        binary<goc_rdna4_v_subrev_nc_u32>, binary<goc_rdna4_v_add_nc_i32>,
-                        binary<goc_rdna4_v_sub_nc_i32>,    goc_rdna4_v_add3_u32};
-
-uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t c, bool clamp) {
-  int64_t x = a, y = b;
-  bool signed_op = op == 3 || op == 4;
-  if (signed_op) {
-    if (x > INT32_MAX)
-      x -= INT64_C(4294967296);
-    if (y > INT32_MAX)
-      y -= INT64_C(4294967296);
-  }
-  int64_t result = op == 1 || op == 4 ? x - y : op == 2 ? y - x : x + y;
-  if (op == 5)
-    result += c;
-  if (clamp) {
-    int64_t low = signed_op ? INT32_MIN : 0, high = signed_op ? INT32_MAX : int64_t(UINT32_MAX);
-    if (result < low)
-      result = low;
-    if (result > high)
-      result = high;
-  }
-  return uint32_t(result);
-}
-
-} // namespace
 
 TEST(IntegerAdd, BoundaryCartesianProductsAndRandomInputs) {
   const uint32_t values[] = {0,          1,          2,          0x7ffffffe,
@@ -68,12 +31,13 @@ TEST(IntegerAdd, BoundaryCartesianProductsAndRandomInputs) {
               i /= 12;
             }
           }
-          ASSERT_EQ(
-              functions[op](cpu, UINT32_MAX, clamp ? GOC_ALU_CLAMP : 0, p + 3, p, p + 1, p + 2),
-              GOC_SUCCESS);
+          ASSERT_EQ(goc_test::integer_add_functions[op](cpu, UINT32_MAX, clamp ? GOC_ALU_CLAMP : 0,
+                                                        p + 3, p, p + 1, p + 2),
+                    GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
             EXPECT_EQ(words[3][lane],
-                      reference(op, words[0][lane], words[1][lane], words[2][lane], clamp));
+                      goc_test::integer_add_reference(op, words[0][lane], words[1][lane],
+                                                      words[2][lane], clamp));
         }
       }
 }
@@ -99,12 +63,13 @@ TEST(IntegerAdd, MasksAliasesAndSaturation) {
               std::memcpy(want, words, sizeof(want));
               for (int lane = 0; lane < 32; ++lane)
                 if (mask >> lane & 1)
-                  want[dest][lane + 1] =
-                      reference(op, words[layout[0]][lane + 1], words[layout[1]][lane + 1],
-                                words[layout[2]][lane + 1], clamp);
+                  want[dest][lane + 1] = goc_test::integer_add_reference(
+                      op, words[layout[0]][lane + 1], words[layout[1]][lane + 1],
+                      words[layout[2]][lane + 1], clamp);
               uint32_t *a = words[layout[0]] + 1, *b = words[layout[1]] + 1,
                        *c = words[layout[2]] + 1, *d = words[dest] + 1;
-              ASSERT_EQ(functions[op](cpu, mask, clamp ? GOC_ALU_CLAMP : 0, &d, &a, &b, &c),
+              ASSERT_EQ(goc_test::integer_add_functions[op](cpu, mask, clamp ? GOC_ALU_CLAMP : 0,
+                                                            &d, &a, &b, &c),
                         GOC_SUCCESS);
               for (int reg = 0; reg < 4; ++reg)
                 for (int lane = 0; lane < 34; ++lane)
@@ -142,9 +107,9 @@ TEST(IntegerAdd, LiteralOverflowBorrowAndOperandOrder) {
         std::fill(words[0], words[0] + 32, test.a);
         std::fill(words[1], words[1] + 32, test.b);
         std::fill(words[2], words[2] + 32, test.c);
-        ASSERT_EQ(
-            functions[test.op](cpu, UINT32_MAX, clamp ? GOC_ALU_CLAMP : 0, p + 3, p, p + 1, p + 2),
-            GOC_SUCCESS);
+        ASSERT_EQ(goc_test::integer_add_functions[test.op](
+                      cpu, UINT32_MAX, clamp ? GOC_ALU_CLAMP : 0, p + 3, p, p + 1, p + 2),
+                  GOC_SUCCESS);
         for (uint32_t word : words[3])
           EXPECT_EQ(word, clamp ? test.clamp : test.wrap);
       }
@@ -164,12 +129,15 @@ TEST(IntegerAdd, ValidationAndFpEnvironment) {
           uint32_t mode = UINT32_C(1) << bit;
           if (op != 5 && mode == GOC_ALU_CLAMP)
             continue;
-          EXPECT_EQ(functions[op](cpu, mask, mode, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(goc_test::integer_add_functions[op](cpu, mask, mode, &d, &a, &a, &a),
+                    GOC_ERROR_INVALID_FLAGS);
         }
-        EXPECT_EQ(functions[op](cpu | (UINT64_C(1) << 63), mask, 0, &d, &a, &a, &a),
-                  GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, mask, 0,
-                                &d, &a, &a, &a),
+        EXPECT_EQ(
+            goc_test::integer_add_functions[op](cpu | (UINT64_C(1) << 63), mask, 0, &d, &a, &a, &a),
+            GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(goc_test::integer_add_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                                          GOC_SEMANTICS_STRICT,
+                                                      mask, 0, &d, &a, &a, &a),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (uint32_t word : output)
@@ -178,8 +146,9 @@ TEST(IntegerAdd, ValidationAndFpEnvironment) {
         std::fesetround(rounding);
         std::feclearexcept(FE_ALL_EXCEPT);
         std::feraiseexcept(FE_DIVBYZERO);
-        EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX,
-                                op == 5 ? 0 : GOC_ALU_CLAMP, &d, &a, &a, &a),
+        EXPECT_EQ(goc_test::integer_add_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL,
+                                                      UINT32_MAX, op == 5 ? 0 : GOC_ALU_CLAMP, &d,
+                                                      &a, &a, &a),
                   GOC_SUCCESS);
         EXPECT_EQ(std::fegetround(), rounding);
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
