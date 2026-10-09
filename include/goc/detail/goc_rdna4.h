@@ -1705,7 +1705,9 @@ GOC_API int goc_rdna4_v_div_scale_f64(uint64_t flags, uint64_t exec_mask,
 // C the original numerator. Repairs sign, propagates C/B NaNs in that order,
 // and handles zero/infinity cases and extreme FP32/FP64 exponent underflow.
 // FP16/FP32 operands hold one VGPR each; FP64 operands use low/high VGPR pairs.
-// FP16 supports HIGH_A/B/C/D and preserves the unselected D half. FP64 writes
+// FP16 supports HIGH_A/B/C/D and preserves the unselected D half. FP16 also
+// supports DPP8/DPP16 on A before half selection and source modifiers; B/C
+// retain their lanes. FP32/FP64 reject DPP. FP64 writes
 // D[0] before D[1], so D[1] wins if both destination pointers alias.
 // Supports all source ABS/NEG, OMOD and CLAMP. Nonzero OMOD flushes subnormals
 // before scaling, maps existing zeros to +0 and preserves signed underflow zero.

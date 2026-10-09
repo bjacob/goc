@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "rdna4_div_fixup_hardware.h"
 #include "rdna4_div_fixup_reference.h"
+#include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
 
 #include <algorithm>
@@ -42,6 +43,96 @@ void store(unsigned width, uint32_t *const *d, unsigned lane, uint32_t mode, uin
 }
 
 } // namespace
+
+TEST(DivFixup, DppHalfModifiersMasksAndAliases) {
+  for (uint32_t mode = 0; mode < 8192; ++mode)
+    for (uint64_t descriptor : goc_test::dpp_modes) {
+      uint32_t initial[4][34];
+      for (unsigned reg = 0; reg < 4; ++reg)
+        for (unsigned lane = 0; lane < 34; ++lane)
+          initial[reg][lane] =
+              uint32_t(goc_test::fixup_capture_values[0][(lane + reg * 3) % 16]) |
+              (uint32_t(goc_test::fixup_capture_values[0][(lane * 7 + reg) % 16]) << 16);
+      for (uint64_t mask : rdna4_exec_masks()) {
+        if (mode != 0 && mode != 8191 && uint32_t(mask) != UINT32_MAX)
+          continue;
+        for (bool shared : {false, true}) {
+          if (shared && mode != 0 && mode != 8191)
+            continue;
+          for (unsigned target = 0; target < 4; ++target) {
+            if (target != 3 && mode != 0 && mode != 8191)
+              continue;
+            uint32_t expected[32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              int source;
+              expected[lane] = initial[target][lane + 1];
+              if (goc_test::dpp_source(descriptor, uint32_t(mask), lane, source)) {
+                uint32_t a = source < 0 ? 0 : initial[0][source + 1];
+                uint32_t b = initial[shared ? 0 : 1][lane + 1],
+                         c = initial[shared ? 0 : 2][lane + 1];
+                uint32_t value = uint32_t(goc_test::fixup_reference(
+                    16, (a >> (mode & GOC_ALU_HIGH_A ? 16 : 0)) & 65535,
+                    (b >> (mode & GOC_ALU_HIGH_B ? 16 : 0)) & 65535,
+                    (c >> (mode & GOC_ALU_HIGH_C ? 16 : 0)) & 65535, mode, mode & 1));
+                unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
+                expected[lane] = (expected[lane] & ~(65535u << shift)) | (value << shift);
+              }
+            }
+            for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+              uint32_t words[4][34];
+              std::memcpy(words, initial, sizeof(words));
+              const uint32_t *a[] = {words[0] + 1}, *b[] = {words[shared ? 0 : 1] + 1},
+                             *c[] = {words[shared ? 0 : 2] + 1};
+              uint32_t *d[] = {words[target] + 1};
+              ASSERT_EQ(functions[0](cpu | (mode & 1 ? GOC_FP16_OVFL : 0) | (shared ? exact : 0),
+                                     mask, descriptor | mode, d, a, b, c),
+                        GOC_SUCCESS);
+              for (unsigned reg = 0; reg < 4; ++reg)
+                for (unsigned lane = 0; lane < 34; ++lane)
+                  ASSERT_EQ(words[reg][lane], reg == target && lane > 0 && lane < 33
+                                                  ? expected[lane - 1]
+                                                  : initial[reg][lane])
+                      << mode << "/" << descriptor << "/" << cpu << "/" << lane;
+            }
+          }
+        }
+      }
+    }
+}
+
+TEST(DivFixup, DppHalfHardwareCorpus) {
+  // RX 9070/gfx1201, MODE 0xf0: source modifiers, all half selectors,
+  // output scaling/clamp, eight EXEC masks and seven DPP descriptors.
+  const uint32_t values[] = {0x80000000, 0x80010001, 0x83ff03ff, 0x84000400,
+                             0xbc003c00, 0xfc007c00, 0xfe007e00, 0xfc017c01};
+  const uint32_t source_modes[] = {0, 1, 2, 4, 8, 16, 32, 63};
+  const uint32_t masks[] = {UINT32_MAX, 0,          0xaaaaaaaa, 0x55555555,
+                            1,          0x80000000, 0xffff,     0xffff0000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {UINT64_C(0), exact}) {
+      uint64_t hash = UINT64_C(14695981039346656037);
+      for (uint32_t mask : masks)
+        for (unsigned variant = 0; variant < 256; ++variant)
+          for (uint64_t descriptor : goc_test::dpp_modes) {
+            uint32_t words[4][32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              words[0][lane] = values[lane % 8];
+              words[1][lane] = values[(lane + 3) % 8];
+              words[2][lane] = values[(lane + 5) % 8];
+              words[3][lane] = 0xdead0000u + lane;
+            }
+            uint32_t mode = source_modes[variant % 8] | (((variant >> 5) & 3) << 6) |
+                            (variant & 128 ? 256 : 0) | (((variant >> 3) & 15) << 9);
+            const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+            uint32_t *d[] = {words[3]};
+            ASSERT_EQ(functions[0](cpu | semantics, mask, descriptor | mode, d, a, b, c),
+                      GOC_SUCCESS);
+            for (uint32_t word : words[3])
+              hash = (hash ^ word) * UINT64_C(1099511628211);
+          }
+      EXPECT_EQ(hash, UINT64_C(0x55a4cc1f56963f25));
+    }
+}
 
 TEST(DivFixup, HardwareCartesianCorpus) {
   for (unsigned op = 0; op < 3; ++op)

@@ -827,6 +827,14 @@ all FP64 destination-pair aliases, shared sources and host rounding/exception
 preservation. Pinned-core benchmarks on the development Ryzen 9 7950X3D measured
 2.01–4.01x for v3 and 3.66–8.44x for v4 versus scalar (seven samples, each at
 least 10 ms), including nondefault modifiers.
+FP16 division fixup also supports DPP8/DPP16 on A before half selection and
+source modifiers. B/C retain their lanes, and filtered destinations preserve
+both halves. FP32/FP64 have no DPP encoding. Tests cover all 8,192 FP16
+modifier combinations with seven descriptors, selected EXEC/alias combinations,
+and 458,752 additional GPU result words under both semantics.
+Pinned-core FP16 DPP8/DPP16 timings, including modifiers and overflow control,
+are 26.0–32.0 ns for v3 (3.18–3.82x scalar) and 15.4–21.2 ns for v4
+(4.80–6.57x), with seven samples of at least 10 ms each.
 
 Cube-map arithmetic covers `v_cubeid_f32`, `v_cubesc_f32`, `v_cubetc_f32`,
 and `v_cubema_f32`, with scalar, eight-lane v3 and sixteen-lane v4 paths.

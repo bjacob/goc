@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rdna4_division.h"
+#include "rdna4_dpp.h"
 
 #include <stdint.h>
 
@@ -63,7 +64,10 @@ int goc_rdna4_v_div_fixup_f16(uint64_t flags, uint64_t exec_mask, uint64_t instr
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
+    return goc::execute_dpp(
+        flags, exec_mask, instruction_flags, a, [&](uint64_t mask, const uint32_t *const *source) {
+          return run<16>(flags, mask, uint32_t(instruction_flags), d, source, b, c);
+        });
   return run<16>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 

@@ -104,6 +104,7 @@ void check_high_flags(const char *name,
   for (auto mnemonic : {"v_fma_mix_f32", "v_fma_mixlo_f16", "v_fma_mixhi_f16"})
     supports_dpp |= std::strcmp(name + sizeof("goc_rdna4_") - 1, mnemonic) == 0;
   supports_dpp |= std::strcmp(name, "goc_rdna4_v_mullit_f32") == 0;
+  supports_dpp |= std::strcmp(name, "goc_rdna4_v_div_fixup_f16") == 0;
   bool dpp_scalar_output = std::strcmp(name, "goc_rdna4_v_rcp_iflag_f32") == 0;
   for (auto mnemonic : {"v_add_co_u32", "v_sub_co_u32", "v_subrev_co_u32", "v_add_co_ci_u32",
                         "v_sub_co_ci_u32", "v_subrev_co_ci_u32"})
