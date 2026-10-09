@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "goc/goc.h"
+#include "rdna4_bit_count_reference.h"
 #include "rdna4_bitfield_reference.h"
 #include "rdna4_boolean_reference.h"
 #include "rdna4_dense_golden.h"
@@ -197,13 +198,11 @@ bool nonnegative_integer(const char *text, int &value) {
 
 // Returns median nanoseconds per wave, or a negative value on an API/result error
 // or iteration-count overflow. Every accepted sample spans at least min_ms.
-template <typename Instruction>
-double measure(Instruction fn, uint64_t flags, Registers &r, int initial_iterations, int min_ms,
-               uint32_t modifiers) {
+template <typename Instruction, typename RegisterFile>
+double measure(Instruction fn, uint64_t flags, RegisterFile &r, int initial_iterations, int min_ms,
+               uint32_t modifiers, uint64_t mask = UINT32_MAX) {
   uint64_t iterations = uint64_t(initial_iterations);
-  const auto call = [&] {
-    return fn(flags, UINT32_MAX, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8);
-  };
+  const auto call = [&] { return fn(flags, mask, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8); };
   for (int warmup = 0; warmup < 32; ++warmup)
     if (call() != GOC_SUCCESS)
       return -1;
@@ -830,6 +829,73 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
       }
 #endif
     }
+  (void)cpu;
+  return true;
+}
+
+bool benchmark_bit_count(uint64_t cpu, int iterations, int min_ms) {
+  using Binary = decltype(&goc_rdna4_v_bcnt_u32_b32);
+  const Binary functions[] = {
+      goc_test::count_leading,         goc_test::count_trailing,       goc_test::count_sign,
+      goc_rdna4_v_bcnt_u32_b32,        goc_rdna4_v_mbcnt_lo_u32_b32,   goc_rdna4_v_mbcnt_hi_u32_b32,
+      goc_rdna4w64_v_mbcnt_lo_u32_b32, goc_rdna4w64_v_mbcnt_hi_u32_b32};
+  const char *names[] = {"u32/clz",   "b32/ctz",   "i32/cls",    "u32/bcnt",
+                         "u32/mbclo", "u32/mbchi", "u32/mbcl64", "u32/mbch64"};
+
+  struct CountRegisters {
+    uint32_t data[3][64] = {}, expected[64] = {};
+    uint32_t *v[24] = {};
+
+    CountRegisters() {
+      v[0] = data[0];
+      v[4] = data[1];
+      v[16] = data[2];
+    }
+
+    bool correct() const { return std::equal(data[2], data[2] + 64, expected); }
+  };
+
+  for (int op = 0; op < 8; ++op) {
+    CountRegisters r;
+    std::mt19937 random(935);
+    unsigned lanes = op < 6 ? 32 : 64;
+    for (unsigned lane = 0; lane < 64; ++lane) {
+      r.data[0][lane] = random();
+      r.data[1][lane] = UINT32_MAX - lane;
+      r.data[2][lane] = 0xfacecafe;
+      r.expected[lane] =
+          lane < lanes ? goc_test::bit_count_reference(op, r.data[0][lane], r.data[1][lane], lane)
+                       : 0xfacecafe;
+    }
+    uint64_t mask = op < 6 ? UINT32_MAX : UINT64_MAX;
+    const auto fn = [&](uint64_t flags, uint64_t mask, uint32_t modifiers, uint32_t *const *d,
+                        const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *) {
+      return functions[op](flags, mask, modifiers, d, a, b);
+    };
+    const char *label = "none";
+    double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, 0, mask);
+    if (scalar < 0)
+      return false;
+    print_result(names[op], "loose", label, "scalar", scalar, 1);
+
+#if defined(GOC_BENCH_HAVE_X86_64_V3)
+    if (cpu >= GOC_CPU_X86_64_V3 && op != 5) {
+      double simd = measure(fn, GOC_CPU_X86_64_V3, r, iterations, min_ms, 0, mask);
+      if (simd < 0)
+        return false;
+      print_result(names[op], "loose", label, "x86-64-v3", simd, scalar / simd);
+    }
+#endif
+#if defined(GOC_BENCH_HAVE_X86_64_V4)
+    if (cpu >= GOC_CPU_X86_64_V4) {
+      double simd = measure(fn, GOC_CPU_X86_64_V4, r, iterations, min_ms, 0, mask);
+      if (simd < 0)
+        return false;
+      print_result(names[op], "loose", label, "x86-64-v4", simd, scalar / simd);
+    }
+#endif
+  }
   (void)cpu;
   return true;
 }
@@ -2265,6 +2331,7 @@ int main(int argc, char **argv) {
   }
   if (!benchmark_half_exponent(cpu, iterations, min_ms) ||
       !benchmark_integer_ternary(cpu, iterations, min_ms) ||
+      !benchmark_bit_count(cpu, iterations, min_ms) ||
       !benchmark_boolean(cpu, iterations, min_ms) || !benchmark_bitfield(cpu, iterations, min_ms) ||
       !benchmark_sad(cpu, iterations, min_ms) || !benchmark_shift(cpu, iterations, min_ms) ||
       !benchmark_half_trig(cpu, iterations, min_ms) || !benchmark_trig(cpu, iterations, min_ms) ||

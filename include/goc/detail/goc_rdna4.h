@@ -1192,6 +1192,43 @@ GOC_API int goc_rdna4_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t exec_mask
                                               const uint32_t *const *a, const uint32_t *const *b,
                                               const uint32_t *const *c);
 
+// Bit counts: every operand holds one VGPR. CLZ/CTZ return 0xffffffff for zero;
+// CLS counts leading sign bits (including the sign bit) and returns 0xffffffff
+// if all bits match. BCNT returns popcount(A) + B, wrapping modulo 2^32.
+// MBCNT_LO counts A bits below min(lane, 32); MBCNT_HI counts A bits below
+// max(lane - 32, 0). Both add B with wrapping. The lane index is physical and
+// independent of EXEC. Wave64 forms use 64 lane words per VGPR.
+// No instruction modifiers apply. Only loose semantics are implemented;
+// all host FP state is preserved.
+GOC_API int goc_rdna4_v_clz_i32_u32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_ctz_i32_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_cls_i32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
+GOC_API int goc_rdna4_v_bcnt_u32_b32(uint64_t flags, uint64_t exec_mask, uint32_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_mbcnt_lo_u32_b32(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4_v_mbcnt_hi_u32_b32(uint64_t flags, uint64_t exec_mask,
+                                         uint32_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4w64_v_mbcnt_lo_u32_b32(uint64_t flags, uint64_t exec_mask,
+                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            const uint32_t *const *a, const uint32_t *const *b);
+
+GOC_API int goc_rdna4w64_v_mbcnt_hi_u32_b32(uint64_t flags, uint64_t exec_mask,
+                                            uint32_t instruction_flags, uint32_t *const *d,
+                                            const uint32_t *const *a, const uint32_t *const *b);
+
 // Wave32 Boolean operations: each operand holds one VGPR. B32 forms have no
 // instruction modifiers. B16 forms select A/B/D halves with HIGH_A/B/D, leave
 // the other D half unchanged, and reject all other modifiers; NOT has no B.

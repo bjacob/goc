@@ -8,6 +8,14 @@ if(VARIANT STREQUAL "static")
   set(expected consumer_cpu_flags)
 else()
   set(expected
+    goc_rdna4_v_clz_i32_u32
+    goc_rdna4_v_ctz_i32_b32
+    goc_rdna4_v_cls_i32
+    goc_rdna4_v_bcnt_u32_b32
+    goc_rdna4_v_mbcnt_lo_u32_b32
+    goc_rdna4_v_mbcnt_hi_u32_b32
+    goc_rdna4w64_v_mbcnt_lo_u32_b32
+    goc_rdna4w64_v_mbcnt_hi_u32_b32
     goc_rdna4_v_and_b32
     goc_rdna4_v_or_b32
     goc_rdna4_v_xor_b32

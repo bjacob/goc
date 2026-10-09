@@ -132,7 +132,7 @@ Notes:
 
 * What about Wave64 variants on Wave32-native architecture?
   - Typical lane-wise instructions can just use two calls to the wave32 function.
-  - For those instructions like WMMA where it's more complicated, we may have a
+  - For instructions like WMMA or lane-index-dependent `MBCNT`, we may have a
     separate dedicated wave64 entry point. In that case, we will append a `w64`
     suffix to the architecture name, e.g. `goc_rdna4w64_...` .
 * Why make `exec_mask` part of GoC instead of letting the caller handle it?
