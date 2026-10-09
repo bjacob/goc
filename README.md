@@ -2160,7 +2160,10 @@ Loose SIMD paths retain their existing dispatch and skip reporting. FP16/32
 FP32 corpus, and FP32 boundary neighborhoods (12,582,912 captured flag reads).
 Quarter turns are exact; other finite inputs report inexact. FP32 cosine treats
 subnormal inputs as exact zero for reporting, unlike FP16 cosine. `CLAMP` and
-output scaling suppress flags as above.
+output scaling suppress flags as above. FP32/64 `DIV_FMAS` also reports overflow,
+underflow, and inexact, including per-lane conditional scaling. Hardware suppresses
+invalid/input-denormal flags for these instructions. Additional FMA16 and
+`DIV_FMAS` captures bracket underflow/overflow rounding boundaries.
 
 In loose mode, other affected instructions leave the register unchanged. Loose
 semantics require no optional global-state output, even with a non-null pointer.

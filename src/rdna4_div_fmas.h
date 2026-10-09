@@ -53,15 +53,19 @@ inline Uint128 division_shift_jam(Uint128 value, int distance) {
 // normal precision without gradual underflow, then flush a tiny result to +0.
 template <unsigned Width>
 inline typename DivisionFormat<Width>::Bits division_round(Uint128 significand, int exponent,
-                                                           bool negative, bool omod) {
+                                                           bool negative, bool omod,
+                                                           uint32_t *exceptions = nullptr) {
   using F = DivisionFormat<Width>;
   using T = typename F::Bits;
   T sign = negative ? F::sign : 0;
   if (significand == 0)
     return sign;
   int highest = division_top_bit(significand);
-  if (highest + exponent > F::bias)
+  if (highest + exponent > F::bias) {
+    if (exceptions)
+      *exceptions |= GOC_RDNA4_EXCEPTION_OVERFLOW | (omod ? 0 : GOC_RDNA4_EXCEPTION_INEXACT);
     return sign | F::infinity;
+  }
   int normal_shift = highest - F::fraction, subnormal_shift = 1 - F::bias - F::fraction - exponent;
   int shift = omod || normal_shift > subnormal_shift ? normal_shift : subnormal_shift;
   Uint128 kept;
@@ -73,6 +77,20 @@ inline typename DivisionFormat<Width>::Bits division_round(Uint128 significand, 
     guard = shift <= 128 && ((significand >> (shift - 1)) & 1) != 0;
     sticky = shift > 128 ? significand != 0 : shift > 1 && (significand << (129 - shift)) != 0;
   }
+  if (exceptions && !omod && (guard || sticky)) {
+    *exceptions |= GOC_RDNA4_EXCEPTION_INEXACT;
+    // Test tininess after rounding at normal precision, before restricting
+    // the exponent. A value at the midpoint below the smallest normal rounds up.
+    bool tiny = highest + exponent < 1 - F::bias;
+    if (highest + exponent == -F::bias && normal_shift > 0) {
+      Uint128 leading = Uint128(1) << highest;
+      Uint128 midpoint = leading + (leading - (Uint128(1) << (normal_shift - 1)));
+      if (!(midpoint > significand))
+        tiny = false;
+    }
+    if (tiny)
+      *exceptions |= GOC_RDNA4_EXCEPTION_UNDERFLOW;
+  }
   if (guard && (sticky || (kept & 1) != 0))
     ++kept;
   int result_exponent = exponent + shift + F::fraction;
@@ -80,8 +98,11 @@ inline typename DivisionFormat<Width>::Bits division_round(Uint128 significand, 
     kept >>= 1;
     ++result_exponent;
   }
-  if (result_exponent > F::bias)
+  if (result_exponent > F::bias) {
+    if (exceptions)
+      *exceptions |= GOC_RDNA4_EXCEPTION_OVERFLOW | (omod ? 0 : GOC_RDNA4_EXCEPTION_INEXACT);
     return sign | F::infinity;
+  }
   if (omod && result_exponent < 1 - F::bias)
     return 0;
   if ((Uint128(1) << F::fraction) > kept)
@@ -97,9 +118,14 @@ inline typename DivisionFormat<Width>::Bits division_round(Uint128 significand, 
 template <unsigned Width>
 inline typename DivisionFormat<Width>::Bits
 division_fmas(typename DivisionFormat<Width>::Bits a, typename DivisionFormat<Width>::Bits b,
-              typename DivisionFormat<Width>::Bits c, bool post_scale, uint32_t mode) {
+              typename DivisionFormat<Width>::Bits c, bool post_scale, uint32_t mode,
+              uint32_t *exceptions = nullptr) {
   using F = DivisionFormat<Width>;
   using T = typename F::Bits;
+  // DIV_FMAS suppresses invalid and input-denormal exceptions, even for sNaNs
+  // and invalid infinity operations. CLAMP suppresses all remaining flags.
+  if (mode & GOC_ALU_CLAMP)
+    exceptions = nullptr;
   constexpr T fraction_mask = (T(1) << F::fraction) - 1;
   T inputs[] = {a, b, c};
   for (unsigned i = 0; i < 3; ++i) {
@@ -139,9 +165,9 @@ division_fmas(typename DivisionFormat<Width>::Bits a, typename DivisionFormat<Wi
     if (product == 0 && addend == 0)
       result = pn && cn ? F::sign : 0;
     else if (product == 0)
-      result = division_round<Width>(addend, se + adjustment, cn, omod);
+      result = division_round<Width>(addend, se + adjustment, cn, omod, exceptions);
     else if (addend == 0)
-      result = division_round<Width>(product, pe + adjustment, pn, omod);
+      result = division_round<Width>(product, pe + adjustment, pn, omod, exceptions);
     else {
       int pt = division_top_bit(product), ct = division_top_bit(addend);
       int exponent = pe + pt > se + ct ? pe + pt : se + ct;
@@ -151,9 +177,14 @@ division_fmas(typename DivisionFormat<Width>::Bits a, typename DivisionFormat<Wi
       Uint128 sum = pn == cn           ? product + addend
                     : product > addend ? product - addend
                                        : addend - product;
-      result = division_round<Width>(sum, exponent - 126 + adjustment, negative, omod);
+      result = division_round<Width>(sum, exponent - 126 + adjustment, negative, omod, exceptions);
     }
   }
+  unsigned omod = (mode >> 6) & 3;
+  T magnitude = result & ~F::sign;
+  if (exceptions && (omod == 1 || omod == 2) && magnitude < F::infinity &&
+      (magnitude >> F::fraction) + omod >= unsigned(2 * F::bias + 1))
+    *exceptions |= GOC_RDNA4_EXCEPTION_OVERFLOW;
   return division_output<Width>(result, mode);
 }
 

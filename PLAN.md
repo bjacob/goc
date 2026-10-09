@@ -411,6 +411,10 @@ paths skip all of this work.
 FP16/32 `SIN`/`COS` report invalid, input-denormal, underflow, and inexact flags.
 Their hardware corpora cover every FP16 encoding, FP32 exponent/mantissa patterns,
 and FP32 neighborhoods around underflow, quarter turns, zeros, and NaNs.
+FP32/64 `DIV_FMAS` report overflow, underflow and inexact after conditional
+post-scaling; hardware suppresses invalid/input-denormal flags. Integer guard and
+sticky bits supply reporting, with additional FMA16/DIV_FMAS hardware captures
+around underflow and overflow rounding boundaries.
 Other affected instructions reject requested
 reporting in non-loose modes before accessing operands, even for empty
 `exec_mask`, with precedence over other validation errors. Null retains existing

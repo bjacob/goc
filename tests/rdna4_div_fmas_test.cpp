@@ -3,6 +3,7 @@
 #include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
+#include "rdna4_div_fmas_exceptions_hardware.h"
 #include "rdna4_div_fmas_hardware.h"
 #include "rdna4_exec_masks.h"
 
@@ -141,7 +142,8 @@ TEST(DivFmas, SharedSourcesAndHostEnvironment) {
       }
       const uint32_t *a[] = {data[0], data[1]};
       uint32_t *d[] = {data[2], data[3]}, *gold[] = {expected[0], expected[1]};
-      ASSERT_EQ(functions[op](exact, UINT32_MAX, mode, gold, a, a, a, 0xa5a5a5a5, nullptr),
+      uint32_t expected_flags = 0;
+      ASSERT_EQ(functions[op](exact, UINT32_MAX, mode, gold, a, a, a, 0xa5a5a5a5, &expected_flags),
                 GOC_SUCCESS);
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
@@ -151,8 +153,11 @@ TEST(DivFmas, SharedSourcesAndHostEnvironment) {
             EXPECT_EQ(std::feraiseexcept(FE_INVALID | FE_INEXACT), 0);
           }
           int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
-          EXPECT_EQ(functions[op](cpu | exact, UINT32_MAX, mode, d, a, a, a, 0xa5a5a5a5, nullptr),
-                    GOC_SUCCESS);
+          uint32_t actual_flags = 0;
+          EXPECT_EQ(
+              functions[op](cpu | exact, UINT32_MAX, mode, d, a, a, a, 0xa5a5a5a5, &actual_flags),
+              GOC_SUCCESS);
+          EXPECT_EQ(actual_flags, expected_flags);
           EXPECT_EQ(std::fegetround(), rounding);
           EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
           for (unsigned reg = 0; reg < (op ? 2u : 1u); ++reg)
@@ -214,4 +219,123 @@ TEST(DivFmas, FusedRoundingAndOutputModifierBoundaries) {
               << op << "/" << cpu << "/" << col << "/" << lane;
         }
       }
+}
+
+TEST(DivFmas, ExceptionHardwareCorpus) {
+  for (unsigned type = 0; type < 2; ++type) {
+    unsigned fraction = type ? 52 : 23, bias = type ? 1023 : 127;
+    uint64_t sign = 1ULL << (type ? 63 : 31), infinity = uint64_t(2 * bias + 1) << fraction,
+             one = uint64_t(bias) << fraction;
+    uint64_t values[] = {0,
+                         sign,
+                         1,
+                         sign | 1,
+                         (1ULL << fraction) - 1,
+                         1ULL << fraction,
+                         one,
+                         sign | one,
+                         one + (1ULL << fraction),
+                         infinity - 1,
+                         infinity - 1 - (1ULL << fraction),
+                         infinity,
+                         sign | infinity,
+                         infinity | 1,
+                         sign | infinity | (1ULL << (fraction - 1)) | 3,
+                         2ULL << fraction};
+    for (unsigned condition = 0; condition < 2; ++condition)
+      for (unsigned variant = 0; variant < 16; ++variant) {
+        uint32_t mode =
+            ((variant & 3) << 6) | (variant & 4 ? GOC_ALU_CLAMP : 0) |
+            (variant & 8 ? GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_ABS_B | GOC_ALU_NEG_C : 0);
+        uint64_t hash = goc_test::capture_hash_seed;
+        for (unsigned i = 0; i < 8192; ++i) {
+          uint32_t words[4][2][32] = {};
+          uint64_t state = uint64_t(i) * 0x9e3779b97f4a7c15ULL;
+          for (unsigned operand = 0; operand < 3; ++operand) {
+            state ^= state >> 12;
+            state ^= state << 25;
+            state ^= state >> 27;
+            uint64_t value =
+                i < 4096 ? values[(i >> (8 - operand * 4)) & 15] : state * 0x2545f4914f6cdd1dULL;
+            words[operand][0][0] = uint32_t(value);
+            words[operand][1][0] = uint32_t(value >> 32);
+          }
+          const uint32_t *a[] = {words[0][0], words[0][1]}, *b[] = {words[1][0], words[1][1]},
+                         *c[] = {words[2][0], words[2][1]};
+          uint32_t *d[] = {words[3][0], words[3][1]};
+          uint32_t exceptions = 0x80000000;
+          ASSERT_EQ(functions[type](exact | (i % (goc_init_cpu_flags() + 1)), 1, mode, d, a, b, c,
+                                    condition, &exceptions),
+                    GOC_SUCCESS);
+          ASSERT_TRUE(exceptions & 0x80000000);
+          hash = goc_test::capture_hash_word(hash, exceptions & 127);
+        }
+        EXPECT_EQ(hash, goc_test::div_fmas_exception_hashes[type][condition][variant])
+            << type << "/" << condition << "/" << variant;
+      }
+  }
+}
+
+TEST(DivFmas, ExceptionMasksConditionAndAliases) {
+  for (unsigned type = 0; type < 2; ++type)
+    for (uint32_t exec_mask : rdna4_exec_masks())
+      for (uint32_t condition : {0U, UINT32_MAX, 0xaaaaaaaaU, 0x55555555U})
+        for (unsigned dest = 0; dest < 4; ++dest) {
+          uint32_t initial[8][32];
+          for (unsigned operand = 0; operand < 4; ++operand)
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              uint64_t value = goc_test::fmas_capture_values[type][(lane + 5 * operand) % 16];
+              initial[operand * 2][lane] = uint32_t(value);
+              initial[operand * 2 + 1][lane] = uint32_t(value >> 32);
+            }
+          uint32_t expected_flags = 0x80000000;
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            if (!((exec_mask >> lane) & 1))
+              continue;
+            uint32_t words[8][32] = {};
+            for (unsigned reg = 0; reg < 8; ++reg)
+              words[reg][0] = initial[reg][lane];
+            const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]},
+                           *c[] = {words[4], words[5]};
+            uint32_t *d[] = {words[6], words[7]};
+            ASSERT_EQ(
+                functions[type](exact, 1, 0, d, a, b, c, (condition >> lane) & 1, &expected_flags),
+                GOC_SUCCESS);
+          }
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            uint32_t words[8][32], expected[2][32];
+            std::memcpy(words, initial, sizeof(words));
+            std::memcpy(expected, initial + 2 * dest, sizeof(expected));
+            const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]},
+                           *c[] = {words[4], words[5]};
+            uint32_t *d[] = {words[dest * 2], words[dest * 2 + 1]},
+                     *want[] = {expected[0], expected[1]}, exceptions = 0x80000000;
+            ASSERT_EQ(functions[type](cpu | exact, exec_mask, 0, want, a, b, c, condition, nullptr),
+                      GOC_SUCCESS);
+            ASSERT_EQ(
+                functions[type](cpu | exact, exec_mask, 0, d, a, b, c, condition, &exceptions),
+                GOC_SUCCESS);
+            EXPECT_EQ(exceptions, expected_flags);
+            for (unsigned reg = 0; reg < 2; ++reg)
+              for (unsigned lane = 0; lane < 32; ++lane)
+                EXPECT_EQ(d[reg][lane], expected[reg][lane]);
+          }
+        }
+}
+
+TEST(DivFmas, ExceptionOptOutAndErrors) {
+  for (auto fn : functions)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      uint32_t words[4][32] = {};
+      const uint32_t *a[] = {words[0], words[1]};
+      uint32_t *d[] = {words[2], words[3]}, exceptions = 0x80000000;
+      ASSERT_EQ(fn(cpu, UINT32_MAX, 0, d, a, a, a, UINT32_MAX, &exceptions), GOC_SUCCESS);
+      EXPECT_EQ(exceptions, 0x80000000);
+      EXPECT_EQ(fn(cpu | exact, 0, 0, nullptr, nullptr, nullptr, nullptr, 0, &exceptions),
+                GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu | exact, UINT32_MAX, 1ULL << 31, nullptr, nullptr, nullptr, nullptr, 0,
+                   &exceptions),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(exceptions, 0x80000000);
+    }
 }

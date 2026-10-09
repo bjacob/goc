@@ -3,7 +3,7 @@
 """Generate a gfx1201 HIP exception probe and its deterministic input corpus.
 
 Usage: capture_rdna4_arithmetic_exceptions.py OUTPUT_DIR FAMILY WIDTH
-Families: div_fixup (16/32/64), fma/pk_fma/pk_fmac (16), sin/cos (16/32).
+Families: div_fixup (16/32/64), div_fmas (32/64), fma/pk_fma/pk_fmac (16), sin/cos (16/32).
 Compile probe.cpp with hipcc for gfx1201 and run from OUTPUT_DIR.
 
 capture.bin contains little-endian uint32 records:
@@ -13,6 +13,7 @@ selects nearest-even. All 32 lanes use identical inputs. The probe restores MODE
 and clears EXCP_FLAG_USER before each instruction.
 
 Ordinary modifier index: bits 0:1 OMOD, bit 2 CLAMP, bit 3 -abs(A)/abs(B)/-C.
+For DIV_FMAS the outer setting selects condition=false/true (FP16_OVFL is irrelevant).
 Packed FMA: bit 0 neg_lo=[1,0,1], bit 1 neg_hi=[0,1,1], bit 2 CLAMP,
 bit 3 swaps low/high source selections. Packed FMAC repeats its unmodified form.
 """
@@ -24,17 +25,19 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("output", type=Path)
-parser.add_argument("family", choices=("div_fixup", "div_fmas", "fma", "pk_fma", "pk_fmac", "sin", "cos"))
+parser.add_argument("family", choices=("div_fixup", "div_fmas", "fma_mixlo", "fma_mixhi", "fma", "pk_fma", "pk_fmac", "sin", "cos"))
 parser.add_argument("width", type=int, choices=(16, 32, 64))
 parser.add_argument("--boundaries", action="store_true", help="FP32 SIN/COS boundary corpus")
+parser.add_argument("--rounding-boundaries", action="store_true", help="FMA underflow/overflow corpus")
 args = parser.parse_args()
 out, family, width = args.output, args.family, args.width
 if (family in ("fma", "pk_fma", "pk_fmac") and width != 16) or (family in ("sin", "cos") and width == 64):
     parser.error("unsupported family/width combination")
 out.mkdir(parents=True, exist_ok=True)
 n = 65536 if family in ("sin", "cos") else 8192
-frac, bias = {16: (10, 15), 32: (23, 127), 64: (52, 1023)}[width]
-sign = 1 << (width - 1)
+input_width = 32 if family.startswith("fma_mix") else width
+frac, bias = {16: (10, 15), 32: (23, 127), 64: (52, 1023)}[input_width]
+sign = 1 << (input_width - 1)
 inf = (2 * bias + 1) << frac
 one = bias << frac
 values = [
@@ -53,7 +56,7 @@ for i in range(n):
             state ^= state >> 12
             state ^= (state << 25) & ((1 << 64) - 1)
             state ^= state >> 27
-            row.append((state * 0x2545f4914f6cdd1d) & ((1 << width) - 1))
+            row.append((state * 0x2545f4914f6cdd1d) & ((1 << input_width) - 1))
     if family.startswith("pk_"):
         if i < 4096:
             row = [x | (values[(((i >> (8 - j * 4)) & 15) + 5) % 16] << 16)
@@ -70,6 +73,19 @@ for i in range(n):
                    0x80000000, 0x80145f30, 0x80800000, 0xbe800000, 0xbf000000,
                    0xbf800000, 0x7fc00000, 0xff800000]
         row = [(anchors[i // 4096] + (i % 4096) - 2048) & 0xffffffff, 0, 0]
+    if args.rounding_boundaries:
+        if family not in ("fma", "div_fmas"):
+            parser.error("--rounding-boundaries requires FMA or DIV_FMAS")
+        index = i & 4095
+        a = ((1 << frac) - 64 + (index >> 5)) if i < 4096 else inf - 1 - (index >> 5)
+        b = one - 2 + ((index >> 3) & 3)
+        if i < 4096:
+            addends = [0, 1, 2, 3, sign, sign | 1, sign | 2, sign | 3]
+        else:
+            quarter_ulp = (2 * bias - frac - 2) << frac
+            addends = [0, 1, one, sign | one, quarter_ulp, sign | quarter_ulp,
+                       quarter_ulp + (1 << frac), sign | (quarter_ulp + (1 << frac))]
+        row = [a, b, addends[index & 7]]
     inputs += row
 (out / "inputs.bin").write_bytes(struct.pack("<" + "Q" * len(inputs), *inputs))
 source = r'''#include <hip/hip_runtime.h>
@@ -90,7 +106,11 @@ for m in range(16):
         operands = operands[:1]
     dest = "v[6:7]" if width == 64 else "v6"
     instruction = f"v_{family}_f{width} {dest}, " + ", ".join(operands)
-    if family.startswith("pk_"):
+    if family.startswith("fma_mix"):
+        instruction = f"v_{family}_f16 v6, v0, v2, v4"
+        instruction += f" op_sel_hi:[{m & 1},{(m >> 1) & 1},{(m >> 2) & 1}]"
+        instruction += " clamp" if m & 8 else ""
+    elif family.startswith("pk_"):
         instruction = f"v_{family}_f16 v6, v0, v2" + (", v4" if family == "pk_fma" else "")
         if family == "pk_fma":
             instruction += " op_sel:[1,1,1] op_sel_hi:[0,0,0]" if m & 8 else ""
