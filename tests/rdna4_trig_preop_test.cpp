@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_trig_preop_hardware.h"
@@ -76,25 +77,27 @@ TEST(TrigPreop, MasksAliasesAndUnalignedStorage) {
 }
 
 TEST(TrigPreop, PreservesFpStateAndValidatesFlags) {
-  fenv_t saved;
-  std::fegetenv(&saved);
-  uint32_t a0[32]{}, a1[32], b0[32]{}, d0[32], d1[32];
-  const uint32_t *a[] = {a0, a1}, *b[] = {b0};
-  uint32_t *d[] = {d0, d1};
-  for (unsigned lane = 0; lane < 32; ++lane)
-    a1[lane] = 0x7ffabcde;
-  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-    for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
-      std::fesetround(rounding);
-      std::feclearexcept(FE_ALL_EXCEPT);
-      std::feraiseexcept(FE_INVALID | FE_INEXACT);
-      int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
-      EXPECT_EQ(goc_rdna4_v_trig_preop_f64(cpu, UINT32_MAX, goc_test::trig_preop_mode(31), d, a, b),
-                GOC_SUCCESS);
-      EXPECT_EQ(std::fegetround(), rounding);
-      EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
-    }
-  std::fesetenv(&saved);
+  {
+    goc_test::ScopedFpEnvironment saved;
+    ASSERT_TRUE(saved.saved());
+    uint32_t a0[32]{}, a1[32], b0[32]{}, d0[32], d1[32];
+    const uint32_t *a[] = {a0, a1}, *b[] = {b0};
+    uint32_t *d[] = {d0, d1};
+    for (unsigned lane = 0; lane < 32; ++lane)
+      a1[lane] = 0x7ffabcde;
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+        std::fesetround(rounding);
+        std::feclearexcept(FE_ALL_EXCEPT);
+        std::feraiseexcept(FE_INVALID | FE_INEXACT);
+        int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
+        EXPECT_EQ(
+            goc_rdna4_v_trig_preop_f64(cpu, UINT32_MAX, goc_test::trig_preop_mode(31), d, a, b),
+            GOC_SUCCESS);
+        EXPECT_EQ(std::fegetround(), rounding);
+        EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
+      }
+  }
   EXPECT_EQ(goc_rdna4_v_trig_preop_f64(0, UINT32_C(0), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
   uint32_t known = goc_test::trig_preop_mode(31);
   for (unsigned bit = 0; bit < 32; ++bit)

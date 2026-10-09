@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -231,8 +232,8 @@ TEST(HalfExponent, LiteralRoundingAndOverflow) {
 }
 
 TEST(HalfExponent, FrexpPreservesFpEnvironment) {
-  std::fenv_t saved;
-  std::fegetenv(&saved);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   const uint16_t bits[] = {0x7c01, 0xfc01, 0x7c00, 0x8000, 1, 0x3ff, 0x400, 0x7bff};
   const uint16_t golden[] = {0, 0, 0, 0, 0xffe9, 0xfff2, 0xfff3, 16};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
@@ -254,7 +255,6 @@ TEST(HalfExponent, FrexpPreservesFpEnvironment) {
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(output[lane], (uint32_t(golden[lane % 8]) << 16) | 0xbeef);
     }
-  std::fesetenv(&saved);
 }
 
 TEST(HalfExponent, ValidationAndSemantics) {

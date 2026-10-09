@@ -151,11 +151,8 @@ TEST(Bitfield, MasksAndWholeRegisterAliases) {
 }
 
 TEST(Bitfield, ValidationAndHostFpState) {
-  std::fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
-#if defined(__x86_64__) || defined(_M_X64)
-  unsigned saved_mxcsr = _mm_getcsr();
-#endif
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO})
     for (int flush = 0; flush < 2; ++flush) {
       std::fesetround(rounding);
@@ -195,10 +192,6 @@ TEST(Bitfield, ValidationAndHostFpState) {
       EXPECT_EQ(_mm_getcsr(), before);
 #endif
     }
-  std::fesetenv(&saved);
-#if defined(__x86_64__) || defined(_M_X64)
-  _mm_setcsr(saved_mxcsr);
-#endif
 }
 
 TEST(Bitfield, AlignmentEveryConcatenatedBitAndShift) {

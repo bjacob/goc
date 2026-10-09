@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -149,8 +150,8 @@ TEST(RcpIflag, ValidationAndHostRounding) {
   EXPECT_EQ(goc_rdna4_v_rcp_iflag_f32(UINT64_C(1) << 63, 0, 0, dp, nullptr, &status, 0),
             GOC_ERROR_INVALID_FLAGS);
   EXPECT_EQ(status, 0xdeadbeef);
-  fenv_t saved;
-  std::fegetenv(&saved);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   std::fesetround(FE_TONEAREST);
   uint32_t a[32];
   for (auto &v : a)
@@ -162,7 +163,6 @@ TEST(RcpIflag, ValidationAndHostRounding) {
               GOC_SUCCESS);
     EXPECT_EQ(std::fegetround(), FE_TONEAREST);
   }
-  std::fesetenv(&saved);
 }
 
 TEST(RcpIflag, DppModifiersMasksAndStatusAliases) {

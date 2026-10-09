@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -151,8 +152,8 @@ TEST(Normalized, EveryModifierMaskAndWholeRegisterAlias) {
 }
 
 TEST(Normalized, HostRoundingAndFalseMidpoints) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
     EXPECT_EQ(std::fesetround(rounding), 0);
     for (unsigned op = 0; op < 6; ++op)
@@ -166,7 +167,6 @@ TEST(Normalized, HostRoundingAndFalseMidpoints) {
           EXPECT_EQ(std::fegetround(), rounding);
         }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(Normalized, ValidationAndSemanticFallback) {

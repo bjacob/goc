@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_conversion64_reference.h"
 #include "rdna4_dpp_reference.h"
@@ -144,8 +145,8 @@ TEST(PackedConversion, EveryModifierMaskAndWholeRegisterAlias) {
 }
 
 TEST(PackedConversion, HostRoundingDoesNotAffectResults) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   const uint32_t values[] = {0x3fc00000, 0xbfc00000, 0x3f801fff, 0xbf801fff,
                              0x477fff00, 0x7f800001, 0xff800000, 0x33800000};
   for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
@@ -161,7 +162,6 @@ TEST(PackedConversion, HostRoundingDoesNotAffectResults) {
         EXPECT_EQ(std::fegetround(), rounding);
       }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(PackedConversion, ValidationAndSemanticFallback) {

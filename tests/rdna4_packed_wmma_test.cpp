@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_packed_modifier_fixtures.h"
 #include "rdna4_packed_wmma_fixtures.h"
@@ -58,18 +59,11 @@ void load(Registers &r, const PackedWmmaInput &input, int width) {
   }
 }
 
-struct HostState {
-  std::fenv_t saved;
-
-  HostState() { std::fegetenv(&saved); }
-
-  ~HostState() { std::fesetenv(&saved); }
-};
-
 } // namespace
 
 TEST(PackedWmma, HardwareMatricesMasksOverlapAndHostState) {
-  HostState restore;
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
   for (int width : {32, 64})
     for (bool bf16 : {false, true})
       for (int fixture = 0; fixture < 7; ++fixture)
@@ -196,7 +190,8 @@ TEST(PackedWmma, HardwareIntermediateOverflowState) {
   // Adapted from rocjitsu PackedWmma.HardwareOverflowModeAtIntermediateSteps.
   // Two maximum*2 products overflow the first dot4. A later opposite-sign
   // maximum cancels saturated FP16 to zero, but cannot cancel infinity.
-  HostState restore;
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
   for (int width : {32, 64})
     for (bool bf16 : {false, true})
       for (bool saturate : {false, true})

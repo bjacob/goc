@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_integer_add_reference.h"
@@ -116,8 +117,8 @@ TEST(IntegerAdd, LiteralOverflowBorrowAndOperandOrder) {
 }
 
 TEST(IntegerAdd, ValidationAndFpEnvironment) {
-  std::fenv_t saved;
-  std::fegetenv(&saved);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       uint32_t input[32], output[32];
@@ -154,5 +155,4 @@ TEST(IntegerAdd, ValidationAndFpEnvironment) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
       }
     }
-  std::fesetenv(&saved);
 }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_div_fixup_hardware.h"
 #include "rdna4_div_fixup_reference.h"
@@ -257,8 +258,8 @@ TEST(DivFixup, MasksAndCrossRegisterAliases) {
 }
 
 TEST(DivFixup, SharedSourcesAndHostEnvironment) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
     EXPECT_EQ(std::fesetround(rounding), 0);
     for (unsigned op = 0; op < 3; ++op)
@@ -291,7 +292,6 @@ TEST(DivFixup, SharedSourcesAndHostEnvironment) {
               EXPECT_EQ(d[reg][lane], expected[reg][lane]);
         }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(DivFixup, ValidationAndFallback) {

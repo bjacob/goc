@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_byte_conversion_reference.h"
 #include "rdna4_byte_pack_hardware.h"
@@ -126,8 +127,8 @@ TEST(BytePack, EveryModifierMaskAndWholeRegisterAlias) {
 }
 
 TEST(BytePack, HostRoundingAndOffsetEnvironment) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
     EXPECT_EQ(std::fesetround(rounding), 0);
     for (unsigned op = 0; op < 2; ++op)
@@ -153,7 +154,6 @@ TEST(BytePack, HostRoundingAndOffsetEnvironment) {
             EXPECT_EQ(output[lane], reference(op, av[lane], bv[lane], cv[lane], 0));
         }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(BytePack, ValidationAndSemanticFallback) {

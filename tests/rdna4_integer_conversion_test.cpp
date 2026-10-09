@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -94,8 +95,8 @@ TEST(IntegerConversion, MasksAliasesAndUnalignedFullWords) {
 }
 
 TEST(IntegerConversion, HostEnvironmentIsPreserved) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   std::mt19937 random(913);
   for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
     EXPECT_EQ(std::fesetround(rounding), 0);
@@ -117,7 +118,6 @@ TEST(IntegerConversion, HostEnvironmentIsPreserved) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
       }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(IntegerConversion, ValidationAndSemanticFallback) {

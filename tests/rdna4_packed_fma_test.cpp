@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_half_fma_reference.h"
@@ -198,8 +199,8 @@ TEST(PackedFma, HardwareWitnessesAndExactHostEnvironment) {
                         {0x3c00, 0xfc12, 0x7e01, 0xfe12}, {0, 0x7c00, 0x7e01, 0xfe00},
                         {0x7c00, 0x3c00, 0xfc00, 0xfe00}, {0x3c01, 0x3e00, 0x8001, 0x3e01},
                         {0x3c03, 0x3e00, 1, 0x3e05}};
-  std::fenv_t saved;
-  std::fegetenv(&saved);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (bool accumulate : {false, true})
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO})
@@ -221,7 +222,6 @@ TEST(PackedFma, HardwareWitnessesAndExactHostEnvironment) {
           EXPECT_EQ(std::fegetround(), rounding);
           EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
         }
-  std::fesetenv(&saved);
 }
 
 TEST(PackedFma, ValidationAndZeroMasks) {

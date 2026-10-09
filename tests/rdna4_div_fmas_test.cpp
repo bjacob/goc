@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_div_fmas_hardware.h"
 #include "rdna4_exec_masks.h"
@@ -129,8 +130,8 @@ TEST(DivFmas, MasksAndCrossRegisterAliases) {
 }
 
 TEST(DivFmas, SharedSourcesAndHostEnvironment) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (unsigned op = 0; op < 2; ++op)
     for (uint32_t mode = 0; mode < 512; ++mode) {
       uint32_t data[4][32], expected[2][32];
@@ -159,7 +160,6 @@ TEST(DivFmas, SharedSourcesAndHostEnvironment) {
               ASSERT_EQ(d[reg][lane], expected[reg][lane]);
         }
     }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(DivFmas, ValidationAndZeroExec) {

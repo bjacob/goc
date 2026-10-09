@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_pseudo_scalar_hardware.h"
@@ -90,8 +91,8 @@ TEST(PseudoScalar, DenormalStagesZerosAndOverflow) {
 
 TEST(PseudoScalar, ValidationSemanticsAndHostRounding) {
   const uint32_t known = goc_test::pseudo_scalar_mode(31);
-  fenv_t saved;
-  std::fegetenv(&saved);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   std::fesetround(FE_TONEAREST);
   for (unsigned op = 0; op < 10; ++op) {
     uint32_t d = 0xdeadbeef;
@@ -113,5 +114,4 @@ TEST(PseudoScalar, ValidationSemanticsAndHostRounding) {
               GOC_SUCCESS);
     EXPECT_EQ(std::fegetround(), FE_TONEAREST);
   }
-  std::fesetenv(&saved);
 }

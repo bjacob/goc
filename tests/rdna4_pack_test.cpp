@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -85,8 +86,8 @@ TEST(Pack, ValidationAndEmptyMask) {
 }
 
 TEST(Pack, HostFpStatePreservedForSignalingNaNs) {
-  std::fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     std::fesetround(rounding);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -105,7 +106,6 @@ TEST(Pack, HostFpStatePreservedForSignalingNaNs) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
       }
   }
-  std::fesetenv(&saved);
 }
 
 TEST(Pack, DppModifiersMasksAliasesAndGuards) {
@@ -157,8 +157,8 @@ TEST(Pack, DppHardwareCorpusAndHostFpState) {
                              0x00008000, 0x7c00fc00, 0x3c00bc00, 0x7fff0001};
   const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
-  std::fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     std::fesetround(rounding);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -187,5 +187,4 @@ TEST(Pack, DppHardwareCorpusAndHostFpState) {
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
     }
   }
-  std::fesetenv(&saved);
 }

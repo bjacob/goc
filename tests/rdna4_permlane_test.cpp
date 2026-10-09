@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_permlane_reference.h"
@@ -80,8 +81,8 @@ TEST(Permlane, MasksAliasingAndSelectors) {
 }
 
 TEST(Permlane, FlagsAndHostState) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     ASSERT_EQ(std::fesetround(rounding), 0);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -109,5 +110,4 @@ TEST(Permlane, FlagsAndHostState) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
       }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }

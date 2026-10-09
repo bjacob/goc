@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_carry_hardware.h"
 #include "rdna4_carry_reference.h"
@@ -111,8 +112,8 @@ TEST(Carry, ExecAndInputMasksUnalignedAliases) {
 }
 
 TEST(Carry, SharedSourcesScalarOutputAliasAndHostEnvironment) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (unsigned op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool clamp : {false, true})
@@ -141,7 +142,6 @@ TEST(Carry, SharedSourcesScalarOutputAliasAndHostEnvironment) {
           EXPECT_EQ(std::fegetround(), rounding);
           EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
         }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(Carry, ValidationAndZeroExec) {
@@ -244,8 +244,8 @@ TEST(Carry, DppHardwareCorpusAndHostFpState) {
   const uint32_t values[] = {0, 1, 2, 0x7ffffffe, 0x7fffffff, 0x80000000, 0xfffffffe, UINT32_MAX};
   const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
-  std::fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     std::fesetround(rounding);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -278,5 +278,4 @@ TEST(Carry, DppHardwareCorpusAndHostFpState) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
       }
   }
-  std::fesetenv(&saved);
 }

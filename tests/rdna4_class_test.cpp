@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_class_hardware.h"
 #include "rdna4_class_reference.h"
@@ -23,8 +24,8 @@ const Fn functions[] = {goc_rdna4_v_cmp_class_f16, goc_rdna4_v_cmpx_class_f16,
 } // namespace
 
 TEST(Class, DppModifiersMasksAliasesAndFpState) {
-  fenv_t saved;
-  std::fegetenv(&saved);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     std::fesetround(rounding);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -76,7 +77,6 @@ TEST(Class, DppModifiersMasksAliasesAndFpState) {
     EXPECT_EQ(std::fegetround(), rounding);
     EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
   }
-  std::fesetenv(&saved);
 }
 
 TEST(Class, DppValidationAndZeroExec) {
@@ -229,11 +229,8 @@ TEST(Class, ScalarOutputAliasesMasksAndUnalignedStorage) {
 }
 
 TEST(Class, ValidationAndCompleteHostFpState) {
-  fenv_t saved;
-  std::fegetenv(&saved);
-#if defined(__x86_64__) || defined(_M_X64)
-  unsigned original_mxcsr = _mm_getcsr();
-#endif
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (unsigned op = 0; op < 6; ++op) {
     uint32_t known = goc_test::class_mode(op < 2 ? 15 : 3), result = 1;
     EXPECT_EQ(functions[op](0, UINT32_C(0), known, &result, nullptr, nullptr), GOC_SUCCESS);
@@ -268,8 +265,4 @@ TEST(Class, ValidationAndCompleteHostFpState) {
 #endif
       }
   }
-  std::fesetenv(&saved);
-#if defined(__x86_64__) || defined(_M_X64)
-  _mm_setcsr(original_mxcsr);
-#endif
 }

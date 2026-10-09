@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_integer_mul_reference.h"
@@ -107,8 +108,8 @@ TEST(IntegerMul, LiteralHighWordsSignExtensionAndClamp) {
 }
 
 TEST(IntegerMul, ValidationAndFpEnvironment) {
-  std::fenv_t saved;
-  std::fegetenv(&saved);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int op = 0; op < 7; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       uint32_t a[32], b[32], d[32];
@@ -146,5 +147,4 @@ TEST(IntegerMul, ValidationAndFpEnvironment) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
       }
     }
-  std::fesetenv(&saved);
 }

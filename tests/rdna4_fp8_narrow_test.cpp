@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -138,8 +139,8 @@ TEST(Fp8Narrow, EveryModifierMaskAndWholeRegisterAlias) {
 }
 
 TEST(Fp8Narrow, HostFloatingPointState) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     EXPECT_EQ(std::fesetround(rounding), 0);
     for (unsigned op = 0; op < 4; ++op)
@@ -166,7 +167,6 @@ TEST(Fp8Narrow, HostFloatingPointState) {
             EXPECT_EQ(dv[lane], expected[lane]);
         }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(Fp8Narrow, ValidationAndSemanticFallback) {
@@ -273,8 +273,8 @@ TEST(Fp8Narrow, DppValidation) {
 }
 
 TEST(Fp8Narrow, DppHostFloatingPointState) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     EXPECT_EQ(std::fesetround(rounding), 0);
     for (auto descriptor : goc_test::dpp_modes)
@@ -307,5 +307,4 @@ TEST(Fp8Narrow, DppHostFloatingPointState) {
               EXPECT_EQ(dv[lane], expected[lane]);
           }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }

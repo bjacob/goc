@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_mad64_hardware.h"
@@ -160,8 +161,8 @@ TEST(Mad64, MasksAndCrossRegisterAliases) {
 }
 
 TEST(Mad64, SharedSourcesScalarOutputAliasAndHostEnvironment) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (unsigned op = 0; op < 2; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool clamp : {false, true})
@@ -191,7 +192,6 @@ TEST(Mad64, SharedSourcesScalarOutputAliasAndHostEnvironment) {
           EXPECT_EQ(std::fegetround(), rounding);
           EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
         }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(Mad64, ValidationAndZeroExec) {

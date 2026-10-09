@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_interp16_hardware.h"
@@ -121,8 +122,8 @@ TEST(Interp16, IndependentIntegerOracleAndRoundingBoundaries) {
 }
 
 TEST(Interp16, ValidationAndRestoredHostRounding) {
-  fenv_t saved;
-  std::fegetenv(&saved);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   std::fesetround(FE_TONEAREST);
   for (unsigned op = 0; op < 4; ++op) {
     uint32_t known = goc_test::interp16_mode(op, 63, 7);
@@ -148,5 +149,4 @@ TEST(Interp16, ValidationAndRestoredHostRounding) {
       EXPECT_TRUE(std::fetestexcept(FE_DIVBYZERO));
     }
   }
-  std::fesetenv(&saved);
 }

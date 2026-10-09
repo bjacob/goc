@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_cndmask_hardware.h"
 #include "rdna4_cndmask_reference.h"
@@ -107,8 +108,8 @@ TEST(Cndmask, EveryConditionBitIndependentOfExec) {
 }
 
 TEST(Cndmask, InvalidFlagsAndHostFpState) {
-  fenv_t saved;
-  std::fegetenv(&saved);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (unsigned half = 0; half < 2; ++half) {
     uint32_t known = goc_test::cndmask_mode(half ? 127 : 15);
     EXPECT_EQ(functions[half](0, UINT32_C(0), known, nullptr, nullptr, nullptr, 0), GOC_SUCCESS);
@@ -138,7 +139,6 @@ TEST(Cndmask, InvalidFlagsAndHostFpState) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
       }
   }
-  std::fesetenv(&saved);
 }
 
 TEST(Cndmask, DppModifiersMasksAliasesAndGuards) {
@@ -222,8 +222,8 @@ TEST(Cndmask, DppHardwareCorpusAndHostFpState) {
                              0x7f800001, 0xff800000, 0x3f800000, 0xff7fffff};
   const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
-  std::fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     std::fesetround(rounding);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -254,5 +254,4 @@ TEST(Cndmask, DppHardwareCorpusAndHostFpState) {
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_DIVBYZERO);
     }
   }
-  std::fesetenv(&saved);
 }

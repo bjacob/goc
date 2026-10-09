@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_cube_hardware.h"
 #include "rdna4_cube_reference.h"
@@ -173,8 +174,8 @@ TEST(Cube, SharedSourceAliases) {
 }
 
 TEST(Cube, HostFloatingPointState) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
     EXPECT_EQ(std::fesetround(rounding), 0);
     for (unsigned op = 0; op < 4; ++op)
@@ -199,7 +200,6 @@ TEST(Cube, HostFloatingPointState) {
             EXPECT_EQ(dv[lane], expected[lane]);
         }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(Cube, ValidationAndSemanticFallback) {
@@ -290,8 +290,8 @@ TEST(Cube, DppHardwareCorpusAndHostFpState) {
   const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
   const uint32_t signs[] = {0, 1, 2, 4, 8, 16, 32, 63};
-  std::fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     std::fesetround(rounding);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -322,5 +322,4 @@ TEST(Cube, DppHardwareCorpusAndHostFpState) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
       }
   }
-  std::fesetenv(&saved);
 }

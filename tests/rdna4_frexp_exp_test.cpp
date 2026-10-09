@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -239,8 +240,8 @@ TEST(FrexpExp, DppModifiersMasksAliasesAndRandomWords) {
 TEST(FrexpExp, Fp32PreservesHostEnvironment) {
   const uint32_t values[] = {1,          0x807fffff, 0x00800000, 0x80000000,
                              0x7f800001, 0xff800000, 0x3f800000, 0xff7fffff};
-  std::fenv_t saved;
-  std::fegetenv(&saved);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO})
       for (unsigned descriptor = 0; descriptor < 8; ++descriptor)
@@ -265,7 +266,6 @@ TEST(FrexpExp, Fp32PreservesHostEnvironment) {
             EXPECT_EQ(d[lane], active ? reference(source < 0 ? 0 : a[source], false) : 0xdeadbeef);
           }
         }
-  std::fesetenv(&saved);
 }
 
 TEST(FrexpExp, DppValidation) {

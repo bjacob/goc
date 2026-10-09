@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_integer_mad_reference.h"
@@ -188,8 +189,8 @@ TEST(IntegerMad, ValidationAndFloatingEnvironment) {
     EXPECT_EQ(fn(UINT64_C(1) << 63, 0, 0, nullptr, nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(fn(0, UINT32_C(0), 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
-    fenv_t environment;
-    ASSERT_EQ(std::fegetenv(&environment), 0);
+    goc_test::ScopedFpEnvironment environment;
+    ASSERT_TRUE(environment.saved());
     std::fesetround(FE_DOWNWARD);
     std::feclearexcept(FE_ALL_EXCEPT);
     std::feraiseexcept(FE_INVALID);
@@ -200,6 +201,5 @@ TEST(IntegerMad, ValidationAndFloatingEnvironment) {
       EXPECT_EQ(std::fegetround(), FE_DOWNWARD);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID);
     }
-    std::fesetenv(&environment);
   }
 }

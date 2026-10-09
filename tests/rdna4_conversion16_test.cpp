@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_conversion16_hardware.h"
 #include "rdna4_conversion16_reference.h"
@@ -178,8 +179,8 @@ TEST(Conversion16, ValidationAndSemanticFallback) {
 }
 
 TEST(Conversion16, IntegerOutputsIgnoreHostRounding) {
-  fenv_t original;
-  ASSERT_EQ(std::fegetenv(&original), 0);
+  goc_test::ScopedFpEnvironment original;
+  ASSERT_TRUE(original.saved());
   uint32_t input[32];
   const uint32_t halves[] = {0x3e00, 0xbe00, 1, 0x8001, 0x7bff, 0xfbff, 0x7c01, 0x7c00};
   for (int lane = 0; lane < 32; ++lane)
@@ -192,7 +193,6 @@ TEST(Conversion16, IntegerOutputsIgnoreHostRounding) {
         EXPECT_EQ(std::fegetround(), rounding);
       }
   }
-  EXPECT_EQ(std::fesetenv(&original), 0);
 }
 
 TEST(Conversion16, DppMasksAliasesAndUnalignedStorage) {

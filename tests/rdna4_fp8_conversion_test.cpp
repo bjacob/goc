@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -130,8 +131,8 @@ TEST(Fp8Conversion, EverySelectorMaskAndDestinationAliasLayout) {
 }
 
 TEST(Fp8Conversion, EveryCodePreservesHostEnvironment) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
     EXPECT_EQ(std::fesetround(rounding), 0);
     EXPECT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
@@ -148,7 +149,6 @@ TEST(Fp8Conversion, EveryCodePreservesHostEnvironment) {
           EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
         }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(Fp8Conversion, ValidationAndSemanticFallback) {
@@ -228,8 +228,8 @@ TEST(Fp8Conversion, DppValidation) {
 TEST(Fp8Conversion, DppHardwareCorpusAndHostEnvironment) {
   const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     EXPECT_EQ(std::fesetround(rounding), 0);
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
@@ -264,5 +264,4 @@ TEST(Fp8Conversion, DppHardwareCorpusAndHostEnvironment) {
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
     }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }

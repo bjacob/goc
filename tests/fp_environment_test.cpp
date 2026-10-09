@@ -6,6 +6,10 @@
 #include <gtest/gtest-spi.h>
 #include <gtest/gtest.h>
 
+#if defined(__x86_64__) || defined(_M_X64)
+#include <immintrin.h>
+#endif
+
 namespace {
 
 void fail_after_changing_environment() {
@@ -14,6 +18,9 @@ void fail_after_changing_environment() {
   ASSERT_EQ(std::fesetround(FE_UPWARD), 0);
   ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
   ASSERT_EQ(std::feraiseexcept(FE_INVALID), 0);
+#if defined(__x86_64__) || defined(_M_X64)
+  _mm_setcsr(_mm_getcsr() ^ 0x8040u);
+#endif
   FAIL() << "intentional early exit";
 }
 
@@ -25,9 +32,15 @@ TEST(FpEnvironment, RestoresAfterFatalAssertion) {
   ASSERT_EQ(std::fesetround(FE_DOWNWARD), 0);
   ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
   ASSERT_EQ(std::feraiseexcept(FE_DIVBYZERO), 0);
+#if defined(__x86_64__) || defined(_M_X64)
+  const unsigned mxcsr = _mm_getcsr();
+#endif
   EXPECT_FATAL_FAILURE(fail_after_changing_environment(), "intentional early exit");
   EXPECT_EQ(std::fegetround(), FE_DOWNWARD);
   EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+  EXPECT_EQ(_mm_getcsr(), mxcsr);
+#endif
 }
 
 TEST(FpEnvironment, NestedScopesRestoreTheirOwnState) {

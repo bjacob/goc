@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_conversion64_reference.h"
 #include "rdna4_exec_masks.h"
@@ -236,8 +237,8 @@ TEST(Conversion64, ValidationAndSemanticFallback) {
 }
 
 TEST(Conversion64, IntegerOutputsIgnoreHostRounding) {
-  fenv_t original;
-  ASSERT_EQ(std::fegetenv(&original), 0);
+  goc_test::ScopedFpEnvironment original;
+  ASSERT_TRUE(original.saved());
   const uint64_t values[] = {0x3ff8000000000000, 0xbff8000000000000,
                              0x41dfffffffffffff, 0x41efffffffffffff,
                              0xc1e0000000100000, 1,
@@ -253,5 +254,4 @@ TEST(Conversion64, IntegerOutputsIgnoreHostRounding) {
         EXPECT_EQ(std::fegetround(), rounding);
       }
   }
-  EXPECT_EQ(std::fesetenv(&original), 0);
 }

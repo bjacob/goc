@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_test_instruction.h"
 
@@ -307,18 +308,11 @@ const Case cases[] = {
      GOC_WMMA_SIGNED_A | GOC_WMMA_SIGNED_B | GOC_WMMA_CLAMP},
 };
 
-struct SavedEnvironment {
-  std::fenv_t saved;
-
-  SavedEnvironment() { std::fegetenv(&saved); }
-
-  ~SavedEnvironment() { std::fesetenv(&saved); }
-};
-
 } // namespace
 
 TEST(ExecMask, EmptyMaskStillValidatesFlagsAndPreservesState) {
-  SavedEnvironment environment;
+  goc_test::ScopedFpEnvironment environment;
+  ASSERT_TRUE(environment.saved());
   for (const auto &f : cases)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       const uint32_t mask = 0;

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 
@@ -123,8 +124,8 @@ TEST(IntegerDot, ClampAfterWholeDotAndNoSaturatingBytePairs) {
 }
 
 TEST(IntegerDot, ValidationAndFpEnvironment) {
-  std::fenv_t saved;
-  std::fegetenv(&saved);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int op = 0; op < 4; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       uint32_t words[32], dest[32];
@@ -152,5 +153,4 @@ TEST(IntegerDot, ValidationAndFpEnvironment) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
       }
     }
-  std::fesetenv(&saved);
 }

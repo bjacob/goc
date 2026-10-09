@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -235,8 +236,8 @@ TEST(Sad, MasksAndEveryDestinationSourceAlias) {
 }
 
 TEST(Sad, ValidationAndHostFpState) {
-  std::fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
     std::fesetround(rounding);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -270,7 +271,6 @@ TEST(Sad, ValidationAndHostFpState) {
     EXPECT_EQ(std::fegetround(), rounding);
     EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
   }
-  std::fesetenv(&saved);
 }
 
 TEST(Sad, DppClampMasksAliasesAndGuards) {

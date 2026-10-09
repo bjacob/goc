@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_exec_masks.h"
 #include "rdna4_integer16_reference.h"
@@ -153,8 +154,8 @@ TEST(Integer16, ValidationAndFloatingEnvironment) {
         fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr, nullptr),
         GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(fn(0, UINT32_C(0), 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
-    fenv_t environment;
-    ASSERT_EQ(std::fegetenv(&environment), 0);
+    goc_test::ScopedFpEnvironment environment;
+    ASSERT_TRUE(environment.saved());
     std::fesetround(FE_DOWNWARD);
     std::feclearexcept(FE_ALL_EXCEPT);
     std::feraiseexcept(FE_INVALID);
@@ -164,6 +165,5 @@ TEST(Integer16, ValidationAndFloatingEnvironment) {
       EXPECT_EQ(std::fegetround(), FE_DOWNWARD);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID);
     }
-    std::fesetenv(&environment);
   }
 }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_div_scale_hardware.h"
 #include "rdna4_exec_masks.h"
@@ -72,8 +73,8 @@ TEST(DivScale, HardwareCartesianCorpus) {
 
 TEST(DivScale, RandomBitsAllModifiersAndHostEnvironment) {
   std::mt19937 random(569827);
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (unsigned op = 0; op < 2; ++op)
     for (unsigned variant = 0; variant < 64; ++variant)
       for (unsigned sample = 0; sample < 16; ++sample) {
@@ -114,7 +115,6 @@ TEST(DivScale, RandomBitsAllModifiersAndHostEnvironment) {
                     << op << "/" << cpu << "/" << variant << "/" << lane;
           }
       }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(DivScale, MasksAndCrossRegisterAliases) {

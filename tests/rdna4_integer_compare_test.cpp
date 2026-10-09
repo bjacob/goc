@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_dpp_reference.h"
 #include "rdna4_exec_masks.h"
@@ -78,8 +79,8 @@ TEST(IntegerCompare, DppHardwareCorpusAndHostFpState) {
                              0x7fffffff, 0x80008000, 0x7fff7fff, 0xffff0000};
   const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
-  std::fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
     std::fesetround(rounding);
     std::feclearexcept(FE_ALL_EXCEPT);
@@ -109,7 +110,6 @@ TEST(IntegerCompare, DppHardwareCorpusAndHostFpState) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
       }
   }
-  std::fesetenv(&saved);
 }
 
 TEST(IntegerCompare, HardwarePredicatesWidthsModifiersAndExec) {
@@ -219,11 +219,8 @@ TEST(IntegerCompare, ScalarOutputAliasesSourcesUnalignedAndMasks) {
 }
 
 TEST(IntegerCompare, ValidationAndHostFpState) {
-  fenv_t saved;
-  std::fegetenv(&saved);
-#if defined(__x86_64__) || defined(_M_X64)
-  unsigned original_mxcsr = _mm_getcsr();
-#endif
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   const uint64_t max_cpu = goc_init_cpu_flags();
   for (unsigned op = 0; op < 72; ++op) {
     uint32_t known = goc_test::integer_compare_mode(op < 24 ? 3 : 0), d = 1;
@@ -265,8 +262,4 @@ TEST(IntegerCompare, ValidationAndHostFpState) {
 #endif
       }
   }
-  std::fesetenv(&saved);
-#if defined(__x86_64__) || defined(_M_X64)
-  _mm_setcsr(original_mxcsr);
-#endif
 }

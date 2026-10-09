@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "rdna4_byte_conversion_reference.h"
 #include "rdna4_dpp_reference.h"
@@ -93,8 +94,8 @@ TEST(ByteConversion, EveryModifierMasksAliasesAndUnalignedStorage) {
 }
 
 TEST(ByteConversion, HostRoundingAndExceptionsArePreserved) {
-  fenv_t saved;
-  ASSERT_EQ(std::fegetenv(&saved), 0);
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
   for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
     EXPECT_EQ(std::fesetround(rounding), 0);
     EXPECT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
@@ -117,7 +118,6 @@ TEST(ByteConversion, HostRoundingAndExceptionsArePreserved) {
               EXPECT_EQ(output[lane], goc_test::byte_conversion_reference(byte, input[lane], mode));
           }
   }
-  EXPECT_EQ(std::fesetenv(&saved), 0);
 }
 
 TEST(ByteConversion, ValidationAndSemanticFallback) {
