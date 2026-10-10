@@ -468,9 +468,9 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_fma_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11625 | review required |
 | `v_fma_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11650 | review required |
 | `v_fma_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 11713 | review required |
-| `v_fma_mix_f32` | IEEE mode, SIMD macro, architecture query, output helper | no | 11750 | review required |
-| `v_fma_mixhi_f16` | SIMD macro | no | 11794 | review required |
-| `v_fma_mixlo_f16` | SIMD macro | no | 11837 | review required |
+| `v_fma_mix_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 11750 | review required |
+| `v_fma_mixhi_f16` | SIMD macro | yes | 11794 | review required |
+| `v_fma_mixlo_f16` | SIMD macro | yes | 11837 | review required |
 | `v_fmaak_f16` | IEEE mode, NaN quieting, SIMD macro, architecture query, output helper | yes | 11880 | review required |
 | `v_fmaak_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 11899 | review required |
 | `v_fmac_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11999, 12022 | review required |

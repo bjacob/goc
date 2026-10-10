@@ -1058,7 +1058,8 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_mixed_fma(uint64_t cpu, int iterations, int min_ms) {
-  const Ternary functions[] = {goc_v_fma_mix_f32, goc_v_fma_mixlo_f16, goc_v_fma_mixhi_f16};
+  const Ternary functions[] = {goc_v_fma_mix_f32_rdna4, goc_v_fma_mixlo_f16_rdna4,
+                               goc_v_fma_mixhi_f16_rdna4};
   const char *names[] = {"v_fma_mix_f32", "v_fma_mixlo_f16", "v_fma_mixhi_f16"};
   const uint32_t modes[] = {0,
                             GOC_MIX_F16_A | GOC_MIX_F16_C | GOC_ALU_HIGH_A | GOC_ALU_NEG_A |

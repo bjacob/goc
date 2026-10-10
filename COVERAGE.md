@@ -2293,3 +2293,49 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   LiteralFma/Arithmetic/ExceptionRegisters tests pass under ASan/UBSan. Seven
   audit-tool tests pass. The reporting-name audit has 632 signatures, 306
   resolved names, zero mismatches and 326 awaiting architecture review.
+
+## Mixed FMA architecture and guest-policy audit
+
+- `v_fma_mix_f32`, `v_fma_mixlo_f16`, and `v_fma_mixhi_f16` now distinguish
+  unsuffixed RDNA3 and `_rdna4` APIs, in both wave widths. The distinction
+  includes their native implicit register contracts (`trapsts` versus
+  `excp_flag_user`), not just result bits. RDNA3 no longer inherits the RDNA4
+  capture-derived guarantee of no MIXLO/MIXHI exception updates: its non-null
+  exact reporting is explicitly unsupported.
+- rocjitsu shared handlers 11750/11794/11837 (fingerprint in
+  `ARCHITECTURE_AUDIT.md`) route MIX_F32 through architecture-aware FP32
+  arithmetic, and MIXLO/MIXHI through `fma_f32_to_f16_nearest_environment`.
+  The latter does not consume denormal or IEEE controls. GoC retains its
+  integer direct-to-half result model and now accepts those ignored controls.
+  Its RDNA3 results follow the shared model; no native RDNA3 corpus is claimed.
+- MIX_F32 now applies guest input/output flushing in scalar and eight-lane
+  AVX2 paths. FP16 inputs are widened first, so an FP16 subnormal is not an
+  FP32 subnormal to be flushed. IEEE is accepted; FP32 loose NaN behavior
+  remains approximate. MIXLO/MIXHI keep their four-lane loose SIMD path.
+- New integer-oracle tests cover both architectures and wave widths, all eight
+  source-format and guest-policy combinations, all CPU levels, half selectors,
+  ABS/NEG/CLAMP, masks, both available semantics and reporting error atomicity.
+  Existing RDNA4 numeric, DPP and no-exception captures keep their expectations
+  and now explicitly call the suffixed APIs. DPP validation covers both names.
+- RDNA4 MIXLO/MIXHI no-exception reporting remains enabled only for the captured
+  default guest controls. Nondefault flags currently reject non-null exact
+  reporting pending hardware verification; null reporting still computes the
+  result model and loose requests always skip reporting. Existing captures do
+  not by themselves establish exception behavior under every new guest setting.
+- Keeping runtime guest checks in the default MIX_F32 SIMD kernel cost 7–16%
+  in an initial timing check. The final implementation selects default versus
+  guest-controlled SIMD before the loop. Both compile from one source template;
+  the default entry retains its original six-argument interface and skips the
+  new checks. SIMD object text grows from 9,499 to 10,495 bytes. The FP16-output
+  kernel is unchanged.
+- Final timing against `93003ea`: eleven alternating CPU-2-pinned samples with
+  at least 50 ms thread CPU time. Loose AVX2 MIX_F32 medians changed
+  18.725 -> 18.799 ns (+0.4%) for all-FP32 inputs and 21.191 -> 21.567 ns
+  (+1.8%) for mixed inputs with NEG/CLAMP. MIXLO medians changed
+  70.097 -> 70.113 ns (+0.02%) and 80.540 -> 80.897 ns (+0.4%). These are
+  finite-input checks of the existing default paths, not a whole-library
+  performance claim. Artifacts: `../goc-build/coverage-work/mixed-fma-policy-*`.
+- Validation: all 959 tests pass on Clang 21 and GCC 15 Release; all 24
+  MixedFma/ExceptionRegisters/InstructionFlags tests pass under ASan/UBSan.
+  Seven audit-tool tests pass. The reporting-name audit now has 638 signatures,
+  318 resolved names, zero mismatches and 320 pending architecture review.

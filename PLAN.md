@@ -431,9 +431,12 @@ post-scaling; hardware suppresses invalid/input-denormal flags. Integer guard an
 sticky bits supply reporting, with additional FMA16/DIV_FMAS hardware captures
 around underflow and overflow rounding boundaries.
 
-FP16 `FMA_MIXLO`/`FMA_MIXHI` accept reporting and leave the register unchanged:
+RDNA4 FP16 `FMA_MIXLO`/`FMA_MIXHI` accept reporting with default guest
+controls and leave the register unchanged:
 1,048,576 hardware flag reads are zero, including invalid arithmetic, overflow,
-source-format/half selection, modifiers, and saturation.
+source-format/half selection, modifiers, and saturation. RDNA3 and nondefault
+guest-control reporting still require verification and reject non-null exact
+requests; null-output requests retain the result implementation.
 `DOT2_F32_F16`/`DOT2_F32_BF16` likewise leave the register unchanged, validated
 with 524,288 hardware flag reads across packed selections, negation, and clamp.
 

@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "mixed_fma.h"
 #include "mixed_fma_scalar.h"
+#include "x86_64/alu_x86_64_v3.h"
 #include "x86_64/half_x86_64_v3.h"
 #include "x86_64/mixed_half_x86_64_v3.h"
 
@@ -38,12 +39,22 @@ __m128 input4(const uint32_t *p, uint32_t mode) {
 
 namespace goc {
 
-void mixed_fma_float_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
-                               const uint32_t *b, const uint32_t *c) {
+namespace {
+
+template <bool GuestPolicy>
+void mixed_float(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+                 const uint32_t *b, const uint32_t *c) {
   for (int lane = 0; lane < 32; lane += 8) {
     auto x = input8(a + lane, mode), y = input8(b + lane, mode >> 1),
          z = input8(c + lane, mode >> 2);
+    if (GuestPolicy && (flags & GOC_FP_FLUSH_INPUT_DENORMALS)) {
+      x = flush_denorm_f32(x);
+      y = flush_denorm_f32(y);
+      z = flush_denorm_f32(z);
+    }
     auto result = _mm256_fmadd_ps(x, y, z);
+    if (GuestPolicy && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+      result = flush_denorm_f32(result);
     if (mode & GOC_ALU_CLAMP)
       result = _mm256_min_ps(_mm256_max_ps(result, _mm256_setzero_ps()), _mm256_set1_ps(1));
     auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
@@ -51,6 +62,18 @@ void mixed_fma_float_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, c
     _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask,
                            _mm256_castps_si256(result));
   }
+}
+
+} // namespace
+
+void mixed_fma_float_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+                               const uint32_t *b, const uint32_t *c) {
+  mixed_float<false>(0, exec_mask, mode, d, a, b, c);
+}
+
+void mixed_fma_float_guest_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+                                     const uint32_t *a, const uint32_t *b, const uint32_t *c) {
+  mixed_float<true>(flags, exec_mask, mode, d, a, b, c);
 }
 
 void mixed_fma_half_x86_64_v3(bool high, bool saturate, uint32_t exec_mask, uint32_t mode,

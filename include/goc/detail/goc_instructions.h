@@ -4424,34 +4424,64 @@ static const uint32_t GOC_MIX_F16_C = 1U << 15;
 // Loose semantics require host nearest-even arithmetic with denormals enabled.
 // FP16-output forms also support empirical-exact scalar semantics and preserve
 // host FP state in that mode. EXEC masks and whole-register aliases are supported.
+// Unsuffixed forms select RDNA3; suffixed forms select RDNA4. MIX_F32 applies
+// guest FP32 input/output flushing. MIXLO/MIXHI ignore denormal/IEEE flags and
+// retain their direct-to-FP16 model. IEEE-dependent NaN handling in loose MIX_F32
+// remains approximate. Exact RDNA3 global-state reporting is unsupported; RDNA4
+// MIXLO/MIXHI leave EXCP_FLAG_USER unchanged under the default guest policy,
+// as observed in hardware captures. Nondefault guest flags currently require
+// a null pointer for exact reporting on these forms.
 int goc_v_fma_mix_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                      const uint32_t *const *c, uint32_t *excp_flag_user);
+                      const uint32_t *const *c, uint32_t *trapsts);
+int goc_v_fma_mix_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c, uint32_t *excp_flag_user);
 
 int goc_v_fma_mixlo_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c, uint32_t *excp_flag_user);
+                        const uint32_t *const *c, uint32_t *trapsts);
+int goc_v_fma_mixlo_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint32_t *excp_flag_user);
 
 int goc_v_fma_mixhi_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c, uint32_t *excp_flag_user);
+                        const uint32_t *const *c, uint32_t *trapsts);
+int goc_v_fma_mixhi_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint32_t *excp_flag_user);
 
 // Wave64 mixed FMA retains the Wave32 source formats, modifiers and DPP.
 // MIXLO/MIXHI support exact results and leave exception state unchanged, as in
 // the empirical model. MIX_F32 retains loose semantics and rejects exact reporting.
 int goc_v_fma_mix_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                             const uint32_t *const *c, uint32_t *excp_flag_user);
+                             const uint32_t *const *c, uint32_t *trapsts);
+int goc_v_fma_mix_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, const uint32_t *const *c,
+                                   uint32_t *excp_flag_user);
 
 int goc_v_fma_mixlo_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c,
-                               uint32_t *excp_flag_user);
+                               uint32_t *trapsts);
+int goc_v_fma_mixlo_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c,
+                                     uint32_t *excp_flag_user);
 
 int goc_v_fma_mixhi_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c,
-                               uint32_t *excp_flag_user);
+                               uint32_t *trapsts);
+int goc_v_fma_mixhi_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c,
+                                     uint32_t *excp_flag_user);
 
 // Ordinary ADD/SUB/SUBREV/MUL use unsuffixed APIs for RDNA3 and _rdna4 variants
 // for RDNA4, before _wave64. RDNA3 ignores OMOD when output denormals are preserved

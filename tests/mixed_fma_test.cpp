@@ -23,10 +23,12 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_fma_mix_f32);
-const Fn functions[] = {goc_v_fma_mix_f32, goc_v_fma_mixlo_f16, goc_v_fma_mixhi_f16};
-const decltype(&goc_v_fma_mix_f32_wave64) wave64[] = {
-    goc_v_fma_mix_f32_wave64, goc_v_fma_mixlo_f16_wave64, goc_v_fma_mixhi_f16_wave64};
+using Fn = decltype(&goc_v_fma_mix_f32_rdna4);
+const Fn functions[] = {goc_v_fma_mix_f32_rdna4, goc_v_fma_mixlo_f16_rdna4,
+                        goc_v_fma_mixhi_f16_rdna4};
+const decltype(&goc_v_fma_mix_f32_rdna4_wave64) wave64[] = {goc_v_fma_mix_f32_rdna4_wave64,
+                                                            goc_v_fma_mixlo_f16_rdna4_wave64,
+                                                            goc_v_fma_mixhi_f16_rdna4_wave64};
 const uint32_t values[] = {0,          0x80000000, 1,          0x80000001, 0x007fffff, 0x00800000,
                            0x3f000000, 0x3f800000, 0xbf800000, 0x3f800001, 0x3f7fffff, 0x33800000,
                            0x477fe000, 0x477ff000, 0x47800000, 0x7f7fffff, 0xff7fffff, 0x7f800000,
@@ -446,7 +448,7 @@ TEST(MixedFma, AlternatingDestinationHalvesPreservePriorWrites) {
       for (unsigned lane = 0; lane < 32; ++lane)
         if ((exec_mask >> lane) & 1)
           expected[lane] = (expected[lane] & ~(65535u << shift)) | (half << shift);
-      auto instruction = high ? goc_v_fma_mixhi_f16 : goc_v_fma_mixlo_f16;
+      auto instruction = high ? goc_v_fma_mixhi_f16_rdna4 : goc_v_fma_mixlo_f16_rdna4;
       ASSERT_EQ(instruction(cpu, exec_mask, mode, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
       for (unsigned lane = 0; lane < 32; ++lane)
         ASSERT_EQ(output[lane], expected[lane]) << cpu << '/' << step << '/' << lane;
@@ -627,4 +629,70 @@ TEST(MixedFma, Wave64ExactHostStateAndValidation) {
                       nullptr, &exceptions),
             GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(exceptions, 0x80000055U);
+}
+
+TEST(MixedFma, ArchitectureGuestPolicies) {
+  const Fn rdna3_functions[] = {goc_v_fma_mix_f32, goc_v_fma_mixlo_f16, goc_v_fma_mixhi_f16};
+  const decltype(&goc_v_fma_mix_f32_wave64) rdna3_wave64[] = {
+      goc_v_fma_mix_f32_wave64, goc_v_fma_mixlo_f16_wave64, goc_v_fma_mixhi_f16_wave64};
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (int op = 0; op < 3; ++op)
+        for (bool exact : {false, true}) {
+          if (exact && !op)
+            continue;
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+            for (unsigned policy = 0; policy < 8; ++policy)
+              for (unsigned formats = 0; formats < 8; ++formats)
+                for (uint32_t modifiers : {0U, GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_HIGH_C,
+                                           GOC_ALU_HIGH_A | GOC_ALU_CLAMP}) {
+                  uint32_t mode = (formats << 13) | modifiers;
+                  uint64_t flags =
+                      cpu | (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0) |
+                      (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                      (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                      (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+                  uint32_t a[64], b[64], c[64], d[64];
+                  for (int lane = 0; lane < 64; ++lane) {
+                    a[lane] = values[lane % 24];
+                    b[lane] = values[(lane * 3 + 5) % 24];
+                    c[lane] = values[(lane * 5 + 11) % 24];
+                    d[lane] = 0xdeadbeef;
+                  }
+                  const uint32_t *x = a, *y = b, *z = c;
+                  uint32_t *dest = d, state = 0x12345678;
+                  uint64_t exec_mask = 0xb315791dde710fadULL;
+                  auto f32 = rdna3 ? rdna3_functions[op] : functions[op];
+                  auto f64 = rdna3 ? rdna3_wave64[op] : wave64[op];
+                  auto invoke = [&](uint32_t *output) {
+                    return wide ? f64(flags, exec_mask, mode, &dest, &x, &y, &z, output)
+                                : f32(flags, uint32_t(exec_mask), mode, &dest, &x, &y, &z, output);
+                  };
+                  ASSERT_EQ(invoke(exact && (rdna3 || policy) ? nullptr : &state), GOC_SUCCESS);
+                  EXPECT_EQ(state, 0x12345678U);
+                  for (int lane = 0; lane < 64; ++lane) {
+                    if (lane >= (wide ? 64 : 32) || !((exec_mask >> lane) & 1)) {
+                      EXPECT_EQ(d[lane], 0xdeadbeefU);
+                      continue;
+                    }
+                    uint32_t inputs[] = {a[lane], b[lane], c[lane]};
+                    if (!op && (policy & 1))
+                      for (int operand = 0; operand < 3; ++operand)
+                        if (!(formats & (1U << operand)) && !(inputs[operand] & 0x7f800000))
+                          inputs[operand] &= 0x80000000;
+                    uint32_t expected = goc_test::mixed_fma_reference::evaluate(
+                        op, inputs[0], inputs[1], inputs[2], 0xdeadbeef, mode, false);
+                    if (!op && (policy & 2) && !(expected & 0x7f800000))
+                      expected &= 0x80000000;
+                    EXPECT_TRUE(equal(op, d[lane], expected, exact));
+                  }
+                  if (exact && (rdna3 || policy)) {
+                    uint32_t before[64];
+                    std::memcpy(before, d, sizeof(d));
+                    EXPECT_EQ(invoke(&state), GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+                    EXPECT_EQ(state, 0x12345678U);
+                    EXPECT_EQ(std::memcmp(before, d, sizeof(d)), 0);
+                  }
+                }
+        }
 }
