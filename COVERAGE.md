@@ -6931,3 +6931,56 @@ tests pass with Clang 21 and GCC 15 Release and ASan/UBSan. No production code
 changed, so scalar/SIMD dispatch and runtime performance are unchanged.
 RDNA3 remains scalar; RDNA4 retains AVX2 and Zen4 VNNI in both semantics and
 both wave widths. This review does not establish the floating WMMA contracts.
+
+## FP16 and BF16 WMMA architecture contract review
+
+Reviewed all four shared floating WMMA mnemonics (FP16/BF16 factors with FP32
+or matching packed outputs), including both wave widths. The exact paths are
+ports of rocjitsu `ffc144c564c`: `shared/gfx11_dot2.h`, `shared/gfx12_dot.h`,
+`shared/dot_packed16.h`, and the `exec_gfx11_wmma_dot2` /
+`exec_gfx12_wmma_dot4` loops in `shared/mma_exec.h`. Both architectures' generated
+`vop3p_exec.cpp` handlers select these helpers. No new numerical model was
+created or inferred from new hardware measurements.
+
+The existing `_rdna4` split reflects arithmetic as well as layout:
+
+- RDNA3 replicates A/B in each 16-lane group and rounds after each two-product
+  step. Packed output selects one half of each C/D word with OPSEL, preserving
+  the other destination half. RDNA4 distributes the input tile, rounds after
+  each four-product step, and writes adjacent packed output rows into both
+  halves. Its Wave32 physical K chunks execute in order 0, 8, 4, 12; Wave64
+  executes 0, 4, 8, 12.
+- The borrowed FP16 packed models round directly to FP16 after each step;
+  their BF16 counterparts truncate a rounded FP32 intermediate. They also have
+  different alignment, signed-zero and subnormal rules. A shared generic FMA
+  reduction would lose those distinctions even if the layouts were converted.
+- All six floating NEG/NEG_HI bits are implemented; C absolute value precedes
+  C negation. Only RDNA3 packed output accepts `GOC_WMMA_HIGH_C_D`.
+  `GOC_FP16_OVFL` controls finite packed FP16 overflow and has no effect on
+  BF16/FP32 output. Other guest FP flags are currently rejected, not interpreted
+  as configurable rounding, IEEE or denormal behavior. OMOD, DPP and floating
+  CLAMP are not exposed by these API contracts. Inline C is materialized by
+  callers in the ordinary input layout.
+- EXEC is ignored and the APIs write all destination lanes. No implicit register
+  output is exposed: RDNA3 section 7.9 explicitly excludes WMMA ALU exceptions;
+  for RDNA4, LLVM `cba25ae10871`'s `WMMAInstGFX12` declares
+  `mayRaiseFPException = 0`, consistent with rocjitsu's result-only handlers.
+  This is compiler/upstream evidence for RDNA4, not a new exception capture.
+  The instruction pseudocode restores its temporary all-ones EXEC.
+
+`WmmaReplicatedExact.FloatingArchitectureRoundingBoundaries` now contrasts all
+16 APIs using `C + 1 - 1`: C is 2^24, 2^11 or 2^8 for FP32, FP16 or BF16
+output. RDNA3 returns C-1 after intermediate rounding; RDNA4 returns C. These
+are checks of the already borrowed models, independently anchored by the
+existing gfx1100/gfx1201 fixtures. The test covers every available CPU level,
+both RDNA3 half selections, A/B/C destination overlaps and guard preservation.
+The existing suites cover dense layouts, all modifier combinations, overflow,
+NaNs, denormals, captured result bits and SIMD eligibility/fallback.
+
+Validation: all 39 selected WMMA and DOT tests pass with Clang 21 and GCC 15
+Release and ASan/UBSan. Production code is unchanged. Exact and packed paths
+remain scalar. RDNA4 Wave32 loose FP32 output retains AVX2 and the guarded
+Zen4 BF16 path; RDNA3 and RDNA4 Wave64 FP32 outputs remain scalar. Loose results
+retain their existing host rounding/denormal preconditions and do not promise
+the exact intermediate rounding or NaN payloads. The four FP8/BF8 dense WMMA
+mnemonics and sparse SWMMAC are separate review work.

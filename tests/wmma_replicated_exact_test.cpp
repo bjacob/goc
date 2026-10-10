@@ -19,7 +19,19 @@ namespace {
 
 using Wmma = decltype(&goc_v_wmma_f32_16x16x16_f16);
 
-Wmma floating(bool bf16, bool packed, int lanes) {
+Wmma floating(bool bf16, bool packed, int lanes, bool rdna4 = false) {
+  if (rdna4) {
+    if (packed) {
+      if (lanes == 64)
+        return bf16 ? goc_v_wmma_bf16_16x16x16_bf16_rdna4_wave64
+                    : goc_v_wmma_f16_16x16x16_f16_rdna4_wave64;
+      return bf16 ? goc_v_wmma_bf16_16x16x16_bf16_rdna4 : goc_v_wmma_f16_16x16x16_f16_rdna4;
+    }
+    if (lanes == 64)
+      return bf16 ? goc_v_wmma_f32_16x16x16_bf16_rdna4_wave64
+                  : goc_v_wmma_f32_16x16x16_f16_rdna4_wave64;
+    return bf16 ? goc_v_wmma_f32_16x16x16_bf16_rdna4 : goc_v_wmma_f32_16x16x16_f16_rdna4;
+  }
   if (packed) {
     if (lanes == 64)
       return bf16 ? goc_v_wmma_bf16_16x16x16_bf16_wave64 : goc_v_wmma_f16_16x16x16_f16_wave64;
@@ -381,6 +393,58 @@ TEST(WmmaReplicatedExact, IntegerArchitectureSaturationBoundaries) {
                                       (clamp ? GOC_WMMA_CLAMP : 0);
                 ASSERT_EQ(test.fn(cpu | semantics | GOC_SEMANTICS_STRICT, mode, r.v + dst, r.v,
                                   r.v + 8, r.v + 16),
+                          GOC_SUCCESS);
+                EXPECT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0);
+              }
+}
+
+TEST(WmmaReplicatedExact, FloatingArchitectureRoundingBoundaries) {
+  // In the borrowed GFX11 DOT2 model, C+1 rounds back to C before -1
+  // arrives in the next step. The GFX12 DOT4 model combines +1 and -1
+  // within one step. C is 2^24 for FP32, 2^11 for FP16, 2^8 for BF16.
+  for (bool rdna4 : {false, true})
+    for (bool bf16 : {false, true})
+      for (bool packed : {false, true})
+        for (int lanes : {32, 64})
+          for (uint64_t cpu = GOC_CPU_BASELINE; cpu <= goc_init_cpu_flags(); ++cpu)
+            for (unsigned high = 0; high < (packed && !rdna4 ? 2U : 1U); ++high)
+              for (int dst : {0, 4, 8, 16, 24}) {
+                SCOPED_TRACE(::testing::Message()
+                             << rdna4 << "/" << bf16 << "/" << packed << "/" << lanes << "/" << cpu
+                             << "/" << high << "/" << dst);
+                Registers r;
+                const uint32_t one = bf16 ? 0x3f80 : 0x3c00;
+                for (int reg = 0; reg < 8; ++reg)
+                  for (int lane = 0; lane < lanes; ++lane) {
+                    // K=0 contributes +1, K=2 contributes -1, all others zero.
+                    // RDNA3 replicates those elements into every 16-lane group;
+                    // RDNA4 holds both in group zero, using different registers.
+                    r.v[reg][lane] =
+                        (reg > 1 || (rdna4 && lane >= 16)) ? 0 : one | (reg == 1 ? 0x8000U : 0);
+                    r.v[8 + reg][lane] = one | (one << 16);
+                  }
+                const uint32_t acc = packed ? (bf16 ? 0x4380U : 0x6800U) : 0x4b800000U;
+                const int output_regs = (packed && rdna4 ? 128 : 256) / lanes;
+                const uint32_t c_word = !packed ? acc
+                                        : rdna4 ? acc | (acc << 16)
+                                                : (acc << (16 * high)) | (0x1234U << (16 * !high));
+                for (int reg = 0; reg < output_regs; ++reg)
+                  std::fill(r.v[16 + reg], r.v[16 + reg] + lanes, c_word);
+                uint32_t expected[32][66];
+                std::memcpy(expected, r.data, sizeof(expected));
+                const uint32_t value = rdna4    ? acc
+                                       : packed ? (bf16 ? 0x437fU : 0x67ffU)
+                                                : 0x4b7fffffU;
+                for (int reg = 0; reg < output_regs; ++reg)
+                  for (int lane = 0; lane < lanes; ++lane) {
+                    auto &word = expected[31 - dst - reg][lane + 1];
+                    word = !packed ? value
+                           : rdna4 ? value | (value << 16)
+                                   : (word & ~(0xffffU << (16 * high))) | (value << (16 * high));
+                  }
+                ASSERT_EQ(floating(bf16, packed, lanes, rdna4)(cpu | exact,
+                                                               high ? GOC_WMMA_HIGH_C_D : 0,
+                                                               r.v + dst, r.v, r.v + 8, r.v + 16),
                           GOC_SUCCESS);
                 EXPECT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0);
               }

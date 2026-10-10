@@ -1191,5 +1191,16 @@
     "mnemonics": [
       "v_wmma_i32_16x16x32_iu4"
     ]
+  },
+  {
+    "heading": "FP16 and BF16 WMMA architecture contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/wmma_replicated_exact_test.cpp",
+    "mnemonics": [
+      "v_wmma_f32_16x16x16_f16",
+      "v_wmma_f32_16x16x16_bf16",
+      "v_wmma_f16_16x16x16_f16",
+      "v_wmma_bf16_16x16x16_bf16"
+    ]
   }
 ]
