@@ -5063,3 +5063,36 @@ audit-tool tests pass. Production move/packing objects are byte-identical to the
 pre-change builds under both compilers (`scalar-transfer-production-objects.json`).
 Logs use `scalar-transfer-review-` in each build directory. The ledger records
 345 contracts; 464 in-scope mnemonics still need recorded reviews.
+
+## DS permutation architecture contract review
+
+Rechecked the three canonical register-only permutation instructions against
+rocjitsu `ffc144c564c`, including both architectures' execution delegates and
+all five DS/VDS shared helpers in `generated/shared/execute_shared.h`.
+RDNA3 Wave64 explicitly selects 32-lane groups; RDNA4 uses the wave width.
+This agrees with RDNA3 manual section 12.5.2 and the earlier RDNA4 review above.
+The ordinary Wave32 APIs remain shared; only the changed Wave64 variants need
+`_rdna4_wave64`. FI exists only on RDNA4 and does not need an architecture suffix.
+
+The sixteen-bit offset is added with unsigned 32-bit wrap before byte-address
+bits select a lane. Ordinary gather reads zero from inactive sources; FI reads
+stored source values regardless of EXEC. Both preserve inactive destinations.
+Scatter ignores inactive sources, zero-fills unwritten active destinations, and
+selects the highest active source for collisions, as in rocjitsu. This remains
+an explicit deterministic emulator choice: the hardware prose does not promise
+a collision winner. No LDS memory or implicit global register is written.
+Both semantics support these raw-bit operations. No instruction flags are accepted.
+
+Existing tests cover random routing, sparse/full/empty EXEC, destination aliases,
+address overflow, collisions and the half-wave boundary. New tests check every
+gather source/destination pair with a single active destination, in both strict
+semantics, including FI, offset wrap and destination/address aliasing. They also
+check all 64 invalid instruction-flag bits for FI with zero/full EXEC, null input
+pointers and preserved destinations. No implementation changes were required.
+
+Validation: all 1,113 CTests pass under Clang and GCC Release; all seven DS
+permutation tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs
+use `ds-permute-review-` in each build directory. XML membership and upstream
+file hashes are saved in `../goc-build/coverage-work/ds-permute-upstream-review.json`.
+The ledger now records 348 contracts, with 461 in-scope mnemonics still needing
+recorded reviews. These counts do not imply complete encoding or numerical coverage.

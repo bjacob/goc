@@ -121,8 +121,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `ds_and_rtn_b32` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_and_rtn_b64` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_append` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
-| `ds_bpermute_b32` | yes | yes | in: register routing | `goc_ds_bpermute_b32`<br>`goc_ds_bpermute_b32_wave64`<br>`goc_ds_bpermute_b32_rdna4_wave64` | — | API present; semantic audit pending |
-| `ds_bpermute_fi_b32` | — | yes | in: register routing | `goc_ds_bpermute_fi_b32`<br>`goc_ds_bpermute_fi_b32_wave64` | — | API present; semantic audit pending |
+| `ds_bpermute_b32` | yes | yes | in: register routing | `goc_ds_bpermute_b32`<br>`goc_ds_bpermute_b32_wave64`<br>`goc_ds_bpermute_b32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#ds-permutation-architecture-contract-review) |
+| `ds_bpermute_fi_b32` | — | yes | in: register routing | `goc_ds_bpermute_fi_b32`<br>`goc_ds_bpermute_fi_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#ds-permutation-architecture-contract-review) |
 | `ds_bvh_stack_push4_pop1_rtn_b32` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_bvh_stack_push8_pop1_rtn_b32` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_bvh_stack_push8_pop2_rtn_b64` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
@@ -216,7 +216,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `ds_or_rtn_b64` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_ordered_count` | yes | — | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_param_load` | — | yes | out: VMEM | — | `lds_param_load` | excluded: memory/control/scheduling |
-| `ds_permute_b32` | yes | yes | in: register routing | `goc_ds_permute_b32`<br>`goc_ds_permute_b32_wave64`<br>`goc_ds_permute_b32_rdna4_wave64` | — | API present; semantic audit pending |
+| `ds_permute_b32` | yes | yes | in: register routing | `goc_ds_permute_b32`<br>`goc_ds_permute_b32_wave64`<br>`goc_ds_permute_b32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#ds-permutation-architecture-contract-review) |
 | `ds_pk_add_bf16` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_pk_add_f16` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_pk_add_rtn_bf16` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |

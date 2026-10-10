@@ -595,5 +595,15 @@
     "mnemonics": [
       "s_getpc_b64"
     ]
+  },
+  {
+    "heading": "DS permutation architecture contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/ds_permute_test.cpp",
+    "mnemonics": [
+      "ds_bpermute_b32",
+      "ds_bpermute_fi_b32",
+      "ds_permute_b32"
+    ]
   }
 ]

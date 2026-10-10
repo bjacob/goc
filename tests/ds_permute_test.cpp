@@ -157,3 +157,57 @@ TEST(DsPermute, ByteAddressOverflowAndScatterCollisions) {
       }
     }
 }
+
+TEST(DsPermute, EveryGatherPairInactiveSourcesAndAddressAliases) {
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (unsigned arch : {0U, 3U, 4U})
+      for (unsigned dst = 0; dst < (arch == 0 ? 32U : 64U); ++dst)
+        for (unsigned src = 0; src < (arch == 4 ? 64U : 32U); ++src)
+          for (bool force_inactive : {false, true}) {
+            if (force_inactive && arch == 3)
+              continue; // FI exists only on RDNA4.
+            const unsigned selected = src + (arch == 3 ? (dst / 32) * 32 : 0);
+            uint32_t addresses[66], input[64];
+            std::fill_n(addresses, 66, 0xdeadbeefU);
+            for (unsigned lane = 0; lane < 64; ++lane)
+              input[lane] = 0x7f800001U + lane;
+            // Offset addition wraps before ignoring low two and high address bits.
+            addresses[dst + 1] = uint32_t(src * 4 + 3 - 65535U);
+            uint32_t *d = addresses + 1;
+            const uint32_t *addr = d, *data = input;
+            uint64_t exec_mask = 1ULL << dst;
+            uint64_t flags = semantics | GOC_SEMANTICS_STRICT;
+            int status;
+            if (!force_inactive)
+              status = run(arch, true, flags, exec_mask, 0, &d, &addr, &data, 65535);
+            else if (arch == 0)
+              status =
+                  goc_ds_bpermute_fi_b32(flags, uint32_t(exec_mask), 0, &d, &addr, &data, 65535);
+            else
+              status = goc_ds_bpermute_fi_b32_wave64(flags, exec_mask, 0, &d, &addr, &data, 65535);
+            ASSERT_EQ(status, GOC_SUCCESS);
+            for (unsigned word = 0; word < 66; ++word)
+              ASSERT_EQ(addresses[word],
+                        word == dst + 1 ? (force_inactive || selected == dst ? input[selected] : 0U)
+                                        : 0xdeadbeefU)
+                  << arch << '/' << dst << '/' << src << '/' << force_inactive;
+          }
+}
+
+TEST(DsPermute, ForceInactiveRejectsFlagsBeforeReadingOperands) {
+  uint32_t output[64];
+  std::fill_n(output, 64, 0xdeadbeefU);
+  uint32_t *d = output;
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (unsigned bit = 0; bit < 64; ++bit)
+      for (uint64_t exec_mask : {0ULL, ~0ULL}) {
+        EXPECT_EQ(goc_ds_bpermute_fi_b32(semantics, uint32_t(exec_mask), 1ULL << bit, &d, nullptr,
+                                         nullptr, 0),
+                  GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(goc_ds_bpermute_fi_b32_wave64(semantics, exec_mask, 1ULL << bit, &d, nullptr,
+                                                nullptr, 0),
+                  GOC_ERROR_INVALID_FLAGS);
+      }
+  for (uint32_t word : output)
+    EXPECT_EQ(word, 0xdeadbeefU);
+}
