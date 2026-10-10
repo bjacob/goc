@@ -56,9 +56,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     EXPECT_TRUE((std::is_same_v<Mask, uint64_t>));
     base_name.resize(base_name.size() - 7);
     // Only these audited families currently share DPP support across widths.
-    // In particular, the existing Wave64 MBCNT paths still reject DPP.
     if (base_name.compare(0, 9, "goc_v_cmp") == 0 || base_name == "goc_v_mov_b32" ||
-        base_name == "goc_v_mov_b16")
+        base_name == "goc_v_mov_b16" || base_name == "goc_v_mbcnt_lo_u32_b32" ||
+        base_name == "goc_v_mbcnt_hi_u32_b32")
       name = base_name.c_str();
   } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));

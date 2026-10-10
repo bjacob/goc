@@ -229,9 +229,9 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_i16`, `v_min3_u16`, `v_max3_i16`, `v_max3_u16`, `v_med3_i16`, `v_med3_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
 | `v_add_nc_i16`, `v_sub_nc_i16`, `v_add_nc_u16`, `v_sub_nc_u16` | Scalar, x86-64-v3; half selectors and saturation | Not implemented |
 | `v_min_i16`, `v_max_i16`, `v_min_u16`, `v_max_u16`, `v_mul_lo_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
-| `v_clz_i32_u32`, `v_ctz_i32_b32`, `v_cls_i32`, `v_bcnt_u32_b32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
-| `v_mbcnt_lo_u32_b32` (wave32 and wave64), `v_mbcnt_hi_u32_b32` (wave64) | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
-| `v_mbcnt_hi_u32_b32` (wave32) | Scalar, x86-64-v4 | Not implemented |
+| `v_clz_i32_u32`, `v_ctz_i32_b32`, `v_cls_i32`, `v_bcnt_u32_b32` | Scalar, x86-64-v3, x86-64-v4 | Same paths, bit-exact |
+| `v_mbcnt_lo_u32_b32` (wave32 and wave64), `v_mbcnt_hi_u32_b32` (wave64) | Scalar, x86-64-v3, x86-64-v4 | Same paths, bit-exact |
+| `v_mbcnt_hi_u32_b32` (wave32) | Scalar, x86-64-v4 | Same paths, bit-exact |
 | `v_and_b16`, `v_or_b16`, `v_xor_b16`, `v_not_b16` | Scalar, x86-64-v4 | Not implemented |
 | `v_sat_pk_u8_i16`, `v_pack_b32_f16` | Scalar, x86-64-v3, x86-64-v4; all supported modifiers | Not implemented |
 | `v_and_b32`, `v_or_b32`, `v_xor_b32`, `v_not_b32`, `v_xnor_b32` | Scalar, x86-64-v4 | Not implemented |
@@ -1274,9 +1274,10 @@ cannot reproduce the upper-half lane indices. Wave32 MBCNT_HI is a masked copy
 of `B`; its v3 candidate showed little benefit and was removed. Tests cover every pair of bit
 positions, complements, all population counts, accumulator wrapping, sentinel
 results, EXEC masks and aliases, including an in-place LO/HI sequence that
-constructs physical lane numbers under sparse EXEC masks. Wave32 forms support
-DPP8/DPP16 on A; wave64 MBCNT requires zero instruction flags. No arithmetic
-modifiers apply.
+constructs physical lane numbers under sparse EXEC masks. Both wave sizes support
+DPP8/DPP16 on A without changing the physical counting lane. No arithmetic
+modifiers apply. All bit-count entry points support strict exact semantics on
+the same scalar and SIMD paths.
 
 Packing supports `v_sat_pk_u8_i16` and `v_pack_b32_f16`. The former saturates
 each signed I16 half to U8 and packs the bytes into the selected destination
@@ -1950,7 +1951,8 @@ preserved, including rounding mode and existing exception flags. A GFX1201
 capture checks 19,712 results; independent tests combine all mask patterns,
 source/destination aliases, exceptional bit patterns, and random words. SIMD
 permutation composes with each instruction's existing arithmetic path, including
-AVX-512 Boolean operations. Wave64 count DPP forms remain pending. Benchmarks cover representative leading/population/masked counts and
+AVX-512 Boolean operations. Wave64 MBCNT also supports DPP, checked against
+3,584 additional RX 9070 results. Benchmarks cover representative leading/population/masked counts and
 Boolean operations with full EXEC. On the Ryzen 9 7950X3D, these cases measure
 16.8–23.5 ns on x86-64-v3 (1.9–2.4× scalar speed) and 9.1–13.4 ns on
 x86-64-v4 (3.3–4.9×), using seven pinned samples of at least 10 ms each.

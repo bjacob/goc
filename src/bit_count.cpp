@@ -44,11 +44,35 @@ int bit_count(uint64_t flags, goc::ExecMask<Lanes> exec_mask, uint64_t mode, uin
             return bit_count<Op, Lanes>(flags, exec_mask, uint32_t(mode), d, source, b);
           });
     } else {
-      return GOC_ERROR_INVALID_FLAGS;
+      if (!(mode & (GOC_DPP8 | GOC_DPP16)) || !goc::valid_dpp(mode))
+        return GOC_ERROR_INVALID_FLAGS;
+      if (int error = bit_count<Op, Lanes>(flags, 0, uint32_t(mode), nullptr, nullptr, nullptr))
+        return error;
+      if (!exec_mask)
+        return GOC_SUCCESS;
+      // Route both halves before any stores. The counting kernel must still see
+      // physical lanes 0..63: routing changes A, not the lane's prefix mask.
+      uint32_t permuted[64];
+      uint64_t filtered = 0;
+      for (unsigned half = 0; half < 2; ++half) {
+        uint32_t half_exec = uint32_t(exec_mask >> (half * 32));
+        if (mode & GOC_DPP8) {
+          goc::dpp8_source(flags, half_exec, mode, permuted + half * 32, a[0] + half * 32);
+        } else {
+          uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+          uint64_t half_mode =
+              (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+          half_exec = goc::dpp16_source(flags, half_exec, half_mode, permuted + half * 32,
+                                        a[0] + half * 32);
+        }
+        filtered |= uint64_t(half_exec) << (half * 32);
+      }
+      const uint32_t *source = permuted;
+      return bit_count<Op, Lanes>(flags, filtered, uint32_t(mode), d, &source, b);
     }
   }
 
-  if (int error = goc::validate(flags, mode))
+  if (int error = goc::validate(flags, mode, true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -115,15 +139,11 @@ int goc_v_mbcnt_hi_u32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 int goc_v_mbcnt_lo_u32_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return bit_count<goc::BitCount::MaskedLow, 64>(flags, exec_mask, instruction_flags, d, a, b);
 }
 
 int goc_v_mbcnt_hi_u32_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b) {
-  if (instruction_flags >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return bit_count<goc::BitCount::MaskedHigh, 64>(flags, exec_mask, instruction_flags, d, a, b);
 }

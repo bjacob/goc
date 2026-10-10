@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 
 #include "bit_count_reference.h"
+#include "capture_hash.h"
+#include "dpp_reference.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
+#include "mbcnt_dpp_hardware.h"
 #include "test_instruction.h"
 
 #include <algorithm>
@@ -77,7 +80,8 @@ TEST(BitCount, EveryBitPairAndComplements) {
               words[1][lane] = UINT32_MAX - lane / 2;
               words[2][lane] = 0x859e43c1;
             }
-            ASSERT_TRUE(check(op, cpu, words));
+            ASSERT_TRUE(
+                check(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, words));
           }
 }
 
@@ -93,7 +97,7 @@ TEST(BitCount, EveryHalfEncodingAndRandomFullWords) {
           words[1][lane] = random();
           words[2][lane] = random();
         }
-        ASSERT_TRUE(check(op, cpu, words));
+        ASSERT_TRUE(check(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, words));
       }
     }
 }
@@ -132,7 +136,7 @@ TEST(BitCount, EveryPopulationAndAccumulatorWrapping) {
           words[1][lane] = lane % 2 ? UINT32_MAX - ones / 2 : 0;
           words[2][lane] = 0x859e43c1;
         }
-        ASSERT_TRUE(check(op, cpu, words));
+        ASSERT_TRUE(check(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, words));
       }
 }
 
@@ -209,14 +213,13 @@ TEST(BitCount, ValidationAndHostFpState) {
                         GOC_ERROR_INVALID_FLAGS);
             EXPECT_EQ(functions[op](cpu | (1ULL << 63), exec_mask, 0, d, a, b),
                       GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                    exec_mask, 0, d, a, b),
-                      GOC_ERROR_UNSUPPORTED_SEMANTICS);
           }
           for (const auto &reg : words)
             for (uint32_t value : reg)
               EXPECT_EQ(value, 0x7f800001);
-          EXPECT_TRUE(check(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_FP16_OVFL, words));
+          EXPECT_TRUE(
+              check(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT | GOC_FP16_OVFL,
+                    words));
         }
       EXPECT_EQ(std::fegetround(), rounding);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
@@ -224,4 +227,68 @@ TEST(BitCount, ValidationAndHostFpState) {
       EXPECT_EQ(_mm_getcsr(), before);
 #endif
     }
+}
+
+TEST(BitCount, Wave64DppUsesPhysicalDestinationLane) {
+  for (unsigned op : {6U, 7U})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t mode : goc_test::dpp_modes)
+        for (unsigned rows = 0; rows < 16; ++rows)
+          for (uint64_t exec_mask : {0ULL, 1ULL << 63, 0xaaaaaaaa55555555ULL, ~0ULL})
+            for (unsigned target = 0; target < 3; ++target) {
+              uint32_t data[3][66], expected[3][66];
+              for (unsigned r = 0; r < 3; ++r)
+                for (unsigned lane = 0; lane < 66; ++lane)
+                  data[r][lane] = expected[r][lane] =
+                      (0x85930271U * lane) ^ (0xffffffffU - r * 12345);
+              uint64_t descriptor = mode;
+              if (descriptor & GOC_DPP16)
+                descriptor =
+                    (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                int source;
+                if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
+                  expected[target][lane + 1] = goc_test::bit_count_reference(
+                      op, source < 0 ? 0 : data[0][source + 1], data[1][lane + 1], lane);
+              }
+              auto d = data[target] + 1;
+              const uint32_t *a = data[0] + 1, *b = data[1] + 1;
+              ASSERT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                      exec_mask, descriptor, &d, &a, &b),
+                        GOC_SUCCESS);
+              for (unsigned r = 0; r < 3; ++r)
+                ASSERT_TRUE(std::equal(data[r], data[r] + 66, expected[r]))
+                    << op << '/' << mode << '/' << rows;
+            }
+  for (unsigned op : {6U, 7U}) {
+    EXPECT_EQ(functions[op](0, 0, GOC_DPP8, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(functions[op](0, UINT64_MAX, GOC_DPP8 | GOC_ALU_NEG_A, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(functions[op](0, UINT64_MAX, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+  }
+}
+
+TEST(BitCount, Wave64DppHardwareCorpus) {
+  const uint64_t exec_masks[] = {0, 1ULL << 63, 0xaaaaaaaa55555555ULL, UINT64_MAX};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned op = 0; op < 2; ++op)
+      for (unsigned m = 0; m < 7; ++m)
+        for (unsigned e = 0; e < 4; ++e) {
+          uint32_t a[64], b[64], d[64];
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            a[lane] = (0x85930271U * lane) ^ 0xffffffffU;
+            b[lane] = 0xffffffe0U + lane;
+            d[lane] = 0xdead0000U + lane;
+          }
+          auto pa = a, pb = b, pd = d;
+          ASSERT_EQ(functions[6 + op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                      exec_masks[e], goc_test::dpp_modes[m], &pd, &pa, &pb),
+                    GOC_SUCCESS);
+          uint64_t hash = goc_test::capture_hash_seed;
+          for (auto word : d)
+            hash = goc_test::capture_hash_word(hash, word);
+          EXPECT_EQ(hash, goc_test::mbcnt_dpp_wave64_hashes[(op * 7 + m) * 4 + e])
+              << cpu << '/' << op << '/' << m << '/' << e;
+        }
 }

@@ -3867,9 +3867,9 @@ int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint
 // MBCNT_LO counts A bits below min(lane, 32); MBCNT_HI counts A bits below
 // max(lane - 32, 0). Both add B with wrapping. The lane index is physical and
 // independent of EXEC. Wave64 forms use 64 lane words per VGPR.
-// Wave32 forms support DPP8/DPP16 on A; low 32 instruction-flag bits must be zero.
-// Wave64 forms require zero instruction_flags. Only loose semantics are implemented;
-// all host FP state is preserved.
+// Both wave sizes support DPP8/DPP16 on A; low 32 instruction-flag bits must be zero.
+// DPP changes the source value, not the physical destination lane used for counting.
+// Both semantics are exact; all host FP state is preserved.
 int goc_v_clz_i32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a);
 

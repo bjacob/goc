@@ -31,8 +31,10 @@ TEST(DppInteger, HardwareCorpus) {
             d[lane] = 0xdead0000u + lane;
           }
           auto pa = a, pb = b, pd = d;
-          ASSERT_EQ(goc_test::dpp_integer_functions[op](cpu, exec_mask, mode, &pd, &pa, &pb),
-                    GOC_SUCCESS);
+          uint64_t semantics = op < 6 ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0;
+          ASSERT_EQ(
+              goc_test::dpp_integer_functions[op](cpu | semantics, exec_mask, mode, &pd, &pa, &pb),
+              GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             int source;
             uint32_t want = 0xdead0000u + lane;
@@ -64,8 +66,10 @@ TEST(DppInteger, ShiftHardwareCorpus) {
             d[lane] = 0xdead0000u + lane;
           }
           auto pa = a, pb = b, pd = d;
-          ASSERT_EQ(goc_test::dpp_integer_functions[op](cpu, exec_mask, mode, &pd, &pa, &pb),
-                    GOC_SUCCESS);
+          uint64_t semantics = op < 6 ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0;
+          ASSERT_EQ(
+              goc_test::dpp_integer_functions[op](cpu | semantics, exec_mask, mode, &pd, &pa, &pb),
+              GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             int source;
             uint32_t want = 0xdead0000u + lane;
@@ -125,16 +129,19 @@ TEST(DppInteger, ValidationAndHostFpState) {
   goc_test::ScopedFpEnvironment restore;
   ASSERT_TRUE(restore.saved());
 
-  for (auto fn : goc_test::dpp_integer_functions)
+  for (unsigned op = 0; op < 14; ++op)
     for (uint64_t mode : goc_test::dpp_modes) {
+      auto fn = goc_test::dpp_integer_functions[op];
       for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         EXPECT_EQ(fn(0, exec_mask, mode | GOC_ALU_NEG_A, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, mode, nullptr,
-                     nullptr, nullptr),
-                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        if (op >= 6) {
+          EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, mode,
+                       nullptr, nullptr, nullptr),
+                    GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        }
         EXPECT_EQ(fn(0, exec_mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
       }
@@ -148,7 +155,8 @@ TEST(DppInteger, ValidationAndHostFpState) {
           ASSERT_EQ(std::fesetround(rounding), 0);
           ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
           ASSERT_EQ(std::feraiseexcept(FE_DIVBYZERO), 0);
-          ASSERT_EQ(fn(cpu, UINT32_MAX, mode, &pd, &pa, &pb), GOC_SUCCESS);
+          uint64_t semantics = op < 6 ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0;
+          ASSERT_EQ(fn(cpu | semantics, UINT32_MAX, mode, &pd, &pa, &pb), GOC_SUCCESS);
           EXPECT_EQ(std::fegetround(), rounding);
           EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
         }

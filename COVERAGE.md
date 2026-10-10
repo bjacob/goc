@@ -531,10 +531,42 @@ hardware corpus remains unchanged. Wave64 constant and floating comparisons
 remain open. Canonical name counts remain 787 present and 22 absent.
 
 The high-flag audit also exposed an existing cross-width limitation: Wave64
-MBCNT_LO/HI reject DPP although Wave32 supports it. This remains open; tests
+MBCNT_LO/HI reject DPP although Wave32 supports it. This was open at that checkpoint (resolved below); tests
 must not infer modifier parity merely by stripping every `_wave64` suffix.
 The shared-name check is restricted to the audited comparison/move families.
 
 Validation: all 735 tests pass with Clang/GCC. The three new Wave64 comparison
 tests, the combined-width host-FP-state test and exhaustive instruction-flag
 test all pass under ASan/UBSan. Existing numerical SIMD kernels are unchanged.
+
+
+## Wave64 MBCNT DPP and exact bit counts
+
+Closed the Wave64 MBCNT_LO/HI DPP gap. The implementation stages all 64 source
+lanes using existing DPP/SIMD routing, including upper row enables, then runs the
+existing 64-lane counting kernel. It deliberately does not split the arithmetic
+into Wave32 calls: MBCNT's prefix mask depends on the physical destination lane,
+not the permuted source lane or lane number modulo 32. Whole-register aliases
+remain safe, and invalid flags are rejected before source access.
+
+The bit-count family (CLZ, CTZ, CLS, BCNT and MBCNT) now accepts strict exact
+semantics. These kernels use integer bit scans/population counts and wrapping
+addition, without approximation. The underlying scalar and SIMD numerical
+implementations were not changed. Existing exhaustive half-word/bit-pair tests
+and the Wave32 DPP GPU corpus now explicitly request strict exact semantics.
+
+A new RX 9070/gfx1201 Wave64 capture contains 3,584 MBCNT outputs: both
+instructions, seven DPP8/DPP16 descriptors and four EXEC masks, covering
+FI/BOUND, row/bank selection, upper-lane behavior and accumulator wrap.
+`tests/capture_mbcnt_dpp.py` reproduces the probe; per-case digests and the raw
+SHA-256 are in `tests/mbcnt_dpp_hardware.h`. Every available CPU path matches.
+Independent tests additionally cover all sixteen row-enable masks and aliases
+with A or B. No RDNA3 hardware observation is claimed.
+
+No canonical names or new entry points were added. Wave64 CLZ/CTZ/CLS/BCNT APIs
+remain open; this slice completes the DPP support of the already existing
+Wave64 MBCNT APIs and enables exact semantics for the existing bit-count family.
+
+Validation: all 737 tests pass on Clang/GCC. All fourteen bit-count, integer DPP
+and instruction-flag tests pass under ASan/UBSan. Both existing Wave32 and new
+Wave64 DPP captures pass in strict exact semantics for the bit-count operations.
