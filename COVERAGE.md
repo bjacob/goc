@@ -7768,3 +7768,87 @@ pass under Clang 21 Release, GCC 15 Release and Clang ASan/UBSan. All nine
 tooling tests pass. Logs use `coverage-work/scalar-compare-contract-{build,tests}.log`
 in each build directory. Existing production implementations were unchanged;
 this validation is specific to the reviewed families, not a new full-suite run.
+
+
+## Scalar floating rounding architecture contracts
+
+Reviewed all eight `s_{ceil,floor,trunc,rndne}_f16/f32` instructions against
+RDNA3/RDNA4 XML, RDNA4 ISA sections 6.8 and 16.3, rocjitsu revision
+`ffc144c564c`'s generated SOP1 handlers, `util::rndne_scalar` and GoC's existing
+integer rounding helper and capture fixtures. All eight are RDNA4-only SOP1
+operations with optional literal source. They execute once regardless of EXEC,
+write a floating-point result to one SGPR and preserve SCC. FP16 consumes the
+low half and clears the upper result half. No modifiers, DPP, half selectors
+or separate Wave64 form apply.
+
+The existing integer implementation supports both semantics. CEIL/FLOOR/TRUNC
+use their fixed directed integral rounding; RNDNE uses nearest with ties to
+even, preserving negative zero. NaNs quiet while retaining sign/payload;
+infinities and already-integral large values remain unchanged. Input flushing
+follows the guest policy. Output flushing and FP16_OVFL have no numerical
+effect. Guest directed-rounding, IEEE and DX10-clamp-off flags remain unsupported
+by the common validator; the mnemonic itself fixes the rounding operation.
+
+The manual permits scalar FP exceptions. Existing optional exact reporting
+accumulates INVALID for SNaN and INPUT_DENORM for unflushed subnormals, but not
+INEXACT for discarded fractions. This retains the earlier GFX1201 capture-backed
+classifier; no new exception model or hardware measurements were added. Loose
+mode skips reporting; null state opts out. Neither numerical implementation nor
+reporting was changed in this slice.
+
+Existing tests cover every half encoding and 65,536 boundary/random FP32 values
+through result hashes across eight policies, both semantics and all CPU tiers;
+separate exception hashes cover 65,536 inputs per format. New literal tests
+make positive/negative 0.5, 1.5 and 2.5 ties, signed zero, tiny inputs and the
+absence of fractional INEXACT explicit for all eight instructions, both
+semantics and all guest policies. They also check in-place scalar storage,
+ignored FP16 upper halves, output guards and sticky exception accumulation.
+
+## Scalar floating conversion architecture contracts
+
+Reviewed all eight `s_cvt_*` instructions against the same XML inventories,
+RDNA4 ISA sections 6.8, 16.1 and 16.3, rocjitsu's shared conversion handlers and
+`util/data_types.h`, and existing GoC conversion helpers and fixtures. These
+are RDNA4-only. Seven use SOP1, while `s_cvt_pk_rtz_f16_f32` uses SOP2;
+both encodings allow a literal source. All execute once regardless of EXEC,
+preserve SCC and have no instruction modifiers or Wave64-specific APIs.
+
+- Signed/unsigned integer-to-FP32 conversion uses nearest-even under the
+  documented loose host environment. FP32-to-integer truncates toward zero,
+  saturates overflow to the destination bounds, maps NaN to zero and maps
+  negative unsigned inputs to zero.
+- FP32-to-FP16 narrows to nearest with optional FP16_OVFL saturation and clears
+  the upper destination half. Widening consumes the low half, except the
+  explicit `s_cvt_hi_f32_f16` instruction which consumes the high half.
+  Floating conversions quiet NaNs and honor the relevant guest flushing stages.
+  The existing pre-round tiny boundary handling is retained and covered by
+  literal/capture tests.
+- Packed RTZ puts A in the low half and B in the high half, always truncating
+  regardless of host rounding. Its finite overflow saturates; input infinities
+  remain infinities. The ISA's temporary round-mode pseudocode describes that
+  fixed conversion policy; no guest MODE output or host mode change is needed.
+- All eight remain loose-only: strict exact arithmetic is unsupported, and
+  non-strict exact with null state falls back to loose. The trailing optional
+  `excp_flag_user` reflects the manual's scalar exception capability. Non-loose
+  requests with non-null state return unsupported-global-state before other
+  validation, regardless of STRICT; loose calls leave state untouched.
+  Guest directed-rounding/IEEE/DX10-clamp-off remain unsupported. Upstream cast
+  and conversion helpers do not supply a separate empirical scalar exception
+  model; this review does not promote them to a new exact implementation.
+
+Existing retained result hashes cover all half inputs, FP32/integer boundaries
+and random inputs across eight policies, CPU tiers and scalar source aliases.
+New tests cover null-state non-strict fallback, non-null loose state preservation,
+reserved/exact reporting rejection before invalid flags and unchanged outputs
+for every bit of an invalid 64-bit instruction flag. Existing literal tests
+cover saturation, nearest ties, half selection, packed RTZ and flushing edges.
+
+No production code changed in either family. The ledger records 753 mnemonic
+contracts, with 56 remaining; this is not an overall completion percentage.
+
+
+Validation: all **14** selected scalar-rounding/conversion tests pass under
+Clang 21 Release, GCC 15 Release and Clang ASan/UBSan; all nine tooling tests
+pass. Logs use `coverage-work/scalar-round-convert-contract-{build,tests}.log`
+in each build directory. No production changes or performance impact; this
+was targeted family validation rather than a new full-suite run.

@@ -152,3 +152,45 @@ TEST(ScalarRound, ReportingContractAndHostState) {
     }
   }
 }
+
+TEST(ScalarRound, LiteralTiesAndTinyInputs) {
+  const uint32_t input[2][8] = {
+      {0x3f000000, 0xbf000000, 0x3fc00000, 0xbfc00000, 0x40200000, 0xc0200000, 1, 0x80000001},
+      {0x3800, 0xb800, 0x3e00, 0xbe00, 0x4100, 0xc100, 1, 0x8001}};
+  // CEIL, FLOOR, TRUNC, RNDNE; +/-0.5, +/-1.5, +/-2.5, +/-minimum subnormal.
+  const uint32_t expected[2][4][8] = {
+      {{0x3f800000, 0x80000000, 0x40000000, 0xbf800000, 0x40400000, 0xc0000000, 0x3f800000,
+        0x80000000},
+       {0, 0xbf800000, 0x3f800000, 0xc0000000, 0x40000000, 0xc0400000, 0, 0xbf800000},
+       {0, 0x80000000, 0x3f800000, 0xbf800000, 0x40000000, 0xc0000000, 0, 0x80000000},
+       {0, 0x80000000, 0x40000000, 0xc0000000, 0x40000000, 0xc0000000, 0, 0x80000000}},
+      {{0x3c00, 0x8000, 0x4000, 0xbc00, 0x4200, 0xc000, 0x3c00, 0x8000},
+       {0, 0xbc00, 0x3c00, 0xc000, 0x4000, 0xc200, 0, 0xbc00},
+       {0, 0x8000, 0x3c00, 0xbc00, 0x4000, 0xc000, 0, 0x8000},
+       {0, 0x8000, 0x4000, 0xc000, 0x4000, 0xc000, 0, 0x8000}}};
+  for (unsigned op = 0; op < 8; ++op)
+    for (unsigned state = 0; state < 8; ++state)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned sample = 0; sample < 8; ++sample) {
+            uint64_t flags =
+                cpu | semantics | GOC_SEMANTICS_STRICT | goc_test::scalar_fp_flags(state);
+            uint32_t raw = input[op & 1][sample];
+            uint32_t want = expected[op & 1][op / 2][sample];
+            bool flushed = flags & GOC_FP_FLUSH_INPUT_DENORMALS;
+            if (sample >= 6 && flushed)
+              want = raw & (op & 1 ? 0x8000U : 0x80000000U);
+            uint32_t words[] = {123, raw | (op & 1 ? 0x7c010000U : 0), 456};
+            uint32_t exceptions = 0xa5000040;
+            ASSERT_EQ(
+                goc_test::scalar_round_functions[op](flags, 0, words + 1, words[1], &exceptions),
+                GOC_SUCCESS);
+            EXPECT_EQ(words[1], want) << op << "/" << state << "/" << sample;
+            EXPECT_EQ(words[0], 123U);
+            EXPECT_EQ(words[2], 456U);
+            // Discarding a fractional part does not generate INEXACT.
+            uint32_t generated =
+                semantics && sample >= 6 && !flushed ? GOC_EXCEPTION_INPUT_DENORM : 0;
+            EXPECT_EQ(exceptions, 0xa5000040U | generated);
+          }
+}

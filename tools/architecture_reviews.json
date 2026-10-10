@@ -1414,5 +1414,35 @@
       "s_cmp_nlt_f32",
       "s_cmp_nlt_f16"
     ]
+  },
+  {
+    "heading": "Scalar floating rounding architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/scalar_round_test.cpp",
+    "mnemonics": [
+      "s_ceil_f32",
+      "s_floor_f32",
+      "s_trunc_f32",
+      "s_rndne_f32",
+      "s_ceil_f16",
+      "s_floor_f16",
+      "s_trunc_f16",
+      "s_rndne_f16"
+    ]
+  },
+  {
+    "heading": "Scalar floating conversion architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/scalar_convert_test.cpp",
+    "mnemonics": [
+      "s_cvt_f32_i32",
+      "s_cvt_f32_u32",
+      "s_cvt_i32_f32",
+      "s_cvt_u32_f32",
+      "s_cvt_f16_f32",
+      "s_cvt_f32_f16",
+      "s_cvt_hi_f32_f16",
+      "s_cvt_pk_rtz_f16_f32"
+    ]
   }
 ]

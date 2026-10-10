@@ -136,3 +136,43 @@ TEST(ScalarConvert, TruncationBoundariesAcrossScalarAndVector) {
         EXPECT_EQ(word, sample[2]);
     }
 }
+
+TEST(ScalarConvert, OptionalStateAndLooseFallbackContracts) {
+  const decltype(&goc_s_cvt_f32_i32) unary[] = {
+      goc_s_cvt_f32_i32, goc_s_cvt_f32_u32, goc_s_cvt_i32_f32,   goc_s_cvt_u32_f32,
+      goc_s_cvt_f16_f32, goc_s_cvt_f32_f16, goc_s_cvt_hi_f32_f16};
+  for (unsigned op = 0; op < 8; ++op) {
+    auto call = [&](uint64_t flags, uint64_t mode, uint32_t *d, uint32_t a, uint32_t *state) {
+      return op == 7 ? goc_s_cvt_pk_rtz_f16_f32(flags, mode, d, a, 0x80000001, state)
+                     : unary[op](flags, mode, d, a, state);
+    };
+    for (unsigned state = 0; state < 8; ++state)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (uint32_t a : {0U, 0x80000000U, 0x7f800001U, 0x387fe000U, 0x3fc00000U}) {
+          uint64_t flags = cpu | goc_test::scalar_fp_flags(state);
+          uint32_t result, fallback, exceptions = 0xa5000040;
+          ASSERT_EQ(call(flags, 0, &result, a, &exceptions), GOC_SUCCESS);
+          EXPECT_EQ(exceptions, 0xa5000040U);
+          ASSERT_EQ(call(flags | GOC_SEMANTICS_EXACT_EMPIRICAL, 0, &fallback, a, nullptr),
+                    GOC_SUCCESS);
+          EXPECT_EQ(fallback, result);
+        }
+    for (uint64_t semantics : {GOC_SEMANTICS_EXACT_EMPIRICAL, 2 * GOC_SEMANTICS_EXACT_EMPIRICAL,
+                               3 * GOC_SEMANTICS_EXACT_EMPIRICAL})
+      for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT})
+        for (uint64_t mode : {uint64_t(0), uint64_t(GOC_ALU_NEG_A), uint64_t(1) << 63}) {
+          uint32_t output = 0xdeadbeef, exceptions = 0xa5000040;
+          EXPECT_EQ(call(semantics | strict, mode, &output, 0x7f800001, &exceptions),
+                    GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+          EXPECT_EQ(output, 0xdeadbeefU);
+          EXPECT_EQ(exceptions, 0xa5000040U);
+        }
+    for (unsigned bit = 0; bit < 64; ++bit) {
+      uint32_t output = 0xdeadbeef, exceptions = 0xa5000040;
+      EXPECT_EQ(call(GOC_SEMANTICS_LOOSE, 1ULL << bit, &output, 0, &exceptions),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(output, 0xdeadbeefU);
+      EXPECT_EQ(exceptions, 0xa5000040U);
+    }
+  }
+}

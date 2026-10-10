@@ -567,8 +567,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_cbranch_scc1` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_cbranch_vccnz` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_cbranch_vccz` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
-| `s_ceil_f16` | — | yes | in | `goc_s_ceil_f16` | — | API present; semantic audit pending |
-| `s_ceil_f32` | — | yes | in | `goc_s_ceil_f32` | — | API present; semantic audit pending |
+| `s_ceil_f16` | — | yes | in | `goc_s_ceil_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-rounding-architecture-contracts) |
+| `s_ceil_f32` | — | yes | in | `goc_s_ceil_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-rounding-architecture-contracts) |
 | `s_clause` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
 | `s_cls_i32` | yes | yes | in | `goc_s_cls_i32` | `s_flbit_i32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_cls_i32_i64` | yes | yes | in | `goc_s_cls_i32_i64` | `s_flbit_i32_i64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
@@ -636,14 +636,14 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_cselect_b64` | yes | yes | in | `goc_s_cselect_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_ctz_i32_b32` | yes | yes | in | `goc_s_ctz_i32_b32` | `s_ff1_i32_b32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_ctz_i32_b64` | yes | yes | in | `goc_s_ctz_i32_b64` | `s_ff1_i32_b64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
-| `s_cvt_f16_f32` | — | yes | in | `goc_s_cvt_f16_f32` | — | API present; semantic audit pending |
-| `s_cvt_f32_f16` | — | yes | in | `goc_s_cvt_f32_f16` | — | API present; semantic audit pending |
-| `s_cvt_f32_i32` | — | yes | in | `goc_s_cvt_f32_i32` | — | API present; semantic audit pending |
-| `s_cvt_f32_u32` | — | yes | in | `goc_s_cvt_f32_u32` | — | API present; semantic audit pending |
-| `s_cvt_hi_f32_f16` | — | yes | in | `goc_s_cvt_hi_f32_f16` | — | API present; semantic audit pending |
-| `s_cvt_i32_f32` | — | yes | in | `goc_s_cvt_i32_f32` | — | API present; semantic audit pending |
-| `s_cvt_pk_rtz_f16_f32` | — | yes | in | `goc_s_cvt_pk_rtz_f16_f32` | — | API present; semantic audit pending |
-| `s_cvt_u32_f32` | — | yes | in | `goc_s_cvt_u32_f32` | — | API present; semantic audit pending |
+| `s_cvt_f16_f32` | — | yes | in | `goc_s_cvt_f16_f32` | — | [loose contract reviewed; see limitations](COVERAGE.md#scalar-floating-conversion-architecture-contracts) |
+| `s_cvt_f32_f16` | — | yes | in | `goc_s_cvt_f32_f16` | — | [loose contract reviewed; see limitations](COVERAGE.md#scalar-floating-conversion-architecture-contracts) |
+| `s_cvt_f32_i32` | — | yes | in | `goc_s_cvt_f32_i32` | — | [loose contract reviewed; see limitations](COVERAGE.md#scalar-floating-conversion-architecture-contracts) |
+| `s_cvt_f32_u32` | — | yes | in | `goc_s_cvt_f32_u32` | — | [loose contract reviewed; see limitations](COVERAGE.md#scalar-floating-conversion-architecture-contracts) |
+| `s_cvt_hi_f32_f16` | — | yes | in | `goc_s_cvt_hi_f32_f16` | — | [loose contract reviewed; see limitations](COVERAGE.md#scalar-floating-conversion-architecture-contracts) |
+| `s_cvt_i32_f32` | — | yes | in | `goc_s_cvt_i32_f32` | — | [loose contract reviewed; see limitations](COVERAGE.md#scalar-floating-conversion-architecture-contracts) |
+| `s_cvt_pk_rtz_f16_f32` | — | yes | in | `goc_s_cvt_pk_rtz_f16_f32` | — | [loose contract reviewed; see limitations](COVERAGE.md#scalar-floating-conversion-architecture-contracts) |
+| `s_cvt_u32_f32` | — | yes | in | `goc_s_cvt_u32_f32` | — | [loose contract reviewed; see limitations](COVERAGE.md#scalar-floating-conversion-architecture-contracts) |
 | `s_dcache_inv` | yes | yes | out: SMEM | — | — | excluded: memory/control/scheduling |
 | `s_decperflevel` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
 | `s_delay_alu` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
@@ -651,8 +651,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_endpgm` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_endpgm_ordered_ps_done` | yes | — | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_endpgm_saved` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
-| `s_floor_f16` | — | yes | in | `goc_s_floor_f16` | — | API present; semantic audit pending |
-| `s_floor_f32` | — | yes | in | `goc_s_floor_f32` | — | API present; semantic audit pending |
+| `s_floor_f16` | — | yes | in | `goc_s_floor_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-rounding-architecture-contracts) |
+| `s_floor_f32` | — | yes | in | `goc_s_floor_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-rounding-architecture-contracts) |
 | `s_fmaak_f32` | — | yes | in | `goc_s_fmaak_f32` | — | API present; semantic audit pending |
 | `s_fmac_f16` | — | yes | in | `goc_s_fmac_f16` | — | API present; semantic audit pending |
 | `s_fmac_f32` | — | yes | in | `goc_s_fmac_f32` | — | API present; semantic audit pending |
@@ -739,8 +739,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_quadmask_b32` | yes | yes | in | `goc_s_quadmask_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_quadmask_b64` | yes | yes | in | `goc_s_quadmask_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_rfe_b64` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
-| `s_rndne_f16` | — | yes | in | `goc_s_rndne_f16` | — | API present; semantic audit pending |
-| `s_rndne_f32` | — | yes | in | `goc_s_rndne_f32` | — | API present; semantic audit pending |
+| `s_rndne_f16` | — | yes | in | `goc_s_rndne_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-rounding-architecture-contracts) |
+| `s_rndne_f32` | — | yes | in | `goc_s_rndne_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-rounding-architecture-contracts) |
 | `s_round_mode` | yes | yes | in | `goc_s_round_mode` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#guest-mode-architecture-contracts) |
 | `s_sendmsg` | yes | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |
 | `s_sendmsg_rtn_b32` | yes | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |
@@ -768,8 +768,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_subb_u32` | yes | — | in | `goc_s_subb_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_swappc_b64` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_trap` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
-| `s_trunc_f16` | — | yes | in | `goc_s_trunc_f16` | — | API present; semantic audit pending |
-| `s_trunc_f32` | — | yes | in | `goc_s_trunc_f32` | — | API present; semantic audit pending |
+| `s_trunc_f16` | — | yes | in | `goc_s_trunc_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-rounding-architecture-contracts) |
+| `s_trunc_f32` | — | yes | in | `goc_s_trunc_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-rounding-architecture-contracts) |
 | `s_ttracedata` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
 | `s_ttracedata_imm` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
 | `s_version` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
