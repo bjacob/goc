@@ -141,6 +141,44 @@ register names sometimes omit these prefixes.
 - Its supported write path is largely whole-value merge plus state dispatch;
   that does not establish reserved-bit write masks for every register.
 
+## gfx1201 field-access capture
+
+`tests/capture_hwreg.py OUTPUT_DIR` generates a HIP probe for user-mode access
+to `MODE` (ID 1) and `EXCP_FLAG_USER` (ID 18). Each case saves and restores the
+selected GPU register. It records the initialized full register, the updated
+full register, and the field subsequently read by `S_GETREG_B32`.
+
+The capture covers both zero/all-one initialization, four SGPR source patterns
+(`0`, `0xffffffff`, `0xa5a5a5a5`, `0x5a5a5a5a`), the literal-all-one SETREG
+variant, and all 32 offsets × 32 encoded widths. All **20,480 triples** match
+the independent integer checks in `tests/check_hwreg_capture.py`:
+
+| Register | Observed writable mask | Fields |
+|---|---|---|
+| `MODE` | `0x098000ff` | FP controls 0–7, `FP16_OVFL` 23, scalar prefetch 24, performance disable 27 |
+| `EXCP_FLAG_USER` | `0xc000007f` | Arithmetic exceptions 0–6, buffer OOB 30, LOD clamped 31 |
+
+For these registers, shifted field masks are intersected with the writable
+mask; fields extending beyond bit 31 are clipped, including width-32 fields
+with nonzero offsets. Reads right-shift then mask the requested width. Literal
+and SGPR writes with the same source agree. Zero writes clear selected exception
+flags, while unselected writable bits survive. Reserved bits read back zero
+after both initializations and every update in this capture.
+
+These results do **not** establish RDNA3 masks, privilege filtering, read-only
+register writes, snapshot ownership/unlock, or instruction-buffer flush effects.
+RDNA3 `MODE.EXCP_EN` also needs care: its field spans bits 12–21, but the
+manual's individual enable list omits bit 20. A union of named field widths is
+not sufficient evidence that every bit in that union is writable.
+
+Local capture: `../goc-build/coverage-work/hwreg-report-captures/capture.bin`.
+SHA256: `399b3ca4c4f9eacfe1bc7b94c6d3ff6c575f2ec8855566dae46d972019b0e1a8`.
+Recheck with:
+
+```sh
+python3 tests/check_hwreg_capture.py ../goc-build/coverage-work/hwreg-report-captures/capture.bin
+```
+
 ## API and validation gates
 
 - Preserve one trailing nullable output pointer per architectural register that

@@ -3205,3 +3205,20 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   CPU-2-pinned samples use at least 50 ms thread CPU time per case. Binaries and
   samples use `../goc-build/coverage-work/fract-*`; the final summary is
   `/tmp/goc-fract-final-timing.log`. No sparse-mask specialization was added.
+
+### HWREG field-access hardware evidence
+
+- Added `tests/capture_hwreg.py` and `tests/check_hwreg_capture.py`. The gfx1201
+  capture verifies **20,480** `(initialized, updated, extracted)` register
+  triples for user-mode `MODE` and `EXCP_FLAG_USER`, all encoded offsets and
+  widths, zero/all-one seeds, four source patterns, and SGPR/literal SETREG.
+- Confirmed writable masks `0x098000ff` and `0xc000007f`, clipping at bit 31,
+  preservation of unselected bits, exception clearing rather than sticky OR,
+  and literal/SGPR equivalence. `HWREG_AUDIT.md` records provenance, the raw
+  capture hash, reproduction command, and the limits of this evidence.
+- The checker passes the real hardware capture and rejects truncated,
+  oversized, and deliberately corrupted triples. Regenerating the HIP probe
+  produces the same source that was compiled and run for the capture.
+- No production APIs changed in this evidence-only checkpoint. Inventory
+  remains **806/809**; privileged accesses, other register IDs, snapshot read
+  effects, RDNA3 masks, and the public HWREG APIs remain outstanding.
