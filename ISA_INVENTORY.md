@@ -1128,10 +1128,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_dot4_f32_bf8_fp8` | — | yes | in | `goc_v_dot4_f32_bf8_fp8` | — | API present; semantic audit pending |
 | `v_dot4_f32_fp8_bf8` | — | yes | in | `goc_v_dot4_f32_fp8_bf8` | — | API present; semantic audit pending |
 | `v_dot4_f32_fp8_fp8` | — | yes | in | `goc_v_dot4_f32_fp8_fp8` | — | API present; semantic audit pending |
-| `v_dot4_i32_iu8` | yes | yes | in | `goc_v_dot4_i32_iu8` | `v_dot4_i32_i8` | API present; semantic audit pending |
-| `v_dot4_u32_u8` | yes | yes | in | `goc_v_dot4_u32_u8` | — | API present; semantic audit pending |
-| `v_dot8_i32_iu4` | yes | yes | in | `goc_v_dot8_i32_iu4` | `v_dot8_i32_i4` | API present; semantic audit pending |
-| `v_dot8_u32_u4` | yes | yes | in | `goc_v_dot8_u32_u4` | — | API present; semantic audit pending |
+| `v_dot4_i32_iu8` | yes | yes | in | `goc_v_dot4_i32_iu8`<br>`goc_v_dot4_i32_iu8_wave64` | `v_dot4_i32_i8` | API present; semantic audit pending |
+| `v_dot4_u32_u8` | yes | yes | in | `goc_v_dot4_u32_u8`<br>`goc_v_dot4_u32_u8_wave64` | — | API present; semantic audit pending |
+| `v_dot8_i32_iu4` | yes | yes | in | `goc_v_dot8_i32_iu4`<br>`goc_v_dot8_i32_iu4_wave64` | `v_dot8_i32_i4` | API present; semantic audit pending |
+| `v_dot8_u32_u4` | yes | yes | in | `goc_v_dot8_u32_u4`<br>`goc_v_dot8_u32_u4_wave64` | — | API present; semantic audit pending |
 | `v_dual_add_f32` | yes | yes | in | `goc_v_dual_add_f32` | — | API present; semantic audit pending |
 | `v_dual_add_nc_u32` | yes | yes | in | `goc_v_dual_add_nc_u32` | — | API present; semantic audit pending |
 | `v_dual_and_b32` | yes | yes | in | `goc_v_dual_and_b32` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 220 Wave32 EXEC-taking APIs without a corresponding
+There are 216 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1458,7 +1458,6 @@ this screen; their width requirements remain a separate audit.
 | [`half_trig.cpp`](src/half_trig.cpp) | `goc_v_cos_f16`, `goc_v_sin_f16` |
 | [`half_unary.cpp`](src/half_unary.cpp) | `goc_v_ceil_f16`, `goc_v_exp_f16`, `goc_v_floor_f16`, `goc_v_fract_f16`, `goc_v_frexp_mant_f16`, `goc_v_log_f16`, `goc_v_rcp_f16`, `goc_v_rndne_f16`, `goc_v_rsq_f16`, `goc_v_sqrt_f16`, `goc_v_trunc_f16` |
 | [`integer_conversion.cpp`](src/integer_conversion.cpp) | `goc_v_cvt_i32_i16`, `goc_v_cvt_pk_i16_i32`, `goc_v_cvt_pk_u16_u32`, `goc_v_cvt_u32_u16` |
-| [`integer_dot.cpp`](src/integer_dot.cpp) | `goc_v_dot4_i32_iu8`, `goc_v_dot4_u32_u8`, `goc_v_dot8_i32_iu4`, `goc_v_dot8_u32_u4` |
 | [`interp16.cpp`](src/interp16.cpp) | `goc_v_interp_p10_f16_f32`, `goc_v_interp_p10_rtz_f16_f32`, `goc_v_interp_p2_f16_f32`, `goc_v_interp_p2_rtz_f16_f32` |
 | [`interp32.cpp`](src/interp32.cpp) | `goc_v_interp_p10_f32`, `goc_v_interp_p2_f32` |
 | [`ldexp.cpp`](src/ldexp.cpp) | `goc_v_ldexp_f32`, `goc_v_ldexp_f64` |

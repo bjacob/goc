@@ -47,6 +47,26 @@ int dot(uint64_t flags, uint32_t exec_mask, uint32_t modifiers, uint32_t *const 
   return GOC_SUCCESS;
 }
 
+template <int Bits, bool Unsigned>
+int dot_wave64(uint64_t flags, uint64_t exec_mask, uint64_t modifiers, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (modifiers >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  if (int error = dot<Bits, Unsigned>(flags, 0, modifiers, nullptr, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32,
+                   *source_c = c[0] + half * 32;
+    if (int error = dot<Bits, Unsigned>(flags, uint32_t(exec_mask >> (half * 32)), modifiers, &dest,
+                                        &source_a, &source_b, &source_c))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_dot4_i32_iu8(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
@@ -79,4 +99,28 @@ int goc_v_dot8_u32_u4(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, ui
   if (modifiers >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return dot<4, true>(flags, exec_mask, modifiers, d, a, b, c);
+}
+
+int goc_v_dot4_i32_iu8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t modifiers,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c) {
+  return dot_wave64<8, false>(flags, exec_mask, modifiers, d, a, b, c);
+}
+
+int goc_v_dot4_u32_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t modifiers,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c) {
+  return dot_wave64<8, true>(flags, exec_mask, modifiers, d, a, b, c);
+}
+
+int goc_v_dot8_i32_iu4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t modifiers,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c) {
+  return dot_wave64<4, false>(flags, exec_mask, modifiers, d, a, b, c);
+}
+
+int goc_v_dot8_u32_u4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t modifiers,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c) {
+  return dot_wave64<4, true>(flags, exec_mask, modifiers, d, a, b, c);
 }

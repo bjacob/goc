@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cfenv>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <random>
@@ -152,4 +153,62 @@ TEST(IntegerDot, ValidationAndFpEnvironment) {
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
       }
     }
+}
+
+TEST(IntegerDot, Wave64ModifiersMasksAliasesAndBoundaryInputs) {
+  const decltype(&goc_v_dot4_i32_iu8_wave64) wave64[] = {
+      goc_v_dot4_i32_iu8_wave64, goc_v_dot4_u32_u8_wave64, goc_v_dot8_i32_iu4_wave64,
+      goc_v_dot8_u32_u4_wave64};
+  const uint32_t patterns[] = {0,          UINT32_MAX, 0x80808080, 0x7f7f7f7f,
+                               0x88888888, 0x77777777, 0x01010101, 0xffff0101};
+  std::mt19937 rng(874236);
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (unsigned mode = 0; mode < 8; ++mode) {
+          if ((op & 1) && (mode & 3))
+            continue;
+          uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+          uint32_t modifiers = (mode & 3) | (mode & 4 ? GOC_DOT_CLAMP : 0);
+          EXPECT_EQ(wave64[op](flags, 0, modifiers, nullptr, nullptr, nullptr, nullptr),
+                    GOC_SUCCESS);
+          for (uint64_t exec_mask :
+               {uint64_t(0), uint64_t(UINT64_MAX), uint64_t(1ULL << 63),
+                uint64_t(0xaaaaaaaa55555555ULL), uint64_t(0xffffffff00000000ULL)})
+            for (unsigned alias = 0; alias < 4; ++alias)
+              for (unsigned batch = 0; batch < 4; ++batch) {
+                uint32_t initial[4][66], words[4][66];
+                for (unsigned lane = 0; lane < 66; ++lane) {
+                  initial[0][lane] = batch ? rng() : patterns[lane % 8];
+                  initial[1][lane] = batch ? rng() : patterns[(lane / 8) % 8];
+                  initial[2][lane] = batch == 0   ? 0x7fffffff
+                                     : batch == 1 ? 0x80000000
+                                     : batch == 2 ? UINT32_MAX
+                                                  : rng();
+                  initial[3][lane] = 0xdeadbeef;
+                }
+                std::memcpy(words, initial, sizeof words);
+                const uint32_t *a = words[0] + 1, *b = words[1] + 1, *c = words[2] + 1;
+                unsigned dest = alias ? alias - 1 : 3;
+                uint32_t *d = words[dest] + 1;
+                ASSERT_EQ(wave64[op](flags, exec_mask, modifiers, &d, &a, &b, &c), GOC_SUCCESS);
+                for (unsigned lane = 0; lane < 64; ++lane)
+                  ASSERT_EQ(d[lane], (exec_mask >> lane & 1)
+                                         ? reference(op, modifiers, initial[0][lane + 1],
+                                                     initial[1][lane + 1], initial[2][lane + 1])
+                                         : initial[dest][lane + 1]);
+                EXPECT_EQ(words[dest][0], initial[dest][0]);
+                EXPECT_EQ(words[dest][65], initial[dest][65]);
+              }
+          for (auto invalid :
+               {1ULL << 63, uint64_t(GOC_DPP8) | 0ULL, uint64_t(GOC_ALU_HIGH_A) | 0ULL}) {
+            EXPECT_EQ(wave64[op](flags, UINT64_MAX, invalid, nullptr, nullptr, nullptr, nullptr),
+                      GOC_ERROR_INVALID_FLAGS);
+          }
+          if (op & 1) {
+            EXPECT_EQ(
+                wave64[op](flags, UINT64_MAX, GOC_DOT_SIGNED_A, nullptr, nullptr, nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+          }
+        }
 }

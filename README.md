@@ -384,7 +384,8 @@ sign/selection/CLAMP combinations in both semantics, masks and aliases, with
 hardware-captured special-value fixtures recovered through inverse modifiers.
 The benchmark compares default, NEG_LO_A, and combined selection/NEG_HI_B cases.
 
-Integer DOT4/DOT8 use one VGPR for each operand. I32_IU forms support independent
+Integer DOT4/DOT8 support Wave32 and Wave64 with shared scalar/v3 kernels
+and exact integer results in both semantics. They use one VGPR for each operand. I32_IU forms support independent
 `GOC_DOT_SIGNED_A` / `GOC_DOT_SIGNED_B` flags and a signed accumulator;
 U32_U forms use unsigned factors and accumulators. `GOC_DOT_CLAMP` saturates
 only after the complete dot plus accumulator; otherwise results wrap modulo

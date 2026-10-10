@@ -3720,6 +3720,24 @@ int goc_v_dot8_u32_u4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       const uint32_t *const *c);
 
+// Wave64 integer DOT uses the same packed operands, modifiers and exact
+// arithmetic, with 64 lanes per VGPR. DPP is unsupported at both widths.
+int goc_v_dot4_i32_iu8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_dot4_u32_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c);
+
+int goc_v_dot8_i32_iu4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_dot8_u32_u4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c);
+
 // WMMA modifier layout follows neg_lo[0:2], then neg_hi[0:2]. For C,
 // neg_hi means absolute value, applied before neg_lo negation.
 static const uint32_t GOC_WMMA_NEG_LO_A = 1U << 0;

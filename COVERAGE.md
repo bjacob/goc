@@ -911,3 +911,22 @@ throughput measurement is claimed. The width-review queue is now 220 candidates.
 
 Validation: all 772 tests pass on Clang 21 and GCC 15 Release. All thirteen
 SAD, Wave64 SAD and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 integer DOT4/DOT8
+
+Added the four signed/mixed and unsigned byte/nibble dot-product Wave64 APIs.
+RDNA3 and RDNA4 use the same packed operands and signedness controls; the
+entry points remain architecture-neutral. Each operand is one VGPR, DPP is
+rejected, and all modifier combinations reuse the existing scalar/v3 kernels.
+Saturation remains after the whole dot plus accumulator, without intermediate
+byte-pair saturation. Both widths support exact integer semantics.
+
+The Wave64 tests use the independent radix-based reference for every
+signedness/CLAMP combination, both semantics and all CPU paths, boundary and
+random inputs, upper/lower masks, aliases, and guard words. Zero-EXEC and invalid
+calls require no operand access. Existing cancellation and host-environment
+tests continue to exercise the shared kernels. No new hardware capture or
+performance measurement is claimed. The width-review queue is now 216 APIs.
+
+Validation: all 773 tests pass on Clang 21 and GCC 15 Release. All five
+integer DOT and instruction-flag tests pass under ASan/UBSan.
