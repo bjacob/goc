@@ -201,6 +201,12 @@ RDNA3 WMMA support is described above.
 The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 `goc_<mnemonic>_wave64`, supporting loose and empirical exact modes.
 
+Exact support in this summary is subject to each API's guest-mode and modifier
+restrictions; it does not imply exact optional exception reporting. The
+[contract reviews](COVERAGE.md#family-checklist) distinguish numerical ports,
+reporting availability, and unsupported modes. In particular, the borrowed FP32
+FMA-based paths support nearest-even rounding, not arbitrary guest rounding modes.
+
 | Mnemonic | Loose semantics | Empirical exact semantics |
 | --- | --- | --- |
 | `v_min3_num_f16`, `v_max3_num_f16`, `v_minmax_num_f16`, `v_maxmin_num_f16` | Scalar, x86-64-v3 | Not implemented |
@@ -212,14 +218,17 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_exp_f16`, `v_log_f16` | Scalar | Not implemented |
 | `v_add_f16`, `v_sub_f16`, `v_subrev_f16`, `v_mul_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_min_num_f16`, `v_max_num_f16`, `v_minimum_f16`, `v_maximum_f16` | Scalar, x86-64-v3 | Not implemented |
-| `v_add_f32`, `v_sub_f32`, `v_subrev_f32`, `v_mul_f32`, `v_mul_dx9_zero_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_add_f32`, `v_mul_f32` | Scalar, x86-64-v3 | Borrowed scalar integer FMA model; both architectures; reporting unsupported |
+| `v_sub_f32`, `v_subrev_f32`, `v_mul_dx9_zero_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_min_num_f32`, `v_max_num_f32`, `v_minimum_f32`, `v_maximum_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_min3_num_f32`, `v_max3_num_f32`, `v_minmax_num_f32`, `v_maxmin_num_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_minimum3_f32`, `v_maximum3_f32`, `v_minimummaximum_f32`, `v_maximumminimum_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_med3_num_f32` | Scalar, x86-64-v3 | Not implemented |
-| `v_fma_mix_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_fma_mix_f32` | Scalar, x86-64-v3 | Borrowed scalar integer FMA model; both architectures; reporting unsupported |
 | `v_fma_mixlo_f16`, `v_fma_mixhi_f16` | Scalar, x86-64-v3 | Scalar, rocjitsu-derived direct FP16 rounding |
-| `v_fma_f32`, `v_fma_dx9_zero_f32`, `v_fmac_dx9_zero_f32` (RDNA3) | Scalar, AVX2/FMA, AVX-512 | Not implemented |
+| `v_fma_f32`, `v_fmac_f32` | Scalar, AVX2/FMA, AVX-512 | Borrowed scalar integer FMA model; both architectures; reporting unsupported |
+| `v_fma_dx9_zero_f32`, `v_fmac_dx9_zero_f32` (RDNA3 only for FMAC) | Scalar, AVX2/FMA, AVX-512 | Borrowed scalar DX9 FMA model; FMAC state contract still under review |
+| `s_fmac_f32`, `s_fmaak_f32`, `s_fmamk_f32` (RDNA4) | Scalar | Borrowed integer FMA model; reporting unsupported |
 | `v_add_f64`, `v_mul_f64`, `v_fma_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_min_num_f64`, `v_max_num_f64`, `v_minimum_f64`, `v_maximum_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_trunc_f64`, `v_ceil_f64`, `v_rndne_f64`, `v_floor_f64`, `v_fract_f64` | Scalar, x86-64-v3 | Not implemented |

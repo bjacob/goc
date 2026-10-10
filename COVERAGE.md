@@ -102,6 +102,25 @@ exclusive names despite including them in the review counts. A synthetic-input
 regression test checks both exclusive targets, missing helpers and pending
 statuses. All ten audit-tool tests pass; no production code changed.
 
+## Current validation baseline
+
+At `02b9297` (production code unchanged since the last implementation validation),
+all **1,184** CTests pass with Clang 21 Release and GCC 15 Release. All **46**
+selected Binary/FmaExact/MixedFma/ScalarFma tests pass under Clang ASan/UBSan.
+Logs are `coverage-work/completion-clang-tests.log`,
+`coverage-work/completion-gcc-tests.log`, and
+`coverage-work/completion-fma-tests.log` in the respective build directories.
+All ten tooling tests pass; regenerating the ISA and global-state naming audits
+produces no changes. The latter resolves all 962 existing reporting signatures,
+without proving whether any required parameter is missing.
+
+Undefined-symbol references in all 171 compiled `goc_*_test` objects include
+every one of the 1,791 public instruction APIs. This establishes test-reference
+coverage, not that every referenced function executes in every run, every CPU
+path is exercised, or every numerical/encoding case is tested. The README's
+stale exact-support rows for FP32 ADD/MUL and fused arithmetic are corrected
+against the current implementations and these tests.
+
 ## Remaining completion checks
 
 - Resolve RDNA3 DX9 FMAC's global-state applicability from existing authoritative
