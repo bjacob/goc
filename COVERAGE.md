@@ -930,3 +930,21 @@ performance measurement is claimed. The width-review queue is now 216 APIs.
 
 Validation: all 773 tests pass on Clang 21 and GCC 15 Release. All five
 integer DOT and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 saturation and FP16 packing
+
+Added Wave64 SAT_PK_U8_I16 and PACK_B32_F16, sharing their scalar/v3/v4
+kernels and DPP routing. Both widths now accept strict exact result semantics.
+SAT preserves the unselected destination half; PACK preserves payloads and
+subnormals while quieting signaling NaNs. Exact PACK with non-null optional
+exception output remains explicitly unsupported; loose mode skips reporting.
+
+The Wave64 exact tests reproduce the existing RX 9070 capture digests for all
+65536 encodings and 66 modifier combinations, regrouped into 64-lane calls.
+This validates result bits against existing captures, not new native Wave64
+hardware execution. Independent DPP tests cover every row mask, all modifiers,
+CPU paths, upper EXEC bits, aliases and guards. Empty/invalid calls and optional
+state opt-out/rejection are covered. The width-review queue is now 214 APIs.
+
+Validation: all 775 tests pass on Clang 21 and GCC 15 Release. All ten packing
+and instruction-flag tests pass under ASan/UBSan.

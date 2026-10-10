@@ -233,7 +233,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_mbcnt_lo_u32_b32` (wave32 and wave64), `v_mbcnt_hi_u32_b32` (wave64) | Scalar, x86-64-v3, x86-64-v4 | Same paths, bit-exact |
 | `v_mbcnt_hi_u32_b32` (wave32) | Scalar, x86-64-v4 | Same paths, bit-exact |
 | `v_and_b16`, `v_or_b16`, `v_xor_b16`, `v_not_b16` | Scalar, x86-64-v4; both wave sizes | Exact bitwise operations |
-| `v_sat_pk_u8_i16`, `v_pack_b32_f16` | Scalar, x86-64-v3, x86-64-v4; all supported modifiers | Not implemented |
+| `v_sat_pk_u8_i16`, `v_pack_b32_f16` | Scalar, x86-64-v3, x86-64-v4; all supported modifiers | Exact result bits; both wave sizes; PACK reporting unsupported |
 | `v_and_b32`, `v_or_b32`, `v_xor_b32`, `v_not_b32`, `v_xnor_b32` | Scalar, x86-64-v4; both wave sizes | Exact bitwise operations |
 | `v_bfe_u32`, `v_bfe_i32`, `v_bfm_b32`, `v_bfrev_b32`, `v_alignbit_b32`, `v_alignbyte_b32`, `v_perm_b32` | Scalar, x86-64-v3, x86-64-v4 | Exact integer operations; both wave sizes |
 | `v_bfi_b32` | Scalar, x86-64-v4 | Exact integer operations; both wave sizes |
@@ -1284,7 +1284,9 @@ DPP8/DPP16 on A without changing the physical counting lane. No arithmetic
 modifiers apply. All bit-count entry points support strict exact semantics on
 the same scalar and SIMD paths.
 
-Packing supports `v_sat_pk_u8_i16` and `v_pack_b32_f16`. The former saturates
+Packing supports `v_sat_pk_u8_i16` and `v_pack_b32_f16` at both wave sizes,
+with exact result bits and shared scalar/v3/v4 kernels. Exact PACK calls with
+a non-null exception output still return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`. The former saturates
 each signed I16 half to U8 and packs the bytes into the selected destination
 half, preserving the other half (`HIGH_D`). The latter selects source halves
 with `HIGH_A/B`, applies `ABS_A/B` before `NEG_A/B`, quiets signaling NaNs, and

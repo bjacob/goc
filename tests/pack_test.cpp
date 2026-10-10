@@ -76,8 +76,8 @@ TEST(Pack, ValidationAndEmptyMask) {
                   GOC_ERROR_INVALID_FLAGS);
       }
     }
-    EXPECT_EQ(goc_test::pack_call(variant, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
-                                  0, nullptr, nullptr, nullptr),
+    EXPECT_EQ(goc_test::pack_call(variant, (2ULL << 16) | GOC_SEMANTICS_STRICT, 0, 0, nullptr,
+                                  nullptr, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
   }
 }
@@ -183,5 +183,90 @@ TEST(Pack, DppHardwareCorpusAndHostFpState) {
       EXPECT_EQ(std::fegetround(), rounding);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
     }
+  }
+}
+
+namespace {
+int pack_wave64(unsigned variant, uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                uint32_t *excp_flag_user = nullptr) {
+  return variant < 2 ? goc_v_sat_pk_u8_i16_wave64(flags, exec_mask, mode, d, a)
+                     : goc_v_pack_b32_f16_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+}
+} // namespace
+
+TEST(Pack, Wave64ExactResultsMatchCapturedEncodingCorpus) {
+  for (unsigned variant = 0; variant < 66; ++variant)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      uint64_t digest = goc_test::capture_hash_seed;
+      for (unsigned start = 0; start < 65536; start += 64) {
+        uint32_t words[3][64];
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          unsigned i = start + lane;
+          words[0][lane] = i | ((65535 - i) << 16);
+          words[1][lane] = (i * 0x7395a831u) ^ 0xa7925163u;
+          words[2][lane] = 0xcafebeef;
+        }
+        const uint32_t *a = words[0], *b = words[1];
+        uint32_t *d = words[2];
+        ASSERT_EQ(pack_wave64(variant, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                              UINT64_MAX, goc_test::pack_mode(variant), &d, &a, &b),
+                  GOC_SUCCESS);
+        for (auto word : words[2])
+          digest = goc_test::capture_hash_bytes(digest, word, 4);
+      }
+      EXPECT_EQ(digest, goc_test::pack_capture_digests[variant]);
+    }
+}
+
+TEST(Pack, Wave64DppModifiersAliasesAndGlobalStateContract) {
+  std::mt19937 random(718231);
+  for (unsigned variant = 0; variant < 66; ++variant)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (auto route : goc_test::dpp_modes)
+        for (unsigned rows = 0; rows < 16; ++rows)
+          for (unsigned target = 0; target < 3; ++target) {
+            uint32_t initial[3][66], words[3][66];
+            for (auto &reg : initial)
+              for (auto &word : reg)
+                word = random();
+            std::memcpy(words, initial, sizeof words);
+            const uint32_t *a = words[0] + 1, *b = words[1] + 1;
+            uint32_t *d = words[target] + 1;
+            uint64_t descriptor = route;
+            if (route & GOC_DPP16)
+              descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+            uint64_t exec_mask = 0x87654321fedcba98ULL;
+            ASSERT_EQ(pack_wave64(variant,
+                                  cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                  exec_mask, descriptor | goc_test::pack_mode(variant), &d, &a, &b),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              int source = 0;
+              bool enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+              uint32_t expected = initial[target][lane + 1];
+              if (enabled)
+                expected =
+                    goc_test::pack_reference(variant, source < 0 ? 0 : initial[0][source + 1],
+                                             initial[1][lane + 1], expected);
+              ASSERT_EQ(d[lane], expected);
+            }
+            EXPECT_EQ(words[target][0], initial[target][0]);
+            EXPECT_EQ(words[target][65], initial[target][65]);
+          }
+  uint32_t excp_flag_user = 0x12345678;
+  EXPECT_EQ(pack_wave64(2, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, nullptr,
+                        &excp_flag_user),
+            GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+  EXPECT_EQ(excp_flag_user, 0x12345678U);
+  EXPECT_EQ(pack_wave64(2, GOC_SEMANTICS_LOOSE, 0, 0, nullptr, nullptr, nullptr, &excp_flag_user),
+            GOC_SUCCESS);
+  EXPECT_EQ(excp_flag_user, 0x12345678U);
+  for (unsigned variant : {0U, 2U}) {
+    EXPECT_EQ(pack_wave64(variant, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0,
+                          nullptr, nullptr, nullptr),
+              GOC_SUCCESS);
+    EXPECT_EQ(pack_wave64(variant, 0, UINT64_MAX, 1ULL << 63, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
   }
 }

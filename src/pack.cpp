@@ -21,7 +21,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
   const uint32_t known = Saturate ? GOC_ALU_HIGH_D
                                   : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_ABS_A |
                                         GOC_ALU_ABS_B | GOC_ALU_NEG_A | GOC_ALU_NEG_B;
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -75,6 +75,30 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+template <bool Saturate>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b) {
+  if (int error = run<Saturate>(flags, 0, mode, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = nullptr;
+    if constexpr (!Saturate)
+      source_b = b[0] + half * 32;
+    if (int error = run<Saturate>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                                  &source_a, &source_b))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_sat_pk_u8_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -88,4 +112,17 @@ int goc_v_pack_b32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return run<false>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_sat_pk_u8_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a) {
+  return run_wave64<true>(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_pack_b32_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<false>(flags, exec_mask, instruction_flags, d, a, b);
 }

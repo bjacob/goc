@@ -1309,7 +1309,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_or3_b32` | yes | yes | in | `goc_v_or3_b32`<br>`goc_v_or3_b32_wave64` | — | API present; semantic audit pending |
 | `v_or_b16` | yes | yes | in | `goc_v_or_b16`<br>`goc_v_or_b16_wave64` | — | API present; semantic audit pending |
 | `v_or_b32` | yes | yes | in | `goc_v_or_b32`<br>`goc_v_or_b32_wave64` | — | API present; semantic audit pending |
-| `v_pack_b32_f16` | yes | yes | in | `goc_v_pack_b32_f16` | — | API present; semantic audit pending |
+| `v_pack_b32_f16` | yes | yes | in | `goc_v_pack_b32_f16`<br>`goc_v_pack_b32_f16_wave64` | — | API present; semantic audit pending |
 | `v_perm_b32` | yes | yes | in | `goc_v_perm_b32`<br>`goc_v_perm_b32_wave64` | — | API present; semantic audit pending |
 | `v_permlane16_b32` | yes | yes | in | `goc_v_permlane16_b32` | — | API present; semantic audit pending |
 | `v_permlane16_var_b32` | — | yes | in | `goc_v_permlane16_var_b32` | — | API present; semantic audit pending |
@@ -1368,7 +1368,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_sad_u16` | yes | yes | in | `goc_v_sad_u16`<br>`goc_v_sad_u16_wave64` | — | API present; semantic audit pending |
 | `v_sad_u32` | yes | yes | in | `goc_v_sad_u32`<br>`goc_v_sad_u32_wave64` | — | API present; semantic audit pending |
 | `v_sad_u8` | yes | yes | in | `goc_v_sad_u8`<br>`goc_v_sad_u8_wave64` | — | API present; semantic audit pending |
-| `v_sat_pk_u8_i16` | yes | yes | in | `goc_v_sat_pk_u8_i16` | — | API present; semantic audit pending |
+| `v_sat_pk_u8_i16` | yes | yes | in | `goc_v_sat_pk_u8_i16`<br>`goc_v_sat_pk_u8_i16_wave64` | — | API present; semantic audit pending |
 | `v_sin_f16` | yes | yes | in | `goc_v_sin_f16` | — | API present; semantic audit pending |
 | `v_sin_f32` | yes | yes | in | `goc_v_sin_f32` | — | API present; semantic audit pending |
 | `v_sqrt_f16` | yes | yes | in | `goc_v_sqrt_f16` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 216 Wave32 EXEC-taking APIs without a corresponding
+There are 214 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1465,7 +1465,6 @@ this screen; their width requirements remain a separate audit.
 | [`mixed_fma.cpp`](src/mixed_fma.cpp) | `goc_v_fma_mix_f32`, `goc_v_fma_mixhi_f16`, `goc_v_fma_mixlo_f16` |
 | [`mullit.cpp`](src/mullit.cpp) | `goc_v_mullit_f32` |
 | [`normalized.cpp`](src/normalized.cpp) | `goc_v_cvt_norm_i16_f16`, `goc_v_cvt_norm_u16_f16`, `goc_v_cvt_pk_norm_i16_f16`, `goc_v_cvt_pk_norm_i16_f32`, `goc_v_cvt_pk_norm_u16_f16`, `goc_v_cvt_pk_norm_u16_f32` |
-| [`pack.cpp`](src/pack.cpp) | `goc_v_pack_b32_f16`, `goc_v_sat_pk_u8_i16` |
 | [`packed_conversion.cpp`](src/packed_conversion.cpp) | `goc_v_cvt_pk_i16_f32`, `goc_v_cvt_pk_rtz_f16_f32`, `goc_v_cvt_pk_u16_f32` |
 | [`packed_fma.cpp`](src/packed_fma.cpp) | `goc_v_pk_fma_f16`, `goc_v_pk_fmac_f16` |
 | [`permlane.cpp`](src/permlane.cpp) | `goc_v_permlane16_b32`, `goc_v_permlane16_var_b32`, `goc_v_permlanex16_b32`, `goc_v_permlanex16_var_b32` |

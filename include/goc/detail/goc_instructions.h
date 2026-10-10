@@ -2029,7 +2029,7 @@ int goc_v_mullit_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fl
 // write the selected half of D, preserving the other half. HIGH_D selects the
 // upper destination half. DPP8/DPP16 permutes A before saturation; no other
 // instruction modifiers apply. A/D use one
-// VGPR each. Loose semantics only; all host FP state is preserved.
+// VGPR each. Exact result semantics; all host FP state is preserved.
 int goc_v_sat_pk_u8_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a);
 
@@ -2038,11 +2038,21 @@ int goc_v_sat_pk_u8_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 // toggles them. Signaling NaNs are quieted; other payload bits and subnormals
 // are preserved.
 // DPP8/DPP16 permutes A before half selection; B stays in its original lane.
-// No other instruction modifiers apply. Each operand uses one VGPR. Loose
-// semantics only; all host FP state is preserved.
+// No other instruction modifiers apply. Each operand uses one VGPR. Exact
+// result semantics are supported; all host FP state is preserved.
+// Exact non-null exception reporting is unsupported.
 int goc_v_pack_b32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                        uint32_t *excp_flag_user);
+
+// Wave64 packing uses the same operand layouts and modifiers, with 64 lanes
+// per VGPR. Both widths support exact result bits. PACK exact reporting
+// through a non-null excp_flag_user remains unsupported.
+int goc_v_sat_pk_u8_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a);
+int goc_v_pack_b32_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, uint32_t *excp_flag_user);
 
 // Bitwise equivalence: D = ~(A ^ B). Each operand uses one VGPR. Supports
 // DPP8/DPP16 on A; low 32 instruction-flag bits must be zero. Loose semantics
