@@ -1,0 +1,80 @@
+[
+  {
+    "heading": "FP32/integer conversion architecture review",
+    "semantics": "loose",
+    "tests": "tests/conversion32_architecture_test.cpp",
+    "mnemonics": [
+      "v_cvt_f32_i32",
+      "v_cvt_f32_u32",
+      "v_cvt_i32_f32",
+      "v_cvt_u32_f32",
+      "v_cvt_nearest_i32_f32",
+      "v_cvt_floor_i32_f32"
+    ]
+  },
+  {
+    "heading": "FP16 conversion architecture policies",
+    "semantics": "loose",
+    "tests": "tests/conversion16_architecture_test.cpp",
+    "mnemonics": [
+      "v_cvt_f16_i16",
+      "v_cvt_f16_u16",
+      "v_cvt_i16_f16",
+      "v_cvt_u16_f16",
+      "v_cvt_f16_f32",
+      "v_cvt_f32_f16"
+    ]
+  },
+  {
+    "heading": "FP64 conversion architecture review",
+    "semantics": "loose",
+    "tests": "tests/conversion64_architecture_test.cpp",
+    "mnemonics": [
+      "v_cvt_f64_i32",
+      "v_cvt_f64_u32",
+      "v_cvt_i32_f64",
+      "v_cvt_u32_f64",
+      "v_cvt_f64_f32",
+      "v_cvt_f32_f64"
+    ]
+  },
+  {
+    "heading": "Byte/nibble conversion architecture policies",
+    "semantics": "loose and exact",
+    "tests": "tests/byte_conversion_architecture_test.cpp",
+    "mnemonics": [
+      "v_cvt_f32_ubyte0",
+      "v_cvt_f32_ubyte1",
+      "v_cvt_f32_ubyte2",
+      "v_cvt_f32_ubyte3",
+      "v_cvt_off_f32_i4"
+    ]
+  },
+  {
+    "heading": "Packed and normalized conversion state/API review",
+    "semantics": "loose",
+    "tests": "tests/packed_conversion_architecture_test.cpp",
+    "mnemonics": [
+      "v_cvt_pk_rtz_f16_f32",
+      "v_cvt_pk_i16_f32",
+      "v_cvt_pk_u16_f32",
+      "v_cvt_pk_norm_i16_f16",
+      "v_cvt_pk_norm_u16_f16",
+      "v_cvt_pk_norm_i16_f32",
+      "v_cvt_pk_norm_u16_f32",
+      "v_cvt_norm_i16_f16",
+      "v_cvt_norm_u16_f16"
+    ]
+  },
+  {
+    "heading": "Integer conversion architecture review",
+    "semantics": "loose and exact",
+    "tests": "tests/integer_conversion_test.cpp",
+    "mnemonics": [
+      "v_cvt_i32_i16",
+      "v_cvt_u32_u16",
+      "v_cvt_pk_i16_i32",
+      "v_cvt_pk_u16_u32"
+    ]
+  }
+]

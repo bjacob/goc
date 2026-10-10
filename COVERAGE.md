@@ -3623,3 +3623,33 @@ policy branches or reporting work were added.
 
 The separate `v_cvt_pk_u8_f32` rounding discrepancy remains open; this slice does
 not resolve it or claim completion of the wider architecture audit.
+
+## Integer conversion architecture review
+
+Reviewed `v_cvt_i32_i16`, `v_cvt_u32_u16`, `v_cvt_pk_i16_i32`, and
+`v_cvt_pk_u16_u32` against rocjitsu revision `ffc144c564c`: both architectures'
+`generated/rdna*/vop3_exec.cpp` extension handlers and delegation to the shared
+packed-conversion helpers in `generated/shared/execute_shared.h`. Both targets
+sign-extend or zero-extend the selected half for widening, and saturate each
+32-bit input before packing source A into the low half and B into the high half.
+There is no floating-point policy or implicit exception-register update here.
+The shared unsuffixed APIs, including Wave64, remain appropriate. No new
+numerical model or hardware characterization was needed.
+
+The existing implementation supports loose and exact semantics with the same
+integer algorithm. `integer_conversion_test.cpp` covers every 16-bit input and
+saturation boundaries, both source-half selections, scalar/SIMD CPU selections,
+Wave32/Wave64, DPP8/DPP16, aliases, sparse EXEC, unaligned buffers, guard words,
+validation failures and preservation of host FP controls. This review covers the
+GoC operand/modifier contract; it does not make GoC an instruction decoder or
+claim support for every ISA encoding. Guest floating-point flags remain outside
+this integer API's accepted flag set, except the existing ignored FP16-overflow
+flag.
+
+Validation: all nine integer-conversion CTests pass in the existing Clang 21
+Release, GCC 15 Release and Clang ASan/UBSan builds. No production source or
+binary changed in this review. The explicit review ledger now records these
+four instructions and the 32 conversions reviewed in the preceding sections.
+Its generator tests reject unknown or duplicate mnemonics and missing evidence
+sections/test files. This ledger is a scoped contract checklist, not a replacement
+for the documented exact-semantics and encoding limitations.

@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Tests for review-queue extraction, not GPU semantic equivalence."""
 import unittest
+import json
+from pathlib import Path
+import tempfile
 import sys
 
 sys.dont_write_bytecode = True
-from architecture_audit import direct_policies, execution_functions, read_scope
+from architecture_audit import direct_policies, execution_functions, read_scope, read_reviews
 
 
 class ExtractionTest(unittest.TestCase):
@@ -44,6 +47,39 @@ inline void execute_v_second() { fp_mode::quiets_nan(0, true); }
         self.assertEqual(read_scope(text), [('v_a', True, True), ('v_b', False, True)])
         with self.assertRaises(ValueError):
             read_scope('unrecognized input')
+
+
+
+class ReviewRecordTest(unittest.TestCase):
+    def test_repository_records_reference_in_scope_mnemonics_and_evidence(self):
+        root = Path(__file__).resolve().parents[1]
+        scope = read_scope((root / 'ISA_INVENTORY.md').read_text())
+        reviews = read_reviews(root, {name for name, _, _ in scope})
+        self.assertIn('loose contract reviewed', reviews['v_cvt_f32_i32'])
+        self.assertIn('loose and exact contract reviewed', reviews['v_cvt_i32_i16'])
+        self.assertNotIn('v_cvt_pk_u8_f32', reviews)
+
+    def test_invalid_records_fail_instead_of_claiming_coverage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'tools').mkdir()
+            (root / 'COVERAGE.md').write_text('## Reviewed family\n')
+            (root / 'test.cpp').write_text('')
+            record = dict(heading='Reviewed family', semantics='loose',
+                          tests='test.cpp', mnemonics=['v_a'])
+            path = root / 'tools/architecture_reviews.json'
+            path.write_text(json.dumps([record]))
+            self.assertIn('COVERAGE.md#reviewed-family', read_reviews(root, {'v_a'})['v_a'])
+            for change in (dict(heading='Missing'), dict(semantics='complete'),
+                           dict(tests='missing.cpp'), dict(mnemonics=['v_missing']),
+                           dict(mnemonics=['v_a', 'v_a'])):
+                with self.subTest(change=change):
+                    path.write_text(json.dumps([dict(record, **change)]))
+                    with self.assertRaises(ValueError):
+                        read_reviews(root, {'v_a'})
+            path.write_text(json.dumps([record, record]))
+            with self.assertRaises(ValueError):
+                read_reviews(root, {'v_a'})
 
 
 if __name__ == '__main__':

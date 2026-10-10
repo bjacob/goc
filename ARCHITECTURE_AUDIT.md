@@ -45,6 +45,13 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
+36 in-scope mnemonics have explicit contract-review records in
+[`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
+family evidence and limitations. These records describe the reviewed API contract,
+not full encoding coverage or unsupported exact behavior. Older reviews not yet
+transcribed into this ledger remain unrecorded; counts are not a completion percentage.
+The remaining 773 in-scope mnemonics need a recorded review.
+
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
 remain listed below. The scan does not traverse calls, macros, output helpers,
@@ -395,43 +402,43 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cubema_f32` | IEEE mode, SIMD macro, architecture query, output helper | no | 8385 | review required |
 | `v_cubesc_f32` | IEEE mode, SIMD macro, architecture query, output helper | no | 8439 | review required |
 | `v_cubetc_f32` | IEEE mode, SIMD macro, architecture query, output helper | no | 8493 | review required |
-| `v_cvt_f16_f32` | SIMD macro, output helper | yes | 8547, 8570 | review required |
-| `v_cvt_f16_i16` | SIMD macro, output helper | yes | 8593, 8621 | review required |
-| `v_cvt_f16_u16` | SIMD macro, output helper | yes | 8649, 8676 | review required |
-| `v_cvt_f32_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8703, 8722 | review required |
-| `v_cvt_f32_f64` | SIMD macro, output helper | yes | 8755, 8771 | review required |
-| `v_cvt_f32_i32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8787, 8804 | review required |
-| `v_cvt_f32_u32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8832, 8849 | review required |
-| `v_cvt_f32_ubyte0` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8877, 8894 | review required |
-| `v_cvt_f32_ubyte1` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8922, 8939 | review required |
-| `v_cvt_f32_ubyte2` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8967, 8984 | review required |
-| `v_cvt_f32_ubyte3` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 9012, 9029 | review required |
-| `v_cvt_f64_f32` | SIMD macro | yes | 9057, 9073 | review required |
-| `v_cvt_f64_i32` | SIMD macro | yes | 9089, 9105 | review required |
-| `v_cvt_f64_u32` | SIMD macro | yes | 9121, 9137 | review required |
-| `v_cvt_floor_i32_f32` | SIMD macro, output helper | no | 9153, 9180 | review required |
-| `v_cvt_i16_f16` | SIMD macro, output helper | yes | 9277, 9303 | review required |
-| `v_cvt_i32_f32` | SIMD macro, output helper | yes | 9342, 9366 | review required |
-| `v_cvt_i32_f64` | SIMD macro, output helper | yes | 9398, 9424 | review required |
-| `v_cvt_i32_i16` | SIMD macro, output helper | no | 9450 | review required |
-| `v_cvt_nearest_i32_f32` | SIMD macro, output helper | no | 9468, 9498 | review required |
-| `v_cvt_norm_i16_f16` | output helper | no | 9536, 9556 | review required |
-| `v_cvt_norm_u16_f16` | output helper | no | 9583, 9603 | review required |
-| `v_cvt_off_f32_i4` | IEEE mode, OMOD, architecture query, output helper | yes | 9630, 9648 | review required |
-| `v_cvt_pk_i16_f32` | no direct policy detected | yes | not found | review required |
-| `v_cvt_pk_i16_i32` | SIMD macro, output helper | no | 9676 | review required |
-| `v_cvt_pk_norm_i16_f16` | no direct policy detected | yes | not found | review required |
-| `v_cvt_pk_norm_i16_f32` | SIMD macro, output helper | no | 9706 | review required |
-| `v_cvt_pk_norm_u16_f16` | no direct policy detected | yes | not found | review required |
-| `v_cvt_pk_norm_u16_f32` | SIMD macro, output helper | no | 9754 | review required |
-| `v_cvt_pk_rtz_f16_f32` | SIMD macro, output helper | yes | 9800, 9821 | review required |
-| `v_cvt_pk_u16_f32` | no direct policy detected | yes | not found | review required |
-| `v_cvt_pk_u16_u32` | SIMD macro, output helper | no | 9860 | review required |
+| `v_cvt_f16_f32` | SIMD macro, output helper | yes | 8547, 8570 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
+| `v_cvt_f16_i16` | SIMD macro, output helper | yes | 8593, 8621 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
+| `v_cvt_f16_u16` | SIMD macro, output helper | yes | 8649, 8676 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
+| `v_cvt_f32_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8703, 8722 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
+| `v_cvt_f32_f64` | SIMD macro, output helper | yes | 8755, 8771 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-conversion-architecture-review) |
+| `v_cvt_f32_i32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8787, 8804 | [loose contract reviewed; see limitations](COVERAGE.md#fp32integer-conversion-architecture-review) |
+| `v_cvt_f32_u32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8832, 8849 | [loose contract reviewed; see limitations](COVERAGE.md#fp32integer-conversion-architecture-review) |
+| `v_cvt_f32_ubyte0` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8877, 8894 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bytenibble-conversion-architecture-policies) |
+| `v_cvt_f32_ubyte1` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8922, 8939 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bytenibble-conversion-architecture-policies) |
+| `v_cvt_f32_ubyte2` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8967, 8984 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bytenibble-conversion-architecture-policies) |
+| `v_cvt_f32_ubyte3` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 9012, 9029 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bytenibble-conversion-architecture-policies) |
+| `v_cvt_f64_f32` | SIMD macro | yes | 9057, 9073 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-conversion-architecture-review) |
+| `v_cvt_f64_i32` | SIMD macro | yes | 9089, 9105 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-conversion-architecture-review) |
+| `v_cvt_f64_u32` | SIMD macro | yes | 9121, 9137 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-conversion-architecture-review) |
+| `v_cvt_floor_i32_f32` | SIMD macro, output helper | no | 9153, 9180 | [loose contract reviewed; see limitations](COVERAGE.md#fp32integer-conversion-architecture-review) |
+| `v_cvt_i16_f16` | SIMD macro, output helper | yes | 9277, 9303 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
+| `v_cvt_i32_f32` | SIMD macro, output helper | yes | 9342, 9366 | [loose contract reviewed; see limitations](COVERAGE.md#fp32integer-conversion-architecture-review) |
+| `v_cvt_i32_f64` | SIMD macro, output helper | yes | 9398, 9424 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-conversion-architecture-review) |
+| `v_cvt_i32_i16` | SIMD macro, output helper | no | 9450 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-conversion-architecture-review) |
+| `v_cvt_nearest_i32_f32` | SIMD macro, output helper | no | 9468, 9498 | [loose contract reviewed; see limitations](COVERAGE.md#fp32integer-conversion-architecture-review) |
+| `v_cvt_norm_i16_f16` | output helper | no | 9536, 9556 | [loose contract reviewed; see limitations](COVERAGE.md#packed-and-normalized-conversion-stateapi-review) |
+| `v_cvt_norm_u16_f16` | output helper | no | 9583, 9603 | [loose contract reviewed; see limitations](COVERAGE.md#packed-and-normalized-conversion-stateapi-review) |
+| `v_cvt_off_f32_i4` | IEEE mode, OMOD, architecture query, output helper | yes | 9630, 9648 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bytenibble-conversion-architecture-policies) |
+| `v_cvt_pk_i16_f32` | no direct policy detected | yes | not found | [loose contract reviewed; see limitations](COVERAGE.md#packed-and-normalized-conversion-stateapi-review) |
+| `v_cvt_pk_i16_i32` | SIMD macro, output helper | no | 9676 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-conversion-architecture-review) |
+| `v_cvt_pk_norm_i16_f16` | no direct policy detected | yes | not found | [loose contract reviewed; see limitations](COVERAGE.md#packed-and-normalized-conversion-stateapi-review) |
+| `v_cvt_pk_norm_i16_f32` | SIMD macro, output helper | no | 9706 | [loose contract reviewed; see limitations](COVERAGE.md#packed-and-normalized-conversion-stateapi-review) |
+| `v_cvt_pk_norm_u16_f16` | no direct policy detected | yes | not found | [loose contract reviewed; see limitations](COVERAGE.md#packed-and-normalized-conversion-stateapi-review) |
+| `v_cvt_pk_norm_u16_f32` | SIMD macro, output helper | no | 9754 | [loose contract reviewed; see limitations](COVERAGE.md#packed-and-normalized-conversion-stateapi-review) |
+| `v_cvt_pk_rtz_f16_f32` | SIMD macro, output helper | yes | 9800, 9821 | [loose contract reviewed; see limitations](COVERAGE.md#packed-and-normalized-conversion-stateapi-review) |
+| `v_cvt_pk_u16_f32` | no direct policy detected | yes | not found | [loose contract reviewed; see limitations](COVERAGE.md#packed-and-normalized-conversion-stateapi-review) |
+| `v_cvt_pk_u16_u32` | SIMD macro, output helper | no | 9860 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-conversion-architecture-review) |
 | `v_cvt_pk_u8_f32` | output helper | no | 9885 | review required |
-| `v_cvt_u16_f16` | SIMD macro, output helper | yes | 10141, 10165 | review required |
-| `v_cvt_u32_f32` | SIMD macro, output helper | yes | 10202, 10224 | review required |
-| `v_cvt_u32_f64` | SIMD macro, output helper | yes | 10254, 10278 | review required |
-| `v_cvt_u32_u16` | SIMD macro, output helper | no | 10302 | review required |
+| `v_cvt_u16_f16` | SIMD macro, output helper | yes | 10141, 10165 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
+| `v_cvt_u32_f32` | SIMD macro, output helper | yes | 10202, 10224 | [loose contract reviewed; see limitations](COVERAGE.md#fp32integer-conversion-architecture-review) |
+| `v_cvt_u32_f64` | SIMD macro, output helper | yes | 10254, 10278 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-conversion-architecture-review) |
+| `v_cvt_u32_u16` | SIMD macro, output helper | no | 10302 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-conversion-architecture-review) |
 | `v_div_fixup_f16` | IEEE mode, OMOD, SIMD macro, architecture query | no | 10316 | review required |
 | `v_div_fixup_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 10367 | review required |
 | `v_div_fixup_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 10412 | review required |

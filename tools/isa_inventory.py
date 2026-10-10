@@ -11,6 +11,8 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 
+from architecture_audit import read_reviews
+
 root = Path(__file__).resolve().parents[1]
 isa_dir = Path(sys.argv[1])
 header = (root / "include/goc/detail/goc_instructions.h").read_text()
@@ -28,6 +30,8 @@ for arch in (3, 4):
 register_routing = {"ds_bpermute_fi_b32", "ds_swizzle_b32", "ds_bpermute_b32", "ds_permute_b32",
                     "ds_permute_b64", "ds_bpermute_b64"}
 outside = {"VMEM", "SMEM", "EXPORT", "BRANCH", "MESSAGE", "TRAP", "WAVE_CONTROL"}
+reviews = read_reviews(root)
+in_scope = set()
 rows = []
 counts = collections.Counter()
 for name in sorted(set(instructions[3]) | set(instructions[4])):
@@ -66,12 +70,21 @@ for name in sorted(set(instructions[3]) | set(instructions[4])):
         if name + suffix in apis:
             symbols.append(f"`goc_{name + suffix}`")
     status = "API present; semantic audit pending" if symbols else "missing API"
+    if scope.split(":")[0] == "in":
+        in_scope.add(name)
+        if name in reviews:
+            if not symbols:
+                raise ValueError(f"Reviewed instruction has no API: {name}")
+            status = reviews[name]
     if scope.startswith("out:"):
         status = "excluded: memory/control/scheduling"
     counts[(scope.split(":")[0], bool(symbols))] += 1
     rows.append(f"| `{name}` | {'yes' if name in instructions[3] else '—'} | "
                 f"{'yes' if name in instructions[4] else '—'} | {scope} | "
                 f"{'<br>'.join(symbols) or '—'} | {alias_text} | {status} |")
+
+if reviews.keys() - in_scope:
+    raise ValueError(f"Unknown/out-of-scope reviews: {sorted(reviews.keys() - in_scope)}")
 
 text = """# RDNA3/RDNA4 ISA inventory
 
@@ -87,6 +100,11 @@ GoC's arithmetic/register-operation scope. Register-only data-share permutations
 are included. SALU/VALU register/control boundaries are not silently excluded. Explicit branch
 flags and reviewed memory/scheduling descriptions override misleading group labels.
 Relative register addressing and hardware-register access remain in scope.
+
+Explicit family reviews are recorded in
+[`tools/architecture_reviews.json`](tools/architecture_reviews.json). Linked
+statuses describe the reviewed API contract and its limitations, not full ISA
+encoding support. Unrecorded rows remain open even if older narrative reviews exist.
 
 ## Source fingerprints
 
@@ -148,4 +166,5 @@ for path in sorted((root / "src").glob("*.cpp")):
             f"`goc_{name}`" for name in missing) + " |\n"
 assert located_matrix == matrix_gaps, "Unlocated matrix APIs"
 (root / "ISA_INVENTORY.md").write_text(text + "\n".join(rows) + "\n" + width_text)
-print('\n'.join(text.splitlines()[16:28]))
+print(f'RDNA3: {len(instructions[3])}; RDNA4: {len(instructions[4])}; '
+      f'in scope: {len(in_scope)}; recorded contract reviews: {len(reviews)}')

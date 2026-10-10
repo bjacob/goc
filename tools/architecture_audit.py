@@ -7,6 +7,7 @@ This is a review queue, not a semantic-equivalence verifier or a call-graph audi
 import argparse
 from collections import defaultdict
 import hashlib
+import json
 from pathlib import Path
 import re
 
@@ -39,6 +40,30 @@ def read_scope(inventory):
     return rows
 
 
+def read_reviews(root, known_names=None):
+    """Read explicitly recorded reviews, not conclusions inferred by the scanner."""
+    coverage = (root / 'COVERAGE.md').read_text()
+    reviews = {}
+    for record in json.loads((root / 'tools/architecture_reviews.json').read_text()):
+        heading = record['heading']
+        if '## ' + heading not in coverage.splitlines():
+            raise ValueError(f'Missing review section: {heading}')
+        semantics = record['semantics']
+        if semantics not in ('loose', 'loose and exact'):
+            raise ValueError(f'Unknown review semantics: {semantics}')
+        if not (root / record['tests']).is_file():
+            raise ValueError(f"Missing review tests: {record['tests']}")
+        anchor = re.sub(r'[^a-z0-9 _-]', '', heading.lower()).replace(' ', '-')
+        status = f'[{semantics} contract reviewed; see limitations](COVERAGE.md#{anchor})'
+        for name in record['mnemonics']:
+            if name in reviews:
+                raise ValueError(f'Duplicate architecture review: {name}')
+            if known_names is not None and name not in known_names:
+                raise ValueError(f'Unknown/out-of-scope architecture review: {name}')
+            reviews[name] = status
+    return reviews
+
+
 def direct_policies(body):
     patterns = {
         'OMOD': r'fp_mode::effective_(?:f16_)?omod\s*\(',
@@ -54,6 +79,7 @@ def direct_policies(body):
 
 def generate(root, rocjitsu):
     scope = read_scope((root / 'ISA_INVENTORY.md').read_text())
+    reviews = read_reviews(root, {n for n, _, _ in scope})
     shared = rocjitsu / 'lib/rocjitsu/src/rocjitsu/isa/arch/amdgpu/generated/shared/execute_shared.h'
     source = shared.read_text()
     policies = defaultdict(set)
@@ -118,6 +144,13 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
+{len(reviews)} in-scope mnemonics have explicit contract-review records in
+[`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
+family evidence and limitations. These records describe the reviewed API contract,
+not full encoding coverage or unsupported exact behavior. Older reviews not yet
+transcribed into this ledger remain unrecorded; counts are not a completion percentage.
+The remaining {len(scope) - len(reviews)} in-scope mnemonics need a recorded review.
+
 {len(affected)} common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
 remain listed below. The scan does not traverse calls, macros, output helpers,
@@ -137,7 +170,8 @@ hardware captures and test suite are independent evidence, not replacements.
         tags = ', '.join(sorted(policies[name])) or 'no direct policy detected'
         split = 'yes' if name + '_rdna4' in apis else 'no'
         lines = ', '.join(str(line) for _, line in locations[name]) or 'not found'
-        text += f'| `{name}` | {tags} | {split} | {lines} | review required |\n'
+        status = reviews.get(name, 'review required')
+        text += f'| `{name}` | {tags} | {split} | {lines} | {status} |\n'
     return text
 
 
