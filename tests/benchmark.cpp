@@ -4772,8 +4772,9 @@ bool benchmark_conversion16(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_conversion64(uint64_t cpu, int iterations, int min_ms) {
   using Unary = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
-  const Unary functions[] = {goc_v_cvt_f64_i32, goc_v_cvt_f64_u32, goc_v_cvt_i32_f64,
-                             goc_v_cvt_u32_f64, goc_v_cvt_f64_f32, goc_v_cvt_f32_f64};
+  const Unary functions[] = {goc_v_cvt_f64_i32_rdna4, goc_v_cvt_f64_u32_rdna4,
+                             goc_v_cvt_i32_f64_rdna4, goc_v_cvt_u32_f64_rdna4,
+                             goc_v_cvt_f64_f32_rdna4, goc_v_cvt_f32_f64_rdna4};
   const char *names[] = {"v_cvt_f64_i32", "v_cvt_f64_u32", "v_cvt_i32_f64",
                          "v_cvt_u32_f64", "v_cvt_f64_f32", "v_cvt_f32_f64"};
   const uint64_t double_inputs[] = {0x3ff8000000000000, 0xbff8000000000000, 0x41dfffffffffffff,

@@ -69,7 +69,7 @@ TEST(OutputScaling, LdexpAndConversionsHardwareBoundaries) {
             int error =
                 op == 0   ? goc_v_ldexp_f32(cpu, UINT32_MAX, mode, &p[alias], p, p + 2, nullptr)
                 : op == 1 ? goc_v_cvt_f32_f16_rdna4(cpu, UINT32_MAX, mode, &p[alias], p, nullptr)
-                          : goc_v_cvt_f32_f64(cpu, UINT32_MAX, mode, &p[alias], p, nullptr);
+                          : goc_v_cvt_f32_f64_rdna4(cpu, UINT32_MAX, mode, &p[alias], p, nullptr);
             ASSERT_EQ(error, GOC_SUCCESS);
             for (uint32_t value : words[alias]) {
               if ((value & 0x7fffffff) > 0x7f800000)
@@ -87,7 +87,8 @@ TEST(OutputScaling, WideConversionsHardwareBoundaries) {
   // FP32 widening covers ABS/NEG; integer widening only encodes OMOD/CLAMP.
   const uint64_t hashes[] = {0xe618186b9bac389dULL, 0xf8126ee2eef77260ULL, 0xab3308cda26a2808ULL};
   using Fn = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
-  const Fn functions[] = {goc_v_cvt_f64_f32, goc_v_cvt_f64_i32, goc_v_cvt_f64_u32};
+  const Fn functions[] = {goc_v_cvt_f64_f32_rdna4, goc_v_cvt_f64_i32_rdna4,
+                          goc_v_cvt_f64_u32_rdna4};
   const unsigned aliases[][2] = {{1, 2}, {0, 1}, {1, 0}};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 3; ++op)

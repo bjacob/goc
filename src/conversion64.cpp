@@ -19,7 +19,9 @@ int convert(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *
   constexpr bool to_double = from_integer || Op == goc::Conversion64::FloatToDouble;
   const uint32_t known =
       GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | (from_integer ? 0 : GOC_ALU_NEG_A | GOC_ALU_ABS_A);
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, false,
+                                GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                                    GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -109,22 +111,23 @@ int convert_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *
 
 } // namespace
 
-int goc_v_cvt_f64_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                      uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f64_i32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion64::SignedToDouble>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_v_cvt_f64_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                      uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f64_u32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion64::UnsignedToDouble>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_v_cvt_i32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                      uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+int goc_v_cvt_i32_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
@@ -132,8 +135,9 @@ int goc_v_cvt_i32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
   return convert<goc::Conversion64::DoubleToSigned>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_v_cvt_u32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                      uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+int goc_v_cvt_u32_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
@@ -141,8 +145,9 @@ int goc_v_cvt_u32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
   return convert<goc::Conversion64::DoubleToUnsigned>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_v_cvt_f64_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                      uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+int goc_v_cvt_f64_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
@@ -150,8 +155,9 @@ int goc_v_cvt_f64_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
   return convert<goc::Conversion64::FloatToDouble>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_v_cvt_f32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                      uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+int goc_v_cvt_f32_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
@@ -159,25 +165,25 @@ int goc_v_cvt_f32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
   return convert<goc::Conversion64::DoubleToFloat>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_v_cvt_f64_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                             uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f64_i32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return convert_wave64<goc::Conversion64::SignedToDouble>(flags, exec_mask, instruction_flags, d,
                                                            a);
 }
 
-int goc_v_cvt_f64_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                             uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f64_u32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return convert_wave64<goc::Conversion64::UnsignedToDouble>(flags, exec_mask, instruction_flags, d,
                                                              a);
 }
 
-int goc_v_cvt_i32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                             uint32_t *const *d, const uint32_t *const *a,
-                             uint32_t *excp_flag_user) {
+int goc_v_cvt_i32_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
@@ -186,9 +192,9 @@ int goc_v_cvt_i32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instru
                                                            a);
 }
 
-int goc_v_cvt_u32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                             uint32_t *const *d, const uint32_t *const *a,
-                             uint32_t *excp_flag_user) {
+int goc_v_cvt_u32_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
@@ -197,9 +203,9 @@ int goc_v_cvt_u32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instru
                                                              a);
 }
 
-int goc_v_cvt_f64_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                             uint32_t *const *d, const uint32_t *const *a,
-                             uint32_t *excp_flag_user) {
+int goc_v_cvt_f64_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
@@ -208,13 +214,113 @@ int goc_v_cvt_f64_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instru
                                                           a);
 }
 
-int goc_v_cvt_f32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                             uint32_t *const *d, const uint32_t *const *a,
-                             uint32_t *excp_flag_user) {
+int goc_v_cvt_f32_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return convert_wave64<goc::Conversion64::DoubleToFloat>(flags, exec_mask, instruction_flags, d,
                                                           a);
+}
+
+int goc_v_cvt_f64_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, const uint32_t *const *a) {
+  // RDNA3 ISA 7.2.3.1: output scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    instruction_flags &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f64_i32_rdna4(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_cvt_f64_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a) {
+  // RDNA3 ISA 7.2.3.1: output scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    instruction_flags &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f64_i32_rdna4_wave64(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_cvt_f64_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, const uint32_t *const *a) {
+  // RDNA3 ISA 7.2.3.1: output scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    instruction_flags &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f64_u32_rdna4(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_cvt_f64_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a) {
+  // RDNA3 ISA 7.2.3.1: output scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    instruction_flags &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f64_u32_rdna4_wave64(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_cvt_i32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return goc_v_cvt_i32_f64_rdna4(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_cvt_i32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return goc_v_cvt_i32_f64_rdna4_wave64(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_cvt_u32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return goc_v_cvt_u32_f64_rdna4(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_cvt_u32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return goc_v_cvt_u32_f64_rdna4_wave64(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_cvt_f64_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  // RDNA3 ISA 7.2.3.1: output scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    instruction_flags &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f64_f32_rdna4(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_cvt_f64_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  // RDNA3 ISA 7.2.3.1: output scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    instruction_flags &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f64_f32_rdna4_wave64(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_cvt_f32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  // RDNA3 ISA 7.2.3.1: output scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    instruction_flags &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f32_f64_rdna4(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_cvt_f32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  // RDNA3 ISA 7.2.3.1: output scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    instruction_flags &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f32_f64_rdna4_wave64(flags, exec_mask, instruction_flags, d, a, nullptr);
 }

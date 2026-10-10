@@ -1295,6 +1295,13 @@ supports guest input flushing and the architecture's IEEE-dependent NaN policy
 on scalar, AVX2 and AVX-512 paths. These remain loose-only conversions; exact
 state reporting and arbitrary guest rounding modes are not supported.
 
+FP64 conversions follow the same architecture naming: unsuffixed RDNA3 APIs
+apply conditional output scaling, while `_rdna4` APIs preserve unconditional
+scaling. Numerical kernels remain shared, including the one/two-VGPR operand
+layouts and aliased-destination rules. Optional state uses each architecture's
+native register name. These conversions remain loose-only and require host
+nearest-even rounding with denormals enabled.
+
 FP32/integer conversion APIs distinguish architecture policy where needed.
 `v_cvt_f32_i32` and `v_cvt_f32_u32` select RDNA3: output scaling is disabled
 when output denormals are preserved or IEEE mode is set. Their `_rdna4`

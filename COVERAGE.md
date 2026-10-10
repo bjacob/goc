@@ -3479,3 +3479,49 @@ The remaining small timing changes are recorded rather than hidden.
 The broader goal is still active. FP64 conversions and the remaining unresolved
 cross-architecture families still require review; this is not a whole-ISA
 completion claim.
+
+## FP64 conversion architecture review
+
+- Reviewed the six FP64 conversion mnemonics against rocjitsu revision
+  `ffc144c564c`, `generated/shared/execute_shared.h` and its conversion SIMD
+  helpers, plus RDNA3 ISA section 7.2.3.1's output-modifier rule. That rule
+  explicitly includes double-precision results. The upstream conversion bodies
+  share host casts or saturating integer conversion; they do not supply a new
+  empirical exact exception model to port.
+- Floating-result conversions now use unsuffixed RDNA3 APIs with OMOD disabled
+  when output denormals are preserved or IEEE is set. `_rdna4` APIs preserve
+  unconditional scaling. Both use the existing shared numeric/SIMD kernels.
+- The four reporting conversions expose native RDNA3 `trapsts` and RDNA4
+  `excp_flag_user` outputs at both wave widths. Exact reporting is unsupported;
+  loose calls leave optional state untouched. Integer-to-double conversions
+  still have no optional state output.
+- Guest IEEE/input/output-denormal flags are accepted. Beyond RDNA3 OMOD gating,
+  the existing loose host-cast behavior is retained, following the upstream
+  conversion bodies. Guest rounding control, exact payloads, and exact state
+  reporting are not newly promised. Host nearest-even and enabled denormals
+  remain required. No host FP-control writes or hardware characterization were
+  introduced. DPP remains unsupported for this family.
+- New tests cover all six operations, all modifiers and eight guest policies,
+  Wave32/Wave64, all CPU selections, source/destination aliases, overlapping
+  destination halves, unaligned buffers, sparse masks and destination guards.
+  Literal finite witnesses distinguish RDNA3 and RDNA4 scaling. NaN tests
+  separately verify loose quiet-NaN/integer-zero behavior across policies.
+  Error tests check zero/nonzero EXEC, unsupported exact reporting, atomic
+  outputs, invalid encodings, and preservation of host FP controls.
+
+Validation: all 1,038 CTests pass with Clang 21 Release and GCC 15 Release;
+20 targeted ASan/UBSan tests pass. Final logs are `conversion64-tests2.log`
+under `../goc-build/coverage-work/`, `../goc-build-gcc/`, and
+`../goc-build-sanitize/`.
+
+Performance: seven alternating before/after samples, pinned to CPU 2, using
+thread CPU time and at least 20 ms per case. Across all six conversions and
+plain/modified forms, median time changes are +0.06% scalar, +0.16% AVX2, and
+-0.03% AVX-512; the worst observed change is +1.01%. Both SIMD object files are
+byte-identical to the baseline. Raw samples are in
+`../goc-build/coverage-work/conversion64-performance.json`. No per-lane policy
+checks or reporting work were added.
+
+Next: byte/nibble conversion architecture policies, followed by the remaining
+packed/normalized conversion review. The overall ISA completion audit remains
+open.
