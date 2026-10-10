@@ -857,7 +857,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_ashrrev_i16` | yes | yes | in | `goc_v_ashrrev_i16` | — | API present; semantic audit pending |
 | `v_ashrrev_i32` | yes | yes | in | `goc_v_ashrrev_i32` | — | API present; semantic audit pending |
 | `v_ashrrev_i64` | yes | yes | in | `goc_v_ashrrev_i64` | — | API present; semantic audit pending |
-| `v_bcnt_u32_b32` | yes | yes | in | `goc_v_bcnt_u32_b32` | — | API present; semantic audit pending |
+| `v_bcnt_u32_b32` | yes | yes | in | `goc_v_bcnt_u32_b32`<br>`goc_v_bcnt_u32_b32_wave64` | — | API present; semantic audit pending |
 | `v_bfe_i32` | yes | yes | in | `goc_v_bfe_i32` | — | API present; semantic audit pending |
 | `v_bfe_u32` | yes | yes | in | `goc_v_bfe_u32` | — | API present; semantic audit pending |
 | `v_bfi_b32` | yes | yes | in | `goc_v_bfi_b32` | — | API present; semantic audit pending |
@@ -866,8 +866,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_ceil_f16` | yes | yes | in | `goc_v_ceil_f16` | — | API present; semantic audit pending |
 | `v_ceil_f32` | yes | yes | in | `goc_v_ceil_f32` | — | API present; semantic audit pending |
 | `v_ceil_f64` | yes | yes | in | `goc_v_ceil_f64` | — | API present; semantic audit pending |
-| `v_cls_i32` | yes | yes | in | `goc_v_cls_i32` | `v_ffbh_i32` | API present; semantic audit pending |
-| `v_clz_i32_u32` | yes | yes | in | `goc_v_clz_i32_u32` | `v_ffbh_u32` | API present; semantic audit pending |
+| `v_cls_i32` | yes | yes | in | `goc_v_cls_i32`<br>`goc_v_cls_i32_wave64` | `v_ffbh_i32` | API present; semantic audit pending |
+| `v_clz_i32_u32` | yes | yes | in | `goc_v_clz_i32_u32`<br>`goc_v_clz_i32_u32_wave64` | `v_ffbh_u32` | API present; semantic audit pending |
 | `v_cmp_class_f16` | yes | yes | in | `goc_v_cmp_class_f16` | — | API present; semantic audit pending |
 | `v_cmp_class_f32` | yes | yes | in | `goc_v_cmp_class_f32` | — | API present; semantic audit pending |
 | `v_cmp_class_f64` | yes | yes | in | `goc_v_cmp_class_f64` | — | API present; semantic audit pending |
@@ -1062,7 +1062,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cndmask_b32` | yes | yes | in | `goc_v_cndmask_b32` | — | API present; semantic audit pending |
 | `v_cos_f16` | yes | yes | in | `goc_v_cos_f16` | — | API present; semantic audit pending |
 | `v_cos_f32` | yes | yes | in | `goc_v_cos_f32` | — | API present; semantic audit pending |
-| `v_ctz_i32_b32` | yes | yes | in | `goc_v_ctz_i32_b32` | `v_ffbl_b32` | API present; semantic audit pending |
+| `v_ctz_i32_b32` | yes | yes | in | `goc_v_ctz_i32_b32`<br>`goc_v_ctz_i32_b32_wave64` | `v_ffbl_b32` | API present; semantic audit pending |
 | `v_cubeid_f32` | yes | yes | in | `goc_v_cubeid_f32` | — | API present; semantic audit pending |
 | `v_cubema_f32` | yes | yes | in | `goc_v_cubema_f32` | — | API present; semantic audit pending |
 | `v_cubesc_f32` | yes | yes | in | `goc_v_cubesc_f32` | — | API present; semantic audit pending |

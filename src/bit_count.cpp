@@ -147,3 +147,24 @@ int goc_v_mbcnt_hi_u32_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t i
                                   const uint32_t *const *b) {
   return bit_count<goc::BitCount::MaskedHigh, 64>(flags, exec_mask, instruction_flags, d, a, b);
 }
+
+int goc_v_clz_i32_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a) {
+  return bit_count<goc::BitCount::Leading, 64>(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_ctz_i32_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a) {
+  return bit_count<goc::BitCount::Trailing, 64>(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_cls_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a) {
+  return bit_count<goc::BitCount::Sign, 64>(flags, exec_mask, instruction_flags, d, a, nullptr);
+}
+
+int goc_v_bcnt_u32_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b) {
+  return bit_count<goc::BitCount::Population, 64>(flags, exec_mask, instruction_flags, d, a, b);
+}

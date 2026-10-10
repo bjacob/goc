@@ -57,7 +57,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented | RDNA3 floating constant exception reporting, Wave64 floating/constant comparisons, and architecture-specific floating-policy audit |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
-| Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
+| Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
 | Interpolation | Existing RDNA4 paths | Compare RDNA3 contracts and empirical behavior |
 | Dual-issue VOPD | No separately named APIs | Inventory independent operations and cross-operation source/output dependencies |
 
@@ -570,3 +570,27 @@ Wave64 MBCNT APIs and enables exact semantics for the existing bit-count family.
 Validation: all 737 tests pass on Clang/GCC. All fourteen bit-count, integer DPP
 and instruction-flag tests pass under ASan/UBSan. Both existing Wave32 and new
 Wave64 DPP captures pass in strict exact semantics for the bit-count operations.
+
+
+## Remaining Wave64 bit-count entry points
+
+Added Wave64 CLZ, CTZ, CLS and BCNT, completing both wave sizes for the currently
+exposed bit-count family. The public entry points instantiate the existing
+64-lane executor and x86-64-v3/v4 templates; no numerical or routing algorithm
+was duplicated. Both semantics are exact, DPP8/DPP16 are supported, and inactive
+lanes/unselected storage are preserved. The existing sentinel and wrapping rules
+are unchanged.
+
+Tests cover all 65,536 half-word patterns placed low, high and repeated into both
+halves of each input word, including zero/all-one sentinels. They check every
+available CPU path against the independent bit-by-bit reference, along with
+DPP, upper-lane masks, aliases with A or B, guards, invalid descriptors and host
+rounding/exception/MXCSR preservation. The existing Wave32 bit-count and Wave64
+MBCNT hardware corpora still cover the shared numerical/routing components;
+no new direct GPU captures of these four Wave64 opcodes are claimed.
+
+Four APIs were added. Canonical name counts remain 787 present and 22 absent.
+
+Validation: all 740 tests pass on Clang/GCC. All thirteen bit-count and
+instruction-flag tests pass under ASan/UBSan. Existing numerical/routing bodies
+are unchanged; the new SIMD specializations vary only the lane count.

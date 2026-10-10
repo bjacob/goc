@@ -3873,14 +3873,27 @@ int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint
 int goc_v_clz_i32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a);
 
+int goc_v_clz_i32_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a);
+
 int goc_v_ctz_i32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_ctz_i32_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a);
 
 int goc_v_cls_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a);
 
+int goc_v_cls_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a);
+
 int goc_v_bcnt_u32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_bcnt_u32_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b);
 
 int goc_v_mbcnt_lo_u32_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);

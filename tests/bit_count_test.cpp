@@ -292,3 +292,104 @@ TEST(BitCount, Wave64DppHardwareCorpus) {
               << cpu << '/' << op << '/' << m << '/' << e;
         }
 }
+
+namespace {
+
+int count_wave64(unsigned op, uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                 const uint32_t *const *a, const uint32_t *const *b) {
+  switch (op) {
+  case 0:
+    return goc_v_clz_i32_u32_wave64(flags, exec_mask, mode, d, a);
+  case 1:
+    return goc_v_ctz_i32_b32_wave64(flags, exec_mask, mode, d, a);
+  case 2:
+    return goc_v_cls_i32_wave64(flags, exec_mask, mode, d, a);
+  default:
+    return goc_v_bcnt_u32_b32_wave64(flags, exec_mask, mode, d, a, b);
+  }
+}
+
+} // namespace
+
+TEST(BitCount, Wave64ScansAndPopulationDppMasksAliases) {
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (int routing = -1; routing < 7; ++routing)
+          for (uint64_t exec_mask : {0ULL, 1ULL << 63, 0xaaaaaaaa55555555ULL, ~0ULL})
+            for (unsigned target = 0; target < 3; ++target) {
+              uint32_t data[3][66], expected[3][66];
+              for (unsigned r = 0; r < 3; ++r)
+                for (unsigned lane = 0; lane < 66; ++lane)
+                  data[r][lane] = expected[r][lane] = (0x73951a83U * lane) ^ (0xfffffffeU * r);
+              uint64_t mode = routing < 0 ? 0 : goc_test::dpp_modes[routing];
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                int source = int(lane);
+                bool write = routing < 0 ? (exec_mask >> lane) & 1
+                                         : goc_test::dpp_source(mode, exec_mask, lane, source);
+                if (write)
+                  expected[target][lane + 1] = goc_test::bit_count_reference(
+                      op, source < 0 ? 0 : data[0][source + 1], data[1][lane + 1], lane);
+              }
+              auto d = data[target] + 1;
+              const uint32_t *a = data[0] + 1, *b = data[1] + 1;
+              ASSERT_EQ(count_wave64(op, cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode,
+                                     &d, &a, &b),
+                        GOC_SUCCESS);
+              for (unsigned r = 0; r < 3; ++r)
+                ASSERT_TRUE(std::equal(data[r], data[r] + 66, expected[r])) << op << '/' << routing;
+            }
+}
+
+TEST(BitCount, Wave64ScansAndPopulationEveryHalfWord) {
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned start = 0; start < 65536; start += 64)
+        for (unsigned pattern : {0U, 1U, 2U}) {
+          uint32_t a[64], b[64], d[64];
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            uint32_t value = start + lane;
+            a[lane] = pattern == 0 ? value : pattern == 1 ? value << 16 : value | (value << 16);
+            b[lane] = UINT32_MAX - lane;
+          }
+          auto pa = a, pb = b, pd = d;
+          ASSERT_EQ(count_wave64(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                 UINT64_MAX, 0, &pd, &pa, &pb),
+                    GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 64; ++lane)
+            ASSERT_EQ(d[lane], goc_test::bit_count_reference(op, a[lane], b[lane], lane));
+        }
+}
+
+TEST(BitCount, Wave64ScansAndPopulationValidationAndHostState) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (unsigned op = 0; op < 4; ++op) {
+    EXPECT_EQ(count_wave64(op, 0, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(count_wave64(op, 0, UINT64_MAX, GOC_DPP8 | GOC_ALU_NEG_A, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+        uint32_t a[64], b[64], d[64];
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          a[lane] = 0x7f800001U + lane;
+          b[lane] = UINT32_MAX;
+        }
+        auto pa = a, pb = b, pd = d;
+        ASSERT_EQ(std::fesetround(rounding), 0);
+        ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
+        ASSERT_EQ(std::feraiseexcept(FE_DIVBYZERO), 0);
+#if defined(__x86_64__) || defined(_M_X64)
+        unsigned before = _mm_getcsr();
+#endif
+        ASSERT_EQ(count_wave64(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                               UINT64_MAX, goc_test::dpp_modes[3], &pd, &pa, &pb),
+                  GOC_SUCCESS);
+        EXPECT_EQ(std::fegetround(), rounding);
+        EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+        EXPECT_EQ(_mm_getcsr(), before);
+#endif
+      }
+  }
+}

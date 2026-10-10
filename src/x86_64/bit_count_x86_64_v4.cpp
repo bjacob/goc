@@ -74,4 +74,13 @@ template void bit_count_x86_64_v4<BitCount::MaskedLow, 64>(uint64_t exec_mask, u
 template void bit_count_x86_64_v4<BitCount::MaskedHigh, 64>(uint64_t exec_mask, uint32_t *d,
                                                             const uint32_t *a, const uint32_t *b);
 
+template void bit_count_x86_64_v4<BitCount::Leading, 64>(uint64_t exec_mask, uint32_t *d,
+                                                         const uint32_t *a, const uint32_t *b);
+template void bit_count_x86_64_v4<BitCount::Trailing, 64>(uint64_t exec_mask, uint32_t *d,
+                                                          const uint32_t *a, const uint32_t *b);
+template void bit_count_x86_64_v4<BitCount::Sign, 64>(uint64_t exec_mask, uint32_t *d,
+                                                      const uint32_t *a, const uint32_t *b);
+template void bit_count_x86_64_v4<BitCount::Population, 64>(uint64_t exec_mask, uint32_t *d,
+                                                            const uint32_t *a, const uint32_t *b);
+
 } // namespace goc

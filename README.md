@@ -229,7 +229,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_i16`, `v_min3_u16`, `v_max3_i16`, `v_max3_u16`, `v_med3_i16`, `v_med3_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
 | `v_add_nc_i16`, `v_sub_nc_i16`, `v_add_nc_u16`, `v_sub_nc_u16` | Scalar, x86-64-v3; half selectors and saturation | Not implemented |
 | `v_min_i16`, `v_max_i16`, `v_min_u16`, `v_max_u16`, `v_mul_lo_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
-| `v_clz_i32_u32`, `v_ctz_i32_b32`, `v_cls_i32`, `v_bcnt_u32_b32` | Scalar, x86-64-v3, x86-64-v4 | Same paths, bit-exact |
+| `v_clz_i32_u32`, `v_ctz_i32_b32`, `v_cls_i32`, `v_bcnt_u32_b32` (wave32 and wave64) | Scalar, x86-64-v3, x86-64-v4 | Same paths, bit-exact |
 | `v_mbcnt_lo_u32_b32` (wave32 and wave64), `v_mbcnt_hi_u32_b32` (wave64) | Scalar, x86-64-v3, x86-64-v4 | Same paths, bit-exact |
 | `v_mbcnt_hi_u32_b32` (wave32) | Scalar, x86-64-v4 | Same paths, bit-exact |
 | `v_and_b16`, `v_or_b16`, `v_xor_b16`, `v_not_b16` | Scalar, x86-64-v4 | Not implemented |
@@ -1264,7 +1264,8 @@ leading sign bits (`CLS`), and population count plus a wrapping accumulator
 and returns `0xffffffff` for all-zero or all-one values. These rules and the
 integer bit-propagation approach follow rocjitsu's bit-scan helpers. V3 uses
 byte lookup/shuffle population count; v4 additionally uses native leading-zero
-count. All host FP state is preserved, including exception flags.
+count. Both wave sizes have scalar, v3 and v4 implementations with exact semantics.
+All host FP state is preserved, including exception flags.
 
 `MBCNT_LO` counts source bits below the physical lane index, capped at 32;
 `MBCNT_HI` counts source bits below the lane index minus 32, or zero for lanes
@@ -1944,8 +1945,8 @@ with full EXEC and both DPP kinds. On the Ryzen 9 7950X3D, these paths measure
 18.6–25.2 ns on AVX2 (1.9–4.9× scalar speed) and 17.9–24.1 ns with AVX-512
 permutation plus AVX2 arithmetic (2.0–5.1×).
 
-DPP8/DPP16 also support wave32 CLZ, CTZ, CLS, BCNT, MBCNT_LO, MBCNT_HI,
-and 32-bit AND, OR, XOR, XNOR, NOT. MBCNT's bit range remains determined by
+DPP8/DPP16 also support CLZ, CTZ, CLS, BCNT and MBCNT at both wave sizes,
+and wave32 AND, OR, XOR, XNOR, NOT. MBCNT's bit range remains determined by
 the destination lane after source permutation. Integer host FP state is
 preserved, including rounding mode and existing exception flags. A GFX1201
 capture checks 19,712 results; independent tests combine all mask patterns,
