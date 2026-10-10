@@ -13,6 +13,8 @@ enum class Fp64 {
   Add,
   Mul,
   Fma,
+  MinLegacy,
+  MaxLegacy,
   MinNum,
   MaxNum,
   Minimum,
@@ -32,6 +34,8 @@ constexpr int fp64_sources(Fp64 op) {
   switch (op) {
   case Fp64::Add:
   case Fp64::Mul:
+  case Fp64::MinLegacy:
+  case Fp64::MaxLegacy:
   case Fp64::MinNum:
   case Fp64::MaxNum:
   case Fp64::Minimum:

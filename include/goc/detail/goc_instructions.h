@@ -3496,7 +3496,7 @@ int goc_v_maximum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       uint32_t *excp_flag_user);
 
-// RDNA3 FP32 MIN/MAX use guest IEEE mode: signaling NaNs take priority when set;
+// RDNA3 FP32/FP64 MIN/MAX use guest IEEE mode: signaling NaNs take priority when set;
 // otherwise a lone NaN is ignored and two NaNs select A unchanged. OMOD is ignored
 // when IEEE is set or output denormals are preserved. Input flushing precedes
 // selection; output flushing otherwise has no effect. Both widths use SIMD.
@@ -4055,6 +4055,9 @@ int goc_v_fma_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 // Number variants prefer numeric operands over NaNs; minimum/maximum propagate
 // NaNs, preferring signaling NaNs and quieting them. Both order -0 below +0.
 // Loose semantics and the same FP64 alias/host-FP-state contract apply.
+// FP64 min/max accept guest input flushing; output flushing is ignored except
+// through OMOD. RDNA4 number/propagating variants accept IEEE mode without effect.
+// RDNA3 MIN/MAX use IEEE-mode sNaN priority and conditional OMOD, as in FP32.
 int goc_v_min_num_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       uint32_t *excp_flag_user);

@@ -394,7 +394,7 @@ TEST(Fp64, Wave64AllModifiersMasksAndCrossWordAliases) {
           else
             want = double(maximum ? std::max(x[0], x[1]) : std::min(x[0], x[1]));
         }
-        want = goc_test::omod_f64_reference(want, mode);
+        want = goc_test::omod_f64_reference(want, op >= 7 ? mode & ~GOC_ALU_OMOD_HALF : mode);
         if (mode & GOC_ALU_CLAMP)
           want = !(want > 0) ? 0 : std::min(want, 1.0);
         expected[0][lane] = uint32_t(bits(want));
@@ -500,11 +500,13 @@ TEST(Fp64, Wave64ReportingAndValidation) {
 }
 
 TEST(Fp64, ArchitectureScalingAndGuestDenormalsAcrossAliases) {
-  const decltype(&goc_v_add_f64) narrow[][2] = {{goc_v_add_f64, goc_v_mul_f64},
-                                                {goc_v_add_f64_rdna4, goc_v_mul_f64_rdna4}};
-  const decltype(&goc_v_add_f64_wave64) wide[][2] = {
-      {goc_v_add_f64_wave64, goc_v_mul_f64_wave64},
-      {goc_v_add_f64_rdna4_wave64, goc_v_mul_f64_rdna4_wave64}};
+  const decltype(&goc_v_add_f64) narrow[][4] = {
+      {goc_v_add_f64, goc_v_mul_f64, goc_v_min_f64, goc_v_max_f64},
+      {goc_v_add_f64_rdna4, goc_v_mul_f64_rdna4, goc_v_min_num_f64, goc_v_max_num_f64}};
+  const decltype(&goc_v_add_f64_wave64) wide[][4] = {
+      {goc_v_add_f64_wave64, goc_v_mul_f64_wave64, goc_v_min_f64_wave64, goc_v_max_f64_wave64},
+      {goc_v_add_f64_rdna4_wave64, goc_v_mul_f64_rdna4_wave64, goc_v_min_num_f64_wave64,
+       goc_v_max_num_f64_wave64}};
   const decltype(&goc_v_fma_f64) fma[] = {goc_v_fma_f64, goc_v_fma_f64_rdna4};
   const decltype(&goc_v_fma_f64_wave64) fma_wide[] = {goc_v_fma_f64_wave64,
                                                       goc_v_fma_f64_rdna4_wave64};
@@ -525,7 +527,7 @@ TEST(Fp64, ArchitectureScalingAndGuestDenormalsAcrossAliases) {
   const unsigned aliases[][2] = {{6, 7}, {0, 1}, {1, 0}, {3, 2}, {4, 5}, {1, 2}, {6, 6}};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned arch = 0; arch < 2; ++arch)
-      for (unsigned op = 0; op < 3; ++op)
+      for (unsigned op = 0; op < 5; ++op)
         for (unsigned settings = 0; settings < 8; ++settings)
           for (unsigned variant = 0; variant < 16; ++variant)
             for (unsigned width : {32U, 64U})
@@ -553,12 +555,13 @@ TEST(Fp64, ArchitectureScalingAndGuestDenormalsAcrossAliases) {
                 uint32_t state = 0x12345678;
                 int status;
                 if (width == 32)
-                  status =
-                      op == 2 ? fma[arch](flags, uint32_t(exec_mask), mode, d, a, b, c, &state)
-                              : narrow[arch][op](flags, uint32_t(exec_mask), mode, d, a, b, &state);
+                  status = op == 2 ? fma[arch](flags, uint32_t(exec_mask), mode, d, a, b, c, &state)
+                                   : narrow[arch][op > 2 ? op - 1 : op](flags, uint32_t(exec_mask),
+                                                                        mode, d, a, b, &state);
                 else
                   status = op == 2 ? fma_wide[arch](flags, exec_mask, mode, d, a, b, c, &state)
-                                   : wide[arch][op](flags, exec_mask, mode, d, a, b, &state);
+                                   : wide[arch][op > 2 ? op - 1 : op](flags, exec_mask, mode, d, a,
+                                                                      b, &state);
                 ASSERT_EQ(status, GOC_SUCCESS);
                 EXPECT_EQ(state, 0x12345678U);
                 for (unsigned lane = 0; lane < width; ++lane) {
@@ -577,6 +580,16 @@ TEST(Fp64, ArchitectureScalingAndGuestDenormalsAcrossAliases) {
                   double result = op == 0   ? input[0] + input[1]
                                   : op == 1 ? input[0] * input[1]
                                             : std::fma(input[0], input[1], input[2]);
+                  if (op >= 3) {
+                    if (input[0] == 0 && input[1] == 0) {
+                      bool negative = op == 3 ? std::signbit(input[0]) || std::signbit(input[1])
+                                              : std::signbit(input[0]) && std::signbit(input[1]);
+                      result = negative ? -0.0 : 0.0;
+                    } else {
+                      result =
+                          op == 3 ? std::fmin(input[0], input[1]) : std::fmax(input[0], input[1]);
+                    }
+                  }
                   uint32_t effective = !arch && (!(settings & 2) || (settings & 4))
                                            ? mode & ~GOC_ALU_OMOD_HALF
                                            : mode;
@@ -584,7 +597,8 @@ TEST(Fp64, ArchitectureScalingAndGuestDenormalsAcrossAliases) {
                   if (mode & GOC_ALU_CLAMP)
                     result = !(result > 0) ? 0 : std::min(result, 1.0);
                   uint64_t expected = bits(result);
-                  if ((settings & 2) && (expected & 0x7fffffffffffffffULL) < 0x0010000000000000ULL)
+                  if (op < 3 && (settings & 2) &&
+                      (expected & 0x7fffffffffffffffULL) < 0x0010000000000000ULL)
                     expected &= 0x8000000000000000ULL;
                   for (unsigned word = 0; word < 2; ++word) {
                     if (!((exec_mask >> lane) & 1)) {
@@ -608,4 +622,66 @@ TEST(Fp64, ArchitectureScalingAndGuestDenormalsAcrossAliases) {
                   EXPECT_EQ(words[reg][width + 1], before[reg][width + 1]);
                 }
               }
+}
+
+TEST(Fp64, MinmaxGuestIeeeLiteralNaNSelection) {
+  // Expected selections: RDNA3 IEEE=0 min/max, IEEE=1 min/max, RDNA4 min/max.
+  // 0/1 select A/B unchanged; 2/3 select the quieted A/B NaN.
+  struct Case {
+    uint64_t a, b;
+    unsigned selected[6];
+  };
+
+  const Case cases[] = {
+      {0x7ff0000000001234ULL, 0x3ff0000000000000ULL, {1, 1, 2, 2, 1, 1}},
+      {0xbff0000000000000ULL, 0xfff0000000005678ULL, {0, 0, 3, 3, 0, 0}},
+      {0x7ff8000000001234ULL, 0xfff0000000005678ULL, {0, 0, 3, 3, 0, 0}},
+      {0x7ff0000000001234ULL, 0xfff0000000005678ULL, {0, 0, 2, 2, 2, 2}},
+      {0x7ff0000000001234ULL, 0xfff8000000005678ULL, {0, 0, 2, 2, 2, 2}},
+      {0x7ff8000000001234ULL, 0xfff8000000005678ULL, {0, 0, 0, 0, 0, 0}},
+      {0x7ff8000000001234ULL, 0x3ff0000000000000ULL, {1, 1, 1, 1, 1, 1}},
+      {0x8000000000000000ULL, 0, {0, 1, 0, 1, 0, 1}},
+      {0x8000000000000001ULL, 1, {0, 1, 0, 1, 0, 1}},
+  };
+  const decltype(&goc_v_min_f64) narrow[] = {goc_v_min_f64, goc_v_max_f64, goc_v_min_num_f64,
+                                             goc_v_max_num_f64};
+  const decltype(&goc_v_min_f64_wave64) wide[] = {goc_v_min_f64_wave64, goc_v_max_f64_wave64,
+                                                  goc_v_min_num_f64_wave64,
+                                                  goc_v_max_num_f64_wave64};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned op = 0; op < 4; ++op)
+      for (unsigned settings = 0; settings < 8; ++settings)
+        for (unsigned width : {32U, 64U}) {
+          uint32_t words[6][64];
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            const auto &test = cases[lane % 9];
+            words[0][lane] = uint32_t(test.a);
+            words[1][lane] = uint32_t(test.a >> 32);
+            words[2][lane] = uint32_t(test.b);
+            words[3][lane] = uint32_t(test.b >> 32);
+          }
+          // Cross-half aliasing must retain the original input payloads.
+          uint32_t *d[] = {words[1], words[0]};
+          const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]};
+          uint64_t flags = cpu | (settings & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                           (settings & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                           (settings & 4 ? GOC_FP_IEEE_MODE : 0);
+          uint32_t state = 0x12345678;
+          ASSERT_EQ(width == 32 ? narrow[op](flags, UINT32_MAX, 0, d, a, b, &state)
+                                : wide[op](flags, UINT64_MAX, 0, d, a, b, &state),
+                    GOC_SUCCESS);
+          EXPECT_EQ(state, 0x12345678U);
+          unsigned column = (op >= 2 ? 4 : settings & 4 ? 2 : 0) + (op & 1);
+          for (unsigned lane = 0; lane < width; ++lane) {
+            const auto &test = cases[lane % 9];
+            unsigned selected = test.selected[column];
+            uint64_t expected = (selected & 1) ? test.b : test.a;
+            if (selected >= 2)
+              expected |= 0x0008000000000000ULL;
+            if ((settings & 1) && lane % 9 == 8)
+              expected &= 0x8000000000000000ULL;
+            EXPECT_EQ(uint64_t(d[0][lane]) | (uint64_t(d[1][lane]) << 32), expected)
+                << cpu << '/' << op << '/' << settings << '/' << lane;
+          }
+        }
 }

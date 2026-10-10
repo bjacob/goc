@@ -2032,8 +2032,10 @@ these ordinary arithmetic changes do not imply support there.
 
 FP64 `v_add_f64`, `v_mul_f64`, and `v_fma_f64` follow the same architecture
 naming and guest IEEE/denormal controls. Both widths retain the four-lane AVX2
-kernel and staged writes for cross-half aliases. Other FP64 families still have
-separate flag contracts pending their architecture-policy audit.
+kernel and staged writes for cross-half aliases. FP64 min/max likewise accepts guest input flushing and IEEE mode: RDNA3 uses
+signaling-NaN priority and conditional OMOD, while RDNA4 number variants retain
+number preference. Min/max ignores output flushing except through OMOD. Other
+FP64 families still have separate contracts pending their architecture audit.
 
 FP32 `v_mul_dx9_zero_f32` likewise has RDNA3 and `_rdna4` variants in both wave
 sizes. RDNA3 `v_min_f32`/`v_max_f32` use guest IEEE mode for signaling-NaN

@@ -1919,3 +1919,32 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   Fp64/Fp64Output/InstructionFlags tests pass with ASan/UBSan. The new policy test
   also passes after the final GCC assertion-bracing correction. Four audit-tool
   tests pass. Logs: `../goc-build/coverage-work/fp64-policy-*-tests.log`.
+
+## FP64 min/max architecture policies
+
+- RDNA3 MIN/MAX now apply IEEE-mode signaling-NaN priority, preserve A unchanged
+  when both inputs are NaNs outside IEEE mode, and gate OMOD on guest IEEE/output
+  denormal state. RDNA4 MIN_NUM/MAX_NUM keep number preference and unconditional
+  OMOD. The RDNA3 V_MIN_F64/V_MAX_F64 pseudocode establishes these differences.
+- All six FP64 binary min/max APIs accept guest input flushing. Output flushing
+  is ignored except as required by OMOD, following the instruction-specific notes.
+  Both wave sizes retain four-lane AVX2 and staged cross-half alias handling.
+- The RDNA3 scalar NaN rule now lives once in `minmax.h`, shared by FP32 and FP64
+  using the existing FloatBits masks. Explicit vector overloads live beside the
+  existing SIMD min/max functions; no policy classes, adapters or new files.
+  Maintainers change the scalar selection rule in one place; SIMD intrinsics and
+  the instruction-level OMOD/denormal decisions remain directly visible.
+- Tests extend the FP64 policy/mask/alias matrix to min/max and add literal NaN
+  payload/quieting cases, signed zero, and input/output denormal combinations.
+  Existing FP32 policy tests exercise the extracted shared helper. Strict exact
+  arithmetic and faithful optional exception reporting remain unsupported.
+- Validation: all 943 tests pass under Clang 21 and GCC 15 Release; all 27
+  Binary/Fp64/MinmaxSpellings/InstructionFlags tests pass under ASan/UBSan. Four
+  audit-tool tests pass. Logs: `../goc-build/coverage-work/fp64-selection-*-tests.log`.
+- A pinned-CPU-2 AVX2 MIN_NUM_F64 comparison against parent `c2a1c7f` used nine
+  alternating samples with at least 50 ms thread CPU time per case. Median time
+  was 40.718 -> 40.770 ns unmodified and 45.214 -> 45.645 ns with ABS/NEG/OMOD/CLAMP
+  (about +0.1% and +1.0%, respectively). This limited check found no material
+  regression; it does not establish performance for every instruction or host.
+  Scratch driver, parent objects and raw samples are in
+  `../goc-build/coverage-work/fp64-selection-*`, including `fp64-selection-timing.json`.

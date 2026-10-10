@@ -65,6 +65,50 @@ template <bool Maximum, bool Propagate> __m256d minmax(__m256d x, __m256d y) {
   return value;
 }
 
+// RDNA3 selection adds IEEE-mode signaling-NaN priority to number preference.
+template <bool Maximum> __m256 minmax_rdna3(__m256 x, __m256 y, bool ieee) {
+  auto value = minmax<Maximum, false>(x, y);
+  auto a_bits = _mm256_castps_si256(x), b_bits = _mm256_castps_si256(y);
+  auto magnitude = _mm256_set1_epi32(INT32_MAX);
+  auto infinity = _mm256_set1_epi32(0x7f800000);
+  auto quiet = _mm256_set1_epi32(0x00400000);
+  auto an = _mm256_cmpgt_epi32(_mm256_and_si256(a_bits, magnitude), infinity);
+  auto bn = _mm256_cmpgt_epi32(_mm256_and_si256(b_bits, magnitude), infinity);
+  if (ieee) {
+    auto sna = _mm256_andnot_si256(_mm256_cmpeq_epi32(_mm256_and_si256(a_bits, quiet), quiet), an);
+    auto snb = _mm256_andnot_si256(_mm256_cmpeq_epi32(_mm256_and_si256(b_bits, quiet), quiet), bn);
+    value = _mm256_blendv_ps(value, _mm256_castsi256_ps(_mm256_or_si256(b_bits, quiet)),
+                             _mm256_castsi256_ps(snb));
+    value = _mm256_blendv_ps(value, _mm256_castsi256_ps(_mm256_or_si256(a_bits, quiet)),
+                             _mm256_castsi256_ps(sna));
+  } else {
+    value = _mm256_blendv_ps(value, x, _mm256_castsi256_ps(_mm256_and_si256(an, bn)));
+  }
+  return value;
+}
+
+// RDNA3 selection adds IEEE-mode signaling-NaN priority to number preference.
+template <bool Maximum> __m256d minmax_rdna3(__m256d x, __m256d y, bool ieee) {
+  auto value = minmax<Maximum, false>(x, y);
+  auto a_bits = _mm256_castpd_si256(x), b_bits = _mm256_castpd_si256(y);
+  auto magnitude = _mm256_set1_epi64x(INT64_MAX);
+  auto infinity = _mm256_set1_epi64x(0x7ff0000000000000LL);
+  auto quiet = _mm256_set1_epi64x(0x0008000000000000LL);
+  auto an = _mm256_cmpgt_epi64(_mm256_and_si256(a_bits, magnitude), infinity);
+  auto bn = _mm256_cmpgt_epi64(_mm256_and_si256(b_bits, magnitude), infinity);
+  if (ieee) {
+    auto sna = _mm256_andnot_si256(_mm256_cmpeq_epi64(_mm256_and_si256(a_bits, quiet), quiet), an);
+    auto snb = _mm256_andnot_si256(_mm256_cmpeq_epi64(_mm256_and_si256(b_bits, quiet), quiet), bn);
+    value = _mm256_blendv_pd(value, _mm256_castsi256_pd(_mm256_or_si256(b_bits, quiet)),
+                             _mm256_castsi256_pd(snb));
+    value = _mm256_blendv_pd(value, _mm256_castsi256_pd(_mm256_or_si256(a_bits, quiet)),
+                             _mm256_castsi256_pd(sna));
+  } else {
+    value = _mm256_blendv_pd(value, x, _mm256_castsi256_pd(_mm256_and_si256(an, bn)));
+  }
+  return value;
+}
+
 // Select A/B first and then C, including the median's NaN and signed-zero rules.
 template <bool FirstMaximum, bool SecondMaximum, bool Propagate, bool Median = false,
           bool OrderedMedian = false>

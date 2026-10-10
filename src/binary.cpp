@@ -66,22 +66,8 @@ int binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d
       value = goc::minmax<false, true>(x, y);
     if constexpr (Op == goc::Binary::Maximum)
       value = goc::minmax<true, true>(x, y);
-    if constexpr (Op == goc::Binary::MinLegacy || Op == goc::Binary::MaxLegacy) {
-      value = goc::minmax<Op == goc::Binary::MaxLegacy, false>(x, y);
-      uint32_t a_bits = goc::as_bits(x), b_bits = goc::as_bits(y);
-      bool an = (a_bits & 0x7fffffffU) > 0x7f800000U;
-      bool bn = (b_bits & 0x7fffffffU) > 0x7f800000U;
-      // RDNA3 IEEE mode gives signaling NaNs priority. Otherwise two NaNs
-      // select A unchanged, including its signaling bit.
-      if (flags & GOC_FP_IEEE_MODE) {
-        if (an && !(a_bits & 0x00400000U))
-          value = goc::as_float(a_bits | 0x00400000U);
-        else if (bn && !(b_bits & 0x00400000U))
-          value = goc::as_float(b_bits | 0x00400000U);
-      } else if (an && bn) {
-        value = x;
-      }
-    }
+    if constexpr (Op == goc::Binary::MinLegacy || Op == goc::Binary::MaxLegacy)
+      value = goc::minmax_rdna3<Op == goc::Binary::MaxLegacy>(x, y, flags & GOC_FP_IEEE_MODE);
     value = goc::alu_output_f32(value, mode);
     if constexpr (Op == goc::Binary::Add || Op == goc::Binary::Sub || Op == goc::Binary::Subrev ||
                   Op == goc::Binary::Mul || Op == goc::Binary::MulDx9Zero)

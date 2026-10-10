@@ -33,6 +33,24 @@ template <bool Maximum, bool Propagate, typename Float> Float minmax(Float x, Fl
   return (Maximum ? x > y : x < y) ? x : y;
 }
 
+// RDNA3 MIN/MAX prefer a signaling NaN only in IEEE mode. Otherwise a lone
+// NaN loses to a number, while two NaNs return A without quieting it.
+template <bool Maximum, typename Float> Float minmax_rdna3(Float x, Float y, bool ieee) {
+  using Bits = FloatBits<Float>;
+  auto a = Bits::bits(x), b = Bits::bits(y);
+  bool an = (a & Bits::magnitude) > Bits::infinity;
+  bool bn = (b & Bits::magnitude) > Bits::infinity;
+  if (ieee) {
+    if (an && !(a & Bits::quiet))
+      return Bits::value(a | Bits::quiet);
+    if (bn && !(b & Bits::quiet))
+      return Bits::value(b | Bits::quiet);
+  } else if (an && bn) {
+    return x;
+  }
+  return minmax<Maximum, false>(x, y);
+}
+
 // Select A/B first and then C; median follows the ISA's first-maximum removal
 // rule by default. OrderedMedian orders -0 below +0 for FP16. Either median
 // returns minimumNumber(A,B,C) if any input is NaN.

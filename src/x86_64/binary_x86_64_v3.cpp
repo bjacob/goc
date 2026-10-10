@@ -52,27 +52,8 @@ void run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d, const u
       value = minmax<false, true>(x, y);
     if constexpr (Op == Binary::Maximum)
       value = minmax<true, true>(x, y);
-    if constexpr (Op == Binary::MinLegacy || Op == Binary::MaxLegacy) {
-      value = minmax<Op == Binary::MaxLegacy, false>(x, y);
-      auto a_bits = _mm256_castps_si256(x), b_bits = _mm256_castps_si256(y);
-      auto magnitude = _mm256_set1_epi32(INT32_MAX);
-      auto infinity = _mm256_set1_epi32(0x7f800000);
-      auto quiet = _mm256_set1_epi32(0x00400000);
-      auto an = _mm256_cmpgt_epi32(_mm256_and_si256(a_bits, magnitude), infinity);
-      auto bn = _mm256_cmpgt_epi32(_mm256_and_si256(b_bits, magnitude), infinity);
-      if (flags & GOC_FP_IEEE_MODE) {
-        auto sna =
-            _mm256_andnot_si256(_mm256_cmpeq_epi32(_mm256_and_si256(a_bits, quiet), quiet), an);
-        auto snb =
-            _mm256_andnot_si256(_mm256_cmpeq_epi32(_mm256_and_si256(b_bits, quiet), quiet), bn);
-        value = _mm256_blendv_ps(value, _mm256_castsi256_ps(_mm256_or_si256(b_bits, quiet)),
-                                 _mm256_castsi256_ps(snb));
-        value = _mm256_blendv_ps(value, _mm256_castsi256_ps(_mm256_or_si256(a_bits, quiet)),
-                                 _mm256_castsi256_ps(sna));
-      } else {
-        value = _mm256_blendv_ps(value, x, _mm256_castsi256_ps(_mm256_and_si256(an, bn)));
-      }
-    }
+    if constexpr (Op == Binary::MinLegacy || Op == Binary::MaxLegacy)
+      value = minmax_rdna3<Op == Binary::MaxLegacy>(x, y, flags & GOC_FP_IEEE_MODE);
     if (mode & GOC_ALU_OMOD_HALF) {
       value = prepare_omod_f32(value, mode);
       value = _mm256_mul_ps(value, scale);

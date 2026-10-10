@@ -19,8 +19,13 @@ int arithmetic(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *cons
   if constexpr (goc::fp64_sources(Op) == 3)
     known |= GOC_ALU_ABS_C | GOC_ALU_NEG_C;
   constexpr bool basic = Op == goc::Fp64::Add || Op == goc::Fp64::Mul || Op == goc::Fp64::Fma;
+  constexpr bool selection = Op == goc::Fp64::MinLegacy || Op == goc::Fp64::MaxLegacy ||
+                             Op == goc::Fp64::MinNum || Op == goc::Fp64::MaxNum ||
+                             Op == goc::Fp64::Minimum || Op == goc::Fp64::Maximum;
   constexpr uint64_t fp_flags =
-      basic ? GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE : 0;
+      (basic || selection)
+          ? GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE
+          : 0;
   if (int error = goc::validate(flags, mode & ~known, false, fp_flags))
     return error;
   if constexpr (Rdna3)
@@ -39,7 +44,7 @@ int arithmetic(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *cons
     double x = goc::fp64_input(a, lane, mode), y = 0;
     if constexpr (goc::fp64_sources(Op) >= 2)
       y = goc::fp64_input(b, lane, mode >> 1);
-    if (basic && (flags & GOC_FP_FLUSH_INPUT_DENORMALS)) {
+    if ((basic || selection) && (flags & GOC_FP_FLUSH_INPUT_DENORMALS)) {
       x = goc::fp64_flush_denorm(x);
       y = goc::fp64_flush_denorm(y);
     }
@@ -54,6 +59,8 @@ int arithmetic(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *cons
         z = goc::fp64_flush_denorm(z);
       value = std::fma(x, y, z);
     }
+    if constexpr (Op == goc::Fp64::MinLegacy || Op == goc::Fp64::MaxLegacy)
+      value = goc::minmax_rdna3<Op == goc::Fp64::MaxLegacy>(x, y, flags & GOC_FP_IEEE_MODE);
     if constexpr (Op == goc::Fp64::MinNum)
       value = goc::minmax<false, false>(x, y);
     if constexpr (Op == goc::Fp64::MaxNum)
@@ -310,12 +317,20 @@ int goc_v_frexp_mant_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
 
 int goc_v_min_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                   const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
-  return goc_v_min_num_f64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic<goc::Fp64::MinLegacy, true>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
 int goc_v_max_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                   const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
-  return goc_v_max_num_f64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic<goc::Fp64::MaxLegacy, true>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
 int goc_v_add_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -504,11 +519,19 @@ int goc_v_frexp_mant_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mod
 int goc_v_min_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user) {
-  return goc_v_min_num_f64_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Fp64::MinLegacy, true>(flags, exec_mask, mode, d, a, b, nullptr);
 }
 
 int goc_v_max_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user) {
-  return goc_v_max_num_f64_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Fp64::MaxLegacy, true>(flags, exec_mask, mode, d, a, b, nullptr);
 }
