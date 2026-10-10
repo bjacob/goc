@@ -80,3 +80,46 @@ TEST(RelativeMove, ManualOffsetLimitAndWidenedAddressing) {
   ASSERT_EQ(goc_v_movreld_b32(0, 1, 0, v, v, 300, 300, UINT32_MAX, 2, 1), GOC_SUCCESS);
   EXPECT_EQ(data[0][0], 100U);
 }
+
+TEST(RelativeMove, Wave64IndicesDppAndUpperLaneMasks) {
+  const decltype(&goc_v_movrels_b32_wave64) functions[] = {
+      goc_v_movrels_b32_wave64, goc_v_movreld_b32_wave64, goc_v_movrelsd_b32_wave64,
+      goc_v_movrelsd_2_b32_wave64};
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t exec_mask : {0ULL, 1ULL << 63, 0xaaaaaaaaaaaaaaaaULL, ~0ULL})
+      for (uint32_t m0 : {0U, 1U, 6U, 256U, 1023U, 0x40002U, 0xfc04fc02U, UINT32_MAX})
+        for (int routing = -1; routing < 7; ++routing) {
+          uint32_t data[8][64], expected[8][64];
+          uint32_t *v[8];
+          for (unsigned r = 0; r < 8; ++r) {
+            v[r] = data[r];
+            for (unsigned lane = 0; lane < 64; ++lane)
+              data[r][lane] = expected[r][lane] = r * 1000 + lane;
+          }
+          uint64_t src_offset = op == 1 ? 0 : op == 3 ? m0 & 1023 : m0;
+          uint64_t dst_offset = op == 0 ? 0 : op == 3 ? (m0 >> 16) & 1023 : m0;
+          uint64_t src = 1 + src_offset, dst = 2 + dst_offset;
+          if (src >= 8 || src_offset > 255)
+            src = 0;
+          uint64_t mode = routing < 0 ? 0 : goc_test::dpp_modes[routing];
+          if (dst < 8 && dst_offset <= 255)
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              int source = int(lane);
+              bool write = routing < 0 ? (exec_mask >> lane) & 1
+                                       : goc_test::dpp_source(mode, exec_mask, lane, source);
+              if (write)
+                expected[dst][lane] = source < 0 ? 0 : data[src][source];
+            }
+          ASSERT_EQ(
+              functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, exec_mask, mode, v, v, 8, 8, 2, 1, m0),
+              GOC_SUCCESS);
+          EXPECT_EQ(std::memcmp(data, expected, sizeof data), 0)
+              << op << '/' << m0 << '/' << routing;
+        }
+  for (auto fn : functions) {
+    EXPECT_EQ(fn(0, UINT64_MAX, 0, nullptr, nullptr, 0, 0, 0, 0, 0), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << 63, nullptr, nullptr, 256, 256, 0, 0, 0),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, 256, 256, 0, 0, 0), GOC_SUCCESS);
+  }
+}

@@ -53,3 +53,43 @@ int goc_v_mov_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
   }
   return GOC_SUCCESS;
 }
+
+namespace {
+
+// Accepted DPP controls never cross a 16-lane row, so each 32-lane half can
+// reuse the existing implementation. Whole-VGPR aliasing cannot couple halves.
+template <bool Half>
+int move_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                const uint32_t *const *a) {
+  constexpr auto move = Half ? goc_v_mov_b16 : goc_v_mov_b32;
+  if (int error = move(flags, 0, mode, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *destination = d[0] + half * 32;
+    const uint32_t *source = a[0] + half * 32;
+    // Validation above covers both calls: only valid row-enable bits differ.
+    int error = move(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &destination, &source);
+    if (error)
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
+} // namespace
+
+int goc_v_mov_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a) {
+  return move_wave64<false>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_mov_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a) {
+  return move_wave64<true>(flags, exec_mask, instruction_flags, d, a);
+}

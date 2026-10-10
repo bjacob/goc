@@ -21,8 +21,9 @@ inline uint64_t dpp16_mode(unsigned ctrl, unsigned fi, unsigned bound, unsigned 
 }
 
 // Returns whether the destination is written; source is -1 for a zero input.
+template <typename Mask>
 inline bool dpp16_reference(unsigned ctrl, bool fi, bool bound, unsigned rows, unsigned banks,
-                            uint32_t exec_mask, unsigned lane, int &source) {
+                            Mask exec_mask, unsigned lane, int &source) {
   int sub = int(lane % 16), selected = sub;
   if (ctrl < 256)
     selected = (sub / 4) * 4 + int((ctrl >> (2 * (sub % 4))) & 3);
@@ -41,9 +42,9 @@ inline bool dpp16_reference(unsigned ctrl, bool fi, bool bound, unsigned rows, u
   else
     selected = sub ^ int(ctrl - 0x160);
   source = selected < 0 || selected >= 16 ? -1 : int(lane / 16) * 16 + selected;
-  if (source >= 0 && !fi && !(exec_mask & (1u << source)))
+  if (source >= 0 && !fi && !(exec_mask & (1ULL << source)))
     source = -1;
-  return (exec_mask & (1u << lane)) && (rows & (1u << (lane / 16))) &&
+  return (exec_mask & (1ULL << lane)) && (rows & (1u << (lane / 16))) &&
          (banks & (1u << ((lane % 16) / 4))) && (source >= 0 || bound);
 }
 

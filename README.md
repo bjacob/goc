@@ -2363,3 +2363,8 @@ shared RDNA3/RDNA4 behavior, including masks and out-of-range offsets.
 RDNA3 floating true/false comparisons provide exact result masks, including
 DPP filtering. Their optional exception reporting remains unsupported in exact
 semantics; loose semantics leave the supplied exception register unchanged.
+
+MOV_B32, MOV_B16 and the relative VGPR moves support Wave64, including all
+currently accepted DPP controls and the upper rows' enables. The wider paths
+reuse existing lane routing and SIMD implementations. Raw Wave64 half-move
+modifiers are checked against RX 9070 captures.

@@ -1,14 +1,17 @@
 # SPDX-License-Identifier: MIT
-"""Generate a gfx1201 Wave32 MOV_B16 modifier probe.
+"""Generate a gfx1201 MOV_B16 modifier probe.
 
-Usage: python3 capture_half_move.py OUTPUT_DIR
+Usage: python3 capture_half_move.py OUTPUT_DIR [32|64]
 Compile probe.cpp with hipcc --offload-arch=gfx1201 -O2 and run in OUTPUT_DIR.
-move.bin contains uint32_t[32][4][32]: ABS/NEG/OMOD/CLAMP, half selectors,
+Add -mwavefrontsize64 when generating a Wave64 probe.
+move.bin contains uint32_t[32][4][lanes]: ABS/NEG/OMOD/CLAMP, half selectors,
 and lane. Raw VOP3 encoding is used because LLVM rejects modifier syntax.
 """
 from pathlib import Path
 import sys
 out=Path(sys.argv[1]);out.mkdir(parents=True, exist_ok=True)
+lanes = int(sys.argv[2]) if len(sys.argv) > 2 else 32
+assert lanes in (32, 64)
 s='''#include <hip/hip_runtime.h>
 #include <cstdio>
 #include <cstdint>
@@ -29,4 +32,6 @@ s+='''}out[blockIdx.x*32+lane]=d;
 }
 int main(){constexpr size_t n=128*32;uint32_t *p;HIP(hipMalloc(&p,n*4));auto h=new uint32_t[n];hipLaunchKernelGGL(probe,dim3(128),dim3(32),0,0,p);HIP(hipGetLastError());HIP(hipDeviceSynchronize());HIP(hipMemcpy(h,p,n*4,hipMemcpyDeviceToHost));FILE*f=fopen("move.bin","wb");if(!f)return 2;fwrite(h,4,n,f);fclose(f);HIP(hipFree(p));delete[]h;}
 '''
+if lanes == 64:
+ s = s.replace('values[lane]', 'values[lane % 32]').replace('blockIdx.x*32+lane', 'blockIdx.x*64+lane').replace('n=128*32', 'n=128*64').replace('dim3(32)', 'dim3(64)')
 (out/'probe.cpp').write_text(s)

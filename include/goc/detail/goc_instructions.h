@@ -39,14 +39,17 @@ extern "C" {
 // before operand access, even for empty EXEC, before other validation. NULL opts
 // out of reporting in every mode and preserves numerical paths and validation.
 
-// Bit-preserving Wave32 move, shared by RDNA3 and RDNA4. One VGPR per operand.
+// Bit-preserving Wave32/Wave64 moves, shared by RDNA3 and RDNA4. One VGPR per operand.
 // Supports loose and exact semantics, EXEC masking, and DPP8/DPP16 source routing.
 // Low instruction-flag bits must be zero (arithmetic modifiers are not implemented).
 // No FP interpretation or exceptions; inactive destinations remain unchanged.
 int goc_v_mov_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a);
 
-// Wave32 raw half move. HIGH_A/D select source/destination halves; the other
+int goc_v_mov_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a);
+
+// Wave32/Wave64 raw half moves. HIGH_A/D select source/destination halves; the other
 // destination half is preserved. ABS_A clears and NEG_A toggles the selected
 // sign bit (in that order), with no FP conversion or NaN canonicalization.
 // OMOD and CLAMP are accepted but ignored, matching hardware. DPP8/DPP16 route
@@ -54,6 +57,9 @@ int goc_v_mov_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
 // Inactive destinations are preserved; zero EXEC permits null pointers.
 int goc_v_mov_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_mov_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a);
 
 // Exchange selected halves in active lanes. HIGH_A/D are the only valid flags.
 // Both operands are read/write; unselected halves and inactive lanes survive.
@@ -305,7 +311,7 @@ int goc_s_getpc_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uin
 // Finite operand pairs accumulate INPUT_DENORM if either input is subnormal and
 // input flushing is disabled. Loose mode leaves excp_flag_user unchanged.
 
-// Wave32 relative VGPR moves shared by RDNA3/RDNA4. d/a are full register-file
+// Wave32/Wave64 relative VGPR moves shared by RDNA3/RDNA4. d/a are full register-file
 // views starting at VGPR0, bounded by d_count/a_count. d_base/a_base are encoded
 // register indices. RELS adds M0 to source; RELD to destination; RELSD to both.
 // RELSD_2 uses M0[9:0] for source and M0[25:16] for destination. Per ISA section
@@ -319,17 +325,33 @@ int goc_v_movrels_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
                       uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
 
+int goc_v_movrels_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
+                             uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
+
 int goc_v_movreld_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
                       uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
+
+int goc_v_movreld_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
+                             uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
 
 int goc_v_movrelsd_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
                        uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
 
+int goc_v_movrelsd_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
+                              uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
+
 int goc_v_movrelsd_2_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
                          uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
+
+int goc_v_movrelsd_2_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
+                                uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
 
 // Relative VGPR swaps shared by RDNA3/RDNA4. d/a are mutable full register-file
 // views starting at VGPR0, bounded by d_count/a_count. M0[9:0] offsets a_base;

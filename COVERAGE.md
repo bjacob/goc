@@ -53,7 +53,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms and SIMD dispatch | Exact IEEE-mode NaN policies, exception reporting and Wave64 |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
-| Vector/register routing | Lane transfers, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; Wave32 relative moves; RX 9070 SWAPREL and DS_SWIZZLE captures | Wave64 moves/relative moves and broader cross-width/modifier audit; RDNA3 hardware confirmation |
+| Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; RDNA3 integer and floating true/false results implemented | RDNA3 floating constant exception reporting, Wave64, and architecture-specific floating-policy audit |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
@@ -470,3 +470,36 @@ exception models, and broader semantic audits remain separate open work.
 Validation: all 729 tests pass with Clang/GCC. All eight constant-comparison and
 exception-register contract tests pass under ASan/UBSan. Public standalone
 headers and exhaustive high instruction-flag checks include the new entry points.
+
+
+## Wave64 register moves and relative moves
+
+Added Wave64 MOV_B32, MOV_B16 and all four relative MOVREL forms. All currently
+accepted DPP controls stay within 16-lane rows. The wider moves therefore reuse
+the existing Wave32 implementation for each half, remapping DPP16 row-enable
+bits for rows 2/3. This preserves the existing SIMD source-routing paths and
+keeps half/sign selection, modifier validation and raw-bit behavior in one place.
+Validation runs before operand access or either half's stores. Whole-VGPR aliases
+are safe because supported controls cannot read across the 32-lane boundary.
+The relative-index calculation and allocation/offset checks are shared between
+both wave sizes; no second indexing algorithm was introduced.
+
+Independent routing references now accept 64-bit EXEC and directly calculate
+all 64 source/destination lanes. Tests cover every row-enable combination,
+representative controls from each accepted DPP class, bank filtering, FI/BOUND,
+upper-lane and alternating EXEC, in-place routing, half/sign modifiers, guard
+words, relative indexing and invalid descriptors. Existing Wave32 reference
+users remain covered by the full suite.
+
+The raw MOV_B16 probe now supports Wave64. Its new 8,192 RX 9070/gfx1201 outputs
+match the bit-transfer/sign-modifier model, including NaNs and subnormals.
+The SHA-256 and word-wise digest are in `tests/half_move_hardware.h`; the existing
+hardware-corpus test now checks both wave sizes. This capture verifies raw
+half-move modifiers, not Wave64 DPP routing or RDNA3 hardware behavior.
+
+Six Wave64 APIs were added. The canonical-name count remains 787 present and
+22 absent, illustrating why that count alone is not a completion measure.
+
+Validation: all 732 tests pass on Clang/GCC, and all eleven move/relative-move
+tests pass under ASan/UBSan. Standalone-header and exhaustive instruction-flag
+checks include all six new entry points.

@@ -1281,12 +1281,12 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_minmax_num_f16` | — | yes | in | `goc_v_minmax_num_f16` | `v_minmax_f16` | API present; semantic audit pending |
 | `v_minmax_num_f32` | — | yes | in | `goc_v_minmax_num_f32` | `v_minmax_f32` | API present; semantic audit pending |
 | `v_minmax_u32` | yes | yes | in | `goc_v_minmax_u32` | — | API present; semantic audit pending |
-| `v_mov_b16` | yes | yes | in | `goc_v_mov_b16` | — | API present; semantic audit pending |
-| `v_mov_b32` | yes | yes | in | `goc_v_mov_b32` | — | API present; semantic audit pending |
-| `v_movreld_b32` | yes | yes | in: register access | `goc_v_movreld_b32` | — | API present; semantic audit pending |
-| `v_movrels_b32` | yes | yes | in: register access | `goc_v_movrels_b32` | — | API present; semantic audit pending |
-| `v_movrelsd_2_b32` | yes | yes | in: register access | `goc_v_movrelsd_2_b32` | — | API present; semantic audit pending |
-| `v_movrelsd_b32` | yes | yes | in: register access | `goc_v_movrelsd_b32` | — | API present; semantic audit pending |
+| `v_mov_b16` | yes | yes | in | `goc_v_mov_b16`<br>`goc_v_mov_b16_wave64` | — | API present; semantic audit pending |
+| `v_mov_b32` | yes | yes | in | `goc_v_mov_b32`<br>`goc_v_mov_b32_wave64` | — | API present; semantic audit pending |
+| `v_movreld_b32` | yes | yes | in: register access | `goc_v_movreld_b32`<br>`goc_v_movreld_b32_wave64` | — | API present; semantic audit pending |
+| `v_movrels_b32` | yes | yes | in: register access | `goc_v_movrels_b32`<br>`goc_v_movrels_b32_wave64` | — | API present; semantic audit pending |
+| `v_movrelsd_2_b32` | yes | yes | in: register access | `goc_v_movrelsd_2_b32`<br>`goc_v_movrelsd_2_b32_wave64` | — | API present; semantic audit pending |
+| `v_movrelsd_b32` | yes | yes | in: register access | `goc_v_movrelsd_b32`<br>`goc_v_movrelsd_b32_wave64` | — | API present; semantic audit pending |
 | `v_mqsad_pk_u16_u8` | yes | yes | in | `goc_v_mqsad_pk_u16_u8` | — | API present; semantic audit pending |
 | `v_mqsad_u32_u8` | yes | yes | in | `goc_v_mqsad_u32_u8` | — | API present; semantic audit pending |
 | `v_msad_u8` | yes | yes | in | `goc_v_msad_u8` | — | API present; semantic audit pending |

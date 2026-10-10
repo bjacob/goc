@@ -16,4 +16,9 @@ static const uint16_t half_move_inputs[32] = {
     0x3555, 0xb555, 0x3bff, 0xbbff, 0x3c01, 0xbc01, 0x7bfe, 0xfbfe, 0x2aaa, 0xaaaa};
 static const uint64_t half_move_hash = 0x662d34d11605cc25ULL;
 
+// RX 9070/gfx1201 Wave64, same probe with 64 lanes and input index modulo 32.
+// Word-wise digest of 8,192 outputs. Raw capture SHA-256:
+// 83c4b393d209a033e170c3f3f68fbb9069a9d2745587dbcbe9567fb554443f8c
+static const uint64_t half_move_wave64_hash = 0xc2f78cfaf17b3325ULL;
+
 } // namespace goc_test
