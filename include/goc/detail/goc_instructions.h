@@ -2764,7 +2764,14 @@ int goc_v_subrev_co_ci_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 // implicit wave32 VCC input) selects +64/+128 when C's modified encoded exponent
 // exceeds its bias, and -64/-128 otherwise, for FP32/FP64 respectively.
 // Supports all source ABS/NEG, OMOD and CLAMP, loose and empirical exact semantics.
-// Inputs preserve denormals. Active OMOD rounds at normal precision before
+// Inputs preserve denormals even with GOC_FP_FLUSH_INPUT_DENORMALS.
+// GOC_FP_FLUSH_OUTPUT_DENORMALS flushes rounded subnormals to signed zero.
+// Unsuffixed APIs use RDNA3 TRAPSTS; _rdna4 APIs use EXCP_FLAG_USER.
+// RDNA3 ignores OMOD when output denormals are preserved or IEEE mode is set;
+// RDNA4 applies OMOD independently. RDNA3 strict exact with active OMOD is
+// unsupported. Exact non-null reporting is unsupported for RDNA3 and for RDNA4
+// with output flushing. Loose semantics leave optional state unchanged.
+// Active OMOD rounds at normal precision before
 // flushing tiny results to +0, then applies the output scale and clamp.
 // FP64 operands use low/high VGPR pairs, with D1 winning when D0/D1 alias.
 // Supports every EXEC mask and whole-register alias; zero effective EXEC permits
@@ -2772,22 +2779,42 @@ int goc_v_subrev_co_ci_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 // GOC_FP16_OVFL has no effect.
 int goc_v_div_fmas_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       const uint32_t *const *c, uint32_t condition, uint32_t *excp_flag_user);
+                       const uint32_t *const *c, uint32_t condition, uint32_t *trapsts);
 
 int goc_v_div_fmas_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       const uint32_t *const *c, uint32_t condition, uint32_t *excp_flag_user);
+                       const uint32_t *const *c, uint32_t condition, uint32_t *trapsts);
 
 // Wave64 uses one condition bit per lane and retains the same numerical,
 // modifier and optional exception-accumulation contracts.
 int goc_v_div_fmas_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c,
-                              uint64_t condition, uint32_t *excp_flag_user);
+                              uint64_t condition, uint32_t *trapsts);
 int goc_v_div_fmas_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c,
-                              uint64_t condition, uint32_t *excp_flag_user);
+                              uint64_t condition, uint32_t *trapsts);
+
+int goc_v_div_fmas_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c, uint32_t condition,
+                             uint32_t *excp_flag_user);
+
+int goc_v_div_fmas_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c, uint32_t condition,
+                             uint32_t *excp_flag_user);
+
+int goc_v_div_fmas_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c,
+                                    uint64_t condition, uint32_t *excp_flag_user);
+
+int goc_v_div_fmas_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c,
+                                    uint64_t condition, uint32_t *excp_flag_user);
 
 // Division pre-scaling. A must equal B (denominator) or C (numerator) after
 // source NEG modifiers. Writes the pre-scaled value to D and the per-lane

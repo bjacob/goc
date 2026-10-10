@@ -63,7 +63,7 @@ inline DivisionVector128<O> division_vector_sub(DivisionVector128<O> a, Division
 
 template <unsigned Width, class O>
 inline typename O::V division_vector_fmas(typename O::V a, typename O::V b, typename O::V c,
-                                          typename O::Mask post, uint32_t mode) {
+                                          typename O::Mask post, uint32_t mode, bool flush_output) {
   using F = DivisionFormat<Width>;
   using V = typename O::V;
   using U = DivisionVector128<O>;
@@ -162,6 +162,8 @@ inline typename O::V division_vector_fmas(typename O::V a, typename O::V b, type
   result = O::select(invalid, O::set(F::sign | F::infinity | F::quiet), result);
   result = O::select(O::ugt(bm, inf), O::bor(b, O::set(F::quiet)), result);
   result = O::select(O::ugt(am, inf), O::bor(a, O::set(F::quiet)), result);
+  if (flush_output)
+    result = O::select(O::eq(O::band(result, inf), zero), O::band(result, signbit), result);
   unsigned output_scale = (mode >> 6) & 3;
   if (output_scale) {
     auto e = O::band(result, inf), outsign = O::band(result, signbit);
@@ -189,7 +191,7 @@ inline typename O::V division_vector_fmas(typename O::V a, typename O::V b, type
 template <unsigned Width, class O>
 inline void division_vector_run(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                                 const uint32_t *const *a, const uint32_t *const *b,
-                                const uint32_t *const *c, uint32_t condition) {
+                                const uint32_t *const *c, uint32_t condition, bool flush_output) {
   using F = DivisionFormat<Width>;
   uint32_t staged[2][32];
   for (unsigned lane = 0; lane < 32; lane += O::lanes) {
@@ -204,8 +206,8 @@ inline void division_vector_run(uint32_t exec_mask, uint32_t mode, uint32_t *con
       if (mode & (GOC_ALU_NEG_A << i))
         inputs[i] = O::bxor(inputs[i], O::set(F::sign));
     }
-    auto result = division_vector_fmas<Width, O>(inputs[0], inputs[1], inputs[2],
-                                                 O::lane_mask(condition >> lane), mode);
+    auto result = division_vector_fmas<Width, O>(
+        inputs[0], inputs[1], inputs[2], O::lane_mask(condition >> lane), mode, flush_output);
     O::store_words(staged[0] + lane, result);
     if constexpr (Width == 64)
       O::store_words(staged[1] + lane, O::shr(result, O::set(32)));

@@ -191,11 +191,11 @@ division_fmas(typename DivisionFormat<Width>::Bits a, typename DivisionFormat<Wi
 template <unsigned Width>
 void div_fmas_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c, uint32_t condition);
+                        const uint32_t *const *c, uint32_t condition, bool flush_output);
 
 template <unsigned Width>
 void div_fmas_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c, uint32_t condition);
+                        const uint32_t *const *c, uint32_t condition, bool flush_output);
 
 } // namespace goc

@@ -3931,8 +3931,8 @@ bool benchmark_carry(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_div_fmas(uint64_t cpu, int iterations, int min_ms) {
-  using Fmas = decltype(&goc_v_div_fmas_f32);
-  const Fmas functions[] = {goc_v_div_fmas_f32, goc_v_div_fmas_f64};
+  using Fmas = decltype(&goc_v_div_fmas_f32_rdna4);
+  const Fmas functions[] = {goc_v_div_fmas_f32_rdna4, goc_v_div_fmas_f64_rdna4};
   const char *names[] = {"v_div_fmas_f32", "v_div_fmas_f64"};
   const uint64_t semantics = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
   for (unsigned op = 0; op < 2; ++op)

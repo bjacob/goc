@@ -74,13 +74,15 @@ namespace goc {
 template <unsigned Width>
 void div_fmas_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                         const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c, uint32_t condition) {
-  division_vector_run<Width, Ops>(exec_mask, mode, d, a, b, c, condition);
+                        const uint32_t *const *c, uint32_t condition, bool flush_output) {
+  division_vector_run<Width, Ops>(exec_mask, mode, d, a, b, c, condition, flush_output);
 }
 
 template void div_fmas_x86_64_v3<32>(uint32_t, uint32_t, uint32_t *const *, const uint32_t *const *,
-                                     const uint32_t *const *, const uint32_t *const *, uint32_t);
+                                     const uint32_t *const *, const uint32_t *const *, uint32_t,
+                                     bool);
 template void div_fmas_x86_64_v3<64>(uint32_t, uint32_t, uint32_t *const *, const uint32_t *const *,
-                                     const uint32_t *const *, const uint32_t *const *, uint32_t);
+                                     const uint32_t *const *, const uint32_t *const *, uint32_t,
+                                     bool);
 
 } // namespace goc

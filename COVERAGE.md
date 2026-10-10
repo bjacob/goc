@@ -4100,3 +4100,61 @@ modifier/alias, instruction-flag and optional-state coverage. Logs are
 A production-source scan finds no explicit host FP-environment mutations.
 The ledger records 141 contracts; the native-state audit resolves 910 of 936
 signatures, with zero mismatches and 26 unresolved.
+
+## DIV_FMAS architecture policies
+
+Reviewed `v_div_fmas_f32` and `v_div_fmas_f64` on both architectures against
+rocjitsu `ffc144c564c`. Both generated VOP3 handlers delegate to the same
+`execute_shared.h` helpers and integer `shared/division.h::div_fmas` model.
+Inputs always preserve denormals; `div_round` applies guest output flushing
+while preserving the sign of zero. No host FP-environment guard is needed or
+copied. Nearest-even fused post-scaling remains the existing borrowed algorithm;
+other guest rounding modes remain outside the currently exposed FP controls.
+
+Unsuffixed APIs now use RDNA3 `trapsts`; explicit `_rdna4` APIs retain
+`excp_flag_user`, before `_wave64`. RDNA3 ISA section 7.2.3.1 disables OMOD
+when IEEE is set or output denormals are preserved; RDNA4 retains its established
+independent OMOD behavior. All source ABS/NEG, CLAMP, execution masks, VCC input
+bits and whole-register aliases remain supported in loose semantics. The shared
+scalar, AVX2 and AVX512 integer kernels now support guest output flushing.
+Input-flush and IEEE flags are accepted; input flushing is deliberately ignored.
+
+Exact results without effective OMOD use the borrowed integer model on both
+architectures. The existing RDNA4 exact OMOD implementation and fixtures remain
+intact. Rocjitsu's shared FMAS handlers do not supply an RDNA3 exact OMOD model,
+so strict exact with active RDNA3 OMOD is explicitly unsupported instead of
+assuming that RDNA4's captured modifier behavior applies. Non-strict requests
+may fall back to loose semantics. Exact non-null reporting remains unsupported
+for RDNA3 and for the newly supported RDNA4 output-flush policy; the existing
+RDNA4 reporting model is retained for preserved outputs. These errors occur
+before operand reads, including zero EXEC. Loose calls skip reporting and leave
+optional state unchanged. No new hardware-derived numerical/exception model
+was developed.
+
+Four architecture tests cover both widths and wave sizes, all eight guest
+policies, all 512 modifier combinations, all available CPU paths, masked stores,
+source/destination and D0/D1 aliases, literal signed-subnormal and scaling
+witnesses, borrowed rocjitsu fused-rounding/overflow/cancellation cases, reporting
+errors and unchanged host FP state. Existing RDNA4 numerical and exception
+fixtures now call the explicit RDNA4 names. The shared scalar kernel is out of
+line so architecture wrappers do not duplicate the arithmetic; output flushing
+runs after that arithmetic loop rather than adding a branch to every scalar FMA.
+
+Performance: seven alternating before/after runs, pinned to CPU 2, thread CPU
+time, at least 20 ms per case, covering FP32/FP64 and plain/modified loose calls
+with optional reporting enabled in the modified cases. Median time changes are
++1.25% scalar, +0.66% AVX2 and +0.05% AVX512; the largest slowdown is +3.15%.
+Raw samples are `../goc-build/coverage-work/div-fmas-performance.json`.
+
+Validation: all 1,075 CTests pass in Clang 21 Release and GCC 15 Release;
+27 targeted ASan/UBSan tests pass. The four architecture tests were rechecked
+with Clang and sanitizers after adding braces required by GCC's dangling-else
+warning around a test assertion. Logs are `div-fmas-tests.log` and
+`div-fmas-final-tests.log` under `../goc-build/coverage-work/`,
+`../goc-build-gcc/`, and `../goc-build-sanitize/` as applicable. All nine audit-tool
+tests pass. A fresh disassembly and undefined-symbol scan of all 192 library
+objects in each compiler build finds no explicit host FP-environment writes or
+mutator references (`div-fmas-fp-environment-audit.json` in the coverage work
+folder). The ledger records 143 contracts; the native-state naming audit resolves
+918 of 940 signatures, with zero mismatches and 22 unresolved. These counts are
+review progress, not whole-project completion claims.

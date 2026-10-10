@@ -49,9 +49,9 @@ TEST(FmaExceptions, RoundingBoundaryHardwareCorpora) {
             status = goc_v_fma_f16_rdna4(flags | (setting ? GOC_FP16_OVFL : 0), 1, mode, d, a, b, c,
                                          &exceptions);
           else if (type == 1)
-            status = goc_v_div_fmas_f32(flags, 1, mode, d, a, b, c, setting, &exceptions);
+            status = goc_v_div_fmas_f32_rdna4(flags, 1, mode, d, a, b, c, setting, &exceptions);
           else
-            status = goc_v_div_fmas_f64(flags, 1, mode, d, a, b, c, setting, &exceptions);
+            status = goc_v_div_fmas_f64_rdna4(flags, 1, mode, d, a, b, c, setting, &exceptions);
           ASSERT_EQ(status, GOC_SUCCESS);
           hash = goc_test::capture_hash_word(hash, exceptions);
         }

@@ -16,10 +16,10 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_div_fmas_f32);
-const Fn functions[] = {goc_v_div_fmas_f32, goc_v_div_fmas_f64};
-const decltype(&goc_v_div_fmas_f32_wave64) wave64_functions[] = {goc_v_div_fmas_f32_wave64,
-                                                                 goc_v_div_fmas_f64_wave64};
+using Fn = decltype(&goc_v_div_fmas_f32_rdna4);
+const Fn functions[] = {goc_v_div_fmas_f32_rdna4, goc_v_div_fmas_f64_rdna4};
+const decltype(&goc_v_div_fmas_f32_rdna4_wave64) wave64_functions[] = {
+    goc_v_div_fmas_f32_rdna4_wave64, goc_v_div_fmas_f64_rdna4_wave64};
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 
 } // namespace

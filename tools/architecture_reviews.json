@@ -244,5 +244,14 @@
       "v_exp_f16",
       "v_log_f16"
     ]
+  },
+  {
+    "heading": "DIV_FMAS architecture policies",
+    "semantics": "loose and exact",
+    "tests": "tests/div_fmas_architecture_test.cpp",
+    "mnemonics": [
+      "v_div_fmas_f32",
+      "v_div_fmas_f64"
+    ]
   }
 ]
