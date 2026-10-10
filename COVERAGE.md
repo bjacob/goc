@@ -5461,3 +5461,44 @@ Validation: all 1,122 CTests pass under Clang and GCC Release; all twelve target
 integer-add/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests pass.
 Logs use `integer-add-review-` in each build directory. The ledger records
 483 contracts; 326 in-scope mnemonics remain without recorded reviews.
+
+## Integer multiplication architecture contracts
+
+Reviewed the seven 32-bit-result integer multiply forms against rocjitsu
+`ffc144c564c`: full-width MUL_LO_U32/MUL_HI_U32/MUL_HI_I32, plus low/high
+signed/unsigned 24-bit products. All 19 architecture-specific execution/modifier
+body pairs are identical (38 bodies), including VOP2/VOP3 encodings where
+available. Locations, hashes and delegates are recorded in
+`../goc-build/coverage-work/integer-mul-upstream-review.json`. Shared execution
+helpers and `vop3_integer_mul`/`vop3_integer_mad` were checked for widening,
+24-bit truncation/sign extension, high-word selection and saturation. These
+contracts require no architecture suffix and no optional floating-state output.
+
+GoC's existing arithmetic matches those models: discard each 24-bit operand's
+upper byte before interpreting bit 23 as its sign; multiply in a wide domain;
+select bits 63:32 for high results. Signed high results retain sign extension
+above the 48-bit product. Only low 24-bit products accept CLAMP, saturating to
+the signed/unsigned 32-bit range. All four 24-bit forms accept DPP on A; the
+full-width forms reject DPP. Unsupported low flags still reject before operand
+access, including empty EXEC. Both wave sizes preserve whole-VGPR aliases and
+inactive destinations.
+
+The v3/v4 kernels compute eight/sixteen lanes respectively. High products use
+separate widening multiplies for even and odd lanes, then combine high words.
+Signed saturation checks whether the high word equals the low word's sign
+extension; unsigned 24-bit saturation checks a nonzero high word. No kernel,
+dispatch or production source change was needed.
+
+Added tests sweeping all 256 upper-byte values in both operands across 64
+pairs of low encodings, with different upper-byte sequences for A and B,
+including bit-23 sign boundaries and saturation thresholds. These run both
+wave sizes and semantics on all available CPU levels with masked outputs.
+A second test reconstructs full 64-bit signed/unsigned products from the
+full-width low/high APIs using single-bit factors and their neighbors, covering
+all bit positions and both sides of SIMD lane-packing boundaries. Existing
+boundary/random, alias, DPP hardware-corpus and Wave64 routing tests remain.
+
+Validation: all 1,124 CTests pass under Clang and GCC Release; all thirteen
+integer-multiply/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests
+pass. Logs use `integer-mul-review-` in each build directory. The ledger records
+490 contracts; 319 in-scope mnemonics remain without recorded reviews.

@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-483 in-scope mnemonics have explicit contract-review records in
+490 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 326 in-scope mnemonics need a recorded review.
+The remaining 319 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -561,14 +561,14 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_mul_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 16563, 16595 | review required |
 | `v_mul_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 16664, 16689 | review required |
 | `v_mul_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 16747, 16766 | review required |
-| `v_mul_hi_i32` | SIMD macro, output helper | no | 16819 | review required |
-| `v_mul_hi_i32_i24` | SIMD macro, output helper | no | 16837, 16860 | review required |
-| `v_mul_hi_u32` | SIMD macro, output helper | no | 16883 | review required |
-| `v_mul_hi_u32_u24` | SIMD macro, output helper | no | 16899, 16919 | review required |
-| `v_mul_i32_i24` | SIMD macro, output helper | no | 16939, 16955 | review required |
+| `v_mul_hi_i32` | SIMD macro, output helper | no | 16819 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
+| `v_mul_hi_i32_i24` | SIMD macro, output helper | no | 16837, 16860 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
+| `v_mul_hi_u32` | SIMD macro, output helper | no | 16883 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
+| `v_mul_hi_u32_u24` | SIMD macro, output helper | no | 16899, 16919 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
+| `v_mul_i32_i24` | SIMD macro, output helper | no | 16939, 16955 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
 | `v_mul_lo_u16` | SIMD macro, output helper | no | 17046, 17064 | review required |
-| `v_mul_lo_u32` | SIMD macro, output helper | no | 17080 | review required |
-| `v_mul_u32_u24` | SIMD macro, output helper | no | 17094, 17110 | review required |
+| `v_mul_lo_u32` | SIMD macro, output helper | no | 17080 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
+| `v_mul_u32_u24` | SIMD macro, output helper | no | 17094, 17110 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
 | `v_mullit_f32` | IEEE mode, OMOD, architecture query, output helper | yes | 17127 | [loose contract reviewed; see limitations](COVERAGE.md#mullit-architecture-policies) |
 | `v_not_b16` | no direct policy detected | no | not found | review required |
 | `v_not_b32` | SIMD macro, output helper | no | 17176, 17188 | review required |

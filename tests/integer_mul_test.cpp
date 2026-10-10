@@ -148,3 +148,70 @@ TEST(IntegerMul, ValidationAndFpEnvironment) {
       }
     }
 }
+
+TEST(IntegerMul, EveryDiscardedUpperByte) {
+  const uint32_t low[] = {0, 1, 0x7fffff, 0x800000, 0x800001, 0xffffff, 46341, 65536};
+  for (unsigned op = 3; op < 7; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (unsigned clamp = 0; clamp <= unsigned(goc_test::integer_mul_can_clamp(op)); ++clamp)
+          for (unsigned upper = 0; upper < 256; ++upper) {
+            uint32_t words[3][64], expected[64];
+            const uint64_t exec_mask = 0x87654321fedcba98ULL;
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              // Every pair of low encodings, with independently varying discarded
+              // bytes. The reference receives only the low 24 bits.
+              words[0][lane] = low[lane % 8] | (upper << 24);
+              words[1][lane] = low[lane / 8] | (((upper + lane) & 255) << 24);
+              words[2][lane] = 0xdeadbeef;
+              expected[lane] =
+                  (exec_mask >> lane) & 1
+                      ? goc_test::integer_mul_reference(op, low[lane % 8], low[lane / 8], clamp)
+                      : 0xdeadbeef;
+            }
+            const uint32_t *a = words[0], *b = words[1];
+            uint32_t *d = words[2];
+            uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+            uint64_t mode = clamp ? GOC_ALU_CLAMP : 0;
+            ASSERT_EQ(
+                goc_test::integer_mul_functions[op](flags, uint32_t(exec_mask), mode, &d, &a, &b),
+                GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 32; ++lane)
+              ASSERT_EQ(d[lane], expected[lane]) << op << '/' << upper << '/' << lane;
+            ASSERT_EQ(
+                goc_test::integer_mul_wave64_functions[op](flags, exec_mask, mode, &d, &a, &b),
+                GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 64; ++lane)
+              ASSERT_EQ(d[lane], expected[lane]) << op << '/' << upper << '/' << lane;
+          }
+}
+
+TEST(IntegerMul, ReconstructFullProductsAcrossSimdLanes) {
+  // Single-bit factors place the product on both sides of the 32-bit boundary.
+  // Including their neighbors exercises carries and signed bit-31 products.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+      for (unsigned bit = 0; bit < 32; ++bit)
+        for (uint32_t delta : {0U, 1U, UINT32_MAX}) {
+          uint32_t a[64], b[64], lo[64], hi[64], signed_hi[64];
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            a[lane] = (1U << bit) + delta;
+            b[lane] = (1U << (lane % 32)) + (lane < 32 ? 0 : delta);
+          }
+          const uint32_t *pa = a, *pb = b;
+          uint32_t *pl = lo, *ph = hi, *ps = signed_hi;
+          uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+          ASSERT_EQ(goc_v_mul_lo_u32_wave64(flags, UINT64_MAX, 0, &pl, &pa, &pb), GOC_SUCCESS);
+          ASSERT_EQ(goc_v_mul_hi_u32_wave64(flags, UINT64_MAX, 0, &ph, &pa, &pb), GOC_SUCCESS);
+          ASSERT_EQ(goc_v_mul_hi_i32_wave64(flags, UINT64_MAX, 0, &ps, &pa, &pb), GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            EXPECT_EQ((uint64_t(hi[lane]) << 32) | lo[lane], uint64_t(a[lane]) * b[lane]);
+            int64_t x = a[lane], y = b[lane];
+            if (a[lane] & 0x80000000U)
+              x -= 0x100000000LL;
+            if (b[lane] & 0x80000000U)
+              y -= 0x100000000LL;
+            EXPECT_EQ((uint64_t(signed_hi[lane]) << 32) | lo[lane], uint64_t(x * y));
+          }
+        }
+}

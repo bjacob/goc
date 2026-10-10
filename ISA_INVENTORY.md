@@ -1298,14 +1298,14 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_mul_f16` | yes | yes | in | `goc_v_mul_f16`<br>`goc_v_mul_f16_wave64`<br>`goc_v_mul_f16_rdna4`<br>`goc_v_mul_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_mul_f32` | yes | yes | in | `goc_v_mul_f32`<br>`goc_v_mul_f32_wave64`<br>`goc_v_mul_f32_rdna4`<br>`goc_v_mul_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_mul_f64` | yes | yes | in | `goc_v_mul_f64`<br>`goc_v_mul_f64_wave64`<br>`goc_v_mul_f64_rdna4`<br>`goc_v_mul_f64_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_mul_hi_i32` | yes | yes | in | `goc_v_mul_hi_i32`<br>`goc_v_mul_hi_i32_wave64` | — | API present; semantic audit pending |
-| `v_mul_hi_i32_i24` | yes | yes | in | `goc_v_mul_hi_i32_i24`<br>`goc_v_mul_hi_i32_i24_wave64` | — | API present; semantic audit pending |
-| `v_mul_hi_u32` | yes | yes | in | `goc_v_mul_hi_u32`<br>`goc_v_mul_hi_u32_wave64` | — | API present; semantic audit pending |
-| `v_mul_hi_u32_u24` | yes | yes | in | `goc_v_mul_hi_u32_u24`<br>`goc_v_mul_hi_u32_u24_wave64` | — | API present; semantic audit pending |
-| `v_mul_i32_i24` | yes | yes | in | `goc_v_mul_i32_i24`<br>`goc_v_mul_i32_i24_wave64` | — | API present; semantic audit pending |
+| `v_mul_hi_i32` | yes | yes | in | `goc_v_mul_hi_i32`<br>`goc_v_mul_hi_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
+| `v_mul_hi_i32_i24` | yes | yes | in | `goc_v_mul_hi_i32_i24`<br>`goc_v_mul_hi_i32_i24_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
+| `v_mul_hi_u32` | yes | yes | in | `goc_v_mul_hi_u32`<br>`goc_v_mul_hi_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
+| `v_mul_hi_u32_u24` | yes | yes | in | `goc_v_mul_hi_u32_u24`<br>`goc_v_mul_hi_u32_u24_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
+| `v_mul_i32_i24` | yes | yes | in | `goc_v_mul_i32_i24`<br>`goc_v_mul_i32_i24_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
 | `v_mul_lo_u16` | yes | yes | in | `goc_v_mul_lo_u16`<br>`goc_v_mul_lo_u16_wave64` | — | API present; semantic audit pending |
-| `v_mul_lo_u32` | yes | yes | in | `goc_v_mul_lo_u32`<br>`goc_v_mul_lo_u32_wave64` | — | API present; semantic audit pending |
-| `v_mul_u32_u24` | yes | yes | in | `goc_v_mul_u32_u24`<br>`goc_v_mul_u32_u24_wave64` | — | API present; semantic audit pending |
+| `v_mul_lo_u32` | yes | yes | in | `goc_v_mul_lo_u32`<br>`goc_v_mul_lo_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
+| `v_mul_u32_u24` | yes | yes | in | `goc_v_mul_u32_u24`<br>`goc_v_mul_u32_u24_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
 | `v_mullit_f32` | yes | yes | in | `goc_v_mullit_f32`<br>`goc_v_mullit_f32_wave64`<br>`goc_v_mullit_f32_rdna4`<br>`goc_v_mullit_f32_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#mullit-architecture-policies) |
 | `v_nop` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
 | `v_not_b16` | yes | yes | in | `goc_v_not_b16`<br>`goc_v_not_b16_wave64` | — | API present; semantic audit pending |

@@ -817,5 +817,19 @@
       "v_sub_nc_u32",
       "v_subrev_nc_u32"
     ]
+  },
+  {
+    "heading": "Integer multiplication architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/integer_mul_test.cpp",
+    "mnemonics": [
+      "v_mul_hi_i32",
+      "v_mul_hi_i32_i24",
+      "v_mul_hi_u32",
+      "v_mul_hi_u32_u24",
+      "v_mul_i32_i24",
+      "v_mul_lo_u32",
+      "v_mul_u32_u24"
+    ]
   }
 ]
