@@ -7990,3 +7990,52 @@ the initial version let the compiler retain an extra wrapper call for literal
 forms, reaching a 27% regression, and was rejected. Final samples and summary
 are under `../goc-build/coverage-work/scalar-fma-exact-performance/`; rejected
 initial samples are labeled separately.
+
+
+## FP64 minmax architecture contracts
+
+Reviewed the six FP64 selection mnemonics against both ISA XML inventories,
+RDNA3 MIN/MAX pseudocode, RDNA4 MIN_NUM/MAX_NUM and MINIMUM/MAXIMUM pseudocode,
+and rocjitsu revision `ffc144c564c`'s shared execution handlers. RDNA3 provides
+`v_min_f64` and `v_max_f64`; RDNA4 provides the four explicitly named number
+and propagating forms. These are distinct mnemonics, so no architecture suffix
+is necessary. Each has Wave32 and Wave64 APIs with two VGPR words per operand.
+
+RDNA3 IEEE mode prefers signaling NaNs and quiets them; with IEEE disabled,
+a lone NaN loses to a number and two NaNs select A without quieting it. RDNA4
+number forms ignore a lone NaN, including signaling NaNs, while two NaNs select
+and quiet A. Propagating forms prioritize signaling NaNs, then the first NaN.
+All forms order negative zero below positive zero. Existing literal tests
+check these differences independently of host `fmin`/`fmax` behavior.
+
+Source ABS/NEG, CLAMP and output scaling are supported. RDNA3 disables scaling
+when IEEE mode is enabled or output denormals are preserved. Input flushing
+applies before selection; selection without scaling preserves a selected
+subnormal. Guest directed rounding and DX10-clamp-off remain unsupported.
+FP16 overflow mode is an accepted no-op. Neither architecture's listed encodings
+permit DPP here. LLVM's FP64 DPP definitions additionally require DPALU_DPP,
+which gfx1200/gfx1201 lack; a local gfx1201 assembler check rejects `row_shl:1`.
+
+These remain loose arithmetic contracts: upstream generic FP64 selection
+handlers do not establish a borrowed empirical exact model. Strict exact
+requests return unsupported semantics. Non-strict exact requests with null
+state may fall back to loose. The ISA permits exceptions, so RDNA3 retains
+optional `trapsts` and RDNA4 optional `excp_flag_user`. Non-null reporting for
+non-loose semantics returns unsupported global state before modifier validation,
+EXEC handling or operand reads. Loose calls skip reporting, leaving state intact.
+
+The existing AVX2 path processes four FP64 lanes at a time, including source
+and output modifiers; higher CPU tiers reuse it. Results are staged before
+masked stores, preserving cross-word aliases. Existing tests cover literal NaN
+priority, signed zeros, all modifiers, guest policies, masks and aliases. The
+new test covers all twelve entry points across CPU tiers, both wave widths,
+eight IEEE/denormal policies, zero/partial/full EXEC, optional state, exact
+fallback and invalid DPP/half selectors. Rejected calls use null operand
+pointers and verify untouched output storage and state.
+
+All **13** FP64 tests pass with Clang 21 Release, GCC 15 Release and Clang
+ASan/UBSan. Logs use `coverage-work/fp64-minmax-contract-{build,tests}.log` in
+each build directory. No production code changed, so this review changes
+neither performance nor library size. The ledger now records **777** reviewed
+mnemonic contracts with **32** remaining; these counts are not a completion
+percentage.

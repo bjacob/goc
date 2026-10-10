@@ -1223,19 +1223,19 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_max3_u32` | yes | yes | in | `goc_v_max3_u32`<br>`goc_v_max3_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_max_f16` | yes | — | in | `goc_v_max_f16`<br>`goc_v_max_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-binary-and-packed-selection-architecture-contracts) |
 | `v_max_f32` | yes | — | in | `goc_v_max_f32`<br>`goc_v_max_f32_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-binary-and-dual-minmax-architecture-contracts) |
-| `v_max_f64` | yes | — | in | `goc_v_max_f64`<br>`goc_v_max_f64_wave64` | — | API present; semantic audit pending |
+| `v_max_f64` | yes | — | in | `goc_v_max_f64`<br>`goc_v_max_f64_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-minmax-architecture-contracts) |
 | `v_max_i16` | yes | yes | in | `goc_v_max_i16`<br>`goc_v_max_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_max_i32` | yes | yes | in | `goc_v_max_i32`<br>`goc_v_max_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_max_num_f16` | — | yes | in | `goc_v_max_num_f16`<br>`goc_v_max_num_f16_wave64` | `v_max_f16` | [loose contract reviewed; see limitations](COVERAGE.md#fp16-binary-and-packed-selection-architecture-contracts) |
 | `v_max_num_f32` | — | yes | in | `goc_v_max_num_f32`<br>`goc_v_max_num_f32_wave64` | `v_max_f32` | [loose contract reviewed; see limitations](COVERAGE.md#fp32-binary-and-dual-minmax-architecture-contracts) |
-| `v_max_num_f64` | — | yes | in | `goc_v_max_num_f64`<br>`goc_v_max_num_f64_wave64` | `v_max_f64` | API present; semantic audit pending |
+| `v_max_num_f64` | — | yes | in | `goc_v_max_num_f64`<br>`goc_v_max_num_f64_wave64` | `v_max_f64` | [loose contract reviewed; see limitations](COVERAGE.md#fp64-minmax-architecture-contracts) |
 | `v_max_u16` | yes | yes | in | `goc_v_max_u16`<br>`goc_v_max_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_max_u32` | yes | yes | in | `goc_v_max_u32`<br>`goc_v_max_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_maximum3_f16` | — | yes | in | `goc_v_maximum3_f16`<br>`goc_v_maximum3_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-ternary-minmax-architecture-contracts) |
 | `v_maximum3_f32` | — | yes | in | `goc_v_maximum3_f32`<br>`goc_v_maximum3_f32_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-ternary-minmax-architecture-contracts) |
 | `v_maximum_f16` | — | yes | in | `goc_v_maximum_f16`<br>`goc_v_maximum_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-binary-and-packed-selection-architecture-contracts) |
 | `v_maximum_f32` | — | yes | in | `goc_v_maximum_f32`<br>`goc_v_maximum_f32_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-binary-and-dual-minmax-architecture-contracts) |
-| `v_maximum_f64` | — | yes | in | `goc_v_maximum_f64`<br>`goc_v_maximum_f64_wave64` | — | API present; semantic audit pending |
+| `v_maximum_f64` | — | yes | in | `goc_v_maximum_f64`<br>`goc_v_maximum_f64_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-minmax-architecture-contracts) |
 | `v_maximumminimum_f16` | — | yes | in | `goc_v_maximumminimum_f16`<br>`goc_v_maximumminimum_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-ternary-minmax-architecture-contracts) |
 | `v_maximumminimum_f32` | — | yes | in | `goc_v_maximumminimum_f32`<br>`goc_v_maximumminimum_f32_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-ternary-minmax-architecture-contracts) |
 | `v_maxmin_f16` | yes | — | in | `goc_v_maxmin_f16`<br>`goc_v_maxmin_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-ternary-minmax-architecture-contracts) |
@@ -1264,19 +1264,19 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_min3_u32` | yes | yes | in | `goc_v_min3_u32`<br>`goc_v_min3_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_min_f16` | yes | — | in | `goc_v_min_f16`<br>`goc_v_min_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-binary-and-packed-selection-architecture-contracts) |
 | `v_min_f32` | yes | — | in | `goc_v_min_f32`<br>`goc_v_min_f32_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-binary-and-dual-minmax-architecture-contracts) |
-| `v_min_f64` | yes | — | in | `goc_v_min_f64`<br>`goc_v_min_f64_wave64` | — | API present; semantic audit pending |
+| `v_min_f64` | yes | — | in | `goc_v_min_f64`<br>`goc_v_min_f64_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-minmax-architecture-contracts) |
 | `v_min_i16` | yes | yes | in | `goc_v_min_i16`<br>`goc_v_min_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_min_i32` | yes | yes | in | `goc_v_min_i32`<br>`goc_v_min_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_min_num_f16` | — | yes | in | `goc_v_min_num_f16`<br>`goc_v_min_num_f16_wave64` | `v_min_f16` | [loose contract reviewed; see limitations](COVERAGE.md#fp16-binary-and-packed-selection-architecture-contracts) |
 | `v_min_num_f32` | — | yes | in | `goc_v_min_num_f32`<br>`goc_v_min_num_f32_wave64` | `v_min_f32` | [loose contract reviewed; see limitations](COVERAGE.md#fp32-binary-and-dual-minmax-architecture-contracts) |
-| `v_min_num_f64` | — | yes | in | `goc_v_min_num_f64`<br>`goc_v_min_num_f64_wave64` | `v_min_f64` | API present; semantic audit pending |
+| `v_min_num_f64` | — | yes | in | `goc_v_min_num_f64`<br>`goc_v_min_num_f64_wave64` | `v_min_f64` | [loose contract reviewed; see limitations](COVERAGE.md#fp64-minmax-architecture-contracts) |
 | `v_min_u16` | yes | yes | in | `goc_v_min_u16`<br>`goc_v_min_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_min_u32` | yes | yes | in | `goc_v_min_u32`<br>`goc_v_min_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_minimum3_f16` | — | yes | in | `goc_v_minimum3_f16`<br>`goc_v_minimum3_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-ternary-minmax-architecture-contracts) |
 | `v_minimum3_f32` | — | yes | in | `goc_v_minimum3_f32`<br>`goc_v_minimum3_f32_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-ternary-minmax-architecture-contracts) |
 | `v_minimum_f16` | — | yes | in | `goc_v_minimum_f16`<br>`goc_v_minimum_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-binary-and-packed-selection-architecture-contracts) |
 | `v_minimum_f32` | — | yes | in | `goc_v_minimum_f32`<br>`goc_v_minimum_f32_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-binary-and-dual-minmax-architecture-contracts) |
-| `v_minimum_f64` | — | yes | in | `goc_v_minimum_f64`<br>`goc_v_minimum_f64_wave64` | — | API present; semantic audit pending |
+| `v_minimum_f64` | — | yes | in | `goc_v_minimum_f64`<br>`goc_v_minimum_f64_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-minmax-architecture-contracts) |
 | `v_minimummaximum_f16` | — | yes | in | `goc_v_minimummaximum_f16`<br>`goc_v_minimummaximum_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-ternary-minmax-architecture-contracts) |
 | `v_minimummaximum_f32` | — | yes | in | `goc_v_minimummaximum_f32`<br>`goc_v_minimummaximum_f32_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-ternary-minmax-architecture-contracts) |
 | `v_minmax_f16` | yes | — | in | `goc_v_minmax_f16`<br>`goc_v_minmax_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-ternary-minmax-architecture-contracts) |
