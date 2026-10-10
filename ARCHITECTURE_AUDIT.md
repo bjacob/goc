@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-471 in-scope mnemonics have explicit contract-review records in
+477 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 338 in-scope mnemonics need a recorded review.
+The remaining 332 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -231,9 +231,9 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_ceil_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 3899, 3913 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_cls_i32` | SIMD macro, output helper | no | 3956, 3977 | review required |
 | `v_clz_i32_u32` | SIMD macro, output helper | no | 3998, 4017 | review required |
-| `v_cmp_class_f16` | SIMD macro | no | 4036, 4113 | review required |
-| `v_cmp_class_f32` | SIMD macro | no | 4183, 4251 | review required |
-| `v_cmp_class_f64` | SIMD macro | no | 4314, 4386 | review required |
+| `v_cmp_class_f16` | SIMD macro | no | 4036, 4113 | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
+| `v_cmp_class_f32` | SIMD macro | no | 4183, 4251 | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
+| `v_cmp_class_f64` | SIMD macro | no | 4314, 4386 | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
 | `v_cmp_eq_f16` | SIMD macro | yes | 4453, 4478 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_eq_f32` | SIMD macro | yes | 4500, 4525 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_eq_f64` | SIMD macro | yes | 4547, 4572 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
@@ -312,9 +312,9 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cmp_u_f16` | SIMD macro | yes | 8012, 8037 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_u_f32` | SIMD macro | yes | 8059, 8084 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_u_f64` | SIMD macro | yes | 8106, 8131 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmpx_class_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_class_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_class_f64` | no direct policy detected | no | not found | review required |
+| `v_cmpx_class_f16` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
+| `v_cmpx_class_f32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
+| `v_cmpx_class_f64` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
 | `v_cmpx_eq_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_eq_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_eq_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |

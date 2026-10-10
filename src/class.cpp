@@ -21,10 +21,11 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *d, const ui
     if (!(mode & (GOC_DPP8 | GOC_DPP16)) || !goc::valid_dpp(mode))
       return GOC_ERROR_INVALID_FLAGS;
   }
-  const uint32_t known =
-      GOC_ALU_ABS_A | GOC_ALU_NEG_A | (Bits == 16 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0);
+  const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_CLAMP |
+                         (Bits == 16 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0);
   if (int error = goc::validate(flags, uint32_t(mode) & ~known, true,
-                                GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
+                                GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS |
+                                    GOC_FP_IEEE_MODE))
     return error;
   if (!exec_mask) {
     *d = 0;

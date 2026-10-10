@@ -2355,7 +2355,8 @@ static const uint32_t GOC_CLASS_POS_INF = 1U << 9;
 // FP16/FP32 support DPP8/DPP16 on A before modifiers and half selection;
 // B stays in its lane and filtered result bits are zero. FP64 rejects DPP.
 // Supports loose and empirical-exact semantics, independently of denormal
-// controls. All host FP state is preserved.
+// controls and guest IEEE mode. CLAMP is accepted and ignored.
+// All host FP state is preserved.
 int goc_v_cmp_class_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                         const uint32_t *const *a, const uint32_t *const *b);
 int goc_v_cmp_class_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,

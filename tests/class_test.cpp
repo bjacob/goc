@@ -60,11 +60,12 @@ TEST(Class, DppModifiersMasksAliasesAndFpState) {
                   unsigned reg = target / 2, word = target & 1 ? 32 : 1;
                   uint32_t *d = target == 4 ? &outside : &words[reg][word];
                   const uint32_t *a[] = {words[0] + 1}, *b[] = {words[shared ? 0 : 1] + 1};
-                  uint64_t flags =
-                      cpu | (shared ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
-                                          GOC_FP_FLUSH_INPUT_DENORMALS
-                                    : 0);
-                  ASSERT_EQ(functions[op](flags, exec_mask, descriptor | goc_test::class_mode(m), d,
+                  uint64_t flags = cpu | GOC_FP_IEEE_MODE |
+                                   (shared ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                                                 GOC_FP_FLUSH_INPUT_DENORMALS
+                                           : 0);
+                  ASSERT_EQ(functions[op](flags, exec_mask,
+                                          descriptor | goc_test::class_mode(m) | GOC_ALU_CLAMP, d,
                                           a, b),
                             GOC_SUCCESS);
                   ASSERT_EQ(*d, want) << op << "/" << m << "/" << descriptor << "/" << cpu;
@@ -232,7 +233,7 @@ TEST(Class, ValidationAndCompleteHostFpState) {
   goc_test::ScopedFpEnvironment saved;
   ASSERT_TRUE(saved.saved());
   for (unsigned op = 0; op < 6; ++op) {
-    uint32_t known = goc_test::class_mode(op < 2 ? 15 : 3), result = 1;
+    uint32_t known = goc_test::class_mode(op < 2 ? 15 : 3) | GOC_ALU_CLAMP, result = 1;
     EXPECT_EQ(functions[op](0, 0U, known, &result, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(result, 0u);
     for (unsigned bit = 0; bit < 32; ++bit) {
@@ -364,4 +365,49 @@ TEST(Class, Wave64RoutingMasksAliasesAndHostState) {
     EXPECT_EQ(fn(0, 0, 0, &d, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(d, 0U);
   }
+}
+
+TEST(Class, GuestPoliciesAndClampPreserveRawClasses) {
+  // One literal encoding per ISA class bit, in class-bit order. In particular,
+  // IEEE mode must not quiet sNaNs, and flushing must not turn subnormals into zero.
+  const uint64_t values[3][10] = {
+      {0x7c01, 0x7e00, 0xfc00, 0xbc00, 0x8001, 0x8000, 0, 1, 0x3c00, 0x7c00},
+      {0x7f800001, 0x7fc00000, 0xff800000, 0xbf800000, 0x80000001, 0x80000000, 0, 1, 0x3f800000,
+       0x7f800000},
+      {0x7ff0000000000001ULL, 0x7ff8000000000000ULL, 0xfff0000000000000ULL, 0xbff0000000000000ULL,
+       0x8000000000000001ULL, 0x8000000000000000ULL, 0, 1, 0x3ff0000000000000ULL,
+       0x7ff0000000000000ULL}};
+  for (unsigned op = 0; op < 6; ++op)
+    for (unsigned selected = 0; selected < 10; ++selected) {
+      uint32_t words[3][64];
+      uint64_t expected = 0;
+      const uint64_t exec_mask = 0x87654321fedcba98ULL;
+      for (unsigned lane = 0; lane < 64; ++lane) {
+        uint64_t value = values[op / 2][lane % 10];
+        words[0][lane] = uint32_t(value);
+        words[1][lane] = uint32_t(value >> 32);
+        words[2][lane] = 1U << selected;
+        if (lane % 10 == selected)
+          expected |= 1ULL << lane;
+      }
+      expected &= exec_mask;
+      const uint32_t *a[] = {words[0], words[1]}, *b = words[2];
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+          for (unsigned policy = 0; policy < 8; ++policy)
+            for (uint64_t mode : {uint64_t(0), uint64_t(GOC_ALU_CLAMP)}) {
+              uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT |
+                               (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                               (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                               (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+              uint32_t result32 = 123;
+              uint64_t result64 = 123;
+              ASSERT_EQ(functions[op](flags, uint32_t(exec_mask), mode, &result32, a, &b),
+                        GOC_SUCCESS);
+              EXPECT_EQ(result32, uint32_t(expected));
+              ASSERT_EQ(wave64_functions[op](flags, exec_mask, mode, &result64, a, &b),
+                        GOC_SUCCESS);
+              EXPECT_EQ(result64, expected);
+            }
+    }
 }

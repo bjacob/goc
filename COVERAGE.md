@@ -5379,3 +5379,43 @@ comparison tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `constant-compare-review-` in each build directory. The public contract now also
 names TRAPSTS correctly and documents IEEE-mode acceptance. The ledger records
 471 contracts; 338 in-scope mnemonics remain without recorded reviews.
+
+## Classification architecture contracts
+
+Reviewed the six FP16/FP32/FP64 CLASS CMP/CMPX mnemonics against both architectures
+at rocjitsu `ffc144c564c`. The 24 VOPC/VOP3 handler locations, hashes and delegates
+are recorded in `../goc-build/coverage-work/class-upstream-review.json`. CMP
+handlers are identical between architectures; all six CMPX scalar bodies are
+identical after the RDNA4 SIMD shortcut. Shared helpers classify raw fields,
+including separate signaling/quiet NaNs and signed subnormals. No architecture
+suffix is needed. CMP writes its required condition mask; CMPX writes replacement
+EXEC without an additional VCC output.
+
+Fixed rejection of guest IEEE mode and the instruction CLAMP flag. Both are
+accepted without changing classification. The RDNA3 manual section 7.2.3.1 and
+[RDNA4 section 7.2.3.1](https://www.amd.com/content/dam/amd/en/documents/radeon-tech-docs/instruction-set-architectures/rdna4-instruction-set-architecture.pdf)
+explicitly list CLASS among instructions that ignore CLAMP. Upstream classification
+also ignores IEEE and denormal controls. Sign modifiers operate on raw bits;
+FP16 half selection applies to both A and B. DPP routes A before classification,
+with B local to the destination lane. FP64 DPP remains rejected. Scalar, v3
+(eight lanes) and v4 (sixteen lanes) kernels are unchanged; accepted flags do not
+add arithmetic or displace SIMD paths.
+
+The existing no-exception-output API remains unchanged, matching rocjitsu's CLASS
+handlers. The RDNA3 per-instruction pages contain a generic sNaN/qNaN invalid-note,
+including a CLAMP condition inconsistent with the explicit ignored-CLAMP table.
+This review does not resolve that documentation discrepancy or claim a newly
+validated hardware exception model. Existing hardware fixtures cover numerical
+classification, not a new RDNA3 exception experiment.
+
+Added literal representatives of all ten classes against every selector bit,
+both wave sizes, both semantics, all available CPU levels, all eight exposed
+IEEE/denormal policy combinations and CLAMP on/off. Existing DPP/modifier/alias
+tests now also exercise IEEE mode and ignored CLAMP. Existing exhaustive FP16,
+class-mask, hardware-corpus and validation tests remain in place.
+
+Validation: all 1,122 CTests pass under Clang and GCC Release; all ten CLASS
+tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`class-review-` in each build directory. The ledger now records 477 contracts;
+332 in-scope mnemonics still need recorded reviews. These counts do not resolve
+the documented semantic limitations.

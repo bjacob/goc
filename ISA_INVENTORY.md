@@ -872,9 +872,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_ceil_f64` | yes | yes | in | `goc_v_ceil_f64`<br>`goc_v_ceil_f64_wave64`<br>`goc_v_ceil_f64_rdna4`<br>`goc_v_ceil_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_cls_i32` | yes | yes | in | `goc_v_cls_i32`<br>`goc_v_cls_i32_wave64` | `v_ffbh_i32` | API present; semantic audit pending |
 | `v_clz_i32_u32` | yes | yes | in | `goc_v_clz_i32_u32`<br>`goc_v_clz_i32_u32_wave64` | `v_ffbh_u32` | API present; semantic audit pending |
-| `v_cmp_class_f16` | yes | yes | in | `goc_v_cmp_class_f16`<br>`goc_v_cmp_class_f16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_class_f32` | yes | yes | in | `goc_v_cmp_class_f32`<br>`goc_v_cmp_class_f32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_class_f64` | yes | yes | in | `goc_v_cmp_class_f64`<br>`goc_v_cmp_class_f64_wave64` | — | API present; semantic audit pending |
+| `v_cmp_class_f16` | yes | yes | in | `goc_v_cmp_class_f16`<br>`goc_v_cmp_class_f16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
+| `v_cmp_class_f32` | yes | yes | in | `goc_v_cmp_class_f32`<br>`goc_v_cmp_class_f32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
+| `v_cmp_class_f64` | yes | yes | in | `goc_v_cmp_class_f64`<br>`goc_v_cmp_class_f64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
 | `v_cmp_eq_f16` | yes | yes | in | `goc_v_cmp_eq_f16`<br>`goc_v_cmp_eq_f16_wave64`<br>`goc_v_cmp_eq_f16_rdna4`<br>`goc_v_cmp_eq_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_eq_f32` | yes | yes | in | `goc_v_cmp_eq_f32`<br>`goc_v_cmp_eq_f32_wave64`<br>`goc_v_cmp_eq_f32_rdna4`<br>`goc_v_cmp_eq_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_eq_f64` | yes | yes | in | `goc_v_cmp_eq_f64`<br>`goc_v_cmp_eq_f64_wave64`<br>`goc_v_cmp_eq_f64_rdna4`<br>`goc_v_cmp_eq_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
@@ -967,9 +967,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cmp_u_f16` | yes | yes | in | `goc_v_cmp_u_f16`<br>`goc_v_cmp_u_f16_wave64`<br>`goc_v_cmp_u_f16_rdna4`<br>`goc_v_cmp_u_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_u_f32` | yes | yes | in | `goc_v_cmp_u_f32`<br>`goc_v_cmp_u_f32_wave64`<br>`goc_v_cmp_u_f32_rdna4`<br>`goc_v_cmp_u_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_u_f64` | yes | yes | in | `goc_v_cmp_u_f64`<br>`goc_v_cmp_u_f64_wave64`<br>`goc_v_cmp_u_f64_rdna4`<br>`goc_v_cmp_u_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmpx_class_f16` | yes | yes | in | `goc_v_cmpx_class_f16`<br>`goc_v_cmpx_class_f16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_class_f32` | yes | yes | in | `goc_v_cmpx_class_f32`<br>`goc_v_cmpx_class_f32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_class_f64` | yes | yes | in | `goc_v_cmpx_class_f64`<br>`goc_v_cmpx_class_f64_wave64` | — | API present; semantic audit pending |
+| `v_cmpx_class_f16` | yes | yes | in | `goc_v_cmpx_class_f16`<br>`goc_v_cmpx_class_f16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
+| `v_cmpx_class_f32` | yes | yes | in | `goc_v_cmpx_class_f32`<br>`goc_v_cmpx_class_f32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
+| `v_cmpx_class_f64` | yes | yes | in | `goc_v_cmpx_class_f64`<br>`goc_v_cmpx_class_f64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
 | `v_cmpx_eq_f16` | yes | yes | in | `goc_v_cmpx_eq_f16`<br>`goc_v_cmpx_eq_f16_wave64`<br>`goc_v_cmpx_eq_f16_rdna4`<br>`goc_v_cmpx_eq_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_eq_f32` | yes | yes | in | `goc_v_cmpx_eq_f32`<br>`goc_v_cmpx_eq_f32_wave64`<br>`goc_v_cmpx_eq_f32_rdna4`<br>`goc_v_cmpx_eq_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_eq_f64` | yes | yes | in | `goc_v_cmpx_eq_f64`<br>`goc_v_cmpx_eq_f64_wave64`<br>`goc_v_cmpx_eq_f64_rdna4`<br>`goc_v_cmpx_eq_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
