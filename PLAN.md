@@ -299,11 +299,11 @@ We can start with 0 bits: that whole topic may wait until a later phase of execu
 When we do create floating-point environment bits, each of them should have value 0 meaning the common/default case
 and nonzero bit values meaning the non-default/less-common cases. Thus, users who don't really care can continue leaving these bits as 0.
 
-All of this floating-point environment concept is about the GPU being emulated, not about the host CPU floating-point environment. The latter is treated as an implementation detail. It is up to the implementation to decide, based on the instruction to be emulated and its semantics flags, what to do about the CPU environment. One specific directive though:
-The implementation may assume that the CPU environment is in its default/standard mode: default round-to-nearest, break-ties-to-nearest-even mode, full denormals support. That is part of the contract with the user: if the user calls GoC on a thread with a non-default floating-point environment, they are breaking the contract and thus GoC is relieved from all accuracy promises. So with that out of the way, it is generally expected that at least the loose-semantics implementations will never need to bother about the floating-point environment. Bit-exact semantics may consider mutating the floating-point environment as necessary, but:
+These flags describe the GPU floating-point environment being emulated. Unless an instruction's contract promises otherwise, implementations may assume the host CPU uses round-to-nearest, ties-to-even and preserves denormals; numerical accuracy is not promised under other host settings.
 
-* They must restore it (push-pop, do not assume that it was default, do restore it as you found it) before they return.
-* They should not automatically resort to floating-point environment manipulation without exploring alternatives (sometimes a simple bit manipulation can achieve the same result without the high overhead of changing FP state).
+No production implementation of any API entry point may explicitly mutate the host CPU floating-point environment, even temporarily. This includes rounding modes, exception masks, denormal controls, clearing exception flags, and save/modify/restore helpers. Ordinary arithmetic may raise sticky exception flags. Tests may change the host environment to verify behavior.
+
+This prohibition takes priority over the mandate to borrow rocjitsu code, including bit-exact implementations. Upstream code that changes host FP controls must not be copied or called as-is. Adapt the borrowed algorithm without changing the host environment, or leave the affected exact semantics explicitly unsupported if no compliant faithful implementation is available. Restoring the environment afterward does not make a change acceptable.
 
 ### GPU floating-point types with no CPU support
 

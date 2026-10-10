@@ -84,6 +84,12 @@ save/modify/restore guards or helpers for that purpose. Ordinary arithmetic may
 raise sticky exception flags. Tests may modify the FP environment to verify
 behavior under different host settings.
 
+This prohibition takes priority over borrowing rocjitsu implementations, including
+bit-exact paths. Do not copy or call upstream code that changes host FP controls.
+Adapt a borrowed algorithm to obey this rule, or leave the affected exact
+semantics explicitly unsupported if no compliant faithful implementation is
+available. Save/restore does not make an environment change acceptable.
+
 Append implicit architectural register outputs to instruction API parameter
 lists, exactly one pointer per register the instruction may write. Use the
 lowercase ISA register name and its native-width unsigned integer type. A null
