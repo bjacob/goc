@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Generate a gfx1201 HIP raw unary-result probe.
 
-Arguments: OUTPUT_DIR [rcp|sqrt|rsq|exp|log] [--exceptions], default rcp.
+Arguments: OUTPUT_DIR MNEMONIC [--exceptions], default rcp.
+MNEMONIC: rcp, sqrt, rsq, exp, log, trunc, ceil, rndne or floor.
 Compile probe.cpp with hipcc. `probe normalized` covers every FP32 value in
 [1,2) for RCP, [1,4) for SQRT/RSQ, [0.5,2) for LOG, and both signs of [0.5,2)
-for EXP. `probe` covers [4 denormal policies][32 modifiers][8192 inputs].
+for EXP. Rounding normalized probes cover [1,4). `probe` covers [4 denormal policies][32 modifiers][8192 inputs].
 Writes little-endian uint32 results to capture.bin. Modifiers: NEG bit0, ABS
 bit1, OMOD bits2:3, CLAMP bit4. Guest rounding is nearest-even.
 --exceptions uses one identical-input Wave32 per case, clears EXCP_FLAG_USER,
@@ -18,8 +19,8 @@ import struct
 from pathlib import Path
 import sys
 op = sys.argv[2] if len(sys.argv) > 2 else "rcp"
-if op not in ("rcp", "sqrt", "rsq", "exp", "log"):
-    raise SystemExit("expected rcp, sqrt, rsq, exp or log")
+if op not in ("rcp", "sqrt", "rsq", "exp", "log", "trunc", "ceil", "rndne", "floor"):
+    raise SystemExit("expected a supported FP32 unary mnemonic")
 report = "--exceptions" in sys.argv[3:]
 exactness = "--exactness" in sys.argv[3:]
 if exactness and not report:

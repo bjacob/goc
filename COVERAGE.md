@@ -2876,3 +2876,49 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   112.565 -> 118.335 ns. Reporting work remains exclusively in the exact helper;
   these measurements do not establish a whole-library or exact-path speedup.
   Raw samples and binaries use `../goc-build/coverage-work/unary-report-*`.
+
+### FP32 integral-rounding architecture policies
+
+- Split TRUNC/CEIL/RNDNE/FLOOR in both wave sizes into unsuffixed RDNA3 and
+  `_rdna4` entry points. RDNA3 suppresses OMOD when IEEE mode is set or guest
+  output denormals are preserved; RDNA4 applies scaling independently. This
+  follows the ISA OMOD rule and rocjitsu's shared VOP3 rounding helpers, which
+  pass the guest denormal mode to `effective_omod` (unlike forced-flush
+  SQRT/RCP/RSQ/EXP/LOG). Both architectures share the numerical/SIMD kernels.
+- Added explicit guest input flushing to scalar and AVX2 rounding. New gfx1201
+  captures demonstrate that CEIL/FLOOR of subnormal inputs depends on this
+  setting; the inspected rocjitsu rounding helpers do not apply it. The AVX2
+  path flushes using vector bit operations and remains available with all source
+  modifiers, OMOD, CLAMP and guest input flushing. No host FP controls change.
+- Captured 4,194,304 native `(result, flags)` pairs across four instructions,
+  four denormal policies, 32 modifiers and 8192 operands. Loose-result fixtures
+  canonicalize only NaN payloads; status words remain in local capture files for
+  subsequent exact/reporting implementation. Tests compare both widths and
+  rotate all available CPU tiers. RDNA3 expectations use the documented OMOD
+  suppression applied to the RDNA4 numerical corpus; these are not native RDNA3
+  captures and do not establish bit-exact RDNA3 NaN or exception behavior.
+- Added DPP8/DPP16 routing, masking, in-place aliases, invalid-modifier, empty-EXEC
+  and optional-state tests across both architectures and all CPU tiers. Existing
+  RDNA4 tests and benchmark entries now call `_rdna4` APIs. Exact numerical and
+  requested exact state reporting for these four instructions remain unsupported.
+- Shared the capture operand generator between the existing exact-unary tests
+  and the new rounding tests in `tests/unary_capture_input.h`; arithmetic and
+  status expectations still come from independent GPU fixture hashes.
+- Regenerated the ISA/architecture/register-name audits: 666 exception-output
+  signatures, 374 resolved names matching, zero mismatches, 292 pending review.
+  The instruction-name inventory remains 806/809; this slice corrects semantics
+  of existing APIs rather than filling one of the three missing HWREG names.
+- Clang 21 and GCC 15 Release each pass **1,017/1,017** tests. Logs use
+  `/tmp/goc-round-{clang,gcc}-tests.log`; native capture artifacts are
+  `../goc-build/coverage-work/{trunc,ceil,rndne,floor}-report-captures/`.
+- Targeted Clang ASan/UBSan passes **50/50** rounding/unary/DPP tests; log:
+  `/tmp/goc-round-san-tests.log`.
+- Eleven alternating CPU-2-pinned before/after samples, minimum 50 ms thread CPU
+  time per case, compare against `9b23a0e`. Sixteen loose AVX2 rounding cases
+  (default/combined modifiers and null/non-null state) range from -1.96% to
+  +1.55%; the largest increase is 0.206 ns. Twelve SQRT/RSQ/RCP control cases
+  range from -2.06% to +2.95%, at most 0.610 ns. Both the old dispatch source and
+  old SIMD object were compiled for the baseline, so the comparison includes
+  the SIMD parameter/branch change. Artifacts use
+  `../goc-build/coverage-work/round-arch-*`; these are local per-call timings,
+  not a whole-library performance claim.

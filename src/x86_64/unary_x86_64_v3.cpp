@@ -12,7 +12,7 @@ namespace goc {
 namespace {
 
 template <Unary Op>
-void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a) {
+void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, bool flush_input) {
   const __m256i keep = _mm256_set1_epi32((modifiers & GOC_ALU_ABS_A) ? 0x7fffffff : -1);
   const __m256i flip = _mm256_set1_epi32((modifiers & GOC_ALU_NEG_A) ? INT32_MIN : 0);
   const float scales[] = {1, 2, 4, 0.5f};
@@ -23,6 +23,11 @@ void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a)
         flip));
     if constexpr (unary_flushes_f32<Op>)
       value = flush_denorm_f32(value);
+    else if constexpr (Op == Unary::Trunc || Op == Unary::Ceil || Op == Unary::Rndne ||
+                       Op == Unary::Floor) {
+      if (flush_input)
+        value = flush_denorm_f32(value);
+    }
     value = unary_value<Op>(value);
     if constexpr (unary_flushes_f32<Op>)
       value = flush_denorm_f32(value);
@@ -42,26 +47,26 @@ void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a)
 } // namespace
 
 void unary_x86_64_v3(Unary op, uint32_t exec_mask, uint32_t modifiers, uint32_t *d,
-                     const uint32_t *a) {
+                     const uint32_t *a, bool flush_input) {
   switch (op) {
   case Unary::Fract:
-    return run<Unary::Fract>(exec_mask, modifiers, d, a);
+    return run<Unary::Fract>(exec_mask, modifiers, d, a, flush_input);
   case Unary::FrexpMant:
-    return run<Unary::FrexpMant>(exec_mask, modifiers, d, a);
+    return run<Unary::FrexpMant>(exec_mask, modifiers, d, a, flush_input);
   case Unary::Trunc:
-    return run<Unary::Trunc>(exec_mask, modifiers, d, a);
+    return run<Unary::Trunc>(exec_mask, modifiers, d, a, flush_input);
   case Unary::Ceil:
-    return run<Unary::Ceil>(exec_mask, modifiers, d, a);
+    return run<Unary::Ceil>(exec_mask, modifiers, d, a, flush_input);
   case Unary::Rndne:
-    return run<Unary::Rndne>(exec_mask, modifiers, d, a);
+    return run<Unary::Rndne>(exec_mask, modifiers, d, a, flush_input);
   case Unary::Floor:
-    return run<Unary::Floor>(exec_mask, modifiers, d, a);
+    return run<Unary::Floor>(exec_mask, modifiers, d, a, flush_input);
   case Unary::Sqrt:
-    return run<Unary::Sqrt>(exec_mask, modifiers, d, a);
+    return run<Unary::Sqrt>(exec_mask, modifiers, d, a, flush_input);
   case Unary::Rcp:
-    return run<Unary::Rcp>(exec_mask, modifiers, d, a);
+    return run<Unary::Rcp>(exec_mask, modifiers, d, a, flush_input);
   case Unary::Rsq:
-    return run<Unary::Rsq>(exec_mask, modifiers, d, a);
+    return run<Unary::Rsq>(exec_mask, modifiers, d, a, flush_input);
   case Unary::Exp:
   case Unary::Log:
     return;

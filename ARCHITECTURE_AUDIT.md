@@ -220,7 +220,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_bfm_b32` | SIMD macro, output helper | no | 3723 | review required |
 | `v_bfrev_b32` | SIMD macro, output helper | no | 3738, 3762 | review required |
 | `v_ceil_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 3786, 3810 | review required |
-| `v_ceil_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 3855, 3869 | review required |
+| `v_ceil_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3855, 3869 | review required |
 | `v_ceil_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 3899, 3913 | review required |
 | `v_cls_i32` | SIMD macro, output helper | no | 3956, 3977 | review required |
 | `v_clz_i32_u32` | SIMD macro, output helper | no | 3998, 4017 | review required |
@@ -465,7 +465,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_exp_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 11151, 11183 | review required |
 | `v_exp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11229, 11247 | review required |
 | `v_floor_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 11399, 11423 | review required |
-| `v_floor_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 11468, 11482 | review required |
+| `v_floor_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11468, 11482 | review required |
 | `v_floor_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 11512, 11526 | review required |
 | `v_fma_dx9_zero_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11563 | review required |
 | `v_fma_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11625 | review required |
@@ -599,7 +599,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_readfirstlane_b32` | no direct policy detected | no | not found | review required |
 | `v_readlane_b32` | no direct policy detected | no | not found | review required |
 | `v_rndne_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 18465, 18489 | review required |
-| `v_rndne_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 18534, 18548 | review required |
+| `v_rndne_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18534, 18548 | review required |
 | `v_rndne_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 18578, 18592 | review required |
 | `v_rsq_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 18629, 18663 | review required |
 | `v_rsq_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18709, 18727 | review required |
@@ -632,7 +632,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_swaprel_b32` | no direct policy detected | no | not found | review required |
 | `v_trig_preop_f64` | IEEE mode, OMOD, architecture query | no | 20185 | review required |
 | `v_trunc_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 20238, 20262 | review required |
-| `v_trunc_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 20307, 20321 | review required |
+| `v_trunc_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20307, 20321 | review required |
 | `v_trunc_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 20351, 20365 | review required |
 | `v_wmma_bf16_16x16x16_bf16` | no direct policy detected | yes | not found | review required |
 | `v_wmma_f16_16x16x16_f16` | no direct policy detected | yes | not found | review required |

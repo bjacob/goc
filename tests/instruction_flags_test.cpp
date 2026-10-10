@@ -199,7 +199,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_sad_u16" || base_name == "goc_v_sad_u32" ||
         base_name == "goc_v_msad_u8" || base_name == "goc_v_qsad_pk_u16_u8" ||
         base_name == "goc_v_mqsad_pk_u16_u8" || base_name == "goc_v_mqsad_u32_u8" ||
-        base_name == "goc_v_rcp_iflag_f32_rdna4" || base_name == "goc_v_sqrt_f32_rdna4" ||
+        base_name == "goc_v_rcp_iflag_f32_rdna4" || base_name == "goc_v_trunc_f32_rdna4" ||
+        base_name == "goc_v_ceil_f32_rdna4" || base_name == "goc_v_rndne_f32_rdna4" ||
+        base_name == "goc_v_floor_f32_rdna4" || base_name == "goc_v_sqrt_f32_rdna4" ||
         base_name == "goc_v_rcp_f32_rdna4" || base_name == "goc_v_rsq_f32_rdna4" ||
         base_name == "goc_v_exp_f32_rdna4" || base_name == "goc_v_log_f32_rdna4")
       name = base_name.c_str();
@@ -302,8 +304,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
                         "goc_v_med3_f16", "goc_v_min3_f32", "goc_v_max3_f32", "goc_v_minmax_f32",
                         "goc_v_maxmin_f32", "goc_v_med3_f32"})
     supports_dpp |= std::strcmp(name, mnemonic) == 0;
-  for (auto mnemonic : {"goc_v_sqrt_f32_rdna4", "goc_v_rcp_f32_rdna4", "goc_v_rsq_f32_rdna4",
-                        "goc_v_exp_f32_rdna4", "goc_v_log_f32_rdna4"})
+  for (auto mnemonic : {"goc_v_trunc_f32_rdna4", "goc_v_ceil_f32_rdna4", "goc_v_rndne_f32_rdna4",
+                        "goc_v_floor_f32_rdna4", "goc_v_sqrt_f32_rdna4", "goc_v_rcp_f32_rdna4",
+                        "goc_v_rsq_f32_rdna4", "goc_v_exp_f32_rdna4", "goc_v_log_f32_rdna4"})
     supports_dpp |= std::strcmp(name, mnemonic) == 0;
   bool dpp_scalar_output = std::strcmp(name, "goc_v_rcp_iflag_f32") == 0 ||
                            std::strcmp(name, "goc_v_rcp_iflag_f32_rdna4") == 0;

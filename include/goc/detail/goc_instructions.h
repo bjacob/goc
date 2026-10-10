@@ -4231,16 +4231,28 @@ int goc_v_frexp_mant_f32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 // Wave64 F32 unary forms retain Wave32 modifiers, DPP routing,
 // loose numerical behavior, destination preservation and optional-state contracts.
 int goc_v_trunc_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_trunc_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_ceil_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_ceil_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                uint32_t *excp_flag_user);
 
 int goc_v_rndne_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_rndne_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_floor_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_floor_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_sqrt_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
@@ -4745,17 +4757,30 @@ int goc_v_dot2_bf16_bf16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t ins
 // modifiers for absent operands are invalid. CLAMP maps NaNs to +0 and clamps
 // to [0, 1]. EXP and LOG use base 2; RSQ computes reciprocal square root.
 // RNDNE rounds ties to even. SQRT/RCP/RSQ/EXP/LOG also implement exact results.
+// TRUNC/CEIL/RNDNE/FLOOR accept guest IEEE and denormal flags. Their RDNA3
+// forms suppress OMOD when IEEE mode is enabled or output denormals are
+// preserved; _rdna4 forms scale independently. Guest input flushing applies
+// before rounding. Exact numerical and optional state reporting for these
+// four rounding instructions remain unsupported; loose calls leave state alone.
 int goc_v_trunc_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_trunc_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_ceil_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                   uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_ceil_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_rndne_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_rndne_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_floor_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_floor_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 // SQRT/RCP/RSQ/EXP/LOG force input/output flushing regardless of guest flush
 // flags. Unsuffixed RDNA3 forms disable OMOD when GOC_FP_IEEE_MODE is set;

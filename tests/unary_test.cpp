@@ -15,11 +15,11 @@
 
 namespace {
 
-const decltype(&goc_v_trunc_f32_wave64) wave64[] = {
-    goc_v_trunc_f32_wave64,     goc_v_ceil_f32_wave64,       goc_v_rndne_f32_wave64,
-    goc_v_floor_f32_wave64,     goc_v_sqrt_f32_rdna4_wave64, goc_v_rcp_f32_rdna4_wave64,
-    goc_v_rsq_f32_rdna4_wave64, goc_v_exp_f32_rdna4_wave64,  goc_v_log_f32_rdna4_wave64,
-    goc_v_fract_f32_wave64,     goc_v_frexp_mant_f32_wave64};
+const decltype(&goc_v_trunc_f32_rdna4_wave64) wave64[] = {
+    goc_v_trunc_f32_rdna4_wave64, goc_v_ceil_f32_rdna4_wave64, goc_v_rndne_f32_rdna4_wave64,
+    goc_v_floor_f32_rdna4_wave64, goc_v_sqrt_f32_rdna4_wave64, goc_v_rcp_f32_rdna4_wave64,
+    goc_v_rsq_f32_rdna4_wave64,   goc_v_exp_f32_rdna4_wave64,  goc_v_log_f32_rdna4_wave64,
+    goc_v_fract_f32_wave64,       goc_v_frexp_mant_f32_wave64};
 
 } // namespace
 

@@ -144,9 +144,11 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
     if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
       return unary_exact<Op>(flags, exec_mask, modifiers, d, a, Rdna3, excp_flag_user);
   if constexpr (Rdna3) {
-    // These transcendental operations use forced-flush OMOD policy, regardless
-    // of guest denormal flags. Only RDNA3 IEEE mode disables output scaling.
-    if (flags & GOC_FP_IEEE_MODE)
+    // Transcendentals use forced-flush OMOD policy. Integral rounding instead
+    // uses the guest output-denormal policy, even though rounding itself does
+    // not produce subnormal results. Both also honor RDNA3 IEEE mode.
+    if ((flags & GOC_FP_IEEE_MODE) ||
+        (!goc::unary_flushes_f32<Op> && !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)))
       modifiers &= ~uint64_t(GOC_ALU_OMOD_HALF);
     return unary<Op>(flags, exec_mask, modifiers, d, a);
   }
@@ -158,10 +160,11 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
   }
 
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  constexpr uint64_t fp_flags = goc::unary_flushes_f32<Op> ? GOC_FP_FLUSH_INPUT_DENORMALS |
-                                                                 GOC_FP_FLUSH_OUTPUT_DENORMALS |
-                                                                 GOC_FP_IEEE_MODE
-                                                           : 0;
+  constexpr uint64_t fp_flags =
+      (goc::unary_flushes_f32<Op> || Op == goc::Unary::Trunc || Op == goc::Unary::Ceil ||
+       Op == goc::Unary::Rndne || Op == goc::Unary::Floor)
+          ? GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE
+          : 0;
   if (int error = goc::validate(flags, modifiers & ~known, false, fp_flags))
     return error;
   if (exec_mask == 0)
@@ -169,7 +172,8 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
 #if defined(GOC_HAVE_X86_64_V3)
   if constexpr (Op != goc::Unary::Exp && Op != goc::Unary::Log) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::unary_x86_64_v3(Op, exec_mask, modifiers, d[0], a[0]);
+      goc::unary_x86_64_v3(Op, exec_mask, modifiers, d[0], a[0],
+                           flags & GOC_FP_FLUSH_INPUT_DENORMALS);
       return GOC_SUCCESS;
     }
   }
@@ -179,6 +183,11 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
     float value = goc::alu_input(a[0][lane], modifiers);
     if constexpr (goc::unary_flushes_f32<Op>)
       value = goc::flush_denorm_f32(value);
+    else if constexpr (Op == goc::Unary::Trunc || Op == goc::Unary::Ceil ||
+                       Op == goc::Unary::Rndne || Op == goc::Unary::Floor) {
+      if (flags & GOC_FP_FLUSH_INPUT_DENORMALS)
+        value = goc::flush_denorm_f32(value);
+    }
     value = goc::unary_value<Op>(value);
     if constexpr (goc::unary_flushes_f32<Op>)
       value = goc::flush_denorm_f32(value);
@@ -215,28 +224,56 @@ int unary_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *co
 } // namespace
 
 int goc_v_trunc_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary<goc::Unary::Trunc, true>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_trunc_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return unary<goc::Unary::Trunc>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_v_ceil_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+                   uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary<goc::Unary::Ceil, true>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_ceil_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return unary<goc::Unary::Ceil>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_v_rndne_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary<goc::Unary::Rndne, true>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_rndne_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return unary<goc::Unary::Rndne>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_v_floor_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary<goc::Unary::Floor, true>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_floor_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return unary<goc::Unary::Floor>(flags, exec_mask, instruction_flags, d, a);
@@ -332,28 +369,60 @@ int goc_v_frexp_mant_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
 }
 
 int goc_v_trunc_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary_wave64<goc::Unary::Trunc, true>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_trunc_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return unary_wave64<goc::Unary::Trunc>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_v_ceil_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary_wave64<goc::Unary::Ceil, true>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_ceil_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return unary_wave64<goc::Unary::Ceil>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_v_rndne_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary_wave64<goc::Unary::Rndne, true>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_rndne_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return unary_wave64<goc::Unary::Rndne>(flags, exec_mask, instruction_flags, d, a);
 }
 
 int goc_v_floor_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary_wave64<goc::Unary::Floor, true>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_floor_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return unary_wave64<goc::Unary::Floor>(flags, exec_mask, instruction_flags, d, a);
