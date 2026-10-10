@@ -67,6 +67,28 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   return GOC_SUCCESS;
 }
 
+template <goc::PackedConversion Op>
+int convert_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b) {
+  if (int error = convert<Op>(flags, 0, mode, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32;
+    if (int error = convert<Op>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                                &source_a, &source_b))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_cvt_pk_rtz_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -91,4 +113,31 @@ int goc_v_cvt_pk_u16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return convert<goc::PackedConversion::Unsigned>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cvt_pk_rtz_f16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return convert_wave64<goc::PackedConversion::HalfRtz>(flags, exec_mask, instruction_flags, d, a,
+                                                        b);
+}
+
+int goc_v_cvt_pk_i16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return convert_wave64<goc::PackedConversion::Signed>(flags, exec_mask, instruction_flags, d, a,
+                                                       b);
+}
+
+int goc_v_cvt_pk_u16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return convert_wave64<goc::PackedConversion::Unsigned>(flags, exec_mask, instruction_flags, d, a,
+                                                         b);
 }

@@ -1060,7 +1060,9 @@ and sixteen-lane v4 paths. CLAMP is accepted without numeric effect, as is
 OMOD for the FP16 RTZ form. Integer forms truncate, saturate overflow and map
 NaNs to zero. RTZ borrows rocjitsu's `f32_to_f16_rtz` integer conversion,
 quieting source NaNs to match RDNA4; finite overflow saturates regardless of
-`GOC_FP16_OVFL`. All three expose loose semantics independent of host rounding.
+`GOC_FP16_OVFL`. All three expose loose semantics independent of host rounding
+at both wave sizes, sharing the scalar/v3/v4 kernels. Exact optional exception
+reporting remains unsupported.
 
 All three also support DPP8/DPP16, permuting A before conversion and modifiers
 while keeping B in its original lane. All modifier combinations match a

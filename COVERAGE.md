@@ -1111,3 +1111,22 @@ The width-review queue is 188 APIs.
 
 Validation: all 786 tests pass on Clang 21 and GCC 15 Release. All fourteen
 normalized-conversion and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 packed FP32 conversion
+
+Added Wave64 FP16 RTZ and signed/unsigned integer16 packed conversions. Each
+uses one VGPR per operand, routes A through DPP before modifiers, and packs A/B
+into the low/high destination halves. Existing scalar/v3/v4 rounding, overflow
+and NaN behavior is unchanged, as are loose semantics and optional-state rules.
+Exact non-null reporting still rejects before operand access.
+
+Tests repeat the existing nine-column raw hardware fixture across 64 lanes,
+including both FP16_OVFL settings, and independently compare every modifier
+combination with random FP32 inputs, all DPP row masks, upper/lower EXEC,
+source aliases and guard words. Loose non-null state remains unchanged;
+invalid and empty calls are checked without operands. This reuses Wave32
+hardware evidence rather than claiming a new Wave64 capture. Exact semantics
+and faithful optional reporting remain open. The width-review queue is 185 APIs.
+
+Validation: all 788 tests pass on Clang 21 and GCC 15 Release. All thirteen
+packed-conversion and instruction-flag tests pass under ASan/UBSan.
