@@ -2371,6 +2371,21 @@ int goc_v_cubema_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fl
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                      const uint32_t *const *c);
 
+// Wave64 retains the same exact selection/modifier rules and supports four
+// independent DPP rows. Y and Z retain their original lanes.
+int goc_v_cubeid_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c);
+int goc_v_cubesc_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c);
+int goc_v_cubetc_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c);
+int goc_v_cubema_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c);
+
 // DPP8/DPP16 permute A before modifiers; B remains in its original lane,
 // including when B is the stochastic seed.
 // Narrow FP32 to OCP E4M3FN (FP8) / E5M2 (BF8). Each operand is one VGPR.

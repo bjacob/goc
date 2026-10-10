@@ -918,7 +918,8 @@ are 26.0–32.0 ns for v3 (3.18–3.82x scalar) and 15.4–21.2 ns for v4
 (4.80–6.57x), with seven samples of at least 10 ms each.
 
 Cube-map arithmetic covers `v_cubeid_f32`, `v_cubesc_f32`, `v_cubetc_f32`,
-and `v_cubema_f32`, with scalar, eight-lane v3 and sixteen-lane v4 paths.
+and `v_cubema_f32`, in Wave32 and Wave64, with shared scalar, eight-lane v3
+and sixteen-lane v4 paths. Wave64 supports four independent DPP rows.
 The borrowed rocjitsu bit-level model supports both loose and empirical exact
 semantics on every path. A/B/C hold X/Y/Z; face IDs are 0/1 for positive/negative
 X, 2/3 for Y and 4/5 for Z. Z wins magnitude ties, then Y, then X. The major-axis

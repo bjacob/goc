@@ -42,6 +42,28 @@ int execute(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   return GOC_SUCCESS;
 }
 
+template <goc::Cube Op>
+int execute_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (int error = execute<Op>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *av = a[0] + half * 32, *bv = b[0] + half * 32, *cv = c[0] + half * 32;
+    if (int error =
+            execute<Op>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest, &av, &bv, &cv))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_cubeid_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -66,4 +88,28 @@ int goc_v_cubema_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fl
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                      const uint32_t *const *c) {
   return execute<goc::Cube::Ma>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_cubeid_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c) {
+  return execute_wave64<goc::Cube::Id>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_cubesc_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c) {
+  return execute_wave64<goc::Cube::Sc>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_cubetc_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c) {
+  return execute_wave64<goc::Cube::Tc>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_cubema_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c) {
+  return execute_wave64<goc::Cube::Ma>(flags, exec_mask, instruction_flags, d, a, b, c);
 }

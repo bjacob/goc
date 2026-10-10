@@ -20,6 +20,9 @@ namespace {
 
 using Fn = decltype(&goc_v_cubeid_f32);
 const Fn functions[] = {goc_v_cubeid_f32, goc_v_cubesc_f32, goc_v_cubetc_f32, goc_v_cubema_f32};
+const decltype(&goc_v_cubeid_f32_wave64) wave64_functions[] = {
+    goc_v_cubeid_f32_wave64, goc_v_cubesc_f32_wave64, goc_v_cubetc_f32_wave64,
+    goc_v_cubema_f32_wave64};
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 
 } // namespace
@@ -319,5 +322,218 @@ TEST(Cube, DppHardwareCorpusAndHostFpState) {
         EXPECT_EQ(std::fegetround(), rounding);
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INVALID | FE_INEXACT);
       }
+  }
+}
+
+TEST(Cube, Wave64HardwareCartesianCorpus) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned column = 0; column < 20; ++column) {
+      uint64_t digest = goc_test::capture_hash_seed;
+      for (unsigned start = 0; start < 4096; start += 64) {
+        uint32_t av[64], bv[64], cv[64], dv[64];
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          unsigned index = start + lane;
+          av[lane] = goc_test::cube_capture_values[index / 256];
+          bv[lane] = goc_test::cube_capture_values[(index / 16) % 16];
+          cv[lane] = goc_test::cube_capture_values[index % 16];
+        }
+        const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
+        uint32_t *d[] = {dv};
+        ASSERT_EQ(wave64_functions[column / 5](cpu | exact, UINT64_MAX,
+                                               goc_test::cube_capture_modes[column % 5], d, a, b,
+                                               c),
+                  GOC_SUCCESS);
+        for (auto word : dv)
+          digest = goc_test::capture_hash_bytes(digest, word, 4);
+      }
+      EXPECT_EQ(digest, goc_test::cube_capture_digests[column]) << cpu << "/" << column;
+    }
+}
+
+TEST(Cube, Wave64AxisTiesAtEveryMaskedLaneWithAlias) {
+  // Equal magnitudes select Z before Y before X, including negative faces.
+  const uint32_t inputs[][3] = {{0x3f800000, 0xbf800000, 0x3f800000},
+                                {0xbf800000, 0x3f800000, 0xbf800000},
+                                {0x3f800000, 0xbf800000, 0},
+                                {0xbf800000, 0, 0}};
+  const uint32_t faces[] = {0x40800000, 0x40a00000, 0x40400000, 0x3f800000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned selected = 0; selected < 64; ++selected) {
+      uint32_t words[3][64];
+      for (unsigned lane = 0; lane < 64; ++lane)
+        for (unsigned reg = 0; reg < 3; ++reg)
+          words[reg][lane] = inputs[lane % 4][reg];
+      const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+      uint32_t *d[] = {words[0]};
+      ASSERT_EQ(goc_v_cubeid_f32_wave64(cpu | exact, 1ULL << selected, 0, d, a, b, c), GOC_SUCCESS);
+      for (unsigned lane = 0; lane < 64; ++lane)
+        EXPECT_EQ(words[0][lane], lane == selected ? faces[lane % 4] : inputs[lane % 4][0]);
+    }
+}
+
+TEST(Cube, Wave64EveryModifierSpecialValuesAndRandomBits) {
+  std::mt19937 random(998143);
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint32_t mode = 0; mode < 512; ++mode)
+      for (unsigned block = 0; block < 16; ++block) {
+        uint32_t av[64], bv[64], cv[64], dv[64], expected[64];
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          av[lane] = block < 8 ? goc_test::cube_capture_values[(lane + block) % 16] : random();
+          bv[lane] =
+              block < 8 ? goc_test::cube_capture_values[(lane * 3 + block * 2) % 16] : random();
+          cv[lane] =
+              block < 8 ? goc_test::cube_capture_values[(lane * 7 + block * 3) % 16] : random();
+          expected[lane] = goc_test::cube_reference(op, av[lane], bv[lane], cv[lane], mode);
+        }
+        const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
+        uint32_t *d[] = {dv};
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          ASSERT_EQ(wave64_functions[op](cpu | exact, UINT64_MAX, mode, d, a, b, c), GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 64; ++lane)
+            ASSERT_EQ(dv[lane], expected[lane])
+                << op << "/" << mode << "/" << cpu << "/" << std::hex << av[lane] << "/" << bv[lane]
+                << "/" << cv[lane];
+        }
+      }
+}
+
+TEST(Cube, Wave64EveryModifierMaskAndDestinationAlias) {
+  std::mt19937 random(55919);
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint32_t mode = 0; mode < 512; ++mode) {
+      uint32_t original[4][66], result[64];
+      for (auto &reg : original)
+        for (auto &word : reg)
+          word = random();
+      for (unsigned lane = 0; lane < 64; ++lane)
+        result[lane] = goc_test::cube_reference(op, original[0][lane + 1], original[1][lane + 1],
+                                                original[2][lane + 1], mode);
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (uint64_t exec_mask : {uint64_t(UINT64_MAX), uint64_t(0xffffffff00000000ULL),
+                                   uint64_t(0x87654321fedcba98ULL)})
+          for (unsigned alias = 0; alias < 4; ++alias) {
+            uint32_t storage[4][66];
+            std::memcpy(storage, original, sizeof(storage));
+            const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[1] + 1},
+                           *c[] = {storage[2] + 1};
+            uint32_t *d[] = {storage[alias] + 1};
+            ASSERT_EQ(wave64_functions[op](cpu | GOC_FP16_OVFL | (mode & 1 ? exact : 0), exec_mask,
+                                           mode, d, a, b, c),
+                      GOC_SUCCESS);
+            for (unsigned reg = 0; reg < 4; ++reg)
+              for (unsigned word = 0; word < 66; ++word) {
+                uint32_t want =
+                    reg == alias && word > 0 && word < 65 && ((exec_mask >> (word - 1)) & 1)
+                        ? result[word - 1]
+                        : original[reg][word];
+                ASSERT_EQ(storage[reg][word], want)
+                    << op << "/" << mode << "/" << cpu << "/" << alias;
+              }
+          }
+    }
+}
+
+TEST(Cube, Wave64HostFloatingPointState) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
+    EXPECT_EQ(std::fesetround(rounding), 0);
+    for (unsigned op = 0; op < 4; ++op)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (uint32_t mode = 0; mode < 512; ++mode) {
+          uint32_t av[64], bv[64], cv[64], dv[64], expected[64];
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            av[lane] = goc_test::cube_capture_values[lane % 16];
+            bv[lane] = goc_test::cube_capture_values[(lane + 5) % 16];
+            cv[lane] = goc_test::cube_capture_values[(lane + 9) % 16];
+            expected[lane] = goc_test::cube_reference(op, av[lane], bv[lane], cv[lane], mode);
+          }
+          const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
+          uint32_t *d[] = {dv};
+          EXPECT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
+          EXPECT_EQ(std::feraiseexcept(FE_INEXACT | FE_INVALID), 0);
+          int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
+          EXPECT_EQ(wave64_functions[op](cpu | exact, UINT64_MAX, mode, d, a, b, c), GOC_SUCCESS);
+          EXPECT_EQ(std::fegetround(), rounding);
+          EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
+          for (unsigned lane = 0; lane < 64; ++lane)
+            EXPECT_EQ(dv[lane], expected[lane]);
+        }
+  }
+}
+
+TEST(Cube, Wave64ValidationAndSemanticFallback) {
+  for (auto fn : wave64_functions)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      uint32_t input[64] = {}, output[64];
+      std::fill_n(output, 64, 0xdeadbeef);
+      const uint32_t *a[] = {input};
+      uint32_t *d[] = {output};
+      for (unsigned bit = 9; bit < 32; ++bit) {
+        EXPECT_EQ(fn(cpu, UINT64_MAX, 1u << bit, d, a, a, a), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(cpu, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+      }
+      EXPECT_EQ(fn(cpu | (1ull << 63), UINT64_MAX, 0, d, a, a, a), GOC_ERROR_INVALID_FLAGS);
+      for (uint64_t semantics :
+           {2 * GOC_SEMANTICS_EXACT_EMPIRICAL, 3 * GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+        EXPECT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, d, a, a, a),
+                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      }
+      for (auto word : output)
+        EXPECT_EQ(word, 0xdeadbeef);
+      EXPECT_EQ(fn(cpu | exact, 0U, 511, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu | (2 * GOC_SEMANTICS_EXACT_EMPIRICAL), UINT64_MAX, 0, d, a, a, a),
+                GOC_SUCCESS);
+    }
+}
+
+// DPP permutes X before the source modifiers; Y and Z retain their lanes.
+TEST(Cube, Wave64DppModifiersMasksAliasesAndGuards) {
+  std::mt19937 random(615739);
+  uint32_t initial[4][66];
+  for (auto &reg : initial)
+    for (auto &word : reg)
+      word = random();
+  unsigned op = 0;
+  for (auto fn : wave64_functions) {
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint32_t m = 0; m < 512; ++m)
+        for (auto descriptor_base : goc_test::dpp_modes) {
+          uint64_t descriptor = descriptor_base;
+          if (descriptor & GOC_DPP16)
+            descriptor = (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t(m & 15) << GOC_DPP_ROW_SHIFT);
+          bool endpoints = m == 0 || m == 511;
+          std::vector<uint64_t> masks =
+              endpoints
+                  ? std::vector<uint64_t>{UINT64_MAX, 0xffffffff00000000ULL, 0x87654321fedcba98ULL}
+                  : std::vector<uint64_t>{UINT64_MAX};
+          for (auto exec_mask : masks)
+            for (unsigned sharing = 0; sharing < (endpoints ? 4u : 1u); ++sharing)
+              for (unsigned target = 0; target < 4; ++target) {
+                unsigned br = sharing == 1 || sharing == 2 ? 0 : 1;
+                unsigned cr = sharing == 2 ? 0 : sharing == 3 ? 1 : 2;
+                uint32_t words[4][66], expected[4][66];
+                std::memcpy(words, initial, sizeof(words));
+                std::memcpy(expected, initial, sizeof(expected));
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  int source = 0;
+                  if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
+                    expected[target][lane + 1] =
+                        goc_test::cube_reference(op, source < 0 ? 0 : initial[0][source + 1],
+                                                 initial[br][lane + 1], initial[cr][lane + 1], m);
+                }
+                const uint32_t *a[] = {words[0] + 1}, *b[] = {words[br] + 1},
+                               *c[] = {words[cr] + 1};
+                uint32_t *d[] = {words[target] + 1};
+                uint64_t semantics =
+                    m & 1 ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0;
+                ASSERT_EQ(fn(cpu | semantics, exec_mask, descriptor | m, d, a, b, c), GOC_SUCCESS);
+                ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0)
+                    << op << "/" << cpu << "/" << m << "/" << descriptor << "/" << exec_mask;
+              }
+        }
+    ++op;
   }
 }

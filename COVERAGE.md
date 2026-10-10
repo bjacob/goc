@@ -1561,3 +1561,23 @@ The width queue is 23 APIs.
 Validation: all 869 tests pass on Clang 21 and GCC 15 Release. All six
 Wave64 RCP_IFLAG and instruction-flag tests pass under ASan/UBSan, including
 the full upper-half hardware status corpus.
+
+
+## Wave64 cube-map operations
+
+Added CUBEID/CUBESC/CUBETC/CUBEMA Wave64 APIs with existing exact scalar/v3/v4
+kernels. A family-local wrapper handles lane offsets and four DPP row enables;
+only X is permuted, while Y and Z retain their lanes. Numeric selection,
+modifier rules and whole-register alias support are unchanged.
+
+Tests replay the existing raw hardware Cartesian digests across 64 lanes,
+check literal axis ties at every masked lane, and compare independent references
+for all modifiers, special/random words, destination/shared-source aliases,
+upper-only/sparse EXEC and guards. DPP tests vary all row enables and modifier
+combinations. Host tests check every rounding mode and preserved sticky flags.
+Validation covers empty EXEC and error atomicity. No new native Wave64 capture
+or throughput claim is made. The vector width queue is 19 APIs.
+
+Validation: all 876 tests pass on Clang 21 and GCC 15 Release. All eight
+Wave64 cube and instruction-flag tests pass under ASan/UBSan, including
+the complete modifier/DPP sweeps and captured Cartesian result digests.
