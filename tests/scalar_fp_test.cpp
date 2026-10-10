@@ -99,3 +99,87 @@ TEST(ScalarFp, ErrorsLeaveOutputUntouchedAndRoundingPreserved) {
     EXPECT_EQ(std::fegetround(), FE_TONEAREST);
   }
 }
+
+TEST(ScalarFp, MinmaxLiteralZerosNaNsAndSubnormals) {
+  for (unsigned half = 0; half < 2; ++half) {
+    const uint32_t sign = half ? 0x8000 : 0x80000000;
+    const uint32_t one = half ? 0x3c00 : 0x3f800000;
+    const uint32_t two = half ? 0x4000 : 0x40000000;
+    const uint32_t inf = half ? 0x7c00 : 0x7f800000;
+    const uint32_t quiet = half ? 0x200 : 0x400000;
+    // A, B, numeric minimum, numeric maximum. NaN cases are checked separately.
+    const uint32_t samples[][4] = {{sign, 0, sign, 0},
+                                   {0, sign, sign, 0},
+                                   {one, two, one, two},
+                                   {one | sign, two | sign, two | sign, one | sign},
+                                   {inf, inf | sign, inf | sign, inf},
+                                   {inf | quiet | 1, one, one, one},
+                                   {one, inf | 1, one, one},
+                                   {inf | 1, inf | quiet | 2, 0, 0},
+                                   {1, 0, 0, 1},
+                                   {sign | 1, 0, sign | 1, 0}};
+    for (unsigned operation = 0; operation < 4; ++operation)
+      for (unsigned index = 0; index < 10; ++index)
+        for (unsigned state = 0; state < 8; ++state)
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            uint64_t flags = cpu | goc_test::scalar_fp_flags(state);
+            uint32_t a = samples[index][0], b = samples[index][1];
+            uint32_t want = samples[index][2 + (operation & 1)];
+            bool nan = index == 7 || (operation >= 2 && (index == 5 || index == 6));
+            if (index >= 8 && (flags & GOC_FP_FLUSH_INPUT_DENORMALS))
+              want &= sign;
+            for (unsigned alias : {1U, 2U}) {
+              uint32_t words[] = {123, a | (half ? 0xfc010000U : 0), b | (half ? 0x7c010000U : 0),
+                                  456};
+              uint32_t state_out = 0xa5000040;
+              ASSERT_EQ(goc_test::scalar_fp_functions[6 + 2 * operation + half](
+                            flags, 0, words + alias, words[1], words[2], &state_out),
+                        GOC_SUCCESS);
+              if (nan)
+                EXPECT_GT(words[alias] & (sign - 1), inf);
+              else
+                EXPECT_EQ(words[alias], want) << operation << "/" << index << "/" << state;
+              if (half) {
+                EXPECT_EQ(words[alias] >> 16, 0U);
+              }
+              EXPECT_EQ(words[0], 123U);
+              EXPECT_EQ(words[3], 456U);
+              EXPECT_EQ(words[3 - alias],
+                        (alias == 1 ? b : a) |
+                            (half ? (alias == 1 ? 0x7c010000U : 0xfc010000U) : 0));
+              EXPECT_EQ(state_out, 0xa5000040U);
+            }
+          }
+  }
+}
+
+TEST(ScalarFp, LooseFallbackAndReportingErrorPrecedence) {
+  for (auto fn : goc_test::scalar_fp_functions) {
+    for (unsigned state = 0; state < 8; ++state) {
+      uint64_t flags = goc_test::scalar_fp_flags(state);
+      uint32_t result, fallback, exceptions = 0xa5000040;
+      ASSERT_EQ(fn(flags, 0, &result, 0x3fc03e00, 0xbf80bc00, &exceptions), GOC_SUCCESS);
+      EXPECT_EQ(exceptions, 0xa5000040U);
+      ASSERT_EQ(
+          fn(flags | GOC_SEMANTICS_EXACT_EMPIRICAL, 0, &fallback, 0x3fc03e00, 0xbf80bc00, nullptr),
+          GOC_SUCCESS);
+      EXPECT_EQ(fallback, result);
+    }
+    for (uint64_t semantics : {GOC_SEMANTICS_EXACT_EMPIRICAL, 2 * GOC_SEMANTICS_EXACT_EMPIRICAL,
+                               3 * GOC_SEMANTICS_EXACT_EMPIRICAL})
+      for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT})
+        for (uint64_t mode : {uint64_t(0), uint64_t(GOC_ALU_NEG_A), uint64_t(1) << 63}) {
+          uint32_t output = 0xdeadbeef, exceptions = 0xa5000040;
+          EXPECT_EQ(fn(semantics | strict, mode, &output, 0, 0, &exceptions),
+                    GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+          EXPECT_EQ(output, 0xdeadbeefU);
+          EXPECT_EQ(exceptions, 0xa5000040U);
+        }
+    for (unsigned bit = 0; bit < 64; ++bit) {
+      uint32_t output = 0xdeadbeef, exceptions = 0xa5000040;
+      EXPECT_EQ(fn(0, 1ULL << bit, &output, 0, 0, &exceptions), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(output, 0xdeadbeefU);
+      EXPECT_EQ(exceptions, 0xa5000040U);
+    }
+  }
+}

@@ -1444,5 +1444,26 @@
       "s_cvt_hi_f32_f16",
       "s_cvt_pk_rtz_f16_f32"
     ]
+  },
+  {
+    "heading": "Scalar floating arithmetic and minmax architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/scalar_fp_test.cpp",
+    "mnemonics": [
+      "s_add_f32",
+      "s_sub_f32",
+      "s_min_num_f32",
+      "s_max_num_f32",
+      "s_mul_f32",
+      "s_add_f16",
+      "s_sub_f16",
+      "s_min_num_f16",
+      "s_max_num_f16",
+      "s_mul_f16",
+      "s_minimum_f32",
+      "s_maximum_f32",
+      "s_minimum_f16",
+      "s_maximum_f16"
+    ]
   }
 ]

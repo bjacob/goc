@@ -7852,3 +7852,62 @@ Clang 21 Release, GCC 15 Release and Clang ASan/UBSan; all nine tooling tests
 pass. Logs use `coverage-work/scalar-round-convert-contract-{build,tests}.log`
 in each build directory. No production changes or performance impact; this
 was targeted family validation rather than a new full-suite run.
+
+
+## Scalar floating arithmetic and minmax architecture contracts
+
+Reviewed the 14 `s_{add,sub,mul,min_num,max_num,minimum,maximum}_f16/f32`
+instructions against RDNA3/RDNA4 XML, RDNA4 ISA sections 6.8 and 16.1,
+rocjitsu revision `ffc144c564c`'s shared SOP2 handlers and GoC's existing
+`scalar_fp.cpp`, min/max helpers and GFX1201 fixtures. All are RDNA4-only SOP2
+operations, with optional literal source. They read two scalar values and
+write one SGPR independently of EXEC, preserving SCC. FP16 reads low halves
+and clears the result's upper half. No instruction modifiers, DPP, selectable
+halves or Wave64 variants apply.
+
+- ADD/SUB/MUL follow guest input and output flushing. Existing multiplication
+  tininess handling retains its earlier capture-backed threshold around the
+  smallest normal, including cases that would otherwise round up from tiny
+  to normal. Half results round to nearest under the documented loose host
+  environment; FP16_OVFL saturates finite overflow but preserves input infinity.
+- MIN_NUM/MAX_NUM select the number when only one input is NaN. MINIMUM/MAXIMUM
+  propagate NaNs. Both pairs order negative zero below positive zero. GoC's
+  shared selection helper makes these choices explicit instead of depending on
+  host `fmin`/`fmax` NaN and zero behavior. Input flushing applies; output
+  flushing does not flush a selected subnormal. FP16_OVFL has no effect on
+  min/max selection. Existing NaN payload choices are not promoted into an
+  empirical-exact promise.
+- These scalar entry points remain loose-only. Rocjitsu uses ordinary host
+  arithmetic for ADD/SUB/MUL, libm for the number variants and generic quiet-NaN
+  results for propagating variants; those handlers do not provide a separate
+  empirical scalar arithmetic/exception model to port. Directed guest rounding,
+  IEEE and DX10-clamp-off remain unsupported. Host nearest-even rounding and
+  enabled denormals are required by the existing loose implementation.
+- The manual permits scalar floating exceptions, and min/max descriptions
+  explicitly mention invalid on signaling NaNs. Each API retains its trailing
+  optional `excp_flag_user`. Loose calls skip updates; non-loose calls with
+  non-null state reject reporting before validation regardless of STRICT.
+  Strict exact with null state rejects arithmetic; non-strict exact with null
+  state falls back to loose. All errors preserve outputs.
+
+Existing fixtures cover two 4,096-input datasets (special/random and underflow
+boundaries), eight policies and every CPU tier, with normalized NaNs. They
+also record SCC preservation and agreement among full/empty/partial EXEC.
+Added literal min/max checks for both zero orders, positive/negative ordering,
+infinities, quiet/signaling NaNs, both-NaN inputs and retained subnormals across
+all policies and CPU tiers. Tests write over either source value, ignore FP16
+upper halves, check guards and verify unchanged loose state. Added explicit
+non-strict null-state fallback and exact/reserved reporting-error precedence,
+plus unchanged outputs for every invalid instruction-flag bit. NaN checks stay
+within the loose contract; no new payload model or hardware probe was added.
+
+No production code changed. The ledger records 767 mnemonic contracts, with
+42 remaining; this is not an overall completion percentage.
+
+
+Validation: all **six** scalar-FP tests pass under Clang 21 Release, GCC 15
+Release and Clang ASan/UBSan; all nine tooling tests pass. Logs use
+`coverage-work/scalar-fp-contract-{build,tests}.log` in each build directory.
+GCC's dangling-else warning in the new GoogleTest assertion was fixed with
+explicit braces before final validation. Production code and performance
+are unchanged; this was targeted family validation, not a full-suite rerun.
