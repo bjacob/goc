@@ -49,6 +49,28 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+               uint32_t *excp_flag_user) {
+  if (int error = run(flags, 0, mode, nullptr, nullptr, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  bool report = excp_flag_user && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
+  uint32_t exceptions = 0;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *x = a[0] + half * 32, *y = b[0] + half * 32, *z = c[0] + half * 32;
+    if (int error = run(flags, uint32_t(exec_mask >> (half * 32)), mode, &dest, &x, &y, &z,
+                        report ? &exceptions : nullptr))
+      return error;
+  }
+  // Delay the scalar output so it may alias any source, including the upper half.
+  if (report)
+    *excp_flag_user |= exceptions;
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_pk_fma_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -71,4 +93,26 @@ int goc_v_pk_fmac_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_
   if (int error = goc::validate(flags, mode, true))
     return error;
   return run(flags, exec_mask, 0, d, a, b, d, excp_flag_user);
+}
+
+int goc_v_pk_fma_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_pk_fmac_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  if (int error = goc::validate(flags, mode, true))
+    return error;
+  return run_wave64(flags, exec_mask, 0, d, a, b, d, excp_flag_user);
 }

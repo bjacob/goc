@@ -1300,3 +1300,30 @@ Validation: all 807 tests pass on Clang 21 and GCC 15 Release. All fourteen
 FP16 FMA and instruction-flag tests pass under ASan/UBSan, as do all five
 generic exception-register tests. The generated unsupported-reporting test
 list now explicitly excludes these four supported Wave64 APIs.
+
+## Wave64 packed FP16 FMA
+
+Added packed FP16 FMA/FMAC Wave64 forms, retaining exact scalar and loose AVX2
+execution. FMA preserves all 8,192 packed selector/negation/clamp combinations;
+FMAC retains its zero-instruction-flags contract. Neither form accepts DPP.
+Exceptions accumulate from both packed components across both wave halves,
+with the caller's register updated only after all reads and destination writes.
+
+Tests exercise every modifier with both overflow policies and both semantics,
+all CPU paths, upper EXEC bits, masks, aliases and guard words. The existing
+packed exception hardware corpus also runs in lane 63. Directed witnesses
+combine lower-component invalid and upper-component overflow/inexact in
+different wave halves, with reporting aliased to an upper input. Rocjitsu
+result witnesses check both components across the whole wave and preserve host
+rounding/exception state in all four rounding modes. Loose reporting remains
+untouched; validation precedes operand access.
+
+No native Wave64 capture or new throughput claim is added. The vector width
+queue is now 126 APIs.
+
+Also corrected a stale interpolation README paragraph: RTZ P10 uses the
+integer FMA intermediate instead of changing host rounding controls. Removed
+the obsolete RTZ throughput claim that described the earlier implementation.
+
+Validation: all 811 tests pass on Clang 21 and GCC 15 Release. All seventeen
+packed FMA, instruction-flag and exception-register tests pass under ASan/UBSan.

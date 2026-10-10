@@ -1321,8 +1321,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_pk_add_i16` | yes | yes | in | `goc_v_pk_add_i16`<br>`goc_v_pk_add_i16_wave64` | — | API present; semantic audit pending |
 | `v_pk_add_u16` | yes | yes | in | `goc_v_pk_add_u16`<br>`goc_v_pk_add_u16_wave64` | — | API present; semantic audit pending |
 | `v_pk_ashrrev_i16` | yes | yes | in | `goc_v_pk_ashrrev_i16`<br>`goc_v_pk_ashrrev_i16_wave64` | — | API present; semantic audit pending |
-| `v_pk_fma_f16` | yes | yes | in | `goc_v_pk_fma_f16` | — | API present; semantic audit pending |
-| `v_pk_fmac_f16` | yes | yes | in | `goc_v_pk_fmac_f16` | — | API present; semantic audit pending |
+| `v_pk_fma_f16` | yes | yes | in | `goc_v_pk_fma_f16`<br>`goc_v_pk_fma_f16_wave64` | — | API present; semantic audit pending |
+| `v_pk_fmac_f16` | yes | yes | in | `goc_v_pk_fmac_f16`<br>`goc_v_pk_fmac_f16_wave64` | — | API present; semantic audit pending |
 | `v_pk_lshlrev_b16` | yes | yes | in | `goc_v_pk_lshlrev_b16`<br>`goc_v_pk_lshlrev_b16_wave64` | — | API present; semantic audit pending |
 | `v_pk_lshrrev_b16` | yes | yes | in | `goc_v_pk_lshrrev_b16`<br>`goc_v_pk_lshrrev_b16_wave64` | — | API present; semantic audit pending |
 | `v_pk_mad_i16` | yes | yes | in | `goc_v_pk_mad_i16`<br>`goc_v_pk_mad_i16_wave64` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 128 Wave32 EXEC-taking APIs without a corresponding
+There are 126 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1454,7 +1454,6 @@ SAVEEXEC/WREXEC consume EXEC as data and already have distinct `_b32` and
 | [`minmax.cpp`](src/minmax.cpp) | `goc_v_max3_f32`, `goc_v_max3_num_f32`, `goc_v_maximum3_f32`, `goc_v_maximumminimum_f32`, `goc_v_maxmin_f32`, `goc_v_maxmin_num_f32`, `goc_v_med3_f32`, `goc_v_med3_num_f32`, `goc_v_min3_f32`, `goc_v_min3_num_f32`, `goc_v_minimum3_f32`, `goc_v_minimummaximum_f32`, `goc_v_minmax_f32`, `goc_v_minmax_num_f32` |
 | [`mixed_fma.cpp`](src/mixed_fma.cpp) | `goc_v_fma_mix_f32`, `goc_v_fma_mixhi_f16`, `goc_v_fma_mixlo_f16` |
 | [`mullit.cpp`](src/mullit.cpp) | `goc_v_mullit_f32` |
-| [`packed_fma.cpp`](src/packed_fma.cpp) | `goc_v_pk_fma_f16`, `goc_v_pk_fmac_f16` |
 | [`rcp_iflag.cpp`](src/rcp_iflag.cpp) | `goc_v_rcp_iflag_f32` |
 | [`trig.cpp`](src/trig.cpp) | `goc_v_cos_f32`, `goc_v_sin_f32` |
 | [`trig_preop.cpp`](src/trig_preop.cpp) | `goc_v_trig_preop_f64` |

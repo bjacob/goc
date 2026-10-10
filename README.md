@@ -554,14 +554,15 @@ round toward zero; finite FP16 overflow already saturates under RTZ.
 The scalar and v3 paths share the existing mixed-FMA rounding machinery derived
 from rocjitsu. P10 uses eight FP32 SIMD lanes; P2 uses four FP64 lanes for its
 intermediate arithmetic, retaining discarded-bit information before narrowing.
-RTZ P10 temporarily changes and restores the x86 thread's rounding control;
-all forms require host nearest-even rounding with denormals enabled. Tests
+RTZ P10 uses the shared integer FMA intermediate and explicit truncation for
+finite inputs, including inside the v3 path; it never changes host rounding
+controls. The loose-path contract requires nearest-even host rounding with
+denormals enabled. Tests
 compare 524,288 GPU-captured results (canonicalizing NaN payloads), an independent
 integer FMA oracle, rounding boundaries, modifiers, masks, aliases, half
-preservation, overflow settings and restoration of host rounding. Pinned-core
-Ryzen 9 7950X3D measurements show 5.76–5.96x for P10, 11.99–12.38x for RTZ
-P10, and 3.78–4.10x for the P2 forms versus scalar, including modifiers
-(seven samples, each at least 10 ms).
+preservation, overflow settings and preservation of host rounding. Earlier
+throughput measurements predate the software RTZ implementation and do not
+characterize the current RTZ path.
 
 `v_rcp_iflag_f32` computes a reciprocal and returns sticky guest exception
 status through a separate scalar output. Active signed-zero and subnormal inputs
@@ -1563,7 +1564,10 @@ ordinary FP16 arithmetic/selection helpers. These are loose semantics.
 Tests cover every half encoding, special-value Cartesian pairs, all modifiers,
 overflow policy, masks, all aliases and literal cross-half/signed-zero/NaN cases.
 
-Packed FP16 `PK_FMA` computes both halves of `A * B + C`; `PK_FMAC` uses
+Packed FP16 `PK_FMA` and `PK_FMAC` have Wave32 and `_wave64` APIs, including
+exact results and optional exception accumulation. Reporting is committed after
+all source reads and destination writes; loose SIMD paths skip it.
+`PK_FMA` computes both halves of `A * B + C`; `PK_FMAC` uses
 D as its accumulator. Each uses one VGPR per operand. `PK_FMA` supports all
 8,192 combinations of independent low/high-result source negation, half selection
 and CLAMP through `GOC_PK_*` flags. Zero flags select corresponding halves;

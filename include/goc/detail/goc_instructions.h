@@ -3025,6 +3025,17 @@ int goc_v_pk_fmac_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       uint32_t *excp_flag_user);
 
+// Wave64 packed FMA forms retain the Wave32 selectors and exact/loose contracts.
+// Exact exceptions accumulate from both components and wave halves; the global
+// output is updated after source reads and destination writes. Loose reporting is skipped.
+int goc_v_pk_fma_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_pk_fmac_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user);
+
 // Packed FP16 binary arithmetic: supports GOC_PK_* negation and half selectors
 // for A/B, plus GOC_PK_CLAMP and GOC_FP16_OVFL. Flags for C are invalid. Each
 // result rounds to FP16; the two results use original inputs even with aliases.
