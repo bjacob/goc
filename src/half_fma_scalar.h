@@ -13,6 +13,14 @@
 
 namespace goc {
 
+// Whether a non-null global-state output is unsupported for this FP16 FMA policy.
+inline bool half_fma_reporting_unsupported(uint64_t flags, bool rdna3) {
+  uint64_t semantics = flags & GOC_SEMANTICS_MASK;
+  return semantics != GOC_SEMANTICS_LOOSE &&
+         (semantics != GOC_SEMANTICS_EXACT_EMPIRICAL || rdna3 ||
+          (flags & (GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS)));
+}
+
 // Round finite FP64 to FP16, nearest-even, saturating finite overflow if requested.
 inline uint16_t half_fma_narrow(double value, bool saturate) {
   // Adapted from rocjitsu mixed_fma_simd.h: round_finite_f16_simd.

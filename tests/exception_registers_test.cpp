@@ -54,6 +54,35 @@ template <typename... Args> void check_loose(int (*instruction)(Args...)) {
   check_loose(instruction, std::make_index_sequence<sizeof...(Args) - 1>{});
 }
 
+// All operands are null/zero: unsupported reporting must reject before DPP
+// routing or accumulator access, even with nonzero EXEC and invalid modifiers.
+template <typename... Args, size_t... I>
+void check_half_fma_reporting(int (*instruction)(Args...), bool rdna3, std::index_sequence<I...>) {
+  using Operands = std::tuple<Args...>;
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {GOC_SEMANTICS_EXACT_EMPIRICAL, uint64_t(2) << 16, uint64_t(3) << 16})
+      for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT})
+        for (unsigned policy = 0; policy < 4; ++policy) {
+          uint64_t flags = cpu | semantics | strict |
+                           (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                           (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+          if (!rdna3 && policy == 0 && semantics == GOC_SEMANTICS_EXACT_EMPIRICAL)
+            continue; // This reporting policy is implemented and needs real operands.
+          for (uint64_t exec_mask : {0ULL, ~0ULL})
+            for (uint64_t mode : {uint64_t(0), GOC_DPP8, uint64_t(1) << 31, uint64_t(1) << 63}) {
+              uint32_t state = 0xa5000040;
+              EXPECT_EQ(instruction(flags, std::tuple_element_t<1, Operands>(exec_mask), mode,
+                                    std::tuple_element_t<I + 3, Operands>{}..., &state),
+                        GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+              EXPECT_EQ(state, 0xa5000040U);
+            }
+        }
+}
+
+template <typename... Args> void check_half_fma_reporting(int (*instruction)(Args...), bool rdna3) {
+  check_half_fma_reporting(instruction, rdna3, std::make_index_sequence<sizeof...(Args) - 4>{});
+}
+
 } // namespace
 
 TEST(ExceptionRegisters, UnimplementedReportingRejectsBeforeOperandAccess) {
@@ -127,4 +156,31 @@ TEST(ExceptionRegisters, NonReportingInstructionsKeepTheirSignatures) {
   static_assert(std::is_same_v<decltype(&goc_v_wmma_f32_16x16x16_f16_rdna4), Matrix>);
   static_assert(std::is_same_v<decltype(&goc_v_dot4_f32_fp8_fp8), Ternary>);
   static_assert(std::is_same_v<decltype(&goc_v_interp_p10_f32), Ternary>);
+}
+
+TEST(ExceptionRegisters, HalfFmaReportingPrecedesRoutingAndOperandAccess) {
+  check_half_fma_reporting(goc_v_fma_f16, true);
+  check_half_fma_reporting(goc_v_fma_f16_wave64, true);
+  check_half_fma_reporting(goc_v_fma_f16_rdna4, false);
+  check_half_fma_reporting(goc_v_fma_f16_rdna4_wave64, false);
+  check_half_fma_reporting(goc_v_fmac_f16, true);
+  check_half_fma_reporting(goc_v_fmac_f16_wave64, true);
+  check_half_fma_reporting(goc_v_fmac_f16_rdna4, false);
+  check_half_fma_reporting(goc_v_fmac_f16_rdna4_wave64, false);
+  check_half_fma_reporting(goc_v_fmaak_f16, true);
+  check_half_fma_reporting(goc_v_fmaak_f16_wave64, true);
+  check_half_fma_reporting(goc_v_fmaak_f16_rdna4, false);
+  check_half_fma_reporting(goc_v_fmaak_f16_rdna4_wave64, false);
+  check_half_fma_reporting(goc_v_fmamk_f16, true);
+  check_half_fma_reporting(goc_v_fmamk_f16_wave64, true);
+  check_half_fma_reporting(goc_v_fmamk_f16_rdna4, false);
+  check_half_fma_reporting(goc_v_fmamk_f16_rdna4_wave64, false);
+  check_half_fma_reporting(goc_v_pk_fma_f16, true);
+  check_half_fma_reporting(goc_v_pk_fma_f16_wave64, true);
+  check_half_fma_reporting(goc_v_pk_fma_f16_rdna4, false);
+  check_half_fma_reporting(goc_v_pk_fma_f16_rdna4_wave64, false);
+  check_half_fma_reporting(goc_v_pk_fmac_f16, true);
+  check_half_fma_reporting(goc_v_pk_fmac_f16_wave64, true);
+  check_half_fma_reporting(goc_v_pk_fmac_f16_rdna4, false);
+  check_half_fma_reporting(goc_v_pk_fmac_f16_rdna4_wave64, false);
 }

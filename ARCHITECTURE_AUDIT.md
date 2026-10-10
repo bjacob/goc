@@ -46,12 +46,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-789 in-scope mnemonics have explicit contract-review records in
+795 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 20 in-scope mnemonics need a recorded review.
+The remaining 14 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -476,17 +476,17 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_floor_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11468, 11482 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-integral-rounding-contract-review) |
 | `v_floor_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 11512, 11526 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_fma_dx9_zero_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11563 | review required |
-| `v_fma_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11625 | review required |
+| `v_fma_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11625 | [loose and exact contract reviewed; see limitations](COVERAGE.md#ordinary-fp16-fma-contract-review) |
 | `v_fma_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11650 | [loose and exact contract reviewed; see limitations](COVERAGE.md#ordinary-fp32-fma-architecture-contracts) |
 | `v_fma_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 11713 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-add-mul-fma-contract-review) |
 | `v_fma_mix_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 11750 | review required |
 | `v_fma_mixhi_f16` | SIMD macro | yes | 11794 | review required |
 | `v_fma_mixlo_f16` | SIMD macro | yes | 11837 | review required |
-| `v_fmaak_f16` | IEEE mode, NaN quieting, SIMD macro, architecture query, output helper | yes | 11880 | review required |
+| `v_fmaak_f16` | IEEE mode, NaN quieting, SIMD macro, architecture query, output helper | yes | 11880 | [loose and exact contract reviewed; see limitations](COVERAGE.md#ordinary-fp16-fma-contract-review) |
 | `v_fmaak_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 11899 | [loose and exact contract reviewed; see limitations](COVERAGE.md#literal-fp32-fma-architecture-contracts) |
-| `v_fmac_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11999, 12022 | review required |
+| `v_fmac_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11999, 12022 | [loose and exact contract reviewed; see limitations](COVERAGE.md#ordinary-fp16-fma-contract-review) |
 | `v_fmac_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12047, 12069 | [loose and exact contract reviewed; see limitations](COVERAGE.md#ordinary-fp32-fma-architecture-contracts) |
-| `v_fmamk_f16` | IEEE mode, NaN quieting, SIMD macro, architecture query, output helper | yes | 12174 | review required |
+| `v_fmamk_f16` | IEEE mode, NaN quieting, SIMD macro, architecture query, output helper | yes | 12174 | [loose and exact contract reviewed; see limitations](COVERAGE.md#ordinary-fp16-fma-contract-review) |
 | `v_fmamk_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 12194 | [loose and exact contract reviewed; see limitations](COVERAGE.md#literal-fp32-fma-architecture-contracts) |
 | `v_fract_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12217, 12247 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-fract-architecture-contracts) |
 | `v_fract_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12295, 12311 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-fract-architecture-contracts) |
@@ -585,8 +585,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_pk_add_i16` | SIMD macro, output helper | no | 17399 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_pk_add_u16` | SIMD macro, output helper | no | 17430 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_pk_ashrrev_i16` | SIMD macro, output helper | no | 17461 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
-| `v_pk_fma_f16` | IEEE mode, NaN quieting, SIMD macro, architecture query, output helper | yes | 17495 | review required |
-| `v_pk_fmac_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 17594, 17627 | review required |
+| `v_pk_fma_f16` | IEEE mode, NaN quieting, SIMD macro, architecture query, output helper | yes | 17495 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-fp16-fma-contract-review) |
+| `v_pk_fmac_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 17594, 17627 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-fp16-fma-contract-review) |
 | `v_pk_lshlrev_b16` | SIMD macro, output helper | no | 17665 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_pk_lshrrev_b16` | SIMD macro, output helper | no | 17694 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_pk_mad_i16` | SIMD macro, output helper | no | 17723 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer16-ternary-and-packed-mad-architecture-contracts) |

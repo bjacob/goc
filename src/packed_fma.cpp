@@ -18,8 +18,6 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
         uint32_t *excp_flag_user) {
   bool report = excp_flag_user && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
-  if (report && (Rdna3 || (flags & (GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))))
-    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   constexpr uint32_t allowed = Accumulate ? GOC_ALU_ABS_A | GOC_ALU_ABS_B | GOC_ALU_NEG_A |
                                                 GOC_ALU_NEG_B | GOC_ALU_CLAMP | GOC_ALU_OMOD_HALF
                                           : 0x1fffU;
@@ -96,7 +94,7 @@ int run_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *cons
 int goc_v_pk_fma_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                            const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+  if (excp_flag_user && goc::half_fma_reporting_unsupported(flags, false))
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -106,7 +104,7 @@ int goc_v_pk_fma_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, ui
 int goc_v_pk_fmac_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b,
                             uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+  if (excp_flag_user && goc::half_fma_reporting_unsupported(flags, false))
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -117,7 +115,7 @@ int goc_v_pk_fma_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t m
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b, const uint32_t *const *c,
                                   uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+  if (excp_flag_user && goc::half_fma_reporting_unsupported(flags, false))
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -127,7 +125,7 @@ int goc_v_pk_fma_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t m
 int goc_v_pk_fmac_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
                                    uint32_t *const *d, const uint32_t *const *a,
                                    const uint32_t *const *b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+  if (excp_flag_user && goc::half_fma_reporting_unsupported(flags, false))
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -137,7 +135,7 @@ int goc_v_pk_fmac_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t 
 int goc_v_pk_fma_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
                      uint32_t *trapsts) {
-  if (trapsts && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+  if (trapsts && goc::half_fma_reporting_unsupported(flags, true))
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -146,7 +144,7 @@ int goc_v_pk_fma_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t
 
 int goc_v_pk_fmac_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                       const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
-  if (trapsts && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+  if (trapsts && goc::half_fma_reporting_unsupported(flags, true))
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -156,7 +154,7 @@ int goc_v_pk_fmac_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_
 int goc_v_pk_fma_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c, uint32_t *trapsts) {
-  if (trapsts && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+  if (trapsts && goc::half_fma_reporting_unsupported(flags, true))
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -166,7 +164,7 @@ int goc_v_pk_fma_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, u
 int goc_v_pk_fmac_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              uint32_t *trapsts) {
-  if (trapsts && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+  if (trapsts && goc::half_fma_reporting_unsupported(flags, true))
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;

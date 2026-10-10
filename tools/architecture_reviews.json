@@ -1536,5 +1536,25 @@
       "v_fmaak_f32",
       "v_fmamk_f32"
     ]
+  },
+  {
+    "heading": "Ordinary FP16 FMA contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/half_fma_test.cpp",
+    "mnemonics": [
+      "v_fma_f16",
+      "v_fmac_f16",
+      "v_fmaak_f16",
+      "v_fmamk_f16"
+    ]
+  },
+  {
+    "heading": "Packed FP16 FMA contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/packed_fma_test.cpp",
+    "mnemonics": [
+      "v_pk_fma_f16",
+      "v_pk_fmac_f16"
+    ]
   }
 ]

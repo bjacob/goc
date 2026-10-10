@@ -8189,3 +8189,89 @@ with Clang 21 Release, GCC 15 Release and Clang ASan/UBSan. All nine tooling
 tests pass. Logs use `coverage-work/fp32-fma-contract-{build,tests}.log` in each
 build directory. This slice changes only tests and review documentation; library
 code size and performance are unchanged.
+
+
+## Ordinary FP16 FMA contract review
+
+Reviewed FMA/FMAC/FMAAK/FMAMK FP16 against both XML inventories, the manuals'
+VOP2/VOP3 operand and modifier descriptions, and rocjitsu revision `ffc144c564c`
+`fp_mode::fma_f16`, `round_fma_f16`, `finish_fma_f16` and effective OMOD helpers.
+The existing unsuffixed RDNA3 and `_rdna4` APIs are required for IEEE-dependent
+NaN quieting and output-modifier gating. Both widths use one packed register per
+operand and preserve the unselected destination half. FMAC reads the destination
+half it overwrites. Literal forms place the raw half literal in B or C and accept
+half selectors, but reject DPP and ordinary arithmetic modifiers. Register forms
+support A routing with DPP8/DPP16 and their applicable ABS/NEG/OMOD/CLAMP bits.
+
+Exact nearest-even results share the existing integer round-to-odd calculation
+adapted from rocjitsu. Zero-times-infinity precedes NaNs; otherwise A/B/C NaN
+selection follows the architecture quieting policy. Input flushing precedes
+classification. Output flushing includes the borrowed pre-exponent-limit tininess
+threshold. Unlike the generic half ADD handler discussed earlier, upstream
+`finish_fma_f16` explicitly rounds the half result before active OMOD, which
+cannot recover overflow or a flushed tiny intermediate. FP16 overflow saturation
+and CLAMP remain supported. Guest directed rounding and RDNA3 DX10-clamp-off
+remain explicitly unsupported. Existing hardware witnesses, modifier captures,
+integer-oracle boundary tests, DPP, aliases and both wave widths cover these
+contracts; this review introduces no numerical or exception model.
+
+Faithful optional reporting is implemented only for RDNA4 exact mode without
+guest input/output flushing, using the existing capture-backed exception tests.
+RDNA3 exact reporting and RDNA4 reporting with either flush flag remain
+unsupported, regardless of STRICT or EXEC. Null opts out and loose skips updates.
+
+The review found an error-ordering defect: some wrappers validated modifiers or
+routed DPP before reaching the unsupported-reporting check. The check now lives
+at every public FP16 FMA entry point, before any validation or operand access.
+A small shared predicate in the existing half-FMA helper records the supported
+reporting policy once for ordinary and packed callers; the duplicate inner
+checks were removed. It is reached only when the output pointer is non-null.
+No numerical kernel or SIMD loop changed. A reproducer linked against parent
+`3e02b5d` returns INVALID_FLAGS for exact RDNA3 FMAC with bit 31 set; the fixed
+library returns UNSUPPORTED_GLOBAL_STATE and preserves the state word.
+
+The new test exercises all 24 ordinary/literal/packed architecture/width APIs,
+all CPU tiers, exact and both reserved semantics, STRICT on/off, both guest
+flush bits, zero/full EXEC, DPP and invalid low/high modifiers. Null operands
+verify that rejection happens before routing or accumulator reads. Existing
+supported-reporting corpora continue to verify sticky accumulation and masks.
+
+## Packed FP16 FMA contract review
+
+Both packed FMA and FMAC share the same borrowed FP16 result/reporting policy,
+including architecture-specific NaN quieting, and have `_rdna4` variants before
+`_wave64`. FMA uses packed component selectors and per-component negations;
+FMAC reads corresponding destination halves and exposes the existing VOP3
+ABS/NEG/CLAMP controls on A/B. Packed results ignore OMOD. Neither form accepts
+DPP on RDNA3/RDNA4. Both components read the original operands before stores;
+Wave64 delays optional state accumulation until both halves have been read.
+
+The inventories list packed FMA as VOP3P and packed FMAC as VOP2; LLVM likewise
+only emits e32 packed FMAC on gfx11/gfx12. The manuals' section 16.7.1 explicitly
+allows VOP2 promotion to VOP3, and rocjitsu's shared packed-FMAC VOP3 handler
+supplies the component modifier behavior used by GoC. The earlier modifier
+implementation and tests are retained; this is not a claim that LLVM exposes
+that encoding. Existing exhaustive packed tests, all modifier combinations,
+source/destination aliases and both result/exception hardware corpora remain.
+
+Loose scalar and eight-lane AVX2 paths are unchanged for all six mnemonics.
+Exact reporting remains limited to the verified RDNA4 no-flush policy above.
+The ledger now records **795** reviewed mnemonic contracts with **14** pending;
+these counts do not imply complete guest-mode or exception-reporting support.
+
+Validation: all **1,180** CTests pass with Clang 21 Release and GCC 15 Release;
+Clang ASan/UBSan passes all **42** selected HalfFma/PackedFma/DppHalfFma/
+ExceptionRegisters tests. All nine tooling tests pass. Logs use
+`coverage-work/half-fma-reporting-{build,tests}.log` in each build directory.
+
+Performance versus `3e02b5d`: 24 loose AVX2 cases cover all six forms, both
+architectures and null/non-null optional state. Seven alternating paired runs
+were pinned to CPU 2 with at least 50 ms thread CPU time per sample, after all
+builds/tests finished. Median change is **0.23% faster**, with case medians
+ranging from **0.91% faster to 1.06% slower**. This found no material loose SIMD
+regression in the measured cases; it is not a whole-library performance claim.
+Artifacts, the baseline archive, reproducer and raw timings are in
+`../goc-build/coverage-work/half-fma-reporting-performance/`. Ordinary half-FMA
+object text grows from 16,781 to 17,300 bytes and packed FMA from 11,811 to
+12,346 bytes (+1,054 bytes combined), placing the guard before each wrapper's
+routing/validation work without adding numerical kernels.
