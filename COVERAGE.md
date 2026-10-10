@@ -8669,3 +8669,29 @@ bit-exact models. Their instruction-level reviews explain why FP64 arithmetic,
 floating selection, most conversions, and other listed operations remain
 loose-only. The standing prohibition on host-control mutation takes precedence
 over copying any upstream implementation. This map adds no new empirical model.
+
+## Completion performance follow-up
+
+Rechecked the largest recorded FP8 DOT4 SIMD slowdown from the DPP addition
+against the saved pre-DPP executable. The current executable links the library
+at `a78305b`; `fp8_dot.cpp` is unchanged since `ec6316b`, and its AVX2 arithmetic
+source is unchanged from before that addition. Seven alternating paired runs
+on CPU 2 used at least 50 ms of thread CPU time per case, with no concurrent
+builds or tests. The 32 cases cross four format pairs, both widths, scalar/AVX2,
+and default versus ABS_C+NEG_C modifiers.
+
+The median across all cases is **0.85% slower**, ranging from **5.23% faster to
+4.74% slower**. SIMD-only median is **1.13% slower**; Wave32 SIMD ranges from
+1.22% faster to 0.07% slower. The largest slowdown remains Wave64 FP8/FP8,
+71.431 to 74.814 ns/call (**+3.383 ns**, **+4.74%**). This corroborates a modest
+Wave64 dispatch cost rather than a changed arithmetic kernel. The shared
+implementation is retained; no specialized duplicate path was added. Raw
+samples, driver and both executables are in
+`../goc-build/coverage-work/fp8-dot-completion-performance/`.
+
+Other retained costs documented above include approximately 0.36 ns for loose
+scalar FP32 FMAC exact-mode dispatch, and 0.55 ns for the measured flushed
+pseudo-scalar FP16 reciprocal. These are scalar paths, not SIMD regressions.
+Per-family timing evidence and rejected slower implementations remain recorded
+with their respective changes. These measurements are workload-specific; they
+do not establish a whole-library speedup or an overall before/after percentage.
