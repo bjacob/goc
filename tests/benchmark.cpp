@@ -353,39 +353,49 @@ bool benchmark_replicated(int iterations, int min_ms) {
     uint32_t data[32][64] = {};
     uint32_t *v[32];
     int lanes;
+    uint32_t expected;
 
     bool correct() const {
       for (int reg = 24; reg < 24 + 256 / lanes; ++reg)
         for (int lane = 0; lane < lanes; ++lane)
-          if (v[reg][lane] != bits(16.0f))
+          if (v[reg][lane] != expected)
             return false;
       return true;
     }
   };
 
+  const Wmma functions[2][6] = {
+      {goc_v_wmma_f32_16x16x16_f16, goc_v_wmma_f32_16x16x16_bf16, goc_v_wmma_f16_16x16x16_f16,
+       goc_v_wmma_bf16_16x16x16_bf16, goc_v_wmma_i32_16x16x16_iu8, goc_v_wmma_i32_16x16x16_iu4},
+      {goc_v_wmma_f32_16x16x16_f16_wave64, goc_v_wmma_f32_16x16x16_bf16_wave64,
+       goc_v_wmma_f16_16x16x16_f16_wave64, goc_v_wmma_bf16_16x16x16_bf16_wave64,
+       goc_v_wmma_i32_16x16x16_iu8_wave64, goc_v_wmma_i32_16x16x16_iu4_wave64}};
+  const char *names[] = {"v_wmma_f32_16x16x16_f16", "v_wmma_f32_16x16x16_bf16",
+                         "v_wmma_f16_16x16x16_f16", "v_wmma_bf16_16x16x16_bf16",
+                         "v_wmma_i32_16x16x16_iu8", "v_wmma_i32_16x16x16_iu4"};
+  const uint32_t ones[] = {0x3c003c00, 0x3f803f80, 0x3c003c00, 0x3f803f80, 0x01010101, 0x11111111};
+  const uint32_t results[] = {0x41800000, 0x41800000, 0x4c00, 0x4180, 16, 16};
   for (int lanes : {32, 64})
-    for (bool bf16 : {false, true}) {
-      ReplicatedRegisters r;
-      r.lanes = lanes;
-      for (int reg = 0; reg < 32; ++reg) {
-        r.v[reg] = r.data[reg];
-        if (reg < 16)
-          std::fill(r.v[reg], r.v[reg] + lanes, bf16 ? 0x3f803f80U : 0x3c003c00U);
+    for (int op = 0; op < 6; ++op)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+        ReplicatedRegisters r;
+        r.lanes = lanes;
+        r.expected = results[op];
+        for (int reg = 0; reg < 32; ++reg) {
+          r.v[reg] = r.data[reg];
+          if (reg < 16)
+            std::fill(r.v[reg], r.v[reg] + lanes, ones[op]);
+        }
+        auto call = [&](uint64_t flags, uint64_t mode, uint32_t *const *, const uint32_t *const *,
+                        const uint32_t *const *, const uint32_t *const *) {
+          return functions[lanes == 64][op](flags, mode, r.v + 24, r.v, r.v + 8, r.v + 16);
+        };
+        double time = measure(call, GOC_CPU_BASELINE | semantics | GOC_SEMANTICS_STRICT, r,
+                              iterations, min_ms, 0);
+        if (time < 0)
+          return false;
+        print_result(names[op], semantics ? "exact" : "loose", "none", "scalar", time, 1, lanes);
       }
-      Wmma instruction =
-          lanes == 64
-              ? (bf16 ? goc_v_wmma_f32_16x16x16_bf16_wave64 : goc_v_wmma_f32_16x16x16_f16_wave64)
-              : (bf16 ? goc_v_wmma_f32_16x16x16_bf16 : goc_v_wmma_f32_16x16x16_f16);
-      auto call = [&](uint64_t flags, uint64_t mode, uint32_t *const *, const uint32_t *const *,
-                      const uint32_t *const *, const uint32_t *const *) {
-        return instruction(flags, mode, r.v + 24, r.v, r.v + 8, r.v + 16);
-      };
-      double time = measure(call, GOC_CPU_BASELINE, r, iterations, min_ms, 0);
-      if (time < 0)
-        return false;
-      print_result(bf16 ? "v_wmma_f32_16x16x16_bf16" : "v_wmma_f32_16x16x16_f16", "loose", "none",
-                   "scalar", time, 1, lanes);
-    }
   return true;
 }
 
@@ -443,9 +453,9 @@ bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t mod
 }
 
 bool benchmark_integer(int shape, int mode, uint64_t cpu, int iterations, int min_ms) {
-  const Wmma functions[] = {goc_v_wmma_i32_16x16x16_iu8, goc_v_wmma_i32_16x16x16_iu4,
+  const Wmma functions[] = {goc_v_wmma_i32_16x16x16_iu8_rdna4, goc_v_wmma_i32_16x16x16_iu4_rdna4,
                             goc_v_wmma_i32_16x16x32_iu4};
-  const char *names[] = {"v_wmma_i32_16x16x16_iu8", "v_wmma_i32_16x16x16_iu4",
+  const char *names[] = {"v_wmma_i32_16x16x16_iu8_rdna4", "v_wmma_i32_16x16x16_iu4_rdna4",
                          "v_wmma_i32_16x16x32_iu4"};
   const char *instruction_flags = mode == 0 ? "u/u wrap" : "s/s clamp";
   const uint32_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);

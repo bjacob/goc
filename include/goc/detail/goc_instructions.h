@@ -2946,14 +2946,19 @@ static const uint32_t GOC_WMMA_ABS_C = 1U << 5;
 // Sparse WMMA metadata selector. This bit selects the upper half of each index VGPR lane.
 static const uint32_t GOC_SWMMAC_INDEX_KEY_1 = 1U << 7;
 
+// RDNA3 packed WMMA OPSEL selects the same half of C and D. The other half
+// of D is preserved. This is not a packed adjacent-row output as on RDNA4.
+static const uint32_t GOC_WMMA_HIGH_C_D = 1U << 8;
+
 // RDNA3 FP16/BF16 WMMA with FP32 accumulators. A/B each hold 8 VGPRs,
 // with the full 16-element K vector in every lane. Replicate A/B across the
 // two (Wave32) or four (Wave64) groups of 16 lanes. C/D hold 8 or 4 VGPRs:
 // row = reg * (wave_size / 16) + lane / 16, column = lane % 16.
 // EXEC is ignored and all operands must be valid. Whole-VGPR aliasing is allowed.
-// Only loose semantics are implemented; strict exact requests fail without writes.
-// Supports NEG_C/ABS_C; other modifiers are not implemented. Host nearest-even
-// rounding with denormals enabled is required. GOC_FP16_OVFL has no effect.
+// Supports loose and empirical exact semantics and all six NEG/NEG_HI modifiers.
+// Exact semantics use integer arithmetic and preserve the host FP environment.
+// Loose FP32 arithmetic requires host nearest-even rounding and enabled denormals.
+// GOC_FP16_OVFL has no effect on FP32 output.
 int goc_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c);
@@ -2969,6 +2974,46 @@ int goc_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags, uin
 int goc_v_wmma_f32_16x16x16_bf16_wave64(uint64_t flags, uint64_t instruction_flags,
                                         uint32_t *const *d, const uint32_t *const *a,
                                         const uint32_t *const *b, const uint32_t *const *c);
+
+// RDNA3 packed-output and integer WMMA use the same interleaved C/D layout
+// above: 8 VGPRs in Wave32, 4 in Wave64. Packed A/B use 8 VGPRs each;
+// IU8 uses 4 each and IU4 uses 2 each. All lanes participate and whole VGPRs may alias.
+// Packed forms support all six NEG/NEG_HI bits and GOC_WMMA_HIGH_C_D, narrow
+// after each DOT2 step, and honor GOC_FP16_OVFL for finite FP16 overflow.
+// Integer forms support SIGNED_A/B and CLAMP (final signed saturation after
+// all 16 products); without CLAMP they wrap modulo 2^32. Both semantics are
+// supported. Packed and integer paths preserve the host FP environment.
+int goc_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
+                                const uint32_t *const *a, const uint32_t *const *b,
+                                const uint32_t *const *c);
+
+int goc_v_wmma_f16_16x16x16_f16_wave64(uint64_t flags, uint64_t instruction_flags,
+                                       uint32_t *const *d, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
+                                  const uint32_t *const *a, const uint32_t *const *b,
+                                  const uint32_t *const *c);
+
+int goc_v_wmma_bf16_16x16x16_bf16_wave64(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_wmma_i32_16x16x16_iu8(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
+                                const uint32_t *const *a, const uint32_t *const *b,
+                                const uint32_t *const *c);
+
+int goc_v_wmma_i32_16x16x16_iu8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                       uint32_t *const *d, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_wmma_i32_16x16x16_iu4(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
+                                const uint32_t *const *a, const uint32_t *const *b,
+                                const uint32_t *const *c);
+
+int goc_v_wmma_i32_16x16x16_iu4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                       uint32_t *const *d, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *c);
 
 // RDNA4 Wave32 16x16x16 WMMA: A/B each contain 4 VGPRs of packed 16-bit
 // elements; C/D each contain 8 VGPRs of FP32 elements. WMMA and SWMMAC ignore
@@ -2996,21 +3041,21 @@ int goc_v_wmma_f32_16x16x16_bf16_rdna4_wave64(uint64_t flags, uint64_t instructi
 // C/D hold 4 or 2 VGPRs respectively, with adjacent rows in low/high halves.
 // Both semantics and all six floating WMMA modifiers are supported. Packed
 // results narrow after each four-product step; GOC_FP16_OVFL controls FP16 overflow.
-int goc_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
-                                const uint32_t *const *a, const uint32_t *const *b,
-                                const uint32_t *const *c);
+int goc_v_wmma_f16_16x16x16_f16_rdna4(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_v_wmma_bf16_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
-                                  const uint32_t *const *a, const uint32_t *const *b,
-                                  const uint32_t *const *c);
+int goc_v_wmma_bf16_16x16x16_bf16_rdna4(uint64_t flags, uint64_t instruction_flags,
+                                        uint32_t *const *d, const uint32_t *const *a,
+                                        const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_v_wmma_f16_16x16x16_f16_wave64(uint64_t flags, uint64_t instruction_flags,
-                                       uint32_t *const *d, const uint32_t *const *a,
-                                       const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_wmma_f16_16x16x16_f16_rdna4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                             uint32_t *const *d, const uint32_t *const *a,
+                                             const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_v_wmma_bf16_16x16x16_bf16_wave64(uint64_t flags, uint64_t instruction_flags,
-                                         uint32_t *const *d, const uint32_t *const *a,
-                                         const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_wmma_bf16_16x16x16_bf16_rdna4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                               uint32_t *const *d, const uint32_t *const *a,
+                                               const uint32_t *const *b, const uint32_t *const *c);
 
 // Wave32 FP8/BF8 WMMA: A/B each hold 2 VGPRs, C/D each hold 8.
 // FP8 is OCP E4M3FN; BF8 is OCP E5M2. Only loose semantics are implemented;
@@ -3045,13 +3090,13 @@ static const uint32_t GOC_WMMA_CLAMP = 1U << 6;
 // CLAMP applies after products with (k / 8) even, then after those with
 // (k / 8) odd: K=16 uses 0..7 then 8..15; K=32 uses 0..7 plus 16..23,
 // then 8..15 plus 24..31.
-int goc_v_wmma_i32_16x16x16_iu8(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
-                                const uint32_t *const *a, const uint32_t *const *b,
-                                const uint32_t *const *c);
+int goc_v_wmma_i32_16x16x16_iu8_rdna4(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c);
 
-int goc_v_wmma_i32_16x16x16_iu4(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
-                                const uint32_t *const *a, const uint32_t *const *b,
-                                const uint32_t *const *c);
+int goc_v_wmma_i32_16x16x16_iu4_rdna4(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c);
 
 int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
                                 const uint32_t *const *a, const uint32_t *const *b,

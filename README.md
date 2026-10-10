@@ -5,9 +5,9 @@ header is `include/goc/goc.h`, usable from C99 and C++17. It directly includes
 `goc/detail/goc_common.h` (flags, status codes, CPU detection) and
 `goc/detail/goc_instructions.h` (instruction declarations and modifiers). API users include
 `goc/goc.h`; detail headers are still checked for self-containment. This is an
-RDNA4 implementation and initial RDNA3 subset; `PLAN.md` describes the broader intended coverage.
-GPU-specific implementation, test, and fixture filenames carry the architecture
-name, such as `wmma.cpp` and `wmma_test.cpp`.
+RDNA4 implementation and RDNA3 WMMA support; `PLAN.md` describes the broader intended coverage.
+Shared implementation and test filenames are architecture-neutral; hardware-specific
+arithmetic models and capture fixtures retain their architecture names.
 
 ## Build and test
 
@@ -135,32 +135,39 @@ These are CPU instruction-emulation microbenchmarks, not end-to-end emulator
 throughput or GPU comparisons. Results vary with host, compiler, workload and
 system load; the scalar reference is intentionally simple.
 
-## Initial RDNA3 support
+## RDNA3 WMMA support
 
-`goc_v_wmma_f32_16x16x16_f16` and `goc_v_wmma_f32_16x16x16_bf16`,
-plus their `_wave64` variants, implement RDNA3's replicated input layout.
-A/B each occupy eight VGPRs in both wave sizes; C/D occupy eight in Wave32
-or four in Wave64. Output rows are interleaved between groups of sixteen lanes.
-RDNA4 uses fewer A/B VGPRs and a different output layout, so its existing APIs
-are now named `goc_v_wmma_f32_16x16x16_f16_rdna4` and
-`goc_v_wmma_f32_16x16x16_bf16_rdna4`, with `_wave64` appended where applicable.
-Their SIMD paths and empirical exact behavior are unchanged.
+All six RDNA3 WMMA mnemonics are implemented in Wave32 and Wave64: FP16/BF16
+inputs with FP32 or matching 16-bit outputs, plus IU8 and IU4 with I32 output.
+Unsuffixed APIs implement RDNA3. The corresponding RDNA4 variants have `_rdna4`
+before `_wave64` where applicable. FP8, sparse, and K=32 IU4 forms remain
+RDNA4-only and need no suffix because RDNA3 has no corresponding instruction.
 
-The new RDNA3 WMMA paths are scalar and implement loose FP32 FMA accumulation,
-NEG_C/ABS_C, and whole-VGPR aliasing. Strict bit-exact requests are rejected;
-non-strict requests fall back to loose semantics. The GFX12 empirical model is
-not used for RDNA3. Other WMMA input modifiers are not implemented in this slice.
-Inputs must replicate the tile across every sixteen-lane group. EXEC is ignored.
-Other existing WMMA names (packed output, integer, FP8, sparse) still describe
-RDNA4 behavior; RDNA3 support for them has not been added.
+RDNA3 inputs replicate each tile across groups of sixteen lanes. FP16/BF16 A/B
+occupy eight VGPRs each, IU8 four, and IU4 two, in both wave sizes. C/D occupy
+eight VGPRs in Wave32 or four in Wave64, with output rows interleaved between
+lane groups. Packed outputs use one selected half per VGPR: `GOC_WMMA_HIGH_C_D`
+selects the high half of both C and D; the other half of D is preserved. This
+layout differs from RDNA4's adjacent-row packing.
 
-The layout follows [AMD's RDNA3 WMMA documentation](https://gpuopen.com/learn/wmma_on_rdna3/)
-and rocjitsu's `gfx11_wmma_input_loc`/`gfx11_wmma_output_loc_32` helpers.
-Tests use independent dense matrix references, every supported modifier, both
-wave sizes, aliases and guards, and explicit RDNA3/RDNA4 difference witnesses.
-These are software reference tests, not new RDNA3 hardware captures.
-Benchmark rows distinguish RDNA4 with `_rdna4`; unsuffixed FP16/BF16-to-FP32
-WMMA rows measure the new RDNA3 paths.
+All twelve entry points support empirical exact semantics. Floating arithmetic
+is ported from rocjitsu's `gfx11_dot2.h` and `exec_gfx11_wmma_dot2` at
+[rocm-systems ffc144c564c](https://github.com/ROCm/rocm-systems/tree/ffc144c564c/emulation/rocjitsu).
+WMMA chains eight DOT2 steps; packed outputs narrow after every step.
+The model includes GFX11 NaN priority, accumulator-sign alignment, underflow,
+BF16 truncation, and finite FP16 overflow saturation via `GOC_FP16_OVFL`.
+All six floating NEG/NEG_HI bits are supported. Integer arithmetic follows
+rocjitsu's `exec_gfx11_wmma_i32`: signed/unsigned A/B, signed C, wrapping or
+final CLAMP. RDNA4 instead clamps at two stage boundaries.
+
+Implementations are scalar. Loose FP32 output uses host FMA; exact floating,
+packed-output, and integer paths use integer arithmetic and preserve host FP
+state. All results are staged before stores so whole-VGPR aliases are supported.
+EXEC is ignored. No new GPU captures were made: tests reuse rocjitsu's GFX1100
+captures (103 DOT2 cases, a 256-element FP32 matrix, and 28 packed matrices),
+plus independent integer references, all modifiers, half selectors, aliasing,
+guards, overflow, and host rounding-mode tests. Benchmarks cover all twelve
+variants in both semantics; RDNA4 benchmark rows carry `_rdna4` when needed.
 
 `goc_v_mov_b32` is shared by RDNA3 and RDNA4: it preserves raw bits, supports
 EXEC masking and DPP8/DPP16 routing, and supports exact semantics. Arithmetic
@@ -171,7 +178,7 @@ input modifiers are not implemented. It uses the existing shared DPP machinery.
 Entry points use `goc_<mnemonic>` with Wave32 as the default. Shared semantics
 share one API across architectures; a future semantic variant gets an architecture
 suffix only when needed. Most implementations are validated against RDNA4.
-The initial RDNA3 subset is described below.
+RDNA3 WMMA support is described above.
 The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 `goc_<mnemonic>_wave64`, supporting loose and empirical exact modes.
 
@@ -241,15 +248,17 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_dot2_f16_f16`, `v_dot2_bf16_bf16` | Scalar, x86-64-v3 | Not implemented |
 | `v_dot2_f32_f16` | Scalar, x86-64-v3 | Integer arithmetic model |
 | `v_dot2_f32_bf16` | Scalar, x86-64-v3 | Integer arithmetic model |
-| `v_wmma_f32_16x16x16_f16` (RDNA3) | Scalar, Wave32/Wave64 | Not implemented |
-| `v_wmma_f32_16x16x16_bf16` (RDNA3) | Scalar, Wave32/Wave64 | Not implemented |
+| `v_wmma_f32_16x16x16_f16` (RDNA3) | Scalar, Wave32/Wave64 | Borrowed GFX11 DOT2 model |
+| `v_wmma_f32_16x16x16_bf16` (RDNA3) | Scalar, Wave32/Wave64 | Borrowed GFX11 DOT2 model |
+| `v_wmma_f16_16x16x16_f16`, `v_wmma_bf16_16x16x16_bf16` (RDNA3) | Scalar, Wave32/Wave64 | Borrowed GFX11 DOT2 model |
+| `v_wmma_i32_16x16x16_iu8`, `v_wmma_i32_16x16x16_iu4` (RDNA3) | Scalar, Wave32/Wave64 | Final saturation/wrapping |
 | `v_wmma_f32_16x16x16_f16_rdna4` | Scalar, x86-64-v3 F16C/AVX2/FMA | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_bf16_rdna4` | Scalar, x86-64-v3 AVX2/FMA, AVX-512 BF16 | Integer arithmetic model |
-| `v_wmma_f16_16x16x16_f16` | Integer arithmetic model | Integer arithmetic model |
-| `v_wmma_bf16_16x16x16_bf16` | Integer arithmetic model | Integer arithmetic model |
+| `v_wmma_f16_16x16x16_f16_rdna4` | Integer arithmetic model | Integer arithmetic model |
+| `v_wmma_bf16_16x16x16_bf16_rdna4` | Integer arithmetic model | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar, x86-64-v3 | Not implemented |
-| `v_wmma_i32_16x16x16_iu8` | Scalar, x86-64-v3, Zen4 VNNI | Same exact integer paths |
-| `v_wmma_i32_16x16x16_iu4` | Scalar, x86-64-v3, Zen4 VNNI | Same exact integer paths |
+| `v_wmma_i32_16x16x16_iu8_rdna4` | Scalar, x86-64-v3, Zen4 VNNI | Same exact integer paths |
+| `v_wmma_i32_16x16x16_iu4_rdna4` | Scalar, x86-64-v3, Zen4 VNNI | Same exact integer paths |
 | `v_wmma_i32_16x16x32_iu4` | Scalar, x86-64-v3, Zen4 VNNI | Same exact integer paths |
 
 The RDNA4 FP16/BF16 WMMA forms support all six NEG/NEG_HI modifier bits, including

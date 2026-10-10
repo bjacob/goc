@@ -48,9 +48,8 @@ Use architecture-neutral names for shared implementations, headers, tests and
 benchmarks. Public instruction APIs use goc_<mnemonic>, with _wave64 appended
 for dedicated Wave64 variants. If a newer architecture changes an existing
 mnemonic's semantics, append its architecture suffix before _wave64 (if present);
-the FP32-output FP16/BF16 WMMA APIs now use this distinction for RDNA3/RDNA4.
-Keep hardware provenance in fixture
-comments. CPU-specific implementations retain their CPU feature suffix.
+the six WMMA mnemonics shared by RDNA3/RDNA4 use this distinction.
+Keep hardware provenance in fixture comments. CPU-specific implementations retain their CPU feature suffix.
 
 Closing braces for namespaces and extern "C" blocks must carry a comment naming
 what they close (for example, } // namespace goc or } // extern "C"). This does

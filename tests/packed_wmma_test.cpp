@@ -14,12 +14,13 @@
 
 namespace {
 
-using Wmma = decltype(&goc_v_wmma_f16_16x16x16_f16);
+using Wmma = decltype(&goc_v_wmma_f16_16x16x16_f16_rdna4);
 
 Wmma function(int width, bool bf16) {
   if (width == 64)
-    return bf16 ? goc_v_wmma_bf16_16x16x16_bf16_wave64 : goc_v_wmma_f16_16x16x16_f16_wave64;
-  return bf16 ? goc_v_wmma_bf16_16x16x16_bf16 : goc_v_wmma_f16_16x16x16_f16;
+    return bf16 ? goc_v_wmma_bf16_16x16x16_bf16_rdna4_wave64
+                : goc_v_wmma_f16_16x16x16_f16_rdna4_wave64;
+  return bf16 ? goc_v_wmma_bf16_16x16x16_bf16_rdna4 : goc_v_wmma_f16_16x16x16_f16_rdna4;
 }
 
 struct Registers {

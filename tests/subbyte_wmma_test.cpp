@@ -21,7 +21,7 @@ using Wmma = decltype(&goc_v_wmma_f32_16x16x16_fp8_fp8);
 
 const Wmma floating[] = {goc_v_wmma_f32_16x16x16_fp8_fp8, goc_v_wmma_f32_16x16x16_fp8_bf8,
                          goc_v_wmma_f32_16x16x16_bf8_fp8, goc_v_wmma_f32_16x16x16_bf8_bf8};
-const Wmma integer[] = {goc_v_wmma_i32_16x16x16_iu8, goc_v_wmma_i32_16x16x16_iu4,
+const Wmma integer[] = {goc_v_wmma_i32_16x16x16_iu8_rdna4, goc_v_wmma_i32_16x16x16_iu4_rdna4,
                         goc_v_wmma_i32_16x16x32_iu4};
 
 std::vector<uint64_t> cpu_levels() {

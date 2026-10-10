@@ -113,14 +113,13 @@ TEST(WmmaReplicated, ValidationAndLooseFallback) {
       for (int reg = 0; reg < 8; ++reg)
         v[reg] = data[reg];
       data[0][0] = 0x12345678;
-      EXPECT_EQ(
-          fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, v, nullptr, nullptr, nullptr),
-          GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT, 0, v, nullptr, nullptr, nullptr),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
       EXPECT_EQ(data[0][0], 0x12345678U);
       EXPECT_EQ(fn(1ULL << 63, 0, v, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
       for (unsigned bit = 0; bit < 64; ++bit) {
         uint64_t mode = 1ULL << bit;
-        if (mode & (GOC_WMMA_NEG_C | GOC_WMMA_ABS_C))
+        if (mode & 63)
           continue;
         EXPECT_EQ(fn(0, mode, v, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(data[0][0], 0x12345678U);

@@ -55,8 +55,8 @@ Where:
 
 * Shared instruction semantics use the same entry point across architectures.
   If a newer architecture changes the semantics of an existing mnemonic, its
-  variant gets an architecture suffix, such as `_rdna4`. FP32-output FP16/BF16
-  WMMA uses unsuffixed RDNA3 layouts and `_rdna4` for the newer layout. Wave32 is the default; dedicated Wave64 variants
+  variant gets an architecture suffix, such as `_rdna4`. The six shared RDNA3/RDNA4
+  WMMA mnemonics use unsuffixed RDNA3 layouts and `_rdna4` for the newer layout. Wave32 is the default; dedicated Wave64 variants
   append `_wave64` after the mnemonic (and after any architecture suffix).
 * `<mnemonic>` is the instruction mnemonic like `v_wmma_f32_16x16x16_f16`. We follow
   instruction mnemonics, not intrinsic names, because the API model here really

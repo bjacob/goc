@@ -137,17 +137,17 @@ int goc_v_wmma_f32_16x16x16_bf8_bf8(uint64_t flags, uint64_t instruction_flags, 
   return floating<true, true>(flags, instruction_flags, d, a, b, c);
 }
 
-int goc_v_wmma_i32_16x16x16_iu8(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
-                                const uint32_t *const *a, const uint32_t *const *b,
-                                const uint32_t *const *c) {
+int goc_v_wmma_i32_16x16x16_iu8_rdna4(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return integer<8, 16>(flags, instruction_flags, d, a, b, c);
 }
 
-int goc_v_wmma_i32_16x16x16_iu4(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
-                                const uint32_t *const *a, const uint32_t *const *b,
-                                const uint32_t *const *c) {
+int goc_v_wmma_i32_16x16x16_iu4_rdna4(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return integer<4, 16>(flags, instruction_flags, d, a, b, c);
