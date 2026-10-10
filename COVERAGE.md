@@ -52,7 +52,7 @@ paths must retain their existing performance and may skip optional state outputs
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | Add accumulator/dual forms; RDNA3 reporting uncharacterized; Wave64 |
 | Floating min/max/median | Existing RDNA4 NUM forms | RDNA3 names and NaN/zero policies, signaling NaNs, all widths and packed forms |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
-| Scalar/register moves | MOV/CMOV B32/B64 and MOVK/CMOVK implemented for both architectures; exhaustive immediate/condition tests | Relative addressing, saveexec/wrexec, hardware registers |
+| Scalar/register moves | MOV/CMOV B32/B64 and MOVK/CMOVK implemented for both architectures; exhaustive immediate/condition tests | Relative addressing and hardware-register access; SAVEEXEC/WREXEC implemented at both register widths |
 | Vector/register routing | READLANE/WRITELANE/READFIRSTLANE now shared for Wave32/64, including lane-index wrapping and zero EXEC; existing DPP/permlane/move coverage | Swaps, relative moves, permlane64, broader cross-width behavior |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests | RDNA3 always-true/false forms; Wave64; architecture-specific floating policies |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
@@ -93,3 +93,10 @@ a green test suite that exercises only the current implementation.
   Tests cover every lane, wrapped/high-bit indices, single-bit and suffix EXEC
   masks, scalar output overlap and invalid flags. All 686 tests pass on Clang
   and GCC; the three new tests pass under ASan/UBSan. Missing API names: 112.
+- Scalar EXEC operations: all 24 canonical SAVEEXEC/WREXEC B32/B64 APIs added,
+  sharing validation and stores while retaining explicit Boolean expressions.
+  The contracts follow rocjitsu, including B64 access to raw EXEC_HI independently
+  of active wave width. Independent per-bit truth tables verify all operations,
+  old/new destination distinction, zero EXEC, optional EXEC reporting and output
+  alias priority. All 688 tests pass on Clang/GCC; both new tests pass under
+  ASan/UBSan. Missing in-scope API names: 88.

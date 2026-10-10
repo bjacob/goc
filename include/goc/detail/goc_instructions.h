@@ -210,6 +210,85 @@ int goc_v_readlane_b32_wave64(uint64_t flags, uint64_t instruction_flags, uint32
 int goc_v_writelane_b32_wave64(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
                                uint32_t a, uint32_t lane);
 
+// EXEC Boolean updates shared by RDNA3/RDNA4. SAVEEXEC writes old exec_mask
+// to d; WREXEC writes the new EXEC value to d. EXEC is replaced, not accumulated.
+// NOT0 complements a, NOT1 complements exec_mask. SCC is new EXEC != 0.
+// These execute even when exec_mask is zero. Both semantics are exact;
+// instruction_flags must be zero. d and scc are required ordinary results;
+// exec may be null to omit the implicit register update. Writes occur in order
+// d, exec, scc; outputs may alias and later writes win. Errors preserve outputs.
+int goc_s_and_saveexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                           uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_or_saveexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                          uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_xor_saveexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                           uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_nand_saveexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_nor_saveexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                           uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_xnor_saveexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                            uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_and_not0_saveexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                                uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_or_not0_saveexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                               uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_and_not1_saveexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                                uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_or_not1_saveexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                               uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_and_not0_wrexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_and_not1_wrexec_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                              uint32_t exec_mask, uint32_t *exec, uint32_t *scc);
+
+int goc_s_and_saveexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                           uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
+int goc_s_or_saveexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                          uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
+int goc_s_xor_saveexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                           uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
+int goc_s_nand_saveexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                            uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
+int goc_s_nor_saveexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                           uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
+int goc_s_xnor_saveexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                            uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
+int goc_s_and_not0_saveexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                                uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
+int goc_s_or_not0_saveexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                               uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
+int goc_s_and_not1_saveexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                                uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
+int goc_s_or_not1_saveexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                               uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
+int goc_s_and_not0_wrexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                              uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
+int goc_s_and_not1_wrexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                              uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
+
 // Scalar moves shared by RDNA3/RDNA4. Copy raw bits; MOVK/CMOVK sign-extend
 // their 16-bit immediate. Conditional forms write only when input_scc bit 0
 // is set, otherwise d is unchanged. SCC and EXEC are not modified; EXEC is

@@ -1,4 +1,5 @@
 add_library(goc STATIC
+  scalar_exec.cpp
   scalar_move.cpp
   lane_transfer.cpp
   move.cpp

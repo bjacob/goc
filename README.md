@@ -2274,3 +2274,10 @@ Wave32 and `_wave64` APIs. Explicit lane indices wrap to the wave size and
 ignore EXEC. `readfirstlane` takes an `exec_mask`, reads the lowest active lane,
 and reads lane 0 when the mask is zero. These operations copy raw register bits
 without modifying SCC or the host FP environment.
+
+The scalar SAVEEXEC/WREXEC Boolean instructions are shared by RDNA3/RDNA4.
+SAVEEXEC returns old EXEC in its ordinary destination; WREXEC returns the new
+value there. They take `exec_mask` by value and append an optional `exec` output
+and required `scc` result. B32 accesses the low word; B64 accesses the raw pair,
+including EXEC_HI used as scalar storage in Wave32. Both semantics compute exact
+integer results, including when incoming EXEC is zero.
