@@ -1587,5 +1587,13 @@
       "v_cubetc_f32",
       "v_cubema_f32"
     ]
+  },
+  {
+    "heading": "DX9 three-source FMA architecture contract",
+    "semantics": "loose and exact",
+    "tests": "tests/fma_exact_test.cpp",
+    "mnemonics": [
+      "v_fma_dx9_zero_f32"
+    ]
   }
 ]

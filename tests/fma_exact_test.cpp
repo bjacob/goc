@@ -204,7 +204,7 @@ TEST(FmaExact, DppMasksAliasingAndHostEnvironment) {
         for (bool accumulate : {false, true})
           for (unsigned policy = 0; policy < 8; ++policy)
             for (uint64_t descriptor : goc_test::dpp_modes) {
-              if (dx9 && accumulate && !rdna3)
+              if (dx9 && accumulate)
                 continue;
               ASSERT_EQ(std::fesetround(FE_TONEAREST), 0);
 #if defined(__x86_64__) || defined(_M_X64)

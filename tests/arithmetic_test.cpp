@@ -431,14 +431,14 @@ TEST(Arithmetic, Dx9DppModifiersMasksAliasesAndGuards) {
       }
 }
 
-TEST(Arithmetic, Dx9FmacModifiersRoutingAndAliases) {
-  // The accumulator must retain its lane and its original value even when DPP
-  // routes an aliased A. Compare with the independently supplied FMA accumulator.
+TEST(Arithmetic, Dx9FmacModifiersAndAliases) {
+  // FMAC has no DPP encoding. Compare un-routed operands with an independently
+  // supplied FMA accumulator, including aliases.
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint32_t mode = 0; mode < 512; ++mode) {
       if (mode & (GOC_ALU_NEG_C | GOC_ALU_ABS_C))
         continue;
-      for (uint64_t descriptor : goc_test::dpp_modes)
+      for (uint64_t descriptor : {uint64_t(0)})
         for (uint32_t exec_mask : {0U, 1U, 0xaaaaaaaaU, 0xffffffffU})
           for (unsigned alias = 0; alias < 3; ++alias) {
             uint32_t words[3][32], expected[32];
@@ -522,7 +522,7 @@ TEST(Arithmetic, Wave64FmaFormsDppModifiersAndAliases) {
           continue;
         for (unsigned route_index = 0; route_index < 8; ++route_index) {
           uint64_t route = route_index ? goc_test::dpp_modes[route_index - 1] : 0;
-          if (op >= 4 && route)
+          if ((op == 3 || op >= 4) && route)
             continue;
           for (unsigned rows = 0; rows < 16; ++rows)
             for (unsigned alias = 0; alias < 4; ++alias) {
@@ -692,4 +692,19 @@ TEST(Arithmetic, FmaArchitectureGuestModes) {
                         << cpu << "/" << rdna3 << "/" << dx9 << "/" << accumulator << "/"
                         << settings << "/" << mode;
                 }
+}
+
+TEST(Arithmetic, Dx9FmacRejectsDppBeforeOperandAccess) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics :
+         {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
+      for (uint64_t exec_mask : {0ULL, 0x8000000000000001ULL, ~0ULL})
+        for (uint64_t mode : goc_test::dpp_modes) {
+          EXPECT_EQ(goc_v_fmac_dx9_zero_f32(cpu | semantics, uint32_t(exec_mask), mode, nullptr,
+                                            nullptr, nullptr),
+                    GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(goc_v_fmac_dx9_zero_f32_wave64(cpu | semantics, exec_mask, mode, nullptr,
+                                                   nullptr, nullptr),
+                    GOC_ERROR_INVALID_FLAGS);
+        }
 }

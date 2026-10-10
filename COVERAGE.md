@@ -8419,3 +8419,68 @@ nearest-even-only limitation or constitute a complete-goal audit.
 Validation: all **21** Cube tests pass with Clang 21 Release, GCC 15 Release
 and Clang ASan/UBSan; all nine tooling tests pass. Logs use
 `coverage-work/cube-contract-{build,tests}.log` in each build directory.
+
+
+## DX9 three-source FMA architecture contract
+
+Reviewed `v_fma_dx9_zero_f32` (LLVM alias `v_fma_legacy_f32`) against both XML
+inventories, the manuals' DX9 arithmetic description, rocjitsu revision
+`ffc144c564c`'s `fp_mode::arithmetic` DX9 preprocessing, and LLVM
+`VOP3Instructions.td`. LLVM explicitly defines the legacy FMA in a
+`mayRaiseFPException = 0` block. Existing gfx1201 result and zero-exception
+captures provide independent RDNA4 regression evidence. The no-global-state
+API is retained; no new exception classifier or hardware observation was added.
+
+Both architectures support VOP3, literal operands and DPP8/DPP16 on A. GoC
+supports ABS/NEG for all three sources, OMOD, CLAMP and both wave widths. Inputs
+and outputs are forcibly flushed, and a zero multiplicand supplies a positive
+zero product before adding C. This is more precise than copying C unchanged:
+zero signs and NaN priority follow the borrowed fused operation. Exact results
+reuse the ordinary integer FMA helper. RDNA3 keeps architecture-specific NaN
+quieting and OMOD gating using the original guest settings; `_rdna4` retains
+the newer behavior. Guest directed rounding and RDNA3 DX10-clamp-off remain
+unsupported. Scalar, AVX2 and AVX-512 loose paths remain available.
+
+Existing tests cover raw result captures, source/output modifiers, zero times
+NaN/infinity, fused cancellation, guest policies, masks, aliases and both widths.
+The exact DPP corpus continues to cover this three-source instruction on both
+architectures; it must not be applied indiscriminately to the accumulator form.
+
+## RDNA3 DX9 FMAC encoding correction
+
+The XML lists `v_fmac_dx9_zero_f32` only in RDNA3, with VOP2/VOP3 and literal
+encodings, **without DPP**. LLVM independently uses
+`VOP2_Real_NO_DPP_with_name_gfx11` and a legacy MAC profile with extended DPP
+disabled. GoC previously inherited DPP support from the ordinary three-source
+FMA implementation. Both accumulator widths now reject all high instruction
+flag bits before reads, including valid DPP descriptors and empty EXEC. Legal
+A/B ABS/NEG, OMOD and CLAMP continue to forward to the shared DX9 FMA kernel.
+
+Tests formerly asserting successful accumulator routing now cover legal
+un-routed modifiers and aliases. The common Wave64/exact routing matrices skip
+only this unsupported accumulator encoding; three-source DX9 and ordinary FMA
+DPP coverage remains. New null-operand tests check DPP rejection in loose and
+strict exact semantics with empty, partial and full EXEC. Generic flag checks
+and the public contract now agree with the inventory. No hardware fixture was
+changed and no numerical kernel was duplicated or altered.
+
+The accumulator's global-state applicability remains a distinct review item:
+LLVM's generic VOP2 MAC profile inherits its exception property, unlike the
+explicit no-exception VOP3 FMA definition. RDNA4 three-source captures cannot
+settle RDNA3 accumulator state effects. This correction does not mark that
+remaining contract reviewed. The ledger records **806** reviewed mnemonics and
+**three** pending (DIV_SCALE at both widths and DX9 FMAC).
+
+Validation: all **1,184** CTests pass with Clang 21 Release and GCC 15 Release;
+Clang ASan/UBSan passes all **26** selected Arithmetic/FmaExact/InstructionFlags
+tests. All nine tooling tests pass. Logs use
+`coverage-work/dx9-fmac-encoding-{build,tests}.log` in each build directory.
+
+Eight loose FMAC cases compare parent `5665040` with the correction: AVX2 and
+AVX-512, both wave widths, default and modified inputs. Seven alternating paired
+runs pinned to CPU 2 used at least 50 ms thread CPU time per sample after all
+builds/tests finished. Case medians range from **0.18% to 3.44% faster**, with
+a **0.92% faster** median; this limited check finds no regression, rather than
+establishing a general speedup. Arithmetic object text decreases from 32,389 to
+32,341 bytes. Baseline archive, driver and raw timings are under
+`../goc-build/coverage-work/dx9-fmac-encoding-performance/`.

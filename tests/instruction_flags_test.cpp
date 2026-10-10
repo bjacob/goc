@@ -134,7 +134,6 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_fma_f32" || base_name == "goc_v_fma_f32_rdna4" ||
         base_name == "goc_v_fmac_f32" || base_name == "goc_v_fmac_f32_rdna4" ||
         base_name == "goc_v_fma_dx9_zero_f32" || base_name == "goc_v_fma_dx9_zero_f32_rdna4" ||
-        base_name == "goc_v_fmac_dx9_zero_f32" ||
         (base_name == "goc_v_ldexp_f32" || base_name == "goc_v_ldexp_f32_rdna4") ||
         (base_name == "goc_v_ldexp_f16" || base_name == "goc_v_ldexp_f16_rdna4") ||
         (base_name == "goc_v_frexp_exp_i16_f16" || base_name == "goc_v_frexp_exp_i16_f16_rdna4") ||
@@ -374,7 +373,6 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
                   std::strcmp(name, "goc_v_div_fixup_f16") == 0;
   supports_dpp |= std::strcmp(name, "goc_v_fma_dx9_zero_f32") == 0 ||
                   std::strcmp(name, "goc_v_fma_dx9_zero_f32_rdna4") == 0;
-  supports_dpp |= std::strcmp(name, "goc_v_fmac_dx9_zero_f32") == 0;
   for (auto mnemonic : {"goc_v_min_f16", "goc_v_max_f16", "goc_v_min_f32", "goc_v_max_f32",
                         "goc_v_min3_f16", "goc_v_max3_f16", "goc_v_minmax_f16", "goc_v_maxmin_f16",
                         "goc_v_med3_f16", "goc_v_min3_f32", "goc_v_max3_f32", "goc_v_minmax_f32",
