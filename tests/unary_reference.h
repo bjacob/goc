@@ -16,11 +16,11 @@ inline const char *const unary_names[] = {
     "v_trunc_f32", "v_ceil_f32", "v_rndne_f32", "v_floor_f32", "v_sqrt_f32",      "v_rcp_f32",
     "v_rsq_f32",   "v_exp_f32",  "v_log_f32",   "v_fract_f32", "v_frexp_mant_f32"};
 
-using UnaryFn = decltype(&goc_v_log_f32);
-inline const UnaryFn unary_functions[] = {goc_v_trunc_f32, goc_v_ceil_f32,      goc_v_rndne_f32,
-                                          goc_v_floor_f32, goc_v_sqrt_f32,      goc_v_rcp_f32,
-                                          goc_v_rsq_f32,   goc_v_exp_f32,       goc_v_log_f32,
-                                          goc_v_fract_f32, goc_v_frexp_mant_f32};
+using UnaryFn = decltype(&goc_v_log_f32_rdna4);
+inline const UnaryFn unary_functions[] = {
+    goc_v_trunc_f32,      goc_v_ceil_f32,      goc_v_rndne_f32,     goc_v_floor_f32,
+    goc_v_sqrt_f32_rdna4, goc_v_rcp_f32_rdna4, goc_v_rsq_f32_rdna4, goc_v_exp_f32_rdna4,
+    goc_v_log_f32_rdna4,  goc_v_fract_f32,     goc_v_frexp_mant_f32};
 
 // Independent higher-precision reference, with explicit ties-to-even and
 // binary32 rounding before output scaling.

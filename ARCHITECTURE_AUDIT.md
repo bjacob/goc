@@ -20,6 +20,9 @@ Source SHA-256 (`execute_shared.h`): `ba4a6d7ed23c10d22459d7bb5243042ec41226c403
   from RDNA4's unconditional quieting. Its conversion, reciprocal and FMA
   paths use this policy. Exact preservation of signaling bits requires a
   per-instruction review; host arithmetic cannot substitute for that review.
+- FP32 SQRT/RCP/RSQ/EXP/LOG use forced-flush policy for OMOD in rocjitsu;
+  only RDNA3 IEEE mode gates their scaling, not guest denormal flags. RCP_IFLAG
+  instead passes the guest denormal mode. Review the helper's actual arguments.
 - Packed FP16 results ignore OMOD on both architectures. Do not blindly split
   every instruction whose helper mentions the common modifier machinery.
 - RDNA3 arithmetic exceptions accumulate in TRAPSTS.EXCP; RDNA4 uses
@@ -460,7 +463,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_dual_sub_f32` | no direct policy detected | yes | not found | review required |
 | `v_dual_subrev_f32` | no direct policy detected | yes | not found | review required |
 | `v_exp_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 11151, 11183 | review required |
-| `v_exp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 11229, 11247 | review required |
+| `v_exp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11229, 11247 | review required |
 | `v_floor_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 11399, 11423 | review required |
 | `v_floor_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 11468, 11482 | review required |
 | `v_floor_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 11512, 11526 | review required |
@@ -497,7 +500,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_ldexp_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 12959 | review required |
 | `v_lerp_u8` | SIMD macro, output helper | no | 12997 | review required |
 | `v_log_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 13021, 13053 | review required |
-| `v_log_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 13099, 13117 | review required |
+| `v_log_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 13099, 13117 | review required |
 | `v_lshl_add_u32` | SIMD macro, output helper | no | 13155 | review required |
 | `v_lshl_or_b32` | SIMD macro, output helper | no | 13189 | review required |
 | `v_lshlrev_b16` | SIMD macro, output helper | no | 13206, 13224 | review required |
@@ -590,7 +593,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_pk_sub_u16` | SIMD macro, output helper | no | 18191 | review required |
 | `v_qsad_pk_u16_u8` | no direct policy detected | no | not found | review required |
 | `v_rcp_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 18222, 18256 | review required |
-| `v_rcp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 18302, 18320 | review required |
+| `v_rcp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18302, 18320 | review required |
 | `v_rcp_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 18358, 18372 | review required |
 | `v_rcp_iflag_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18409, 18429 | review required |
 | `v_readfirstlane_b32` | no direct policy detected | no | not found | review required |
@@ -599,7 +602,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_rndne_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 18534, 18548 | review required |
 | `v_rndne_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 18578, 18592 | review required |
 | `v_rsq_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 18629, 18663 | review required |
-| `v_rsq_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 18709, 18727 | review required |
+| `v_rsq_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18709, 18727 | review required |
 | `v_rsq_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 18765, 18780 | review required |
 | `v_sad_hi_u8` | SIMD macro, output helper | no | 18868 | review required |
 | `v_sad_u16` | SIMD macro, output helper | no | 18885 | review required |
@@ -609,7 +612,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_sin_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | no | 18979, 18998 | review required |
 | `v_sin_f32` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | no | 19037, 19051 | review required |
 | `v_sqrt_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 19083, 19117 | review required |
-| `v_sqrt_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 19163, 19185 | review required |
+| `v_sqrt_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 19163, 19185 | review required |
 | `v_sqrt_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 19228, 19242 | review required |
 | `v_sub_co_ci_u32` | SIMD macro, output helper | no | 19279, 19309 | review required |
 | `v_sub_co_u32` | SIMD macro, output helper | no | 19340, 19363 | review required |

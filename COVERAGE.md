@@ -2686,3 +2686,42 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   were 6.364 -> 6.561 ns without reporting and 6.439 -> 6.748 ns with reporting.
   These are dispatch-level measurements, not whole-library results. Artifacts
   use `../goc-build/coverage-work/rcp-arch-*`.
+
+## FP32 transcendental architecture policies
+
+- Split SQRT/RCP/RSQ/EXP/LOG in both wave sizes into unsuffixed RDNA3 APIs
+  with TRAPSTS and `_rdna4` APIs with EXCP_FLAG_USER. Both accept IEEE and
+  denormal flags; these instructions force input/output flushing. RDNA3 IEEE
+  mode disables OMOD, while the guest denormal flags do not gate it. This is
+  the explicit `effective_omod(arch, 0, ieee, omod)` policy in rocjitsu's five
+  generated VOP3 helpers, unlike RCP_IFLAG's guest-denormal argument. The audit
+  generator now records this distinction to avoid overgeneralizing the rule.
+- RDNA3 applies its OMOD policy then enters the same unary execution body as
+  RDNA4; source routing, scalar arithmetic and SIMD kernels remain shared. Other unary
+  operations retain their existing contracts and still require architecture
+  review. Old RDNA4 hardware fixtures, tests and benchmarks use `_rdna4`.
+- New policy tests cover all five operations, all eight guest IEEE/denormal
+  combinations, every source/output modifier, both wave sizes, DPP, EXEC masks,
+  aliases and CPU levels. A literal reciprocal witness distinguishes RDNA3
+  IEEE-off (0.5) from IEEE-on (0.25), with RDNA4 producing 0.5 in both cases.
+  These are model-backed RDNA3 tests, not new RDNA3 hardware captures.
+- Exact numerical semantics and non-null exact exception reporting remain
+  explicitly unsupported; loose calls leave optional state untouched. No host
+  FP-environment mutation was introduced. The state-name audit now has 658
+  signatures, 358 resolved matches, zero mismatches and 300 pending review.
+- Validation: all 980 tests pass with Clang 21 and GCC 15 Release; all 36
+  Unary/Arithmetic/ExecMask/InstructionFlags/ExceptionRegisters tests pass under
+  ASan/UBSan. After consolidating the scalar execution bodies, those 36 tests
+  pass again on both Release builds and sanitizers. Seven audit-tool tests pass.
+- Eleven alternating CPU-2-pinned samples, minimum 50 ms thread CPU time, compare
+  twenty loose cases with `4ae9212`: five operations, default/combined modifiers,
+  null/non-null reporting and the AVX2 CPU tier. SQRT/RCP/RSQ SIMD changes are
+  within 0.9%. Scalar LOG changes are within 1.6%; scalar EXP default is within
+  0.4%, but combined modifiers measure 107.027 -> 122.531 ns (14.5% slower).
+  The latter remains a measured limitation, not a claimed performance win.
+  Disassembly of the final EXP execution body matches the baseline instruction
+  for instruction except the accepted-flags immediate; its linked address moved
+  by 256 bytes with the same alignment. This suggests layout sensitivity, but
+  does not establish its cause. No speculative padding or alignment tuning was
+  added. Raw samples use `../goc-build/coverage-work/unary-arch-*`; measurements
+  cover these calls only, not whole-library performance.

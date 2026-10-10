@@ -58,9 +58,10 @@ TEST(Arithmetic, ErrorsPreserveDestination) {
   EXPECT_EQ(goc_v_fma_f32_rdna4((2ULL << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, &pd, &pa, &pa,
                                 &pa, nullptr),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
-  EXPECT_EQ(goc_v_log_f32(0, UINT32_MAX, GOC_ALU_NEG_B, &pd, &pa, nullptr),
+  EXPECT_EQ(goc_v_log_f32_rdna4(0, UINT32_MAX, GOC_ALU_NEG_B, &pd, &pa, nullptr),
             GOC_ERROR_INVALID_FLAGS);
-  EXPECT_EQ(goc_v_log_f32(1ULL << 63, UINT32_MAX, 0, &pd, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
+  EXPECT_EQ(goc_v_log_f32_rdna4(1ULL << 63, UINT32_MAX, 0, &pd, &pa, nullptr),
+            GOC_ERROR_INVALID_FLAGS);
   for (auto v : d)
     EXPECT_EQ(v, 0xdeadbeef);
   EXPECT_EQ(goc_v_fma_f32_rdna4(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &pd, &pa, &pa, &pa, nullptr),
@@ -74,9 +75,9 @@ TEST(Arithmetic, LogPowersOfTwoAndEmptyMask) {
   for (int i = 0; i < 32; ++i)
     a[i] = goc::as_bits(std::ldexp(1.0f, i - 16));
   auto pa = a;
-  ASSERT_EQ(goc_v_log_f32(0, 0U, 0, &pa, &pa, nullptr), 0);
+  ASSERT_EQ(goc_v_log_f32_rdna4(0, 0U, 0, &pa, &pa, nullptr), 0);
   EXPECT_EQ(a[0], goc::as_bits(std::ldexp(1.0f, -16)));
-  ASSERT_EQ(goc_v_log_f32(0, UINT32_MAX, 0, &pa, &pa, nullptr), 0);
+  ASSERT_EQ(goc_v_log_f32_rdna4(0, UINT32_MAX, 0, &pa, &pa, nullptr), 0);
   for (int i = 0; i < 32; ++i)
     EXPECT_EQ(a[i], goc::as_bits(float(i - 16)));
 }

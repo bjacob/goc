@@ -93,6 +93,9 @@ Source SHA-256 (`execute_shared.h`): `{hashlib.sha256(source.encode()).hexdigest
   from RDNA4's unconditional quieting. Its conversion, reciprocal and FMA
   paths use this policy. Exact preservation of signaling bits requires a
   per-instruction review; host arithmetic cannot substitute for that review.
+- FP32 SQRT/RCP/RSQ/EXP/LOG use forced-flush policy for OMOD in rocjitsu;
+  only RDNA3 IEEE mode gates their scaling, not guest denormal flags. RCP_IFLAG
+  instead passes the guest denormal mode. Review the helper's actual arguments.
 - Packed FP16 results ignore OMOD on both architectures. Do not blindly split
   every instruction whose helper mentions the common modifier machinery.
 - RDNA3 arithmetic exceptions accumulate in TRAPSTS.EXCP; RDNA4 uses

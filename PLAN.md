@@ -489,3 +489,10 @@ disabled; its forced reciprocal flushing does not override that policy. Both
 reuse the existing scalar/AVX2/AVX512 arithmetic. RDNA3 optional TRAPSTS reporting
 remains unsupported for exact requests and is skipped in loose mode. Numerical
 strict-exact reciprocal remains unsupported on both architectures.
+
+FP32 `SQRT`, `RCP`, `RSQ`, `EXP`, and `LOG` likewise distinguish unsuffixed
+RDNA3 and `_rdna4` APIs in both wave sizes. These five operations use forced-flush
+OMOD policy: RDNA3 IEEE mode disables scaling, independently of the guest
+denormal flags (unlike `RCP_IFLAG`). Their loose scalar/SIMD implementations share
+kernels; numerical strict-exact semantics and non-null exact reporting remain
+unsupported. Loose calls skip optional state updates.

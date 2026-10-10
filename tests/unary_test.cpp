@@ -16,10 +16,10 @@
 namespace {
 
 const decltype(&goc_v_trunc_f32_wave64) wave64[] = {
-    goc_v_trunc_f32_wave64, goc_v_ceil_f32_wave64,      goc_v_rndne_f32_wave64,
-    goc_v_floor_f32_wave64, goc_v_sqrt_f32_wave64,      goc_v_rcp_f32_wave64,
-    goc_v_rsq_f32_wave64,   goc_v_exp_f32_wave64,       goc_v_log_f32_wave64,
-    goc_v_fract_f32_wave64, goc_v_frexp_mant_f32_wave64};
+    goc_v_trunc_f32_wave64,     goc_v_ceil_f32_wave64,       goc_v_rndne_f32_wave64,
+    goc_v_floor_f32_wave64,     goc_v_sqrt_f32_rdna4_wave64, goc_v_rcp_f32_rdna4_wave64,
+    goc_v_rsq_f32_rdna4_wave64, goc_v_exp_f32_rdna4_wave64,  goc_v_log_f32_rdna4_wave64,
+    goc_v_fract_f32_wave64,     goc_v_frexp_mant_f32_wave64};
 
 } // namespace
 
@@ -277,4 +277,87 @@ TEST(Unary, Wave64HardwareOmodAndMandatoryFlush) {
               }
             }
           }
+}
+
+TEST(Unary, TranscendentalArchitectureGuestPolicies) {
+  const decltype(&goc_v_sqrt_f32) narrow[2][5] = {
+      {goc_v_sqrt_f32, goc_v_rcp_f32, goc_v_rsq_f32, goc_v_exp_f32, goc_v_log_f32},
+      {goc_v_sqrt_f32_rdna4, goc_v_rcp_f32_rdna4, goc_v_rsq_f32_rdna4, goc_v_exp_f32_rdna4,
+       goc_v_log_f32_rdna4}};
+  const decltype(&goc_v_sqrt_f32_wave64) wide[2][5] = {
+      {goc_v_sqrt_f32_wave64, goc_v_rcp_f32_wave64, goc_v_rsq_f32_wave64, goc_v_exp_f32_wave64,
+       goc_v_log_f32_wave64},
+      {goc_v_sqrt_f32_rdna4_wave64, goc_v_rcp_f32_rdna4_wave64, goc_v_rsq_f32_rdna4_wave64,
+       goc_v_exp_f32_rdna4_wave64, goc_v_log_f32_rdna4_wave64}};
+  const uint32_t values[] = {0,          0x80000000, 1,          0x80000001, 0x800000,   0x80800000,
+                             0x3f800000, 0x40800000, 0x41800000, 0x3e800000, 0x7f800000, 0xff800000,
+                             0x7fc00123, 0x7f800001, 0xbf800000, 0x7f7fffff};
+  for (unsigned architecture = 0; architecture < 2; ++architecture)
+    for (bool wave64 : {false, true})
+      for (unsigned op = 0; op < 5; ++op)
+        for (unsigned policy = 0; policy < 8; ++policy)
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+            for (unsigned modifier = 0; modifier < 32; ++modifier)
+              for (auto descriptor : goc_test::dpp_modes)
+                for (bool alias : {false, true}) {
+                  uint32_t input[64], output[64], original[64];
+                  for (unsigned lane = 0; lane < 64; ++lane) {
+                    input[lane] = original[lane] = values[lane % 16];
+                    output[lane] = 0xdeadbeef;
+                  }
+                  uint64_t flags = cpu | (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                   (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                   (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+                  uint32_t mode = (modifier & 1 ? GOC_ALU_NEG_A : 0) |
+                                  (modifier & 2 ? GOC_ALU_ABS_A : 0) | ((modifier >> 2 & 3) << 6) |
+                                  (modifier & 16 ? GOC_ALU_CLAMP : 0);
+                  uint32_t effective_mode =
+                      !architecture && (policy & 4) ? mode & ~GOC_ALU_OMOD_HALF : mode;
+                  uint64_t exec_mask = wave64 ? 0x8192a5a571abcdefULL : 0x71abcdef;
+                  const uint32_t *a = input;
+                  uint32_t *d = alias ? input : output, state = 0x80000001;
+                  ASSERT_EQ(wave64 ? wide[architecture][op](flags, exec_mask, mode | descriptor, &d,
+                                                            &a, &state)
+                                   : narrow[architecture][op](flags, uint32_t(exec_mask),
+                                                              mode | descriptor, &d, &a, &state),
+                            GOC_SUCCESS);
+                  EXPECT_EQ(state, 0x80000001U);
+                  for (unsigned lane = 0; lane < (wave64 ? 64U : 32U); ++lane) {
+                    int source;
+                    if (!goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
+                      EXPECT_EQ(d[lane], alias ? original[lane] : 0xdeadbeef);
+                      continue;
+                    }
+                    float want = goc_test::unary_reference(
+                        op + 4, goc::as_float(source < 0 ? 0 : original[source]), effective_mode);
+                    float got = goc::as_float(d[lane]);
+                    if (std::isnan(want)) {
+                      EXPECT_TRUE(std::isnan(got));
+                    } else if (want == 0 || std::isinf(want)) {
+                      EXPECT_EQ(d[lane], goc::as_bits(want));
+                    } else {
+                      EXPECT_FLOAT_EQ(got, want);
+                    }
+                  }
+                }
+}
+
+TEST(Unary, TranscendentalIeeeScalingWitness) {
+  // Unlike RCP_IFLAG, ordinary RCP uses forced-flush OMOD policy even when
+  // guest output denormals are preserved. IEEE alone disables RDNA3 scaling.
+  uint32_t input[32], output[32];
+  std::fill(input, input + 32, 0x40800000); // 4 -> reciprocal 0.25.
+  const uint32_t *a = input;
+  uint32_t *d = output;
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    ASSERT_EQ(goc_v_rcp_f32(cpu, UINT32_MAX, GOC_ALU_OMOD_2, &d, &a, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(d[0], 0x3f000000U);
+    ASSERT_EQ(goc_v_rcp_f32(cpu | GOC_FP_IEEE_MODE, UINT32_MAX, GOC_ALU_OMOD_2, &d, &a, nullptr),
+              GOC_SUCCESS);
+    EXPECT_EQ(d[0], 0x3e800000U);
+    ASSERT_EQ(
+        goc_v_rcp_f32_rdna4(cpu | GOC_FP_IEEE_MODE, UINT32_MAX, GOC_ALU_OMOD_2, &d, &a, nullptr),
+        GOC_SUCCESS);
+    EXPECT_EQ(d[0], 0x3f000000U);
+  }
 }

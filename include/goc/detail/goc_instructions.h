@@ -4246,19 +4246,34 @@ int goc_v_floor_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruct
                            uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_sqrt_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_sqrt_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                uint32_t *excp_flag_user);
 
 int goc_v_rcp_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_rcp_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 int goc_v_rsq_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_rsq_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 int goc_v_exp_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_exp_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 int goc_v_log_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_log_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 int goc_v_fract_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
@@ -4745,20 +4760,34 @@ int goc_v_rndne_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fla
 int goc_v_floor_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
+// SQRT/RCP/RSQ/EXP/LOG force input/output flushing regardless of guest flush
+// flags. Unsuffixed RDNA3 forms disable OMOD when GOC_FP_IEEE_MODE is set;
+// _rdna4 forms apply OMOD independently. Exact numerical semantics and non-null
+// exact state reporting remain unsupported. Loose calls leave state untouched.
 int goc_v_sqrt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                   uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_sqrt_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_rcp_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_rcp_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_rsq_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_rsq_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_exp_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_exp_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_log_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_log_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 // Floating DOT2 sign modifiers act after selecting each packed half.
 static const uint32_t GOC_DOT_NEG_LO_A = 1U << 0;
