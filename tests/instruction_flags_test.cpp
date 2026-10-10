@@ -219,7 +219,8 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_frexp_exp_i32_f32_rdna4" || base_name == "goc_v_trunc_f16_rdna4" ||
         base_name == "goc_v_ceil_f16_rdna4" || base_name == "goc_v_rndne_f16_rdna4" ||
         base_name == "goc_v_floor_f16_rdna4" || base_name == "goc_v_fract_f16_rdna4" ||
-        base_name == "goc_v_frexp_mant_f16_rdna4")
+        base_name == "goc_v_rcp_f16_rdna4" || base_name == "goc_v_rsq_f16_rdna4" ||
+        base_name == "goc_v_sqrt_f16_rdna4" || base_name == "goc_v_frexp_mant_f16_rdna4")
       name = base_name.c_str();
   } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));
@@ -274,7 +275,8 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
   for (auto mnemonic : goc_test::half_minmax_names)
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : {"v_trunc_f16_rdna4", "v_ceil_f16_rdna4", "v_rndne_f16_rdna4",
-                        "v_floor_f16_rdna4", "v_frexp_mant_f16_rdna4", "v_fract_f16_rdna4"})
+                        "v_floor_f16_rdna4", "v_frexp_mant_f16_rdna4", "v_fract_f16_rdna4",
+                        "v_rcp_f16_rdna4", "v_rsq_f16_rdna4", "v_sqrt_f16_rdna4"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : goc_test::half_unary_names)
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;

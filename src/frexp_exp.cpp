@@ -12,7 +12,7 @@ namespace {
 
 template <bool Fp64>
 int frexp_exp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
-              const uint32_t *const *a, uint32_t *excp_flag_user = nullptr) {
+              const uint32_t *const *a) {
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known, !Fp64,
                                 Fp64 ? 0
@@ -24,13 +24,12 @@ int frexp_exp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const
   // Sign modifiers do not affect the exponent. Integer results ignore OMOD;
   // the exponent always fits in int32_t, so CLAMP does not change the result.
 #if defined(GOC_HAVE_X86_64_V3)
-  if (!excp_flag_user && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
     goc::frexp_exp_x86_64_v3(Fp64, exec_mask, d[0], a, flags & GOC_FP_FLUSH_INPUT_DENORMALS);
     return GOC_SUCCESS;
   }
 #endif
   uint32_t result[32];
-  uint32_t exceptions = 0;
   for (int lane = 0; lane < 32; ++lane) {
     // Match rocjitsu's frexp exponent model, including zero for NaNs/infinities.
     int exponent = 0;
@@ -50,33 +49,22 @@ int frexp_exp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const
       else if (!field && magnitude && !(flags & GOC_FP_FLUSH_INPUT_DENORMALS))
         // rocjitsu's frexp_f32: exponent = -125 - (countl_zero(magnitude) - 8).
         exponent = -117 - int(goc::bit_count_zero<false>(magnitude));
-      if (excp_flag_user && !(mode & GOC_ALU_CLAMP) && ((exec_mask >> lane) & 1)) {
-        // gfx1201 reports INVALID for infinity as well as signaling NaN.
-        // CLAMP suppresses status, but integer-output OMOD does not.
-        if (field == 255 && !(magnitude & 0x400000))
-          exceptions |= GOC_EXCEPTION_INVALID;
-        else if (!field && magnitude && !(flags & GOC_FP_FLUSH_INPUT_DENORMALS))
-          exceptions |= GOC_EXCEPTION_INPUT_DENORM;
-      }
     }
     result[lane] = uint32_t(exponent);
   }
   for (int lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
-  if (excp_flag_user)
-    *excp_flag_user |= exceptions;
   return GOC_SUCCESS;
 }
 
 // Keep DPP's routing buffers off the ordinary instruction's call path.
 [[gnu::noinline]] int frexp_exp_f32_dpp(uint64_t flags, uint32_t exec_mask, uint64_t mode,
-                                        uint32_t *const *d, const uint32_t *const *a,
-                                        uint32_t *excp_flag_user) {
-  return goc::execute_dpp(
-      flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
-        return frexp_exp<false>(flags, exec_mask, uint32_t(mode), d, source, excp_flag_user);
-      });
+                                        uint32_t *const *d, const uint32_t *const *a) {
+  return goc::execute_dpp(flags, exec_mask, mode, a,
+                          [&](uint32_t exec_mask, const uint32_t *const *source) {
+                            return frexp_exp<false>(flags, exec_mask, uint32_t(mode), d, source);
+                          });
 }
 
 } // namespace
@@ -93,13 +81,11 @@ int goc_v_frexp_exp_i32_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t m
                                   uint32_t *const *d, const uint32_t *const *a,
                                   uint32_t *excp_flag_user) {
   const auto semantics = flags & GOC_SEMANTICS_MASK;
-  if (semantics == GOC_SEMANTICS_LOOSE)
-    excp_flag_user = nullptr;
-  else if (excp_flag_user && semantics != GOC_SEMANTICS_EXACT_EMPIRICAL)
+  if (excp_flag_user && semantics != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
-    return frexp_exp_f32_dpp(flags, exec_mask, mode, d, a, excp_flag_user);
-  return frexp_exp<false>(flags, exec_mask, mode, d, a, excp_flag_user);
+    return frexp_exp_f32_dpp(flags, exec_mask, mode, d, a);
+  return frexp_exp<false>(flags, exec_mask, mode, d, a);
 }
 
 int goc_v_frexp_exp_i32_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,

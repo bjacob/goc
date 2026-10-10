@@ -50,17 +50,14 @@ string(REGEX MATCHALL "int goc_[a-zA-Z0-9_]*\\([^;]*(excp_flag_user|trapsts)\\)"
 set(goc_reporting_list "")
 foreach(declaration IN LISTS goc_reporting_declarations)
   string(REGEX MATCH "goc_[a-zA-Z0-9_]*" symbol "${declaration}")
-  if(symbol MATCHES "^goc_v_(trunc|ceil|rndne|floor|frexp_mant|fract)_f16_rdna4(_wave64)?$" OR
-     symbol MATCHES "^goc_v_(fract|frexp_exp_i32|frexp_mant|trunc|ceil|rndne|floor|rcp|sqrt|rsq|exp|log)_f32_rdna4(_wave64)?$" OR
-     symbol MATCHES "^goc_v_rcp_iflag_f32_rdna4(_wave64)?$" OR
+  if(symbol MATCHES "^goc_v_rcp_iflag_f32_rdna4(_wave64)?$" OR
      (symbol MATCHES "^goc_(s_cmp|v_cmpx?)_[a-z]+_f(16|32|64)(_wave64)?$" AND
       NOT symbol MATCHES "^goc_v_cmpx?_[ft]_f(16|32|64)(_wave64)?$") OR
      symbol MATCHES "^goc_v_(fma|fmac|fmamk|fmaak)_f16_rdna4(_wave64)?$" OR
-     symbol MATCHES "^goc_v_(fma|fmac|fmamk|fmaak|dual_fmac|dual_fmamk|dual_fmaak)_f32_rdna4(_wave64)?$" OR
      symbol MATCHES "^goc_v_(pk_fma|pk_fmac)_f16_rdna4(_wave64)?$" OR
      symbol MATCHES "^goc_v_(sin|cos)_f(16|32)(_wave64)?$" OR
      symbol MATCHES "^goc_v_(dot2|dual_dot2acc)_f32_(f16|bf16)_rdna4(_wave64)?$" OR
-     symbol MATCHES "^goc_v_fma_mix(_f32|lo_f16|hi_f16)_rdna4(_wave64)?$" OR
+     symbol MATCHES "^goc_v_fma_mix(lo_f16|hi_f16)_rdna4(_wave64)?$" OR
      symbol MATCHES "^goc_v_div_fmas_f(32|64)(_wave64)?$" OR
      symbol MATCHES "^goc_v_div_fixup_f(16|32|64)(_wave64)?$" OR
      symbol MATCHES "^goc_s_(ceil|floor|trunc|rndne)_f(16|32)$")

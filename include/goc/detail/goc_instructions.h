@@ -3178,8 +3178,8 @@ int goc_v_fma_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 // and output denormals, while retaining the architecture's OMOD gating rule.
 // FMA/FMAC and DX9 forms have exact integer RNE paths, including NaN payload priority,
 // DPP and all source/output modifiers, independent of host FP controls. RDNA3
-// exact CLAMP uses DX10_CLAMP=1. Ordinary RDNA4 exact calls accumulate EXCP_FLAG_USER;
-// RDNA3 non-null exact TRAPSTS reporting remains unsupported.
+// exact CLAMP uses DX10_CLAMP=1. Non-null exact global-state reporting is
+// unsupported on both architectures.
 // Loose calls retain scalar, eight-lane AVX2 and sixteen-lane AVX512 paths and
 // skip optional output. They require host nearest-even arithmetic and enabled
 // denormals. DX9 forms have no optional global-state output.
@@ -3313,8 +3313,8 @@ int goc_v_fmaak_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t in
 // denormal flushing and IEEE mode are accepted. Loose semantics permit approximate
 // NaN payload/quieting and require host nearest-even rounding and denormals enabled.
 // Exact nearest-even results use integer arithmetic and do not depend on host
-// FP controls. RDNA4 exact calls accumulate EXCP_FLAG_USER; RDNA3 non-null
-// exact TRAPSTS reporting remains unsupported. Loose calls skip state updates.
+// FP controls. Non-null exact reporting is unsupported on both architectures.
+// Loose calls skip optional state updates.
 int goc_v_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
                     const uint32_t *const *b, uint32_t *trapsts);
@@ -4205,14 +4205,11 @@ int goc_v_mul_dx9_zero_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t in
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b, uint32_t *excp_flag_user);
 
-// FP32 fractional part: x - floor(x), capped at the largest FP32 value below one
-// before output scaling/CLAMP. Supports A ABS/NEG, OMOD and CLAMP, both semantics,
-// and guest input/output flushing. One VGPR per operand; infinite inputs produce
-// NaN. Exact results use nearest-even independently of host FP controls.
+// FP32 fractional part: x - floor(x), capped below one before OMOD/CLAMP.
+// Supports A ABS/NEG, OMOD, CLAMP and guest input/output flushing in loose
+// semantics. One VGPR per operand; infinite inputs produce NaN.
 // RDNA3 ignores OMOD with IEEE mode or preserved output denormals; RDNA4 does not.
-// Exact RDNA4 reporting accumulates INVALID, INPUT_DENORM, UNDERFLOW and INEXACT.
-// OMOD suppresses UNDERFLOW/INEXACT; CLAMP suppresses all new flags. Exact RDNA3
-// reporting is unsupported. Null opts out; loose mode skips optional reporting.
+// Strict exact results and non-null exact reporting are unsupported.
 int goc_v_fract_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
 int goc_v_fract_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -4315,10 +4312,8 @@ int goc_v_rsq_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
 // Supports A ABS/NEG, OMOD and CLAMP. FP32 uses one VGPR per operand and supports
 // both semantics; FP64 uses low/high VGPR pairs with loose semantics and the
 // FP64 alias contract. RDNA3 FP32 suppresses OMOD when IEEE mode is enabled or
-// output denormals are preserved; RDNA4 scales independently. RDNA4 exact
-// reporting accumulates INVALID for infinities/signaling NaNs and INPUT_DENORM
-// for preserved subnormals. CLAMP suppresses new flags. RDNA3 exact reporting
-// remains unsupported; loose calls leave optional state untouched.
+// output denormals are preserved; RDNA4 scales independently. Non-null exact
+// reporting is unsupported on both architectures; loose calls leave state alone.
 int goc_v_frexp_mant_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
 int goc_v_frexp_mant_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -4403,9 +4398,8 @@ int goc_v_frexp_mant_f64(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 // D may alias either whole source VGPR. FP64 supports loose semantics only.
 // FP32 supports exact semantics and guest input flushing; output flushing and
 // IEEE mode do not change its integer result. Flushed subnormals return zero.
-// FP32 RDNA3 exact TRAPSTS reporting is unsupported. RDNA4 exact reporting
-// accumulates INVALID for infinity/sNaN and INPUT_DENORM for preserved subnormal
-// inputs. CLAMP suppresses these flags. Null opts out; loose skips reporting.
+// Non-null exact reporting is unsupported on both architectures.
+// Null opts out; loose calls leave optional state untouched.
 // The FP32 form supports DPP8/DPP16 on A and preserves the host FP environment.
 int goc_v_frexp_exp_i32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
@@ -4581,8 +4575,8 @@ static const uint32_t GOC_MIX_F16_C = 1U << 15;
 // output flushing. The flush flags jointly select the FP16 and FP32 MODE fields;
 // independent settings for those two types are not exposed. IEEE-dependent NaN
 // handling in loose MIX_F32 remains approximate. Exact RDNA3 global-state
-// reporting is unsupported; all RDNA4 mixed forms leave EXCP_FLAG_USER unchanged,
-// including all denormal modes, as observed in hardware captures.
+// reporting is unsupported. RDNA4 MIX_F32 also rejects exact reporting;
+// RDNA4 half-output forms retain their no-op reporting.
 int goc_v_fma_mix_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       const uint32_t *const *c, uint32_t *trapsts);
@@ -4769,17 +4763,14 @@ int goc_v_frexp_exp_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t 
 // half and inactive lanes; whole-register A/D aliasing is allowed. EXP/LOG
 // use base two, RNDNE rounds ties to even, and FRACT is capped below one.
 // Supports DPP8/DPP16 on A. Loose semantics require host nearest-even arithmetic
-// with denormals enabled. EXP/LOG/FRACT round to FP16 before OMOD; other forms apply
-// output modifiers before final FP16 narrowing.
-// TRUNC/CEIL/RNDNE/FLOOR/FREXP_MANT/FRACT support integer bit-exact results and guest
-// input/output-denormal flags plus IEEE. FRACT rounds and caps below one before
-// OMOD, and reports INEXACT for rounding and UNDERFLOW/INEXACT for output flushing.
-// OMOD suppresses these two FRACT flags. Unsuffixed APIs select RDNA3: OMOD is disabled when IEEE
-// is set or output denormals are preserved. RDNA4 OMOD is independent of these guest modes. RDNA4
-// exact reporting supports INVALID/INPUT_DENORM; FREXP_MANT also reports INVALID for infinity, as
-// does FRACT. CLAMP suppresses all flags. RDNA3 non-null non-loose reporting remains unsupported.
-// Loose paths leave optional state unchanged. Other FP16 unary operations here retain their
-// existing loose-only behavior.
+// with denormals enabled. SFU operations and FRACT round to FP16 before OMOD.
+// All forms except EXP/LOG/FRACT support exact results. Audited forms accept
+// guest input/output-denormal flags and IEEE. Unsuffixed audited APIs select
+// RDNA3: OMOD is disabled when IEEE is set or output denormals are preserved.
+// RDNA4 OMOD is independent of these modes. Exact RDNA3 RCP/RSQ/SQRT retain
+// signaling NaNs unless IEEE is set; RDNA4 quiets them. FP16_OVFL saturates
+// zero-input RCP/RSQ infinities. Non-null exact reporting is unsupported on
+// both architectures. Loose paths leave optional state unchanged.
 int goc_v_trunc_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
 
@@ -4805,13 +4796,22 @@ int goc_v_floor_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instructi
                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_sqrt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                   uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_sqrt_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_rcp_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rcp_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_rsq_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rsq_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_exp_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
@@ -4863,13 +4863,25 @@ int goc_v_floor_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t in
                                  uint32_t *excp_flag_user);
 
 int goc_v_sqrt_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_sqrt_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                uint32_t *excp_flag_user);
 
 int goc_v_rcp_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rcp_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 int goc_v_rsq_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rsq_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 int goc_v_exp_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
@@ -4924,10 +4936,8 @@ int goc_v_dot2_bf16_bf16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t ins
 // forms suppress OMOD when IEEE mode is enabled or output denormals are
 // preserved; _rdna4 forms scale independently. Guest input flushing applies
 // before rounding. Both architectures implement exact numerical results with
-// quieted signaling NaNs. RDNA4 exact reporting accumulates INVALID for signaling
-// NaNs, INPUT_DENORM for preserved subnormal inputs, and OMOD overflow. Rounding
-// itself does not generate INEXACT. CLAMP suppresses new flags. RDNA3 exact
-// TRAPSTS reporting remains unsupported; loose calls leave optional state alone.
+// quieted signaling NaNs. Non-null exact reporting is unsupported on both
+// architectures; loose calls leave optional state alone.
 int goc_v_trunc_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
 int goc_v_trunc_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -4950,10 +4960,9 @@ int goc_v_floor_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instructi
 
 // SQRT/RCP/RSQ/EXP/LOG force input/output flushing regardless of guest flush
 // flags. Unsuffixed RDNA3 forms disable OMOD when GOC_FP_IEEE_MODE is set;
-// _rdna4 forms apply OMOD independently and implement exact EXCP_FLAG_USER
-// accumulation from participating lanes. CLAMP suppresses all new exceptions;
-// OMOD suppresses underflow/inexact. RDNA3 exact TRAPSTS reporting remains
-// unsupported. Loose calls leave state untouched. All five have exact results.
+// _rdna4 forms apply OMOD independently. Exact optional state reporting is
+// unsupported on both architectures. Loose calls leave state untouched.
+// All five retain exact numerical results borrowed from rocjitsu.
 // Exact SQRT/RCP/RSQ/EXP/LOG use captured gfx1100/gfx1201 mappings. RDNA3 preserves
 // signaling NaNs with IEEE mode off; RDNA4 always quiets them. Exact arithmetic,
 // OMOD and CLAMP are independent of host rounding and denormal controls.
@@ -6240,8 +6249,7 @@ int goc_v_cmpx_t_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruc
 // No Wave64 forms exist. Shared floating arithmetic uses unsuffixed RDNA3 APIs
 // with TRAPSTS and _rdna4 APIs with EXCP_FLAG_USER, including architecture-specific
 // NaN/IEEE behavior. DOT2ACC additionally has different accumulation models.
-// RDNA4 fused forms implement exact RNE results and optional exception reporting.
-// RDNA3 fused forms implement exact results but reject non-null exact reporting.
+// Both architectures retain exact fused results but reject non-null exact reporting.
 // Invalid calls preserve the outputs.
 int goc_v_dual_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,

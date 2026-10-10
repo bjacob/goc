@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 #include "capture_hash.h"
-#include "dual_fma_hardware.h"
 #include "gfx11_dot2_fixtures.h"
 #include "goc/goc.h"
 
@@ -197,10 +196,8 @@ TEST(Dual, FusedArchitectureNaNPriorityAndReporting) {
               EXPECT_EQ(std::memcmp(before, words, sizeof(words)), 0);
               EXPECT_EQ(state, 0x40000000U);
             }
-            ASSERT_EQ(
-                execute(op, flags, 0xa5a55a5a, 0, &d, &a, &b, rdna3 ? nullptr : &state, rdna3),
-                GOC_SUCCESS);
-            EXPECT_EQ(state, 0x40000000U | (rdna3 ? 0 : GOC_EXCEPTION_INVALID));
+            ASSERT_EQ(execute(op, flags, 0xa5a55a5a, 0, &d, &a, &b, nullptr, rdna3), GOC_SUCCESS);
+            EXPECT_EQ(state, 0x40000000U);
             for (unsigned lane = 0; lane < 32; ++lane)
               EXPECT_EQ(d[lane], (0xa5a55a5aU >> lane) & 1
                                      ? rdna3 && !ieee ? 0xff800123U : 0xffc00123U
@@ -258,45 +255,4 @@ TEST(Dual, FloatingGuestPoliciesMatchTheirArchitecture) {
             EXPECT_EQ(state, 0x12345678U);
             EXPECT_EQ(std::memcmp(expected, d, sizeof(expected)), 0);
           }
-}
-
-TEST(Dual, FusedHardwareResultsAndExceptions) {
-  const uint32_t edge[] = {0,          0x80000000, 1,          0x80000001, 0x7fffff,   0x800000,
-                           0x3f800000, 0xbf800000, 0x40000000, 0x7f7fffff, 0x7effffff, 0x7f800000,
-                           0xff800000, 0x7f800001, 0xffc00003, 0x1000000};
-  for (unsigned op = 0; op < 3; ++op)
-    for (unsigned policy = 0; policy < 4; ++policy) {
-      uint64_t hash = goc_test::capture_hash_seed;
-      for (unsigned i = 0; i < 8192; ++i) {
-        uint32_t input[3];
-        uint64_t random = uint64_t(i) * 0x9e3779b97f4a7c15ULL;
-        for (unsigned operand = 0; operand < 3; ++operand) {
-          random ^= random >> 12;
-          random ^= random << 25;
-          random ^= random >> 27;
-          input[operand] = i < 4096 ? edge[(i >> (8 - operand * 4)) & 15]
-                                    : uint32_t(random * 0x2545f4914f6cdd1dULL);
-        }
-        uint32_t words[3][32];
-        for (auto &reg : words)
-          std::fill(reg, reg + 32, 0x7f800001);
-        unsigned lane = i % 32;
-        words[0][lane] = input[0];
-        words[1][lane] = input[op == 2 ? 2 : 1];
-        words[2][lane] = input[2];
-        const uint32_t *a = words[0], *b = words[1];
-        uint32_t *d = words[2], state = 0x40000000;
-        uint64_t flags = (i % (goc_init_cpu_flags() + 1)) | GOC_SEMANTICS_EXACT_EMPIRICAL |
-                         (i & 1 ? GOC_SEMANTICS_STRICT : 0) |
-                         (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
-                         (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
-        ASSERT_EQ(execute(op, flags, 1U << lane, 0, &d, &a, &b, &state, false, 0x3f800001),
-                  GOC_SUCCESS);
-        ASSERT_EQ(state & 0x40000000, 0x40000000U);
-        hash = goc_test::capture_hash_word(hash, d[lane]);
-        hash = goc_test::capture_hash_word(hash, state & ~0x40000000U);
-      }
-      EXPECT_EQ(hash, goc_test::dual_fma_hashes[op == 0 ? 0 : 3 - op][policy])
-          << op << '/' << policy;
-    }
 }

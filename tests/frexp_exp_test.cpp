@@ -455,37 +455,6 @@ TEST(FrexpExpExact, HardwareNumericsAndGuestPolicy) {
           }
 }
 
-TEST(FrexpExpExact, ExactReportingHardware) {
-  for (unsigned policy = 0; policy < 2; ++policy)
-    for (unsigned m = 0; m < 32; ++m) {
-      uint64_t hash = goc_test::capture_hash_seed;
-      for (unsigned i = 0; i < 8192; ++i) {
-        bool wide = i & 1;
-        unsigned lane = (i >> 1) % (wide ? 64 : 32);
-        uint32_t input[64], output[64], state = 0x80000040;
-        // Inactive exceptional operands must not contribute to wave status.
-        std::fill(input, input + 64, i & 1 ? 0x7f800001 : 1);
-        std::fill(output, output + 64, 0xdeadbeef);
-        input[lane] = goc_test::unary_capture_input(0, i);
-        uint64_t flags =
-            GOC_SEMANTICS_EXACT_EMPIRICAL | (policy ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
-            (i & 2 ? GOC_SEMANTICS_STRICT : 0) | (i & 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
-            (i & 8 ? GOC_FP_IEEE_MODE : 0);
-        ASSERT_EQ(invoke(false, wide, flags, 1ULL << lane, modifiers(m), output, input, &state),
-                  GOC_SUCCESS);
-        ASSERT_EQ(state & 0x80000040U, 0x80000040U);
-        EXPECT_EQ(output[(lane + 1) % (wide ? 64 : 32)], 0xdeadbeefU);
-        hash = goc_test::capture_hash_word(hash, output[lane]);
-        hash = goc_test::capture_hash_word(hash, state & ~0x80000040U);
-      }
-      // Raw gfx1201 (result, EXCP_FLAG_USER) hashes, 8192 pairs per row.
-      // capture_unary_exact.py frexp_exp_i32 --exceptions; OMOD has no effect.
-      const uint64_t hashes[2][2] = {{0x26533113a2ffed63ULL, 0x92ccb1ca2a1f00a9ULL},
-                                     {0xd89de8c37c933d32ULL, 0xff2ec24730195ec6ULL}};
-      EXPECT_EQ(hash, hashes[policy][m >> 4]);
-    }
-}
-
 TEST(FrexpExpExact, DppAliasesGuestModesAndHostControls) {
   goc_test::ScopedFpEnvironment saved;
   ASSERT_TRUE(saved.saved());
@@ -502,7 +471,7 @@ TEST(FrexpExpExact, DppAliasesGuestModesAndHostControls) {
                                (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
                                (policy & 4 ? GOC_FP_IEEE_MODE : 0);
               unsigned m = (policy * 5) % 32;
-              uint32_t original[64], expected[64], expected_state = 0x80000040;
+              uint32_t original[64], expected[64];
               for (unsigned lane = 0; lane < lanes; ++lane)
                 original[lane] = goc_test::unary_capture_input(0, lane % 32);
               for (unsigned lane = 0; lane < lanes; ++lane) {
@@ -513,12 +482,6 @@ TEST(FrexpExpExact, DppAliasesGuestModesAndHostControls) {
                   uint32_t magnitude = input & 0x7fffffff;
                   expected[lane] =
                       (policy & 1) && magnitude < 0x800000 ? 0 : reference(input, false);
-                  if (!(m & 16)) {
-                    if (magnitude >= 0x7f800000 && !(magnitude & 0x400000))
-                      expected_state |= GOC_EXCEPTION_INVALID;
-                    else if (magnitude && magnitude < 0x800000 && !(policy & 1))
-                      expected_state |= GOC_EXCEPTION_INPUT_DENORM;
-                  }
                 }
               }
               flags = (exact ? flags : flags & ~(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT)) | cpu;
@@ -535,11 +498,11 @@ TEST(FrexpExpExact, DppAliasesGuestModesAndHostControls) {
                   uint32_t input[64], state = 0x80000040;
                   std::memcpy(input, original, lanes * sizeof(uint32_t));
                   ASSERT_EQ(invoke(rdna3, wide, flags, exec_mask, modifiers(m) | descriptor, input,
-                                   input, rdna3 && exact ? nullptr : &state),
+                                   input, exact ? nullptr : &state),
                             GOC_SUCCESS);
                   for (unsigned lane = 0; lane < lanes; ++lane)
                     EXPECT_EQ(input[lane], expected[lane]);
-                  EXPECT_EQ(state, exact && !rdna3 ? expected_state : 0x80000040U);
+                  EXPECT_EQ(state, 0x80000040U);
                   EXPECT_EQ(std::fegetround(), rounding);
                   EXPECT_EQ(std::fetestexcept(FE_DIVBYZERO), FE_DIVBYZERO);
 #if defined(__x86_64__) || defined(_M_X64)
@@ -559,7 +522,7 @@ TEST(FrexpExpExact, ValidationAndEmptyExec) {
       EXPECT_EQ(invoke(rdna3, wide, 2ULL << 16, UINT64_MAX, 0, output, input, &state),
                 GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
       EXPECT_EQ(invoke(rdna3, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, &state),
-                rdna3 ? GOC_ERROR_UNSUPPORTED_GLOBAL_STATE : GOC_SUCCESS);
+                GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
       EXPECT_EQ(invoke(rdna3, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr),
                 GOC_SUCCESS);
       EXPECT_EQ(state, 0x80000040U);

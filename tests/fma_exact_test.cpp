@@ -230,20 +230,6 @@ TEST(FmaExact, DppMasksAliasingAndHostEnvironment) {
                                              before[accumulate ? dest : 2][lane], uint32_t(mode),
                                              flags, rdna3, dx9);
               }
-              if (!rdna3 && !dx9)
-                for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane) {
-                  int source;
-                  if (!goc_test::dpp_source(mode, exec_mask, lane, source))
-                    continue;
-                  uint32_t operands[4][32] = {};
-                  operands[0][0] = source < 0 ? 0 : before[0][source];
-                  operands[1][0] = before[1][lane];
-                  operands[2][0] = before[accumulate ? dest : 2][lane];
-                  operands[3][0] = operands[2][0];
-                  ASSERT_EQ(invoke(false, false, accumulate, flags, 1, uint32_t(mode), operands[3],
-                                   operands[0], operands[1], operands[2], &expected_state),
-                            GOC_SUCCESS);
-                }
               for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO})
                 for (bool flush : {false, true}) {
                   ASSERT_EQ(std::fesetround(rounding), 0);
@@ -256,8 +242,7 @@ TEST(FmaExact, DppMasksAliasingAndHostEnvironment) {
                   uint32_t words[4][64], state = 0x40000014;
                   std::memcpy(words, before, sizeof(words));
                   ASSERT_EQ(invoke(rdna3, wide, accumulate, flags, exec_mask, mode, words[dest],
-                                   words[0], words[1], words[2], rdna3 || dx9 ? nullptr : &state,
-                                   dx9),
+                                   words[0], words[1], words[2], nullptr, dx9),
                             GOC_SUCCESS);
                   for (unsigned reg = 0; reg < 4; ++reg)
                     for (unsigned lane = 0; lane < 64; ++lane)
@@ -272,88 +257,18 @@ TEST(FmaExact, DppMasksAliasingAndHostEnvironment) {
             }
 }
 
-TEST(FmaExact, Rdna3ReportingRemainsExplicitlyUnsupported) {
-  for (bool wide : {false, true})
-    for (bool accumulate : {false, true})
-      for (uint64_t exec_mask : {uint64_t(0), UINT64_MAX})
-        for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT}) {
-          uint32_t state = 0x12345678;
-          EXPECT_EQ(invoke(true, wide, accumulate, GOC_SEMANTICS_EXACT_EMPIRICAL | strict,
-                           exec_mask, 0, nullptr, nullptr, nullptr, nullptr, &state),
-                    GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
-          EXPECT_EQ(state, 0x12345678U);
-        }
-}
-
-TEST(FmaExact, ExceptionHardwareCorpora) {
-  for (bool accumulate : {false, true})
-    for (unsigned boundary = 0; boundary < 2; ++boundary)
-      for (unsigned policy = 0; policy < 4; ++policy)
-        for (bool wide : {false, true}) {
-          uint64_t hash = goc_test::capture_hash_seed;
-          for (unsigned variant = 0; variant < 16; ++variant) {
-            uint32_t mode = ((variant & 3) << 6) | (variant & 4 ? GOC_ALU_CLAMP : 0) |
-                            (variant & 8 ? GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
-                                               (accumulate ? 0 : GOC_ALU_NEG_C)
-                                         : 0);
-            for (unsigned i = 0; i < 8192; ++i) {
-              uint32_t input[3], words[4][64];
-              corpus_inputs(i, boundary, input);
-              // Any participating unused lane would raise invalid.
-              for (auto &reg : words)
-                std::fill(reg, reg + 64, 0x7f800001);
-              unsigned lane = i % (wide ? 64 : 32);
-              for (unsigned operand = 0; operand < 3; ++operand)
-                words[operand][lane] = input[operand];
-              words[3][lane] = input[2];
-              uint64_t flags = (i % (goc_init_cpu_flags() + 1)) | GOC_SEMANTICS_EXACT_EMPIRICAL |
-                               (i & 1 ? GOC_SEMANTICS_STRICT : 0) | fp_flags(policy);
-              uint32_t state = 0x40000000;
-              ASSERT_EQ(invoke(false, wide, accumulate, flags, 1ULL << lane, mode, words[3],
-                               words[0], words[1], words[2], &state),
-                        GOC_SUCCESS);
-              ASSERT_EQ(state & 0x40000000, 0x40000000U);
-              hash = goc_test::capture_hash_word(hash, state & ~0x40000000U);
-            }
-          }
-          EXPECT_EQ(hash, goc_test::fma32_exception_hashes[accumulate][boundary][policy])
-              << accumulate << '/' << boundary << '/' << policy << '/' << wide;
-        }
-}
-
-TEST(FmaExact, ReportingValidationAndLooseOptOut) {
-  for (bool wide : {false, true})
-    for (bool accumulate : {false, true})
-      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-        uint32_t words[4][64], before[4][64];
-        for (auto &reg : words)
-          std::fill(reg, reg + 64, 0x7f800001);
-        std::memcpy(before, words, sizeof(words));
-        uint32_t state = 0x12345678;
-        uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
-        for (uint64_t exec_mask : {uint64_t(0), UINT64_MAX}) {
-          for (uint64_t mode : {uint64_t(1U << 31), GOC_DPP8 | GOC_DPP16}) {
-            EXPECT_EQ(invoke(false, wide, accumulate, flags, exec_mask, mode, words[3], words[0],
-                             words[1], words[2], &state),
-                      GOC_ERROR_INVALID_FLAGS);
+TEST(FmaExact, ReportingRemainsExplicitlyUnsupported) {
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (bool accumulate : {false, true})
+        for (uint64_t exec_mask : {uint64_t(0), UINT64_MAX})
+          for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT}) {
+            uint32_t state = 0x12345678;
+            EXPECT_EQ(invoke(rdna3, wide, accumulate, GOC_SEMANTICS_EXACT_EMPIRICAL | strict,
+                             exec_mask, 0, nullptr, nullptr, nullptr, nullptr, &state),
+                      GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
             EXPECT_EQ(state, 0x12345678U);
-            EXPECT_EQ(std::memcmp(before, words, sizeof(words)), 0);
           }
-          EXPECT_EQ(invoke(false, wide, accumulate, flags | (1ULL << 63), exec_mask, 0, words[3],
-                           words[0], words[1], words[2], &state),
-                    GOC_ERROR_INVALID_FLAGS);
-          EXPECT_EQ(state, 0x12345678U);
-          EXPECT_EQ(std::memcmp(before, words, sizeof(words)), 0);
-        }
-        EXPECT_EQ(invoke(false, wide, accumulate, flags, 0, 0, nullptr, nullptr, nullptr, nullptr,
-                         &state),
-                  GOC_SUCCESS);
-        EXPECT_EQ(state, 0x12345678U);
-        EXPECT_EQ(invoke(false, wide, accumulate, cpu, UINT64_MAX, 0, words[3], words[0], words[1],
-                         words[2], &state),
-                  GOC_SUCCESS);
-        EXPECT_EQ(state, 0x12345678U);
-      }
 }
 
 TEST(FmaExact, Dx9ZeroProductNaNPriorityAndTininess) {

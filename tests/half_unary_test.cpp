@@ -19,9 +19,9 @@ const decltype(&goc_v_trunc_f16_rdna4_wave64) wave64[] = {goc_v_trunc_f16_rdna4_
                                                           goc_v_ceil_f16_rdna4_wave64,
                                                           goc_v_rndne_f16_rdna4_wave64,
                                                           goc_v_floor_f16_rdna4_wave64,
-                                                          goc_v_sqrt_f16_wave64,
-                                                          goc_v_rcp_f16_wave64,
-                                                          goc_v_rsq_f16_wave64,
+                                                          goc_v_sqrt_f16_rdna4_wave64,
+                                                          goc_v_rcp_f16_rdna4_wave64,
+                                                          goc_v_rsq_f16_rdna4_wave64,
                                                           goc_v_exp_f16_wave64,
                                                           goc_v_log_f16_wave64,
                                                           goc_v_fract_f16_rdna4_wave64,
@@ -123,10 +123,12 @@ TEST(HalfUnary, LiteralBoundaries) {
                         {2, 0x4100, 0x4000, 0, false},
                         {3, 0x8001, 0xbc00, 0, false},
                         {4, 0x4400, 0x4000, 0, false},
-                        {5, 0, 0x7c00, 0, true},
+                        {5, 0, 0x7bff, 0, true},
                         {5, 1, 0x7bff, 0, true},
                         {5, 1, 0x7c00, 0, false},
-                        {5, 0x8000, 0xfc00, 0, true},
+                        {5, 0x8000, 0xfbff, 0, true},
+                        {6, 0, 0x7bff, 0, true},
+                        {6, 0x8000, 0xfbff, 0, true},
                         {6, 0x4400, 0x3800, 0, false},
                         {7, 0x4c00, 0x7c00, 0, false},
                         {7, 0x4c00, 0x7bff, 0, true},
@@ -178,9 +180,9 @@ TEST(HalfUnary, ValidationAndSemantics) {
       EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, nullptr), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(
           fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, nullptr),
-          op < 4 || op == 9 || op == 10 ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
+          op < 7 || op == 10 ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
-    if (op >= 4 && op != 9 && op != 10) {
+    if (op == 7 || op == 8) {
       for (auto word : data)
         EXPECT_EQ(word, 0xdeadbeef);
     }
@@ -310,7 +312,7 @@ TEST(HalfUnary, Wave64ModifiersDppSelectorsAndAliases) {
 TEST(HalfUnary, Wave64ValidationAndOptionalState) {
   for (unsigned op = 0; op < 11; ++op) {
     auto fn = wave64[op];
-    bool supported = op < 4 || op == 9 || op == 10;
+    bool supported = op < 7 || op == 10;
     uint32_t words[64] = {};
     uint32_t *d = words;
     const uint32_t *a = words;
@@ -321,7 +323,7 @@ TEST(HalfUnary, Wave64ValidationAndOptionalState) {
         supported ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
     uint32_t exceptions = 0x80000055;
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, &d, &a, &exceptions),
-              supported ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
     EXPECT_EQ(exceptions, 0x80000055U);
   }
 }

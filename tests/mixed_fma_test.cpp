@@ -50,9 +50,12 @@ bool equal(int op, uint32_t got, uint32_t want, bool exact) {
   const uint32_t *a[] = {input[0]}, *b[] = {input[1]}, *c[] = {input[2]};
   uint32_t *d[] = {out};
   uint32_t exceptions = 0x80000000;
-  int status = functions[op](
-      flags, UINT32_MAX, mode, d, a, b, c,
-      (flags & GOC_SEMANTICS_MASK) <= GOC_SEMANTICS_EXACT_EMPIRICAL ? &exceptions : nullptr);
+  int status =
+      functions[op](flags, UINT32_MAX, mode, d, a, b, c,
+                    (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_LOOSE ||
+                            (op && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
+                        ? &exceptions
+                        : nullptr);
   if (exceptions != 0x80000000)
     return ::testing::AssertionFailure() << "unexpected mixed FMA exception flags";
   if (status != GOC_SUCCESS)
@@ -606,7 +609,7 @@ TEST(MixedFma, Wave64ExactHostStateAndValidation) {
                                                                      d[lane], 0, false);
           uint32_t exceptions = 0x80000055;
           ASSERT_EQ(wave64[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                               UINT64_MAX, 0, &d, &a, &b, &c, &exceptions),
+                               UINT64_MAX, 0, &d, &a, &b, &c, op ? &exceptions : nullptr),
                     GOC_SUCCESS);
           EXPECT_EQ(exceptions, 0x80000055U);
           for (unsigned lane = 0; lane < 64; ++lane)
@@ -629,7 +632,7 @@ TEST(MixedFma, Wave64ExactHostStateAndValidation) {
             GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(wave64[0](GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr, nullptr,
                       &exceptions),
-            GOC_SUCCESS);
+            GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(exceptions, 0x80000055U);
 }
 
@@ -668,7 +671,7 @@ TEST(MixedFma, ArchitectureGuestPolicies) {
                     return wide ? f64(flags, exec_mask, mode, &dest, &x, &y, &z, output)
                                 : f32(flags, uint32_t(exec_mask), mode, &dest, &x, &y, &z, output);
                   };
-                  ASSERT_EQ(invoke(exact && rdna3 ? nullptr : &state), GOC_SUCCESS);
+                  ASSERT_EQ(invoke(exact && (rdna3 || !op) ? nullptr : &state), GOC_SUCCESS);
                   EXPECT_EQ(state, 0x12345678U);
                   for (int lane = 0; lane < 64; ++lane) {
                     if (lane >= (wide ? 64 : 32) || !((exec_mask >> lane) & 1)) {
@@ -729,7 +732,8 @@ TEST(MixedFma, DenormalHardwareCorpus) {
                   }
                   const uint32_t *a = input[0], *b = input[1], *c = input[2];
                   uint32_t *dest = d, exceptions = 0;
-                  ASSERT_EQ(functions[op](flags, UINT32_MAX, mode, &dest, &a, &b, &c, &exceptions),
+                  ASSERT_EQ(functions[op](flags, UINT32_MAX, mode, &dest, &a, &b, &c,
+                                          op ? &exceptions : nullptr),
                             GOC_SUCCESS);
                   EXPECT_EQ(exceptions, 0U);
                   for (uint32_t word : d) {
@@ -764,7 +768,7 @@ TEST(MixedFma, CapturedDenormalRoundingBoundary) {
           uint32_t *dest = d, state = 0x12345678;
           uint64_t flags = cpu | (flush ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
                            (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0);
-          ASSERT_EQ(functions[op](flags, UINT32_MAX, 0, &dest, &x, &y, &z, &state), GOC_SUCCESS);
+          ASSERT_EQ(functions[op](flags, UINT32_MAX, 0, &dest, &x, &y, &z, nullptr), GOC_SUCCESS);
           EXPECT_EQ(state, 0x12345678U);
           for (unsigned lane = 0; lane < 32; ++lane) {
             uint32_t half = (flush ? (lane % 8 < 4 ? 0 : 0x400) : (lane % 8 == 0 ? 0x3ff : 0x400)) |
@@ -796,8 +800,8 @@ TEST(MixedFma, CapturedFp32TininessBeforeExponentPacking) {
       uint32_t *dest = d, state = 0x12345678;
       uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                        (flush ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
-      ASSERT_EQ(wide ? wave64[0](flags, UINT64_MAX, 0, &dest, &x, &y, &z, &state)
-                     : functions[0](flags, UINT32_MAX, 0, &dest, &x, &y, &z, &state),
+      ASSERT_EQ(wide ? wave64[0](flags, UINT64_MAX, 0, &dest, &x, &y, &z, nullptr)
+                     : functions[0](flags, UINT32_MAX, 0, &dest, &x, &y, &z, nullptr),
                 GOC_SUCCESS);
       EXPECT_EQ(state, 0x12345678U);
       for (unsigned lane = 0; lane < 64; ++lane)

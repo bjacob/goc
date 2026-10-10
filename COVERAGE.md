@@ -2349,6 +2349,9 @@ for RDNA4 MIXLO/MIXHI following the new captures.
 
 ## Native mixed-FMA denormal policies and exception reporting
 
+Historical entry: newly inferred exact reporting was removed in the scope correction
+below; FRACT exact results were also removed. See current public API comments.
+
 - Extended `tests/capture_arithmetic_exceptions.py` so the generated probe accepts
   a runtime FP_DENORM nibble (0..15); default captures remain unchanged. Added
   the FP32 mixed-FMA family to the generator. RX 9070/gfx1201 captures exercise
@@ -2394,6 +2397,9 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   generator syntax and generated GPU probes were also exercised successfully.
 
 ## Exact MIX_F32 results and RDNA4 reporting
+
+Historical entry: newly inferred exact reporting was removed in the scope correction
+below; FRACT exact results were also removed. See current public API comments.
 
 - Added scalar nearest-even exact MIX_F32 results using the existing integer
   fused intermediate and an integer FP64-to-FP32 rounding helper. Rounding
@@ -2469,6 +2475,9 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   capture generation, compilation and execution also succeeded.
 
 ## RDNA4 FP32 literal FMA exception reporting
+
+Historical entry: newly inferred exact reporting was removed in the scope correction
+below; FRACT exact results were also removed. See current public API comments.
 
 - RDNA4 FMAMK/FMAAK now accumulate exact EXCP_FLAG_USER updates in both wave
   sizes for all four exposed guest denormal policies. Classification uses input
@@ -2548,6 +2557,9 @@ for RDNA4 MIXLO/MIXHI following the new captures.
 
 ## RDNA4 ordinary FP32 FMA/FMAC exception reporting
 
+Historical entry: newly inferred exact reporting was removed in the scope correction
+below; FRACT exact results were also removed. See current public API comments.
+
 - Exact RDNA4 FMA/FMAC now accumulate EXCP_FLAG_USER for all four exposed
   denormal policies, both wave sizes, source/output modifiers and DPP routing.
   The shared integer FMA classifier supplies invalid, input-denormal, overflow,
@@ -2624,6 +2636,9 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   whole-library performance. Artifacts use `../goc-build/coverage-work/dx9-exact-*`.
 
 ## VOPD architecture split and exact fused reporting
+
+Historical entry: newly inferred exact reporting was removed in the scope correction
+below; FRACT exact results were also removed. See current public API comments.
 
 - Split eight floating VOPD families: FMAC, FMAAK, FMAMK, MUL, ADD, SUB,
   SUBREV and MUL_DX9_ZERO. Unsuffixed APIs now use RDNA3 ordinary implementations
@@ -2839,6 +2854,9 @@ for RDNA4 MIXLO/MIXHI following the new captures.
 
 ### Exact RDNA4 unary exception reporting
 
+Historical entry: newly inferred exact reporting was removed in the scope correction
+below; FRACT exact results were also removed. See current public API comments.
+
 - Implemented optional `EXCP_FLAG_USER` accumulation for exact FP32 RCP,
   SQRT, RSQ, EXP and LOG, in both wave sizes. The classifier uses integer bits;
   loose calls still bypass it and leave optional state untouched. RDNA3 exact
@@ -2926,6 +2944,9 @@ for RDNA4 MIXLO/MIXHI following the new captures.
 
 ### Exact FP32 integral rounding and RDNA4 reporting
 
+Historical entry: newly inferred exact reporting was removed in the scope correction
+below; FRACT exact results were also removed. See current public API comments.
+
 - Enabled exact TRUNC/CEIL/RNDNE/FLOOR numerical results on both architectures
   and wave sizes. Source modifiers, guest input flushing, architecture-specific
   OMOD policy, CLAMP and DPP use the existing exact unary execution loop. All
@@ -2973,6 +2994,9 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   `../goc-build/coverage-work/round-exact-scalar-*`.
 
 ### FP32 FREXP_MANT architecture, exactness and denormal handling
+
+Historical entry: newly inferred exact reporting was removed in the scope correction
+below; FRACT exact results were also removed. See current public API comments.
 
 - Split `v_frexp_mant_f32` in both wave sizes: unsuffixed RDNA3 and `_rdna4`.
   RDNA3 suppresses OMOD when IEEE mode is enabled or output denormals are
@@ -3073,6 +3097,9 @@ for RDNA4 MIXLO/MIXHI following the new captures.
 
 ### FP32 FREXP_EXP exact semantics and RDNA4 reporting
 
+Historical entry: newly inferred exact reporting was removed in the scope correction
+below; FRACT exact results were also removed. See current public API comments.
+
 - Added exact FP32 exponent extraction using rocjitsu's integer `frexp_f32`
   model, including guest input-denormal flushing. The scalar subnormal path now
   uses leading-zero count instead of a per-bit loop. Both architectures share
@@ -3159,6 +3186,9 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   they do not validate other guest rounding modes or native RDNA3 reporting.
 
 ### FP32 FRACT exact semantics and architecture/state APIs
+
+Historical entry: newly inferred exact reporting was removed in the scope correction
+below; FRACT exact results were also removed. See current public API comments.
 
 - Implemented exact `x - floor(x)` by composing the existing integer FLOOR and
   FMA models, then applying FRACT's saturation below one. This reuses verified
@@ -3318,238 +3348,30 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   presence remains **809/809**. The refreshed naming audit has 676 signatures,
   390 matching resolved names, zero mismatches, and 286 pending reviews.
 
-### Exhaustive FP16 rounding and FREXP_MANT hardware evidence
+## Scope correction: remove newly reverse-engineered exact behavior
 
-- Added `tests/capture_half_unary.py`, a gfx1201 HIP result/EXCP_FLAG_USER
-  probe with one identical-input Wave32 per case. Captured TRUNC, CEIL, RNDNE,
-  FLOOR and FREXP_MANT over every 65,536 input half encoding, all 32 NEG/ABS/
-  OMOD/CLAMP combinations, four denormal policies and both FP16_OVFL settings:
-  **16,777,216 pairs per operation**, **83,886,080 pairs total**. Guest rounding
-  is nearest-even; source and destination select their low halves.
-- `tests/check_half_unary_capture.py` independently verifies every raw result
-  and exception word using exact binary64 representations of half inputs,
-  mathematical rounding/FREXP operations, and explicit NaN/exception rules.
-  All five captures pass. The checker rejects wrong-size files and deliberately
-  corrupted result/exception words. Regenerating the TRUNC probe reproduces the
-  source compiled for its capture. NumPy is needed only for this analysis tool.
-- All four rounding operations preserve signed zero without OMOD, quiet sNaNs
-  while preserving payload/sign, report INVALID for sNaNs and INPUT_DENORM for
-  preserved subnormal inputs, and do not report INEXACT for discarded fractions.
-  FREXP_MANT has the same input rules and additionally reports INVALID for
-  infinity while retaining the infinity result. Guest input flushing removes
-  INPUT_DENORM and supplies signed zero to the operation.
-- FP16 OMOD canonicalizes zero (including negative zero) to positive zero before
-  scaling. Finite scaling overflow follows FP16_OVFL, without adding overflow or
-  inexact flags for these operations. CLAMP maps NaNs/negative values to positive
-  zero, caps positive results at one, and suppresses all captured exceptions.
-  No operation in this set produces a nonzero subnormal output, even with div:2;
-  output-denormal policy consequently does not change the captured results.
-- Reuse candidates were inspected in rocjitsu's shared generated FLOOR and
-  FREXP_MANT execution paths and its architecture-dependent `effective_f16_omod`
-  handling. GoC already has `round_integral_bits<..., true>`, extending rocjitsu's
-  integer RNDNE algorithm, so the four exact rounding paths need no new host-FP
-  arithmetic engine. Production integration, RDNA3 policy/native-state splits,
-  selectors/DPP/alias/EXEC tests and loose-path throughput checks remain next.
-- Captures live at `../goc-build/coverage-work/half-OP-report-captures/capture.bin`.
-  The capture driver/log are `/tmp/goc-half-unary-capture.py` and
-  `/tmp/goc-half-unary-capture.log`. Recheck each with
-  `python3 tests/check_half_unary_capture.py OP CAPTURE_BIN`. SHA256 values:
+The earlier entries are a chronological work log, not current support promises.
+The hardware-derived unary and FP32 FMA reporting claims above are superseded
+by this cleanup. The mandate is loose implementation plus ports of existing
+rocjitsu exact models, with no new hardware reverse-engineering.
 
-  | Operation | SHA256 |
-  |---|---|
-  | TRUNC | `16222accf7786f278ae63c2886fb29eab415ecdde9f5ceb75ddfd569347cbb9a` |
-  | CEIL | `f83913cd20616807c4854959d52d0d91bb65f0c7bcdd22ce470b9096e0c887eb` |
-  | RNDNE | `124a6def92b258e35f36398d5913d9bfa78384ed122056fcda9cf51dd6aca2d5` |
-  | FLOOR | `9e6a34be28119681793119505fde3e4f68f3e03baaef44b7549a0e7dd1ec684f` |
-  | FREXP_MANT | `98c9d20553ea2cdd86f8902cfef09703ed05e14ecd83ca7fc1dee8ecf61ce1a0` |
+- Deleted custom FP16/FP32 FRACT exact paths; loose scalar/SIMD paths remain.
+- Deleted new FP16/FP32 unary exception classifiers, including FREXP reporting,
+  and FP32 ordinary/literal FMA classifiers. Their VOPD wrappers inherit rejection
+  of non-null exact reporting. Removed newly inferred MIX_F32 no-op reporting.
+- Kept rocjitsu-derived numerical rounding, FREXP, FMA, and SFU models. The FP16
+  RCP/RSQ/SQRT adapter follows existing `transcendental::map_f16`; no new fitted
+  approximation or correction tables are retained.
+- Deleted the abandoned FP16 capture generator, capture-analysis scripts and
+  combined result/status fixture. Tests retain numerical, architecture, DPP,
+  aliasing, host-control, and loose-state-opt-out coverage; generated API tests
+  check unsupported exact reporting for every affected public signature.
+- Earlier explicitly requested exception implementations (FP16 FMA, comparisons,
+  scalar rounding, division helpers, trigonometry) remain unchanged.
 
-- This is hardware evidence, not completed FP16 API support. No production
-  implementation changed in this checkpoint. Native RDNA3 behavior, other guest
-  rounding modes, high-half selectors and per-lane routing are not established
-  by these low-half, uniform-wave captures.
-
-### Exact FP16 rounding and FREXP_MANT integration
-
-- Integrated TRUNC, CEIL, RNDNE, FLOOR and FREXP_MANT exact results for Wave32
-  and Wave64. The four rounding operations reuse `round_integral_bits`;
-  FREXP_MANT normalizes the half significand with integer operations. The exact
-  paths neither depend on nor explicitly change host FP controls or flags.
-- Unsuffixed APIs now represent RDNA3, with native optional `trapsts` output.
-  The RDNA4 variants end in `_rdna4`, before `_wave64`. RDNA3 disables OMOD
-  under IEEE mode or when output denormals are preserved; RDNA4 does not.
-  Guest input flushing is also supported by the scalar and AVX2 loose paths.
-- RDNA4 exact reporting accumulates INVALID for sNaNs (also infinity for
-  FREXP_MANT) and INPUT_DENORM for preserved nonzero subnormal inputs. CLAMP
-  suppresses reporting. Rounding discarded fractions and OMOD finite overflow
-  do not add INEXACT/OVERFLOW for these operations, following the captures.
-  Loose calls leave optional state unchanged. Non-null RDNA3 exact reporting
-  remains explicitly unsupported, independently of STRICT and EXEC.
-- The compact hardware fixture records hashes of the preceding **83,886,080**
-  captured result/flag pairs. New tests exhaust all half encodings and captured
-  modifiers/denormal policies/FP16_OVFL settings through the public APIs, vary
-  CPU dispatch and half selectors, and independently check per-lane reporting.
-  Additional tests cover DPP, in-place operands, inactive lanes, both wave
-  sizes, architecture policies, errors, and all host rounding/DAZ/FTZ settings.
-  These routing tests supplement the uniform-wave hardware evidence; they are
-  not native captures of those routing configurations.
-- Clang 21 and GCC 15 Release each pass **1,048/1,048** tests after the
-  final scalar-sharing change. Targeted Clang ASan/UBSan passed **25/25**
-  tests before that change and **18/18** affected tests afterward. Logs use
-  `/tmp/goc-half-exact-final4-{clang,gcc,san}-tests.log`.
-- The refreshed audit has **686 signatures, 410 resolved matching names,
-  zero mismatches, and 276 pending reviews**. API-name coverage remains 809/809;
-  that does not establish semantic completeness. Native RDNA3 captures and its
-  reporting rules remain unavailable; the other six FP16 unary operations
-  remain loose-only. No claim of full architecture coverage is made.
-- Loose-path timing used eleven alternating before/after samples, pinned to
-  CPU 2, with at least 50 ms thread CPU time per case. The 176 cases cover all
-  eleven operations, scalar/AVX2, normal/subnormal inputs, null/non-null state,
-  and default/combined modifiers. The baseline archive is from `a7eb6c2`.
-  An initial scalar input-flushing implementation regressed; it was replaced
-  with reuse of the exact integer implementation for these five scalar loose
-  paths, always with reporting disabled. This also removes their redundant
-  half/float conversions.
-
-  | Loose cases | Median time change | Per-case range |
-  |---|---:|---:|
-  | Five changed operations, scalar | -48.51% | -75.92% to -2.29% |
-  | Five changed operations, AVX2 | +1.46% | -4.66% to +4.21% |
-  | Six neighboring operations, scalar | -0.24% | -3.78% to +2.05% |
-  | Six neighboring operations, AVX2 | -0.69% | -8.35% to +6.74% |
-
-  The maximum added AVX2 time is 0.827 ns for changed operations and 1.158 ns
-  for neighboring controls; percentage changes on these short calls should not
-  be treated as exact performance guarantees. For the changed operations,
-  null/non-null state groups have scalar medians -48.70%/-48.49% and AVX2
-  medians +1.76%/+1.14%; loose reporting remains skipped. Samples are in
-  `../goc-build/coverage-work/half-unary-timing-samples.json`, with driver
-  `/tmp/goc-half-unary-perf.py`, sampler `/tmp/goc-half-unary-sample.py` and
-  output `/tmp/goc-half-unary-timing.log`. The two production object text sizes
-  total 50,367 bytes versus 36,057 before adding exact paths, architecture APIs
-  and guest flushing; this feature addition is not a code-size reduction.
-
-### Exact FP16 FRACT and remaining unary hardware captures
-
-- Added exact FP16 FRACT in both wave sizes, with unsuffixed RDNA3 and `_rdna4`
-  APIs. Native state outputs are `trapsts` and `excp_flag_user`, respectively.
-  RDNA3's conditional OMOD policy is shared with the other audited FP16 unary
-  operations. Requested exact RDNA3 reporting still returns unsupported;
-  null opts out, and loose calls never perform optional reporting.
-- The calculation follows rocjitsu's `x - floor(x)` formula but evaluates the
-  fractional part in integer units of the smallest half, `2^-24`. It rounds
-  once to FP16, caps below one, and then applies output scaling. This avoids
-  host arithmetic and shares the existing unary validation, DPP, masked-store,
-  architecture-policy and output-scaling code. Scalar loose calls also use this
-  integer path; AVX2 retains its SIMD arithmetic with guest denormal flushing.
-- Captured and independently verified **16,777,216 raw FRACT result/flag pairs**:
-  every half encoding, all 32 NEG/ABS/OMOD/CLAMP combinations, four denormal
-  policies, and both FP16_OVFL settings. The NumPy checker computes the exact
-  binary64 fraction, narrows to half, and classifies exceptions independently
-  of the production integer algorithm. FP16_OVFL makes no difference here.
-- INVALID covers infinity and sNaN. Preserved subnormal input reports
-  INPUT_DENORM. Discarded fraction bits report INEXACT; flushing a nonzero
-  subnormal output reports UNDERFLOW plus INEXACT even when that fraction was
-  exactly representable. OMOD suppresses UNDERFLOW/INEXACT; CLAMP suppresses
-  all reporting. NaN sign/payload are preserved when quieting, and infinity
-  produces `0xfe00` before CLAMP.
-- The existing exact-unary tests now include FRACT: exhaustive hardware hashes
-  and per-lane flag checks, both wave sizes, selectors, CPU dispatch, DPP,
-  inactive-lane poison, aliases, both architecture policies, validation and
-  host rounding/DAZ/FTZ independence. An old validation expectation that FRACT
-  must reject exact semantics was updated. The naming audit now has **688
-  signatures, 414 matching resolved names, zero mismatches, 274 pending**;
-  canonical API coverage remains **809/809**, not a completeness claim.
-- Also captured SQRT/RCP/RSQ/EXP/LOG with the same exhaustive probe. Those
-  additional **83,886,080 pairs** are evidence for subsequent analysis, not
-  completed exact support. All six files have 134,217,728 bytes and live at
-  `../goc-build/coverage-work/half-OP-report-captures/capture.bin`; driver/log:
-  `/tmp/goc-half-rest-capture.py` and `/tmp/goc-half-rest-capture.log`.
-
-  | Operation | SHA256 |
-  |---|---|
-  | FRACT | `28963be1883a7553603e2915f8ca9a23cecdcafefb8aeb3c2f42c9613ea3787c` |
-  | SQRT | `4bb2f27d1f1fe94c4124c87072837c1d7c05a84cf60e43533e74645d5d9ed3f0` |
-  | RCP | `995dac5a6ef93856f46e3c41d92026221dcb1fd3d95d3027fa5cece632442913` |
-  | RSQ | `9741773b9ade4efd8fd280890fdf4ef058de1b4dd327453b45c342a816cf3536` |
-  | EXP | `2f8e608882ae40cbe1885e34d1d4f353f1bdd6862ce205d9d2bf7a170f8db2a9` |
-  | LOG | `dea80661481e8d03b0b89c110452210d6d69a476b450faa6ddc1054ae2630ab8` |
-
-- The captures use gfx1201, uniform-input Wave32, nearest-even guest rounding,
-  and low halves. Other routing is tested in software, not established by these
-  captures. Native RDNA3 captures remain unavailable.
-- Final Clang 21 and GCC 15 Release suites each pass **1,048/1,048** tests;
-  targeted Clang ASan/UBSan passes **20/20** tests. Logs:
-  `/tmp/goc-half-fract-tuned-{clang,gcc,san}-tests.log`. The extended capture
-  checker also reverified all six implemented operations (**100,663,296 pairs**).
-- Timings compare against `cc4b10c` with seven alternating sample pairs, CPU 2
-  affinity, and at least 50 ms thread CPU per case. The 176 loose cases cover
-  eleven operations, scalar/AVX2, normal/subnormal data, null/non-null state,
-  and default/combined modifiers. An initial shared tiny-result check added
-  work to neighboring scalar operations; the final code restricts that check
-  to FRACT, whose outputs can actually be tiny.
-
-  | Loose cases | Median time change | Per-case range |
-  |---|---:|---:|
-  | FRACT, scalar | -23.41% | -63.26% to -0.16% |
-  | FRACT, AVX2 | +0.53% | -0.25% to +3.65% |
-  | Ten neighboring operations, scalar | +0.56% | -1.29% to +15.38% |
-  | Ten neighboring operations, AVX2 | -0.01% | -3.09% to +6.03% |
-
-  FRACT's largest AVX2 increase is 0.748 ns; neighboring AVX2 controls reach
-  1.224 ns. Scalar controls retain outliers up to 13.51 ns. A disassembly
-  comparison found identical normalized instruction sequences in the five
-  existing integer implementations and their loose dispatch helpers, ignoring
-  addresses and padding. Their object offsets changed, so layout/measurement
-  effects are plausible; these measurements do not establish uniformly
-  unchanged performance. No alignment tuning was added to fit this benchmark.
-  FRACT's null/non-null state groups have scalar medians -23.41%/-23.39% and
-  AVX2 medians +1.80%/+0.53%; loose reporting remains skipped.
-- Timing artifacts: `../goc-build/coverage-work/half-fract-timing-samples.json`,
-  `/tmp/goc-half-fract-{perf,sample}.py`, `/tmp/goc-half-fract-timing.log`.
-  Disassemblies and the identical-function list are
-  `/tmp/goc-half-fract-{before,after}.asm` and
-  `/tmp/goc-half-fract-asm-identical.txt`. Initial measurements are retained
-  separately with `initial-timing` in their filenames.
-
-### Exhaustive FP16 reciprocal and square-root model audit
-
-- Added `tests/check_half_sfu_capture.py`. Its independent binary64 mathematical
-  reference plus half narrowing checks every RCP, RSQ and SQRT result and
-  EXCP_FLAG_USER word from the preceding captures: **16,777,216 pairs each,
-  50,331,648 total**, all passing. It also rejects deliberately corrupted
-  result words, corrupted exception words, and wrong-sized files. NumPy is
-  required only by the analysis tool.
-- Separately evaluated rocjitsu's `transcendental::map_f16` approach using GoC's
-  already-borrowed integer FP32 models (`rcp_f32_bits`, `rsq_f32_bits`,
-  `sqrt_f32_bits`), half narrowing, and guest denormal/saturation policies.
-  After preserving the sign of newly tiny div:2 results, those models match
-  **every captured result** for all three instructions, including all modifiers
-  and both FP16_OVFL settings. This establishes a concrete reuse path, without
-  copying rocjitsu's host-environment save/modify/restore mechanism.
-- Captured exception rules: sNaNs report INVALID; negative nonzero SQRT/RSQ
-  inputs report INVALID and suppress INPUT_DENORM. Guest input flushing happens
-  first. RCP/RSQ zero or flushed-zero report DIV0. Preserved subnormal inputs
-  report INPUT_DENORM unless INVALID supersedes it. Positive finite SQRT/RSQ
-  report INEXACT except for powers of four, including INEXACT for sqrt(9).
-  Finite RCP reports INEXACT except for representable powers-of-two reciprocals.
-- RCP tiny inexact results report UNDERFLOW/INEXACT; guest output flushing
-  reports both even for an exactly representable tiny reciprocal. Finite
-  overflow reports OVERFLOW/INEXACT regardless of FP16_OVFL. OMOD suppresses
-  UNDERFLOW/INEXACT but can add OVERFLOW; CLAMP suppresses all flags.
-- A captured instruction distinction prevents over-sharing: FP16_OVFL saturates
-  RCP and RSQ zero-input infinities to finite maxima, but subsequent overflowing
-  OMOD adds OVERFLOW only for RCP. RSQ retains DIV0 alone, including flushed
-  subnormal inputs. Input-to-OMOD tiny values become positive zero, while
-  div:2 flushing of a newly tiny negative reciprocal retains negative zero.
-- Recheck with `python3 tests/check_half_sfu_capture.py OP CAPTURE_BIN`, using
-  the three paths and SHA256 values recorded in the preceding section. The
-  separate model-comparison source/binary are `/tmp/goc-half-sfu-check.cpp`
-  and `/tmp/goc-half-sfu-check`; build with
-  `clang++ -O2 -std=c++17 -Isrc -Iinclude /tmp/goc-half-sfu-check.cpp -o /tmp/goc-half-sfu-check`
-  and pass RCP, RSQ, SQRT capture paths in that order. That program checks
-  numeric model reuse; the committed Python tool checks results and flags.
-- This checkpoint adds verified hardware/model evidence, **not production API
-  support**. RCP/RSQ/SQRT exact integration, architecture-specific NaN quieting,
-  native output-parameter splits, per-lane/DPP tests, and SIMD timing remain
-  required. EXP/LOG capture analysis also remains outstanding. Existing Clang,
-  GCC and sanitizer results remain those of `f1f8920`; no production code changed.
+Validation: Clang 21 and GCC 15 Release each pass **1,027/1,027** tests,
+including benchmark smoke tests. Clang ASan/UBSan passes **50/50** targeted
+unary/FRACT/FMA/FREXP/rounding/global-state tests. `clang-format` and
+`git diff --check` pass. Logs are in `../goc-build/coverage-work/`
+(`remove-models-final-*`), `../goc-build-gcc/` and
+`../goc-build-sanitize/` (`remove-models-*`). The autonomous goal remains paused.

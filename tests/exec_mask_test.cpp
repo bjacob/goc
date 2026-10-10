@@ -95,13 +95,13 @@ const Case cases[] = {
     {unary<goc_v_floor_f16_rdna4>, true,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_D},
-    {unary<goc_v_sqrt_f16>, false,
+    {unary<goc_v_sqrt_f16_rdna4>, true,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_D},
-    {unary<goc_v_rcp_f16>, false,
+    {unary<goc_v_rcp_f16_rdna4>, true,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_D},
-    {unary<goc_v_rsq_f16>, false,
+    {unary<goc_v_rsq_f16_rdna4>, true,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_D},
     {unary<goc_v_exp_f16>, false,
@@ -110,7 +110,7 @@ const Case cases[] = {
     {unary<goc_v_log_f16>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_D},
-    {unary<goc_v_fract_f16_rdna4>, true,
+    {unary<goc_v_fract_f16_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_D},
     {unary<goc_v_frexp_mant_f16_rdna4>, true,
@@ -221,7 +221,7 @@ const Case cases[] = {
     {goc_v_med3_num_f32, false, 0x1ff},
     {binary<goc_v_mul_dx9_zero_f32_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
-    {unary<goc_v_fract_f32_rdna4>, true,
+    {unary<goc_v_fract_f32_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
     {goc_v_min3_num_f32, false, 0x1ff},
     {goc_v_max3_num_f32, false, 0x1ff},

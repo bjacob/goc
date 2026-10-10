@@ -124,33 +124,6 @@ TEST(RoundingArchitecture, DppMasksAliasesAndValidation) {
             }
 }
 
-TEST(RoundingArchitecture, ExactHardwareReporting) {
-  for (unsigned op = 0; op < 4; ++op)
-    for (unsigned policy = 0; policy < 2; ++policy)
-      for (unsigned m = 0; m < 32; ++m) {
-        uint64_t hash = goc_test::capture_hash_seed;
-        for (unsigned i = 0; i < 8192; ++i) {
-          bool wide = i & 1;
-          unsigned lane = (i >> 1) % (wide ? 64 : 32);
-          uint32_t input[64] = {}, output[64];
-          input[lane] = goc_test::unary_capture_input(0, i);
-          uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | (i & 2 ? GOC_SEMANTICS_STRICT : 0) |
-                           (policy ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
-                           (i & 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
-                           (i & 8 ? GOC_FP_IEEE_MODE : 0);
-          uint32_t state = 0x80000000;
-          ASSERT_EQ(
-              invoke(op, false, wide, flags, 1ULL << lane, modifiers(m), output, input, &state),
-              GOC_SUCCESS);
-          ASSERT_NE(state & 0x80000000, 0U);
-          hash = goc_test::capture_hash_word(hash, output[lane]);
-          hash = goc_test::capture_hash_word(hash, state & ~0x80000000U);
-        }
-        EXPECT_EQ(hash, goc_test::rounding_exact_hashes[op][policy][m])
-            << op << '/' << policy << '/' << m;
-      }
-}
-
 TEST(RoundingArchitecture, ExactDppAliasesAndHostEnvironment) {
   goc_test::ScopedFpEnvironment environment;
   ASSERT_TRUE(environment.saved());
@@ -177,7 +150,7 @@ TEST(RoundingArchitecture, ExactDppAliasesAndHostEnvironment) {
                   uint32_t input[32] = {}, output[32];
                   input[0] = source < 0 ? 0 : original[source];
                   ASSERT_EQ(invoke(op, false, false, flags, 1, modifiers(effective), output, input,
-                                   &expected_state),
+                                   nullptr),
                             GOC_SUCCESS);
                   expected[lane] = output[0];
                 }
@@ -194,7 +167,7 @@ TEST(RoundingArchitecture, ExactDppAliasesAndHostEnvironment) {
                   uint32_t input[64], state = 0x80000040;
                   std::memcpy(input, original, lanes * sizeof(uint32_t));
                   ASSERT_EQ(invoke(op, rdna3, wide, flags, exec_mask, modifiers(m) | descriptor,
-                                   input, input, rdna3 ? nullptr : &state),
+                                   input, input, nullptr),
                             GOC_SUCCESS);
                   EXPECT_EQ(std::memcmp(input, expected, lanes * sizeof(uint32_t)), 0);
                   if (!rdna3) {
@@ -209,26 +182,4 @@ TEST(RoundingArchitecture, ExactDppAliasesAndHostEnvironment) {
 #endif
                 }
             }
-}
-
-TEST(RoundingArchitecture, ExactReportingValidation) {
-  for (unsigned op = 0; op < 4; ++op)
-    for (bool wide : {false, true}) {
-      uint32_t input[64] = {}, output[64];
-      std::fill(output, output + 64, 0xdeadbeef);
-      uint32_t state = 0x80000040;
-      EXPECT_EQ(invoke(op, true, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, output, input,
-                       &state),
-                GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
-      EXPECT_EQ(invoke(op, false, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, GOC_ALU_NEG_B,
-                       output, input, &state),
-                GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(state, 0x80000040U);
-      for (auto word : output)
-        EXPECT_EQ(word, 0xdeadbeefU);
-      EXPECT_EQ(
-          invoke(op, false, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, &state),
-          GOC_SUCCESS);
-      EXPECT_EQ(state, 0x80000040U);
-    }
 }

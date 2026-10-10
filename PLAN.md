@@ -283,7 +283,7 @@ For now, this can be a 2-bit field encoding an enumeration:
 
 * `0` = Default, loose semantics. This means that it's OK to naively implement a GPU FMA as a CPU FMA or even a separate mul and add, it's OK to have more roundings or fewer roundings, and it's OK to implement a GPU math function like `log2()` as the corresponding C standard library math function, whatever the numerical discrepancies. It would NOT be OK to generate a nonsensical result, so any common bug such as mixing up the lane mapping, or omitting an arithmetic operation, should be expected to produce a test failure outside of a minority of accidental cases where the wrong value just happens to be close to the correct value. TLDR: "Anything that is mathematically sound, neglecting reasonable approximation discrepancies". Testing will rely on fuzzy comparisons with empirically-adjusted tolerances.
 
-* `1` = Empirically bit-exact. This means that the implementation must produce results that are in practice, empirically, observed to be bit-exact. Such implementations might be created by agents observing the values coming out of a program running on the actual hardware, and then empirically constructing a model, or just lookup tables, to match these results.
+* `1` = Empirically bit-exact. This means that the implementation must produce results that are in practice, empirically, observed to be bit-exact. In the current project scope, such implementations must be ported from existing rocjitsu code. Developing new models or lookup tables by reverse-engineering hardware is out of scope, including models for exception flags.
 
 * `2..3` = Reserved for possible future bit-exact semantics going beyond the above "empirically bit-exact" mode.
 
@@ -346,7 +346,7 @@ Start with a few key instructions of each class: a few WMMA/MFMA, a few elementw
 
 #### Dimension 3: semantics modes
 
-Start with semantic mode 0 (default loose), then extend to mode 1 (empirical bit-exact) but only to the extent that you have existing bit-exact rocjitsu code to learn from (e.g. I believe WMMA on RDNA4). Do not try to reverse-engineer for now.
+Start with semantic mode 0 (default loose), then extend to mode 1 (empirical bit-exact) but only to the extent that you have existing bit-exact rocjitsu code to learn from (e.g. I believe WMMA on RDNA4). Do not reverse-engineer hardware, including exception behavior. Unsupported exact results or optional exact reporting must remain explicitly unsupported; hardware validation is not permission to create a new model.
 Do not bother about semantics modes 2-3 for now, treat them as just reserved for future usage.
 
 #### Dimension 4: instruction flags
@@ -422,31 +422,11 @@ Their integer FMA intermediate supplies inexact/underflow/overflow classificatio
 Packed results accumulate exceptions from both selected halves. Loose SIMD
 paths skip all of this work.
 
-Ordinary FP32 `FMA`/`FMAC` implement exact nearest-even results with DPP,
-source modifiers, OMOD and CLAMP using the shared integer FMA model. RDNA4 exact
-exception reporting is checked against 2,097,152 RX 9070 records across all
-four exposed denormal policies. OMOD suppresses underflow/inexact, CLAMP
-suppresses all flags, and only participating lanes contribute after DPP routing.
-RDNA3 exact TRAPSTS reporting remains unsupported. Loose SIMD paths are
-retained. DX9 FMA, and RDNA3 DX9 FMAC, also have exact RNE paths with forced
-input/output flushing and the positive-zero product rule; they have no optional
-global-state output. RDNA4 DX9 results match 1,048,576 RX 9070 records, and all
-2,097,152 accompanying exception reads are zero. RDNA3 exact CLAMP models
-`DX10_CLAMP=1`; the alternative NaN-preserving setting is not exposed.
-
-FP32 literal `FMAMK`/`FMAAK` implement exact nearest-even results, including
-guest denormal policies and architecture-specific NaN quieting, using the shared
-integer FMA model. RDNA4 reports exceptions across all four exposed denormal
-policies, checked against 196,608 RX 9070 captures. RDNA3 still rejects non-null
-exact global-state reporting requests. Loose calls retain their SIMD paths and
-skip optional state updates.
-
-The eight floating VOPD arithmetic families likewise distinguish unsuffixed RDNA3
-from `_rdna4`, including their native optional state outputs. Each executes one
-decoded Wave32 operation through its ordinary implementation. RDNA4 VOPD
-`FMAC`, `FMAMK` and `FMAAK` exact results and exception reporting match 196,608
-RX 9070 records across both slots and four denormal policies. RDNA3 exact
-reporting remains unsupported; loose calls skip it and retain ordinary SIMD paths.
+Ordinary FP32 `FMA`/`FMAC`, literal `FMAMK`/`FMAAK`, and their VOPD forms
+retain the numerical port of rocjitsu's fused arithmetic and architecture policies.
+Their newly hardware-derived exception classifiers have been removed. Both
+architectures reject non-null exact reporting; loose paths skip state updates.
+DX9 forms retain their numerical model and have no optional state output.
 
 FP16/32 `SIN`/`COS` report invalid, input-denormal, underflow, and inexact flags.
 Their hardware corpora cover every FP16 encoding, FP32 exponent/mantissa patterns,
@@ -457,20 +437,17 @@ post-scaling; hardware suppresses invalid/input-denormal flags. Integer guard an
 sticky bits supply reporting, with additional FMA16/DIV_FMAS hardware captures
 around underflow and overflow rounding boundaries.
 
-RDNA4 `FMA_MIX_F32`, `FMA_MIXLO_F16`, and `FMA_MIXHI_F16` support exact
-RNE scalar results and accept reporting while leaving the register unchanged:
-25,165,824 hardware flag reads are zero across every FP32/FP16
-input/output-denormal setting, including invalid arithmetic, overflow,
-source-format/half selection, modifiers, and saturation. RDNA3 reporting still
-requires verification and rejects non-null exact requests; null-output requests
-retain the result implementation.
+RDNA4 `FMA_MIXLO_F16` and `FMA_MIXHI_F16` retain their previously implemented
+no-op exception reporting. `FMA_MIX_F32` now rejects non-null exact reporting on
+both architectures; its newly inferred no-op reporting was removed. Null-output
+requests retain the numerical implementation.
 `DOT2_F32_F16`/`DOT2_F32_BF16` likewise leave the register unchanged, validated
 with 524,288 hardware flag reads across packed selections, negation, and clamp.
 
 Other affected instructions reject requested reporting in non-loose modes before accessing operands, even for empty
 `exec_mask`, with precedence over other validation errors. Null retains existing
-validation, numerical behavior, and SIMD dispatch. Implement and hardware-test
-exception generation incrementally for bit-exact semantics.
+validation, numerical behavior, and SIMD dispatch. Port additional exact reporting only where rocjitsu already implements it; do not
+infer new reporting rules from hardware.
 
 The classification uses the [RDNA4 ISA reference](https://www.amd.com/content/dam/amd/en/documents/radeon-tech-docs/instruction-set-architectures/rdna4-instruction-set-architecture.pdf)
 (§3.4.10, §6.8, §7.7, §7.11, §12.3 and instruction descriptions), cross-checked

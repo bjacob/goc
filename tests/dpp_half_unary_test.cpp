@@ -190,7 +190,7 @@ TEST(DppHalfUnary, Validation) {
         uint32_t *d = words;
         EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, mode, &d, &a,
                      nullptr),
-                  op < 4 || op == 9 || op == 10 ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
+                  op < 7 || op == 10 ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
     }
 }

@@ -104,3 +104,9 @@ faithful hardware exception history. Existing inexpensive reporting may remain,
 but loose-mode callers cannot rely on its completeness or accuracy. Never return
 GOC_ERROR_UNSUPPORTED_GLOBAL_STATE in loose mode. For bit-exact semantics with a
 non-null pointer, return that error if faithful updates are unavailable.
+
+Implement loose semantics and port existing bit-exact implementations from rocjitsu.
+Do not reverse-engineer hardware to develop new bit-exact numerical or exception
+models. Hardware validation of a borrowed model does not authorize inventing a
+new model. If a faithful implementation is unavailable upstream, leave strict
+exact semantics or optional exact global-state reporting explicitly unsupported.

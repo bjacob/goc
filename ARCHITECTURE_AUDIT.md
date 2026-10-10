@@ -592,7 +592,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_pk_sub_i16` | SIMD macro, output helper | no | 18160 | review required |
 | `v_pk_sub_u16` | SIMD macro, output helper | no | 18191 | review required |
 | `v_qsad_pk_u16_u8` | no direct policy detected | no | not found | review required |
-| `v_rcp_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 18222, 18256 | review required |
+| `v_rcp_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18222, 18256 | review required |
 | `v_rcp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18302, 18320 | review required |
 | `v_rcp_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 18358, 18372 | review required |
 | `v_rcp_iflag_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18409, 18429 | review required |
@@ -601,7 +601,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_rndne_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18465, 18489 | review required |
 | `v_rndne_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18534, 18548 | review required |
 | `v_rndne_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 18578, 18592 | review required |
-| `v_rsq_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 18629, 18663 | review required |
+| `v_rsq_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18629, 18663 | review required |
 | `v_rsq_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18709, 18727 | review required |
 | `v_rsq_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 18765, 18780 | review required |
 | `v_sad_hi_u8` | SIMD macro, output helper | no | 18868 | review required |
@@ -611,7 +611,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_sat_pk_u8_i16` | output helper | no | 18947, 18963 | review required |
 | `v_sin_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | no | 18979, 18998 | review required |
 | `v_sin_f32` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | no | 19037, 19051 | review required |
-| `v_sqrt_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 19083, 19117 | review required |
+| `v_sqrt_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 19083, 19117 | review required |
 | `v_sqrt_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 19163, 19185 | review required |
 | `v_sqrt_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 19228, 19242 | review required |
 | `v_sub_co_ci_u32` | SIMD macro, output helper | no | 19279, 19309 | review required |

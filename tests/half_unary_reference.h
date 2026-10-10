@@ -12,17 +12,10 @@
 namespace goc_test {
 
 using HalfUnaryFn = decltype(&goc_v_trunc_f16_rdna4);
-const HalfUnaryFn half_unary_functions[] = {goc_v_trunc_f16_rdna4,
-                                            goc_v_ceil_f16_rdna4,
-                                            goc_v_rndne_f16_rdna4,
-                                            goc_v_floor_f16_rdna4,
-                                            goc_v_sqrt_f16,
-                                            goc_v_rcp_f16,
-                                            goc_v_rsq_f16,
-                                            goc_v_exp_f16,
-                                            goc_v_log_f16,
-                                            goc_v_fract_f16_rdna4,
-                                            goc_v_frexp_mant_f16_rdna4};
+const HalfUnaryFn half_unary_functions[] = {
+    goc_v_trunc_f16_rdna4, goc_v_ceil_f16_rdna4,  goc_v_rndne_f16_rdna4,     goc_v_floor_f16_rdna4,
+    goc_v_sqrt_f16_rdna4,  goc_v_rcp_f16_rdna4,   goc_v_rsq_f16_rdna4,       goc_v_exp_f16,
+    goc_v_log_f16,         goc_v_fract_f16_rdna4, goc_v_frexp_mant_f16_rdna4};
 const uint32_t half_unary_known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF |
                                   GOC_ALU_CLAMP | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D;
 
@@ -33,7 +26,9 @@ inline uint16_t half_unary_reference(int op, uint32_t input, uint32_t mode, bool
   if (mode & GOC_ALU_NEG_A)
     x = -x;
   double result = goc_test::half_unary(op, x);
-  if (op == 7 || op == 8) {
+  if (op >= 4 && op <= 8) {
+    if ((op == 5 || op == 6) && x == 0 && saturate)
+      result = std::copysign(65504.0, result);
     if (op == 8 && x == 0 && saturate)
       result = -65504;
     result = goc_test::half_value(goc_test::half_bits(result, saturate));

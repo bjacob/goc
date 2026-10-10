@@ -64,29 +64,6 @@ TEST(FrexpMant, HardwareNumericsAndArchitecturePolicy) {
           }
 }
 
-TEST(FrexpMant, ExactReportingHardware) {
-  for (unsigned policy = 0; policy < 2; ++policy)
-    for (unsigned m = 0; m < 32; ++m) {
-      uint64_t hash = goc_test::capture_hash_seed;
-      for (unsigned i = 0; i < 8192; ++i) {
-        bool wide = i & 1;
-        unsigned lane = (i >> 1) % (wide ? 64 : 32);
-        uint32_t input[64] = {}, output[64], state = 0x80000040;
-        input[lane] = goc_test::unary_capture_input(0, i);
-        uint64_t flags =
-            GOC_SEMANTICS_EXACT_EMPIRICAL | (policy ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
-            (i & 2 ? GOC_SEMANTICS_STRICT : 0) | (i & 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
-            (i & 8 ? GOC_FP_IEEE_MODE : 0);
-        ASSERT_EQ(invoke(false, wide, flags, 1ULL << lane, modifiers(m), output, input, &state),
-                  GOC_SUCCESS);
-        ASSERT_EQ(state & 0x80000040U, 0x80000040U);
-        hash = goc_test::capture_hash_word(hash, output[lane]);
-        hash = goc_test::capture_hash_word(hash, state & ~0x80000040U);
-      }
-      EXPECT_EQ(hash, goc_test::frexp_mant_hardware[policy][m][1]);
-    }
-}
-
 TEST(FrexpMant, DppAliasesGuestModesAndHostControls) {
   goc_test::ScopedFpEnvironment saved;
   ASSERT_TRUE(saved.saved());
@@ -113,9 +90,9 @@ TEST(FrexpMant, DppAliasesGuestModesAndHostControls) {
                 if (goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
                   uint32_t input[32] = {}, output[32];
                   input[0] = source < 0 ? 0 : original[source];
-                  ASSERT_EQ(invoke(false, false, flags, 1, modifiers(effective), output, input,
-                                   &expected_state),
-                            GOC_SUCCESS);
+                  ASSERT_EQ(
+                      invoke(false, false, flags, 1, modifiers(effective), output, input, nullptr),
+                      GOC_SUCCESS);
                   expected[lane] = output[0];
                 }
               }
@@ -132,7 +109,7 @@ TEST(FrexpMant, DppAliasesGuestModesAndHostControls) {
                   uint32_t input[64], state = 0x80000040;
                   std::memcpy(input, original, lanes * sizeof(uint32_t));
                   ASSERT_EQ(invoke(rdna3, wide, flags, exec_mask, modifiers(m) | descriptor, input,
-                                   input, rdna3 && exact ? nullptr : &state),
+                                   input, exact ? nullptr : &state),
                             GOC_SUCCESS);
                   for (unsigned lane = 0; lane < lanes; ++lane) {
                     if (!exact && (expected[lane] & 0x7fffffff) > 0x7f800000) {
@@ -161,7 +138,7 @@ TEST(FrexpMant, ValidationAndEmptyExec) {
       EXPECT_EQ(invoke(rdna3, wide, 2ULL << 16, UINT64_MAX, 0, output, input, &state),
                 GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
       EXPECT_EQ(invoke(rdna3, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, &state),
-                rdna3 ? GOC_ERROR_UNSUPPORTED_GLOBAL_STATE : GOC_SUCCESS);
+                GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
       EXPECT_EQ(invoke(rdna3, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr),
                 GOC_SUCCESS);
       EXPECT_EQ(state, 0x80000040U);

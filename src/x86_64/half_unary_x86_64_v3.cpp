@@ -23,7 +23,8 @@ void half_unary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uin
   for (int lane = 0; lane < 32; lane += 8) {
     auto x = half_input<false>(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)),
                                a_shift, mode);
-    if constexpr (unary_rounds_f32<Op> || Op == Unary::FrexpMant || Op == Unary::Fract)
+    if constexpr (unary_rounds_f32<Op> || Op == Unary::FrexpMant || Op == Unary::Fract ||
+                  half_unary_sfu<Op>)
       if (flags & GOC_FP_FLUSH_INPUT_DENORMALS) {
         auto bits = _mm256_castps_si256(x);
         auto magnitude = _mm256_and_si256(bits, _mm256_set1_epi32(0x7fffffff));
@@ -32,18 +33,28 @@ void half_unary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uin
         x = _mm256_castsi256_ps(_mm256_blendv_epi8(bits, sign, tiny));
       }
     auto value = unary_value<Op, true>(x);
-    if constexpr (Op == Unary::Fract)
+    if constexpr (Op == Unary::Fract || half_unary_sfu<Op>)
       if (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) {
-        auto tiny = _mm256_cmp_ps(value, _mm256_set1_ps(0x1p-14f), _CMP_LT_OQ);
-        value = _mm256_andnot_ps(tiny, value);
+        auto sign = _mm256_and_ps(value, _mm256_set1_ps(-0.0f));
+        auto magnitude = _mm256_andnot_ps(_mm256_set1_ps(-0.0f), value);
+        auto tiny = _mm256_cmp_ps(magnitude, _mm256_set1_ps(0x1p-14f), _CMP_LT_OQ);
+        value = _mm256_blendv_ps(value, sign, tiny);
       }
     if constexpr (Op == Unary::Log) {
       if (saturate)
         value = _mm256_blendv_ps(value, _mm256_set1_ps(-65504),
                                  _mm256_cmp_ps(x, _mm256_setzero_ps(), _CMP_EQ_OQ));
     }
-    if constexpr (Op == Unary::Exp || Op == Unary::Log) {
-      if (mode & GOC_ALU_OMOD_HALF)
+    if constexpr (Op == Unary::Rcp || Op == Unary::Rsq)
+      if (saturate) {
+        auto maximum =
+            _mm256_or_ps(_mm256_set1_ps(65504.0f), _mm256_and_ps(value, _mm256_set1_ps(-0.0f)));
+        value = _mm256_blendv_ps(value, maximum, _mm256_cmp_ps(x, _mm256_setzero_ps(), _CMP_EQ_OQ));
+      }
+    if constexpr (Op == Unary::Exp || Op == Unary::Log || half_unary_sfu<Op>) {
+      // CLAMP makes intermediate SFU overflow irrelevant; normal half rounding
+      // commutes with the power-of-two output scale.
+      if ((mode & GOC_ALU_OMOD_HALF) && (!half_unary_sfu<Op> || !(mode & GOC_ALU_CLAMP)))
         value = half_input<false>(half_narrow<false>(value, saturate), 0, 0);
     }
     if (mode & GOC_ALU_OMOD_HALF)
