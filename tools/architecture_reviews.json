@@ -391,5 +391,31 @@
       "v_minmax_f16",
       "v_minmax_num_f16"
     ]
+  },
+  {
+    "heading": "FP16 binary and packed selection architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/half_binary_test.cpp",
+    "mnemonics": [
+      "v_max_f16",
+      "v_max_num_f16",
+      "v_maximum_f16",
+      "v_min_f16",
+      "v_min_num_f16",
+      "v_minimum_f16"
+    ]
+  },
+  {
+    "heading": "FP16 binary and packed selection architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/packed_binary_test.cpp",
+    "mnemonics": [
+      "v_pk_max_f16",
+      "v_pk_max_num_f16",
+      "v_pk_maximum_f16",
+      "v_pk_min_f16",
+      "v_pk_min_num_f16",
+      "v_pk_minimum_f16"
+    ]
   }
 ]

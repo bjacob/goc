@@ -1679,6 +1679,10 @@ positive zero. Scalar and eight-packed-lane x86-64-v3 paths share the existing
 ordinary FP16 arithmetic/selection helpers. These are loose semantics.
 Tests cover every half encoding, special-value Cartesian pairs, all modifiers,
 overflow policy, masks, all aliases and literal cross-half/signed-zero/NaN cases.
+Packed MIN/MAX applies ordinary selection independently to each half, including
+NaN policy and input-denormal flushing. Output-denormal flushing alone does not
+change the selected value. Tests cross all packed modifiers with guest modes
+and compare raw NaN payloads as well as finite results.
 
 Packed FP16 `PK_FMA` and `PK_FMAC` have Wave32 and `_wave64` APIs, including
 exact results and optional exception accumulation. Reporting is committed after

@@ -4768,7 +4768,8 @@ all-8,192-modifier and exhaustive-half tests remain. Payload comparisons test
 consistency of the existing loose implementation; they do not establish new
 hardware bit-exact support.
 
-Binary and packed selection reviews remain open. In particular, upstream
+At this checkpoint binary and packed selection reviews remained open (resolved
+in the following review). In particular, upstream
 `fp_mode::packed_binary_f16` flushes selected output subnormals through its
 generic finalization, whereas RDNA3 section 16.10 specifies per-half ordinary
 MIN/MAX and section 16.7 makes their output-denormal mode irrelevant. GoC
@@ -4783,3 +4784,54 @@ in `../goc-build/coverage-work/`). Logs are `half-minmax-review-{build,tests}.lo
 in each build directory. The ledger now records 211 contracts, with 598 in-scope
 mnemonics still requiring recorded reviews; these counts are not a completion
 percentage or a claim of complete bit-exact support.
+
+
+## FP16 binary and packed selection architecture contracts
+
+Reviewed six ordinary and six packed FP16 MIN/MAX canonical names: the RDNA3
+legacy pair and the RDNA4 NUM/propagating quartet in each form. Existing canonical
+names already distinguish their policies, so no additional architecture suffixes
+are needed. Review evidence includes both ISA XML sets, per-architecture
+VOP2/VOP3/VOP3P bodies and DPP delegation, rocjitsu revision `ffc144c564c`'s
+`packed_binary_f16`, and GoC's shared scalar/AVX2 half conversion and selection.
+Per-handler locations and hashes are in `half-minmax-upstream-review.json` in
+`../goc-build/coverage-work/`.
+
+The preceding packed-output-denormal discrepancy is resolved for GoC's contract.
+RDNA3 sections 16.7 and 16.10 define packed selection through ordinary MIN/MAX,
+whose output-denormal control does not flush selected subnormals.
+The [RDNA4 ISA reference](https://docs.amd.com/api/khub/documents/uQpkEvk3pv~kfAb2x~j4uw/content),
+sections 16.7 (page 301), 16.10 (pages 395–396), and 16.12 (pages 516–517),
+specifies the same composition for NUM and propagating forms. Thus GoC retains
+its current input-flush-only selection behavior. The ordinary RDNA3 OMOD gate
+still depends on output-flush mode and IEEE; packed forms have no OMOD.
+
+Upstream's generic packed helper applies output flushing after selection, in
+conflict with that documented composition, and installs a host FP-environment
+guard. Neither behavior is copied. The upstream policy tests inspected for
+packed output flushing cover ADD/MUL, not a selection output-flush witness;
+three-input packed tests cover CDNA rather than RDNA. This review did not run
+hardware or invent a new empirical model. The guard prohibition takes priority
+over borrowing upstream code. The ordinary generated host min/max expressions
+and propagating canonical-NaN helpers likewise do not constitute a full empirical
+exact port. All twelve APIs remain loose-only; strict exact and non-null exact
+optional reporting fail explicitly. Loose scalar/SIMD paths skip optional state.
+
+Existing tests cover literal payload/signaling priority for every guest policy,
+ordinary selectors/OMOD/DPP, every half encoding, all ordinary/packed modifiers,
+EXEC and aliases in both wave widths. The new packed test crosses six operations,
+eight guest modes, all 512 modifier combinations, both widths and every available
+CPU selector. It varies full/partial EXEC and all three destination aliases,
+checks both result halves bitwise against a raw-integer selection reference, and
+checks untouched source words, guard words and unchanged optional state. The
+older packed numeric reference now limits output flushing to ADD/MUL; its prior
+unconditional flush had not been exercised with guest flags for selection.
+No production code or SIMD fallback policy changes were needed.
+
+Validation: all 1,106 CTests pass with Clang 21 Release and GCC 15 Release;
+all 23 targeted ordinary/packed FP16 binary tests pass under ASan/UBSan.
+All nine audit-tool tests pass. Scalar and AVX2 binary objects are byte-identical
+to the pre-change audit builds under both compilers; hashes are in
+`packed-selection-production-objects.json` in `../goc-build/coverage-work/`.
+Build/test logs use `packed-selection-` in each build directory. The ledger
+records 223 contracts, leaving 586 in-scope mnemonics without recorded reviews.

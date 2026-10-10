@@ -58,7 +58,7 @@ uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t mode, bool saturate,
     if (mode & GOC_PK_CLAMP)
       value = !(value > 0) ? 0 : std::min(value, 1.0);
     uint16_t encoded = goc_test::half_bits(value, saturate);
-    if ((fp_flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && (encoded & 0x7fff) < 0x400)
+    if (op < 2 && (fp_flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && (encoded & 0x7fff) < 0x400)
       encoded &= 0x8000;
     result |= uint32_t(encoded) << (16 * half);
   }
@@ -404,4 +404,105 @@ TEST(PackedBinary, ArchitectureErrorsAndHostControls) {
             }
           }
   }
+}
+
+TEST(PackedBinary, SelectionGuestPoliciesAllModifiersAndAliases) {
+  const Fn narrow[] = {goc_v_pk_min_f16,     goc_v_pk_max_f16,     goc_v_pk_min_num_f16,
+                       goc_v_pk_max_num_f16, goc_v_pk_minimum_f16, goc_v_pk_maximum_f16};
+  const decltype(&goc_v_pk_min_f16_wave64) wide[] = {
+      goc_v_pk_min_f16_wave64,     goc_v_pk_max_f16_wave64,     goc_v_pk_min_num_f16_wave64,
+      goc_v_pk_max_num_f16_wave64, goc_v_pk_minimum_f16_wave64, goc_v_pk_maximum_f16_wave64};
+  // Select raw half encodings: keep payloads and signaling bits out of host arithmetic.
+  auto select = [](uint16_t a, uint16_t b, unsigned op, unsigned guest) {
+    if (guest & 1) {
+      if ((a & 0x7fff) < 0x400)
+        a &= 0x8000;
+      if ((b & 0x7fff) < 0x400)
+        b &= 0x8000;
+    }
+    bool an = (a & 0x7fff) > 0x7c00, bn = (b & 0x7fff) > 0x7c00;
+    if (op >= 4 || (op < 2 && (guest & 4))) {
+      if (an && !(a & 0x200))
+        return uint16_t(a | 0x200);
+      if (bn && !(b & 0x200))
+        return uint16_t(b | 0x200);
+    }
+    if (an || bn) {
+      if (op >= 4)
+        return an ? a : b;
+      if (an && bn)
+        return op < 2 ? a : uint16_t(a | 0x200);
+      return an ? b : a;
+    }
+    auto order = [](uint16_t bits) {
+      return bits & 0x8000 ? uint16_t(~bits) : uint16_t(bits ^ 0x8000);
+    };
+    return ((op & 1) ? order(a) > order(b) : order(a) < order(b)) ? a : b;
+  };
+  for (unsigned op = 0; op < 6; ++op)
+    for (unsigned guest = 0; guest < 8; ++guest)
+      for (unsigned variant = 0; variant < 512; ++variant) {
+        // Nine independent bits: four negations, clamp, and four half selectors.
+        const uint32_t bits[] = {GOC_PK_NEG_LO_A,  GOC_PK_NEG_LO_B, GOC_PK_NEG_HI_A,
+                                 GOC_PK_NEG_HI_B,  GOC_PK_CLAMP,    GOC_PK_LO_A_HIGH,
+                                 GOC_PK_LO_B_HIGH, GOC_PK_HI_A_LOW, GOC_PK_HI_B_LOW};
+        uint32_t mode = 0;
+        for (unsigned bit = 0; bit < 9; ++bit)
+          if ((variant >> bit) & 1)
+            mode |= bits[bit];
+        uint64_t flags = (guest & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                         (guest & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                         (guest & 4 ? GOC_FP_IEEE_MODE : 0);
+        for (unsigned width : {32U, 64U}) {
+          uint32_t before[3][66], expected[3][66];
+          for (unsigned reg = 0; reg < 3; ++reg)
+            for (unsigned lane = 0; lane < 66; ++lane)
+              before[reg][lane] = values[(lane + 7 * reg + variant) % 20] |
+                                  (uint32_t(values[(3 * lane + 5 * reg + variant) % 20]) << 16);
+          std::memcpy(expected, before, sizeof expected);
+          unsigned dest = variant % 3;
+          uint64_t exec_mask = variant & 1 ? 0x87654321fedcba98ULL : UINT64_MAX;
+          if (width == 32)
+            exec_mask = uint32_t(exec_mask);
+          for (unsigned lane = 0; lane < width; ++lane)
+            if ((exec_mask >> lane) & 1) {
+              uint32_t result = 0;
+              for (unsigned half = 0; half < 2; ++half) {
+                bool ah = half ? !(mode & GOC_PK_HI_A_LOW) : bool(mode & GOC_PK_LO_A_HIGH);
+                bool bh = half ? !(mode & GOC_PK_HI_B_LOW) : bool(mode & GOC_PK_LO_B_HIGH);
+                uint16_t a = uint16_t(before[0][lane + 1] >> (ah ? 16 : 0));
+                uint16_t b = uint16_t(before[1][lane + 1] >> (bh ? 16 : 0));
+                if (mode & (half ? GOC_PK_NEG_HI_A : GOC_PK_NEG_LO_A))
+                  a ^= 0x8000;
+                if (mode & (half ? GOC_PK_NEG_HI_B : GOC_PK_NEG_LO_B))
+                  b ^= 0x8000;
+                uint16_t chosen = select(a, b, op, guest);
+                if (mode & GOC_PK_CLAMP) {
+                  if ((chosen & 0x8000) || (chosen & 0x7fff) > 0x7c00)
+                    chosen = 0;
+                  else if (chosen > 0x3c00)
+                    chosen = 0x3c00;
+                }
+                result |= uint32_t(chosen) << (16 * half);
+              }
+              expected[dest][lane + 1] = result;
+            }
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            uint32_t words[3][66], state = 0x12345678;
+            std::memcpy(words, before, sizeof words);
+            uint32_t *d = words[dest] + 1;
+            const uint32_t *a = words[0] + 1, *b = words[1] + 1;
+            ASSERT_EQ(width == 32
+                          ? narrow[op](flags | cpu, uint32_t(exec_mask), mode, &d, &a, &b, &state)
+                          : wide[op](flags | cpu, exec_mask, mode, &d, &a, &b, &state),
+                      GOC_SUCCESS);
+            ASSERT_EQ(state, 0x12345678U);
+            for (unsigned reg = 0; reg < 3; ++reg)
+              for (unsigned lane = 0; lane < 66; ++lane)
+                ASSERT_EQ(words[reg][lane], expected[reg][lane])
+                    << op << '/' << guest << '/' << variant << '/' << width << '/' << cpu << '/'
+                    << reg << '/' << lane;
+          }
+        }
+      }
 }
