@@ -1302,5 +1302,14 @@
       "v_dual_dot2acc_f32_f16",
       "v_dual_dot2acc_f32_bf16"
     ]
+  },
+  {
+    "heading": "FP16 and FP32 FRACT architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/fract_test.cpp",
+    "mnemonics": [
+      "v_fract_f16",
+      "v_fract_f32"
+    ]
   }
 ]

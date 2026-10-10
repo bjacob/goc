@@ -46,12 +46,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-688 in-scope mnemonics have explicit contract-review records in
+690 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 121 in-scope mnemonics need a recorded review.
+The remaining 119 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -488,8 +488,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_fmac_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12047, 12069 | review required |
 | `v_fmamk_f16` | IEEE mode, NaN quieting, SIMD macro, architecture query, output helper | yes | 12174 | review required |
 | `v_fmamk_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 12194 | review required |
-| `v_fract_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12217, 12247 | review required |
-| `v_fract_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12295, 12311 | review required |
+| `v_fract_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12217, 12247 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-fract-architecture-contracts) |
+| `v_fract_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12295, 12311 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-fract-architecture-contracts) |
 | `v_fract_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 12345, 12360 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_frexp_exp_i16_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12400, 12435 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-exponent-architecture-review) |
 | `v_frexp_exp_i32_f32` | SIMD macro, output helper | yes | 12489, 12514 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32fp64-frexp-exponent-architecture-review) |

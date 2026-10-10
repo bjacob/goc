@@ -7325,3 +7325,54 @@ audit/inventory tooling tests pass. Logs are
 Corrected the RDNA3 public comment to name `trapsts` instead of
 `excp_flag_user`. The ledger records 688 contracts, with 121 remaining;
 this is not an overall completion percentage.
+
+## FP16 and FP32 FRACT architecture contracts
+
+Reviewed `v_fract_f16` and `v_fract_f32` against rocjitsu revision
+`ffc144c564c`'s shared VOP1/VOP3 handlers and SIMD helpers, the current GoC
+scalar/AVX2 paths, and both ISA manuals' FRACT and output-modifier descriptions.
+Upstream computes the fraction using host subtraction and `floor`; it does not
+provide an empirical exact model to port. These APIs remain **loose-only**.
+The earlier FRACT exact implementation/reporting entries are historical and
+were superseded by the scope correction; this review does not restore them.
+
+- The operation is `x - floor(x)`, giving positive fractions for negative
+  nonintegers. GoC caps the unmodified FP32/FP16 fraction below one, including
+  negative tiny inputs whose host subtraction could round to one. The FP32
+  instruction description explicitly requires that bound. NaN payload/sign
+  and host-dependent arithmetic details are not promised by loose semantics.
+- A ABS/NEG, OMOD, CLAMP, DPP8/DPP16, and both wave widths are supported. FP16
+  selects A/D halves independently and preserves the other destination half.
+  Whole-VGPR aliases and masked stores retain original source values and
+  inactive destinations. AVX2 remains eight lanes wide for both precisions.
+- Guest input/output flushing and IEEE mode are accepted. Input flushing
+  precedes fractional extraction; output flushing precedes ordinary output
+  modifiers. RDNA3 suppresses OMOD when IEEE is enabled or output denormals
+  are preserved; RDNA4 does not. RDNA3 DX10-clamp-off preserves arithmetic
+  NaNs through CLAMP; RDNA4 rejects that setting. Guest directed-rounding
+  modes are unsupported; loose execution retains its documented host
+  nearest-even/denormals-enabled precondition. FP16_OVFL is accepted but
+  cannot affect the bounded finite fraction or its supported output scales.
+- Strict exact requests return UNSUPPORTED_SEMANTICS with a null state pointer.
+  Non-strict exact requests with null state fall back to loose arithmetic.
+  Any non-null exact state request returns UNSUPPORTED_GLOBAL_STATE, even
+  without STRICT or active EXEC. Loose calls leave optional state unchanged.
+  Unsupported exact requests preserve all outputs.
+
+Expanded the retained FP32 numerical capture test to exercise non-strict exact
+fallback across both corpora, every modifier, denormal/IEEE policy, architecture,
+wave width and available CPU tier. The fixture hashes canonicalize NaNs and
+are not an exact-semantics assertion or new hardware capture. Added independent
+literal-result checks in both precisions for signed zeros, integers, positive
+and negative fractions, subnormals and the boundary below one; these cover
+both semantics requests, all guest policies, half selectors, in-place aliases,
+full/partial masks and unchanged optional state. Strengthened the existing
+unsupported-reporting checks to include non-strict exact requests.
+
+No production code changed and no performance benchmark was needed.
+
+Validation: all three expanded FRACT tests pass with Clang 21 Release, GCC 15
+Release and Clang ASan/UBSan; all nine audit/inventory tooling tests pass.
+Logs are `coverage-work/fract-contract-{build,tests}.log` in each build
+directory. The ledger now records 690 mnemonic contracts, with 119 remaining;
+these counts do not imply overall completion.
