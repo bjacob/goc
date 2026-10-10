@@ -302,7 +302,7 @@ TEST(HalfMinmax3, Wave64ModifiersDppSelectorsAndAliases) {
             check(d[lane], before[dest][lane + 1],
                   goc_test::half_minmax_reference(
                       reference_ops[op], source < 0 ? 0 : before[0][source + 1],
-                      before[1][lane + 1], before[2][lane + 1], mode, saturate),
+                      before[1][lane + 1], before[2][lane + 1], mode, saturate, op >= 9),
                   mode);
           } else {
             EXPECT_EQ(d[lane], before[dest][lane + 1]);
@@ -329,4 +329,119 @@ TEST(HalfMinmax3, Wave64ValidationAndOptionalState) {
               GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
     EXPECT_EQ(exceptions, 0x80000055U);
   }
+}
+
+TEST(HalfMinmax3, ArchitectureGuestSelectionPayloadsAndZeroTies) {
+  const goc_test::HalfMinmaxFn legacy[] = {goc_v_min3_f16, goc_v_max3_f16, goc_v_minmax_f16,
+                                           goc_v_maxmin_f16, goc_v_med3_f16};
+
+  struct Case {
+    uint16_t a, b, c;
+    bool ieee;
+    uint16_t expected[5];
+  };
+
+  // RDNA3 nested binary selection, including first-maximum removal for MED3.
+  const Case cases[] = {
+      {0x7c15, 0x7e26, 0xfe37, false, {0x7c15, 0x7c15, 0x7c15, 0x7c15, 0x7c15}},
+      {0x7c15, 0x7e26, 0xfe37, true, {0x7e15, 0x7e15, 0x7e15, 0x7e15, 0x7e15}},
+      {0x3c00, 0x4000, 0xfc15, true, {0xfe15, 0xfe15, 0xfe15, 0xfe15, 0xfe15}},
+      {0x3c00, 0x4000, 0xfc15, false, {0x3c00, 0x4000, 0x3c00, 0x4000, 0x3c00}},
+      {0x7c15, 0x4000, 0x3c00, true, {0x3c00, 0x3c00, 0x3c00, 0x3c00, 0x3c00}},
+      {0x8000, 0x8000, 0, false, {0x8000, 0, 0, 0x8000, 0}},
+      {0, 0x8000, 0x8000, false, {0x8000, 0, 0x8000, 0x8000, 0x8000}},
+  };
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned op = 0; op < 5; ++op)
+      for (const auto &test : cases)
+        for (unsigned selectors = 0; selectors < 16; ++selectors) {
+          uint32_t words[4][64];
+          uint16_t input[] = {test.a, test.b, test.c};
+          for (unsigned r = 0; r < 3; ++r)
+            std::fill_n(words[r], 64,
+                        (selectors & (1U << r)) ? (uint32_t(input[r]) << 16) | 0x3555U
+                                                : 0x35550000U | input[r]);
+          const uint32_t *a = words[0], *b = words[1], *c = words[2];
+          uint32_t *d = words[3];
+          uint64_t flags = cpu | (test.ieee ? GOC_FP_IEEE_MODE : 0);
+          uint32_t mode = selectors * GOC_ALU_HIGH_A;
+          for (bool wide : {false, true}) {
+            std::fill_n(d, 64, 0xdeadbeefU);
+            uint32_t state = 0x80000055;
+            ASSERT_EQ(
+                wide ? wave64[9 + op](flags, 0x55555555aaaaaaaaULL, mode, &d, &a, &b, &c, &state)
+                     : legacy[op](flags, 0xaaaaaaaaU, mode, &d, &a, &b, &c, &state),
+                GOC_SUCCESS);
+            EXPECT_EQ(state, 0x80000055U);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              bool active = lane < (wide ? 64U : 32U) && ((0x55555555aaaaaaaaULL >> lane) & 1);
+              uint32_t want = (selectors & 8) ? (uint32_t(test.expected[op]) << 16) | 0xbeefU
+                                              : 0xdead0000U | test.expected[op];
+              EXPECT_EQ(d[lane], active ? want : 0xdeadbeefU)
+                  << cpu << "/" << op << "/" << test.ieee << "/" << selectors;
+            }
+          }
+        }
+  // RDNA4 propagating selection must see C's signaling NaN even when A/B
+  // already produced a quiet NaN. F16C must not quiet C before selection.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (auto fn : {goc_v_minimum3_f16, goc_v_maximum3_f16, goc_v_minimummaximum_f16,
+                    goc_v_maximumminimum_f16}) {
+      uint32_t a[32], b[32], c[32], d[32];
+      std::fill_n(a, 32, 0x7e12U);
+      std::fill_n(b, 32, 0x3c00U);
+      std::fill_n(c, 32, 0xfc34U);
+      std::fill_n(d, 32, 0xdead0000U);
+      const uint32_t *pa = a, *pb = b, *pc = c;
+      uint32_t *pd = d;
+      ASSERT_EQ(fn(cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
+      for (uint32_t value : d)
+        EXPECT_EQ(value, 0xdeadfe34U);
+    }
+}
+
+TEST(HalfMinmax3, LegacyEveryHalfEncodingPreservedAgainstQuietNaNs) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (auto fn : {goc_v_min3_f16, goc_v_max3_f16, goc_v_med3_f16})
+      for (unsigned base = 0; base < 65536; base += 32) {
+        uint32_t a[32], b[32], c[32], d[32];
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          a[lane] = base + lane;
+          b[lane] = 0x7e11;
+          c[lane] = 0xfe22;
+          d[lane] = 0xdead0000;
+        }
+        const uint32_t *pa = a, *pb = b, *pc = c;
+        uint32_t *pd = d;
+        ASSERT_EQ(fn(cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
+        for (unsigned lane = 0; lane < 32; ++lane)
+          EXPECT_EQ(d[lane], 0xdead0000U | a[lane]) << cpu << "/" << base + lane;
+      }
+}
+
+TEST(HalfMinmax3, GuestDenormalsAndArchitectureScaling) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (bool rdna3 : {false, true})
+      for (unsigned settings = 0; settings < 8; ++settings) {
+        uint64_t flags = cpu | ((settings & 1) ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                         ((settings & 2) ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                         ((settings & 4) ? GOC_FP_IEEE_MODE : 0);
+        for (uint32_t mode : {0U, GOC_ALU_OMOD_2})
+          for (uint32_t input : {1U, 0x3400U}) {
+            uint32_t a[64], b[64], c[64], d[64];
+            std::fill_n(a, 64, input);
+            std::fill_n(b, 64, 0x3800U);
+            std::fill_n(c, 64, 0x3c00U);
+            std::fill_n(d, 64, 0xdead0000U);
+            const uint32_t *pa = a, *pb = b, *pc = c;
+            uint32_t *pd = d;
+            auto fn = rdna3 ? goc_v_min3_f16_wave64 : goc_v_min3_num_f16_wave64;
+            ASSERT_EQ(fn(flags, UINT64_MAX, mode, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
+            bool scale = mode && (!rdna3 || ((settings & 2) && !(settings & 4)));
+            uint32_t want =
+                input == 1 ? (((settings & 1) || scale) ? 0U : 1U) : (scale ? 0x3800U : 0x3400U);
+            for (uint32_t value : d)
+              EXPECT_EQ(value, 0xdead0000U | want) << cpu << "/" << settings << "/" << rdna3;
+          }
+      }
 }

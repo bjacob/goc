@@ -2044,3 +2044,36 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
 - Final validation: all 947 tests pass with Clang 21 and GCC 15 Release; all nine
   Minmax3 tests pass under ASan/UBSan. Seven architecture/global-state audit
   tests pass. Logs: `../goc-build/coverage-work/ternary-*-tests.log`.
+
+## RDNA3 FP16 ternary selection policies
+
+- Replaced RDNA3 FP16 MIN3/MAX3/MINMAX/MAXMIN/MED3 forwarding with the same
+  RDNA3 nested binary selection rule used by FP32. Both wave widths use guest
+  IEEE-mode signaling-NaN priority, input-denormal flushing and conditional OMOD.
+  Selection preserves output subnormals except when OMOD requires flushing.
+- RDNA3 MED3 follows the manual's first-maximum removal pseudocode, including
+  signed-zero ties. RDNA4 MED3_NUM retains its hardware-captured ordered-zero
+  median behavior. The RDNA3 result is a manual-based model, not a new native
+  RDNA3 capture or a claim of empirical exact semantics.
+- Reused existing scalar/SIMD RDNA3 selection and opt-in FP16 NaN-preserving
+  conversion helpers. RDNA4 propagating ternary selection now also preserves
+  input signaling bits until selection, fixing premature quieting by F16C.
+- Literal tests check NaN signs/payloads/signaling bits, IEEE mode, first-maximum
+  zero ties, all half selectors, both wave widths, masks and unchanged optional
+  state. An exhaustive 65,536-encoding test checks legacy MIN3/MAX3/MED3 against
+  two quiet NaNs. Existing Wave64 DPP/modifier/alias tests now use RDNA3 policy
+  expectations; RDNA4 median hardware fixtures remain unchanged.
+- Guest-mode tests distinguish input flush, output-subnormal preservation and
+  architecture-dependent scaling. Strict exact semantics and faithful optional
+  exception output remain unsupported for these selection APIs.
+- Validation: all 950 tests pass under Clang 21 and GCC 15 Release; all 12
+  HalfMinmax3 tests pass under ASan/UBSan. Seven architecture/global-state audit
+  tests pass. Logs: `../goc-build/coverage-work/half-ternary-*-tests.log`.
+- Performance against `619dd03`: eleven alternating samples pinned to CPU 2,
+  each at least 50 ms thread CPU time. RDNA4 AVX2 MIN3_NUM_F16 medians changed
+  29.316 -> 28.539 ns unmodified and 33.631 -> 32.500 ns with ABS/NEG/OMOD/CLAMP.
+  MINIMUM3_F16 changed 33.707 -> 35.251 ns (+4.6%) and 37.016 -> 38.044 ns (+2.8%),
+  including the signaling-NaN conversion correction. MED3_NUM_F16 changed
+  38.987 -> 35.408 ns and 41.941 -> 39.066 ns. These finite-input timings are a
+  limited regression check, not a whole-library performance claim. Artifacts:
+  `../goc-build/coverage-work/half-ternary-*`, including `half-ternary-timing.json`.

@@ -3507,17 +3507,14 @@ int goc_v_maximum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
 // OMOD; guest output-denormal mode has no effect. FP16 narrowing preserves the
 // selected signaling bit when quieting is not requested.
 //
-// RDNA3 FP32 MIN3/MAX3/MINMAX/MAXMIN compose the binary rules above. MED3
+// RDNA3 FP16/FP32 MIN3/MAX3/MINMAX/MAXMIN compose the binary rules above. MED3
 // uses MIN3 for any NaN, otherwise removes the first maximum. Input flushing
 // and conditional OMOD apply in both widths, including the eight-lane SIMD path.
 //
-// Remaining RDNA3 FP16 ternary min/max/median spellings share the corresponding *_num_*
-// loose implementations, operand widths, modifiers, alias rules and SIMD paths.
-// Number selection ignores a lone NaN and orders -0 below +0; exact IEEE-mode
-// signaling-NaN behavior is not implemented. Strict exact requests fail; non-null
+// These selection APIs remain loose-only. Strict exact requests fail; non-null
 // exception reporting in non-loose semantics fails with UNSUPPORTED_GLOBAL_STATE.
-// Loose semantics leave optional exception state unchanged. Binary F64 and packed forms
-// reject DPP; the other forms route A with DPP8/DPP16.
+// Loose semantics leave optional exception state unchanged. Binary F64 and packed
+// forms reject DPP; the other forms route A with DPP8/DPP16.
 int goc_v_min_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   uint32_t *trapsts);

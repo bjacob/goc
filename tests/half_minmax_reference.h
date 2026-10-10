@@ -36,7 +36,14 @@ inline uint16_t half_minmax_select(uint16_t a, uint16_t b, bool maximum, bool pr
 }
 
 inline uint16_t half_minmax_reference(int op, uint32_t a, uint32_t b, uint32_t c, uint32_t mode,
-                                      bool saturate) {
+                                      bool saturate, bool rdna3 = false) {
+  auto select = [rdna3](uint16_t x, uint16_t y, bool maximum, bool propagate) {
+    if (rdna3 && half_minmax_nan(x) && half_minmax_nan(y))
+      return x;
+    return half_minmax_select(x, y, maximum, propagate);
+  };
+  if (rdna3)
+    mode &= ~GOC_ALU_OMOD_HALF;
   const uint32_t words[] = {a, b, c};
   uint16_t input[3];
   for (int i = 0; i < 3; ++i) {
@@ -49,18 +56,23 @@ inline uint16_t half_minmax_reference(int op, uint32_t a, uint32_t b, uint32_t c
   bool first_maximum = op % 4 == 1 || op % 4 == 3;
   bool second_maximum = op % 4 == 1 || op % 4 == 2;
   uint16_t result =
-      half_minmax_select(half_minmax_select(input[0], input[1], first_maximum, op >= 4), input[2],
-                         second_maximum, op >= 4);
+      select(select(input[0], input[1], first_maximum, op >= 4), input[2], second_maximum, op >= 4);
   if (op == 8) {
     if (half_minmax_nan(input[0]) || half_minmax_nan(input[1]) || half_minmax_nan(input[2])) {
-      result = half_minmax_select(half_minmax_select(input[0], input[1], false, false), input[2],
-                                  false, false);
+      result = select(select(input[0], input[1], false, false), input[2], false, false);
     } else {
       uint16_t sorted[] = {input[0], input[1], input[2]};
       std::sort(sorted, sorted + 3, [](uint16_t a, uint16_t b) {
         return half_minmax_ordered(a) < half_minmax_ordered(b);
       });
       result = sorted[1];
+      if (rdna3 && (result & 0x7fff) == 0) {
+        double maximum = goc_test::half_value(sorted[2]);
+        int drop = goc_test::half_value(input[0]) == maximum   ? 0
+                   : goc_test::half_value(input[1]) == maximum ? 1
+                                                               : 2;
+        result = select(input[(drop + 1) % 3], input[(drop + 2) % 3], true, false);
+      }
     }
   }
   const double scales[] = {1, 2, 4, 0.5};
