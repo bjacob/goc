@@ -216,7 +216,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_sqrt_f64`, `v_rcp_f64`, `v_rsq_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_frexp_mant_f32` | Scalar, x86-64-v3 | Integer significand model; both architectures, RDNA4 reporting |
 | `v_frexp_mant_f64` | Scalar, x86-64-v3 | Not implemented |
-| `v_frexp_exp_i32_f32`, `v_frexp_exp_i32_f64` | Scalar, x86-64-v3 | Not implemented |
+| `v_frexp_exp_i32_f32` | Scalar, x86-64-v3 | Integer exponent model; both architectures, RDNA4 reporting |
+| `v_frexp_exp_i32_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_ldexp_f32`, `v_ldexp_f64` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_min_i32`, `v_max_i32`, `v_min_u32`, `v_max_u32` | Scalar, x86-64-v3, x86-64-v4 | Exact integer operations; both wave sizes |
 | `v_mul_lo_u32`, `v_mul_hi_u32`, `v_mul_hi_i32` | Scalar, x86-64-v3, x86-64-v4 | Exact integer operations; both wave sizes |

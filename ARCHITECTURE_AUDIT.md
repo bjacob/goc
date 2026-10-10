@@ -484,7 +484,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_fract_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 12295, 12311 | review required |
 | `v_fract_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 12345, 12360 | review required |
 | `v_frexp_exp_i16_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 12400, 12435 | review required |
-| `v_frexp_exp_i32_f32` | SIMD macro, output helper | no | 12489, 12514 | review required |
+| `v_frexp_exp_i32_f32` | SIMD macro, output helper | yes | 12489, 12514 | review required |
 | `v_frexp_exp_i32_f64` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 12546, 12566 | review required |
 | `v_frexp_mant_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 12613, 12643 | review required |
 | `v_frexp_mant_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12693, 12715 | review required |

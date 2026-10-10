@@ -55,7 +55,7 @@ be treated as verified shared semantics. Width completeness does not close this 
 | RDNA3 WMMA | All six mnemonics, both widths, exact rocjitsu GFX11 model; `wmma_replicated_exact_test.cpp`; 103 DOT2 captures and 28 packed matrices | Scalar implementations; verify inventory integration as other APIs evolve |
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting remains unsupported; ordinary forms support both wave widths |
-| FP32 unary | Ten operations have exact RDNA3/RDNA4 results and captured RDNA4 reporting, with separate architecture policies and loose SIMD | FRACT review; native RDNA3 reporting; FP16/FP64 counterparts |
+| FP32 unary | Ten floating-result operations plus FREXP_EXP have exact RDNA3/RDNA4 results and captured RDNA4 reporting, with separate architecture policies and SIMD | FRACT review; native RDNA3 reporting; FP16/FP64 counterparts |
 | Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms, Wave64 and SIMD dispatch | Exact IEEE-mode NaN policies and exception reporting |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
@@ -3070,3 +3070,50 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   This is evidence preparation: production FREXP_EXP still needs guest-input
   flushing, exact semantics, architecture/state API review, and regression tests.
   No RDNA3 hardware claim or FP64 conclusion follows from this capture.
+
+### FP32 FREXP_EXP exact semantics and RDNA4 reporting
+
+- Added exact FP32 exponent extraction using rocjitsu's integer `frexp_f32`
+  model, including guest input-denormal flushing. The scalar subnormal path now
+  uses leading-zero count instead of a per-bit loop. Both architectures share
+  this calculation; guest IEEE/output-denormal policy does not alter the integer
+  result. FP64 behavior remains unchanged and still needs a separate review.
+- Split FP32 APIs into unsuffixed RDNA3 (`trapsts`) and `_rdna4`
+  (`excp_flag_user`), before `_wave64`, because the native implicit registers
+  differ. Exact RDNA4 reporting implements the verified INVALID/INPUT_DENORM
+  rules and CLAMP suppression. RDNA3 exact non-null reporting remains explicitly
+  unsupported; no RDNA3 hardware validation is claimed.
+- The eight-lane AVX2 path supports guest input flushing and exact results when
+  reporting is omitted. Loose mode always skips optional reporting, including
+  with non-null state pointers. Exact reporting takes the scalar classifier.
+  No new arithmetic policy framework or per-mask fast path was introduced.
+- Regression tests preserve the raw hardware result/status hashes and cover all
+  32 instruction modifiers, eight guest-policy combinations, both architectures
+  and wave widths, all available CPU tiers, DPP routing, in-place aliases,
+  inactive exceptional operands, sticky accumulation, empty EXEC and validation.
+  Host rounding and all four DAZ/FTZ combinations are tested independently.
+- Clang 21 and GCC 15 Release each pass **1,028/1,028** tests; targeted Clang
+  ASan/UBSan passes **16/16** FREXP_EXP, instruction-flag and EXEC-mask tests.
+  Final logs: `/tmp/goc-frexp-exp-final4-{clang,gcc,san}-tests.log`.
+- Refreshed inventory, architecture/state audits and README. The canonical API
+  inventory is still 806/809, not semantic completeness. Of 670 native-state
+  signatures, 382 have resolved matching names, zero mismatch, and 288 still
+  require review. The benchmark now identifies its FP32 RDNA4 API explicitly.
+- Final loose AVX2 timing versus `333ddfc`: eight FREXP_EXP cases (normal or
+  subnormal inputs, default or combined modifiers, null or non-null state)
+  cost **1.90–3.47%**, at most **0.507 ns/call**. Default normal/null-state changes
+  14.612 -> 14.955 ns. The 24 unchanged RNDNE/SQRT/RCP controls range from
+  -1.16% to +1.78%. Eleven alternating samples are CPU-2-pinned, with at least
+  50 ms thread CPU time per case. Data/binaries are under
+  `../goc-build/coverage-work/frexp-exp-*`; final summary is
+  `/tmp/goc-frexp-exp-final4-timing.log`.
+- The final SIMD code uses one unsigned finite-input range check, with its lower
+  bound selected by guest input flushing. The common path has the same vector
+  operation count as before. One explicit out-of-line DPP helper keeps routing
+  buffers off ordinary calls; the exponent calculation remains shared. Earlier
+  mask formulations measured worse and were removed. This is a small measured
+  cost for added guest-state correctness, not an assertion of identical speed.
+- The same eight scalar cases range from -2.83% to +0.13%; default normal/null
+  changes 32.764 -> 32.470 ns. The scalar model therefore adds no measured
+  material cost in this sample. Samples use `frexp-exp-scalar-*`, with summary
+  `/tmp/goc-frexp-exp-scalar-timing.log`.

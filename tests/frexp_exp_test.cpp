@@ -5,6 +5,7 @@
 #include "exec_masks.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
+#include "unary_capture_input.h"
 
 #include <algorithm>
 #include <array>
@@ -175,8 +176,8 @@ TEST(FrexpExp, LiteralValuesAndValidation) {
                     GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(functions[fp64](cpu | (1ULL << 63), exec_mask, 0, &pd, pa, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                  exec_mask, 0, &pd, pa, nullptr),
+        EXPECT_EQ(functions[fp64](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &pd, pa,
+                                  nullptr),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (uint32_t value : d)
@@ -282,8 +283,8 @@ TEST(FrexpExp, DppValidation) {
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(functions[0](0, UINT32_MAX, descriptor | (1ULL << 36), nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(functions[0](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
-                           descriptor, nullptr, nullptr, nullptr),
+    EXPECT_EQ(functions[0]((2ULL << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, descriptor, nullptr,
+                           nullptr, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
   }
 }
@@ -404,5 +405,165 @@ TEST(FrexpExp, Fp64HostDenormalControlsAndRoundingDoNotAffectResults) {
           EXPECT_EQ(_mm_getcsr(), csr);
 #endif
         }
+    }
+}
+
+namespace {
+
+int invoke(bool rdna3, bool wide, uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *d,
+           const uint32_t *a, uint32_t *state) {
+  if (wide)
+    return (rdna3 ? goc_v_frexp_exp_i32_f32_wave64
+                  : goc_v_frexp_exp_i32_f32_rdna4_wave64)(flags, exec_mask, mode, &d, &a, state);
+  return (rdna3 ? goc_v_frexp_exp_i32_f32
+                : goc_v_frexp_exp_i32_f32_rdna4)(flags, uint32_t(exec_mask), mode, &d, &a, state);
+}
+
+uint32_t modifiers(unsigned m) {
+  return (m & 1 ? GOC_ALU_NEG_A : 0) | (m & 2 ? GOC_ALU_ABS_A : 0) | ((m >> 2 & 3) << 6) |
+         (m & 16 ? GOC_ALU_CLAMP : 0);
+}
+
+} // namespace
+
+TEST(FrexpExpExact, HardwareNumericsAndGuestPolicy) {
+  for (bool exact : {false, true})
+    for (bool rdna3 : {false, true})
+      for (bool wide : {false, true})
+        for (unsigned policy = 0; policy < 8; ++policy)
+          for (unsigned m = 0; m < 32; ++m) {
+            unsigned lanes = wide ? 64 : 32;
+            uint64_t hash = goc_test::capture_hash_seed;
+            for (unsigned base = 0; base < 8192; base += lanes) {
+              uint32_t input[64], output[64];
+              for (unsigned lane = 0; lane < lanes; ++lane)
+                input[lane] = goc_test::unary_capture_input(0, base + lane);
+              uint64_t flags = ((base / lanes) % (goc_init_cpu_flags() + 1)) |
+                               (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0) |
+                               (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                               (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                               (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+              ASSERT_EQ(
+                  invoke(rdna3, wide, flags, UINT64_MAX, modifiers(m), output, input, nullptr),
+                  GOC_SUCCESS);
+              for (unsigned lane = 0; lane < lanes; ++lane)
+                hash = goc_test::capture_hash_word(hash, output[lane]);
+            }
+            const uint64_t hashes[] = {0xcc12cb39440259e1ULL, 0xcf729b6b9bdb7fbaULL};
+            EXPECT_EQ(hash, hashes[policy & 1])
+                << exact << '/' << rdna3 << '/' << wide << '/' << policy << '/' << m;
+          }
+}
+
+TEST(FrexpExpExact, ExactReportingHardware) {
+  for (unsigned policy = 0; policy < 2; ++policy)
+    for (unsigned m = 0; m < 32; ++m) {
+      uint64_t hash = goc_test::capture_hash_seed;
+      for (unsigned i = 0; i < 8192; ++i) {
+        bool wide = i & 1;
+        unsigned lane = (i >> 1) % (wide ? 64 : 32);
+        uint32_t input[64], output[64], state = 0x80000040;
+        // Inactive exceptional operands must not contribute to wave status.
+        std::fill(input, input + 64, i & 1 ? 0x7f800001 : 1);
+        std::fill(output, output + 64, 0xdeadbeef);
+        input[lane] = goc_test::unary_capture_input(0, i);
+        uint64_t flags =
+            GOC_SEMANTICS_EXACT_EMPIRICAL | (policy ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+            (i & 2 ? GOC_SEMANTICS_STRICT : 0) | (i & 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+            (i & 8 ? GOC_FP_IEEE_MODE : 0);
+        ASSERT_EQ(invoke(false, wide, flags, 1ULL << lane, modifiers(m), output, input, &state),
+                  GOC_SUCCESS);
+        ASSERT_EQ(state & 0x80000040U, 0x80000040U);
+        EXPECT_EQ(output[(lane + 1) % (wide ? 64 : 32)], 0xdeadbeefU);
+        hash = goc_test::capture_hash_word(hash, output[lane]);
+        hash = goc_test::capture_hash_word(hash, state & ~0x80000040U);
+      }
+      // Raw gfx1201 (result, EXCP_FLAG_USER) hashes, 8192 pairs per row.
+      // capture_unary_exact.py frexp_exp_i32 --exceptions; OMOD has no effect.
+      const uint64_t hashes[2][2] = {{0x26533113a2ffed63ULL, 0x92ccb1ca2a1f00a9ULL},
+                                     {0xd89de8c37c933d32ULL, 0xff2ec24730195ec6ULL}};
+      EXPECT_EQ(hash, hashes[policy][m >> 4]);
+    }
+}
+
+TEST(FrexpExpExact, DppAliasesGuestModesAndHostControls) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (bool exact : {false, true})
+    for (bool rdna3 : {false, true})
+      for (bool wide : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned policy = 0; policy < 8; ++policy)
+            for (auto descriptor : goc_test::dpp_modes) {
+              unsigned lanes = wide ? 64 : 32;
+              uint64_t exec_mask = wide ? 0x9192a5a571abcdefULL : 0x71abcdef;
+              uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                               (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                               (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                               (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+              unsigned m = (policy * 5) % 32;
+              uint32_t original[64], expected[64], expected_state = 0x80000040;
+              for (unsigned lane = 0; lane < lanes; ++lane)
+                original[lane] = goc_test::unary_capture_input(0, lane % 32);
+              for (unsigned lane = 0; lane < lanes; ++lane) {
+                expected[lane] = original[lane];
+                int source;
+                if (goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
+                  uint32_t input = source < 0 ? 0 : original[source];
+                  uint32_t magnitude = input & 0x7fffffff;
+                  expected[lane] =
+                      (policy & 1) && magnitude < 0x800000 ? 0 : reference(input, false);
+                  if (!(m & 16)) {
+                    if (magnitude >= 0x7f800000 && !(magnitude & 0x400000))
+                      expected_state |= GOC_EXCEPTION_INVALID;
+                    else if (magnitude && magnitude < 0x800000 && !(policy & 1))
+                      expected_state |= GOC_EXCEPTION_INPUT_DENORM;
+                  }
+                }
+              }
+              flags = (exact ? flags : flags & ~(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT)) | cpu;
+              for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO})
+                for (unsigned controls = 0; controls < 4; ++controls) {
+                  ASSERT_EQ(std::fesetround(rounding), 0);
+                  std::feclearexcept(FE_ALL_EXCEPT);
+                  std::feraiseexcept(FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+                  _mm_setcsr((_mm_getcsr() & ~0x8040U) | (controls & 1 ? 0x40U : 0) |
+                             (controls & 2 ? 0x8000U : 0));
+                  unsigned host_controls = _mm_getcsr();
+#endif
+                  uint32_t input[64], state = 0x80000040;
+                  std::memcpy(input, original, lanes * sizeof(uint32_t));
+                  ASSERT_EQ(invoke(rdna3, wide, flags, exec_mask, modifiers(m) | descriptor, input,
+                                   input, rdna3 && exact ? nullptr : &state),
+                            GOC_SUCCESS);
+                  for (unsigned lane = 0; lane < lanes; ++lane)
+                    EXPECT_EQ(input[lane], expected[lane]);
+                  EXPECT_EQ(state, exact && !rdna3 ? expected_state : 0x80000040U);
+                  EXPECT_EQ(std::fegetround(), rounding);
+                  EXPECT_EQ(std::fetestexcept(FE_DIVBYZERO), FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+                  EXPECT_EQ(_mm_getcsr() & ~0x3fU, host_controls & ~0x3fU);
+#endif
+                }
+            }
+}
+
+TEST(FrexpExpExact, ValidationAndEmptyExec) {
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true}) {
+      uint32_t input[64] = {}, output[64], state = 0x80000040;
+      std::fill(output, output + 64, 0xdeadbeef);
+      EXPECT_EQ(invoke(rdna3, wide, 0, UINT64_MAX, GOC_ALU_NEG_B, output, input, &state),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(invoke(rdna3, wide, 2ULL << 16, UINT64_MAX, 0, output, input, &state),
+                GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+      EXPECT_EQ(invoke(rdna3, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, &state),
+                rdna3 ? GOC_ERROR_UNSUPPORTED_GLOBAL_STATE : GOC_SUCCESS);
+      EXPECT_EQ(invoke(rdna3, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr),
+                GOC_SUCCESS);
+      EXPECT_EQ(state, 0x80000040U);
+      for (auto value : output)
+        EXPECT_EQ(value, 0xdeadbeefU);
     }
 }

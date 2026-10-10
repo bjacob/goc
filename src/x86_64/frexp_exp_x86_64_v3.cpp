@@ -8,7 +8,8 @@
 namespace goc {
 namespace {
 
-template <bool Fp64> void run(uint32_t exec_mask, uint32_t *d, const uint32_t *const *a) {
+template <bool Fp64>
+void run(uint32_t exec_mask, uint32_t *d, const uint32_t *const *a, bool flush_input) {
   uint32_t result[32];
   for (int lane = 0; lane < 32; lane += Fp64 ? 4 : 8) {
     if constexpr (Fp64) {
@@ -49,10 +50,14 @@ template <bool Fp64> void run(uint32_t exec_mask, uint32_t *d, const uint32_t *c
       auto exponent = _mm256_blendv_epi8(
           _mm256_sub_epi32(_mm256_srli_epi32(magnitude, 23), _mm256_set1_epi32(126)),
           _mm256_sub_epi32(leading, _mm256_set1_epi32(275)), subnormal);
-      auto special =
-          _mm256_or_si256(_mm256_cmpeq_epi32(magnitude, _mm256_setzero_si256()),
-                          _mm256_cmpgt_epi32(magnitude, _mm256_set1_epi32(0x7f800000 - 1)));
-      exponent = _mm256_andnot_si256(special, exponent);
+      // Keep only the finite input range [minimum, infinity). Subtracting
+      // minimum makes smaller magnitudes wrap above the unsigned upper bound.
+      // This single range check also discards guest-flushed subnormal inputs.
+      uint32_t minimum = flush_input ? 0x00800000 : 1;
+      auto offset = _mm256_sub_epi32(magnitude, _mm256_set1_epi32(minimum));
+      auto upper = _mm256_set1_epi32(0x7f7fffff - minimum);
+      auto valid = _mm256_cmpeq_epi32(_mm256_min_epu32(offset, upper), offset);
+      exponent = _mm256_and_si256(valid, exponent);
       _mm256_storeu_si256(reinterpret_cast<__m256i *>(result + lane), exponent);
     }
   }
@@ -67,11 +72,12 @@ template <bool Fp64> void run(uint32_t exec_mask, uint32_t *d, const uint32_t *c
 
 } // namespace
 
-void frexp_exp_x86_64_v3(bool fp64, uint32_t exec_mask, uint32_t *d, const uint32_t *const *a) {
+void frexp_exp_x86_64_v3(bool fp64, uint32_t exec_mask, uint32_t *d, const uint32_t *const *a,
+                         bool flush_input) {
   if (fp64)
-    run<true>(exec_mask, d, a);
+    run<true>(exec_mask, d, a, false);
   else
-    run<false>(exec_mask, d, a);
+    run<false>(exec_mask, d, a, flush_input);
 }
 
 } // namespace goc

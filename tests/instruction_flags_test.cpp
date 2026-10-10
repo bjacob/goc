@@ -204,7 +204,7 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_frexp_mant_f32_rdna4" || base_name == "goc_v_floor_f32_rdna4" ||
         base_name == "goc_v_sqrt_f32_rdna4" || base_name == "goc_v_rcp_f32_rdna4" ||
         base_name == "goc_v_rsq_f32_rdna4" || base_name == "goc_v_exp_f32_rdna4" ||
-        base_name == "goc_v_log_f32_rdna4")
+        base_name == "goc_v_log_f32_rdna4" || base_name == "goc_v_frexp_exp_i32_f32_rdna4")
       name = base_name.c_str();
   } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));
@@ -228,6 +228,7 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
       std::strcmp(name, "goc_v_fmac_f16_rdna4") == 0 || std::strcmp(name, "goc_v_ldexp_f16") == 0 ||
       std::strcmp(name, "goc_v_frexp_exp_i16_f16") == 0 ||
       std::strcmp(name, "goc_v_frexp_exp_i32_f32") == 0 ||
+      std::strcmp(name, "goc_v_frexp_exp_i32_f32_rdna4") == 0 ||
       std::strcmp(name, "goc_v_ldexp_f32") == 0;
   for (auto mnemonic : goc_test::dpp_arithmetic_names)
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
