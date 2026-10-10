@@ -7,6 +7,7 @@
 
 #include <cstring>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <stdint.h>
 
 namespace {
@@ -44,18 +45,21 @@ using WideRegisters = LaneRegisters<64>;
 } // namespace
 
 TEST(Swmmac16, HardwareAllModifiers) {
-  for (unsigned op = 0; op < 4; ++op)
-    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (unsigned variant = 0; variant < 32; ++variant) {
-        Registers r(op);
-        ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
-        uint64_t digest = goc_test::capture_hash_seed;
-        for (unsigned reg = 0; reg < (op >= 2 ? 4u : 8u); ++reg)
-          for (unsigned lane = 0; lane < 32; ++lane)
-            digest = goc_test::capture_hash_bytes(digest, r.d[reg][lane], 4);
-        ASSERT_EQ(digest, goc_test::swmmac16_capture_digests[op][variant])
-            << op << "/" << cpu << "/" << variant;
-      }
+  // A non-strict exact request must follow the same loose path.
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (unsigned op = 0; op < 4; ++op)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned variant = 0; variant < 32; ++variant) {
+          Registers r(op);
+          ASSERT_EQ(functions[op](cpu | semantics, mode(variant), r.d, r.a, r.b, r.index),
+                    GOC_SUCCESS);
+          uint64_t digest = goc_test::capture_hash_seed;
+          for (unsigned reg = 0; reg < (op >= 2 ? 4u : 8u); ++reg)
+            for (unsigned lane = 0; lane < 32; ++lane)
+              digest = goc_test::capture_hash_bytes(digest, r.d[reg][lane], 4);
+          ASSERT_EQ(digest, goc_test::swmmac16_capture_digests[op][variant])
+              << op << "/" << semantics << "/" << cpu << "/" << variant;
+        }
 }
 
 TEST(Swmmac16, EveryLaneAndModifier) {
@@ -207,22 +211,25 @@ const Fn wide_functions[] = {
 } // namespace
 
 TEST(Swmmac16, Wave64NativeAllModifiers) {
-  for (unsigned op = 0; op < 4; ++op)
-    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (unsigned variant = 0; variant < 64; ++variant) {
-        uint32_t data[21][64];
-        goc_test::swmmac16_capture_inputs(op, data);
-        const uint32_t *a[] = {data[0], data[1]}, *b[] = {data[4], data[5], data[6], data[7]},
-                       *index[] = {data[20]};
-        uint32_t *d[] = {data[12], data[13], data[14], data[15]};
-        ASSERT_EQ(wide_functions[op](cpu, mode(variant), d, a, b, index), GOC_SUCCESS);
-        uint64_t hash = goc_test::capture_hash_seed;
-        for (unsigned reg = 0; reg < (op >= 2 ? 2U : 4U); ++reg)
-          for (unsigned lane = 0; lane < 64; ++lane)
-            hash = goc_test::capture_hash_word(hash, d[reg][lane]);
-        ASSERT_EQ(hash, goc_test::swmmac16_wave64_digests[op][variant])
-            << op << "/" << cpu << "/" << variant;
-      }
+  // A non-strict exact request must follow the same loose path.
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (unsigned op = 0; op < 4; ++op)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned variant = 0; variant < 64; ++variant) {
+          uint32_t data[21][64];
+          goc_test::swmmac16_capture_inputs(op, data);
+          const uint32_t *a[] = {data[0], data[1]}, *b[] = {data[4], data[5], data[6], data[7]},
+                         *index[] = {data[20]};
+          uint32_t *d[] = {data[12], data[13], data[14], data[15]};
+          ASSERT_EQ(wide_functions[op](cpu | semantics, mode(variant), d, a, b, index),
+                    GOC_SUCCESS);
+          uint64_t hash = goc_test::capture_hash_seed;
+          for (unsigned reg = 0; reg < (op >= 2 ? 2U : 4U); ++reg)
+            for (unsigned lane = 0; lane < 64; ++lane)
+              hash = goc_test::capture_hash_word(hash, d[reg][lane]);
+          ASSERT_EQ(hash, goc_test::swmmac16_wave64_digests[op][variant])
+              << op << "/" << semantics << "/" << cpu << "/" << variant;
+        }
 }
 
 TEST(Swmmac16, Wave64OverlappingSourcesAndDuplicateDestinations) {

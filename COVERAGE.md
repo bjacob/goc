@@ -53,8 +53,8 @@ be treated as verified shared semantics. Width completeness does not close this 
 
 | Family | Current evidence | Remaining work |
 |---|---|---|
-| RDNA3 WMMA | All six mnemonics, both widths, exact rocjitsu GFX11 model; `wmma_replicated_exact_test.cpp`; 103 DOT2 captures and 28 packed matrices | Scalar implementations; verify inventory integration as other APIs evolve |
-| RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
+| RDNA3 WMMA | All six contracts reviewed at both widths; borrowed GFX11 models and captures; direct RDNA3/RDNA4 rounding and saturation tests | Reviewed limitations: scalar paths and fixed numerical modes; see matrix contract reviews below |
+| RDNA4 WMMA/SWMMAC | All 22 matrix contracts reviewed at both widths; existing captures, SIMD and fallback tests; upstream discrepancies documented | FP8 dense and all floating sparse forms remain loose-only; other mode/encoding limits are recorded below |
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting remains unsupported; ordinary forms support both wave widths |
 | FP32 unary | Ten floating-result operations plus FREXP_EXP retain rocjitsu-derived numerical models; FRACT is loose-only. Architecture policies are split; new inferred reporting was removed | Finish modifier review and upstream-port availability review for FP16/FP64; unavailable exact reporting is an explicit limitation, not a reverse-engineering task |
 | Floating min/max/median | FP32 ternary family reviewed: separate RDNA3 IEEE/OMOD rules and RDNA4 NUM/propagating forms, all guest policies/modifiers and both widths on scalar/AVX2 | Review remaining binary, FP16/FP64 and packed contracts; strict exact and optional reporting remain unsupported |
@@ -6984,3 +6984,84 @@ Zen4 BF16 path; RDNA3 and RDNA4 Wave64 FP32 outputs remain scalar. Loose results
 retain their existing host rounding/denormal preconditions and do not promise
 the exact intermediate rounding or NaN payloads. The four FP8/BF8 dense WMMA
 mnemonics and sparse SWMMAC are separate review work.
+
+## FP8 and BF8 dense WMMA contract review
+
+Reviewed all four RDNA4-only FP8/BF8 format pairs at both wave widths against
+rocjitsu `ffc144c564c`'s generated `vop3p_exec.cpp` and
+`shared/mma_exec.h::exec_wmma_f32_mixed`. These handlers use generic floating
+MAC reduction, not the characterized GFX11 DOT2 / GFX12 DOT4 models used by
+FP16/BF16 WMMA. GoC therefore retains loose semantics, rejects strict exact
+requests before operand access, and permits non-strict fallback. The source
+formats are OCP E4M3FN and E5M2, not FNUZ. Both C modifiers are supported;
+A/B negation, DPP, OMOD and floating CLAMP are not exposed.
+
+The manual's storage map and GoC's existing finite gfx1201 Wave64 corpus anchor
+register use. The known upstream Wave64 K-permutation discrepancy remains:
+a common permutation of A/B leaves exact finite sums unchanged, so that corpus
+does not establish a general hardware accumulation order. No new exact claim
+or hardware probe is warranted. `SubbyteWmma` covers all byte encodings, four
+format pairs, both widths, C modifiers, aliases, dense goldens, strict errors
+and non-strict fallback. Scalar and AVX2 paths exist at both widths. FP16 overflow
+mode has no effect; other guest FP flags remain unsupported.
+
+These APIs retain no EXEC input or implicit-state output, for the same matrix
+instruction contract and LLVM evidence recorded in the FP16/BF16 WMMA review.
+This does not extend FP16/BF16's numerical exactness to FP8/BF8.
+
+## Sparse WMMA contract review
+
+Reviewed all eleven RDNA4-only SWMMAC mnemonics, both widths, against manual
+section 7.12.2 and rocjitsu `ffc144c564c`'s `exec_swmmac_f32_mixed`,
+`exec_swmmac_packed16`, `exec_swmmac_i32` and generated RDNA4 handlers.
+D is the initial accumulator and destination; SRC2 is sparse metadata, not C.
+Inputs and accumulators are snapshotted before ascending destination stores.
+Within each sparse group, callers must supply `Idx0 < Idx1`; behavior for
+malformed metadata is outside the supported contract. EXEC does not participate.
+
+The accepted metadata selections are shape-specific:
+
+| Family | Wave32 sets per lane | Wave64 sets per lane |
+|---|---|---|
+| FP16/BF16 and FP8/BF8 | Two 16-bit sets | Four 8-bit sets |
+| IU8 K=32 | Two 16-bit sets | Four 8-bit sets |
+| IU4 K=32 | Two 16-bit sets | Two 16-bit sets |
+| IU4 K=64 | One 32-bit set | Two 16-bit sets |
+
+The existing Wave32/Wave64 fixtures cover each legal selection and modifier;
+they are retained instead of copying upstream's uniform 16-entry selector.
+Other important upstream differences are recorded rather than hidden:
+
+- Floating SWMMAC remains loose-only. Its eight mnemonics share decoded FP32
+  accumulation and scalar/AVX2/AVX-512 kernels. FP16/BF16 supports four A/B
+  negation bits, applied by selected pair position; FP8/BF8 has no negation
+  modifiers. There is no C modifier or CLAMP. GoC's packed results round once
+  to nearest-even; finite FP16 overflow honors `GOC_FP16_OVFL`. In contrast,
+  upstream's generic BF16 pack truncates, and its RDNA4 generated FP16/BF16
+  handlers omit the negation and overflow arguments. Its deterministic NaN
+  replay and specializations for other architectures/shapes do not establish
+  a bit-exact RDNA4 sparse numerical model. Existing finite capture agreement
+  is not a claim of exact rounding or NaN payloads for arbitrary inputs.
+- Integer SWMMAC supports both semantics, independent A/B signedness and
+  signed CLAMP. GoC retains the two saturation stages and width-specific K=64
+  ordering established by its existing gfx1201 corpora. Upstream still performs
+  one final clamp. Scalar/AVX2/AVX-512 share the decoded inputs and stage mapping;
+  without CLAMP, accumulation wraps modulo 2^32.
+- LLVM `cba25ae10871`'s `SWMMACInstGFX12` declares
+  `mayRaiseFPException = 0`; generated rocjitsu handlers write only D. GoC
+  consequently exposes no optional implicit-state output for these APIs.
+  Floating guest mode support remains limited to the documented FP16 overflow
+  behavior; no host-independent loose arithmetic or directed rounding is claimed.
+
+Expanded both floating sparse families' Wave32/Wave64 capture tests to cover
+non-strict exact fallback as well as loose requests at every CPU level and
+legal modifier/index selection. Existing tests cover strict rejection, native
+integer saturation, every FP8/BF8 code, packed midpoints, overflow, overlapping
+operands/metadata, duplicate destinations and invalid-flag preservation.
+All 46 `SubbyteWmma`, `Swmmac8`, `Swmmac16` and `SwmmacInteger` tests pass on
+Clang 21 and GCC 15 Release and ASan/UBSan. Nine inventory/review tooling tests
+also pass. No production implementation changed in this review.
+
+Together with the dense reviews above, all 22 in-scope canonical WMMA/SWMMAC
+mnemonics now have recorded contracts. This closes the matrix review queue,
+not the remaining scalar/vector reviews or the documented numerical limitations.

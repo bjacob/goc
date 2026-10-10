@@ -1202,5 +1202,48 @@
       "v_wmma_f16_16x16x16_f16",
       "v_wmma_bf16_16x16x16_bf16"
     ]
+  },
+  {
+    "heading": "FP8 and BF8 dense WMMA contract review",
+    "semantics": "loose",
+    "tests": "tests/subbyte_wmma_test.cpp",
+    "mnemonics": [
+      "v_wmma_f32_16x16x16_fp8_fp8",
+      "v_wmma_f32_16x16x16_fp8_bf8",
+      "v_wmma_f32_16x16x16_bf8_fp8",
+      "v_wmma_f32_16x16x16_bf8_bf8"
+    ]
+  },
+  {
+    "heading": "Sparse WMMA contract review",
+    "semantics": "loose",
+    "tests": "tests/swmmac8_test.cpp",
+    "mnemonics": [
+      "v_swmmac_f32_16x16x32_fp8_fp8",
+      "v_swmmac_f32_16x16x32_fp8_bf8",
+      "v_swmmac_f32_16x16x32_bf8_fp8",
+      "v_swmmac_f32_16x16x32_bf8_bf8"
+    ]
+  },
+  {
+    "heading": "Sparse WMMA contract review",
+    "semantics": "loose",
+    "tests": "tests/swmmac16_test.cpp",
+    "mnemonics": [
+      "v_swmmac_f32_16x16x32_f16",
+      "v_swmmac_f32_16x16x32_bf16",
+      "v_swmmac_f16_16x16x32_f16",
+      "v_swmmac_bf16_16x16x32_bf16"
+    ]
+  },
+  {
+    "heading": "Sparse WMMA contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/swmmac_integer_test.cpp",
+    "mnemonics": [
+      "v_swmmac_i32_16x16x32_iu8",
+      "v_swmmac_i32_16x16x32_iu4",
+      "v_swmmac_i32_16x16x64_iu4"
+    ]
   }
 ]

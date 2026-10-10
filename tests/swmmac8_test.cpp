@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <limits>
 #include <stdint.h>
 
@@ -45,19 +46,22 @@ using WideRegisters = LaneRegisters<64>;
 } // namespace
 
 TEST(Swmmac8, HardwareAllModifiers) {
-  for (unsigned op = 0; op < 4; ++op)
-    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (unsigned variant = 0; variant < 2; ++variant)
-        for (unsigned sample = 0; sample < 16; ++sample) {
-          Registers r(op, sample);
-          ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
-          uint64_t digest = goc_test::capture_hash_seed;
-          for (unsigned reg = 0; reg < 8u; ++reg)
-            for (unsigned lane = 0; lane < 32; ++lane)
-              digest = goc_test::capture_hash_bytes(digest, r.d[reg][lane], 4);
-          ASSERT_EQ(digest, goc_test::swmmac8_capture_digests[op][sample][variant])
-              << op << "/" << cpu << "/" << variant;
-        }
+  // A non-strict exact request must follow the same loose path.
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (unsigned op = 0; op < 4; ++op)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned variant = 0; variant < 2; ++variant)
+          for (unsigned sample = 0; sample < 16; ++sample) {
+            Registers r(op, sample);
+            ASSERT_EQ(functions[op](cpu | semantics, mode(variant), r.d, r.a, r.b, r.index),
+                      GOC_SUCCESS);
+            uint64_t digest = goc_test::capture_hash_seed;
+            for (unsigned reg = 0; reg < 8u; ++reg)
+              for (unsigned lane = 0; lane < 32; ++lane)
+                digest = goc_test::capture_hash_bytes(digest, r.d[reg][lane], 4);
+            ASSERT_EQ(digest, goc_test::swmmac8_capture_digests[op][sample][variant])
+                << op << "/" << semantics << "/" << cpu << "/" << variant;
+          }
 }
 
 TEST(Swmmac8, EveryLaneAndModifier) {
@@ -170,22 +174,24 @@ const Fn wide_functions[] = {
 } // namespace
 
 TEST(Swmmac8, Wave64NativeAllFormatsAndIndexKeys) {
-  for (unsigned op = 0; op < 4; ++op)
-    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (unsigned key = 0; key < 4; ++key)
-        for (unsigned sample = 0; sample < 16; ++sample) {
-          uint32_t data[15][64];
-          goc_test::swmmac8_capture_inputs(op, sample, data);
-          const uint32_t *a[] = {data[0]}, *b[] = {data[2], data[3]}, *index[] = {data[14]};
-          uint32_t *d[] = {data[6], data[7], data[8], data[9]};
-          ASSERT_EQ(wide_functions[op](cpu, key << 7, d, a, b, index), GOC_SUCCESS);
-          uint64_t hash = goc_test::capture_hash_seed;
-          for (unsigned reg = 0; reg < 4; ++reg)
-            for (unsigned lane = 0; lane < 64; ++lane)
-              hash = goc_test::capture_hash_word(hash, d[reg][lane]);
-          ASSERT_EQ(hash, goc_test::swmmac8_wave64_digests[op][sample][key])
-              << op << "/" << cpu << "/" << sample << "/" << key;
-        }
+  // A non-strict exact request must follow the same loose path.
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (unsigned op = 0; op < 4; ++op)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned key = 0; key < 4; ++key)
+          for (unsigned sample = 0; sample < 16; ++sample) {
+            uint32_t data[15][64];
+            goc_test::swmmac8_capture_inputs(op, sample, data);
+            const uint32_t *a[] = {data[0]}, *b[] = {data[2], data[3]}, *index[] = {data[14]};
+            uint32_t *d[] = {data[6], data[7], data[8], data[9]};
+            ASSERT_EQ(wide_functions[op](cpu | semantics, key << 7, d, a, b, index), GOC_SUCCESS);
+            uint64_t hash = goc_test::capture_hash_seed;
+            for (unsigned reg = 0; reg < 4; ++reg)
+              for (unsigned lane = 0; lane < 64; ++lane)
+                hash = goc_test::capture_hash_word(hash, d[reg][lane]);
+            ASSERT_EQ(hash, goc_test::swmmac8_wave64_digests[op][sample][key])
+                << op << "/" << semantics << "/" << cpu << "/" << sample << "/" << key;
+          }
 }
 
 TEST(Swmmac8, Wave64OverlappingSourcesAndDuplicateDestinations) {
