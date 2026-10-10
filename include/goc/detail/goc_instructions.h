@@ -3319,6 +3319,16 @@ int goc_v_frexp_exp_i32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 int goc_v_frexp_exp_i32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
+// Wave64 exponent extraction uses the same operand layouts and loose
+// semantics, with 64 lanes per VGPR. Optional state reporting is unchanged.
+int goc_v_frexp_exp_i32_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user);
+
+int goc_v_frexp_exp_i32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user);
+
 // Scale A by 2^B, with a signed 32-bit integer exponent in one B VGPR.
 // FP32 A/D each use one VGPR; FP64 A/D use low/high pairs. Supports A ABS/NEG,
 // OMOD and CLAMP with loose semantics and gradual underflow. Integer B has no

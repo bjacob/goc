@@ -966,3 +966,24 @@ Wave64 capture or performance claim is made. The width-review queue is 210 APIs.
 
 Validation: all 776 tests pass on Clang 21 and GCC 15 Release. All ten integer
 conversion and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 FP32/FP64 exponent extraction
+
+Added both FREXP_EXP_I32 Wave64 APIs with the existing scalar/v3 execution
+paths. FP32 accepts DPP and remaps all row enables; FP64 rejects DPP and reads
+two source VGPRs. Both write one integer-result VGPR. Loose optional state
+remains unchanged; exact non-null reporting is rejected before operand access.
+
+The exact-semantics gate is deliberately unchanged. FP64 SIMD normalizes
+subnormals through host floating-point scaling and requires host denormal
+inputs enabled. A guest/host denormal-state audit is still necessary before
+claiming exact support. No production FP-environment mutation was added.
+
+Independent integer-reference tests cover every exponent field, subnormal
+leading bits, all modifiers and CPU levels, DPP row masks, upper/lower EXEC,
+aliases with either source half, guards, empty/invalid calls and optional state.
+The existing FP32 hardware corpus remains in place; this adds no new Wave64
+hardware capture. The width-review queue is 208 APIs.
+
+Validation: all 777 tests pass on Clang 21 and GCC 15 Release. All nine
+exponent-extraction and instruction-flag tests pass under ASan/UBSan.

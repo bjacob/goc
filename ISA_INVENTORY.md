@@ -1174,8 +1174,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_fract_f32` | yes | yes | in | `goc_v_fract_f32` | — | API present; semantic audit pending |
 | `v_fract_f64` | yes | yes | in | `goc_v_fract_f64` | — | API present; semantic audit pending |
 | `v_frexp_exp_i16_f16` | yes | yes | in | `goc_v_frexp_exp_i16_f16` | — | API present; semantic audit pending |
-| `v_frexp_exp_i32_f32` | yes | yes | in | `goc_v_frexp_exp_i32_f32` | — | API present; semantic audit pending |
-| `v_frexp_exp_i32_f64` | yes | yes | in | `goc_v_frexp_exp_i32_f64` | — | API present; semantic audit pending |
+| `v_frexp_exp_i32_f32` | yes | yes | in | `goc_v_frexp_exp_i32_f32`<br>`goc_v_frexp_exp_i32_f32_wave64` | — | API present; semantic audit pending |
+| `v_frexp_exp_i32_f64` | yes | yes | in | `goc_v_frexp_exp_i32_f64`<br>`goc_v_frexp_exp_i32_f64_wave64` | — | API present; semantic audit pending |
 | `v_frexp_mant_f16` | yes | yes | in | `goc_v_frexp_mant_f16` | — | API present; semantic audit pending |
 | `v_frexp_mant_f32` | yes | yes | in | `goc_v_frexp_mant_f32` | — | API present; semantic audit pending |
 | `v_frexp_mant_f64` | yes | yes | in | `goc_v_frexp_mant_f64` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 210 Wave32 EXEC-taking APIs without a corresponding
+There are 208 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1449,7 +1449,6 @@ this screen; their width requirements remain a separate audit.
 | [`fp8_conversion.cpp`](src/fp8_conversion.cpp) | `goc_v_cvt_f32_bf8`, `goc_v_cvt_f32_fp8`, `goc_v_cvt_pk_f32_bf8`, `goc_v_cvt_pk_f32_fp8` |
 | [`fp8_dot.cpp`](src/fp8_dot.cpp) | `goc_v_dot4_f32_bf8_bf8`, `goc_v_dot4_f32_bf8_fp8`, `goc_v_dot4_f32_fp8_bf8`, `goc_v_dot4_f32_fp8_fp8` |
 | [`fp8_narrow.cpp`](src/fp8_narrow.cpp) | `goc_v_cvt_pk_bf8_f32`, `goc_v_cvt_pk_fp8_f32`, `goc_v_cvt_sr_bf8_f32`, `goc_v_cvt_sr_fp8_f32` |
-| [`frexp_exp.cpp`](src/frexp_exp.cpp) | `goc_v_frexp_exp_i32_f32`, `goc_v_frexp_exp_i32_f64` |
 | [`half_binary.cpp`](src/half_binary.cpp) | `goc_v_add_f16`, `goc_v_max_f16`, `goc_v_max_num_f16`, `goc_v_maximum_f16`, `goc_v_min_f16`, `goc_v_min_num_f16`, `goc_v_minimum_f16`, `goc_v_mul_f16`, `goc_v_pk_add_f16`, `goc_v_pk_max_f16`, `goc_v_pk_max_num_f16`, `goc_v_pk_maximum_f16`, `goc_v_pk_min_f16`, `goc_v_pk_min_num_f16`, `goc_v_pk_minimum_f16`, `goc_v_pk_mul_f16`, `goc_v_sub_f16`, `goc_v_subrev_f16` |
 | [`half_dot.cpp`](src/half_dot.cpp) | `goc_v_dot2_bf16_bf16`, `goc_v_dot2_f16_f16` |
 | [`half_exponent.cpp`](src/half_exponent.cpp) | `goc_v_frexp_exp_i16_f16`, `goc_v_ldexp_f16` |

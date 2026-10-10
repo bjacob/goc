@@ -78,3 +78,44 @@ int goc_v_frexp_exp_i32_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, u
     return GOC_ERROR_INVALID_FLAGS;
   return frexp_exp<true>(flags, exec_mask, mode, d, a);
 }
+
+namespace {
+
+template <bool Fp64>
+int frexp_exp_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                     const uint32_t *const *a, uint32_t *excp_flag_user) {
+  const auto instruction = Fp64 ? goc_v_frexp_exp_i32_f64 : goc_v_frexp_exp_i32_f32;
+  if (int error = instruction(flags, 0, mode, nullptr, nullptr, excp_flag_user))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source[Fp64 ? 2 : 1];
+    for (unsigned reg = 0; reg < (Fp64 ? 2U : 1U); ++reg)
+      source[reg] = a[reg] + half * 32;
+    if (int error = instruction(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest, source,
+                                excp_flag_user))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
+} // namespace
+
+int goc_v_frexp_exp_i32_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user) {
+  return frexp_exp_wave64<false>(flags, exec_mask, mode, d, a, excp_flag_user);
+}
+
+int goc_v_frexp_exp_i32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user) {
+  return frexp_exp_wave64<true>(flags, exec_mask, mode, d, a, excp_flag_user);
+}

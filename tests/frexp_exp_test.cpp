@@ -287,3 +287,78 @@ TEST(FrexpExp, DppValidation) {
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
   }
 }
+
+TEST(FrexpExp, Wave64ExponentFieldsModifiersDppAndAliases) {
+  const decltype(&goc_v_frexp_exp_i32_f32_wave64) wave64[] = {goc_v_frexp_exp_i32_f32_wave64,
+                                                              goc_v_frexp_exp_i32_f64_wave64};
+  for (unsigned fp64 = 0; fp64 < 2; ++fp64)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      unsigned width = fp64 ? 52 : 23;
+      unsigned fields = fp64 ? 2048 : 256;
+      for (unsigned start = 0; start < fields; start += 64)
+        for (unsigned variant = 0; variant < 32; ++variant) {
+          uint32_t words[3][64];
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            uint64_t bits = uint64_t(start + lane) << width;
+            bits |= lane & 1 ? (1ULL << width) - 1 : 0;
+            words[0][lane] = uint32_t(bits);
+            words[1][lane] = uint32_t(bits >> 32);
+          }
+          const uint32_t *a[] = {words[0], words[1]};
+          uint32_t *d = words[2];
+          uint32_t excp_flag_user = 0x12345678;
+          ASSERT_EQ(wave64[fp64](cpu, UINT64_MAX, mode(variant), &d, a, &excp_flag_user),
+                    GOC_SUCCESS);
+          EXPECT_EQ(excp_flag_user, 0x12345678U);
+          for (unsigned lane = 0; lane < 64; ++lane)
+            ASSERT_EQ(d[lane],
+                      reference(uint64_t(words[0][lane]) | (uint64_t(words[1][lane]) << 32), fp64));
+        }
+      for (unsigned variant = 0; variant < 32; ++variant)
+        for (auto route : goc_test::dpp_modes) {
+          if (fp64 && route != goc_test::dpp_modes[0])
+            continue;
+          for (unsigned rows = 0; rows < 16; ++rows)
+            for (unsigned target = 0; target < 3; ++target) {
+              uint32_t initial[3][66], words[3][66];
+              for (unsigned lane = 0; lane < 66; ++lane) {
+                uint64_t bits = lane < width ? 1ULL << lane : uint64_t(lane) << width;
+                initial[0][lane] = uint32_t(bits);
+                initial[1][lane] = uint32_t(bits >> 32);
+                initial[2][lane] = 0xdeadbeef;
+              }
+              std::memcpy(words, initial, sizeof words);
+              uint64_t descriptor = fp64 ? 0 : route;
+              if (descriptor & GOC_DPP16)
+                descriptor =
+                    (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+              const uint32_t *a[] = {words[0] + 1, words[1] + 1};
+              uint32_t *d = words[target] + 1;
+              uint64_t exec_mask = 0x87654321fedcba98ULL;
+              ASSERT_EQ(wave64[fp64](cpu, exec_mask, descriptor | mode(variant), &d, a, nullptr),
+                        GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                int source = int(lane);
+                bool enabled = exec_mask >> lane & 1;
+                if (descriptor)
+                  enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+                uint64_t bits = source < 0
+                                    ? 0
+                                    : uint64_t(initial[0][source + 1]) |
+                                          (fp64 ? uint64_t(initial[1][source + 1]) << 32 : 0);
+                EXPECT_EQ(d[lane], enabled ? reference(bits, fp64) : initial[target][lane + 1]);
+              }
+              EXPECT_EQ(words[target][0], initial[target][0]);
+              EXPECT_EQ(words[target][65], initial[target][65]);
+            }
+        }
+      EXPECT_EQ(wave64[fp64](cpu, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(wave64[fp64](cpu, UINT64_MAX, 1ULL << 63, nullptr, nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+      uint32_t excp_flag_user = 0x12345678;
+      EXPECT_EQ(wave64[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr,
+                             &excp_flag_user),
+                GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+      EXPECT_EQ(excp_flag_user, 0x12345678U);
+    }
+}
