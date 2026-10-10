@@ -44,6 +44,27 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+// Row pairs never cross a 32-lane boundary, including in the X forms.
+template <bool Cross, bool Var>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b, uint32_t lo, uint32_t hi) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  if (int error = run<Cross, Var>(flags, 0, mode, nullptr, nullptr, nullptr, lo, hi))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source = a[0] + half * 32;
+    const uint32_t *indices = Var ? b[0] + half * 32 : nullptr;
+    if (int error = run<Cross, Var>(flags, uint32_t(exec_mask >> (half * 32)), mode, &dest, &source,
+                                    &indices, lo, hi))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_permlane16_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -74,4 +95,28 @@ int goc_v_permlanex16_var_b32(uint64_t flags, uint32_t exec_mask, uint64_t instr
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run<true, true>(flags, exec_mask, instruction_flags, d, a, b, 0, 0);
+}
+
+int goc_v_permlane16_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a, uint32_t lo,
+                                uint32_t hi) {
+  return run_wave64<false, false>(flags, exec_mask, instruction_flags, d, a, nullptr, lo, hi);
+}
+
+int goc_v_permlane16_var_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b) {
+  return run_wave64<false, true>(flags, exec_mask, instruction_flags, d, a, b, 0, 0);
+}
+
+int goc_v_permlanex16_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a, uint32_t lo,
+                                 uint32_t hi) {
+  return run_wave64<true, false>(flags, exec_mask, instruction_flags, d, a, nullptr, lo, hi);
+}
+
+int goc_v_permlanex16_var_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b) {
+  return run_wave64<true, true>(flags, exec_mask, instruction_flags, d, a, b, 0, 0);
 }

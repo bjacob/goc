@@ -1191,3 +1191,21 @@ a new native Wave64 capture or an exactness claim. The width-review queue is
 
 Validation: all 794 tests pass on Clang 21 and GCC 15 Release. All fourteen
 FP16 conversion and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 row permutations
+
+Added Wave64 APIs for PERMLANE16, PERMLANEX16 and both variable-selector
+forms. The ISA defines X row pairing as 0/1 and 2/3, so each half reuses
+the existing scalar/AVX2/AVX-512 kernel without changing its numerical or
+inactive-source rules. Both semantics remain supported. Whole-register
+source/index/destination aliases are safe because no source crosses halves.
+
+Independent row/index references check all four operations, FI/BOUND_CTRL
+combinations, both semantics, all CPU paths, upper/lower-only and sparse EXEC,
+source/index aliases and guard words. Invalid flags reject before operand
+access; zero EXEC accepts null operands. Existing Wave32 raw hardware and host
+FP-state tests remain in place. This slice adds no native Wave64 capture or
+new throughput claim. The width-review queue is now 163 APIs.
+
+Validation: all 796 tests pass on Clang 21 and GCC 15 Release. All six
+PERMLANE and instruction-flag tests pass under ASan/UBSan.

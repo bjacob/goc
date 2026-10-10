@@ -112,3 +112,53 @@ TEST(Permlane, FlagsAndHostState) {
       }
   }
 }
+
+TEST(Permlane, Wave64MasksAliasingAndSelectors) {
+  std::mt19937 rng(72815);
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+      for (unsigned op = 0; op < 4; ++op)
+        for (unsigned mode = 0; mode < 4; ++mode)
+          for (uint64_t exec_mask :
+               {uint64_t(0), UINT64_MAX, uint64_t(0xffffffff), uint64_t(0xffffffff00000000ULL),
+                uint64_t(0x87654321fedcba98ULL), uint64_t(1), uint64_t(1ULL << 31),
+                uint64_t(1ULL << 32), uint64_t(1ULL << 63)})
+            for (unsigned alias = 0; alias < 4; ++alias) {
+              uint32_t storage[3][66], before[3][66], want[64];
+              for (auto &reg : storage)
+                for (auto &word : reg)
+                  word = rng();
+              std::memcpy(before, storage, sizeof(storage));
+              unsigned dest = alias == 0 ? 2 : alias == 2 ? 1 : 0;
+              unsigned bi = alias == 3 ? 0 : 1;
+              uint32_t lo = rng(), hi = rng();
+              for (unsigned lane = 0; lane < 64; ++lane)
+                want[lane] =
+                    goc_test::permlane_reference(op, exec_mask, mode, lane, before[0] + 1,
+                                                 before[bi] + 1, before[dest][lane + 1], lo, hi);
+              uint32_t *pd = storage[dest] + 1;
+              const uint32_t *pa = storage[0] + 1, *pb = storage[bi] + 1;
+              ASSERT_EQ(goc_test::permlane_call_wave64(op, cpu | semantics | GOC_SEMANTICS_STRICT,
+                                                       exec_mask, mode, &pd, &pa, &pb, lo, hi),
+                        GOC_SUCCESS);
+              for (unsigned reg = 0; reg < 3; ++reg)
+                for (unsigned lane = 0; lane < 66; ++lane)
+                  ASSERT_EQ(storage[reg][lane], reg == dest && lane > 0 && lane < 65
+                                                    ? want[lane - 1]
+                                                    : before[reg][lane]);
+            }
+}
+
+TEST(Permlane, Wave64Validation) {
+  for (unsigned op = 0; op < 4; ++op) {
+    EXPECT_EQ(goc_test::permlane_call_wave64(op, 0, 0, 0, nullptr, nullptr, nullptr, 0, 0),
+              GOC_SUCCESS);
+    for (unsigned bit = 2; bit < 64; ++bit)
+      EXPECT_EQ(goc_test::permlane_call_wave64(op, 0, UINT64_MAX, 1ULL << bit, nullptr, nullptr,
+                                               nullptr, 0, 0),
+                GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(goc_test::permlane_call_wave64(op, 1ULL << 63, UINT64_MAX, 0, nullptr, nullptr,
+                                             nullptr, 0, 0),
+              GOC_ERROR_INVALID_FLAGS);
+  }
+}

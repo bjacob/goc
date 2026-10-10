@@ -229,6 +229,24 @@ int goc_v_permlanex16_var_b32(uint64_t flags, uint32_t exec_mask, uint64_t instr
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b);
 
+// Wave64 variants use the same selectors and inactive-source rules. X forms
+// exchange rows 0/1 and 2/3 independently; no source crosses a 32-lane half.
+int goc_v_permlane16_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a, uint32_t lo,
+                                uint32_t hi);
+
+int goc_v_permlane16_var_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b);
+
+int goc_v_permlanex16_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a, uint32_t lo,
+                                 uint32_t hi);
+
+int goc_v_permlanex16_var_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b);
+
 // Scalar packing/selection ignores EXEC, including zero EXEC; output pointers
 // are required. Inputs are passed by value and may come from destination storage.
 // Both loose and empirical exact semantics are supported; instruction_flags must
