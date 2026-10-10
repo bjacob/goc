@@ -3133,6 +3133,14 @@ int goc_v_dot2_f32_bf16(uint64_t flags, uint32_t exec_mask, uint64_t instruction
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c, uint32_t *excp_flag_user);
 
+// RDNA3 DOT2ACC adds the packed FP16 dot product to old D (one FP32 VGPR).
+// Supports DPP8/DPP16 routing of A, but no sign or half-selection modifiers.
+// Exact arithmetic and reporting restrictions match RDNA3 DOT2 above. Whole
+// VGPR aliasing is allowed; all results use the original accumulator/source bits.
+int goc_v_dot2acc_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user);
+
 // FP8/BF8 DOT4 accepts NEG_C and ABS_C; ABS precedes NEG. A/B modifiers,
 // half selection, output scaling and CLAMP are not supported.
 static const uint32_t GOC_DOT_ABS_C = 1U << 5;

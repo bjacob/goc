@@ -115,3 +115,12 @@ int goc_v_dot2_f32_bf16(uint64_t flags, uint32_t exec_mask, uint64_t instruction
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return dot<true, false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
+
+int goc_v_dot2acc_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user) {
+  // The RDNA3 VOP2 form only encodes routing modifiers, unlike VOP3P DOT2.
+  if (uint32_t(instruction_flags))
+    return GOC_ERROR_INVALID_FLAGS;
+  return goc_v_dot2_f32_f16(flags, exec_mask, instruction_flags, d, a, b, d, excp_flag_user);
+}

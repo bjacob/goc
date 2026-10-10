@@ -144,3 +144,66 @@ TEST(Dot2Architecture, DifferentExactResultsAndOptionalReporting) {
                 GOC_ERROR_INVALID_FLAGS);
   }
 }
+
+TEST(Dot2Architecture, AccumulateHardwareAndDppAliases) {
+  for (size_t base = 0; base < kDot2F16Cases.size(); base += 32)
+    for (uint32_t exec_mask : {0U, UINT32_MAX, 0x80018001U, 0xaaaaaaaaU}) {
+      Registers r;
+      for (int lane = 0; lane < 32; ++lane) {
+        const auto &f = kDot2F16Cases[(base + lane) % kDot2F16Cases.size()];
+        r.v[0][lane] = f.a;
+        r.v[1][lane] = f.b;
+        r.v[2][lane] = f.c;
+      }
+      ASSERT_EQ(goc_v_dot2acc_f32_f16(exact, exec_mask, 0, r.v + 2, r.v, r.v + 1, nullptr),
+                GOC_SUCCESS);
+      for (int lane = 0; lane < 32; ++lane) {
+        const auto &f = kDot2F16Cases[(base + lane) % kDot2F16Cases.size()];
+        EXPECT_EQ(r.v[2][lane], ((exec_mask >> lane) & 1) ? f.expected : f.c);
+      }
+    }
+  for (auto mode : goc_test::dpp_modes)
+    for (int dst : {0, 1, 2}) {
+      Registers r;
+      uint32_t wanted[4][34];
+      for (int lane = 0; lane < 32; ++lane) {
+        r.v[0][lane] = kDot2F16Cases[lane].a;
+        r.v[1][lane] = kDot2F16Cases[lane].b;
+        r.v[2][lane] = kDot2F16Cases[lane].c;
+      }
+      std::memcpy(wanted, r.data, sizeof wanted);
+      uint32_t exec_mask = 0xd7efb579U;
+      for (int lane = 0; lane < 32; ++lane) {
+        int source;
+        if (goc_test::dpp_source(mode, exec_mask, lane, source))
+          wanted[dst][lane + 1] =
+              expected(false, 0, source < 0 ? 0 : r.v[0][source], r.v[1][lane], r.v[dst][lane]);
+      }
+      ASSERT_EQ(goc_v_dot2acc_f32_f16(exact, exec_mask, mode, r.v + dst, r.v, r.v + 1, nullptr),
+                GOC_SUCCESS);
+      EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0);
+    }
+  for (unsigned bit = 0; bit < 32; ++bit)
+    EXPECT_EQ(
+        goc_v_dot2acc_f32_f16(exact, UINT32_MAX, 1ULL << bit, nullptr, nullptr, nullptr, nullptr),
+        GOC_ERROR_INVALID_FLAGS);
+}
+
+TEST(Dot2Architecture, AccumulateLooseSimdAndReportingOptOut) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    Registers r;
+    for (int lane = 0; lane < 32; ++lane) {
+      r.v[0][lane] = r.v[1][lane] = 0x3c003c00;
+      r.v[2][lane] = 0x3f800000;
+    }
+    uint32_t state = 0x80000055;
+    ASSERT_EQ(goc_v_dot2acc_f32_f16(cpu, 0xaaaaaaaaU, 0, r.v + 2, r.v, r.v + 1, &state),
+              GOC_SUCCESS);
+    for (int lane = 0; lane < 32; ++lane)
+      EXPECT_EQ(r.v[2][lane], (lane & 1) ? 0x40400000U : 0x3f800000U);
+    EXPECT_EQ(state, 0x80000055U);
+    EXPECT_EQ(goc_v_dot2acc_f32_f16(cpu | exact, UINT32_MAX, 0, nullptr, nullptr, nullptr, &state),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(state, 0x80000055U);
+  }
+}

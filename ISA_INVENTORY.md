@@ -20,8 +20,8 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 76
-- in, API present: 732
+- in, API absent: 75
+- in, API present: 733
 - out, API absent: 588
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
@@ -1123,7 +1123,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_dot2_f16_f16` | yes | yes | in | `goc_v_dot2_f16_f16` | — | API present; semantic audit pending |
 | `v_dot2_f32_bf16` | yes | yes | in | `goc_v_dot2_f32_bf16`<br>`goc_v_dot2_f32_bf16_rdna4` | — | API present; semantic audit pending |
 | `v_dot2_f32_f16` | yes | yes | in | `goc_v_dot2_f32_f16`<br>`goc_v_dot2_f32_f16_rdna4` | — | API present; semantic audit pending |
-| `v_dot2acc_f32_f16` | yes | — | in | — | `v_dot2c_f32_f16` | missing API |
+| `v_dot2acc_f32_f16` | yes | — | in | `goc_v_dot2acc_f32_f16` | `v_dot2c_f32_f16` | API present; semantic audit pending |
 | `v_dot4_f32_bf8_bf8` | — | yes | in | `goc_v_dot4_f32_bf8_bf8` | — | API present; semantic audit pending |
 | `v_dot4_f32_bf8_fp8` | — | yes | in | `goc_v_dot4_f32_bf8_fp8` | — | API present; semantic audit pending |
 | `v_dot4_f32_fp8_bf8` | — | yes | in | `goc_v_dot4_f32_fp8_bf8` | — | API present; semantic audit pending |

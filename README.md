@@ -2287,3 +2287,8 @@ forms return constant false/true condition masks. True still respects EXEC and
 DPP output filtering. Their operand values are ignored, so source pointers may
 be null. CMPX returns replacement EXEC through `d`, as for other comparisons.
 Both semantics are exact; the current entry points are Wave32.
+
+RDNA3 `v_dot2acc_f32_f16` uses its destination as the FP32 accumulator. It
+shares the GFX11 exact DOT2 model and loose SIMD path, supports DPP8/DPP16 on A,
+and rejects sign/half-selection modifiers absent from its VOP2 encoding. Exact
+exception reporting remains unsupported; a null output pointer opts out.

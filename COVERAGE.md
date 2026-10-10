@@ -49,7 +49,7 @@ paths must retain their existing performance and may skip optional state outputs
 |---|---|---|
 | RDNA3 WMMA | All six mnemonics, both widths, exact rocjitsu GFX11 model; `wmma_replicated_exact_test.cpp`; 103 DOT2 captures and 28 packed matrices | Scalar implementations; verify inventory integration as other APIs evolve |
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
-| DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | Add accumulator/dual forms; RDNA3 reporting uncharacterized; Wave64 |
+| DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC added with the same exact model and loose SIMD; dual forms, RDNA3 reporting, and Wave64 remain |
 | Floating min/max/median | Existing RDNA4 NUM forms | RDNA3 names and NaN/zero policies, signaling NaNs, all widths and packed forms |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV B32/B64 and MOVK/CMOVK implemented for both architectures; exhaustive immediate/condition tests | Relative addressing and hardware-register access; SAVEEXEC/WREXEC implemented at both register widths |
@@ -143,3 +143,9 @@ Before adding these names, review NaNs (especially signaling NaNs), zero ties,
 operand ordering in median networks, guest FP flags, output modifiers and
 exception updates. Existing GoC loose/SIMD tests must remain valid, but cannot
 substitute for RDNA3 hardware evidence. No min/max API was added by this audit.
+- RDNA3 DOT2ACC: the VOP2 accumulator form now reuses the GFX11 exact DOT2 model
+  and existing loose SIMD implementation, with D as the read/write accumulator.
+  Only DPP routing is accepted; VOP3P sign/half controls are rejected as absent
+  from its encoding. Captured results, DPP aliases, masks, loose SIMD and optional
+  reporting contracts are tested. All 691 tests pass on Clang/GCC and all five
+  architectural DOT2 tests pass under ASan/UBSan. Missing API names: 75.
