@@ -85,6 +85,23 @@ function is the separately typed `goc_init_cpu_flags`. Ninja reports both builds
 up to date. This checks symbol presence, not parameter ABI compatibility,
 architecture semantics, caller linkage, or instruction encoding coverage.
 
+A subsequent caller-linkage check generates a correctly typed volatile function
+pointer for every declaration, including `goc_init_cpu_flags` (1,792 references).
+All references compile as C99 and C++17 with both Clang and GCC, using
+`-Wall -Wextra -Werror -pedantic`, and link against the corresponding current
+archive with the C++ driver. All four executables start and return successfully.
+The volatile global initializers retain linker relocations without invoking
+instructions on fabricated operands. This proves public-name linkage and header
+usability, not runtime numerical behavior or independently verified parameter ABI.
+Generated source, objects and executables are in
+`../goc-build/coverage-work/public-linkage/`.
+
+The generated architecture queue now lists all 222 architecture-exclusive
+instructions as well as the 587 common ones. Previously its tables omitted the
+exclusive names despite including them in the review counts. A synthetic-input
+regression test checks both exclusive targets, missing helpers and pending
+statuses. All ten audit-tool tests pass; no production code changed.
+
 ## Remaining completion checks
 
 - Resolve RDNA3 DX9 FMAC's global-state applicability from existing authoritative

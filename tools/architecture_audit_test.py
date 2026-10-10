@@ -7,7 +7,7 @@ import tempfile
 import sys
 
 sys.dont_write_bytecode = True
-from architecture_audit import direct_policies, execution_functions, read_scope, read_reviews
+from architecture_audit import direct_policies, execution_functions, read_scope, read_reviews, generate
 
 
 class ExtractionTest(unittest.TestCase):
@@ -47,6 +47,29 @@ inline void execute_v_second() { fp_mode::quiets_nan(0, true); }
         self.assertEqual(read_scope(text), [('v_a', True, True), ('v_b', False, True)])
         with self.assertRaises(ValueError):
             read_scope('unrecognized input')
+
+    def test_report_lists_pending_exclusive_instructions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'tools').mkdir()
+            (root / 'include/goc/detail').mkdir(parents=True)
+            shared = root / 'upstream/lib/rocjitsu/src/rocjitsu/isa/arch/amdgpu/generated/shared'
+            shared.mkdir(parents=True)
+            (shared / 'execute_shared.h').write_text('inline void execute_v_common() {}')
+            (root / 'ISA_INVENTORY.md').write_text(
+                '| `v_common` | yes | yes | in | x | — | pending |\n'
+                '| `v_old` | yes | — | in | x | — | pending |\n'
+                '| `v_new` | — | yes | in | x | — | pending |\n')
+            (root / 'COVERAGE.md').write_text('')
+            (root / 'tools/architecture_reviews.json').write_text('[]')
+            (root / 'include/goc/detail/goc_instructions.h').write_text('')
+            report = generate(root, root / 'upstream')
+            common, exclusive = report.split('## Architecture-exclusive contracts')
+            self.assertIn('| `v_common` |', common)
+            self.assertNotIn('| `v_common` |', exclusive)
+            self.assertIn('| `v_old` | RDNA3 | not found | review required |', exclusive)
+            self.assertIn('| `v_new` | RDNA4 | not found | review required |', exclusive)
+            self.assertIn('remaining 3 in-scope mnemonics', report)
 
 
 
