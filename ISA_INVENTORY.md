@@ -653,10 +653,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_endpgm_saved` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_floor_f16` | — | yes | in | `goc_s_floor_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-rounding-architecture-contracts) |
 | `s_floor_f32` | — | yes | in | `goc_s_floor_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-rounding-architecture-contracts) |
-| `s_fmaak_f32` | — | yes | in | `goc_s_fmaak_f32` | — | API present; semantic audit pending |
-| `s_fmac_f16` | — | yes | in | `goc_s_fmac_f16` | — | API present; semantic audit pending |
-| `s_fmac_f32` | — | yes | in | `goc_s_fmac_f32` | — | API present; semantic audit pending |
-| `s_fmamk_f32` | — | yes | in | `goc_s_fmamk_f32` | — | API present; semantic audit pending |
+| `s_fmaak_f32` | — | yes | in | `goc_s_fmaak_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-fp32-fma-exact-port-and-architecture-contracts) |
+| `s_fmac_f16` | — | yes | in | `goc_s_fmac_f16` | — | [loose contract reviewed; see limitations](COVERAGE.md#scalar-fp16-fmac-architecture-contract) |
+| `s_fmac_f32` | — | yes | in | `goc_s_fmac_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-fp32-fma-exact-port-and-architecture-contracts) |
+| `s_fmamk_f32` | — | yes | in | `goc_s_fmamk_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-fp32-fma-exact-port-and-architecture-contracts) |
 | `s_getpc_b64` | yes | yes | in | `goc_s_getpc_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_getreg_b32` | yes | yes | in: register access | `goc_s_getreg_b32`<br>`goc_s_getreg_b32_rdna4` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#hardware-register-access-architecture-contracts) |
 | `s_gl1_inv` | yes | — | out: SMEM | — | — | excluded: memory/control/scheduling |

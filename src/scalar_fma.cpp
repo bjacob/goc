@@ -4,6 +4,7 @@
 // FP16 uses the existing rocjitsu-derived half_fma_value model.
 
 #include "float_formats.h"
+#include "fma_scalar.h"
 #include "goc/goc.h"
 #include "half_fma_scalar.h"
 #include "internal.h"
@@ -14,8 +15,9 @@
 namespace {
 
 template <bool Half, bool Accumulate>
-int run(uint64_t flags, uint32_t mode, uint32_t *d, uint32_t a, uint32_t b, uint32_t c) {
-  if (int error = goc::validate(flags, mode, false,
+[[gnu::always_inline]] inline int run(uint64_t flags, uint32_t mode, uint32_t *d, uint32_t a,
+                                      uint32_t b, uint32_t c) {
+  if (int error = goc::validate(flags, mode, !Half,
                                 GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   if constexpr (Accumulate)
@@ -33,6 +35,12 @@ int run(uint64_t flags, uint32_t mode, uint32_t *d, uint32_t a, uint32_t b, uint
       b &= sign;
     if (!(c & inf))
       c &= sign;
+  }
+  if constexpr (!Half) {
+    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
+      *d = goc::fma_value_f32(a, b, c, false, flags, false);
+      return GOC_SUCCESS;
+    }
   }
   float x = Half ? goc::f16_to_float(uint16_t(a)) : goc::as_float(a);
   float y = Half ? goc::f16_to_float(uint16_t(b)) : goc::as_float(b);

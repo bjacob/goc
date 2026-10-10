@@ -1465,5 +1465,23 @@
       "s_minimum_f16",
       "s_maximum_f16"
     ]
+  },
+  {
+    "heading": "Scalar FP32 FMA exact port and architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/scalar_fma_test.cpp",
+    "mnemonics": [
+      "s_fmac_f32",
+      "s_fmaak_f32",
+      "s_fmamk_f32"
+    ]
+  },
+  {
+    "heading": "Scalar FP16 FMAC architecture contract",
+    "semantics": "loose",
+    "tests": "tests/scalar_fma_test.cpp",
+    "mnemonics": [
+      "s_fmac_f16"
+    ]
   }
 ]

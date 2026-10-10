@@ -7911,3 +7911,82 @@ Release and Clang ASan/UBSan; all nine tooling tests pass. Logs use
 GCC's dangling-else warning in the new GoogleTest assertion was fixed with
 explicit braces before final validation. Production code and performance
 are unchanged; this was targeted family validation, not a full-suite rerun.
+
+
+## Scalar FP32 FMA exact port and architecture contracts
+
+Reviewed `s_fmac_f32`, `s_fmaak_f32` and `s_fmamk_f32` against the RDNA3/RDNA4
+XML inventories, RDNA4 ISA sections 6.8/16.1, and rocjitsu revision
+`ffc144c564c`'s shared handlers and architecture-aware `fp_mode::arithmetic<FMA>`
+and `fma_f32`. All are RDNA4-only SOP2 operations. FMAC optionally uses a literal
+source; FMAAK/FMAMK require the literal encoding. The literal is respectively
+the addend or second multiplicand, passed to GoC as raw FP32 bits. FMAC reads
+the old destination as addend. They execute once independently of EXEC,
+preserve SCC and have no modifiers, DPP or separate Wave64 form.
+
+Exact FP32 scalar results now reuse GoC's existing `fma_value_f32` adaptation
+of that same rocjitsu arithmetic model. The scalar wrapper snapshots the
+accumulator and applies guest input flushing, then calls the integer model
+once. This shares NaN ordering, fused nearest rounding, signed-zero rules,
+output flushing and the existing tininess policy with vector FMA. No new
+rounding algorithm, empirical model, helper file or host-control mutation was
+introduced. Loose scalar arithmetic and its existing tininess handling remain.
+
+- Invalid zero-times-infinity takes precedence over an addend NaN; otherwise
+  NaN selection follows A, B, C and quiets the selected payload. Opposing
+  product/addend infinities produce the existing negative canonical NaN.
+  Exact cancellation rounds once, preserving the model's signed-zero rules.
+- Input/output flush flags are supported; FP16_OVFL is an accepted no-op for
+  FP32. Guest directed rounding, IEEE and DX10-clamp-off remain unsupported.
+  Exact FP32 uses integer arithmetic; loose mode retains its documented host
+  nearest-even/enabled-denormal preconditions.
+- The manual permits scalar FP exceptions, so each API retains trailing
+  optional `excp_flag_user`. Exact non-null reporting remains unsupported before
+  validation or accumulator reads, regardless of STRICT. Null state opts out;
+  loose calls skip state updates. Errors leave the destination and state intact.
+- Existing scalar hardware hashes now run in strict exact as well as loose
+  mode across all eight policies, CPU tiers, 4,096 input triples and twelve
+  literals per literal form. These historical hashes normalize NaNs; new raw
+  literal checks separately verify the borrowed model's NaN order, quieting,
+  invalid-product precedence, cancellation, signed zeros and tiny-to-normal
+  output flushing. Existing alias tests now cover exact FP32 too. New reporting
+  tests use null accumulator storage on rejected calls to verify error priority.
+  No new native hardware observations were made.
+
+## Scalar FP16 FMAC architecture contract
+
+Reviewed `s_fmac_f16` against the same inventories and ISA sections and rocjitsu's
+shared SOP2 handler. It is RDNA4-only, with optional literal encoding, and
+accumulates into the low half of old D while clearing the result's upper half.
+It ignores EXEC, preserves SCC, and has no half selectors or other modifiers.
+GoC retains its existing loose half-FMA calculation, guest flushing, overflow
+saturation and tininess handling. The upstream scalar handler widens half
+operands, calls host FP32 `fma` and narrows; it does not establish a separate
+empirical scalar-half model, so this slice does not promote it to exact.
+Strict exact arithmetic remains unsupported and non-strict null-state exact
+requests may fall back to loose. Exact non-null reporting remains unsupported
+before accumulator reads; loose state remains unchanged. Existing captures,
+fusion/underflow literals and source aliases remain part of validation.
+
+All four scalar FMA contracts are now reviewed. The ledger records 771
+mnemonic contracts, with 38 remaining; this is not a completion percentage.
+
+
+Validation: Clang 21 Release and GCC 15 Release each pass all **1,176** tests;
+Clang ASan/UBSan passes all **11** selected scalar and vector exact FMA tests.
+All nine tooling tests pass. Logs use `coverage-work/scalar-fma-exact-{build,tests}.log`
+in each build directory. The scalar FMA object's text grows from 5,825 to 6,461
+bytes (+636), reusing the already available integer calculation.
+
+
+Loose performance versus `1f50faf`: 16 cases covering four forms, preserved
+versus flushed denormals, and null versus non-null optional state, seven
+alternating paired repetitions pinned to CPU 2, at least 50 ms thread CPU time
+per sample. Median change is **4.37% slower**, range **0.33% faster to 9.95%
+slower**. The worst case is FP32 FMAC without flushing/reporting, 3.59 to
+3.94 ns/call (+0.36 ns), reflecting the new exact dispatch. FP16 stays within
+0.34%. No SIMD code changed. The shared scalar wrapper is explicitly inline:
+the initial version let the compiler retain an extra wrapper call for literal
+forms, reaching a 27% regression, and was rejected. Final samples and summary
+are under `../goc-build/coverage-work/scalar-fma-exact-performance/`; rejected
+initial samples are labeled separately.

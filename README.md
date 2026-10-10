@@ -2026,7 +2026,10 @@ forms. These preserve fusion and SCC, support guest input/output flushing and
 FP16 overflow saturation, and snapshot accumulator inputs before writing.
 Tests cover 2,555,904 GFX1201 result/SCC pairs, twelve literal bit patterns,
 all eight FP states, cancellation, tininess boundaries, EXEC and aliases.
-Loose semantics require host nearest-even rounding and enabled denormals.
+FP32 forms support empirical-exact arithmetic using the existing borrowed
+vector FMA model; FP16 remains loose-only. Exact non-null exception reporting
+is unsupported. Loose semantics require host nearest-even rounding and enabled
+denormals; exact FP32 uses integer arithmetic.
 All four instructions have benchmarks with default and nondefault FP settings.
 
 Scalar FP16/FP32 CEIL, FLOOR, TRUNC and RNDNE use integer rounding derived from

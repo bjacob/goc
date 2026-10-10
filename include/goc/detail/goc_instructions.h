@@ -926,11 +926,13 @@ int goc_s_rndne_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uin
 // Scalar fused multiply-add ignores EXEC, including zero EXEC; d is required.
 // Operands and literals are raw IEEE bits. FP16 reads low halves and writes a
 // zero upper half. Rounds once to the destination format. SCC is unchanged.
-// instruction_flags must be zero. Loose semantics only; NaN signs/payloads are
-// unspecified. Guest input/output flushing and FP16_OVFL are supported, with
-// tininess detected before destination subnormal rounding. Requires host nearest-
-// even rounding and enabled denormals; preserves rounding but may change host
-// exception flags. Errors leave d unchanged. Inputs may come from d storage.
+// instruction_flags must be zero. FP32 supports both semantics; FP16 remains
+// loose-only. Loose NaN signs/payloads are unspecified. Exact FP32 follows the
+// borrowed FMA NaN ordering. Exact non-null state reporting is unsupported.
+// Guest input/output flushing and FP16_OVFL are supported, with
+// tininess detected before destination subnormal rounding. Loose mode requires
+// host nearest-even rounding and enabled denormals; exact FP32 uses integer
+// arithmetic. Errors leave d unchanged. Inputs may come from d storage.
 
 // Fused a * b + old *d.
 int goc_s_fmac_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
