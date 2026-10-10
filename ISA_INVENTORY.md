@@ -20,8 +20,8 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 69
-- in, API present: 739
+- in, API absent: 67
+- in, API present: 741
 - out, API absent: 588
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
@@ -1313,7 +1313,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_perm_b32` | yes | yes | in | `goc_v_perm_b32` | — | API present; semantic audit pending |
 | `v_permlane16_b32` | yes | yes | in | `goc_v_permlane16_b32` | — | API present; semantic audit pending |
 | `v_permlane16_var_b32` | — | yes | in | `goc_v_permlane16_var_b32` | — | API present; semantic audit pending |
-| `v_permlane64_b32` | yes | yes | in | — | — | missing API |
+| `v_permlane64_b32` | yes | yes | in | `goc_v_permlane64_b32`<br>`goc_v_permlane64_b32_wave64` | — | API present; semantic audit pending |
 | `v_permlanex16_b32` | yes | yes | in | `goc_v_permlanex16_b32` | — | API present; semantic audit pending |
 | `v_permlanex16_var_b32` | — | yes | in | `goc_v_permlanex16_var_b32` | — | API present; semantic audit pending |
 | `v_pipeflush` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
@@ -1388,7 +1388,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_subrev_f32` | yes | yes | in | `goc_v_subrev_f32` | — | API present; semantic audit pending |
 | `v_subrev_nc_u32` | yes | yes | in | `goc_v_subrev_nc_u32` | — | API present; semantic audit pending |
 | `v_swap_b16` | yes | yes | in | — | — | missing API |
-| `v_swap_b32` | yes | yes | in | — | — | missing API |
+| `v_swap_b32` | yes | yes | in | `goc_v_swap_b32`<br>`goc_v_swap_b32_wave64` | — | API present; semantic audit pending |
 | `v_swaprel_b32` | yes | yes | in | — | — | missing API |
 | `v_swmmac_bf16_16x16x32_bf16` | — | yes | in | `goc_v_swmmac_bf16_16x16x32_bf16` | — | API present; semantic audit pending |
 | `v_swmmac_f16_16x16x32_f16` | — | yes | in | `goc_v_swmmac_f16_16x16x32_f16` | — | API present; semantic audit pending |

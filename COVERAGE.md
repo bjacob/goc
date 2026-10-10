@@ -201,3 +201,24 @@ alias or copy rocjitsu's overflow result without RDNA3-specific evidence.
 
 All 696 tests pass on Clang/GCC; all six wide-MAD tests pass under ASan/UBSan.
 Missing canonical API names: 69. Wave64 MAD variants remain open.
+
+## Register swaps and half-wave routing
+
+`v_swap_b32` and `v_permlane64_b32` now have shared RDNA3/RDNA4 implementations
+for Wave32 and Wave64. rocjitsu's two VOP1 execution files have identical swap
+bodies and call the same PERMLANE64 handler. AMD's RDNA4 ISA section 16.8 confirms
+that PERMLANE64 selects lane XOR 32 using destination EXEC, regardless of source
+EXEC, and is a no-op in Wave32; both XML descriptions also specify that no-op.
+Accordingly the Wave32 API omits EXEC and permits null operands. The Wave64
+implementation snapshots both halves before any stores. Both swap operands are
+read/write pointers, and whole-register aliases are supported.
+
+Tests cover both wave sizes, full/empty/partial EXEC, lane 31/32 boundaries,
+inactive sources, in-place routing, guard words and rejection of every modifier
+bit. These are specification/reference tests, not new GPU captures. Scalar loops
+provide exact bit operations; dedicated SIMD implementations remain open.
+SWAP_B16 and SWAPREL remain open because their half-register and relative-range
+rules need separate auditing. Missing canonical API names: 67.
+
+Validation for these additions: all 700 tests pass with Clang and GCC; the four
+swap/routing tests also pass under ASan/UBSan.

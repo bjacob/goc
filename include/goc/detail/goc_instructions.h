@@ -46,6 +46,27 @@ extern "C" {
 int goc_v_mov_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a);
 
+// Exchange two read/write VGPRs in active lanes. Both operands use their
+// original values; whole-register aliasing is allowed. Inactive lanes are
+// unchanged. No instruction flags are supported. Both semantics are exact.
+// Zero EXEC permits null pointers. Shared by RDNA3 and RDNA4.
+int goc_v_swap_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                   uint32_t *const *d, uint32_t *const *a);
+
+int goc_v_swap_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, uint32_t *const *a);
+
+// Wave32 PERMLANE64 is a no-op: no EXEC input and no operand access; null
+// pointers are allowed. Wave64 copies A[lane ^ 32] into active D lanes, reading
+// inactive source lanes too. D may alias A; inactive destinations are unchanged.
+// No instruction flags are supported. Both semantics are exact. Shared by
+// RDNA3 and RDNA4; neither operation interprets bits as floating-point values.
+int goc_v_permlane64_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
+                         const uint32_t *const *a);
+
+int goc_v_permlane64_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
 // DPP8 permutes source A within each group of eight lanes before arithmetic
 // modifiers. Pack eight 3-bit lane indices into bits 40..63, index 0 first, and
 // set GOC_DPP8. Without FI, an inactive source supplies positive zero; FI reads

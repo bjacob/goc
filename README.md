@@ -2302,3 +2302,11 @@ destination arrays start at VGPR0, with explicit encoded base indices and
 allocation counts. Out-of-range reads redirect to VGPR0; out-of-range writes
 are discarded, and indices never wrap. DPP routes the selected source
 after relative indexing. Scalar-relative addressing remains unimplemented.
+
+`v_swap_b32` exchanges two read/write VGPRs in active lanes, with both Wave32
+and `_wave64` entry points. `v_permlane64_b32_wave64` copies each source lane
+from the opposite 32-lane half into the active destination lane, even if the
+source lane is inactive. It supports in-place operation. The unsuffixed Wave32
+`v_permlane64_b32` is a no-op and therefore has no EXEC parameter. These APIs
+are shared by RDNA3/RDNA4, operate on raw bits, and support exact semantics;
+they accept no instruction modifiers. Implementations currently use scalar loops.

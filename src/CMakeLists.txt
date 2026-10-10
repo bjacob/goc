@@ -4,6 +4,7 @@ add_library(goc STATIC
   lane_transfer.cpp
   relative_move.cpp
   move.cpp
+  swap.cpp
   wmma_replicated.cpp
   dpp.cpp
   permlane.cpp
