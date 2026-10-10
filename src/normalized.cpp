@@ -77,6 +77,30 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   return GOC_SUCCESS;
 }
 
+template <bool Unsigned, goc::NormalizedForm Form>
+int convert_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b) {
+  if (int error = convert<Unsigned, Form>(flags, 0, mode, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = nullptr;
+    if constexpr (Form != goc::NormalizedForm::Half)
+      source_b = b[0] + half * 32;
+    if (int error = convert<Unsigned, Form>(flags, uint32_t(exec_mask >> (half * 32)), half_mode,
+                                            &dest, &source_a, &source_b))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_cvt_pk_norm_i16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -121,4 +145,48 @@ int goc_v_cvt_norm_u16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruct
                            uint32_t *const *d, const uint32_t *const *a) {
   return convert<true, goc::NormalizedForm::Half>(flags, exec_mask, instruction_flags, d, a,
                                                   nullptr);
+}
+
+int goc_v_cvt_pk_norm_i16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b) {
+  return convert_wave64<false, goc::NormalizedForm::PackedFloat>(flags, exec_mask,
+                                                                 instruction_flags, d, a, b);
+}
+
+int goc_v_cvt_pk_norm_u16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b) {
+  return convert_wave64<true, goc::NormalizedForm::PackedFloat>(flags, exec_mask, instruction_flags,
+                                                                d, a, b);
+}
+
+int goc_v_cvt_pk_norm_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return convert_wave64<false, goc::NormalizedForm::PackedHalf>(flags, exec_mask, instruction_flags,
+                                                                d, a, b);
+}
+
+int goc_v_cvt_pk_norm_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return convert_wave64<true, goc::NormalizedForm::PackedHalf>(flags, exec_mask, instruction_flags,
+                                                               d, a, b);
+}
+
+int goc_v_cvt_norm_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a) {
+  return convert_wave64<false, goc::NormalizedForm::Half>(flags, exec_mask, instruction_flags, d, a,
+                                                          nullptr);
+}
+
+int goc_v_cvt_norm_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a) {
+  return convert_wave64<true, goc::NormalizedForm::Half>(flags, exec_mask, instruction_flags, d, a,
+                                                         nullptr);
 }

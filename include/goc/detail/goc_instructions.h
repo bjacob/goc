@@ -2441,6 +2441,25 @@ int goc_v_cvt_norm_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 int goc_v_cvt_norm_u16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a);
 
+// Wave64 normalized conversions use the same VGPR layouts, modifiers and
+// loose semantics. Packed-half exact optional reporting remains unsupported.
+int goc_v_cvt_pk_norm_i16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b);
+int goc_v_cvt_pk_norm_u16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b);
+int goc_v_cvt_pk_norm_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, uint32_t *excp_flag_user);
+int goc_v_cvt_pk_norm_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, uint32_t *excp_flag_user);
+int goc_v_cvt_norm_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+int goc_v_cvt_norm_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a);
+
 // DPP8/DPP16 permute A before conversion and modifiers; B stays in its
 // original lane. Pack two FP32 source VGPRs into one 16-bit-pair destination: A goes to the
 // low half, B to the high half. Supports ABS/NEG on A/B, full EXEC masking and

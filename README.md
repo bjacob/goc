@@ -1029,7 +1029,9 @@ Both round once to nearest-even and map NaNs to zero. Packed forms write A/B
 into the two destination halves; unary forms preserve the unselected half.
 Source ABS/NEG and applicable half selectors remain on the scalar, eight-lane
 v3 and sixteen-lane v4 paths. CLAMP has no numeric effect; unary OMOD is also
-accepted without numeric effect. All six expose loose semantics.
+accepted without numeric effect. All six expose loose semantics at both wave
+sizes using the same arithmetic kernels. Packed-half exact optional exception
+reporting remains unsupported.
 DPP8/DPP16 permute A before modifiers and half selection, while B remains in
 its original lane. All six forms retain their SIMD paths with DPP, including
 unary destination-half preservation. Tests cover all modifier combinations,

@@ -1091,3 +1091,23 @@ The width-review queue is 194 APIs.
 
 Validation: all 784 tests pass on Clang 21 and GCC 15 Release. All twelve FP8
 narrowing and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 normalized conversions
+
+Added all six signed/unsigned normalized conversions for FP32 packed, FP16
+packed and FP16 unary forms. Wave64 shares the existing scalar/v3/v4 numeric
+kernels and loose semantics. DPP routes A before modifiers/selection, B remains
+in its own lane, and unary forms preserve the unselected destination half.
+Only packed-half APIs have optional exception outputs; loose calls skip them
+and exact non-null reporting rejects before operand access.
+
+New tests replay the raw twenty-column RX 9070 fixture across 64 lanes and
+compare random inputs against the independent integer significand reference.
+They cross all modifiers, CPU levels, DPP row enables, masks with both EXEC
+halves, source aliases, guards and optional-state behavior. Repeating a Wave32
+hardware fixture across 64 lanes is not a new native Wave64 capture. Exact
+semantics and guest FP-state behavior remain open; no SIMD kernel changed.
+The width-review queue is 188 APIs.
+
+Validation: all 786 tests pass on Clang 21 and GCC 15 Release. All fourteen
+normalized-conversion and instruction-flag tests pass under ASan/UBSan.
