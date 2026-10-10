@@ -20,8 +20,8 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 70
-- in, API present: 738
+- in, API absent: 69
+- in, API present: 739
 - out, API absent: 588
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
@@ -1208,7 +1208,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_mad_u16` | yes | yes | in | `goc_v_mad_u16` | — | API present; semantic audit pending |
 | `v_mad_u32_u16` | yes | yes | in | `goc_v_mad_u32_u16` | — | API present; semantic audit pending |
 | `v_mad_u32_u24` | yes | yes | in | `goc_v_mad_u32_u24` | — | API present; semantic audit pending |
-| `v_mad_u64_u32` | yes | — | in | — | — | missing API |
+| `v_mad_u64_u32` | yes | — | in | `goc_v_mad_u64_u32` | — | API present; semantic audit pending |
 | `v_max3_f16` | yes | — | in | — | — | missing API |
 | `v_max3_f32` | yes | — | in | — | — | missing API |
 | `v_max3_i16` | yes | yes | in | `goc_v_max3_i16` | — | API present; semantic audit pending |

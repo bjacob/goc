@@ -17,14 +17,16 @@
 namespace {
 
 using Fn = decltype(&goc_v_mad_co_u64_u32);
-const Fn functions[] = {goc_v_mad_co_u64_u32, goc_v_mad_co_i64_i32};
+// Alternate unsigned/signed reference indices; the third entry exercises the
+// RDNA3 unsigned spelling against the same independent arithmetic reference.
+const Fn functions[] = {goc_v_mad_co_u64_u32, goc_v_mad_co_i64_i32, goc_v_mad_u64_u32};
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 
 } // namespace
 
 TEST(Mad64, HardwareCartesianCorpus) {
   const uint32_t masks[] = {UINT32_MAX, 0x33333333, 0};
-  for (unsigned op = 0; op < 2; ++op)
+  for (unsigned op = 0; op < 3; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned clamp = 0; clamp < 2; ++clamp)
         for (unsigned m = 0; m < 3; ++m) {
@@ -51,7 +53,7 @@ TEST(Mad64, HardwareCartesianCorpus) {
                   digest, data[4][lane] | (uint64_t(data[5][lane]) << 32), 8);
             digest = goc_test::capture_hash_bytes(digest, carry, 4);
           }
-          ASSERT_EQ(digest, goc_test::mad64_capture_digests[op][clamp][m])
+          ASSERT_EQ(digest, goc_test::mad64_capture_digests[op % 2][clamp][m])
               << op << "/" << cpu << "/" << clamp << "/" << m;
         }
 }
@@ -86,7 +88,7 @@ TEST(Mad64, SignedScalarOutputIsTheExtendedSign) {
 
 TEST(Mad64, IndependentWideReferenceAndRandomInputs) {
   std::mt19937 random(784193);
-  for (unsigned op = 0; op < 2; ++op)
+  for (unsigned op = 0; op < 3; ++op)
     for (bool clamp : {false, true})
       for (unsigned sample = 0; sample < 128; ++sample) {
         uint32_t data[6][32], expected[2][32], expected_carry = 0;
@@ -95,7 +97,7 @@ TEST(Mad64, IndependentWideReferenceAndRandomInputs) {
             word = random();
         for (unsigned lane = 0; lane < 32; ++lane) {
           uint64_t c = data[2][lane] | (uint64_t(data[3][lane]) << 32);
-          auto gold = goc_test::mad64_reference(op, data[0][lane], data[1][lane], c, clamp);
+          auto gold = goc_test::mad64_reference(op % 2, data[0][lane], data[1][lane], c, clamp);
           expected[0][lane] = uint32_t(gold.value);
           expected[1][lane] = uint32_t(gold.value >> 32);
           expected_carry |= uint32_t(gold.carry) << lane;
@@ -118,7 +120,7 @@ TEST(Mad64, IndependentWideReferenceAndRandomInputs) {
 
 TEST(Mad64, MasksAndCrossRegisterAliases) {
   std::mt19937 random(126923);
-  for (unsigned op = 0; op < 2; ++op)
+  for (unsigned op = 0; op < 3; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool clamp : {false, true})
         for (uint32_t exec_mask : exec_masks())
@@ -134,8 +136,9 @@ TEST(Mad64, MasksAndCrossRegisterAliases) {
                              *c[] = {data[2] + 1, data[3] + 1};
               uint32_t *d[] = {data[first] + 1, data[second] + 1};
               for (unsigned lane = 0; lane < 32; ++lane) {
-                auto gold = goc_test::mad64_reference(
-                    op, a[0][lane], b[0][lane], c[0][lane] | (uint64_t(c[1][lane]) << 32), clamp);
+                auto gold =
+                    goc_test::mad64_reference(op % 2, a[0][lane], b[0][lane],
+                                              c[0][lane] | (uint64_t(c[1][lane]) << 32), clamp);
                 result[0][lane] = uint32_t(gold.value);
                 result[1][lane] = uint32_t(gold.value >> 32);
                 expected_carry |= uint32_t(gold.carry) << lane;
@@ -157,15 +160,16 @@ TEST(Mad64, MasksAndCrossRegisterAliases) {
 TEST(Mad64, SharedSourcesScalarOutputAliasAndHostEnvironment) {
   goc_test::ScopedFpEnvironment saved;
   ASSERT_TRUE(saved.saved());
-  for (unsigned op = 0; op < 2; ++op)
+  for (unsigned op = 0; op < 3; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool clamp : {false, true})
         for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
           uint32_t input[32], output[2][32], expected[2][32], carry = 0;
           for (unsigned lane = 0; lane < 32; ++lane) {
             input[lane] = goc_test::mad64_capture_factors[lane % 16];
-            auto gold = goc_test::mad64_reference(
-                op, input[lane], input[lane], input[lane] | (uint64_t(input[lane]) << 32), clamp);
+            auto gold =
+                goc_test::mad64_reference(op % 2, input[lane], input[lane],
+                                          input[lane] | (uint64_t(input[lane]) << 32), clamp);
             expected[0][lane] = uint32_t(gold.value);
             expected[1][lane] = uint32_t(gold.value >> 32);
             carry |= uint32_t(gold.carry) << lane;

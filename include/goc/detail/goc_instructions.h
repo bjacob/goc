@@ -1781,6 +1781,12 @@ int goc_v_mad_co_i64_i32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
                          uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
                          const uint32_t *const *b, const uint32_t *const *c);
 
+// RDNA3 spelling of unsigned 32x32+64 multiply-add. Same carry, CLAMP,
+// aliasing and execution-mask contract as goc_v_mad_co_u64_u32.
+int goc_v_mad_u64_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
+                      const uint32_t *const *b, const uint32_t *const *c);
+
 // Unsigned add/subtract with a scalar carry/borrow output. CI forms also consume
 // one input carry/borrow bit per lane. SUBREV computes B-A-input_borrow.
 // CLAMP saturates overflow to UINT32_MAX for addition and underflow to zero for

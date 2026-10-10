@@ -179,3 +179,25 @@ reads are possible; 64-bit intermediate sums prevent accidental index wrapping.
   this is not a new RDNA3 FMAC hardware capture or a bit-exactness claim.
   Strict exact semantics remain unsupported. All 696 tests pass on Clang/GCC;
   the two new tests pass under ASan/UBSan. Missing API names: 70.
+
+## Wide integer MAD architecture review
+
+AMD's XML identifies RDNA3 `v_mad_u64_u32` as the alias of RDNA4
+`v_mad_co_u64_u32`, with the same opcode, operands and unsigned carry contract.
+rocjitsu at `ffc144c564c` has equivalent scalar arithmetic and saturation for
+both. The new RDNA3 entry point shares GoC's implementation, including v3/v4
+SIMD, exact integer arithmetic and full input/output alias handling. All six
+wide-MAD tests exercise the new spelling where applicable, including an
+independent 128-bit reference and the existing **RDNA4** hardware corpus.
+This reuse does not turn that corpus into an RDNA3 hardware capture.
+
+The signed RDNA3 spelling remains open. rocjitsu's RDNA3 and RDNA4 handlers
+both report signed overflow, whereas GoC's RDNA4 hardware captures establish
+that the scalar output is bit 64 of the full mathematical sum (its extended
+sign). These differ even without overflow: `0 * 0 + (-1)` has scalar bit 1
+in the RDNA4 capture model but bit 0 in rocjitsu. XML's prose says
+"overflow/carryout" and does not resolve the discrepancy. Do not add a signed
+alias or copy rocjitsu's overflow result without RDNA3-specific evidence.
+
+All 696 tests pass on Clang/GCC; all six wide-MAD tests pass under ASan/UBSan.
+Missing canonical API names: 69. Wave64 MAD variants remain open.

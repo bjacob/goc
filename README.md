@@ -789,6 +789,9 @@ one VGPR each; C/D use low/high pairs. CLAMP saturates to the corresponding
 64-bit integer range. The scalar output contains bit 64 of the full sum. For
 signed MAD this is its extended sign, not a signed-overflow indication; GPU
 captures establish this distinction from rocjitsu's current handler.
+The RDNA3 unsigned spelling `v_mad_u64_u32` uses the same implementation.
+The RDNA3 signed spelling remains unimplemented pending resolution of its
+scalar-result semantics; the existing hardware captures are RDNA4-only.
 
 Scalar and v3/v4 paths support loose and empirical exact semantics, CLAMP,
 every EXEC mask and all whole-register aliases. V3 processes four lanes and v4

@@ -81,3 +81,9 @@ int goc_v_mad_co_i64_i32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
     return GOC_ERROR_INVALID_FLAGS;
   return run<true>(flags, exec_mask, instruction_flags, d, carry, a, b, c);
 }
+
+int goc_v_mad_u64_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
+                      const uint32_t *const *b, const uint32_t *const *c) {
+  return goc_v_mad_co_u64_u32(flags, exec_mask, instruction_flags, d, carry, a, b, c);
+}
