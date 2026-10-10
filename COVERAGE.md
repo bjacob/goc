@@ -50,10 +50,10 @@ paths must retain their existing performance and may skip optional state outputs
 | RDNA3 WMMA | All six mnemonics, both widths, exact rocjitsu GFX11 model; `wmma_replicated_exact_test.cpp`; 103 DOT2 captures and 28 packed matrices | Scalar implementations; verify inventory integration as other APIs evolve |
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC added with the same exact model and loose SIMD; dual forms, RDNA3 reporting, and Wave64 remain |
-| Floating min/max/median | Existing RDNA4 NUM forms | RDNA3 names and NaN/zero policies, signaling NaNs, all widths and packed forms |
+| Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms and SIMD dispatch | Exact IEEE-mode NaN policies, exception reporting and Wave64 |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
-| Scalar/register moves | MOV/CMOV B32/B64 and MOVK/CMOVK implemented for both architectures; exhaustive immediate/condition tests | Relative addressing and hardware-register access; SAVEEXEC/WREXEC implemented at both register widths |
-| Vector/register routing | READLANE/WRITELANE/READFIRSTLANE now shared for Wave32/64, including lane-index wrapping and zero EXEC; existing DPP/permlane/move coverage | Wave32 vector-relative moves now implemented with bounded views; swaps, permlane64 and broader cross-width behavior remain |
+| Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
+| Vector/register routing | Lane transfers, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; Wave32 relative moves; RX 9070 SWAPREL and DS_SWIZZLE captures | Wave64 moves/relative moves and broader cross-width/modifier audit; RDNA3 hardware confirmation |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests | RDNA3 integer true/false forms now implemented; floating constant forms, Wave64, and architecture-specific floating policies remain |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
@@ -408,3 +408,30 @@ operand access. Canonical name gaps are now 35 (774 present of 809 in scope).
 Validation: all 724 tests pass with Clang/GCC; all four new scalar-relative tests
 pass under ASan/UBSan. Header standalone checks and exhaustive instruction-flag
 checks cover the new APIs. Existing SIMD code is unchanged.
+
+
+## Relative vector swaps
+
+Added shared V_SWAPREL_B32 for Wave32 and Wave64. Both operands are writable
+register-file views. M0[9:0] and M0[25:16] select source and destination offsets;
+reserved bits are ignored. Both manuals specify that an invalid operand cancels
+the entire instruction, since both operands are destinations. The implementation
+uses the existing swap loop and the same bounded relative-index policy as the
+MOVREL family, with widened sums and flag validation before pointer arithmetic.
+It copies raw bits exactly in both semantics; EXEC controls both stores.
+
+rocjitsu's RDNA3/RDNA4 handlers agree on the valid-index exchange and on cancelling
+both writes for an invalid operand. New RX 9070/gfx1201 Wave32 and Wave64 captures
+also confirm valid offsets, identical resolved registers, zero/sparse/full EXEC,
+reserved M0 bits and independent source/destination offset-256 cancellation.
+The 18,432 captured words are represented by per-case word-wise digests in
+`tests/relative_swap_hardware.h`, with raw SHA-256 fingerprints and reproducible
+`tests/capture_relative_swap.py` probes. No RDNA3 GPU capture is claimed.
+
+CPU tests additionally cover noncontiguous/reversed register views, overlapping
+storage, guard words, upper Wave64 lanes, empty allocations, widened-index
+overflow and all invalid instruction-flag bits. Missing canonical names: 34;
+775 of 809 in-scope names have APIs, without implying complete semantic coverage.
+
+Validation: all 727 tests pass on Clang/GCC, and all eight swap-family tests pass
+under ASan/UBSan. Existing SIMD implementations are unchanged.

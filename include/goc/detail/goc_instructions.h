@@ -331,6 +331,22 @@ int goc_v_movrelsd_2_b32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
                          uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
                          uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
 
+// Relative VGPR swaps shared by RDNA3/RDNA4. d/a are mutable full register-file
+// views starting at VGPR0, bounded by d_count/a_count. M0[9:0] offsets a_base;
+// M0[25:16] offsets d_base. Other M0 bits are ignored. If either offset exceeds
+// 255 or either resolved index is outside its allocation, neither operand is
+// written. Zero counts permit NULL arrays. Index arithmetic does not wrap.
+// Active lanes exchange raw words; inactive lanes are preserved. Whole VGPRs
+// may alias. Both semantics are exact; instruction_flags must be zero.
+// Invalid flags leave all outputs unchanged, including when EXEC is zero.
+int goc_v_swaprel_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, uint32_t *const *a, uint32_t d_count, uint32_t a_count,
+                      uint32_t d_base, uint32_t a_base, uint32_t m0);
+
+int goc_v_swaprel_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, uint32_t *const *a, uint32_t d_count,
+                             uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
+
 // Scalar lane transfers shared by RDNA3/RDNA4; one VGPR input/output.
 // READFIRSTLANE reads the first active lane, or lane 0 for zero EXEC.
 // READLANE/WRITELANE ignore EXEC; lane indices wrap modulo 32 or 64.

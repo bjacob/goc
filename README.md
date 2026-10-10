@@ -2355,3 +2355,7 @@ Scalar relative-register moves support DWORD indexing, B64 register pairs and
 separate source/destination offsets, with SGPR/TTMP region bounds. Their shared
 RDNA3/RDNA4 implementation follows both ISA manuals; RDNA4 indexing is also
 checked against RX 9070 captures.
+
+Relative VGPR swaps support both wave sizes, preserving inactive lanes and
+cancelling both writes when either index is invalid. RX 9070 captures check the
+shared RDNA3/RDNA4 behavior, including masks and out-of-range offsets.

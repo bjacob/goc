@@ -26,6 +26,24 @@ int swap(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags, uint32_
   return GOC_SUCCESS;
 }
 
+// Both operands are destinations: an out-of-range index discards the entire
+// instruction. Keep widened sums so a large base cannot wrap into the file.
+template <unsigned Lanes>
+int swap_relative(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                  uint32_t *const *a, uint32_t d_count, uint32_t a_count, uint32_t d_base,
+                  uint32_t a_base, uint32_t m0) {
+  // Reject flags before forming pointers into either register-file view.
+  if (int error = swap<Lanes>(flags, 0, mode, nullptr, nullptr))
+    return error;
+  uint32_t src_offset = m0 & 1023;
+  uint32_t dst_offset = (m0 >> 16) & 1023;
+  uint64_t src = uint64_t(a_base) + src_offset;
+  uint64_t dst = uint64_t(d_base) + dst_offset;
+  if (!exec_mask || src_offset > 255 || dst_offset > 255 || src >= a_count || dst >= d_count)
+    return swap<Lanes>(flags, 0, mode, nullptr, nullptr);
+  return swap<Lanes>(flags, exec_mask, mode, d + dst, a + src);
+}
+
 template <unsigned Lanes>
 int swap_half(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
               uint32_t *const *a) {
@@ -95,4 +113,18 @@ int goc_v_swap_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flag
 int goc_v_swap_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, uint32_t *const *a) {
   return swap_half<64>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_swaprel_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, uint32_t *const *a, uint32_t d_count, uint32_t a_count,
+                      uint32_t d_base, uint32_t a_base, uint32_t m0) {
+  return swap_relative<32>(flags, exec_mask, instruction_flags, d, a, d_count, a_count, d_base,
+                           a_base, m0);
+}
+
+int goc_v_swaprel_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, uint32_t *const *a, uint32_t d_count,
+                             uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0) {
+  return swap_relative<64>(flags, exec_mask, instruction_flags, d, a, d_count, a_count, d_base,
+                           a_base, m0);
 }
