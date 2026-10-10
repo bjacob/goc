@@ -4880,3 +4880,50 @@ The scalar EXEC production object is byte-identical to the pre-change audit
 build under both release compilers (`scalar-exec-production-objects.json`).
 Logs use `scalar-exec-review-` in each build directory. The ledger records 247
 contracts; 562 in-scope mnemonics still need recorded reviews.
+
+
+## Scalar integer comparison architecture contracts
+
+Reviewed 30 integer/bit comparison mnemonics in
+[`scalar_compare.cpp`](src/scalar_compare.cpp): eighteen SOPC register forms
+shared by RDNA3/RDNA4 and twelve RDNA3-only SOPK immediate forms. Both XML
+inventories and every applicable per-architecture handler were checked against
+rocjitsu revision `ffc144c564c`'s shared bodies. The review followed SCC storage
+and GoC's integer predicate helper as well as the entry-point wrappers.
+Helper hashes, handler locations and XML descriptions are recorded in
+`scalar-integer-compare-upstream-review.json` in `../goc-build/coverage-work/`.
+Floating comparison predicates and their exception reporting are outside this
+review increment, even though they share the translation unit and some tests.
+
+Register comparisons provide six signed and six unsigned 32-bit predicates,
+unsigned 64-bit equality/inequality, and zero/one bit tests at both widths.
+Signed ordering in GoC flips the sign bit before unsigned comparison, avoiding
+implementation-defined out-of-range unsigned-to-signed conversion. Bit indices
+use the low five or six bits. Integer LG is equivalent to inequality; the float
+ordered/unordered distinction does not apply. SOPK signed immediates are
+sign-extended from sixteen bits; unsigned immediates are zero-extended. RDNA4
+has no canonical SOPK counterparts, so no new architecture suffix is needed.
+
+SCC is the required ordinary result, always zero or one. Inputs are passed by
+value, allowing SCC storage to overlap source storage; byte stores also support
+a word of uint64_t storage. There is no EXEC predicate and no additional implicit
+state output. Instruction modifiers are invalid in all 64 bits. The common
+validation accepts guest input/output denormal flags, which have no effect on
+these integer operations. Both semantics give exact integer results. No host
+FP environment change or SIMD path is involved.
+
+Existing tests retain hardware corpus hashes for all register predicates,
+signed/unsigned boundaries, all bit positions with modulo counts, 64-bit high
+words, source/SCC aliases and host-environment preservation. The exhaustive
+65,536-immediate test now includes immediate-minus-one and immediate-plus-one
+on both sides of signed extension, in addition to zero, integer limits and
+equality witnesses. Its oracle widens to int64_t instead of using GoC's sign-bit
+ordering. Invalid instruction-flag tests now exercise all 64 bits rather than
+only the low word. No production changes were necessary.
+
+Validation: all 1,108 CTests pass with Clang 21 Release and GCC 15 Release;
+all ten scalar comparison/spelling tests pass under ASan/UBSan. All nine audit-tool
+tests pass. The scalar comparison object is byte-identical to the pre-change
+audit builds under both release compilers (`scalar-compare-production-objects.json`).
+Logs use `scalar-compare-review-` in each build directory. The ledger records
+277 contracts, with 532 in-scope mnemonics still awaiting recorded review.

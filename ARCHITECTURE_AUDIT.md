@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-247 in-scope mnemonics have explicit contract-review records in
+277 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 562 in-scope mnemonics need a recorded review.
+The remaining 532 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -97,10 +97,10 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_bfe_u64` | no direct policy detected | no | 802 | review required |
 | `s_bfm_b32` | no direct policy detected | no | 821 | review required |
 | `s_bfm_b64` | no direct policy detected | no | 828 | review required |
-| `s_bitcmp0_b32` | no direct policy detected | no | 838 | review required |
-| `s_bitcmp0_b64` | no direct policy detected | no | 846 | review required |
-| `s_bitcmp1_b32` | no direct policy detected | no | 854 | review required |
-| `s_bitcmp1_b64` | no direct policy detected | no | 862 | review required |
+| `s_bitcmp0_b32` | no direct policy detected | no | 838 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_bitcmp0_b64` | no direct policy detected | no | 846 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_bitcmp1_b32` | no direct policy detected | no | 854 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_bitcmp1_b64` | no direct policy detected | no | 862 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_bitreplicate_b64_b32` | no direct policy detected | no | 870 | review required |
 | `s_bitset0_b32` | no direct policy detected | no | 883 | review required |
 | `s_bitset0_b64` | no direct policy detected | no | 891 | review required |
@@ -115,20 +115,20 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_cmov_b32` | no direct policy detected | no | 1022 | review required |
 | `s_cmov_b64` | no direct policy detected | no | 1029 | review required |
 | `s_cmovk_i32` | no direct policy detected | no | 1036 | review required |
-| `s_cmp_eq_i32` | no direct policy detected | no | 1057 | review required |
-| `s_cmp_eq_u32` | no direct policy detected | no | 1063 | review required |
-| `s_cmp_eq_u64` | no direct policy detected | no | 1069 | review required |
-| `s_cmp_ge_i32` | no direct policy detected | no | 1088 | review required |
-| `s_cmp_ge_u32` | no direct policy detected | no | 1094 | review required |
-| `s_cmp_gt_i32` | no direct policy detected | no | 1113 | review required |
-| `s_cmp_gt_u32` | no direct policy detected | no | 1119 | review required |
-| `s_cmp_le_i32` | no direct policy detected | no | 1138 | review required |
-| `s_cmp_le_u32` | no direct policy detected | no | 1144 | review required |
-| `s_cmp_lg_i32` | no direct policy detected | no | 1170 | review required |
-| `s_cmp_lg_u32` | no direct policy detected | no | 1179 | review required |
-| `s_cmp_lg_u64` | no direct policy detected | no | 1188 | review required |
-| `s_cmp_lt_i32` | no direct policy detected | no | 1210 | review required |
-| `s_cmp_lt_u32` | no direct policy detected | no | 1216 | review required |
+| `s_cmp_eq_i32` | no direct policy detected | no | 1057 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_eq_u32` | no direct policy detected | no | 1063 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_eq_u64` | no direct policy detected | no | 1069 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_ge_i32` | no direct policy detected | no | 1088 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_ge_u32` | no direct policy detected | no | 1094 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_gt_i32` | no direct policy detected | no | 1113 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_gt_u32` | no direct policy detected | no | 1119 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_le_i32` | no direct policy detected | no | 1138 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_le_u32` | no direct policy detected | no | 1144 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_lg_i32` | no direct policy detected | no | 1170 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_lg_u32` | no direct policy detected | no | 1179 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_lg_u64` | no direct policy detected | no | 1188 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_lt_i32` | no direct policy detected | no | 1210 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
+| `s_cmp_lt_u32` | no direct policy detected | no | 1216 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cselect_b32` | no direct policy detected | no | 1452 | review required |
 | `s_cselect_b64` | no direct policy detected | no | 1460 | review required |
 | `s_ctz_i32_b32` | no direct policy detected | no | 1468 | review required |

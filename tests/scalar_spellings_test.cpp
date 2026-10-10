@@ -62,7 +62,8 @@ TEST(ScalarSpellings, EveryImmediateComparisonAndAdd) {
   for (uint32_t immediate = 0; immediate < 65536; ++immediate) {
     int64_t signed_imm = immediate < 32768 ? int64_t(immediate) : int64_t(immediate) - 65536;
     for (uint32_t a :
-         {0U, 0x7fffffffU, 0x80000000U, 0xffffffffU, immediate, uint32_t(signed_imm)}) {
+         {0U, 0x7fffffffU, 0x80000000U, 0xffffffffU, immediate, immediate - 1, immediate + 1,
+          uint32_t(signed_imm), uint32_t(signed_imm - 1), uint32_t(signed_imm + 1)}) {
       int64_t signed_a = a < 0x80000000U ? int64_t(a) : int64_t(a) - (1LL << 32);
       uint32_t d = a, cc = 9;
       int64_t sum = signed_a + signed_imm;

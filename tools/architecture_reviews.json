@@ -448,5 +448,49 @@
       "s_xor_saveexec_b32",
       "s_xor_saveexec_b64"
     ]
+  },
+  {
+    "heading": "Scalar integer comparison architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/scalar_compare_test.cpp",
+    "mnemonics": [
+      "s_bitcmp0_b32",
+      "s_bitcmp0_b64",
+      "s_bitcmp1_b32",
+      "s_bitcmp1_b64",
+      "s_cmp_eq_i32",
+      "s_cmp_eq_u32",
+      "s_cmp_eq_u64",
+      "s_cmp_ge_i32",
+      "s_cmp_ge_u32",
+      "s_cmp_gt_i32",
+      "s_cmp_gt_u32",
+      "s_cmp_le_i32",
+      "s_cmp_le_u32",
+      "s_cmp_lg_i32",
+      "s_cmp_lg_u32",
+      "s_cmp_lg_u64",
+      "s_cmp_lt_i32",
+      "s_cmp_lt_u32"
+    ]
+  },
+  {
+    "heading": "Scalar integer comparison architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/scalar_spellings_test.cpp",
+    "mnemonics": [
+      "s_cmpk_eq_i32",
+      "s_cmpk_eq_u32",
+      "s_cmpk_ge_i32",
+      "s_cmpk_ge_u32",
+      "s_cmpk_gt_i32",
+      "s_cmpk_gt_u32",
+      "s_cmpk_le_i32",
+      "s_cmpk_le_u32",
+      "s_cmpk_lg_i32",
+      "s_cmpk_lg_u32",
+      "s_cmpk_lt_i32",
+      "s_cmpk_lt_u32"
+    ]
   }
 ]

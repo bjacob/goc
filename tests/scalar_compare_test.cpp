@@ -99,8 +99,8 @@ TEST(ScalarCompare, ErrorsAndHostFpEnvironment) {
     int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
     for (unsigned op = 0; op < 46; ++op) {
       uint32_t scc = 123;
-      for (unsigned bit = 0; bit < 32; ++bit)
-        EXPECT_EQ(goc_test::scalar_compare_call(op, 0, 1u << bit, &scc, 0, 0),
+      for (unsigned bit = 0; bit < 64; ++bit)
+        EXPECT_EQ(goc_test::scalar_compare_call(op, 0, 1ULL << bit, &scc, 0, 0),
                   GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(goc_test::scalar_compare_call(op, 1ULL << 63, 0, &scc, 0, 0),
                 GOC_ERROR_INVALID_FLAGS);
