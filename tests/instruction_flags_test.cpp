@@ -56,7 +56,21 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     EXPECT_TRUE((std::is_same_v<Mask, uint64_t>));
     base_name.resize(base_name.size() - 7);
     // Only these audited families currently share DPP support across widths.
-    if (base_name == "goc_v_add_f16" || base_name == "goc_v_sub_f16" ||
+    if (base_name == "goc_v_min3_num_f32" || base_name == "goc_v_max3_num_f32" ||
+        base_name == "goc_v_minmax_num_f32" || base_name == "goc_v_maxmin_num_f32" ||
+        base_name == "goc_v_minimum3_f32" || base_name == "goc_v_maximum3_f32" ||
+        base_name == "goc_v_minimummaximum_f32" || base_name == "goc_v_maximumminimum_f32" ||
+        base_name == "goc_v_med3_num_f32" || base_name == "goc_v_min3_f32" ||
+        base_name == "goc_v_max3_f32" || base_name == "goc_v_minmax_f32" ||
+        base_name == "goc_v_maxmin_f32" || base_name == "goc_v_med3_f32" ||
+        base_name == "goc_v_min3_num_f16" || base_name == "goc_v_max3_num_f16" ||
+        base_name == "goc_v_minmax_num_f16" || base_name == "goc_v_maxmin_num_f16" ||
+        base_name == "goc_v_minimum3_f16" || base_name == "goc_v_maximum3_f16" ||
+        base_name == "goc_v_minimummaximum_f16" || base_name == "goc_v_maximumminimum_f16" ||
+        base_name == "goc_v_med3_num_f16" || base_name == "goc_v_min3_f16" ||
+        base_name == "goc_v_max3_f16" || base_name == "goc_v_minmax_f16" ||
+        base_name == "goc_v_maxmin_f16" || base_name == "goc_v_med3_f16" ||
+        base_name == "goc_v_add_f16" || base_name == "goc_v_sub_f16" ||
         base_name == "goc_v_subrev_f16" || base_name == "goc_v_mul_f16" ||
         base_name == "goc_v_min_num_f16" || base_name == "goc_v_max_num_f16" ||
         base_name == "goc_v_minimum_f16" || base_name == "goc_v_maximum_f16" ||

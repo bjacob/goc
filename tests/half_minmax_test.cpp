@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "capture_hash.h"
+#include "dpp_reference.h"
 #include "exec_masks.h"
 #include "goc/goc.h"
 #include "half_minmax_reference.h"
@@ -15,6 +16,15 @@
 #include <stdint.h>
 
 namespace {
+
+const decltype(&goc_v_min3_num_f16_wave64) wave64[] = {
+    goc_v_min3_num_f16_wave64,       goc_v_max3_num_f16_wave64,
+    goc_v_minmax_num_f16_wave64,     goc_v_maxmin_num_f16_wave64,
+    goc_v_minimum3_f16_wave64,       goc_v_maximum3_f16_wave64,
+    goc_v_minimummaximum_f16_wave64, goc_v_maximumminimum_f16_wave64,
+    goc_v_med3_num_f16_wave64,       goc_v_min3_f16_wave64,
+    goc_v_max3_f16_wave64,           goc_v_minmax_f16_wave64,
+    goc_v_maxmin_f16_wave64,         goc_v_med3_f16_wave64};
 
 const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3800, 0xb800,
                            0x3bff, 0x3c00, 0x3e00, 0xbe00, 0x4100, 0xc100, 0x4200, 0x4400,
@@ -254,5 +264,69 @@ TEST(HalfMinmax3, HardwareMedianNanRules) {
       }
     }
     EXPECT_EQ(hash, 0x513891779d603325ULL);
+  }
+}
+
+TEST(HalfMinmax3, Wave64ModifiersDppSelectorsAndAliases) {
+
+  const unsigned reference_ops[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 8};
+  for (unsigned op = 0; op < 14; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint32_t mode = 0; mode < 8192; ++mode) {
+        unsigned route_index = mode % 8;
+        uint64_t descriptor = route_index ? goc_test::dpp_modes[route_index - 1] : 0;
+        if (descriptor & GOC_DPP16)
+          descriptor =
+              (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t((mode >> 3) & 15) << GOC_DPP_ROW_SHIFT);
+        uint32_t words[4][66], before[4][66];
+        for (unsigned reg = 0; reg < 4; ++reg)
+          for (unsigned lane = 0; lane < 66; ++lane)
+            words[reg][lane] =
+                values[(lane + reg * 5) % 24] | (uint32_t(values[(lane * 7 + reg * 3) % 24]) << 16);
+        std::memcpy(before, words, sizeof words);
+        unsigned dest = mode % 4;
+        uint32_t *d = words[dest] + 1;
+        const uint32_t *a = words[0] + 1, *b = words[1] + 1, *c = words[2] + 1;
+        uint64_t exec_mask = 0x87654321fedcba98ULL;
+        bool saturate = mode & 1;
+        uint32_t exceptions = 0x80000055;
+        ASSERT_EQ(wave64[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask, descriptor | mode, &d,
+                             &a, &b, &c, &exceptions),
+                  GOC_SUCCESS);
+        EXPECT_EQ(exceptions, 0x80000055U);
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          int source = int(lane);
+          bool enabled = descriptor ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                                    : ((exec_mask >> lane) & 1);
+          if (enabled) {
+            check(d[lane], before[dest][lane + 1],
+                  goc_test::half_minmax_reference(
+                      reference_ops[op], source < 0 ? 0 : before[0][source + 1],
+                      before[1][lane + 1], before[2][lane + 1], mode, saturate),
+                  mode);
+          } else {
+            EXPECT_EQ(d[lane], before[dest][lane + 1]);
+          }
+        }
+        for (unsigned reg = 0; reg < 4; ++reg) {
+          EXPECT_EQ(words[reg][0], before[reg][0]);
+          EXPECT_EQ(words[reg][65], before[reg][65]);
+        }
+      }
+}
+
+TEST(HalfMinmax3, Wave64ValidationAndOptionalState) {
+  for (auto fn : wave64) {
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << 36, nullptr, nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, nullptr,
+                 nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    uint32_t exceptions = 0x80000055;
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, nullptr, nullptr,
+                 &exceptions),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(exceptions, 0x80000055U);
   }
 }

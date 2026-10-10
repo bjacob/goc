@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "dpp_reference.h"
 #include "exec_masks.h"
 #include "goc/goc.h"
 #include "internal.h"
@@ -7,11 +8,21 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <random>
 #include <stdint.h>
 
 namespace {
+
+const decltype(&goc_v_min3_num_f32_wave64) wave64[] = {
+    goc_v_min3_num_f32_wave64,       goc_v_max3_num_f32_wave64,
+    goc_v_minmax_num_f32_wave64,     goc_v_maxmin_num_f32_wave64,
+    goc_v_minimum3_f32_wave64,       goc_v_maximum3_f32_wave64,
+    goc_v_minimummaximum_f32_wave64, goc_v_maximumminimum_f32_wave64,
+    goc_v_med3_num_f32_wave64,       goc_v_min3_f32_wave64,
+    goc_v_max3_f32_wave64,           goc_v_minmax_f32_wave64,
+    goc_v_maxmin_f32_wave64,         goc_v_med3_f32_wave64};
 
 using Fn = decltype(&goc_v_fma_f32);
 const Fn functions[] = {goc_v_min3_num_f32,       goc_v_max3_num_f32,       goc_v_minmax_num_f32,
@@ -160,4 +171,68 @@ TEST(Minmax3, MedianLiteralNaNsAndZeroTies) {
       for (uint32_t value : d)
         EXPECT_EQ(value, test[3]) << cpu << "/" << test[0] << "/" << test[1] << "/" << test[2];
     }
+}
+
+TEST(Minmax3, Wave64ModifiersDppSelectorsAndAliases) {
+  const uint32_t values[] = {0,          0x80000000, 1,          0x80000001, 0x007fffff, 0x00800000,
+                             0x3f000000, 0xbf000000, 0x3f800000, 0xbf800000, 0x3f800001, 0x3f7fffff,
+                             0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000, 0x7fc12345, 0xffc12345,
+                             0x3e800000, 0x40000000, 0xc0400000, 0x7f812345, 0xff812346};
+  const unsigned reference_ops[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 8};
+  for (unsigned op = 0; op < 14; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint32_t mode = 0; mode < 512; ++mode) {
+        unsigned route_index = mode % 8;
+        uint64_t descriptor = route_index ? goc_test::dpp_modes[route_index - 1] : 0;
+        if (descriptor & GOC_DPP16)
+          descriptor =
+              (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t((mode >> 3) & 15) << GOC_DPP_ROW_SHIFT);
+        uint32_t words[4][66], before[4][66];
+        for (unsigned reg = 0; reg < 4; ++reg)
+          for (unsigned lane = 0; lane < 66; ++lane)
+            words[reg][lane] = values[(lane * (2 * reg + 1) + reg * 3) % 23];
+        std::memcpy(before, words, sizeof words);
+        unsigned dest = mode % 4;
+        uint32_t *d = words[dest] + 1;
+        const uint32_t *a = words[0] + 1, *b = words[1] + 1, *c = words[2] + 1;
+        uint64_t exec_mask = 0x87654321fedcba98ULL;
+        bool saturate = mode & 1;
+        uint32_t exceptions = 0x80000055;
+        ASSERT_EQ(wave64[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask, descriptor | mode, &d,
+                             &a, &b, &c, &exceptions),
+                  GOC_SUCCESS);
+        EXPECT_EQ(exceptions, 0x80000055U);
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          int source = int(lane);
+          bool enabled = descriptor ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                                    : ((exec_mask >> lane) & 1);
+          if (enabled) {
+            EXPECT_EQ(d[lane], goc_test::minmax_reference::reference(
+                                   reference_ops[op], source < 0 ? 0 : before[0][source + 1],
+                                   before[1][lane + 1], before[2][lane + 1], mode));
+          } else {
+            EXPECT_EQ(d[lane], before[dest][lane + 1]);
+          }
+        }
+        for (unsigned reg = 0; reg < 4; ++reg) {
+          EXPECT_EQ(words[reg][0], before[reg][0]);
+          EXPECT_EQ(words[reg][65], before[reg][65]);
+        }
+      }
+}
+
+TEST(Minmax3, Wave64ValidationAndOptionalState) {
+  for (auto fn : wave64) {
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << 36, nullptr, nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, nullptr,
+                 nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    uint32_t exceptions = 0x80000055;
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, nullptr, nullptr,
+                 &exceptions),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(exceptions, 0x80000055U);
+  }
 }

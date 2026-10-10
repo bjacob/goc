@@ -47,6 +47,29 @@ int minmax3(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   return GOC_SUCCESS;
 }
 
+template <goc::Minmax3 Op, bool FirstMaximum, bool SecondMaximum, bool Propagate>
+int minmax3_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (int error = minmax3<Op, FirstMaximum, SecondMaximum, Propagate>(flags, 0, mode, nullptr,
+                                                                      nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *x = a[0] + half * 32, *y = b[0] + half * 32, *z = c[0] + half * 32;
+    if (int error = minmax3<Op, FirstMaximum, SecondMaximum, Propagate>(
+            flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest, &x, &y, &z))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_min3_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -151,4 +174,119 @@ int goc_v_med3_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *
                    const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
                    uint32_t *excp_flag_user) {
   return goc_v_med3_num_f32(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_min3_num_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return minmax3_wave64<goc::Minmax3::Min3Num, false, false, false>(flags, exec_mask, mode, d, a, b,
+                                                                    c);
+}
+
+int goc_v_max3_num_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return minmax3_wave64<goc::Minmax3::Max3Num, true, true, false>(flags, exec_mask, mode, d, a, b,
+                                                                  c);
+}
+
+int goc_v_minmax_num_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c,
+                                uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return minmax3_wave64<goc::Minmax3::MinmaxNum, false, true, false>(flags, exec_mask, mode, d, a,
+                                                                     b, c);
+}
+
+int goc_v_maxmin_num_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c,
+                                uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return minmax3_wave64<goc::Minmax3::MaxminNum, true, false, false>(flags, exec_mask, mode, d, a,
+                                                                     b, c);
+}
+
+int goc_v_minimum3_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return minmax3_wave64<goc::Minmax3::Minimum3, false, false, true>(flags, exec_mask, mode, d, a, b,
+                                                                    c);
+}
+
+int goc_v_maximum3_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return minmax3_wave64<goc::Minmax3::Maximum3, true, true, true>(flags, exec_mask, mode, d, a, b,
+                                                                  c);
+}
+
+int goc_v_minimummaximum_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c,
+                                    uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return minmax3_wave64<goc::Minmax3::MinimumMaximum, false, true, true>(flags, exec_mask, mode, d,
+                                                                         a, b, c);
+}
+
+int goc_v_maximumminimum_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c,
+                                    uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return minmax3_wave64<goc::Minmax3::MaximumMinimum, true, false, true>(flags, exec_mask, mode, d,
+                                                                         a, b, c);
+}
+
+int goc_v_med3_num_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return minmax3_wave64<goc::Minmax3::MedianNum, false, false, false>(flags, exec_mask, mode, d, a,
+                                                                      b, c);
+}
+
+int goc_v_min3_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c, uint32_t *excp_flag_user) {
+  return goc_v_min3_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_max3_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c, uint32_t *excp_flag_user) {
+  return goc_v_max3_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_minmax_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c, uint32_t *excp_flag_user) {
+  return goc_v_minmax_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_maxmin_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c, uint32_t *excp_flag_user) {
+  return goc_v_maxmin_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_med3_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c, uint32_t *excp_flag_user) {
+  return goc_v_med3_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
 }

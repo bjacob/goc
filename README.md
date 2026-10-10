@@ -1660,7 +1660,9 @@ rocjitsu hardware witnesses, double-rounding and tininess boundaries, and all
 four host rounding modes. Benchmarks compare full-EXEC scalar/SIMD loose paths
 and report exact scalar separately, with default and modified inputs.
 
-Three-input FP16 mixed min/max forms select A/B first and then C. Median uses
+Three-input FP16 and FP32 min/max/median families have Wave32 and `_wave64`
+APIs, including legacy aliases, with the same loose semantics and scalar/AVX2
+paths. Three-input FP16 mixed min/max forms select A/B first and then C. Median uses
 the minimumNumber result if any input is NaN; otherwise it orders negative zero
 below positive zero. A GFX1201 capture checks all 512 triples drawn from signed
 zeros, ones, minimum subnormals, and infinities. Another 512-case capture checks

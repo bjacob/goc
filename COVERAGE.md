@@ -1369,3 +1369,22 @@ exactness, capture or throughput claim is made. The width queue is 105 APIs.
 Validation: all 818 tests pass on Clang 21 and GCC 15 Release. All five
 new Wave64 ordinary/packed binary and instruction-flag tests pass under
 ASan/UBSan, including the complete modifier sweeps.
+
+## Wave64 three-input FP16/FP32 min/max
+
+Added all 28 three-input min/max/median Wave64 APIs, including legacy
+spellings. Each family reuses its existing scalar/AVX2 selection algorithm,
+retaining A/B-first mixed ordering, NaN and signed-zero behavior, output
+modifiers, DPP routing and (for FP16) independently selected source/destination
+halves. Loose semantics and unsupported exact reporting are unchanged.
+
+Independent references sweep every FP32 low modifier and every FP16
+modifier/half-selector combination while varying DPP descriptor, row enables,
+overflow policy and destination alias. Tests cover all CPU paths, upper EXEC
+bits, preserved destination halves, guards and unchanged loose optional state.
+Validation checks empty EXEC and rejected modes/exact requests before operand
+access. Existing Wave32 numerical and hardware tests remain. This adds no new
+exactness, hardware capture or throughput claim. The width queue is 77 APIs.
+
+Validation: all 822 tests pass on Clang 21 and GCC 15 Release. The five
+new Wave64 min/max and instruction-flag tests pass under ASan/UBSan.
