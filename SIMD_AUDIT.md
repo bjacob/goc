@@ -7,6 +7,22 @@ bit-exact model. This is a source/dispatch audit backed by the existing test sui
 and added boundary/layout tests, not exhaustive hardware validation of every
 operand, encoding, or guest mode.
 
+## Follow-up completion checklist
+
+The active follow-up covers the actionable gaps below. Historical findings and
+timings later in this document describe the initial audit pass.
+
+- [x] SIMD RDNA3 IU4/IU8 WMMA in both widths, all signs and final CLAMP.
+- [ ] SIMD loose packed-result FP16/BF16 WMMA with intermediate narrowing.
+- [ ] AVX2 coverage for Boolean/CNDMASK, bitfield insert, non-saturating
+  integer add, and the remaining ternary/count/conversion gaps listed below.
+- [ ] Review incomplete exact-state families against rocjitsu and the ISA;
+  implement available borrowed/simple rules, retaining explicit unsupported
+  results where completion would require forbidden reverse-engineering.
+- [ ] Assess scalar routing/copy opportunities and justify any retained scalar
+  paths by their operation, rather than merely their current implementation.
+- [ ] Final modifier/mask/global-state regression validation and updated results.
+
 ## Findings and changes
 
 | Requirement | Finding and action |
@@ -140,3 +156,24 @@ microbenchmarks, not a workload-weighted performance estimate.
 Raw timing source, samples, summaries, and validation logs are under the local
 `../goc-build/coverage-work/simd-audit-*` paths; GCC/no-SIMD/sanitizer logs are in
 the corresponding build directories. Those generated artifacts are not checked in.
+
+## Follow-up: RDNA3 integer WMMA
+
+RDNA3 IU4/IU8 now dispatch to AVX2 in both semantics and wave sizes. The shared
+integer WMMA kernel centralizes signed/unsigned widening, pairwise products,
+overflow detection, and delayed stores. Compile-time layout parameters select
+RDNA3 replicated groups and its single final saturation step; RDNA4 keeps its
+two stages. No new executor or policy abstraction was introduced. All supported
+sign and CLAMP combinations retain SIMD.
+
+Expanded tests combine every CPU level, signedness/CLAMP, both semantics,
+Wave32/Wave64, destination aliases, guards, and independently populated
+replicated groups. Existing saturation-cancellation cases distinguish the two
+architectures. Clang and GCC each pass all 1,185 tests; ASan/UBSan passes 82
+matrix tests.
+
+Seven paired pinned measurements (same timing protocol as above) put RDNA3 at
+106–151 ns/wave versus 964–4,311 ns before: 6.7–40.0× faster. RDNA4 control
+cases changed by −4.2% to +4.7%, within the agreed 5% trade-off threshold.
+Artifacts: `../goc-build/coverage-work/audit-integer-performance/` and the
+`audit-integer-*` validation logs in each build directory.

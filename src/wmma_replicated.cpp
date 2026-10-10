@@ -90,6 +90,12 @@ int integer_wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32
     return GOC_ERROR_INVALID_FLAGS;
   if (int error = goc::validate(flags, 0, true))
     return error;
+#if defined(GOC_HAVE_X86_64_V3)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::integer_wmma_replicated_x86_64_v3<Bits, Lanes>(uint32_t(mode), d, a, b, c);
+    return GOC_SUCCESS;
+  }
+#endif
   constexpr int Groups = Lanes / 16, Registers = 256 / Lanes, PerReg = 32 / Bits;
   uint32_t result[Registers][Lanes];
   for (int row = 0; row < 16; ++row)

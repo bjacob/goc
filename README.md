@@ -179,8 +179,9 @@ rocjitsu's `exec_gfx11_wmma_i32`: signed/unsigned A/B, signed C, wrapping or
 final CLAMP. RDNA4 instead clamps at two stage boundaries.
 
 Loose FP32 output uses scalar or eight-lane AVX2 FMA in both wave sizes,
-including all six sign modifiers. Exact floating, packed-output, and integer
-paths use scalar integer arithmetic and preserve host FP state. All results are staged before stores so whole-VGPR aliases are supported.
+including all six sign modifiers. IU4/IU8 also use scalar or eight-lane AVX2
+in both semantics and wave sizes, preserving final-only saturation. Exact
+floating and packed-output paths use scalar integer arithmetic. All results are staged before stores so whole-VGPR aliases are supported.
 EXEC is ignored. No new GPU captures were made: tests reuse rocjitsu's GFX1100
 captures (103 DOT2 cases, a 256-element FP32 matrix, and 28 packed matrices),
 plus independent integer references, all modifiers, half selectors, aliasing,

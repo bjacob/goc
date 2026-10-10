@@ -244,58 +244,59 @@ TEST(WmmaReplicatedExact, PackedOverflowAndValidation) {
 TEST(WmmaReplicatedExact, IntegerSignsClampAliasesAndGuards) {
   for (int bits : {4, 8})
     for (int lanes : {32, 64})
-      for (unsigned mode = 0; mode < 8; ++mode)
-        for (int dst : {0, 2, 8, 16, 24})
-          for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
-            Wmma fn = lanes == 32
-                          ? (bits == 8 ? goc_v_wmma_i32_16x16x16_iu8 : goc_v_wmma_i32_16x16x16_iu4)
-                          : (bits == 8 ? goc_v_wmma_i32_16x16x16_iu8_wave64
-                                       : goc_v_wmma_i32_16x16x16_iu4_wave64);
-            Registers r;
-            int a[16][16], b[16][16];
-            for (int row = 0; row < 16; ++row)
-              for (int k = 0; k < 16; ++k) {
-                a[row][k] = (row * 7 + k * 13) & ((1 << bits) - 1);
-                b[k][row] = (row * 11 + k * 19) & ((1 << bits) - 1);
-              }
-            for (int lane = 0; lane < lanes; ++lane) {
-              for (int reg = 0; reg < bits / 2; ++reg) {
-                uint32_t av = 0, bv = 0;
-                for (int element = 0; element < 32 / bits; ++element) {
-                  int k = reg * (32 / bits) + element;
-                  av |= uint32_t(a[lane % 16][k]) << (bits * element);
-                  bv |= uint32_t(b[k][lane % 16]) << (bits * element);
-                }
-                r.v[reg][lane] = av;
-                r.v[8 + reg][lane] = bv;
-              }
-              for (int reg = 0; reg < 256 / lanes; ++reg)
-                r.v[16 + reg][lane] = (lane & 1) ? 0x7ffffff0 : 0x80000010;
-            }
-            uint32_t expected[32][66];
-            std::memcpy(expected, r.data, sizeof(expected));
-            for (int reg = 0; reg < 256 / lanes; ++reg)
-              for (int lane = 0; lane < lanes; ++lane) {
-                int row = reg * (lanes / 16) + lane / 16, col = lane % 16;
-                int64_t acc = (lane & 1) ? 2147483632LL : -2147483632LL;
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned mode = 0; mode < 8; ++mode)
+          for (int dst : {0, 2, 8, 16, 24})
+            for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+              Wmma fn = lanes == 32 ? (bits == 8 ? goc_v_wmma_i32_16x16x16_iu8
+                                                 : goc_v_wmma_i32_16x16x16_iu4)
+                                    : (bits == 8 ? goc_v_wmma_i32_16x16x16_iu8_wave64
+                                                 : goc_v_wmma_i32_16x16x16_iu4_wave64);
+              Registers r;
+              int a[16][16], b[16][16];
+              for (int row = 0; row < 16; ++row)
                 for (int k = 0; k < 16; ++k) {
-                  int x = a[row][k], y = b[k][col];
-                  if ((mode & 1) && x >= (1 << (bits - 1)))
-                    x -= 1 << bits;
-                  if ((mode & 2) && y >= (1 << (bits - 1)))
-                    y -= 1 << bits;
-                  acc += x * y;
+                  a[row][k] = (row * 7 + k * 13) & ((1 << bits) - 1);
+                  b[k][row] = (row * 11 + k * 19) & ((1 << bits) - 1);
                 }
-                if (mode & 4)
-                  acc = std::clamp(acc, int64_t(-2147483648LL), int64_t(2147483647));
-                expected[31 - dst - reg][lane + 1] = uint32_t(acc);
+              for (int lane = 0; lane < lanes; ++lane) {
+                for (int reg = 0; reg < bits / 2; ++reg) {
+                  uint32_t av = 0, bv = 0;
+                  for (int element = 0; element < 32 / bits; ++element) {
+                    int k = reg * (32 / bits) + element;
+                    av |= uint32_t(a[(lane % 16 + lane / 16) % 16][k]) << (bits * element);
+                    bv |= uint32_t(b[k][(lane % 16 + lane / 16) % 16]) << (bits * element);
+                  }
+                  r.v[reg][lane] = av;
+                  r.v[8 + reg][lane] = bv;
+                }
+                for (int reg = 0; reg < 256 / lanes; ++reg)
+                  r.v[16 + reg][lane] = (lane & 1) ? 0x7ffffff0 : 0x80000010;
               }
-            uint64_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
-            ASSERT_EQ(
-                fn(semantics | GOC_SEMANTICS_STRICT, modifiers, r.v + dst, r.v, r.v + 8, r.v + 16),
-                GOC_SUCCESS);
-            EXPECT_EQ(std::memcmp(r.data, expected, sizeof(expected)), 0);
-          }
+              uint32_t expected[32][66];
+              std::memcpy(expected, r.data, sizeof(expected));
+              for (int reg = 0; reg < 256 / lanes; ++reg)
+                for (int lane = 0; lane < lanes; ++lane) {
+                  int row = reg * (lanes / 16) + lane / 16, col = lane % 16;
+                  int64_t acc = (lane & 1) ? 2147483632LL : -2147483632LL;
+                  for (int k = 0; k < 16; ++k) {
+                    int x = a[(row + lane / 16) % 16][k], y = b[k][(col + lane / 16) % 16];
+                    if ((mode & 1) && x >= (1 << (bits - 1)))
+                      x -= 1 << bits;
+                    if ((mode & 2) && y >= (1 << (bits - 1)))
+                      y -= 1 << bits;
+                    acc += x * y;
+                  }
+                  if (mode & 4)
+                    acc = std::clamp(acc, int64_t(-2147483648LL), int64_t(2147483647));
+                  expected[31 - dst - reg][lane + 1] = uint32_t(acc);
+                }
+              uint64_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
+              ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, modifiers, r.v + dst, r.v,
+                           r.v + 8, r.v + 16),
+                        GOC_SUCCESS);
+              EXPECT_EQ(std::memcmp(r.data, expected, sizeof(expected)), 0);
+            }
 }
 
 TEST(WmmaReplicatedExact, IntegerClampIsFinalNotStaged) {

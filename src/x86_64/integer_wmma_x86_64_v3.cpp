@@ -63,4 +63,28 @@ void integer_wmma_x86_64_v3(int bits, int k, uint32_t modifiers, uint32_t *const
     integer_wmma<4, 32, Ops>(modifiers, d, a, b, c);
 }
 
+template <int Bits, int Lanes>
+void integer_wmma_replicated_x86_64_v3(uint32_t modifiers, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b,
+                                       const uint32_t *const *c) {
+  integer_wmma<Bits, 16, Ops, Lanes, true>(modifiers, d, a, b, c);
+}
+
+template void integer_wmma_replicated_x86_64_v3<4, 32>(uint32_t, uint32_t *const *,
+                                                       const uint32_t *const *,
+                                                       const uint32_t *const *,
+                                                       const uint32_t *const *);
+template void integer_wmma_replicated_x86_64_v3<4, 64>(uint32_t, uint32_t *const *,
+                                                       const uint32_t *const *,
+                                                       const uint32_t *const *,
+                                                       const uint32_t *const *);
+template void integer_wmma_replicated_x86_64_v3<8, 32>(uint32_t, uint32_t *const *,
+                                                       const uint32_t *const *,
+                                                       const uint32_t *const *,
+                                                       const uint32_t *const *);
+template void integer_wmma_replicated_x86_64_v3<8, 64>(uint32_t, uint32_t *const *,
+                                                       const uint32_t *const *,
+                                                       const uint32_t *const *,
+                                                       const uint32_t *const *);
+
 } // namespace goc
