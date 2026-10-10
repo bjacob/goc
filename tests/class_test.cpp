@@ -266,3 +266,102 @@ TEST(Class, ValidationAndCompleteHostFpState) {
       }
   }
 }
+
+namespace {
+const decltype(&goc_v_cmp_class_f16_wave64) wave64_functions[] = {
+    goc_v_cmp_class_f16_wave64,  goc_v_cmpx_class_f16_wave64, goc_v_cmp_class_f32_wave64,
+    goc_v_cmpx_class_f32_wave64, goc_v_cmp_class_f64_wave64,  goc_v_cmpx_class_f64_wave64};
+} // namespace
+
+TEST(Class, Wave64EveryHalfEncodingAndClassBit) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned bit = 0; bit < 10; ++bit)
+      for (unsigned start = 0; start < 65536; start += 64) {
+        uint32_t a[64], b[64];
+        uint64_t expected = 0;
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          a[lane] = start + lane;
+          b[lane] = 1U << bit;
+          if (goc_test::class_reference(0, a[lane], 0, b[lane], 0))
+            expected |= 1ULL << lane;
+        }
+        const uint32_t *pa = a, *pb = b;
+        for (unsigned op = 0; op < 2; ++op) {
+          uint64_t result = 123;
+          ASSERT_EQ(wave64_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                         UINT64_MAX, 0, &result, &pa, &pb),
+                    GOC_SUCCESS);
+          ASSERT_EQ(result, expected) << start << '/' << bit;
+        }
+      }
+}
+
+TEST(Class, Wave64RoutingMasksAliasesAndHostState) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+    std::fesetround(rounding);
+    std::feclearexcept(FE_ALL_EXCEPT);
+    std::feraiseexcept(FE_INVALID | FE_INEXACT);
+    const int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
+    for (unsigned op = 0; op < 6; ++op)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned m = 0; m < (op < 2 ? 16U : 4U); ++m)
+          for (unsigned routing = 0; routing < 17; ++routing) {
+            uint64_t mode = goc_test::class_mode(m);
+            if (routing) {
+              if (op >= 4)
+                continue;
+              mode |= (goc_test::dpp_modes[2] & ~GOC_DPP_ROW_MASK) |
+                      (uint64_t(routing - 1) << GOC_DPP_ROW_SHIFT);
+            }
+            alignas(8) uint32_t words[3][64];
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              uint64_t av = op < 2 ? uint32_t(goc_test::class_edges16[lane % 16]) |
+                                         (uint32_t(goc_test::class_edges16[(lane + 7) % 16]) << 16)
+                            : op < 4 ? goc_test::class_edges32[lane % 16]
+                                     : goc_test::class_edges64[lane % 16];
+              words[0][lane] = uint32_t(av);
+              words[1][lane] = uint32_t(av >> 32);
+              words[2][lane] = (lane * 0x9e3779b9U) ^ 0xa5a59669U;
+            }
+            const uint32_t *a[] = {words[0], words[1]}, *b = words[2];
+            const uint64_t exec_mask = 0x87654321fedcba98ULL;
+            uint64_t expected = 0;
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              int source = int(lane);
+              bool enabled = (exec_mask >> lane) & 1;
+              if (routing)
+                enabled = goc_test::dpp_source(mode, exec_mask, lane, source);
+              if (enabled &&
+                  goc_test::class_reference(op / 2, source < 0 ? 0 : words[0][source],
+                                            source < 0 ? 0 : words[1][source], words[2][lane], m))
+                expected |= 1ULL << lane;
+            }
+            for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+              uint64_t result = 123;
+              ASSERT_EQ(wave64_functions[op](cpu | semantics | GOC_SEMANTICS_STRICT |
+                                                 GOC_FP_FLUSH_INPUT_DENORMALS |
+                                                 GOC_FP_FLUSH_OUTPUT_DENORMALS,
+                                             exec_mask, mode, &result, a, &b),
+                        GOC_SUCCESS);
+              EXPECT_EQ(result, expected);
+            }
+            ASSERT_EQ(wave64_functions[op](cpu, exec_mask, mode,
+                                           reinterpret_cast<uint64_t *>(words[0] + 34), a, &b),
+                      GOC_SUCCESS);
+            uint64_t result;
+            std::memcpy(&result, words[0] + 34, sizeof result);
+            EXPECT_EQ(result, expected);
+          }
+    EXPECT_EQ(std::fegetround(), rounding);
+    EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
+  }
+  for (auto fn : wave64_functions) {
+    uint64_t d = 123;
+    EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << 63, &d, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(d, 123U);
+    EXPECT_EQ(fn(0, 0, 0, &d, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(d, 0U);
+  }
+}

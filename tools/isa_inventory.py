@@ -13,7 +13,8 @@ import xml.etree.ElementTree as ET
 
 root = Path(__file__).resolve().parents[1]
 isa_dir = Path(sys.argv[1])
-apis = set(re.findall(r"int goc_(\w+)\(", (root / "include/goc/detail/goc_instructions.h").read_text()))
+header = (root / "include/goc/detail/goc_instructions.h").read_text()
+apis = set(re.findall(r"int goc_(\w+)\(", header))
 instructions = {}
 sources = []
 for arch in (3, 4):
@@ -94,5 +95,35 @@ text += f"RDNA3: {len(instructions[3])} canonical instructions; RDNA4: {len(inst
 for (scope, present), count in sorted(counts.items()):
     text += f"- {scope}, API {'present' if present else 'absent'}: {count}\n"
 text += "\n| Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |\n|---|---|---|---|---|---|---|\n"
-(root / "ISA_INVENTORY.md").write_text(text + "\n".join(rows) + "\n")
+# Name presence alone hides the broad Wave64 implementation backlog. Restrict
+# this screen to APIs that explicitly accept a Wave32 EXEC mask; matrix and
+# scalar operations need separate width audits. VOPD is architecturally Wave32.
+width_gaps = set()
+for name, parameters in re.findall(r"int goc_(\w+)\(([^;]+)\);", header):
+    if ("uint32_t exec_mask" in parameters and not name.startswith("v_dual_")
+            and name + "_wave64" not in apis):
+        width_gaps.add(name)
+by_source = collections.defaultdict(list)
+for path in sorted((root / "src").glob("*.cpp")):
+    definitions = set(re.findall(r"int goc_(\w+)\(", path.read_text()))
+    for name in sorted(width_gaps & definitions):
+        by_source[path.name].append(name)
+located = {name for names in by_source.values() for name in names}
+assert located == width_gaps, f"Unlocated API definitions: {sorted(width_gaps - located)}"
+width_text = f"""
+## Wave-width API audit
+
+There are {len(width_gaps)} Wave32 EXEC-taking APIs without a corresponding
+`_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
+not proof that every candidate's encoding is legal at both widths. Each needs
+an ISA width review and either an implementation or an explicit restriction.
+Scalar, pseudo-scalar and matrix APIs have no EXEC parameter and are outside
+this screen; their width requirements remain a separate audit.
+
+| Implementation | APIs lacking a Wave64 counterpart |
+|---|---|
+"""
+for source, names in sorted(by_source.items()):
+    width_text += f"| [`{source}`](src/{source}) | " + ", ".join(f"`goc_{n}`" for n in names) + " |\n"
+(root / "ISA_INVENTORY.md").write_text(text + "\n".join(rows) + "\n" + width_text)
 print('\n'.join(text.splitlines()[16:28]))

@@ -3861,6 +3861,27 @@ int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c);
 
+// Wave64 CLASS comparisons. The 64-bit result is masked by EXEC. Classification
+// uses raw input bits, including denormals regardless of FP flushing flags, and
+// produces no FP exceptions. Modifiers and source layouts match Wave32.
+int goc_v_cmp_class_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmp_class_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmp_class_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmpx_class_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmpx_class_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmpx_class_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+
 // Wave64 floating relational CMP/CMPX. Layouts, modifiers and numerical/state
 // semantics match Wave32; exec_mask and the scalar result have 64 bits. DPP
 // retains all four row-enable bits. All sources are read before outputs change.

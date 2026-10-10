@@ -7,6 +7,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 
+#include <cstring>
 #include <stdint.h>
 
 namespace {
@@ -89,6 +90,33 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *d, const ui
   return GOC_SUCCESS;
 }
 
+template <unsigned Bits>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint64_t *d,
+               const uint32_t *const *a, const uint32_t *const *b) {
+  uint32_t masks[2] = {};
+  if (int error = run<Bits>(flags, 0, mode, masks, nullptr, nullptr))
+    return error;
+  if (exec_mask) {
+    for (unsigned half = 0; half < 2; ++half) {
+      uint64_t half_mode = mode;
+      if (mode & GOC_DPP16) {
+        uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+        half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+      }
+      constexpr unsigned words = Bits == 64 ? 2 : 1;
+      const uint32_t *source_a[words], *source_b = b[0] + half * 32;
+      for (unsigned word = 0; word < words; ++word)
+        source_a[word] = a[word] + half * 32;
+      if (int error = run<Bits>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, masks + half,
+                                source_a, &source_b))
+        return error;
+    }
+  }
+  uint64_t result = masks[0] | (uint64_t(masks[1]) << 32);
+  std::memcpy(d, &result, sizeof result);
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_cmp_class_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
@@ -119,4 +147,34 @@ int goc_v_cmpx_class_f32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 int goc_v_cmpx_class_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *d, const uint32_t *const *a, const uint32_t *const *b) {
   return run<64>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_class_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_class_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_class_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_class_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_class_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_class_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64>(flags, exec_mask, instruction_flags, d, a, b);
 }

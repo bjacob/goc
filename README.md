@@ -2407,3 +2407,9 @@ Their result and EXEC parameters are 64-bit masks. They retain the Wave32
 numerical, modifier and optional exception semantics and reuse its scalar and
 x86-64-v3/v4 kernels. Exact exception reporting combines active lanes from both
 halves; loose SIMD execution leaves the optional exception register unchanged.
+
+
+CLASS CMP/CMPX has `_wave64` forms for all three floating formats as well. These
+classify raw encodings, including denormals regardless of guest flushing flags,
+and do not generate floating exceptions. The Wave64 APIs retain scalar and
+x86-64-v3/v4 paths and support the same modifiers as their Wave32 counterparts.

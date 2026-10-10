@@ -54,7 +54,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
 | Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
-| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented at both wave widths | RDNA3 floating constant exception reporting, Wave64 CLASS comparisons and architecture-specific floating-policy audit |
+| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented at both wave widths | RDNA3 floating constant exception reporting and architecture-specific floating-policy audit |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
@@ -702,3 +702,33 @@ cross-architecture floating-policy audit remain open.
 Validation: all 750 tests pass with Clang 21 and GCC 15 Release builds. All nine
 Wave64 floating-comparison, exception-register and instruction-flag tests pass
 under ASan/UBSan. Canonical counts remain 806 present and three absent.
+
+
+## Wave64 CLASS and explicit width backlog
+
+Added the six FP16/FP32/FP64 CLASS CMP/CMPX Wave64 APIs. Each reuses the existing
+scalar and x86-64-v3/v4 classification kernels, with row-enable remapping for
+DPP and delayed 64-bit result stores. Raw denormal classification is independent
+of guest flushing flags. CLASS does not generate floating exceptions.
+
+Tests exhaust every FP16 encoding against each of the ten class bits on every
+available CPU path. Further tests cover both semantics, all three formats,
+sign/half modifiers, all sixteen DPP row masks, lane 63, result/source overlap,
+invalid calls and zero EXEC. All four host rounding modes and preexisting sticky
+flags are preserved. Existing Wave32 classification captures continue testing
+the shared kernel; no new Wave64 hardware observations are claimed.
+
+The generated inventory now separately lists APIs taking a 32-bit EXEC mask
+without a Wave64 counterpart, grouped by implementation file. There are 336
+candidates after this slice, excluding architecturally Wave32-only VOPD.
+This is a review queue, not a legality claim: each encoding's width must be
+checked, then implemented or explicitly restricted. Scalar/pseudo-scalar/matrix
+APIs are outside this signature screen and still require their own audit.
+The three absent canonical names therefore substantially understate remaining
+coverage work. All currently exposed comparison families now have both widths,
+but the cross-architecture semantics/reporting audit remains open.
+
+Validation: all 752 tests pass with Clang 21 and GCC 15 Release. All ten CLASS
+and instruction-flag tests pass under ASan/UBSan. Sanitizer validation caught
+and verified the fix for an initial FP64 adapter overread: the class-selection
+operand occupies one VGPR even though the classified value occupies two.

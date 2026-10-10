@@ -868,9 +868,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_ceil_f64` | yes | yes | in | `goc_v_ceil_f64` | — | API present; semantic audit pending |
 | `v_cls_i32` | yes | yes | in | `goc_v_cls_i32`<br>`goc_v_cls_i32_wave64` | `v_ffbh_i32` | API present; semantic audit pending |
 | `v_clz_i32_u32` | yes | yes | in | `goc_v_clz_i32_u32`<br>`goc_v_clz_i32_u32_wave64` | `v_ffbh_u32` | API present; semantic audit pending |
-| `v_cmp_class_f16` | yes | yes | in | `goc_v_cmp_class_f16` | — | API present; semantic audit pending |
-| `v_cmp_class_f32` | yes | yes | in | `goc_v_cmp_class_f32` | — | API present; semantic audit pending |
-| `v_cmp_class_f64` | yes | yes | in | `goc_v_cmp_class_f64` | — | API present; semantic audit pending |
+| `v_cmp_class_f16` | yes | yes | in | `goc_v_cmp_class_f16`<br>`goc_v_cmp_class_f16_wave64` | — | API present; semantic audit pending |
+| `v_cmp_class_f32` | yes | yes | in | `goc_v_cmp_class_f32`<br>`goc_v_cmp_class_f32_wave64` | — | API present; semantic audit pending |
+| `v_cmp_class_f64` | yes | yes | in | `goc_v_cmp_class_f64`<br>`goc_v_cmp_class_f64_wave64` | — | API present; semantic audit pending |
 | `v_cmp_eq_f16` | yes | yes | in | `goc_v_cmp_eq_f16`<br>`goc_v_cmp_eq_f16_wave64` | — | API present; semantic audit pending |
 | `v_cmp_eq_f32` | yes | yes | in | `goc_v_cmp_eq_f32`<br>`goc_v_cmp_eq_f32_wave64` | — | API present; semantic audit pending |
 | `v_cmp_eq_f64` | yes | yes | in | `goc_v_cmp_eq_f64`<br>`goc_v_cmp_eq_f64_wave64` | — | API present; semantic audit pending |
@@ -963,9 +963,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cmp_u_f16` | yes | yes | in | `goc_v_cmp_u_f16`<br>`goc_v_cmp_u_f16_wave64` | — | API present; semantic audit pending |
 | `v_cmp_u_f32` | yes | yes | in | `goc_v_cmp_u_f32`<br>`goc_v_cmp_u_f32_wave64` | — | API present; semantic audit pending |
 | `v_cmp_u_f64` | yes | yes | in | `goc_v_cmp_u_f64`<br>`goc_v_cmp_u_f64_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_class_f16` | yes | yes | in | `goc_v_cmpx_class_f16` | — | API present; semantic audit pending |
-| `v_cmpx_class_f32` | yes | yes | in | `goc_v_cmpx_class_f32` | — | API present; semantic audit pending |
-| `v_cmpx_class_f64` | yes | yes | in | `goc_v_cmpx_class_f64` | — | API present; semantic audit pending |
+| `v_cmpx_class_f16` | yes | yes | in | `goc_v_cmpx_class_f16`<br>`goc_v_cmpx_class_f16_wave64` | — | API present; semantic audit pending |
+| `v_cmpx_class_f32` | yes | yes | in | `goc_v_cmpx_class_f32`<br>`goc_v_cmpx_class_f32_wave64` | — | API present; semantic audit pending |
+| `v_cmpx_class_f64` | yes | yes | in | `goc_v_cmpx_class_f64`<br>`goc_v_cmpx_class_f64_wave64` | — | API present; semantic audit pending |
 | `v_cmpx_eq_f16` | yes | yes | in | `goc_v_cmpx_eq_f16`<br>`goc_v_cmpx_eq_f16_wave64` | — | API present; semantic audit pending |
 | `v_cmpx_eq_f32` | yes | yes | in | `goc_v_cmpx_eq_f32`<br>`goc_v_cmpx_eq_f32_wave64` | — | API present; semantic audit pending |
 | `v_cmpx_eq_f64` | yes | yes | in | `goc_v_cmpx_eq_f64`<br>`goc_v_cmpx_eq_f64_wave64` | — | API present; semantic audit pending |
@@ -1422,3 +1422,70 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_xor3_b32` | yes | yes | in | `goc_v_xor3_b32` | — | API present; semantic audit pending |
 | `v_xor_b16` | yes | yes | in | `goc_v_xor_b16` | — | API present; semantic audit pending |
 | `v_xor_b32` | yes | yes | in | `goc_v_xor_b32` | — | API present; semantic audit pending |
+
+## Wave-width API audit
+
+There are 336 Wave32 EXEC-taking APIs without a corresponding
+`_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
+not proof that every candidate's encoding is legal at both widths. Each needs
+an ISA width review and either an implementation or an explicit restriction.
+Scalar, pseudo-scalar and matrix APIs have no EXEC parameter and are outside
+this screen; their width requirements remain a separate audit.
+
+| Implementation | APIs lacking a Wave64 counterpart |
+|---|---|
+| [`arithmetic.cpp`](src/arithmetic.cpp) | `goc_v_fma_dx9_zero_f32`, `goc_v_fma_f32`, `goc_v_fmaak_f32`, `goc_v_fmac_dx9_zero_f32`, `goc_v_fmac_f32`, `goc_v_fmamk_f32` |
+| [`binary.cpp`](src/binary.cpp) | `goc_v_add_f32`, `goc_v_max_f32`, `goc_v_max_num_f32`, `goc_v_maximum_f32`, `goc_v_min_f32`, `goc_v_min_num_f32`, `goc_v_minimum_f32`, `goc_v_mul_dx9_zero_f32`, `goc_v_mul_f32`, `goc_v_sub_f32`, `goc_v_subrev_f32` |
+| [`bitfield.cpp`](src/bitfield.cpp) | `goc_v_alignbit_b32`, `goc_v_alignbyte_b32`, `goc_v_bfe_i32`, `goc_v_bfe_u32`, `goc_v_bfi_b32`, `goc_v_bfm_b32`, `goc_v_bfrev_b32`, `goc_v_perm_b32` |
+| [`boolean.cpp`](src/boolean.cpp) | `goc_v_and_b16`, `goc_v_and_b32`, `goc_v_not_b16`, `goc_v_not_b32`, `goc_v_or_b16`, `goc_v_or_b32`, `goc_v_xnor_b32`, `goc_v_xor_b16`, `goc_v_xor_b32` |
+| [`byte_conversion.cpp`](src/byte_conversion.cpp) | `goc_v_cvt_f32_ubyte0`, `goc_v_cvt_f32_ubyte1`, `goc_v_cvt_f32_ubyte2`, `goc_v_cvt_f32_ubyte3`, `goc_v_cvt_off_f32_i4`, `goc_v_cvt_pk_u8_f32` |
+| [`carry.cpp`](src/carry.cpp) | `goc_v_add_co_ci_u32`, `goc_v_add_co_u32`, `goc_v_sub_co_ci_u32`, `goc_v_sub_co_u32`, `goc_v_subrev_co_ci_u32`, `goc_v_subrev_co_u32` |
+| [`cndmask.cpp`](src/cndmask.cpp) | `goc_v_cndmask_b16`, `goc_v_cndmask_b32` |
+| [`conversion16.cpp`](src/conversion16.cpp) | `goc_v_cvt_f16_f32`, `goc_v_cvt_f16_i16`, `goc_v_cvt_f16_u16`, `goc_v_cvt_f32_f16`, `goc_v_cvt_i16_f16`, `goc_v_cvt_u16_f16` |
+| [`conversion32.cpp`](src/conversion32.cpp) | `goc_v_cvt_f32_i32`, `goc_v_cvt_f32_u32`, `goc_v_cvt_floor_i32_f32`, `goc_v_cvt_i32_f32`, `goc_v_cvt_nearest_i32_f32`, `goc_v_cvt_u32_f32` |
+| [`conversion64.cpp`](src/conversion64.cpp) | `goc_v_cvt_f32_f64`, `goc_v_cvt_f64_f32`, `goc_v_cvt_f64_i32`, `goc_v_cvt_f64_u32`, `goc_v_cvt_i32_f64`, `goc_v_cvt_u32_f64` |
+| [`cube.cpp`](src/cube.cpp) | `goc_v_cubeid_f32`, `goc_v_cubema_f32`, `goc_v_cubesc_f32`, `goc_v_cubetc_f32` |
+| [`div_fixup.cpp`](src/div_fixup.cpp) | `goc_v_div_fixup_f16`, `goc_v_div_fixup_f32`, `goc_v_div_fixup_f64` |
+| [`div_fmas.cpp`](src/div_fmas.cpp) | `goc_v_div_fmas_f32`, `goc_v_div_fmas_f64` |
+| [`div_scale.cpp`](src/div_scale.cpp) | `goc_v_div_scale_f32`, `goc_v_div_scale_f64` |
+| [`dot.cpp`](src/dot.cpp) | `goc_v_dot2_f32_bf16`, `goc_v_dot2_f32_bf16_rdna4`, `goc_v_dot2_f32_f16`, `goc_v_dot2_f32_f16_rdna4`, `goc_v_dot2acc_f32_f16` |
+| [`fp64.cpp`](src/fp64.cpp) | `goc_v_add_f64`, `goc_v_ceil_f64`, `goc_v_floor_f64`, `goc_v_fma_f64`, `goc_v_fract_f64`, `goc_v_frexp_mant_f64`, `goc_v_max_f64`, `goc_v_max_num_f64`, `goc_v_maximum_f64`, `goc_v_min_f64`, `goc_v_min_num_f64`, `goc_v_minimum_f64`, `goc_v_mul_f64`, `goc_v_rcp_f64`, `goc_v_rndne_f64`, `goc_v_rsq_f64`, `goc_v_sqrt_f64`, `goc_v_trunc_f64` |
+| [`fp8_conversion.cpp`](src/fp8_conversion.cpp) | `goc_v_cvt_f32_bf8`, `goc_v_cvt_f32_fp8`, `goc_v_cvt_pk_f32_bf8`, `goc_v_cvt_pk_f32_fp8` |
+| [`fp8_dot.cpp`](src/fp8_dot.cpp) | `goc_v_dot4_f32_bf8_bf8`, `goc_v_dot4_f32_bf8_fp8`, `goc_v_dot4_f32_fp8_bf8`, `goc_v_dot4_f32_fp8_fp8` |
+| [`fp8_narrow.cpp`](src/fp8_narrow.cpp) | `goc_v_cvt_pk_bf8_f32`, `goc_v_cvt_pk_fp8_f32`, `goc_v_cvt_sr_bf8_f32`, `goc_v_cvt_sr_fp8_f32` |
+| [`frexp_exp.cpp`](src/frexp_exp.cpp) | `goc_v_frexp_exp_i32_f32`, `goc_v_frexp_exp_i32_f64` |
+| [`half_binary.cpp`](src/half_binary.cpp) | `goc_v_add_f16`, `goc_v_max_f16`, `goc_v_max_num_f16`, `goc_v_maximum_f16`, `goc_v_min_f16`, `goc_v_min_num_f16`, `goc_v_minimum_f16`, `goc_v_mul_f16`, `goc_v_pk_add_f16`, `goc_v_pk_max_f16`, `goc_v_pk_max_num_f16`, `goc_v_pk_maximum_f16`, `goc_v_pk_min_f16`, `goc_v_pk_min_num_f16`, `goc_v_pk_minimum_f16`, `goc_v_pk_mul_f16`, `goc_v_sub_f16`, `goc_v_subrev_f16` |
+| [`half_dot.cpp`](src/half_dot.cpp) | `goc_v_dot2_bf16_bf16`, `goc_v_dot2_f16_f16` |
+| [`half_exponent.cpp`](src/half_exponent.cpp) | `goc_v_frexp_exp_i16_f16`, `goc_v_ldexp_f16` |
+| [`half_fma.cpp`](src/half_fma.cpp) | `goc_v_fma_f16`, `goc_v_fmaak_f16`, `goc_v_fmac_f16`, `goc_v_fmamk_f16` |
+| [`half_minmax.cpp`](src/half_minmax.cpp) | `goc_v_max3_f16`, `goc_v_max3_num_f16`, `goc_v_maximum3_f16`, `goc_v_maximumminimum_f16`, `goc_v_maxmin_f16`, `goc_v_maxmin_num_f16`, `goc_v_med3_f16`, `goc_v_med3_num_f16`, `goc_v_min3_f16`, `goc_v_min3_num_f16`, `goc_v_minimum3_f16`, `goc_v_minimummaximum_f16`, `goc_v_minmax_f16`, `goc_v_minmax_num_f16` |
+| [`half_trig.cpp`](src/half_trig.cpp) | `goc_v_cos_f16`, `goc_v_sin_f16` |
+| [`half_unary.cpp`](src/half_unary.cpp) | `goc_v_ceil_f16`, `goc_v_exp_f16`, `goc_v_floor_f16`, `goc_v_fract_f16`, `goc_v_frexp_mant_f16`, `goc_v_log_f16`, `goc_v_rcp_f16`, `goc_v_rndne_f16`, `goc_v_rsq_f16`, `goc_v_sqrt_f16`, `goc_v_trunc_f16` |
+| [`integer16.cpp`](src/integer16.cpp) | `goc_v_add_nc_i16`, `goc_v_add_nc_u16`, `goc_v_ashrrev_i16`, `goc_v_lshlrev_b16`, `goc_v_lshrrev_b16`, `goc_v_max_i16`, `goc_v_max_u16`, `goc_v_min_i16`, `goc_v_min_u16`, `goc_v_mul_lo_u16`, `goc_v_pk_add_i16`, `goc_v_pk_add_u16`, `goc_v_pk_ashrrev_i16`, `goc_v_pk_lshlrev_b16`, `goc_v_pk_lshrrev_b16`, `goc_v_pk_max_i16`, `goc_v_pk_max_u16`, `goc_v_pk_min_i16`, `goc_v_pk_min_u16`, `goc_v_pk_mul_lo_u16`, `goc_v_pk_sub_i16`, `goc_v_pk_sub_u16`, `goc_v_sub_nc_i16`, `goc_v_sub_nc_u16` |
+| [`integer16_ternary.cpp`](src/integer16_ternary.cpp) | `goc_v_mad_i16`, `goc_v_mad_u16`, `goc_v_max3_i16`, `goc_v_max3_u16`, `goc_v_med3_i16`, `goc_v_med3_u16`, `goc_v_min3_i16`, `goc_v_min3_u16`, `goc_v_pk_mad_i16`, `goc_v_pk_mad_u16` |
+| [`integer_add.cpp`](src/integer_add.cpp) | `goc_v_add3_u32`, `goc_v_add_nc_i32`, `goc_v_add_nc_u32`, `goc_v_sub_nc_i32`, `goc_v_sub_nc_u32`, `goc_v_subrev_nc_u32` |
+| [`integer_conversion.cpp`](src/integer_conversion.cpp) | `goc_v_cvt_i32_i16`, `goc_v_cvt_pk_i16_i32`, `goc_v_cvt_pk_u16_u32`, `goc_v_cvt_u32_u16` |
+| [`integer_dot.cpp`](src/integer_dot.cpp) | `goc_v_dot4_i32_iu8`, `goc_v_dot4_u32_u8`, `goc_v_dot8_i32_iu4`, `goc_v_dot8_u32_u4` |
+| [`integer_mad.cpp`](src/integer_mad.cpp) | `goc_v_mad_i32_i16`, `goc_v_mad_i32_i24`, `goc_v_mad_u32_u16`, `goc_v_mad_u32_u24` |
+| [`integer_minmax.cpp`](src/integer_minmax.cpp) | `goc_v_max3_i32`, `goc_v_max3_u32`, `goc_v_max_i32`, `goc_v_max_u32`, `goc_v_maxmin_i32`, `goc_v_maxmin_u32`, `goc_v_med3_i32`, `goc_v_med3_u32`, `goc_v_min3_i32`, `goc_v_min3_u32`, `goc_v_min_i32`, `goc_v_min_u32`, `goc_v_minmax_i32`, `goc_v_minmax_u32` |
+| [`integer_mul.cpp`](src/integer_mul.cpp) | `goc_v_mul_hi_i32`, `goc_v_mul_hi_i32_i24`, `goc_v_mul_hi_u32`, `goc_v_mul_hi_u32_u24`, `goc_v_mul_i32_i24`, `goc_v_mul_lo_u32`, `goc_v_mul_u32_u24` |
+| [`integer_ternary.cpp`](src/integer_ternary.cpp) | `goc_v_add_lshl_u32`, `goc_v_and_or_b32`, `goc_v_lerp_u8`, `goc_v_lshl_add_u32`, `goc_v_lshl_or_b32`, `goc_v_or3_b32`, `goc_v_xad_u32`, `goc_v_xor3_b32` |
+| [`interp16.cpp`](src/interp16.cpp) | `goc_v_interp_p10_f16_f32`, `goc_v_interp_p10_rtz_f16_f32`, `goc_v_interp_p2_f16_f32`, `goc_v_interp_p2_rtz_f16_f32` |
+| [`interp32.cpp`](src/interp32.cpp) | `goc_v_interp_p10_f32`, `goc_v_interp_p2_f32` |
+| [`ldexp.cpp`](src/ldexp.cpp) | `goc_v_ldexp_f32`, `goc_v_ldexp_f64` |
+| [`mad64.cpp`](src/mad64.cpp) | `goc_v_mad_co_i64_i32`, `goc_v_mad_co_u64_u32`, `goc_v_mad_i64_i32`, `goc_v_mad_u64_u32` |
+| [`minmax.cpp`](src/minmax.cpp) | `goc_v_max3_f32`, `goc_v_max3_num_f32`, `goc_v_maximum3_f32`, `goc_v_maximumminimum_f32`, `goc_v_maxmin_f32`, `goc_v_maxmin_num_f32`, `goc_v_med3_f32`, `goc_v_med3_num_f32`, `goc_v_min3_f32`, `goc_v_min3_num_f32`, `goc_v_minimum3_f32`, `goc_v_minimummaximum_f32`, `goc_v_minmax_f32`, `goc_v_minmax_num_f32` |
+| [`mixed_fma.cpp`](src/mixed_fma.cpp) | `goc_v_fma_mix_f32`, `goc_v_fma_mixhi_f16`, `goc_v_fma_mixlo_f16` |
+| [`mullit.cpp`](src/mullit.cpp) | `goc_v_mullit_f32` |
+| [`normalized.cpp`](src/normalized.cpp) | `goc_v_cvt_norm_i16_f16`, `goc_v_cvt_norm_u16_f16`, `goc_v_cvt_pk_norm_i16_f16`, `goc_v_cvt_pk_norm_i16_f32`, `goc_v_cvt_pk_norm_u16_f16`, `goc_v_cvt_pk_norm_u16_f32` |
+| [`pack.cpp`](src/pack.cpp) | `goc_v_pack_b32_f16`, `goc_v_sat_pk_u8_i16` |
+| [`packed_conversion.cpp`](src/packed_conversion.cpp) | `goc_v_cvt_pk_i16_f32`, `goc_v_cvt_pk_rtz_f16_f32`, `goc_v_cvt_pk_u16_f32` |
+| [`packed_fma.cpp`](src/packed_fma.cpp) | `goc_v_pk_fma_f16`, `goc_v_pk_fmac_f16` |
+| [`permlane.cpp`](src/permlane.cpp) | `goc_v_permlane16_b32`, `goc_v_permlane16_var_b32`, `goc_v_permlanex16_b32`, `goc_v_permlanex16_var_b32` |
+| [`rcp_iflag.cpp`](src/rcp_iflag.cpp) | `goc_v_rcp_iflag_f32` |
+| [`sad.cpp`](src/sad.cpp) | `goc_v_mqsad_pk_u16_u8`, `goc_v_mqsad_u32_u8`, `goc_v_msad_u8`, `goc_v_qsad_pk_u16_u8`, `goc_v_sad_hi_u8`, `goc_v_sad_u16`, `goc_v_sad_u32`, `goc_v_sad_u8` |
+| [`scalar_exec.cpp`](src/scalar_exec.cpp) | `goc_s_and_not0_saveexec_b32`, `goc_s_and_not0_wrexec_b32`, `goc_s_and_not1_saveexec_b32`, `goc_s_and_not1_wrexec_b32`, `goc_s_and_saveexec_b32`, `goc_s_nand_saveexec_b32`, `goc_s_nor_saveexec_b32`, `goc_s_or_not0_saveexec_b32`, `goc_s_or_not1_saveexec_b32`, `goc_s_or_saveexec_b32`, `goc_s_xnor_saveexec_b32`, `goc_s_xor_saveexec_b32` |
+| [`shift.cpp`](src/shift.cpp) | `goc_v_ashrrev_i32`, `goc_v_ashrrev_i64`, `goc_v_lshlrev_b32`, `goc_v_lshlrev_b64`, `goc_v_lshrrev_b32`, `goc_v_lshrrev_b64` |
+| [`trig.cpp`](src/trig.cpp) | `goc_v_cos_f32`, `goc_v_sin_f32` |
+| [`trig_preop.cpp`](src/trig_preop.cpp) | `goc_v_trig_preop_f64` |
+| [`unary.cpp`](src/unary.cpp) | `goc_v_ceil_f32`, `goc_v_exp_f32`, `goc_v_floor_f32`, `goc_v_fract_f32`, `goc_v_frexp_mant_f32`, `goc_v_log_f32`, `goc_v_rcp_f32`, `goc_v_rndne_f32`, `goc_v_rsq_f32`, `goc_v_sqrt_f32`, `goc_v_trunc_f32` |
