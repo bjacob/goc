@@ -8327,3 +8327,49 @@ unsupported modes and reporting policies.
 Validation: all **22** MixedFma tests pass with Clang 21 Release, GCC 15 Release
 and Clang ASan/UBSan. All nine tooling tests pass. Logs use
 `coverage-work/mixed-fma-contract-{build,tests}.log` in each build directory.
+
+
+## Dual FP32 FMA architecture contracts
+
+Reviewed the three VOPD fused forms against both XML inventories, RDNA3 section
+7.6 and RDNA4 section 7.8, and rocjitsu revision `ffc144c564c`'s generated
+`rdna3/vopd_exec.cpp` and `rdna4/vopd_exec.cpp`. The generic shared-handler audit
+does not inspect these execution bodies, so they were read directly. Both call
+the same architecture-aware FP32 FMA operation for FMAC, FMAAK and FMAMK.
+FMAC reads old D; FMAAK uses the literal as C; FMAMK uses it as B.
+
+GoC's six APIs already forward to the corresponding ordinary architecture FMA
+entry points, sharing validation, fused arithmetic, guest flushing, exact NaN
+rules, masks, aliases and SIMD dispatch. No extra numerical implementation is
+needed. The `_rdna4` distinction follows architecture/IEEE-dependent NaN quieting
+and the native optional register contract. All are Wave32-only, with no DPP or
+encoded instruction modifiers. FMAAK/FMAMK require a literal; FMAC may instead
+have an ordinary literal source supplied as its decoded operand.
+
+Each GoC entry point executes one decoded slot. The caller enforces instruction
+pair legality, register-bank/parity constraints and shared-literal restrictions.
+For RDNA3, the caller stages sources when the two slots require pre-pair values;
+for a legal RDNA4 pair, X may execute before Y. Existing pair tests demonstrate
+both patterns. These helpers do not claim to decode or atomically execute an
+entire two-slot VOPD instruction.
+
+Exact result arithmetic remains available through the borrowed ordinary FMA
+model. Faithful optional reporting is unsupported for both architectures:
+non-null non-loose calls reject before operand reads, regardless of STRICT.
+Loose calls skip reporting. If instruction flags are nonzero, the wrapper first
+performs the ordinary API's zero-EXEC validation, preserving unsupported-state
+error precedence, then rejects the instruction flags. The new regression checks
+all 64 modifier bits, all six APIs and CPU tiers, zero/full EXEC, exact/STRICT
+and both reserved semantics, using null operands and an unchanged state sentinel.
+Existing tests cover raw architecture NaN priority, finite fused results,
+source/destination aliases, masks and guest policies. Directed rounding and
+DX10-clamp-off remain unsupported, as in ordinary FP32 FMA.
+
+No production code changed. Loose paths retain the ordinary FMA AVX2/AVX-512
+kernels. The ledger now records **801** reviewed mnemonic contracts and **eight**
+pending; exact reporting and other documented limitations are separate from
+this count.
+
+Validation: all **nine** Dual tests pass with Clang 21 Release, GCC 15 Release
+and Clang ASan/UBSan. All nine tooling tests pass. Logs use
+`coverage-work/dual-fma-contract-{build,tests}.log` in each build directory.

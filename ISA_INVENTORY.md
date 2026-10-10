@@ -1142,9 +1142,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_dual_cndmask_b32` | yes | yes | in | `goc_v_dual_cndmask_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
 | `v_dual_dot2acc_f32_bf16` | yes | yes | in | `goc_v_dual_dot2acc_f32_bf16`<br>`goc_v_dual_dot2acc_f32_bf16_rdna4` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-result-dot2-architecture-contracts) |
 | `v_dual_dot2acc_f32_f16` | yes | yes | in | `goc_v_dual_dot2acc_f32_f16`<br>`goc_v_dual_dot2acc_f32_f16_rdna4` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-result-dot2-architecture-contracts) |
-| `v_dual_fmaak_f32` | yes | yes | in | `goc_v_dual_fmaak_f32`<br>`goc_v_dual_fmaak_f32_rdna4` | — | API present; semantic audit pending |
-| `v_dual_fmac_f32` | yes | yes | in | `goc_v_dual_fmac_f32`<br>`goc_v_dual_fmac_f32_rdna4` | — | API present; semantic audit pending |
-| `v_dual_fmamk_f32` | yes | yes | in | `goc_v_dual_fmamk_f32`<br>`goc_v_dual_fmamk_f32_rdna4` | — | API present; semantic audit pending |
+| `v_dual_fmaak_f32` | yes | yes | in | `goc_v_dual_fmaak_f32`<br>`goc_v_dual_fmaak_f32_rdna4` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#dual-fp32-fma-architecture-contracts) |
+| `v_dual_fmac_f32` | yes | yes | in | `goc_v_dual_fmac_f32`<br>`goc_v_dual_fmac_f32_rdna4` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#dual-fp32-fma-architecture-contracts) |
+| `v_dual_fmamk_f32` | yes | yes | in | `goc_v_dual_fmamk_f32`<br>`goc_v_dual_fmamk_f32_rdna4` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#dual-fp32-fma-architecture-contracts) |
 | `v_dual_lshlrev_b32` | yes | yes | in | `goc_v_dual_lshlrev_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
 | `v_dual_max_f32` | yes | — | in | `goc_v_dual_max_f32` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-binary-and-dual-minmax-architecture-contracts) |
 | `v_dual_max_num_f32` | — | yes | in | `goc_v_dual_max_num_f32` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-binary-and-dual-minmax-architecture-contracts) |

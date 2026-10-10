@@ -318,3 +318,25 @@ TEST(Dual, Rdna3PairReadsPrePairSources) {
       }
     }
 }
+
+TEST(Dual, FmaReportingErrorsPrecedeAllModifierBits) {
+  for (bool rdna3 : {false, true})
+    for (unsigned op = 0; op < 3; ++op)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (uint32_t exec_mask : {0U, UINT32_MAX})
+          for (unsigned bit = 0; bit < 64; ++bit) {
+            uint64_t mode = 1ULL << bit;
+            uint32_t state = 0xa5000040;
+            for (uint64_t semantics : {GOC_SEMANTICS_EXACT_EMPIRICAL,
+                                       GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                       uint64_t(2) << 16, uint64_t(3) << 16}) {
+              EXPECT_EQ(execute(op, cpu | semantics, exec_mask, mode, nullptr, nullptr, nullptr,
+                                &state, rdna3),
+                        GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+              EXPECT_EQ(state, 0xa5000040U);
+            }
+            EXPECT_EQ(execute(op, cpu, exec_mask, mode, nullptr, nullptr, nullptr, &state, rdna3),
+                      GOC_ERROR_INVALID_FLAGS);
+            EXPECT_EQ(state, 0xa5000040U);
+          }
+}

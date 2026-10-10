@@ -46,12 +46,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-798 in-scope mnemonics have explicit contract-review records in
+801 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 11 in-scope mnemonics need a recorded review.
+The remaining 8 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -461,9 +461,9 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_dual_cndmask_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
 | `v_dual_dot2acc_f32_bf16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-result-dot2-architecture-contracts) |
 | `v_dual_dot2acc_f32_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-result-dot2-architecture-contracts) |
-| `v_dual_fmaak_f32` | no direct policy detected | yes | not found | review required |
-| `v_dual_fmac_f32` | no direct policy detected | yes | not found | review required |
-| `v_dual_fmamk_f32` | no direct policy detected | yes | not found | review required |
+| `v_dual_fmaak_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#dual-fp32-fma-architecture-contracts) |
+| `v_dual_fmac_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#dual-fp32-fma-architecture-contracts) |
+| `v_dual_fmamk_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#dual-fp32-fma-architecture-contracts) |
 | `v_dual_lshlrev_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
 | `v_dual_mov_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
 | `v_dual_mul_dx9_zero_f32` | no direct policy detected | yes | not found | [loose contract reviewed; see limitations](COVERAGE.md#fp32-loose-subtract-and-legacy-multiply-architecture-contracts) |
