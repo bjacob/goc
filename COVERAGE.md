@@ -637,43 +637,51 @@ Validation: all 744 tests pass with Clang 21 and GCC 15 Release builds. All ten
 VOPD, exception-register and instruction-flag tests pass under ASan/UBSan.
 
 
-## Hardware-register access audit (implementation still open)
+## Hardware-register access architecture contracts
 
-See [the detailed HWREG audit](HWREG_AUDIT.md) for the complete XML register-ID
-inventory, privilege differences, snapshot-read side effects, clock-input needs
-and implementation gates. The three APIs remain missing.
+The six APIs for `s_getreg_b32`, `s_setreg_b32`, and `s_setreg_imm32_b32`
+are implemented, with unsuffixed RDNA3 and `_rdna4` variants. See the
+[HWREG audit](HWREG_AUDIT.md) for per-register evidence and remaining limits.
+The earlier statement that these APIs were missing is superseded by the
+implemented reads and writes documented there.
 
-The three remaining canonical names, `s_getreg_b32`, `s_setreg_b32` and
-`s_setreg_imm32_b32`, cannot be completed by adding a generic bitfield helper.
-RDNA3 ISA section 3.4 and SOPK definitions specify a six-bit register ID,
-five-bit bit offset and five-bit size-minus-one. SETREG also applies
-register-specific writable bits and privilege and can trigger side effects.
-The printed SETREG pseudocode's mask does not include the offset shift; it
-must not be copied without checking hardware or the independent model.
+The split is necessary: register IDs, writable masks and privilege differ.
+For example, ID 18 reads snapshot PC on RDNA3 but reads/writes user exception
+flags on RDNA4. STATUS contains SCC on RDNA3; RDNA4 places it in STATE_PRIV.
+Both architectures use shifted, clipped field insertion. RDNA3's printed
+pseudocode omits the mask shift; the operation's prose and rocjitsu's decoder
+establish it, so this omission does not justify different insertion algorithms.
 
-rocjitsu `vm/amdgpu/hwreg.cpp` provides useful field decoding/insertion and
-architecture tables, but many entries explicitly return Unsupported. Its RDNA3
-STATUS descriptor is read-only even though the manual allows some privileged
-writes. It is evidence for partial behavior, not an exhaustive reference.
+Rechecked rocjitsu `vm/amdgpu/hwreg.cpp` at `ffc144c564c`: its architecture
+maps and `read_hwreg_field`/`write_hwreg_field` support the common extraction
+and insertion, but scratch and snapshot descriptors still lack backing state.
+Its read-only RDNA3 STATUS policy does not implement the manual's privileged
+writes. GoC keeps the manual-derived writable masks and existing gfx1201
+MODE/EXCP_FLAG_USER field-access fixture; it does not copy simulator-specific
+access diagnostics or invent missing effects.
 
-| Register ID | RDNA3 | RDNA4 |
-|---|---|---|
-| 1 | MODE | WAVE_MODE |
-| 2 | STATUS (includes privileged writable fields) | WAVE_STATUS (separate privileged state) |
-| 3 / 4 | TRAPSTS at 3 | WAVE_STATE_PRIV at 4 |
-| 17 | SHADER_TBA_HI | WAVE_EXCP_FLAG_PRIV |
-| 18 | PERF_SNAPSHOT_PC_LO | WAVE_EXCP_FLAG_USER |
-| 19 | PERF_SNAPSHOT_PC_HI | WAVE_TRAP_CTRL |
-| 20 / 21 | SHADER_FLAT_SCRATCH_LO/HI | WAVE_SCRATCH_BASE_LO/HI |
-| 29 / 30 | SHADER_CYCLES at 29 | SHADER_CYCLES_LO/HI |
+GETREG takes caller-supplied wave-visible register values, including guest
+clock halves and snapshot visibility. SETREG performs masked replacement,
+including clearing exception bits, and preserves reserved/unselected bits.
+Read-only or privilege-denied writes leave state alone. This is scalar register
+arithmetic with no EXEC or SIMD path. Both semantics support the implemented
+integer operations; this review is not a claim of complete state reporting.
 
-A raw-encoding API therefore needs `_rdna4` variants. Implementing it requires
-explicit input snapshots for readable registers and one trailing optional output
-per writable architectural register, together with the existing exact/loose
-state contract. Scheduler/cache actions such as FLUSH_IB must be separated from
-register arithmetic rather than silently fabricated. Architectural register
-write masks, privilege-dependent writes and side effects remain unchecked work.
-This does not change the family's in-scope status or claim those three APIs.
+Remaining limits: privileged scratch updates on both architectures, RDNA3
+FLUSH_IB, and RDNA4 snapshot read-unlock are unavailable. Exact semantics with
+any affected non-null output return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`, even
+without STRICT and before flag validation or destination access. Loose mode
+skips unavailable state; null opts out. Scheduler, memory and trap-delivery
+consequences belong to the emulator. No new empirical model is inferred.
+
+`Hwreg` tests cover all IDs, offsets, widths, privileges, both SETREG forms,
+architecture-specific masks, captured reads/writes, guest-mode integration,
+opt-outs and preserved outputs. `UnsupportedStatePrecedesValidation` adds
+conflicting invalid call/instruction flags for each independently requested
+unsupported output and null GETREG destinations in both exact strictness modes.
+
+Validation: all 14 HWREG tests pass with Clang 21, GCC 15 and ASan/UBSan;
+all nine inventory-tool tests pass. Production code is unchanged.
 
 ## Wave64 constant comparisons
 

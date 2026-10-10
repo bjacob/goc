@@ -295,7 +295,7 @@ exception clearing, native-register opt-outs, validation ordering and host FP
 control preservation. Scheduling and trap-delivery effects of updated register
 bits remain the emulator's responsibility.
 
-### Remaining gates
+### Maintained contracts and remaining gates
 
 - Preserve one trailing nullable output pointer per architectural register that
   the instruction may write. Do not put writable state in an opaque context
@@ -304,11 +304,13 @@ bits remain the emulator's responsibility.
 - Keep GETREG's by-value input boundary explicit: the present API follows PLAN.md
   and does not introduce a context object. Inputs must represent the calling
   wave's architectural read values, not unfiltered physical snapshot storage.
-- Before declaring coverage, test every recognized ID for each architecture,
-  all 32 offsets and 32 encoded widths, size-32 and clipped fields, SGPR and
-  literal SETREG equivalence, privilege filtering, unaffected-bit preservation,
-  exception clearing, aliases, and unchanged outputs on errors.
-- Also test MODE writes under nondefault host FP settings without host control
-  changes, snapshot ownership/unlock, and externally supplied clock rollover.
-  Unsupported side effects must remain explicit; do not label the three
-  inventory rows complete merely because symbols or extraction helpers exist.
+- Existing tests cover every recognized ID for each architecture, all 32
+  offsets and widths, size-32 and clipped fields, SGPR/literal equivalence,
+  privileges, preserved bits, exception clearing, aliases and error preservation.
+  They also cover MODE under nondefault host settings and supplied clock rollover.
+- Exact unsupported-state rejection is tested before conflicting invalid flags
+  and null GETREG destination access, with each affected output independently
+  requested, both SETREG forms and both exact strictness settings.
+- Scratch updates, FLUSH_IB and snapshot unlock remain unresolved as described
+  above. The three inventory rows now link to the reviewed partial contracts;
+  those review records do not claim these missing effects are implemented.

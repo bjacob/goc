@@ -1142,5 +1142,15 @@
       "v_mul_f64",
       "v_fma_f64"
     ]
+  },
+  {
+    "heading": "Hardware-register access architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/hwreg_test.cpp",
+    "mnemonics": [
+      "s_getreg_b32",
+      "s_setreg_b32",
+      "s_setreg_imm32_b32"
+    ]
   }
 ]

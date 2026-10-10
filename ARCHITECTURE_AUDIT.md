@@ -46,12 +46,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-640 in-scope mnemonics have explicit contract-review records in
+643 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 169 in-scope mnemonics need a recorded review.
+The remaining 166 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -136,7 +136,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_ctz_i32_b64` | no direct policy detected | no | 1478 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_denorm_mode` | no direct policy detected | no | 1586 | [loose and exact contract reviewed; see limitations](COVERAGE.md#guest-mode-architecture-contracts) |
 | `s_getpc_b64` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
-| `s_getreg_b32` | no direct policy detected | yes | not found | review required |
+| `s_getreg_b32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#hardware-register-access-architecture-contracts) |
 | `s_lshl1_add_u32` | no direct policy detected | no | 1748 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-boolean-and-shift-architecture-contracts) |
 | `s_lshl2_add_u32` | no direct policy detected | no | 1760 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-boolean-and-shift-architecture-contracts) |
 | `s_lshl3_add_u32` | no direct policy detected | no | 1772 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-boolean-and-shift-architecture-contracts) |
@@ -188,8 +188,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_quadmask_b32` | no direct policy detected | no | 2340 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_quadmask_b64` | no direct policy detected | no | 2355 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_round_mode` | no direct policy detected | no | 2426 | [loose and exact contract reviewed; see limitations](COVERAGE.md#guest-mode-architecture-contracts) |
-| `s_setreg_b32` | no direct policy detected | yes | not found | review required |
-| `s_setreg_imm32_b32` | no direct policy detected | yes | not found | review required |
+| `s_setreg_b32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#hardware-register-access-architecture-contracts) |
+| `s_setreg_imm32_b32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#hardware-register-access-architecture-contracts) |
 | `s_sext_i32_i16` | no direct policy detected | no | 2571 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_sext_i32_i8` | no direct policy detected | no | 2581 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_wqm_b32` | no direct policy detected | no | 2739 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |

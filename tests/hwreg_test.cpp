@@ -518,3 +518,44 @@ TEST(Hwreg, ModeInstructionsAgreeWithFieldAccess) {
               }
             }
 }
+
+TEST(Hwreg, UnsupportedStatePrecedesValidation) {
+  // Reporting is mandatory in exact semantics even without STRICT. Conflicting
+  // invalid flags must not hide missing state support or cause operand access.
+  for (uint64_t semantics : {GOC_SEMANTICS_EXACT_EMPIRICAL, exact})
+    for (uint64_t invalid_flags : {uint64_t(0), uint64_t(1ULL << 63)})
+      for (uint64_t instruction_flags : {uint64_t(0), uint64_t(1), uint64_t(1ULL << 63)}) {
+        uint64_t flags = semantics | invalid_flags;
+        std::array<uint32_t, 64> registers{};
+        std::array<uint32_t, 5> snapshot;
+        snapshot.fill(0xdeadbeef);
+        const auto snapshot_before = snapshot;
+        for (unsigned output = 0; output < 5; ++output) {
+          EXPECT_EQ(read(true, flags, instruction_flags, descriptor(12, 31, 32), nullptr, registers,
+                         &snapshot, 1U << output),
+                    GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+          EXPECT_EQ(snapshot, snapshot_before);
+        }
+        uint32_t state = 0x12345678;
+        uint64_t scratch = 0x123456789abcde00ULL;
+        for (unsigned id : {20U, 21U})
+          for (bool report_scratch : {false, true}) {
+            for (auto set : {goc_s_setreg_b32, goc_s_setreg_imm32_b32})
+              EXPECT_EQ(set(flags, instruction_flags, descriptor(id, 31, 32), UINT32_MAX, 32,
+                            nullptr, report_scratch ? nullptr : &state, nullptr, nullptr,
+                            report_scratch ? &scratch : nullptr),
+                        GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+            for (auto set : {goc_s_setreg_b32_rdna4, goc_s_setreg_imm32_b32_rdna4})
+              EXPECT_EQ(set(flags, instruction_flags, descriptor(id, 31, 32), UINT32_MAX, 32,
+                            nullptr, report_scratch ? nullptr : &state, nullptr, nullptr, nullptr,
+                            report_scratch ? &scratch : nullptr),
+                        GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+          }
+        for (auto set : {goc_s_setreg_b32, goc_s_setreg_imm32_b32})
+          EXPECT_EQ(set(flags, instruction_flags, descriptor(14, 0, 1), 1, 0, nullptr, nullptr,
+                        nullptr, &state, nullptr),
+                    GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+        EXPECT_EQ(state, 0x12345678U);
+        EXPECT_EQ(scratch, 0x123456789abcde00ULL);
+      }
+}
