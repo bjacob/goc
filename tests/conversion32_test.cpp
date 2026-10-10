@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cfenv>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <random>
 #include <stdint.h>
@@ -19,6 +20,10 @@ namespace {
 using Fn = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
 const Fn functions[] = {goc_v_cvt_f32_i32, goc_v_cvt_f32_u32,         goc_v_cvt_i32_f32,
                         goc_v_cvt_u32_f32, goc_v_cvt_nearest_i32_f32, goc_v_cvt_floor_i32_f32};
+
+const Fn wave64[] = {goc_v_cvt_f32_i32_wave64,         goc_v_cvt_f32_u32_wave64,
+                     goc_v_cvt_i32_f32_wave64,         goc_v_cvt_u32_f32_wave64,
+                     goc_v_cvt_nearest_i32_f32_wave64, goc_v_cvt_floor_i32_f32_wave64};
 
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t mode, const uint32_t *input) {
   uint32_t output[32];
@@ -273,4 +278,80 @@ TEST(Conversion32, DppValidation) {
                               descriptor, nullptr, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
+}
+
+TEST(Conversion32, Wave64RoundingBoundariesAndMasks) {
+  const uint32_t edges[] = {0,          1,          0x80000000, 0x80000001, 0x3f000000, 0xbf000000,
+                            0x3fc00000, 0xbfc00000, 0x40200000, 0xc0200000, 0x7f800000, 0xff800000,
+                            0x7f800001, 0xffc12345, 0x4effffff, 0x4f000000, 0xcf000000, 0x4f7fffff,
+                            0x4f800000, 0x00ffffff, 0x01000001, UINT32_MAX};
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < goc_test::conversion32_modes(op); ++variant)
+        for (uint64_t exec_mask :
+             {uint64_t(UINT64_MAX), uint64_t(1ULL << 63), uint64_t(0xffffffff00000000ULL),
+              uint64_t(0x87654321fedcba98ULL)}) {
+          uint32_t a[64], d[64];
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            a[lane] = edges[lane % (sizeof edges / sizeof edges[0])];
+            d[lane] = 0xdeadbeef;
+          }
+          const uint32_t *pa = a;
+          uint32_t *pd = d;
+          uint32_t mode = goc_test::conversion32_mode(op, variant);
+          uint32_t excp_flag_user = 0x12345678;
+          ASSERT_EQ(wave64[op](cpu, exec_mask, mode, &pd, &pa,
+                               op == 2 || op == 3 ? &excp_flag_user : nullptr),
+                    GOC_SUCCESS);
+          EXPECT_EQ(excp_flag_user, 0x12345678U);
+          for (unsigned lane = 0; lane < 64; ++lane)
+            ASSERT_EQ(d[lane], (exec_mask >> lane & 1)
+                                   ? goc_test::conversion32_reference(op, a[lane], mode)
+                                   : 0xdeadbeef);
+        }
+}
+
+TEST(Conversion32, Wave64DppModifiersAliasesAndValidation) {
+  std::mt19937 random(219301);
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < goc_test::conversion32_modes(op); ++variant)
+        for (auto route : goc_test::dpp_modes)
+          for (unsigned rows = 0; rows < 16; ++rows)
+            for (unsigned target = 0; target < 2; ++target) {
+              uint32_t initial[2][66], words[2][66];
+              for (auto &reg : initial)
+                for (auto &word : reg)
+                  word = random();
+              std::memcpy(words, initial, sizeof words);
+              const uint32_t *a = words[0] + 1;
+              uint32_t *d = words[target] + 1;
+              uint64_t descriptor = route;
+              if (route & GOC_DPP16)
+                descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+              uint64_t exec_mask = 0x87654321fedcba98ULL;
+              uint32_t mode = goc_test::conversion32_mode(op, variant);
+              ASSERT_EQ(wave64[op](cpu, exec_mask, mode | descriptor, &d, &a), GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                int source = 0;
+                bool enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+                uint32_t expected = enabled ? goc_test::conversion32_reference(
+                                                  op, source < 0 ? 0 : initial[0][source + 1], mode)
+                                            : initial[target][lane + 1];
+                ASSERT_EQ(d[lane], expected);
+              }
+              EXPECT_EQ(words[target][0], initial[target][0]);
+              EXPECT_EQ(words[target][65], initial[target][65]);
+            }
+  for (unsigned op = 0; op < 6; ++op) {
+    EXPECT_EQ(wave64[op](0, 0, 0, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(wave64[op](0, UINT64_MAX, 1ULL << 63, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    if (op == 2 || op == 3) {
+      uint32_t excp_flag_user = 0x12345678;
+      EXPECT_EQ(wave64[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr,
+                           &excp_flag_user),
+                GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+      EXPECT_EQ(excp_flag_user, 0x12345678U);
+    }
+  }
 }

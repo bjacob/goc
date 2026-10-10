@@ -2661,6 +2661,23 @@ int goc_v_cvt_nearest_i32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instr
 int goc_v_cvt_floor_i32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a);
 
+// Wave64 FP32/integer conversions use the same layouts, rounding, modifiers
+// and loose semantics. Optional-state restrictions remain unchanged.
+int goc_v_cvt_f32_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a);
+int goc_v_cvt_f32_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a);
+int goc_v_cvt_i32_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+int goc_v_cvt_u32_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+int goc_v_cvt_nearest_i32_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a);
+int goc_v_cvt_floor_i32_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a);
+
 // Combined three-input integer operations, one VGPR per operand. Shift
 // counts wrap modulo 32; all addition and shifting wrap to 32 bits. Supports
 // DPP8/DPP16 on A; low 32 instruction-flag bits must be zero. Both semantics

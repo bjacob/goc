@@ -1130,3 +1130,22 @@ and faithful optional reporting remain open. The width-review queue is 185 APIs.
 
 Validation: all 788 tests pass on Clang 21 and GCC 15 Release. All thirteen
 packed-conversion and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 FP32/integer conversion
+
+Added all six FP32/integer conversion Wave64 APIs. Integer-to-float, truncation,
+nearest and floor reuse the existing scalar/v3/v4 dispatch choices, including
+the deliberate scalar fallback for truncating v3 calls. DPP routes A with all
+four row enables. Loose semantics and optional-state behavior are unchanged;
+only the two truncating float-to-integer APIs have optional exception outputs.
+
+Independent integer-bit references check signed/unsigned rounding boundaries,
+positive/negative ties, saturation, infinities and NaNs, all modifiers/CPU
+levels, full and upper-only masks, all DPP row enables, random source words,
+aliases and guards. Loose non-null state remains unchanged and exact reporting
+rejects without operand access. Exact guest rounding/denormal semantics and
+faithful exception reporting remain open. No new hardware capture or SIMD
+kernel change is claimed. The width-review queue is 179 APIs.
+
+Validation: all 790 tests pass on Clang 21 and GCC 15 Release. All twelve
+FP32/integer-conversion and instruction-flag tests pass under ASan/UBSan.

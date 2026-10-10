@@ -1212,7 +1212,7 @@ breaks ties toward positive infinity, and `FLOOR` rounds downward. Integer-to-FP
 rounding followed by OMOD/CLAMP. Float-to-integer accepts ABS/NEG; CLAMP is a
 numeric no-op, as is OMOD on the two truncating forms. The explicit rounding
 forms reject OMOD. GPU exception reporting is not modeled. These entry points
-currently expose loose semantics only.
+expose loose semantics at both wave sizes, with shared arithmetic kernels.
 
 All six have scalar and 16-lane x86-64-v4 implementations. Eight-lane v3
 implementations cover integer-to-float, NEAREST, and FLOOR, including every

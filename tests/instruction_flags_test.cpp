@@ -114,7 +114,10 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_mad_i32_i16" || base_name == "goc_v_mad_u32_u24" ||
         base_name == "goc_v_mad_i32_i24" || base_name == "goc_v_mad_co_u64_u32" ||
         base_name == "goc_v_mad_co_i64_i32" || base_name == "goc_v_mad_u64_u32" ||
-        base_name == "goc_v_mad_i64_i32" || base_name == "goc_v_cvt_pk_rtz_f16_f32" ||
+        base_name == "goc_v_mad_i64_i32" || base_name == "goc_v_cvt_f32_i32" ||
+        base_name == "goc_v_cvt_f32_u32" || base_name == "goc_v_cvt_i32_f32" ||
+        base_name == "goc_v_cvt_u32_f32" || base_name == "goc_v_cvt_nearest_i32_f32" ||
+        base_name == "goc_v_cvt_floor_i32_f32" || base_name == "goc_v_cvt_pk_rtz_f16_f32" ||
         base_name == "goc_v_cvt_pk_i16_f32" || base_name == "goc_v_cvt_pk_u16_f32" ||
         base_name == "goc_v_cvt_pk_norm_i16_f32" || base_name == "goc_v_cvt_pk_norm_u16_f32" ||
         base_name == "goc_v_cvt_pk_norm_i16_f16" || base_name == "goc_v_cvt_pk_norm_u16_f16" ||
