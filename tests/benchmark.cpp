@@ -3515,13 +3515,15 @@ bool benchmark_mullit(uint64_t cpu, int iterations, int min_ms) {
       if (descriptor >= 0)
         label = descriptor == 0 ? (modified ? "DPP8/modified" : "DPP8")
                                 : (modified ? "DPP16/modified" : "DPP16");
-      double scalar = measure(goc_v_mullit_f32, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+      double scalar =
+          measure(goc_v_mullit_f32_rdna4, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
       if (scalar < 0)
         return false;
       print_result("v_mullit_f32", "loose", label, "scalar", scalar, 1);
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
       if (cpu >= GOC_CPU_X86_64_V3) {
-        double simd = measure(goc_v_mullit_f32, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+        double simd =
+            measure(goc_v_mullit_f32_rdna4, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
         if (simd < 0)
           return false;
         print_result("v_mullit_f32", "loose", label, "x86-64-v3", simd, scalar / simd);
@@ -3529,7 +3531,8 @@ bool benchmark_mullit(uint64_t cpu, int iterations, int min_ms) {
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
       if (cpu >= GOC_CPU_X86_64_V4) {
-        double simd = measure(goc_v_mullit_f32, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+        double simd =
+            measure(goc_v_mullit_f32_rdna4, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
         if (simd < 0)
           return false;
         print_result("v_mullit_f32", "loose", label, "x86-64-v4", simd, scalar / simd);

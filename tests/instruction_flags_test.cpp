@@ -70,22 +70,22 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     if (base_name == "goc_v_dot2_f32_f16_rdna4" || base_name == "goc_v_dot2_f32_bf16_rdna4" ||
         base_name == "goc_v_dot2_f32_f16" || base_name == "goc_v_dot2_f32_bf16" ||
         base_name == "goc_v_dot2acc_f32_f16" || base_name == "goc_v_dot2_f16_f16" ||
-        base_name == "goc_v_dot2_bf16_bf16" || base_name == "goc_v_mullit_f32" ||
-        base_name == "goc_v_cubeid_f32" || base_name == "goc_v_cubesc_f32" ||
-        base_name == "goc_v_cubetc_f32" || base_name == "goc_v_cubema_f32" ||
-        base_name == "goc_v_rcp_iflag_f32" || base_name == "goc_v_div_fixup_f16_rdna4" ||
-        base_name == "goc_v_div_fixup_f16" || base_name == "goc_v_sin_f32" ||
-        base_name == "goc_v_cos_f32" || base_name == "goc_v_sin_f16" ||
-        base_name == "goc_v_cos_f16" || base_name == "goc_v_trunc_f32" ||
-        base_name == "goc_v_ceil_f32" || base_name == "goc_v_rndne_f32" ||
-        base_name == "goc_v_floor_f32" || base_name == "goc_v_sqrt_f32" ||
-        base_name == "goc_v_rcp_f32" || base_name == "goc_v_rsq_f32" ||
-        base_name == "goc_v_exp_f32" || base_name == "goc_v_log_f32" ||
-        base_name == "goc_v_fract_f32" || base_name == "goc_v_frexp_mant_f32" ||
-        base_name == "goc_v_trunc_f16" || base_name == "goc_v_ceil_f16" ||
-        base_name == "goc_v_rndne_f16" || base_name == "goc_v_floor_f16" ||
-        base_name == "goc_v_sqrt_f16" || base_name == "goc_v_rcp_f16" ||
-        base_name == "goc_v_rsq_f16" ||
+        base_name == "goc_v_dot2_bf16_bf16" || base_name == "goc_v_mullit_f32_rdna4" ||
+        base_name == "goc_v_mullit_f32" || base_name == "goc_v_cubeid_f32" ||
+        base_name == "goc_v_cubesc_f32" || base_name == "goc_v_cubetc_f32" ||
+        base_name == "goc_v_cubema_f32" || base_name == "goc_v_rcp_iflag_f32" ||
+        base_name == "goc_v_div_fixup_f16_rdna4" || base_name == "goc_v_div_fixup_f16" ||
+        base_name == "goc_v_sin_f32" || base_name == "goc_v_cos_f32" ||
+        base_name == "goc_v_sin_f16" || base_name == "goc_v_cos_f16" ||
+        base_name == "goc_v_trunc_f32" || base_name == "goc_v_ceil_f32" ||
+        base_name == "goc_v_rndne_f32" || base_name == "goc_v_floor_f32" ||
+        base_name == "goc_v_sqrt_f32" || base_name == "goc_v_rcp_f32" ||
+        base_name == "goc_v_rsq_f32" || base_name == "goc_v_exp_f32" ||
+        base_name == "goc_v_log_f32" || base_name == "goc_v_fract_f32" ||
+        base_name == "goc_v_frexp_mant_f32" || base_name == "goc_v_trunc_f16" ||
+        base_name == "goc_v_ceil_f16" || base_name == "goc_v_rndne_f16" ||
+        base_name == "goc_v_floor_f16" || base_name == "goc_v_sqrt_f16" ||
+        base_name == "goc_v_rcp_f16" || base_name == "goc_v_rsq_f16" ||
         (base_name == "goc_v_exp_f16" || base_name == "goc_v_exp_f16_rdna4") ||
         (base_name == "goc_v_log_f16" || base_name == "goc_v_log_f16_rdna4") ||
         base_name == "goc_v_fract_f16" || base_name == "goc_v_frexp_mant_f16" ||
@@ -354,7 +354,8 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
   for (auto mnemonic : {"v_fma_mix_f32", "v_fma_mixlo_f16", "v_fma_mixhi_f16",
                         "v_fma_mix_f32_rdna4", "v_fma_mixlo_f16_rdna4", "v_fma_mixhi_f16_rdna4"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
-  supports_dpp |= std::strcmp(name, "goc_v_mullit_f32") == 0;
+  supports_dpp |= std::strcmp(name, "goc_v_mullit_f32_rdna4") == 0 ||
+                  std::strcmp(name, "goc_v_mullit_f32") == 0;
   supports_dpp |= std::strcmp(name, "goc_v_div_fixup_f16_rdna4") == 0 ||
                   std::strcmp(name, "goc_v_div_fixup_f16") == 0;
   supports_dpp |= std::strcmp(name, "goc_v_fma_dx9_zero_f32") == 0 ||

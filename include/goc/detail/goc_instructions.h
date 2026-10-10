@@ -2492,9 +2492,14 @@ int goc_v_trig_preop_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
 
 // Lighting multiply. After ABS/NEG source modifiers, return -FLT_MAX if B is
 // -FLT_MAX, -infinity or NaN, or C is nonpositive or NaN. Otherwise return +0
-// if either factor is zero, or A*B. OMOD scales the result, flushing tiny
-// unscaled values to +0 and tiny scaled values to signed zero; CLAMP then
-// maps to [0,1], including NaN/-0 to +0. Each operand uses one VGPR.
+// if either factor is zero, or A*B. RDNA3 OMOD scales before flushing tiny
+// results and signed zero to +0; it is disabled when output denormals are
+// preserved or IEEE mode is set. RDNA4 OMOD flushes tiny unscaled values to
+// +0 and tiny scaled values to signed zero. CLAMP maps to [0,1], including
+// NaN/-0 to +0 (DX10_CLAMP=1). Each operand uses one VGPR. Guest input/output
+// flushing applies to all inputs/final results. All three guest FP flags are
+// accepted. Unsuffixed APIs use RDNA3 TRAPSTS, _rdna4 uses EXCP_FLAG_USER;
+// loose calls skip optional state output, exact non-null reporting is unsupported.
 // Supports all A/B/C ABS/NEG, OMOD and CLAMP modifiers; loose semantics only.
 // DPP8/DPP16 permute A before source modifiers. B and C retain their lanes;
 // inactive or DPP-filtered destinations remain unchanged.
@@ -2502,12 +2507,21 @@ int goc_v_trig_preop_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
 // flags may change. NaN payloads are unspecified.
 int goc_v_mullit_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                     const uint32_t *const *c, uint32_t *excp_flag_user);
+                     const uint32_t *const *c, uint32_t *trapsts);
+
+int goc_v_mullit_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           const uint32_t *const *c, uint32_t *excp_flag_user);
 
 // Wave64 retains the same operand layout, modifiers and numerical contract.
 int goc_v_mullit_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                            const uint32_t *const *c, uint32_t *excp_flag_user);
+                            const uint32_t *const *c, uint32_t *trapsts);
+
+int goc_v_mullit_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c,
+                                  uint32_t *excp_flag_user);
 
 // Saturate both signed I16 halves of A to U8, pack them low byte first, and
 // write the selected half of D, preserving the other half. HIGH_D selects the

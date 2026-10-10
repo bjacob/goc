@@ -278,5 +278,13 @@
     "mnemonics": [
       "v_trig_preop_f64"
     ]
+  },
+  {
+    "heading": "MULLIT architecture policies",
+    "semantics": "loose",
+    "tests": "tests/mullit_architecture_test.cpp",
+    "mnemonics": [
+      "v_mullit_f32"
+    ]
   }
 ]

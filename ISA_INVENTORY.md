@@ -1306,7 +1306,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_mul_lo_u16` | yes | yes | in | `goc_v_mul_lo_u16`<br>`goc_v_mul_lo_u16_wave64` | — | API present; semantic audit pending |
 | `v_mul_lo_u32` | yes | yes | in | `goc_v_mul_lo_u32`<br>`goc_v_mul_lo_u32_wave64` | — | API present; semantic audit pending |
 | `v_mul_u32_u24` | yes | yes | in | `goc_v_mul_u32_u24`<br>`goc_v_mul_u32_u24_wave64` | — | API present; semantic audit pending |
-| `v_mullit_f32` | yes | yes | in | `goc_v_mullit_f32`<br>`goc_v_mullit_f32_wave64` | — | API present; semantic audit pending |
+| `v_mullit_f32` | yes | yes | in | `goc_v_mullit_f32`<br>`goc_v_mullit_f32_wave64`<br>`goc_v_mullit_f32_rdna4`<br>`goc_v_mullit_f32_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#mullit-architecture-policies) |
 | `v_nop` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
 | `v_not_b16` | yes | yes | in | `goc_v_not_b16`<br>`goc_v_not_b16_wave64` | — | API present; semantic audit pending |
 | `v_not_b32` | yes | yes | in | `goc_v_not_b32`<br>`goc_v_not_b32_wave64` | — | API present; semantic audit pending |

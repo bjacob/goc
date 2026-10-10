@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-147 in-scope mnemonics have explicit contract-review records in
+148 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 662 in-scope mnemonics need a recorded review.
+The remaining 661 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -569,7 +569,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_mul_lo_u16` | SIMD macro, output helper | no | 17046, 17064 | review required |
 | `v_mul_lo_u32` | SIMD macro, output helper | no | 17080 | review required |
 | `v_mul_u32_u24` | SIMD macro, output helper | no | 17094, 17110 | review required |
-| `v_mullit_f32` | IEEE mode, OMOD, architecture query, output helper | no | 17127 | review required |
+| `v_mullit_f32` | IEEE mode, OMOD, architecture query, output helper | yes | 17127 | [loose contract reviewed; see limitations](COVERAGE.md#mullit-architecture-policies) |
 | `v_not_b16` | no direct policy detected | no | not found | review required |
 | `v_not_b32` | SIMD macro, output helper | no | 17176, 17188 | review required |
 | `v_or3_b32` | SIMD macro, output helper | no | 17200 | review required |

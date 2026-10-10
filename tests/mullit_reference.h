@@ -23,11 +23,15 @@ inline uint32_t mullit_bits(float value) {
 }
 
 // Evaluate the lighting rule with separate source and output modifiers.
-inline uint32_t mullit_reference(uint32_t a, uint32_t b, uint32_t c, uint32_t mode) {
+inline uint32_t mullit_reference(uint32_t a, uint32_t b, uint32_t c, uint32_t mode,
+                                 bool rdna3 = false, uint64_t flags = 0) {
   const uint32_t words[] = {a, b, c};
   float input[3];
   for (unsigned i = 0; i < 3; ++i) {
-    input[i] = mullit_float(words[i]);
+    uint32_t word = words[i];
+    if ((flags & GOC_FP_FLUSH_INPUT_DENORMALS) && (word & 0x7fffffff) < 0x00800000)
+      word &= 0x80000000;
+    input[i] = mullit_float(word);
     if (mode & (GOC_ALU_ABS_A << i))
       input[i] = std::fabs(input[i]);
     if (mode & (GOC_ALU_NEG_A << i))
@@ -42,12 +46,14 @@ inline uint32_t mullit_reference(uint32_t a, uint32_t b, uint32_t c, uint32_t mo
   else
     value = input[0] * input[1];
   unsigned scale = (mode >> 6) & 3;
+  if (rdna3 && (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE)))
+    scale = 0;
   if (scale) {
-    if (std::fabs(value) < mullit_float(0x00800000))
+    if (!rdna3 && std::fabs(value) < mullit_float(0x00800000))
       value = 0;
     value = std::ldexp(value, scale == 3 ? -1 : int(scale));
     if (std::fabs(value) < mullit_float(0x00800000))
-      value = std::copysign(0.0f, value);
+      value = rdna3 ? 0.0f : std::copysign(0.0f, value);
   }
   if (mode & GOC_ALU_CLAMP) {
     if (std::isnan(value) || value <= 0)
@@ -55,6 +61,8 @@ inline uint32_t mullit_reference(uint32_t a, uint32_t b, uint32_t c, uint32_t mo
     else if (value > 1)
       value = 1;
   }
+  if ((flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && std::fabs(value) < mullit_float(0x00800000))
+    value = std::copysign(0.0f, value);
   uint32_t word = mullit_bits(value);
   return (word & 0x7fffffff) > 0x7f800000 ? 0x7fc00000 : word;
 }

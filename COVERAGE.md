@@ -4348,3 +4348,62 @@ GCC and sanitizer logs use the `trig-preop-` prefix in their build directories.
 The review ledger now records 147 contracts; native-state naming resolves 934
 of 948 signatures, with zero mismatches and 14 unresolved. These counts are
 review progress, not proof of complete architecture coverage.
+
+## MULLIT architecture policies
+
+`v_mullit_f32` now has unsuffixed RDNA3 and explicit `_rdna4` variants in both
+wave sizes, with native `trapsts`/`excp_flag_user` outputs. These are loose
+numerical implementations. Strict exact requests and non-null exact reporting
+remain explicitly unsupported; loose calls skip optional reporting.
+
+The RDNA3 lighting/sentinel calculation, OMOD gating, and final +0 normalization
+follow rocjitsu revision `ffc144c564c`, `execute_v_mullit_f32_vop3`,
+`effective_omod` and `finalize_omod_f32`. RDNA3 disables OMOD when output denormals
+are preserved or IEEE mode is set. Active OMOD scales before flushing tiny
+results and signed zeros to +0. RDNA4 retains the existing captured pre-scaling
+flush and signed-zero result when a normal product becomes tiny after scaling.
+CLAMP models DX10_CLAMP=1; alternate DX10 behavior and arbitrary guest rounding
+remain outside this contract. No new bit-exact or hardware-derived model is added.
+
+Explicit guest input/output flushing is supported according to the ISA's ordinary
+FP32 denormal controls: input flushing includes the lighting-condition operand C,
+and output flushing retains the sign unless active RDNA3 OMOD already produced
++0. This extends the borrowed helper, which does not explicitly implement those
+ordinary flush stages. All three exposed guest FP flags are accepted. The
+implementation never changes the host FP environment; host nearest-even with
+preserved denormals remains the numerical precondition for loose arithmetic.
+
+The architecture choice is compile-time and only changes output scaling inside
+the shared scalar/AVX2/AVX512 arithmetic. A local `compute_flushed` helper stages
+explicit guest flushing around those same kernels. The default SIMD kernels
+have no new guest-flag checks; AVX2 still handles eight FP32 lanes and AVX512
+sixteen. The dispatch helper is shared by direct and flushed calls, and a single
+out-of-line scalar loop per architecture avoids duplicating that arithmetic.
+DPP, Wave64 row handling, alias rules and mask-independent work are retained.
+
+Four architecture tests cover all 512 instruction-modifier combinations, eight
+guest policies, random and special values, both wave sizes/architectures, DPP8
+and DPP16, masks, shared/aliased sources and destinations, guards, reporting
+errors and all host rounding/FTZ/DAZ settings. A further Cartesian traversal in
+one of those tests checks all 4096 triples of the existing special-value corpus
+under all 512 modifiers against the RDNA3 reference. Literal witnesses cover
+OMOD gating, subnormal normalization, signed-zero differences and condition-input
+flushing. Existing RDNA4 capture digests are unchanged and use the `_rdna4` APIs.
+
+Seven alternating before/after timing samples, CPU 2 affinity, thread CPU time,
+at least 20 ms per case: plain/OMOD+CLAMP RDNA4 loose calls change by
++0.79%/-0.43% for scalar, +1.80%/+1.67% for AVX2 and +1.91%/+2.14% for AVX512.
+Modified calls pass a non-null optional state pointer. The harness and raw data
+are `mullit-timing.cpp` and `mullit-performance.json` in
+`../goc-build/coverage-work/`.
+
+Validation: all 1,090 CTests pass with Clang 21 Release and GCC 15 Release;
+20 targeted ASan/UBSan tests pass, including both MULLIT suites, instruction
+flags and architectural-state contracts. All nine audit-tool tests pass.
+Disassembly and undefined-symbol scans of all 192 objects for each compiler
+find no explicit FP-control writes or environment-setter references. Clang
+logs and `mullit-fp-environment-audit.json` are in the coverage work folder;
+GCC/sanitizer logs use the `mullit-` prefix in their build directories. The ledger
+records 148 architecture contracts, and native-state naming resolves 938 of 950
+signatures with zero mismatches and 12 unresolved. Remaining naming reviews are
+half-result DOT2 and SIN/COS; broader whole-project coverage remains unproven.
