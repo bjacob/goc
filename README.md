@@ -2337,3 +2337,12 @@ all encoded modifier combinations. `v_swap_b16` and `_wave64` exchange selected
 halves while preserving the others, including swaps within one VGPR. These are
 exact scalar bit operations shared by RDNA3/RDNA4. Wave64 MOV and dedicated
 SIMD paths remain open.
+
+`s_round_mode` and `s_denorm_mode` update guest MODE[3:0] and MODE[7:4]
+respectively from the immediate's low four bits, preserving every other bit.
+Their trailing `uint32_t *mode` is optional and read/write; both semantics
+perform the inexpensive update when non-null. They never change the host FP
+environment. `s_getpc_b64` returns the supplied instruction address plus four
+bytes in a scalar pair. All three instructions ignore EXEC and are shared by
+RDNA3/RDNA4. MODE is guest state; these calls do not alter flags supplied to
+subsequent GoC arithmetic calls.

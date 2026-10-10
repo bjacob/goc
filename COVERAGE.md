@@ -318,3 +318,29 @@ remain open. Missing canonical API names: 61.
 
 Validation: all 712 tests pass on Clang/GCC; all ten tests in the move/swap
 binaries pass under ASan/UBSan. Existing SIMD implementations are unchanged.
+
+## Guest MODE updates and GETPC
+
+Added shared S_ROUND_MODE/S_DENORM_MODE with an optional trailing `mode`
+register pointer. Both manuals' scalar-control table specifies immediate[3:0];
+the MODE layout puts round control at [3:0] and denormal control at [7:4].
+The implementation updates only those bits in the supplied guest register,
+never the host environment. Null opts out after validation. Both loose and
+exact modes perform the inexpensive update when requested. The rocjitsu
+handlers at the audited revision are empty, so no behavior was borrowed from
+those stubs.
+
+S_GETPC_B64 now returns PC+4 in the ordinary scalar destination, following both
+manuals and rocjitsu's next-instruction address calculation. It has no EXEC
+parameter and no implicit PC output because it does not write PC. Integer
+addition and the existing scalar-move implementation preserve host FP state.
+
+Tests exhaust all 65,536 immediates in both semantics modes, check preservation
+of unrelated bits, null opt-out, validation and error preservation, host rounding,
+sticky exceptions and x86 MXCSR. GETPC covers ordinary addresses, carry/wrap,
+and input/output aliasing. No new GPU capture was required for these integer
+register transformations. Missing canonical API names: 58.
+
+Validation: all 716 tests pass with Clang/GCC; all four guest-state tests pass
+under ASan/UBSan. Public standalone-header and exhaustive instruction-flag checks
+include the new signatures. Existing numerical/SIMD implementations are unchanged.

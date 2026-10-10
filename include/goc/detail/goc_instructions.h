@@ -274,6 +274,24 @@ int goc_s_wqm_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint3
 int goc_s_wqm_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
                   uint32_t *scc);
 
+// Set guest MODE rounding bits [3:0] or denormal bits [7:4] to immediate[3:0].
+// Higher immediate bits are ignored and every other MODE bit is preserved.
+// mode is an optional read/write architectural register pointer; NULL opts out.
+// Both loose and exact semantics perform this inexpensive update when non-NULL.
+// No EXEC input, instruction flags, or host FP-environment changes. Errors leave
+// MODE unchanged. Shared by RDNA3 and RDNA4.
+int goc_s_round_mode(uint64_t flags, uint64_t instruction_flags, uint16_t immediate,
+                     uint32_t *mode);
+
+int goc_s_denorm_mode(uint64_t flags, uint64_t instruction_flags, uint16_t immediate,
+                      uint32_t *mode);
+
+// Store the next instruction address, pc + 4, in the required scalar pair D.
+// pc is the byte address of this instruction; addition wraps modulo 2^64.
+// No EXEC input or instruction flags. Both semantics are exact. Does not modify
+// the guest PC or host FP state; errors preserve D. Shared RDNA3/RDNA4 operation.
+int goc_s_getpc_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t pc);
+
 // Scalar comparisons execute once per wave and ignore EXEC, including zero.
 // scc is required and receives 0 or 1. Inputs are passed by value and may come
 // from output storage, including a word within uint64_t storage. Both loose and

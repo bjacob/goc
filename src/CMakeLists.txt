@@ -1,6 +1,7 @@
 add_library(goc STATIC
   scalar_exec.cpp
   scalar_move.cpp
+  guest_mode.cpp
   lane_transfer.cpp
   relative_move.cpp
   move.cpp

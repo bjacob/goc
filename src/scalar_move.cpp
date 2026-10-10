@@ -51,3 +51,7 @@ int goc_s_cmovk_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uin
                     uint32_t input_scc) {
   return move(flags, instruction_flags, d, signed_immediate(immediate), (input_scc & 1) != 0);
 }
+
+int goc_s_getpc_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t pc) {
+  return goc_s_mov_b64(flags, instruction_flags, d, pc + 4);
+}

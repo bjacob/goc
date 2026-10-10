@@ -20,8 +20,8 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 61
-- in, API present: 748
+- in, API absent: 58
+- in, API present: 751
 - out, API absent: 587
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
@@ -643,7 +643,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_dcache_inv` | yes | yes | out: SMEM | — | — | excluded: memory/control/scheduling |
 | `s_decperflevel` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
 | `s_delay_alu` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
-| `s_denorm_mode` | yes | yes | in | — | — | missing API |
+| `s_denorm_mode` | yes | yes | in | `goc_s_denorm_mode` | — | API present; semantic audit pending |
 | `s_endpgm` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_endpgm_ordered_ps_done` | yes | — | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_endpgm_saved` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
@@ -653,7 +653,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_fmac_f16` | — | yes | in | `goc_s_fmac_f16` | — | API present; semantic audit pending |
 | `s_fmac_f32` | — | yes | in | `goc_s_fmac_f32` | — | API present; semantic audit pending |
 | `s_fmamk_f32` | — | yes | in | `goc_s_fmamk_f32` | — | API present; semantic audit pending |
-| `s_getpc_b64` | yes | yes | in | — | — | missing API |
+| `s_getpc_b64` | yes | yes | in | `goc_s_getpc_b64` | — | API present; semantic audit pending |
 | `s_getreg_b32` | yes | yes | in: register access | — | — | missing API |
 | `s_gl1_inv` | yes | — | out: SMEM | — | — | excluded: memory/control/scheduling |
 | `s_icache_inv` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
@@ -737,7 +737,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_rfe_b64` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_rndne_f16` | — | yes | in | `goc_s_rndne_f16` | — | API present; semantic audit pending |
 | `s_rndne_f32` | — | yes | in | `goc_s_rndne_f32` | — | API present; semantic audit pending |
-| `s_round_mode` | yes | yes | in | — | — | missing API |
+| `s_round_mode` | yes | yes | in | `goc_s_round_mode` | — | API present; semantic audit pending |
 | `s_sendmsg` | yes | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |
 | `s_sendmsg_rtn_b32` | yes | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |
 | `s_sendmsg_rtn_b64` | yes | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |

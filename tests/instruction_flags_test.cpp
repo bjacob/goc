@@ -28,6 +28,14 @@
 
 namespace {
 
+// State-only scalar instructions have an immediate before the optional output.
+void check_high_flags(const char *name,
+                      int (*instruction)(uint64_t, uint64_t, uint16_t, uint32_t *)) {
+  SCOPED_TRACE(name);
+  for (unsigned bit = 32; bit < 64; ++bit)
+    EXPECT_EQ(instruction(0, 1ULL << bit, 0, nullptr), GOC_ERROR_INVALID_FLAGS) << bit;
+}
+
 // EXEC-independent instructions place instruction_flags immediately after flags.
 template <typename Output, typename... Operands>
 void check_high_flags(const char *name,
