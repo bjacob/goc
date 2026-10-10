@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 #include "half_unary.h"
 #include "unary.h"
+#include "x86_64/alu_x86_64_v3.h"
 #include "x86_64/half_x86_64_v3.h"
 #include "x86_64/unary_x86_64_v3.h"
 
@@ -69,7 +70,7 @@ void half_unary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uin
     if (mode & GOC_ALU_OMOD_HALF)
       value = _mm256_mul_ps(prepare_omod_f16(value, mode), scale);
     if (mode & GOC_ALU_CLAMP)
-      value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
+      value = clamp_f32(value, flags & GOC_FP_DX10_CLAMP_OFF);
     auto result = _mm256_sll_epi32(half_narrow<false>(value, saturate), _mm_cvtsi32_si128(d_shift));
     auto old = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(d + lane));
     result = _mm256_or_si256(result, _mm256_and_si256(old, keep));

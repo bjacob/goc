@@ -24,17 +24,18 @@ constexpr bool supports_exact =
     Op == goc::Unary::Trunc || Op == goc::Unary::Ceil || Op == goc::Unary::Rndne ||
     Op == goc::Unary::Floor || Op == goc::Unary::FrexpMant || goc::half_unary_sfu<Op>;
 
-static const uint64_t fp_flags =
-    GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
+static const uint64_t fp_flags = GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS |
+                                 GOC_FP_IEEE_MODE | GOC_FP_DX10_CLAMP_OFF;
 
-template <goc::Unary Op, bool Rdna3 = false>
+template <goc::Unary Op, bool Rdna3 = false, bool PreserveClampNan = false>
 [[gnu::noinline]] int unary_exact(uint64_t flags, uint32_t exec_mask, uint64_t mode,
                                   uint32_t *const *d, const uint32_t *const *a) {
   if (mode >> 32)
-    return goc::execute_dpp(
-        flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
-          return unary_exact<Op, Rdna3>(flags, exec_mask, uint32_t(mode), d, source);
-        });
+    return goc::execute_dpp(flags, exec_mask, mode, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return unary_exact<Op, Rdna3, PreserveClampNan>(
+                                  flags, exec_mask, uint32_t(mode), d, source);
+                            });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP |
                          GOC_ALU_HIGH_A | GOC_ALU_HIGH_D;
   if (int error = goc::validate(flags, mode & ~known, true, fp_flags))
@@ -105,7 +106,7 @@ template <goc::Unary Op, bool Rdna3 = false>
       } else
         value += omod << 10;
     }
-    if (mode & GOC_ALU_CLAMP)
+    if ((mode & GOC_ALU_CLAMP) && (!PreserveClampNan || (value & 0x7fff) <= 0x7c00))
       value = (value & 0x8000) || (value & 0x7fff) > 0x7c00 ? 0 : value > 0x3c00 ? 0x3c00 : value;
     result[lane] = uint16_t(value);
   }
@@ -115,14 +116,15 @@ template <goc::Unary Op, bool Rdna3 = false>
   return GOC_SUCCESS;
 }
 
-template <goc::Unary Op, bool GuestDenormals = true>
+template <goc::Unary Op, bool GuestDenormals = true, bool PreserveClampNan = false>
 [[gnu::noinline]] int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
                             uint32_t *const *d, const uint32_t *const *a) {
   if (modifiers >> 32)
-    return goc::execute_dpp(
-        flags, exec_mask, modifiers, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
-          return unary<Op, GuestDenormals>(flags, exec_mask, uint32_t(modifiers), d, source);
-        });
+    return goc::execute_dpp(flags, exec_mask, modifiers, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return unary<Op, GuestDenormals, PreserveClampNan>(
+                                  flags, exec_mask, uint32_t(modifiers), d, source);
+                            });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP |
                          GOC_ALU_HIGH_A | GOC_ALU_HIGH_D;
   if (int error = goc::validate(flags, modifiers & ~known, false, fp_flags))
@@ -135,8 +137,11 @@ template <goc::Unary Op, bool GuestDenormals = true>
     return GOC_SUCCESS;
   }
 #endif
-  if constexpr (supports_exact<Op> && !goc::half_unary_sfu<Op>)
+  if constexpr (supports_exact<Op> && !goc::half_unary_sfu<Op>) {
+    if (flags & GOC_FP_DX10_CLAMP_OFF)
+      return unary_exact<Op, false, true>(flags, exec_mask, modifiers, d, a);
     return unary_exact<Op>(flags, exec_mask, modifiers, d, a);
+  }
   int a_shift = modifiers & GOC_ALU_HIGH_A ? 16 : 0;
   int d_shift = modifiers & GOC_ALU_HIGH_D ? 16 : 0;
   uint16_t result[32];
@@ -185,7 +190,12 @@ template <goc::Unary Op, bool GuestDenormals = true>
     if constexpr (goc::half_unary_sfu<Op> || Op == goc::Unary::Fract)
       if (GuestDenormals && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && std::abs(value) < 0x1p-14f)
         value = std::copysign(0.0f, value);
-    result[lane] = goc::float_to_f16(goc::alu_output_f16(value, modifiers), flags & GOC_FP16_OVFL);
+    uint32_t output_mode = modifiers;
+    if constexpr (PreserveClampNan)
+      if ((goc::as_bits(value) & 0x7fffffff) > 0x7f800000)
+        output_mode &= ~GOC_ALU_CLAMP;
+    result[lane] =
+        goc::float_to_f16(goc::alu_output_f16(value, output_mode), flags & GOC_FP16_OVFL);
   }
   for (int lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
@@ -198,16 +208,29 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
         const uint32_t *const *a, uint32_t *state) {
   if (state && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if constexpr (!Rdna3)
+    if (flags & GOC_FP_DX10_CLAMP_OFF)
+      return GOC_ERROR_INVALID_FLAGS;
   if constexpr (Rdna3)
     if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
       mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
   if constexpr (supports_exact<Op>) {
-    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
+    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
+      if (flags & GOC_FP_DX10_CLAMP_OFF)
+        return unary_exact<Op, (Rdna3 && goc::half_unary_sfu<Op>), true>(flags, exec_mask, mode, d,
+                                                                         a);
       return unary_exact<Op, (Rdna3 && goc::half_unary_sfu<Op>)>(flags, exec_mask, mode, d, a);
+    }
   }
   if constexpr (Op == goc::Unary::Exp || Op == goc::Unary::Log)
-    if (!(flags & (GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS)))
+    if (!(flags & (GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))) {
+      if (flags & GOC_FP_DX10_CLAMP_OFF)
+        return unary<Op, false, true>(flags, exec_mask, mode, d, a);
       return unary<Op, false>(flags, exec_mask, mode, d, a);
+    }
+  if constexpr (!supports_exact<Op> || goc::half_unary_sfu<Op>)
+    if (flags & GOC_FP_DX10_CLAMP_OFF)
+      return unary<Op, true, true>(flags, exec_mask, mode, d, a);
   return unary<Op>(flags, exec_mask, mode, d, a);
 }
 

@@ -321,3 +321,98 @@ TEST(HalfUnary, Wave64ValidationAndOptionalState) {
     EXPECT_EQ(exceptions, 0x80000055U);
   }
 }
+
+TEST(HalfUnary, Rdna3Dx10ClampPolicies) {
+  const goc_test::HalfUnaryFn narrow[] = {goc_v_trunc_f16, goc_v_ceil_f16,      goc_v_rndne_f16,
+                                          goc_v_floor_f16, goc_v_sqrt_f16,      goc_v_rcp_f16,
+                                          goc_v_rsq_f16,   goc_v_exp_f16,       goc_v_log_f16,
+                                          goc_v_fract_f16, goc_v_frexp_mant_f16};
+  const decltype(&goc_v_trunc_f16_wave64) wide[] = {
+      goc_v_trunc_f16_wave64, goc_v_ceil_f16_wave64,      goc_v_rndne_f16_wave64,
+      goc_v_floor_f16_wave64, goc_v_sqrt_f16_wave64,      goc_v_rcp_f16_wave64,
+      goc_v_rsq_f16_wave64,   goc_v_exp_f16_wave64,       goc_v_log_f16_wave64,
+      goc_v_fract_f16_wave64, goc_v_frexp_mant_f16_wave64};
+  const uint32_t inputs[] = {0x7c01, 0xfc55, 0x7e23, 0xfe7f, 0,      0x8000, 1,      0x8001,
+                             0x3800, 0xb800, 0x4000, 0xc000, 0x7c00, 0xfc00, 0x3c00, 0x7bff};
+  for (unsigned op = 0; op < 11; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (bool precise : {false, true}) {
+        if (precise && op >= 7 && op <= 9) // EXP/LOG/FRACT have no borrowed exact model.
+          continue;
+        for (bool wave64 : {false, true})
+          for (unsigned policy = 0; policy < 16; ++policy)
+            for (unsigned halves = 0; halves < 4; ++halves)
+              for (unsigned source_mode = 0; source_mode < 8; ++source_mode)
+                for (uint64_t route : {uint64_t(0), goc_test::dpp_modes[1]}) {
+                  uint64_t flags =
+                      cpu | (precise ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0) |
+                      (policy & 1 ? GOC_FP_IEEE_MODE : 0) |
+                      (policy & 2 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                      (policy & 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                      (policy & 8 ? GOC_FP16_OVFL : 0);
+                  unsigned a_shift = halves & 1 ? 16 : 0, d_shift = halves & 2 ? 16 : 0;
+                  uint64_t mode = (a_shift ? GOC_ALU_HIGH_A : 0) | (d_shift ? GOC_ALU_HIGH_D : 0) |
+                                  route | (source_mode & 1 ? GOC_ALU_NEG_A : 0) |
+                                  (source_mode & 2 ? GOC_ALU_ABS_A : 0) |
+                                  (source_mode & 4 ? GOC_ALU_OMOD_2 : 0);
+                  uint64_t exec_mask = wave64 ? 0x9171abcd8912a5a5ULL : 0x8912a5a5U;
+                  uint32_t input[64], unclamped[64], actual[64];
+                  for (unsigned lane = 0; lane < 64; ++lane)
+                    input[lane] =
+                        (0xdeadbeefU & ~(65535U << a_shift)) | (inputs[lane % 16] << a_shift);
+                  auto call = [&](uint64_t f, uint64_t m, uint32_t *d, uint32_t *state,
+                                  bool alias = false) {
+                    const uint32_t *a = alias ? d : input;
+                    return wave64 ? wide[op](f, exec_mask, m, &d, &a, state)
+                                  : narrow[op](f, uint32_t(exec_mask), m, &d, &a, state);
+                  };
+                  std::fill(unclamped, unclamped + 64, 0xdeadbeefU);
+                  ASSERT_EQ(call(flags, mode, unclamped, nullptr), GOC_SUCCESS);
+                  for (bool alias : {false, true})
+                    for (bool preserve : {false, true}) {
+                      if (alias)
+                        std::copy(input, input + 64, actual);
+                      else
+                        std::fill(actual, actual + 64, 0xdeadbeefU);
+                      uint32_t state = 0x80000000;
+                      ASSERT_EQ(call(flags | (preserve ? GOC_FP_DX10_CLAMP_OFF : 0),
+                                     mode | GOC_ALU_CLAMP, actual, precise ? nullptr : &state,
+                                     alias),
+                                GOC_SUCCESS);
+                      EXPECT_EQ(state, 0x80000000U);
+                      for (unsigned lane = 0; lane < 64; ++lane) {
+                        if (!((exec_mask >> lane) & 1)) {
+                          EXPECT_EQ(actual[lane], alias ? input[lane] : 0xdeadbeefU);
+                          continue;
+                        }
+                        uint32_t value = (unclamped[lane] >> d_shift) & 0xffff;
+                        uint32_t magnitude = value & 0x7fff;
+                        uint32_t expected = value;
+                        if (!(magnitude > 0x7c00U && preserve))
+                          expected = (value >> 15) || magnitude > 0x7c00U ? 0U
+                                     : value > 0x3c00U                    ? 0x3c00U
+                                                                          : value;
+                        uint32_t before = alias ? input[lane] : 0xdeadbeefU;
+                        if (precise)
+                          EXPECT_EQ(actual[lane],
+                                    (before & ~(65535U << d_shift)) | (expected << d_shift));
+                        else
+                          check(op, actual[lane], before, uint16_t(expected), uint32_t(mode));
+                      }
+                    }
+                }
+      }
+  for (unsigned op = 0; op < 11; ++op) {
+    EXPECT_EQ(goc_test::half_unary_functions[op](GOC_FP_DX10_CLAMP_OFF, 1, GOC_ALU_CLAMP, nullptr,
+                                                 nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(
+        wave64[op](GOC_FP_DX10_CLAMP_OFF, 1ULL << 63, GOC_ALU_CLAMP, nullptr, nullptr, nullptr),
+        GOC_ERROR_INVALID_FLAGS);
+    uint32_t state = 0x12345678;
+    EXPECT_EQ(narrow[op](GOC_FP_DX10_CLAMP_OFF | GOC_SEMANTICS_EXACT_EMPIRICAL, 0, UINT64_MAX,
+                         nullptr, nullptr, &state),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(state, 0x12345678U);
+  }
+}

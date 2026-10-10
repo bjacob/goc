@@ -6825,3 +6825,68 @@ scalar loop while adding the alternative policy, not a source-size reduction.
 The final samples and before/after drivers are in
 `../goc-build/coverage-work/unary-dx10-performance/`; `initial-*` files describe
 an earlier implementation and are not the reported final measurements.
+
+
+## FP16 unary DX10 CLAMP mode
+
+All eleven unsuffixed RDNA3 FP16 unary operations now accept
+`GOC_FP_DX10_CLAMP_OFF` in both wave sizes. This carries the same rocjitsu
+`ffc144c564c` `clamp_floating_result` policy into FP16: preserve arithmetic NaNs
+through CLAMP after each operation's existing quieting policy, while clamping
+finite values/infinities to [0,1] and mapping signed zero to +0. Default behavior
+is unchanged; RDNA4 rejects the flag. Selected halves and inactive lanes retain
+their existing preservation rules.
+
+Exact paths use the existing integer FP16 result helpers; EXP/LOG/FRACT remain
+loose-only. Scalar loose SFU/FRACT/EXP/LOG paths specialize the new clamp policy
+to keep its per-lane NaN checks out of default arithmetic. Rounding/FREXP scalar
+paths reuse integer helpers and do not instantiate an unnecessary extra loose
+specialization. The integer helper also specializes its clamp policy: putting
+the new flag test inside its default loop substantially slowed that compiled
+loop, so the alternative policy is selected once at dispatch instead. All eleven retain their eight-lane AVX2 paths; higher CPU
+selectors reuse AVX2. Exact optional-state reporting remains unsupported and
+loose calls leave it alone.
+
+FP16 and FP32 unary SIMD now share `clamp_f32` in the existing x86-64 ALU
+header. This centralizes a concrete NaN/zero rule for two current callers,
+without an architecture-policy framework or new helper file. The default
+MIN/MAX sequence and the optional NaN-preserving sequence remain visible in
+the helper. Clang's complete FP32 SIMD object `.text` section (18,712 bytes)
+is identical before and after extracting this helper; this is an instruction
+byte comparison, not a whole-program performance claim.
+
+`HalfUnary.Rdna3Dx10ClampPolicies` covers all operations, CPU levels, wave
+sizes, input/output half combinations, IEEE/denormal/FP16_OVFL settings,
+NEG/ABS/OMOD, DPP8, masks and aliases. Exact checks include raw NaN bits and
+the untouched destination half; loose SFU checks retain their existing one-half-
+encoding tolerance. It also verifies RDNA4 flag rejection before operand reads,
+state-error priority, and loose state preservation. The oracle applies the
+borrowed clamp policy to an unclamped arithmetic result; no new empirical
+numerical or exception model was inferred.
+
+
+Validation: all 1,150 tests pass with Clang 21 and GCC 15. All 30 targeted
+FP16/FP32 unary, exact-half and DPP-half tests pass under ASan/UBSan. All nine
+inventory-tool tests pass; the public standalone C/C++ headers build successfully.
+
+
+Performance: seven alternating before/after runs pinned to CPU 2, after builds
+and tests finished, with at least 50 ms thread-CPU time per case. Each
+architecture has 44 cases (eleven operations, scalar/AVX2 and default/combined
+modifiers); destination words are initialized because half writes preserve bits.
+
+| Architecture | Median relative time | Range across cases |
+|---|---:|---:|
+| RDNA3 | +0.34% | -2.50% to +2.49% |
+| RDNA4 | +0.46% | -2.68% to +10.07% |
+
+The worst overall case is modified RDNA4 scalar FREXP_MANT, 80.670 to
+88.790 ns/wave. Worst SIMD cases are modified RNDNE: RDNA3 17.693 to
+18.004 ns (+1.76%), RDNA4 19.468 to 20.664 ns (+6.14%). These are default-mode
+measurements, not a claim about all inputs or the new mode's performance.
+The isolated FP16 benchmark executable's `size` text total (code and read-only
+data) grows from 103,528 to 136,160 bytes with the scalar policy specializations.
+That cost keeps the default integer/float loops separate from the new policy;
+no extra SIMD kernel family was added. Artifacts are in
+`../goc-build/coverage-work/half-unary-dx10-performance/`; `initial-*` measurements
+refer to the superseded runtime-policy version, not these final results.

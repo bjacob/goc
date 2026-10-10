@@ -5686,6 +5686,9 @@ int goc_v_frexp_exp_i16_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
 // signaling NaNs unless IEEE is set; RDNA4 quiets them. FP16_OVFL saturates
 // zero-input RCP/RSQ infinities. Non-null exact reporting is unsupported on
 // both architectures. Loose paths leave optional state unchanged.
+// RDNA3 accepts GOC_FP_DX10_CLAMP_OFF to preserve arithmetic NaNs through
+// CLAMP, after the operation's quieting policy. By default CLAMP maps them to
+// +0. RDNA4 rejects this flag and always clamps NaNs to +0.
 int goc_v_trunc_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
 

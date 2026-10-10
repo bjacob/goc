@@ -16,6 +16,18 @@ inline __m256i saturate_signed_sum(__m256i x, __m256i y, __m256i sum) {
   return _mm256_blendv_epi8(sum, limit, _mm256_srai_epi32(overflow, 31));
 }
 
+// Clamp FP32 lanes to [0,1], mapping either sign of zero to +0. Optionally
+// preserve arithmetic NaNs, including sign/payload, instead of mapping to zero.
+inline __m256 clamp_f32(__m256 value, bool preserve_nan) {
+  if (preserve_nan) {
+    // MIN/MAX select their second operand for unordered inputs.
+    value = _mm256_min_ps(_mm256_set1_ps(1), _mm256_max_ps(_mm256_setzero_ps(), value));
+    auto zero = _mm256_cmp_ps(value, _mm256_setzero_ps(), _CMP_EQ_OQ);
+    return _mm256_andnot_ps(zero, value);
+  }
+  return _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
+}
+
 // Replace FP32 subnormals with zero of the same sign.
 inline __m256 flush_denorm_f32(__m256 value) {
   auto bits = _mm256_castps_si256(value);
