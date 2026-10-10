@@ -841,7 +841,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_add3_u32` | yes | yes | in | `goc_v_add3_u32`<br>`goc_v_add3_u32_wave64` | `v_add3_nc_u32` | API present; semantic audit pending |
 | `v_add_co_ci_u32` | yes | yes | in | `goc_v_add_co_ci_u32`<br>`goc_v_add_co_ci_u32_wave64` | — | API present; semantic audit pending |
 | `v_add_co_u32` | yes | yes | in | `goc_v_add_co_u32`<br>`goc_v_add_co_u32_wave64` | — | API present; semantic audit pending |
-| `v_add_f16` | yes | yes | in | `goc_v_add_f16` | — | API present; semantic audit pending |
+| `v_add_f16` | yes | yes | in | `goc_v_add_f16`<br>`goc_v_add_f16_wave64` | — | API present; semantic audit pending |
 | `v_add_f32` | yes | yes | in | `goc_v_add_f32`<br>`goc_v_add_f32_wave64` | — | API present; semantic audit pending |
 | `v_add_f64` | yes | yes | in | `goc_v_add_f64` | — | API present; semantic audit pending |
 | `v_add_lshl_u32` | yes | yes | in | `goc_v_add_lshl_u32`<br>`goc_v_add_lshl_u32_wave64` | — | API present; semantic audit pending |
@@ -1217,19 +1217,19 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_max3_num_f32` | — | yes | in | `goc_v_max3_num_f32` | `v_max3_f32` | API present; semantic audit pending |
 | `v_max3_u16` | yes | yes | in | `goc_v_max3_u16`<br>`goc_v_max3_u16_wave64` | — | API present; semantic audit pending |
 | `v_max3_u32` | yes | yes | in | `goc_v_max3_u32`<br>`goc_v_max3_u32_wave64` | — | API present; semantic audit pending |
-| `v_max_f16` | yes | — | in | `goc_v_max_f16` | — | API present; semantic audit pending |
+| `v_max_f16` | yes | — | in | `goc_v_max_f16`<br>`goc_v_max_f16_wave64` | — | API present; semantic audit pending |
 | `v_max_f32` | yes | — | in | `goc_v_max_f32`<br>`goc_v_max_f32_wave64` | — | API present; semantic audit pending |
 | `v_max_f64` | yes | — | in | `goc_v_max_f64` | — | API present; semantic audit pending |
 | `v_max_i16` | yes | yes | in | `goc_v_max_i16`<br>`goc_v_max_i16_wave64` | — | API present; semantic audit pending |
 | `v_max_i32` | yes | yes | in | `goc_v_max_i32`<br>`goc_v_max_i32_wave64` | — | API present; semantic audit pending |
-| `v_max_num_f16` | — | yes | in | `goc_v_max_num_f16` | `v_max_f16` | API present; semantic audit pending |
+| `v_max_num_f16` | — | yes | in | `goc_v_max_num_f16`<br>`goc_v_max_num_f16_wave64` | `v_max_f16` | API present; semantic audit pending |
 | `v_max_num_f32` | — | yes | in | `goc_v_max_num_f32`<br>`goc_v_max_num_f32_wave64` | `v_max_f32` | API present; semantic audit pending |
 | `v_max_num_f64` | — | yes | in | `goc_v_max_num_f64` | `v_max_f64` | API present; semantic audit pending |
 | `v_max_u16` | yes | yes | in | `goc_v_max_u16`<br>`goc_v_max_u16_wave64` | — | API present; semantic audit pending |
 | `v_max_u32` | yes | yes | in | `goc_v_max_u32`<br>`goc_v_max_u32_wave64` | — | API present; semantic audit pending |
 | `v_maximum3_f16` | — | yes | in | `goc_v_maximum3_f16` | — | API present; semantic audit pending |
 | `v_maximum3_f32` | — | yes | in | `goc_v_maximum3_f32` | — | API present; semantic audit pending |
-| `v_maximum_f16` | — | yes | in | `goc_v_maximum_f16` | — | API present; semantic audit pending |
+| `v_maximum_f16` | — | yes | in | `goc_v_maximum_f16`<br>`goc_v_maximum_f16_wave64` | — | API present; semantic audit pending |
 | `v_maximum_f32` | — | yes | in | `goc_v_maximum_f32`<br>`goc_v_maximum_f32_wave64` | — | API present; semantic audit pending |
 | `v_maximum_f64` | — | yes | in | `goc_v_maximum_f64` | — | API present; semantic audit pending |
 | `v_maximumminimum_f16` | — | yes | in | `goc_v_maximumminimum_f16` | — | API present; semantic audit pending |
@@ -1258,19 +1258,19 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_min3_num_f32` | — | yes | in | `goc_v_min3_num_f32` | `v_min3_f32` | API present; semantic audit pending |
 | `v_min3_u16` | yes | yes | in | `goc_v_min3_u16`<br>`goc_v_min3_u16_wave64` | — | API present; semantic audit pending |
 | `v_min3_u32` | yes | yes | in | `goc_v_min3_u32`<br>`goc_v_min3_u32_wave64` | — | API present; semantic audit pending |
-| `v_min_f16` | yes | — | in | `goc_v_min_f16` | — | API present; semantic audit pending |
+| `v_min_f16` | yes | — | in | `goc_v_min_f16`<br>`goc_v_min_f16_wave64` | — | API present; semantic audit pending |
 | `v_min_f32` | yes | — | in | `goc_v_min_f32`<br>`goc_v_min_f32_wave64` | — | API present; semantic audit pending |
 | `v_min_f64` | yes | — | in | `goc_v_min_f64` | — | API present; semantic audit pending |
 | `v_min_i16` | yes | yes | in | `goc_v_min_i16`<br>`goc_v_min_i16_wave64` | — | API present; semantic audit pending |
 | `v_min_i32` | yes | yes | in | `goc_v_min_i32`<br>`goc_v_min_i32_wave64` | — | API present; semantic audit pending |
-| `v_min_num_f16` | — | yes | in | `goc_v_min_num_f16` | `v_min_f16` | API present; semantic audit pending |
+| `v_min_num_f16` | — | yes | in | `goc_v_min_num_f16`<br>`goc_v_min_num_f16_wave64` | `v_min_f16` | API present; semantic audit pending |
 | `v_min_num_f32` | — | yes | in | `goc_v_min_num_f32`<br>`goc_v_min_num_f32_wave64` | `v_min_f32` | API present; semantic audit pending |
 | `v_min_num_f64` | — | yes | in | `goc_v_min_num_f64` | `v_min_f64` | API present; semantic audit pending |
 | `v_min_u16` | yes | yes | in | `goc_v_min_u16`<br>`goc_v_min_u16_wave64` | — | API present; semantic audit pending |
 | `v_min_u32` | yes | yes | in | `goc_v_min_u32`<br>`goc_v_min_u32_wave64` | — | API present; semantic audit pending |
 | `v_minimum3_f16` | — | yes | in | `goc_v_minimum3_f16` | — | API present; semantic audit pending |
 | `v_minimum3_f32` | — | yes | in | `goc_v_minimum3_f32` | — | API present; semantic audit pending |
-| `v_minimum_f16` | — | yes | in | `goc_v_minimum_f16` | — | API present; semantic audit pending |
+| `v_minimum_f16` | — | yes | in | `goc_v_minimum_f16`<br>`goc_v_minimum_f16_wave64` | — | API present; semantic audit pending |
 | `v_minimum_f32` | — | yes | in | `goc_v_minimum_f32`<br>`goc_v_minimum_f32_wave64` | — | API present; semantic audit pending |
 | `v_minimum_f64` | — | yes | in | `goc_v_minimum_f64` | — | API present; semantic audit pending |
 | `v_minimummaximum_f16` | — | yes | in | `goc_v_minimummaximum_f16` | — | API present; semantic audit pending |
@@ -1291,7 +1291,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_mqsad_u32_u8` | yes | yes | in | `goc_v_mqsad_u32_u8`<br>`goc_v_mqsad_u32_u8_wave64` | — | API present; semantic audit pending |
 | `v_msad_u8` | yes | yes | in | `goc_v_msad_u8`<br>`goc_v_msad_u8_wave64` | — | API present; semantic audit pending |
 | `v_mul_dx9_zero_f32` | yes | yes | in | `goc_v_mul_dx9_zero_f32`<br>`goc_v_mul_dx9_zero_f32_wave64` | `v_mul_legacy_f32` | API present; semantic audit pending |
-| `v_mul_f16` | yes | yes | in | `goc_v_mul_f16` | — | API present; semantic audit pending |
+| `v_mul_f16` | yes | yes | in | `goc_v_mul_f16`<br>`goc_v_mul_f16_wave64` | — | API present; semantic audit pending |
 | `v_mul_f32` | yes | yes | in | `goc_v_mul_f32`<br>`goc_v_mul_f32_wave64` | — | API present; semantic audit pending |
 | `v_mul_f64` | yes | yes | in | `goc_v_mul_f64` | — | API present; semantic audit pending |
 | `v_mul_hi_i32` | yes | yes | in | `goc_v_mul_hi_i32`<br>`goc_v_mul_hi_i32_wave64` | — | API present; semantic audit pending |
@@ -1317,7 +1317,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_permlanex16_b32` | yes | yes | in | `goc_v_permlanex16_b32`<br>`goc_v_permlanex16_b32_wave64` | — | API present; semantic audit pending |
 | `v_permlanex16_var_b32` | — | yes | in | `goc_v_permlanex16_var_b32`<br>`goc_v_permlanex16_var_b32_wave64` | — | API present; semantic audit pending |
 | `v_pipeflush` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
-| `v_pk_add_f16` | yes | yes | in | `goc_v_pk_add_f16` | — | API present; semantic audit pending |
+| `v_pk_add_f16` | yes | yes | in | `goc_v_pk_add_f16`<br>`goc_v_pk_add_f16_wave64` | — | API present; semantic audit pending |
 | `v_pk_add_i16` | yes | yes | in | `goc_v_pk_add_i16`<br>`goc_v_pk_add_i16_wave64` | — | API present; semantic audit pending |
 | `v_pk_add_u16` | yes | yes | in | `goc_v_pk_add_u16`<br>`goc_v_pk_add_u16_wave64` | — | API present; semantic audit pending |
 | `v_pk_ashrrev_i16` | yes | yes | in | `goc_v_pk_ashrrev_i16`<br>`goc_v_pk_ashrrev_i16_wave64` | — | API present; semantic audit pending |
@@ -1327,17 +1327,17 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_pk_lshrrev_b16` | yes | yes | in | `goc_v_pk_lshrrev_b16`<br>`goc_v_pk_lshrrev_b16_wave64` | — | API present; semantic audit pending |
 | `v_pk_mad_i16` | yes | yes | in | `goc_v_pk_mad_i16`<br>`goc_v_pk_mad_i16_wave64` | — | API present; semantic audit pending |
 | `v_pk_mad_u16` | yes | yes | in | `goc_v_pk_mad_u16`<br>`goc_v_pk_mad_u16_wave64` | — | API present; semantic audit pending |
-| `v_pk_max_f16` | yes | — | in | `goc_v_pk_max_f16` | — | API present; semantic audit pending |
+| `v_pk_max_f16` | yes | — | in | `goc_v_pk_max_f16`<br>`goc_v_pk_max_f16_wave64` | — | API present; semantic audit pending |
 | `v_pk_max_i16` | yes | yes | in | `goc_v_pk_max_i16`<br>`goc_v_pk_max_i16_wave64` | — | API present; semantic audit pending |
-| `v_pk_max_num_f16` | — | yes | in | `goc_v_pk_max_num_f16` | `v_pk_max_f16` | API present; semantic audit pending |
+| `v_pk_max_num_f16` | — | yes | in | `goc_v_pk_max_num_f16`<br>`goc_v_pk_max_num_f16_wave64` | `v_pk_max_f16` | API present; semantic audit pending |
 | `v_pk_max_u16` | yes | yes | in | `goc_v_pk_max_u16`<br>`goc_v_pk_max_u16_wave64` | — | API present; semantic audit pending |
-| `v_pk_maximum_f16` | — | yes | in | `goc_v_pk_maximum_f16` | — | API present; semantic audit pending |
-| `v_pk_min_f16` | yes | — | in | `goc_v_pk_min_f16` | — | API present; semantic audit pending |
+| `v_pk_maximum_f16` | — | yes | in | `goc_v_pk_maximum_f16`<br>`goc_v_pk_maximum_f16_wave64` | — | API present; semantic audit pending |
+| `v_pk_min_f16` | yes | — | in | `goc_v_pk_min_f16`<br>`goc_v_pk_min_f16_wave64` | — | API present; semantic audit pending |
 | `v_pk_min_i16` | yes | yes | in | `goc_v_pk_min_i16`<br>`goc_v_pk_min_i16_wave64` | — | API present; semantic audit pending |
-| `v_pk_min_num_f16` | — | yes | in | `goc_v_pk_min_num_f16` | `v_pk_min_f16` | API present; semantic audit pending |
+| `v_pk_min_num_f16` | — | yes | in | `goc_v_pk_min_num_f16`<br>`goc_v_pk_min_num_f16_wave64` | `v_pk_min_f16` | API present; semantic audit pending |
 | `v_pk_min_u16` | yes | yes | in | `goc_v_pk_min_u16`<br>`goc_v_pk_min_u16_wave64` | — | API present; semantic audit pending |
-| `v_pk_minimum_f16` | — | yes | in | `goc_v_pk_minimum_f16` | — | API present; semantic audit pending |
-| `v_pk_mul_f16` | yes | yes | in | `goc_v_pk_mul_f16` | — | API present; semantic audit pending |
+| `v_pk_minimum_f16` | — | yes | in | `goc_v_pk_minimum_f16`<br>`goc_v_pk_minimum_f16_wave64` | — | API present; semantic audit pending |
+| `v_pk_mul_f16` | yes | yes | in | `goc_v_pk_mul_f16`<br>`goc_v_pk_mul_f16_wave64` | — | API present; semantic audit pending |
 | `v_pk_mul_lo_u16` | yes | yes | in | `goc_v_pk_mul_lo_u16`<br>`goc_v_pk_mul_lo_u16_wave64` | — | API present; semantic audit pending |
 | `v_pk_sub_i16` | yes | yes | in | `goc_v_pk_sub_i16`<br>`goc_v_pk_sub_i16_wave64` | — | API present; semantic audit pending |
 | `v_pk_sub_u16` | yes | yes | in | `goc_v_pk_sub_u16`<br>`goc_v_pk_sub_u16_wave64` | — | API present; semantic audit pending |
@@ -1376,7 +1376,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_sqrt_f64` | yes | yes | in | `goc_v_sqrt_f64` | — | API present; semantic audit pending |
 | `v_sub_co_ci_u32` | yes | yes | in | `goc_v_sub_co_ci_u32`<br>`goc_v_sub_co_ci_u32_wave64` | — | API present; semantic audit pending |
 | `v_sub_co_u32` | yes | yes | in | `goc_v_sub_co_u32`<br>`goc_v_sub_co_u32_wave64` | — | API present; semantic audit pending |
-| `v_sub_f16` | yes | yes | in | `goc_v_sub_f16` | — | API present; semantic audit pending |
+| `v_sub_f16` | yes | yes | in | `goc_v_sub_f16`<br>`goc_v_sub_f16_wave64` | — | API present; semantic audit pending |
 | `v_sub_f32` | yes | yes | in | `goc_v_sub_f32`<br>`goc_v_sub_f32_wave64` | — | API present; semantic audit pending |
 | `v_sub_nc_i16` | yes | yes | in | `goc_v_sub_nc_i16`<br>`goc_v_sub_nc_i16_wave64` | — | API present; semantic audit pending |
 | `v_sub_nc_i32` | yes | yes | in | `goc_v_sub_nc_i32`<br>`goc_v_sub_nc_i32_wave64` | — | API present; semantic audit pending |
@@ -1384,7 +1384,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_sub_nc_u32` | yes | yes | in | `goc_v_sub_nc_u32`<br>`goc_v_sub_nc_u32_wave64` | — | API present; semantic audit pending |
 | `v_subrev_co_ci_u32` | yes | yes | in | `goc_v_subrev_co_ci_u32`<br>`goc_v_subrev_co_ci_u32_wave64` | — | API present; semantic audit pending |
 | `v_subrev_co_u32` | yes | yes | in | `goc_v_subrev_co_u32`<br>`goc_v_subrev_co_u32_wave64` | — | API present; semantic audit pending |
-| `v_subrev_f16` | yes | yes | in | `goc_v_subrev_f16` | — | API present; semantic audit pending |
+| `v_subrev_f16` | yes | yes | in | `goc_v_subrev_f16`<br>`goc_v_subrev_f16_wave64` | — | API present; semantic audit pending |
 | `v_subrev_f32` | yes | yes | in | `goc_v_subrev_f32`<br>`goc_v_subrev_f32_wave64` | — | API present; semantic audit pending |
 | `v_subrev_nc_u32` | yes | yes | in | `goc_v_subrev_nc_u32`<br>`goc_v_subrev_nc_u32_wave64` | — | API present; semantic audit pending |
 | `v_swap_b16` | yes | yes | in | `goc_v_swap_b16`<br>`goc_v_swap_b16_wave64` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 123 Wave32 EXEC-taking APIs without a corresponding
+There are 105 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1443,7 +1443,6 @@ SAVEEXEC/WREXEC consume EXEC as data and already have distinct `_b32` and
 | [`dot.cpp`](src/dot.cpp) | `goc_v_dot2_f32_bf16`, `goc_v_dot2_f32_bf16_rdna4`, `goc_v_dot2_f32_f16`, `goc_v_dot2_f32_f16_rdna4`, `goc_v_dot2acc_f32_f16` |
 | [`fp64.cpp`](src/fp64.cpp) | `goc_v_add_f64`, `goc_v_ceil_f64`, `goc_v_floor_f64`, `goc_v_fma_f64`, `goc_v_fract_f64`, `goc_v_frexp_mant_f64`, `goc_v_max_f64`, `goc_v_max_num_f64`, `goc_v_maximum_f64`, `goc_v_min_f64`, `goc_v_min_num_f64`, `goc_v_minimum_f64`, `goc_v_mul_f64`, `goc_v_rcp_f64`, `goc_v_rndne_f64`, `goc_v_rsq_f64`, `goc_v_sqrt_f64`, `goc_v_trunc_f64` |
 | [`fp8_dot.cpp`](src/fp8_dot.cpp) | `goc_v_dot4_f32_bf8_bf8`, `goc_v_dot4_f32_bf8_fp8`, `goc_v_dot4_f32_fp8_bf8`, `goc_v_dot4_f32_fp8_fp8` |
-| [`half_binary.cpp`](src/half_binary.cpp) | `goc_v_add_f16`, `goc_v_max_f16`, `goc_v_max_num_f16`, `goc_v_maximum_f16`, `goc_v_min_f16`, `goc_v_min_num_f16`, `goc_v_minimum_f16`, `goc_v_mul_f16`, `goc_v_pk_add_f16`, `goc_v_pk_max_f16`, `goc_v_pk_max_num_f16`, `goc_v_pk_maximum_f16`, `goc_v_pk_min_f16`, `goc_v_pk_min_num_f16`, `goc_v_pk_minimum_f16`, `goc_v_pk_mul_f16`, `goc_v_sub_f16`, `goc_v_subrev_f16` |
 | [`half_dot.cpp`](src/half_dot.cpp) | `goc_v_dot2_bf16_bf16`, `goc_v_dot2_f16_f16` |
 | [`half_minmax.cpp`](src/half_minmax.cpp) | `goc_v_max3_f16`, `goc_v_max3_num_f16`, `goc_v_maximum3_f16`, `goc_v_maximumminimum_f16`, `goc_v_maxmin_f16`, `goc_v_maxmin_num_f16`, `goc_v_med3_f16`, `goc_v_med3_num_f16`, `goc_v_min3_f16`, `goc_v_min3_num_f16`, `goc_v_minimum3_f16`, `goc_v_minimummaximum_f16`, `goc_v_minmax_f16`, `goc_v_minmax_num_f16` |
 | [`half_trig.cpp`](src/half_trig.cpp) | `goc_v_cos_f16`, `goc_v_sin_f16` |

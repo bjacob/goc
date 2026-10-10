@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "dpp_reference.h"
 #include "exec_masks.h"
 #include "goc/goc.h"
 #include "half_binary_reference.h"
@@ -14,6 +15,12 @@
 #include <stdint.h>
 
 namespace {
+
+const decltype(&goc_v_add_f16_wave64) wave64[] = {
+    goc_v_add_f16_wave64,     goc_v_sub_f16_wave64,     goc_v_subrev_f16_wave64,
+    goc_v_mul_f16_wave64,     goc_v_min_num_f16_wave64, goc_v_max_num_f16_wave64,
+    goc_v_minimum_f16_wave64, goc_v_maximum_f16_wave64, goc_v_min_f16_wave64,
+    goc_v_max_f16_wave64};
 
 void check(uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
   int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
@@ -201,5 +208,69 @@ TEST(HalfBinary, ValidationAndSemantics) {
     for (auto word : data)
       EXPECT_EQ(word, 0xdeadbeef);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &p, &p, &p, nullptr), GOC_SUCCESS);
+  }
+}
+
+TEST(HalfBinary, Wave64ModifiersSelectorsDppAndAliases) {
+  const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3bff, 0x3c00,
+                             0xbc00, 0x4001, 0x7bff, 0xfbff, 0x7c00, 0xfc00, 0x7c01, 0xfe00};
+  for (unsigned op = 0; op < 10; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (bool saturate : {false, true})
+        for (unsigned variant = 0; variant < 1024; ++variant)
+          for (unsigned route_index = 0; route_index < 8; ++route_index) {
+            uint32_t mode = goc_test::half_binary_modifiers(variant);
+            uint64_t descriptor = route_index ? goc_test::dpp_modes[route_index - 1] : 0;
+            if (descriptor & GOC_DPP16)
+              descriptor = (descriptor & ~GOC_DPP_ROW_MASK) |
+                           (uint64_t((variant >> 6) & 15) << GOC_DPP_ROW_SHIFT);
+            uint32_t words[3][66], before[3][66];
+            for (unsigned reg = 0; reg < 3; ++reg)
+              for (unsigned lane = 0; lane < 66; ++lane)
+                words[reg][lane] = values[(lane + 5 * reg) % 16] |
+                                   (uint32_t(values[(lane * 7 + 3 * reg) % 16]) << 16);
+            std::memcpy(before, words, sizeof words);
+            unsigned dest = variant % 3;
+            uint32_t *d = words[dest] + 1;
+            const uint32_t *a = words[0] + 1, *b = words[1] + 1;
+            uint64_t exec_mask = 0x87654321fedcba98ULL;
+            uint32_t exceptions = 0x80000055;
+            ASSERT_EQ(wave64[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask, descriptor | mode,
+                                 &d, &a, &b, &exceptions),
+                      GOC_SUCCESS);
+            EXPECT_EQ(exceptions, 0x80000055U);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              int source = int(lane);
+              bool enabled = descriptor ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                                        : ((exec_mask >> lane) & 1);
+              if (enabled)
+                check(d[lane], before[dest][lane + 1],
+                      goc_test::half_binary_reference(op >= 8 ? op - 4 : op,
+                                                      source < 0 ? 0 : before[0][source + 1],
+                                                      before[1][lane + 1], mode, saturate),
+                      mode);
+              else
+                EXPECT_EQ(d[lane], before[dest][lane + 1]);
+            }
+            for (unsigned reg = 0; reg < 3; ++reg) {
+              EXPECT_EQ(words[reg][0], before[reg][0]);
+              EXPECT_EQ(words[reg][65], before[reg][65]);
+            }
+          }
+}
+
+TEST(HalfBinary, Wave64ValidationAndOptionalState) {
+  for (auto fn : wave64) {
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << 36, nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, nullptr,
+                 nullptr, nullptr, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    uint32_t exceptions = 0x80000055;
+    EXPECT_EQ(
+        fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, nullptr, &exceptions),
+        GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(exceptions, 0x80000055U);
   }
 }

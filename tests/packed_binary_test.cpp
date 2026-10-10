@@ -13,6 +13,11 @@
 
 namespace {
 
+const decltype(&goc_v_pk_add_f16_wave64) wave64[] = {
+    goc_v_pk_add_f16_wave64,     goc_v_pk_mul_f16_wave64,     goc_v_pk_min_num_f16_wave64,
+    goc_v_pk_max_num_f16_wave64, goc_v_pk_minimum_f16_wave64, goc_v_pk_maximum_f16_wave64,
+    goc_v_pk_min_f16_wave64,     goc_v_pk_max_f16_wave64};
+
 using Fn = decltype(&goc_v_pk_add_f16);
 const Fn functions[] = {goc_v_pk_add_f16,     goc_v_pk_mul_f16,     goc_v_pk_min_num_f16,
                         goc_v_pk_max_num_f16, goc_v_pk_minimum_f16, goc_v_pk_maximum_f16};
@@ -203,5 +208,57 @@ TEST(PackedBinary, ValidationAndSemantics) {
     EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(fn(0, 0U, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &p, &p, &p, nullptr), GOC_SUCCESS);
+  }
+}
+
+TEST(PackedBinary, Wave64ModifiersMasksAndAliases) {
+  for (unsigned op = 0; op < 8; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (bool saturate : {false, true})
+        for (uint32_t mode = 0; mode < 8192; ++mode) {
+          if (mode & ~known)
+            continue;
+          uint32_t words[3][66], before[3][66];
+          for (unsigned reg = 0; reg < 3; ++reg)
+            for (unsigned lane = 0; lane < 66; ++lane)
+              words[reg][lane] = values[(lane + 7 * reg) % 20] |
+                                 (uint32_t(values[(lane * 3 + 5 * reg) % 20]) << 16);
+          std::memcpy(before, words, sizeof words);
+          unsigned dest = mode % 3;
+          uint32_t *d = words[dest] + 1;
+          const uint32_t *a = words[0] + 1, *b = words[1] + 1;
+          uint64_t exec_mask = 0x87654321fedcba98ULL;
+          uint32_t exceptions = 0x80000055;
+          ASSERT_EQ(wave64[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask, mode, &d, &a, &b,
+                               &exceptions),
+                    GOC_SUCCESS);
+          EXPECT_EQ(exceptions, 0x80000055U);
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            if ((exec_mask >> lane) & 1)
+              check(d[lane], reference(op >= 6 ? op - 4 : op, before[0][lane + 1],
+                                       before[1][lane + 1], mode, saturate));
+            else
+              EXPECT_EQ(d[lane], before[dest][lane + 1]);
+          }
+          for (unsigned reg = 0; reg < 3; ++reg) {
+            EXPECT_EQ(words[reg][0], before[reg][0]);
+            EXPECT_EQ(words[reg][65], before[reg][65]);
+          }
+        }
+}
+
+TEST(PackedBinary, Wave64ValidationAndOptionalState) {
+  for (auto fn : wave64) {
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << 36, nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, nullptr,
+                 nullptr, nullptr, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    uint32_t exceptions = 0x80000055;
+    EXPECT_EQ(
+        fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, nullptr, &exceptions),
+        GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(exceptions, 0x80000055U);
   }
 }

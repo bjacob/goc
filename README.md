@@ -2129,6 +2129,10 @@ cases measure 20.0–25.5 ns on AVX2 (2.1–4.3× scalar speed) and
 19.4–24.8 ns with AVX-512 permutation plus AVX2 arithmetic (2.2–4.5×), using
 seven pinned samples of at least 10 ms each.
 
+Ordinary and packed FP16 binary operations, including their MIN/MAX aliases,
+have Wave32 and `_wave64` APIs with the same scalar/AVX2 kernels, loose
+semantics and optional-state contracts.
+
 All eight non-packed FP16 binary operations (ADD/SUB/SUBREV/MUL and the four
 min/max variants) now support DPP8/DPP16 with NEG/ABS, OMOD, CLAMP, and half
 selectors. Tests cover all 1,024 modifier combinations in both FP16 overflow

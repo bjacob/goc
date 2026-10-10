@@ -56,7 +56,12 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     EXPECT_TRUE((std::is_same_v<Mask, uint64_t>));
     base_name.resize(base_name.size() - 7);
     // Only these audited families currently share DPP support across widths.
-    if (base_name == "goc_v_fma_mix_f32" || base_name == "goc_v_fma_mixlo_f16" ||
+    if (base_name == "goc_v_add_f16" || base_name == "goc_v_sub_f16" ||
+        base_name == "goc_v_subrev_f16" || base_name == "goc_v_mul_f16" ||
+        base_name == "goc_v_min_num_f16" || base_name == "goc_v_max_num_f16" ||
+        base_name == "goc_v_minimum_f16" || base_name == "goc_v_maximum_f16" ||
+        base_name == "goc_v_min_f16" || base_name == "goc_v_max_f16" ||
+        base_name == "goc_v_fma_mix_f32" || base_name == "goc_v_fma_mixlo_f16" ||
         base_name == "goc_v_fma_mixhi_f16" || base_name == "goc_v_fma_f16" ||
         base_name == "goc_v_fmac_f16" || base_name == "goc_v_add_f32" ||
         base_name == "goc_v_sub_f32" || base_name == "goc_v_subrev_f32" ||

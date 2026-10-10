@@ -1347,3 +1347,25 @@ No new native Wave64 capture is claimed. The vector width queue is 123 APIs.
 Validation: all 814 tests pass on Clang 21 and GCC 15 Release. Twelve targeted
 mixed-FMA hardware/host-state/Wave64, instruction-flag and exception-register
 tests pass under ASan/UBSan.
+
+## Wave64 ordinary and packed FP16 binary arithmetic
+
+Added eighteen Wave64 APIs: ordinary ADD/SUB/SUBREV/MUL and min/max forms,
+packed ADD/MUL and min/max forms, plus both sets of legacy MIN/MAX aliases.
+The family-local wrapper reuses the existing scalar/AVX2 kernels. Ordinary
+forms route A through DPP and preserve the unselected destination half;
+packed forms read original components for both results and reject DPP.
+Loose semantics and unsupported exact reporting are unchanged.
+
+Independent references check all 1,024 ordinary modifier/half-selection
+combinations with every DPP form, all row-enable patterns, both overflow
+policies, all CPU paths, aliases, upper EXEC bits and guards. Packed tests
+cover every valid packed modifier combination under the same overflow/CPU
+choices. NaN comparisons retain loose payload semantics. All eighteen APIs
+verify empty EXEC, invalid modes and unchanged optional state, including
+rejection of unsupported exact requests before operand access. No new
+exactness, capture or throughput claim is made. The width queue is 105 APIs.
+
+Validation: all 818 tests pass on Clang 21 and GCC 15 Release. All five
+new Wave64 ordinary/packed binary and instruction-flag tests pass under
+ASan/UBSan, including the complete modifier sweeps.
