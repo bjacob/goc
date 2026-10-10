@@ -57,7 +57,9 @@ TEST(Fp8Narrow, HardwareCapturedSpecialValuesAndStochasticAlignment) {
         std::fill_n(dv, 32, 0x12345678);
         const uint32_t *a[] = {av}, *b[] = {bv};
         uint32_t *d[] = {dv};
-        ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX, mode, d, a, b),
+        ASSERT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                                    (saturate ? GOC_FP16_OVFL : 0),
+                                UINT32_MAX, mode, d, a, b),
                   GOC_SUCCESS);
         for (auto word : dv)
           ASSERT_EQ(word, capture.expected[column])
@@ -186,8 +188,7 @@ TEST(Fp8Narrow, ValidationAndSemanticFallback) {
                     GOC_ERROR_INVALID_FLAGS);
         }
       EXPECT_EQ(functions[op](cpu | (1ull << 63), UINT32_MAX, 0, d, a, a), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                              UINT32_MAX, 0, d, a, a),
+      EXPECT_EQ(functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, d, a, a),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
@@ -309,5 +310,84 @@ TEST(Fp8Narrow, DppHostFloatingPointState) {
             for (unsigned lane = 0; lane < 32; ++lane)
               EXPECT_EQ(dv[lane], expected[lane]);
           }
+  }
+}
+
+namespace {
+const decltype(&goc_v_cvt_pk_fp8_f32_wave64) wave64[] = {
+    goc_v_cvt_pk_fp8_f32_wave64, goc_v_cvt_pk_bf8_f32_wave64, goc_v_cvt_sr_fp8_f32_wave64,
+    goc_v_cvt_sr_bf8_f32_wave64};
+} // namespace
+
+TEST(Fp8Narrow, Wave64ExactHardwareCorpus) {
+  for (const auto &capture : goc_test::fp8_narrow_captures)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned column = 0; column < 20; ++column) {
+        unsigned op = ((column / 4) & 1) + (column % 4 >= 2 ? 2 : 0);
+        uint32_t mode =
+            column & 1 ? GOC_ALU_ABS_A | GOC_ALU_NEG_A | (op >= 2 ? GOC_CVT_BYTE_3 : GOC_ALU_ABS_B)
+                       : 0;
+        if (column >= 16) {
+          op = (column - 16) & 1;
+          mode = GOC_ALU_HIGH_D;
+        }
+        bool saturate = column < 16 ? column >= 8 : column >= 18;
+        uint32_t a[64], b[64], d[64];
+        std::fill_n(a, 64, capture.source);
+        std::fill_n(b, 64, op >= 2 ? capture.seed : capture.source ^ 0x80000000);
+        std::fill_n(d, 64, 0x12345678);
+        const uint32_t *pa = a, *pb = b;
+        uint32_t *pd = d;
+        ASSERT_EQ(wave64[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                                 (saturate ? GOC_FP16_OVFL : 0),
+                             UINT64_MAX, mode, &pd, &pa, &pb),
+                  GOC_SUCCESS);
+        for (auto word : d)
+          ASSERT_EQ(word, capture.expected[column]);
+      }
+}
+
+TEST(Fp8Narrow, Wave64SelectorsSeedsDppAndAliases) {
+  std::mt19937 random(821712);
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (bool saturate : {false, true})
+        for (unsigned variant = 0; variant < (op < 2 ? 32U : 16U); ++variant)
+          for (auto route : goc_test::dpp_modes)
+            for (unsigned rows = 0; rows < 16; ++rows)
+              for (unsigned target = 0; target < 3; ++target) {
+                uint32_t initial[3][66], words[3][66];
+                for (auto &reg : initial)
+                  for (auto &word : reg)
+                    word = random();
+                std::memcpy(words, initial, sizeof words);
+                const uint32_t *a = words[0] + 1, *b = words[1] + 1;
+                uint32_t *d = words[target] + 1;
+                uint64_t descriptor = route;
+                if (route & GOC_DPP16)
+                  descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+                uint64_t exec_mask = 0x87654321fedcba98ULL;
+                uint32_t mode = goc_test::fp8_narrow_mode(op, variant);
+                uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                                 (saturate ? GOC_FP16_OVFL : 0);
+                ASSERT_EQ(wave64[op](flags, exec_mask, mode | descriptor, &d, &a, &b), GOC_SUCCESS);
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  int source = 0;
+                  bool enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+                  uint32_t expected = initial[target][lane + 1];
+                  if (enabled)
+                    expected =
+                        goc_test::fp8_narrow_result(op, source < 0 ? 0 : initial[0][source + 1],
+                                                    initial[1][lane + 1], expected, mode, saturate);
+                  ASSERT_EQ(d[lane], expected);
+                }
+                EXPECT_EQ(words[target][0], initial[target][0]);
+                EXPECT_EQ(words[target][65], initial[target][65]);
+              }
+  for (auto fn : wave64) {
+    EXPECT_EQ(
+        fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr, nullptr),
+        GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << 63, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
   }
 }

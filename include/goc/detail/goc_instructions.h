@@ -2321,7 +2321,7 @@ int goc_v_cubema_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fl
 // discards low significand bits before adding the seed's high 20/21 bits.
 // GOC_FP16_OVFL saturates finite overflow to signed max finite; infinities
 // remain signed FP8 NaNs / BF8 infinities. Input NaNs become 0xff / 0xfe.
-// Supports loose semantics, full EXEC masking and every whole-register alias.
+// Supports both semantics, full EXEC masking and every whole-register alias.
 // Results do not depend on host rounding and preserve all host FP state.
 int goc_v_cvt_pk_fp8_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
@@ -2334,6 +2334,24 @@ int goc_v_cvt_sr_fp8_f32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 
 int goc_v_cvt_sr_bf8_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+// Wave64 narrowing uses the same exact rounding, seed alignment, selectors
+// and preserved destination bytes, with 64 lanes per VGPR.
+int goc_v_cvt_pk_fp8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+int goc_v_cvt_pk_bf8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+int goc_v_cvt_sr_fp8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+int goc_v_cvt_sr_bf8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
 
 // DPP8/DPP16 permute A before nibble selection.
 // Convert A's signed low nibble to FP32 divided by 16, then apply OMOD/CLAMP.

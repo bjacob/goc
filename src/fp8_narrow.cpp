@@ -20,7 +20,7 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   const uint32_t known =
       GOC_ALU_ABS_A | GOC_ALU_NEG_A |
       (Stochastic ? GOC_CVT_BYTE_3 : GOC_ALU_ABS_B | GOC_ALU_NEG_B | GOC_ALU_HIGH_D);
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -58,6 +58,28 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   return GOC_SUCCESS;
 }
 
+template <bool Bf8, bool Stochastic>
+int convert_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b) {
+  if (int error = convert<Bf8, Stochastic>(flags, 0, mode, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32;
+    if (int error = convert<Bf8, Stochastic>(flags, uint32_t(exec_mask >> (half * 32)), half_mode,
+                                             &dest, &source_a, &source_b))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_cvt_pk_fp8_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -78,4 +100,28 @@ int goc_v_cvt_sr_fp8_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
 int goc_v_cvt_sr_bf8_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b) {
   return convert<true, true>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_cvt_pk_fp8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b) {
+  return convert_wave64<false, false>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_cvt_pk_bf8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b) {
+  return convert_wave64<true, false>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_cvt_sr_fp8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b) {
+  return convert_wave64<false, true>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_cvt_sr_bf8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b) {
+  return convert_wave64<true, true>(flags, exec_mask, mode, d, a, b);
 }

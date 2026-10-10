@@ -938,7 +938,8 @@ showed 2.42–6.48x for v3 and 4.29–11.99x for v4 versus scalar (seven samples
 each at least 10 ms).
 
 FP8/BF8 narrowing covers `v_cvt_pk_fp8_f32`, `v_cvt_pk_bf8_f32`,
-`v_cvt_sr_fp8_f32`, and `v_cvt_sr_bf8_f32`. Packed forms round two FP32
+`v_cvt_sr_fp8_f32`, and `v_cvt_sr_bf8_f32`. Both wave sizes support strict
+exact semantics using the shared scalar/v3/v4 integer kernels. Packed forms round two FP32
 sources to nearest-even and replace the selected destination half. Stochastic
 forms take the seed directly from B and replace one selected destination byte;
 there is no internal random-number generator. Both preserve the unselected

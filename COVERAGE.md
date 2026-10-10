@@ -1070,3 +1070,24 @@ exercise every DPP row-enable combination. The width-review queue is 198 APIs.
 Validation: all 782 tests pass on Clang 21 and GCC 15 Release. All twelve FP8
 widening and instruction-flag tests pass under ASan/UBSan. The raw HIP probe
 completed successfully on the local RX 9070.
+
+## Wave64 FP8/BF8 nearest-even and stochastic narrowing
+
+Added all four Wave64 narrowing APIs and enabled strict exact semantics at
+both widths. They share the existing integer scalar/v3/v4 models, including
+captured canonical NaNs, infinity behavior, finite overflow saturation and
+stochastic significand alignment. Packed forms preserve the unselected half;
+stochastic forms preserve three bytes and use B's seed without modification.
+DPP routes only A and remaps row enables across both halves.
+
+The existing raw 20-column hardware fixture now runs in strict exact mode at
+Wave32 and through the new Wave64 calls. The Wave64 fixture repeats captured
+per-lane inputs; it is not a new native Wave64 capture. Independent numeric
+references additionally cover random FP32 words/seeds, every selector and
+source modifier, both saturation modes, DPP row masks, upper/lower EXEC,
+whole-source aliases and guard words. Invalid and empty calls avoid operand
+access. No arithmetic kernels or SIMD dispatch decisions changed.
+The width-review queue is 194 APIs.
+
+Validation: all 784 tests pass on Clang 21 and GCC 15 Release. All twelve FP8
+narrowing and instruction-flag tests pass under ASan/UBSan.
