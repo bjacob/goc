@@ -25,4 +25,20 @@ static const uint64_t hwreg_write_hashes[2][2][5] = {
     },
 };
 
+// Same groups as above, hashing the subsequent GETREG field values.
+static const uint64_t hwreg_read_hashes[2][2][5] = {
+    {
+        {0x51d88627df287325ULL, 0xfb636bbe3a5cc445ULL, 0x7e305513234256ddULL, 0x6c005c6cb0271605ULL,
+         0xfb636bbe3a5cc445ULL},
+        {0x51d88627df287325ULL, 0xfb636bbe3a5cc445ULL, 0x7e305513234256ddULL, 0x6c005c6cb0271605ULL,
+         0xfb636bbe3a5cc445ULL},
+    },
+    {
+        {0x51d88627df287325ULL, 0xda673ccbcab9da8dULL, 0xc7d47642fc8723edULL, 0x3b11d1c5cdd71785ULL,
+         0xda673ccbcab9da8dULL},
+        {0x51d88627df287325ULL, 0xda673ccbcab9da8dULL, 0xc7d47642fc8723edULL, 0x3b11d1c5cdd71785ULL,
+         0xda673ccbcab9da8dULL},
+    },
+};
+
 } // namespace goc_test

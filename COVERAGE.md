@@ -3252,3 +3252,36 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   Final logs: `/tmp/goc-hwreg-final-{clang,gcc,san}-tests.log`. The raw capture
   checker also continues to pass. No performance claim is inferred from these
   correctness tests.
+
+### RDNA3/RDNA4 GETREG read-value APIs
+
+- Added `goc_s_getreg_b32` and `_rdna4`, with separate architecture-ID switches
+  and shared integer field extraction. The required scalar destination precedes
+  the encoded HWREG selector; implicit inputs follow by value, as in PLAN.md.
+  There is no opaque state object or EXEC argument. Native register values come
+  from the emulator, including guest clocks, PC, allocation and identity.
+- The input boundary is explicit: these are **wave-visible read values**.
+  The emulator supplies zero snapshot data for non-sampled waves and zero
+  scratch for waves without allocation. The APIs do not synthesize a physical
+  snapshot bank, ownership routing or guest clock. The RDNA3 clock selector
+  reads its low half; RDNA4 has separate low/high selectors, allowing callers
+  to supply the guest counter value observed at each instruction.
+- RDNA4 snapshot-PC-high reads expose five separate optional native snapshot
+  outputs. Requested non-loose updates remain unsupported because reset/unlock
+  behavior is unresolved. Null opts out; loose mode skips updates. Required
+  read values are independent of these pointers. No lock register or post-read
+  values are invented. No RDNA4 snapshot read-update rule is assumed for RDNA3.
+- Tests cover both maps, every ID/offset/width, clipped/width-32 fields, both
+  semantics, aliases, unknown/write-only selectors, errors, counter-half
+  rollover inputs, all snapshot-output pointer combinations and host FP state.
+  RDNA4 read hashes match the 20,480 gfx1201 field values from the HWREG capture.
+  Native RDNA3 reads and snapshot lifecycle behavior are not hardware-validated.
+- Clang 21 and GCC 15 Release each pass **1,041/1,041** tests; targeted Clang
+  ASan/UBSan passes **23/23** HWREG/guest-mode/instruction-flag tests. Logs are
+  `/tmp/goc-getreg-{clang,gcc,san}-tests.log`. Existing arithmetic/SIMD paths
+  were not modified.
+- Canonical API presence is **809/809**, not completed ISA semantics. RDNA3
+  SETREG variants, exact privileged scratch writes and snapshot state updates
+  remain open, as do the previously recorded arithmetic/architecture gaps.
+  The inventory and architecture queue are regenerated; native exception-output
+  naming counts remain 674 signatures, 388 matching, zero mismatches, 286 pending.

@@ -128,7 +128,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_ctz_i32_b64` | no direct policy detected | no | 1478 | review required |
 | `s_denorm_mode` | no direct policy detected | no | 1586 | review required |
 | `s_getpc_b64` | no direct policy detected | no | not found | review required |
-| `s_getreg_b32` | no direct policy detected | no | not found | review required |
+| `s_getreg_b32` | no direct policy detected | yes | not found | review required |
 | `s_lshl1_add_u32` | no direct policy detected | no | 1748 | review required |
 | `s_lshl2_add_u32` | no direct policy detected | no | 1760 | review required |
 | `s_lshl3_add_u32` | no direct policy detected | no | 1772 | review required |

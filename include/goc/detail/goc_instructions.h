@@ -295,6 +295,43 @@ int goc_s_wqm_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint3
 int goc_s_wqm_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
                   uint32_t *scc);
 
+// S_GETREG reads a field from caller-supplied, wave-visible native register
+// values. hwreg encodes ID[5:0], offset[10:6], width-minus-one[15:11]. Required
+// output D is right-justified and zero-extended. Both semantics use exact integer
+// extraction; fields extending beyond bit 31 are clipped. No EXEC or instruction
+// flags. Unknown/reserved IDs (including RDNA3 write-only FLUSH_IB) return
+// GOC_ERROR_INVALID_FLAGS without touching D. Inputs are snapshots by value:
+// clocks, PC, allocation/identity and snapshot visibility are supplied by the
+// caller, not synthesized from host state. In particular, supply zero snapshot
+// values for a non-sampled wave and zero scratch for a wave without allocation.
+// D may alias storage from which a by-value input was loaded.
+// RDNA3 has no specified snapshot read-update modeled by this interface.
+int goc_s_getreg_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint16_t hwreg,
+                     uint32_t mode, uint32_t status, uint32_t trapsts, uint32_t gpr_alloc,
+                     uint32_t lds_alloc, uint32_t ib_sts, uint64_t pc, uint32_t ib_dbg1,
+                     uint32_t sh_mem_bases, uint64_t shader_tba, uint64_t perf_snapshot_pc,
+                     uint64_t flat_scratch, uint32_t hw_id1, uint32_t hw_id2, uint32_t pops_packer,
+                     uint32_t sched_mode, uint32_t perf_snapshot_data, uint32_t ib_sts2,
+                     uint64_t shader_cycles);
+
+// RDNA4 has a different register-ID map. Reading ID 12 (snapshot PC_HI) unlocks
+// the snapshot registers. Its updates are not yet implemented: non-loose
+// semantics with any snapshot output non-NULL return UNSUPPORTED_GLOBAL_STATE
+// before other validation or D access. NULL opts out. Loose mode leaves snapshot
+// state unchanged even with non-NULL outputs. Other IDs do not update snapshots.
+// Snapshot outputs must not overlap D. Caller-provided snapshot *_in values
+// determine the required read result independently of optional output pointers.
+int goc_s_getreg_b32_rdna4(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint16_t hwreg,
+                           uint32_t mode, uint32_t status, uint32_t state_priv, uint32_t gpr_alloc,
+                           uint32_t lds_alloc, uint32_t perf_snapshot_data_in,
+                           uint32_t perf_snapshot_pc_lo_in, uint32_t perf_snapshot_pc_hi_in,
+                           uint32_t perf_snapshot_data1_in, uint32_t perf_snapshot_data2_in,
+                           uint32_t excp_flag_priv, uint32_t excp_flag_user, uint32_t trap_ctrl,
+                           uint64_t scratch_base, uint32_t hw_id1, uint32_t hw_id2,
+                           uint32_t ib_sts2, uint64_t shader_cycles, uint32_t *perf_snapshot_data,
+                           uint32_t *perf_snapshot_pc_lo, uint32_t *perf_snapshot_pc_hi,
+                           uint32_t *perf_snapshot_data1, uint32_t *perf_snapshot_data2);
+
 // RDNA4 S_SETREG: hwreg encodes ID[5:0], offset[10:6], width-minus-one[15:11].
 // Supports loose and exact semantics. instruction_flags must be zero. STATUS.PRIV
 // (bit 5) controls privileged writes. Each nullable output holds the old native

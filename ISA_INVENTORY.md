@@ -20,8 +20,7 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 1
-- in, API present: 808
+- in, API present: 809
 - out, API absent: 587
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
@@ -654,7 +653,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_fmac_f32` | — | yes | in | `goc_s_fmac_f32` | — | API present; semantic audit pending |
 | `s_fmamk_f32` | — | yes | in | `goc_s_fmamk_f32` | — | API present; semantic audit pending |
 | `s_getpc_b64` | yes | yes | in | `goc_s_getpc_b64` | — | API present; semantic audit pending |
-| `s_getreg_b32` | yes | yes | in: register access | — | — | missing API |
+| `s_getreg_b32` | yes | yes | in: register access | `goc_s_getreg_b32`<br>`goc_s_getreg_b32_rdna4` | — | API present; semantic audit pending |
 | `s_gl1_inv` | yes | — | out: SMEM | — | — | excluded: memory/control/scheduling |
 | `s_icache_inv` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
 | `s_incperflevel` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |

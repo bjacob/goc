@@ -1,8 +1,10 @@
 # Hardware-register implementation audit
 
 This is an implementation checklist, not a coverage-completion claim.
-`S_SETREG_B32` and `S_SETREG_IMM32_B32` now have RDNA4 APIs. RDNA3 writes and
-both architectures' `S_GETREG_B32` APIs remain unimplemented.
+`S_SETREG_B32` and `S_SETREG_IMM32_B32` have RDNA4 APIs. Both architectures now
+have `S_GETREG_B32` APIs for extraction from supplied wave-visible register
+values. RDNA3 writes, exact scratch writes, and snapshot reset/unlock reporting
+remain unimplemented.
 
 Evidence inspected: AMD RDNA3 and RDNA4 ISA manuals, sections 3.4 and 16.2;
 `amdgpu_isa_rdna3.xml` and `amdgpu_isa_rdna4.xml`, `OPR_HWREG`; and rocjitsu
@@ -182,6 +184,43 @@ python3 tests/check_hwreg_capture.py ../goc-build/coverage-work/hwreg-report-cap
 
 ## API and validation gates
 
+### Implemented reads and their input boundary
+
+`goc_s_getreg_b32` selects RDNA3's register map;
+`goc_s_getreg_b32_rdna4` selects RDNA4's. Both share clipped integer field
+extraction. They take the required destination and encoded selector first, then
+by-value implicit inputs as specified by PLAN.md. Logical 64-bit input pairs
+such as scratch and the guest clock are passed as `uint64_t`; the descriptor
+selects the relevant half. RDNA3 exposes only the low clock half. Unknown IDs,
+including RDNA3's write-only `FLUSH_IB`, return an API validation error without
+changing D. This is not a claim about hardware execution of invalid selectors.
+
+Inputs are **wave-visible read values**, not a physical machine-wide snapshot
+bank: the emulator supplies allocation, PC, identity, guest time, and the
+snapshot values visible to the calling wave. In particular, it supplies zero
+snapshot values for a non-sampled wave and zero scratch for a wave without
+allocation. GoC does not create a guest clock or infer snapshot ownership from
+partial identity bits. Numerical extraction is supported, while constructing
+these architectural read views remains the emulator's responsibility.
+
+RDNA4 has five trailing nullable outputs, one for each named snapshot register
+(`PERF_SNAPSHOT_DATA`, `PERF_SNAPSHOT_PC_LO`, `PERF_SNAPSHOT_PC_HI`,
+`PERF_SNAPSHOT_DATA1`, `PERF_SNAPSHOT_DATA2`). Reading ID 12 with any requested
+output in non-loose semantics returns `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`,
+before validation or D access. Null opts out; loose mode skips state updates.
+Other reads leave snapshot outputs unchanged. Required numerical inputs are
+separate from these pointers, so opting out cannot suppress the read result.
+No invented lock register or guessed post-read values were added. The inspected
+RDNA3 specification does not establish the RDNA4 read-update protocol; its API
+does not silently model that protocol or claim it has been hardware-validated.
+
+Tests cover all 64 selector IDs, all 32 offsets and widths, both semantics and
+architecture maps; clock-half rollover inputs; input/output aliases; errors;
+all 32 snapshot-output pointer combinations; and host FP-state preservation.
+The RDNA4 MODE/EXCP_FLAG_USER read results also match all 20,480 captured field
+values. These tests do not validate snapshot generation, ownership routing,
+reset/unlock, or native RDNA3 reads.
+
 ### Implemented RDNA4 writes
 
 `goc_s_setreg_b32_rdna4` and `goc_s_setreg_imm32_b32_rdna4` share one decoder.
@@ -223,10 +262,9 @@ hashes. GETREG snapshot side effects remain outside this implemented write path.
   the instruction may write. Do not put writable state in an opaque context
   object. Required instruction results remain required; optional side-output
   fidelity follows the existing loose/exact contract.
-- GETREG input packaging is the outstanding API choice: individual by-value implicit
-  inputs match the current PLAN, while a named read-only HWREG state struct
-  would avoid roughly twenty input parameters. Either must use explicit guest
-  values and preserve the architecture-specific layouts above.
+- Keep GETREG's by-value input boundary explicit: the present API follows PLAN.md
+  and does not introduce a context object. Inputs must represent the calling
+  wave's architectural read values, not unfiltered physical snapshot storage.
 - Before declaring coverage, test every recognized ID for each architecture,
   all 32 offsets and 32 encoded widths, size-32 and clipped fields, SGPR and
   literal SETREG equivalence, privilege filtering, unaffected-bit preservation,

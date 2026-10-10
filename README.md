@@ -18,9 +18,11 @@ RDNA4 `goc_s_setreg_b32_rdna4` and `goc_s_setreg_imm32_b32_rdna4` update guest
 hardware-register fields through separate optional native-register pointers.
 They preserve unselected bits, filter writes by guest privilege, and never change
 the host FP environment. User MODE/exception-register writes have gfx1201
-capture coverage; implemented privileged masks follow the ISA manual. Exact
-scratch-write reporting remains unsupported. RDNA3 SETREG and
-GETREG remain pending; see [the register-access audit](HWREG_AUDIT.md).
+capture coverage; implemented privileged masks follow the ISA manual. GETREG
+has separate RDNA3/RDNA4 APIs that extract fields from caller-supplied,
+wave-visible register values, including guest clocks and snapshot data. Exact
+scratch-write and snapshot reset/unlock reporting remain unsupported, as do
+RDNA3 SETREG APIs; see [the register-access audit](HWREG_AUDIT.md).
 
 ## Build and test
 
