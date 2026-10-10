@@ -126,7 +126,8 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_fma_dx9_zero_f32" || base_name == "goc_v_fma_dx9_zero_f32_rdna4" ||
         base_name == "goc_v_fmac_dx9_zero_f32" ||
         (base_name == "goc_v_ldexp_f32" || base_name == "goc_v_ldexp_f32_rdna4") ||
-        base_name == "goc_v_ldexp_f16" || base_name == "goc_v_frexp_exp_i16_f16" ||
+        (base_name == "goc_v_ldexp_f16" || base_name == "goc_v_ldexp_f16_rdna4") ||
+        (base_name == "goc_v_frexp_exp_i16_f16" || base_name == "goc_v_frexp_exp_i16_f16_rdna4") ||
         base_name.compare(0, 9, "goc_v_cmp") == 0 || base_name == "goc_v_mov_b32" ||
         base_name == "goc_v_mov_b16" || base_name == "goc_v_mbcnt_lo_u32_b32" ||
         base_name == "goc_v_mbcnt_hi_u32_b32" || base_name == "goc_v_clz_i32_u32" ||
@@ -256,8 +257,11 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
       std::strcmp(name, "goc_v_fma_f32_rdna4") == 0 || std::strcmp(name, "goc_v_fmac_f32") == 0 ||
       std::strcmp(name, "goc_v_fmac_f32_rdna4") == 0 || std::strcmp(name, "goc_v_fma_f16") == 0 ||
       std::strcmp(name, "goc_v_fma_f16_rdna4") == 0 || std::strcmp(name, "goc_v_fmac_f16") == 0 ||
-      std::strcmp(name, "goc_v_fmac_f16_rdna4") == 0 || std::strcmp(name, "goc_v_ldexp_f16") == 0 ||
-      std::strcmp(name, "goc_v_frexp_exp_i16_f16") == 0 ||
+      std::strcmp(name, "goc_v_fmac_f16_rdna4") == 0 ||
+      (std::strcmp(name, "goc_v_ldexp_f16") == 0 ||
+       std::strcmp(name, "goc_v_ldexp_f16_rdna4") == 0) ||
+      (std::strcmp(name, "goc_v_frexp_exp_i16_f16") == 0 ||
+       std::strcmp(name, "goc_v_frexp_exp_i16_f16_rdna4") == 0) ||
       std::strcmp(name, "goc_v_frexp_exp_i32_f32") == 0 ||
       std::strcmp(name, "goc_v_frexp_exp_i32_f32_rdna4") == 0 ||
       (std::strcmp(name, "goc_v_ldexp_f32") == 0 ||

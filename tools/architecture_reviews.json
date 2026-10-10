@@ -85,5 +85,14 @@
       "v_ldexp_f32",
       "v_ldexp_f64"
     ]
+  },
+  {
+    "heading": "FP16 exponent architecture review",
+    "semantics": "loose",
+    "tests": "tests/half_exponent_architecture_test.cpp",
+    "mnemonics": [
+      "v_ldexp_f16",
+      "v_frexp_exp_i16_f16"
+    ]
   }
 ]

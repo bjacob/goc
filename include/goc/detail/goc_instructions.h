@@ -4985,28 +4985,46 @@ int goc_v_med3_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
 // exponent in the selected half of B. Supports A ABS/NEG, HIGH_A/B/D, OMOD,
 // CLAMP, GOC_FP16_OVFL, and DPP8/DPP16 on A. Other source modifiers are invalid.
 // Preserves the other D half and inactive lanes; D may alias a whole source VGPR.
-// Loose semantics require host nearest-even arithmetic with denormals enabled.
+// Accepts guest IEEE/input/output-denormal flags. RDNA3 disables OMOD when IEEE
+// is set or output denormals are preserved; RDNA4 does not. Loose semantics
+// require host nearest-even arithmetic with denormals enabled.
 int goc_v_ldexp_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                    uint32_t *excp_flag_user);
+                    uint32_t *trapsts);
+
+int goc_v_ldexp_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user);
 
 // FP16 FREXP exponent: read the selected A half and write a signed int16_t
 // exponent into the selected D half. Zero, infinity and NaN return zero.
 // Preserves the other D half, inactive lanes and the host FP environment;
 // whole-register A/D aliasing is allowed. ABS_A/NEG_A, OMOD and CLAMP are
-// accepted but do not change the result. Supports DPP8/DPP16 on A and loose semantics.
+// accepted but do not change the result, as do guest IEEE/input/output-denormal
+// flags. Supports DPP8/DPP16 on A and loose semantics.
 int goc_v_frexp_exp_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                            uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_frexp_exp_i16_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  uint32_t *excp_flag_user);
 
 // Wave64 forms retain the same half selectors, DPP routing, loose semantics,
 // and optional-state contract as the Wave32 forms above.
 int goc_v_ldexp_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                           uint32_t *excp_flag_user);
+                           uint32_t *trapsts);
+
+int goc_v_ldexp_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_frexp_exp_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                                   uint32_t *const *d, const uint32_t *const *a,
-                                   uint32_t *excp_flag_user);
+                                   uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_frexp_exp_i16_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                         uint64_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a, uint32_t *excp_flag_user);
 
 // Unary FP16: one independently selected half per A/D VGPR; supports ABS_A,
 // NEG_A, HIGH_A/D, OMOD, CLAMP and GOC_FP16_OVFL. Preserves the unselected D

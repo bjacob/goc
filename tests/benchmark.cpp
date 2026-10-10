@@ -970,8 +970,8 @@ bool benchmark_half_exponent(uint64_t cpu, int iterations, int min_ms) {
         const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *) {
-          return ldexp ? goc_v_ldexp_f16(flags, exec_mask, modifiers, d, a, b, nullptr)
-                       : goc_v_frexp_exp_i16_f16(flags, exec_mask, modifiers, d, a, nullptr);
+          return ldexp ? goc_v_ldexp_f16_rdna4(flags, exec_mask, modifiers, d, a, b, nullptr)
+                       : goc_v_frexp_exp_i16_f16_rdna4(flags, exec_mask, modifiers, d, a, nullptr);
         };
         const char *name = ldexp ? "v_ldexp_f16" : "v_frexp_exp_i16_f16";
         const char *label = descriptor < 0    ? (modified ? "ABS/hi/half/clamp" : "none")

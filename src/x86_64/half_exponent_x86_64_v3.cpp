@@ -9,9 +9,11 @@
 
 namespace goc {
 
-template <bool Ldexp>
-void half_exponent_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
-                             const uint32_t *a, const uint32_t *b) {
+namespace {
+
+template <bool Ldexp, bool GuestDenormals>
+void run(uint64_t flags, bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+         const uint32_t *a, const uint32_t *b) {
   int a_shift = mode & GOC_ALU_HIGH_A ? 16 : 0;
   int b_shift = mode & GOC_ALU_HIGH_B ? 16 : 0;
   int d_shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
@@ -23,6 +25,14 @@ void half_exponent_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, u
     __m256i result;
     if constexpr (Ldexp) {
       auto x = half_input<false>(raw, a_shift, mode);
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_INPUT_DENORMALS)) {
+        // Half subnormals widen to normal FP32 numbers; classify at the FP16 boundary.
+        auto bits = _mm256_castps_si256(x);
+        auto magnitude = _mm256_and_si256(bits, _mm256_set1_epi32(INT32_MAX));
+        auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x38800000), magnitude);
+        auto sign = _mm256_and_si256(bits, _mm256_set1_epi32(INT32_MIN));
+        x = _mm256_castsi256_ps(_mm256_blendv_epi8(bits, sign, tiny));
+      }
       auto exponent = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(b + lane));
       exponent = _mm256_sra_epi32(_mm256_sll_epi32(exponent, _mm_cvtsi32_si128(16 - b_shift)),
                                   _mm_cvtsi32_si128(16));
@@ -41,6 +51,12 @@ void half_exponent_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, u
       if (mode & GOC_ALU_CLAMP)
         value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
       result = half_narrow<false>(value, saturate);
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)) {
+        auto magnitude = _mm256_and_si256(result, _mm256_set1_epi32(0x7fff));
+        auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x400), magnitude);
+        auto sign = _mm256_and_si256(result, _mm256_set1_epi32(0x8000));
+        result = _mm256_blendv_epi8(result, sign, tiny);
+      }
     } else {
       auto magnitude = _mm256_and_si256(_mm256_srl_epi32(raw, _mm_cvtsi32_si128(a_shift)),
                                         _mm256_set1_epi32(0x7fff));
@@ -64,6 +80,19 @@ void half_exponent_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, u
                                             _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
     _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
+}
+
+} // namespace
+
+template <bool Ldexp>
+void half_exponent_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+                             const uint32_t *a, const uint32_t *b) {
+  run<Ldexp, false>(0, saturate, exec_mask, mode, d, a, b);
+}
+
+void half_ldexp_guest_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+                                const uint32_t *a, const uint32_t *b) {
+  run<true, true>(flags, flags & GOC_FP16_OVFL, exec_mask, mode, d, a, b);
 }
 
 template void half_exponent_x86_64_v3<true>(bool, uint32_t, uint32_t, uint32_t *, const uint32_t *,

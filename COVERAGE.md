@@ -3707,3 +3707,67 @@ Validation: all 1,048 CTests pass with Clang 21 Release and GCC 15 Release;
 `../goc-build-sanitize/`. All nine audit-tool unit tests pass. The native-state
 naming audit now resolves 502 of 732 reporting signatures, with zero mismatches;
 230 remain unresolved. This does not establish reporting accuracy or completeness.
+
+## FP16 exponent architecture review
+
+Reviewed `v_ldexp_f16` and `v_frexp_exp_i16_f16` against rocjitsu revision
+`ffc144c564c`, including architecture-specific true16 VOP3 bodies in
+`generated/rdna{3,4}/vop3_exec.cpp`, the shared execution helpers, and
+`shared/fp_mode.h::{ldexp_f16,effective_f16_omod,finish_arithmetic_f16}`.
+RDNA3 ISA's VOP1/VOP3 FREXP descriptions specify a signed integer destination.
+
+- Unsuffixed APIs now select RDNA3 with `trapsts`; `_rdna4` APIs use
+  `excp_flag_user`, at both wave widths. LDEXP disables RDNA3 OMOD when IEEE
+  mode is set or output denormals are preserved. FREXP's integer algorithm
+  remains shared; the API split names the native implicit register.
+- LDEXP accepts guest IEEE/input/output-denormal flags. Explicit flushing is
+  implemented with bit classification, preserving the zero sign. Scalar and
+  eight-lane AVX2/F16C paths retain selected source/destination halves, ABS/NEG,
+  OMOD, CLAMP, FP16 overflow saturation, DPP8/DPP16 and whole-VGPR aliases.
+  Higher CPU selections use the same existing AVX2 kernel. No sparse-EXEC
+  specialization or host FP-control writes were introduced.
+- FREXP accepts those guest flags without changing its integer result, following
+  the upstream exponent extraction's treatment of inputs. Sign modifiers,
+  floating output modifiers and the FP16 overflow flag do not change GoC's
+  integer result. Both forms remain loose-only; exact results and exact
+  non-null optional-state reporting are explicitly unsupported.
+- The upstream generated FREXP bodies convert the exponent back to FP16 and
+  apply floating result modifiers, contradicting the ISA's integer destination
+  contract. GoC retains its existing signed-integer result rather than copying
+  that behavior or treating it as hardware evidence. Separately, upstream's
+  LDEXP shared scalar body scales its wide intermediate before narrowing;
+  GoC retains its existing RDNA4 hardware-tested rounding-before-OMOD behavior.
+  This review does not resolve those upstream discrepancies or claim an exact
+  model. No hardware characterization was performed.
+
+Guest flushing uses a separate compiled LDEXP specialization so default loops
+keep their existing arithmetic. The source algorithm remains shared. The default
+FREXP path gains no per-lane policy checks. A shared test reference now supplies
+both the established and architecture-policy suites; it is independent of the
+production half-conversion implementation.
+
+New tests cover all low modifiers and half selectors, sixteen combinations of
+IEEE/denormal/FP16-overflow settings, both architectures and widths, every
+available CPU selection, DPP routing, aliases, sparse EXEC, preserved destination
+halves, guard words, validation and optional-state contracts. An additional
+exhaustive sweep checks every FP16 encoding under all eight IEEE/denormal modes.
+Host rounding controls, FTZ/DAZ and existing sticky flags are checked for
+preservation. Existing RDNA4 captures and numerical regressions now call the
+explicit `_rdna4` APIs.
+
+Performance: seven alternating before/after samples per case, pinned to CPU 2,
+using thread CPU time and at least 20 ms per sample. Across plain/modified LDEXP
+and FREXP, median time changes are +0.47% scalar, -0.05% for the AVX2 CPU
+selection, and -0.38% for the v4 CPU selection (which also dispatches AVX2 here).
+The worst measured slowdown is scalar plain LDEXP, 204.812 ns to 214.055 ns
+(+4.51%); modified AVX2 LDEXP changes from 24.388 ns to 25.402 ns (+4.16%).
+Raw samples are in `../goc-build/coverage-work/half-exponent-performance.json`.
+These compare the existing default guest-denormal policy, not the cost of newly
+supported flushing.
+
+Validation: all 1,052 CTests pass with Clang 21 Release and GCC 15 Release;
+21 targeted ASan/UBSan tests pass. Logs are `half-exponent-tests.log` under
+`../goc-build/coverage-work/`, `../goc-build-gcc/`, and
+`../goc-build-sanitize/`. All nine audit-tool tests pass. The naming audit now
+resolves 510 of 736 reporting signatures, with zero mismatches and 226 still
+unresolved; these counts do not assert exception-reporting accuracy.

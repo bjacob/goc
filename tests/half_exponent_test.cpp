@@ -5,6 +5,7 @@
 #include "exec_masks.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
+#include "half_exponent_reference.h"
 #include "half_reference.h"
 #include "test_instruction.h"
 
@@ -22,45 +23,12 @@ using Fn = goc_test::WaveInstruction<decltype(&goc_v_min_u32)>;
 
 int frexp_exp(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
               const uint32_t *const *a, const uint32_t *const *) {
-  return goc_v_frexp_exp_i16_f16(flags, exec_mask, mode, d, a, nullptr);
+  return goc_v_frexp_exp_i16_f16_rdna4(flags, exec_mask, mode, d, a, nullptr);
 }
 
-const Fn functions[] = {goc_v_ldexp_f16, frexp_exp};
+const Fn functions[] = {goc_v_ldexp_f16_rdna4, frexp_exp};
 const uint32_t common_modes = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP |
                               GOC_ALU_HIGH_A | GOC_ALU_HIGH_D;
-
-uint16_t reference(int op, uint32_t a, uint32_t b, uint32_t mode, bool saturate) {
-  double x = goc_test::half_value(uint16_t(a >> (mode & GOC_ALU_HIGH_A ? 16 : 0)));
-  if (op == 1) {
-    int exponent = 0;
-    if (x != 0 && std::isfinite(x))
-      std::frexp(x, &exponent);
-    return uint16_t(exponent);
-  }
-  if (mode & GOC_ALU_ABS_A)
-    x = std::abs(x);
-  if (mode & GOC_ALU_NEG_A)
-    x = -x;
-  uint16_t raw = uint16_t(b >> (mode & GOC_ALU_HIGH_B ? 16 : 0));
-  int exponent = raw <= INT16_MAX ? int(raw) : int(raw) - 65536;
-  double result = std::ldexp(x, exponent);
-  // Preserve finite-overflow provenance through subsequent output scaling.
-  if (std::isfinite(x) && std::abs(result) > 1e100)
-    result = std::copysign(1e100, result);
-  const double scales[] = {1, 2, 4, 0.5};
-  if (mode & GOC_ALU_OMOD_HALF) {
-    if (std::abs(result) < 0x1p-14)
-      result = 0;
-    else if ((mode & GOC_ALU_OMOD_HALF) == GOC_ALU_OMOD_HALF && std::abs(result) < 0x1p-13)
-      result = std::copysign(0.0, result);
-  }
-  if (mode & GOC_ALU_OMOD_HALF)
-    result = goc_test::half_value(goc_test::half_bits(result, saturate));
-  result *= scales[(mode >> 6) & 3];
-  if (mode & GOC_ALU_CLAMP)
-    result = !(result > 0) ? 0 : std::min(result, 1.0);
-  return goc_test::half_bits(result, saturate);
-}
 
 void check(int op, uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
   int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
@@ -81,8 +49,9 @@ uint32_t modifiers(unsigned variant) {
 
 int wave64_call(unsigned op, uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                 const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
-  return op == 0 ? goc_v_ldexp_f16_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user)
-                 : goc_v_frexp_exp_i16_f16_wave64(flags, exec_mask, mode, d, a, excp_flag_user);
+  return op == 0
+             ? goc_v_ldexp_f16_rdna4_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user)
+             : goc_v_frexp_exp_i16_f16_rdna4_wave64(flags, exec_mask, mode, d, a, excp_flag_user);
 }
 
 } // namespace
@@ -116,7 +85,9 @@ TEST(HalfExponent, EveryHalfEncodingAndBoundaryExponents) {
                         GOC_SUCCESS);
               for (int lane = 0; lane < 32; ++lane)
                 check(op, words[2][lane], 0xdeadbeef,
-                      reference(op, words[0][lane], words[1][lane], mode, saturate), mode);
+                      goc_test::half_exponent_reference(op, words[0][lane], words[1][lane], mode,
+                                                        saturate),
+                      mode);
             }
           }
 }
@@ -137,12 +108,14 @@ TEST(HalfExponent, EverySignedExponent) {
             words[1][lane] = high ? ((base + lane) << 16) | 0x8000 : 0x7fff0000 | (base + lane);
             words[2][lane] = 0xdeadbeef;
           }
-          ASSERT_EQ(goc_v_ldexp_f16(cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX, mode, p + 2,
-                                    p, p + 1, nullptr),
+          ASSERT_EQ(goc_v_ldexp_f16_rdna4(cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX, mode,
+                                          p + 2, p, p + 1, nullptr),
                     GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
             check(0, words[2][lane], 0xdeadbeef,
-                  reference(0, words[0][lane], words[1][lane], mode, saturate), mode);
+                  goc_test::half_exponent_reference(0, words[0][lane], words[1][lane], mode,
+                                                    saturate),
+                  mode);
         }
       }
 }
@@ -182,7 +155,9 @@ TEST(HalfExponent, AllModifiersMasksAndAliases) {
                 for (int lane = 0; lane < 34; ++lane) {
                   if (reg == dest && lane >= 1 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
                     check(op, words[reg][lane], before[reg][lane],
-                          reference(op, before[0][lane], before[b][lane], mode, saturate), mode);
+                          goc_test::half_exponent_reference(op, before[0][lane], before[b][lane],
+                                                            mode, saturate),
+                          mode);
                   } else {
                     EXPECT_EQ(words[reg][lane], before[reg][lane]);
                   }
@@ -221,8 +196,8 @@ TEST(HalfExponent, LiteralRoundingAndOverflow) {
       std::fill(words[0], words[0] + 32, test.a);
       std::fill(words[1], words[1] + 32, test.b);
       std::fill(words[2], words[2] + 32, 0xdeadbeef);
-      ASSERT_EQ(goc_v_ldexp_f16(cpu | (test.saturate ? GOC_FP16_OVFL : 0), UINT32_MAX, test.mode,
-                                p + 2, p, p + 1, nullptr),
+      ASSERT_EQ(goc_v_ldexp_f16_rdna4(cpu | (test.saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
+                                      test.mode, p + 2, p, p + 1, nullptr),
                 GOC_SUCCESS);
       for (auto word : words[2])
         EXPECT_EQ(word, 0xdead0000U | test.result);
@@ -232,7 +207,7 @@ TEST(HalfExponent, LiteralRoundingAndOverflow) {
       std::fill(a, a + 32, test[0]);
       std::fill(d, d + 32, 0xdeadbeef);
       auto pa = a, pd = d;
-      ASSERT_EQ(goc_v_frexp_exp_i16_f16(cpu, UINT32_MAX, 0, &pd, &pa, nullptr), GOC_SUCCESS);
+      ASSERT_EQ(goc_v_frexp_exp_i16_f16_rdna4(cpu, UINT32_MAX, 0, &pd, &pa, nullptr), GOC_SUCCESS);
       for (auto word : d)
         EXPECT_EQ(word, 0xdead0000U | test[1]);
     }
@@ -255,9 +230,9 @@ TEST(HalfExponent, FrexpPreservesFpEnvironment) {
       std::fesetround(rounding);
       std::feclearexcept(FE_ALL_EXCEPT);
       std::feraiseexcept(FE_DIVBYZERO);
-      EXPECT_EQ(
-          goc_v_frexp_exp_i16_f16(cpu | GOC_FP16_OVFL, UINT32_MAX, common_modes, &d, &a, nullptr),
-          GOC_SUCCESS);
+      EXPECT_EQ(goc_v_frexp_exp_i16_f16_rdna4(cpu | GOC_FP16_OVFL, UINT32_MAX, common_modes, &d, &a,
+                                              nullptr),
+                GOC_SUCCESS);
       EXPECT_EQ(std::fegetround(), rounding);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
       for (int lane = 0; lane < 32; ++lane)
@@ -329,8 +304,9 @@ TEST(HalfExponent, DppMasksAndAliases) {
                     if (reg == dest && lane >= 1 && lane <= 32 &&
                         goc_test::dpp_source(descriptor, exec_mask, lane - 1, source)) {
                       check(op, words[reg][lane], before[reg][lane],
-                            reference(op, source < 0 ? 0 : before[0][source + 1], before[b][lane],
-                                      mode, saturate),
+                            goc_test::half_exponent_reference(
+                                op, source < 0 ? 0 : before[0][source + 1], before[b][lane], mode,
+                                saturate),
                             mode);
                     } else {
                       EXPECT_EQ(words[reg][lane], before[reg][lane]);
@@ -355,8 +331,8 @@ TEST(HalfExponent, HardwareRoundingCorpus) {
               d[lane] = 0xdeadbeef;
             }
             auto pa = a, pb = b, pd = d;
-            ASSERT_EQ(goc_v_ldexp_f16(cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX, omod << 6,
-                                      &pd, &pa, &pb, nullptr),
+            ASSERT_EQ(goc_v_ldexp_f16_rdna4(cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
+                                            omod << 6, &pd, &pa, &pb, nullptr),
                       GOC_SUCCESS);
             for (uint32_t word : d) {
               if ((word & 0x7fff) > 0x7c00)
@@ -415,7 +391,9 @@ TEST(HalfExponent, DppEveryModifier) {
               int source;
               if (goc_test::dpp_source(descriptor, UINT32_MAX, lane, source))
                 check(op, d[lane], 0xdeadbeef,
-                      reference(op, source < 0 ? 0 : a[source], b[lane], mode, saturate), mode);
+                      goc_test::half_exponent_reference(op, source < 0 ? 0 : a[source], b[lane],
+                                                        mode, saturate),
+                      mode);
               else
                 EXPECT_EQ(d[lane], 0xdeadbeef);
             }
@@ -487,8 +465,9 @@ TEST(HalfExponent, Wave64DppMasksAndAliases) {
                       if (reg == dest && lane >= 1 && lane <= 64 &&
                           goc_test::dpp_source(descriptor, exec_mask, lane - 1, source)) {
                         check(op, words[reg][lane], before[reg][lane],
-                              reference(op, source < 0 ? 0 : before[0][source + 1], before[b][lane],
-                                        mode, saturate),
+                              goc_test::half_exponent_reference(
+                                  op, source < 0 ? 0 : before[0][source + 1], before[b][lane], mode,
+                                  saturate),
                               mode);
                       } else {
                         EXPECT_EQ(words[reg][lane], before[reg][lane]);
