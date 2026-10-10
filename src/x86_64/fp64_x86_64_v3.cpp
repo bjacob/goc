@@ -19,9 +19,19 @@ __m256d load(const uint32_t *const *v, int lane, __m256i keep, __m256i flip) {
   return _mm256_castsi256_pd(_mm256_xor_si256(_mm256_and_si256(bits, keep), flip));
 }
 
+// Guest denormal handling is a value transform, independent of host DAZ/FTZ.
+__m256d flush_denorm(__m256d value) {
+  auto bits = _mm256_castpd_si256(value);
+  auto magnitude = _mm256_and_si256(bits, _mm256_set1_epi64x(INT64_MAX));
+  auto tiny = _mm256_cmpgt_epi64(_mm256_set1_epi64x(0x0010000000000000LL), magnitude);
+  auto sign = _mm256_and_si256(bits, _mm256_set1_epi64x(INT64_MIN));
+  return _mm256_castsi256_pd(_mm256_blendv_epi8(bits, sign, tiny));
+}
+
 template <Fp64 Op>
-void run(uint32_t exec_mask, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
-         const uint32_t *const *b, const uint32_t *const *c) {
+void run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  constexpr bool basic = Op == Fp64::Add || Op == Fp64::Mul || Op == Fp64::Fma;
   auto ka = _mm256_set1_epi64x(mode & GOC_ALU_ABS_A ? INT64_MAX : -1);
   auto kb = _mm256_set1_epi64x(mode & GOC_ALU_ABS_B ? INT64_MAX : -1);
   auto kc = _mm256_set1_epi64x(mode & GOC_ALU_ABS_C ? INT64_MAX : -1);
@@ -35,13 +45,21 @@ void run(uint32_t exec_mask, uint32_t mode, uint32_t *const *d, const uint32_t *
     auto x = load(a, lane, ka, na), y = _mm256_setzero_pd();
     if constexpr (fp64_sources(Op) >= 2)
       y = load(b, lane, kb, nb);
+    if (basic && (flags & GOC_FP_FLUSH_INPUT_DENORMALS)) {
+      x = flush_denorm(x);
+      y = flush_denorm(y);
+    }
     __m256d value;
     if constexpr (Op == Fp64::Add)
       value = _mm256_add_pd(x, y);
     if constexpr (Op == Fp64::Mul)
       value = _mm256_mul_pd(x, y);
-    if constexpr (Op == Fp64::Fma)
-      value = _mm256_fmadd_pd(x, y, load(c, lane, kc, nc));
+    if constexpr (Op == Fp64::Fma) {
+      auto z = load(c, lane, kc, nc);
+      if (flags & GOC_FP_FLUSH_INPUT_DENORMALS)
+        z = flush_denorm(z);
+      value = _mm256_fmadd_pd(x, y, z);
+    }
     if constexpr (Op == Fp64::MinNum)
       value = minmax<false, false>(x, y);
     if constexpr (Op == Fp64::MaxNum)
@@ -91,6 +109,8 @@ void run(uint32_t exec_mask, uint32_t mode, uint32_t *const *d, const uint32_t *
     }
     if (mode & GOC_ALU_CLAMP)
       value = _mm256_min_pd(_mm256_max_pd(value, _mm256_setzero_pd()), _mm256_set1_pd(1));
+    if (basic && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+      value = flush_denorm(value);
     // Gather low words and high words into separate 128-bit halves.
     auto words = _mm256_permutevar8x32_epi32(_mm256_castpd_si256(value),
                                              _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7));
@@ -111,41 +131,41 @@ void run(uint32_t exec_mask, uint32_t mode, uint32_t *const *d, const uint32_t *
 
 } // namespace
 
-void fp64_x86_64_v3(Fp64 op, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+void fp64_x86_64_v3(Fp64 op, uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   switch (op) {
   case Fp64::FrexpMant:
-    return run<Fp64::FrexpMant>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::FrexpMant>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Trunc:
-    return run<Fp64::Trunc>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Trunc>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Ceil:
-    return run<Fp64::Ceil>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Ceil>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Rndne:
-    return run<Fp64::Rndne>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Rndne>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Floor:
-    return run<Fp64::Floor>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Floor>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Fract:
-    return run<Fp64::Fract>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Fract>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Sqrt:
-    return run<Fp64::Sqrt>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Sqrt>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Rcp:
-    return run<Fp64::Rcp>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Rcp>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Rsq:
-    return run<Fp64::Rsq>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Rsq>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::MinNum:
-    return run<Fp64::MinNum>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::MinNum>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::MaxNum:
-    return run<Fp64::MaxNum>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::MaxNum>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Minimum:
-    return run<Fp64::Minimum>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Minimum>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Maximum:
-    return run<Fp64::Maximum>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Maximum>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Add:
-    return run<Fp64::Add>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Add>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Mul:
-    return run<Fp64::Mul>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Mul>(flags, exec_mask, mode, d, a, b, c);
   case Fp64::Fma:
-    return run<Fp64::Fma>(exec_mask, mode, d, a, b, c);
+    return run<Fp64::Fma>(flags, exec_mask, mode, d, a, b, c);
   }
 }
 

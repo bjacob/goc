@@ -3607,13 +3607,26 @@ int goc_v_add_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instructio
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user);
 
+int goc_v_add_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, uint32_t *excp_flag_user);
+
 int goc_v_mul_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user);
 
+int goc_v_mul_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, uint32_t *excp_flag_user);
+
 int goc_v_fma_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_fma_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user);
 
 int goc_v_trunc_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
@@ -4009,17 +4022,34 @@ int goc_v_med3_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
 // Supports ALU ABS/NEG on present sources, OMOD and CLAMP, with loose semantics.
 // Host nearest-even rounding and enabled denormals are required. Whole VGPR
 // aliases may cross operand halves; sources are read before destination writes.
+// ADD/MUL/FMA use unsuffixed APIs for RDNA3 and _rdna4 variants for RDNA4.
+// RDNA3 ignores OMOD when output denormals are preserved or GOC_FP_IEEE_MODE is
+// set; RDNA4 applies it regardless. These three families accept guest input/output
+// denormal flushing, also in Wave64. They remain loose-only: IEEE-mode support
+// does not promise exact NaN behavior or exception reporting.
 int goc_v_add_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   uint32_t *excp_flag_user);
+
+int goc_v_add_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        uint32_t *excp_flag_user);
 
 int goc_v_mul_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   uint32_t *excp_flag_user);
 
+int goc_v_mul_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        uint32_t *excp_flag_user);
+
 int goc_v_fma_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_fma_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *c, uint32_t *excp_flag_user);
 
 // FP64 min/max uses two VGPRs per operand, with A/B ABS/NEG, OMOD and CLAMP.
 // Number variants prefer numeric operands over NaNs; minimum/maximum propagate

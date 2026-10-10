@@ -27,9 +27,9 @@ double number(uint64_t value) {
 int call(int op, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (op == 0)
-    return goc_v_add_f64(flags, exec_mask, mode, d, a, b, nullptr);
+    return goc_v_add_f64_rdna4(flags, exec_mask, mode, d, a, b, nullptr);
   if (op == 1)
-    return goc_v_mul_f64(flags, exec_mask, mode, d, a, b, nullptr);
+    return goc_v_mul_f64_rdna4(flags, exec_mask, mode, d, a, b, nullptr);
   if (op == 3)
     return goc_v_min_num_f64(flags, exec_mask, mode, d, a, b, nullptr);
   if (op == 4)
@@ -38,7 +38,7 @@ int call(int op, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *co
     return goc_v_minimum_f64(flags, exec_mask, mode, d, a, b, nullptr);
   if (op == 6)
     return goc_v_maximum_f64(flags, exec_mask, mode, d, a, b, nullptr);
-  return goc_v_fma_f64(flags, exec_mask, mode, d, a, b, c, nullptr);
+  return goc_v_fma_f64_rdna4(flags, exec_mask, mode, d, a, b, c, nullptr);
 }
 
 int call_wave64(int op, uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -49,9 +49,9 @@ int call_wave64(int op, uint64_t flags, uint64_t exec_mask, uint64_t mode, uint3
   if (op == 8)
     return goc_v_max_f64_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
   if (op == 0)
-    return goc_v_add_f64_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return goc_v_add_f64_rdna4_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
   if (op == 1)
-    return goc_v_mul_f64_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return goc_v_mul_f64_rdna4_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
   if (op == 3)
     return goc_v_min_num_f64_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
   if (op == 4)
@@ -60,7 +60,7 @@ int call_wave64(int op, uint64_t flags, uint64_t exec_mask, uint64_t mode, uint3
     return goc_v_minimum_f64_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
   if (op == 6)
     return goc_v_maximum_f64_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
-  return goc_v_fma_f64_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+  return goc_v_fma_f64_rdna4_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
 }
 
 } // namespace
@@ -497,4 +497,115 @@ TEST(Fp64, Wave64ReportingAndValidation) {
               GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
     EXPECT_EQ(exceptions, 0x80000055U);
   }
+}
+
+TEST(Fp64, ArchitectureScalingAndGuestDenormalsAcrossAliases) {
+  const decltype(&goc_v_add_f64) narrow[][2] = {{goc_v_add_f64, goc_v_mul_f64},
+                                                {goc_v_add_f64_rdna4, goc_v_mul_f64_rdna4}};
+  const decltype(&goc_v_add_f64_wave64) wide[][2] = {
+      {goc_v_add_f64_wave64, goc_v_mul_f64_wave64},
+      {goc_v_add_f64_rdna4_wave64, goc_v_mul_f64_rdna4_wave64}};
+  const decltype(&goc_v_fma_f64) fma[] = {goc_v_fma_f64, goc_v_fma_f64_rdna4};
+  const decltype(&goc_v_fma_f64_wave64) fma_wide[] = {goc_v_fma_f64_wave64,
+                                                      goc_v_fma_f64_rdna4_wave64};
+  const uint64_t values[] = {0,
+                             0x8000000000000000ULL,
+                             1,
+                             0x8000000000000001ULL,
+                             0x000fffffffffffffULL,
+                             0x800fffffffffffffULL,
+                             0x0010000000000000ULL,
+                             0x8010000000000000ULL,
+                             0x3fe0000000000000ULL,
+                             0x3ff0000000000000ULL,
+                             0xc000000000000000ULL,
+                             0x7fefffffffffffffULL,
+                             0x7ff0000000000000ULL,
+                             0x7ff8000000000001ULL};
+  const unsigned aliases[][2] = {{6, 7}, {0, 1}, {1, 0}, {3, 2}, {4, 5}, {1, 2}, {6, 6}};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned arch = 0; arch < 2; ++arch)
+      for (unsigned op = 0; op < 3; ++op)
+        for (unsigned settings = 0; settings < 8; ++settings)
+          for (unsigned variant = 0; variant < 16; ++variant)
+            for (unsigned width : {32U, 64U})
+              for (const auto &alias : aliases) {
+                uint64_t flags = cpu | (settings & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                 (settings & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                 (settings & 4 ? GOC_FP_IEEE_MODE : 0);
+                uint32_t mode = ((variant & 3) << 6) |
+                                (variant & 4 ? GOC_ALU_NEG_A | GOC_ALU_ABS_B : 0) |
+                                (variant & 8 ? GOC_ALU_CLAMP : 0);
+                if (op == 2 && (variant & 4))
+                  mode |= GOC_ALU_NEG_C;
+                uint32_t words[8][66], before[8][66];
+                for (unsigned reg = 0; reg < 8; ++reg)
+                  for (unsigned lane = 0; lane < 66; ++lane) {
+                    uint64_t raw = values[(lane * (reg / 2 + 1) + reg / 2 * 3) % 14];
+                    words[reg][lane] = uint32_t(raw >> (32 * (reg & 1)));
+                  }
+                std::memcpy(before, words, sizeof words);
+                uint32_t *d[] = {words[alias[0]] + 1, words[alias[1]] + 1};
+                const uint32_t *a[] = {words[0] + 1, words[1] + 1};
+                const uint32_t *b[] = {words[2] + 1, words[3] + 1};
+                const uint32_t *c[] = {words[4] + 1, words[5] + 1};
+                uint64_t exec_mask = 0x87654321fedcba98ULL;
+                uint32_t state = 0x12345678;
+                int status;
+                if (width == 32)
+                  status =
+                      op == 2 ? fma[arch](flags, uint32_t(exec_mask), mode, d, a, b, c, &state)
+                              : narrow[arch][op](flags, uint32_t(exec_mask), mode, d, a, b, &state);
+                else
+                  status = op == 2 ? fma_wide[arch](flags, exec_mask, mode, d, a, b, c, &state)
+                                   : wide[arch][op](flags, exec_mask, mode, d, a, b, &state);
+                ASSERT_EQ(status, GOC_SUCCESS);
+                EXPECT_EQ(state, 0x12345678U);
+                for (unsigned lane = 0; lane < width; ++lane) {
+                  double input[3];
+                  for (unsigned operand = 0; operand < 3; ++operand) {
+                    uint64_t raw = before[2 * operand][lane + 1] |
+                                   (uint64_t(before[2 * operand + 1][lane + 1]) << 32);
+                    if ((settings & 1) && (raw & 0x7fffffffffffffffULL) < 0x0010000000000000ULL)
+                      raw &= 0x8000000000000000ULL;
+                    if (mode & (GOC_ALU_ABS_A << operand))
+                      raw &= 0x7fffffffffffffffULL;
+                    if (mode & (GOC_ALU_NEG_A << operand))
+                      raw ^= 0x8000000000000000ULL;
+                    input[operand] = number(raw);
+                  }
+                  double result = op == 0   ? input[0] + input[1]
+                                  : op == 1 ? input[0] * input[1]
+                                            : std::fma(input[0], input[1], input[2]);
+                  uint32_t effective = !arch && (!(settings & 2) || (settings & 4))
+                                           ? mode & ~GOC_ALU_OMOD_HALF
+                                           : mode;
+                  result = goc_test::omod_f64_reference(result, effective);
+                  if (mode & GOC_ALU_CLAMP)
+                    result = !(result > 0) ? 0 : std::min(result, 1.0);
+                  uint64_t expected = bits(result);
+                  if ((settings & 2) && (expected & 0x7fffffffffffffffULL) < 0x0010000000000000ULL)
+                    expected &= 0x8000000000000000ULL;
+                  for (unsigned word = 0; word < 2; ++word) {
+                    if (!((exec_mask >> lane) & 1)) {
+                      EXPECT_EQ(d[word][lane], before[alias[word]][lane + 1]);
+                      continue;
+                    }
+                    // Duplicate destination buffers retain the high-word store.
+                    unsigned output_word = alias[0] == alias[1] ? 1 : word;
+                    if (std::isnan(result)) {
+                      if (output_word == 1) {
+                        EXPECT_GT(d[word][lane] & 0x7fffffffU, 0x7ff00000U);
+                      }
+                    } else {
+                      EXPECT_EQ(d[word][lane], uint32_t(expected >> (32 * output_word)))
+                          << cpu << '/' << arch << '/' << op << '/' << settings << '/' << mode;
+                    }
+                  }
+                }
+                for (unsigned reg = 0; reg < 8; ++reg) {
+                  EXPECT_EQ(words[reg][0], before[reg][0]);
+                  EXPECT_EQ(words[reg][width + 1], before[reg][width + 1]);
+                }
+              }
 }

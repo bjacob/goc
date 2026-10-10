@@ -1899,3 +1899,23 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
 - Validation: all 941 tests pass with Clang 21 and GCC 15 Release; all 11
   HalfBinary/InstructionFlags tests pass with ASan/UBSan. Four audit-tool tests
   pass. Logs: `../goc-build/coverage-work/half-policy-*-tests.log`.
+
+## FP64 ADD/MUL/FMA architecture policies
+
+- ADD/MUL/FMA now expose unsuffixed RDNA3 and `_rdna4` APIs in both wave sizes.
+  RDNA3 gates OMOD on output-denormal/IEEE state; RDNA4 applies it regardless.
+  This follows the manuals and rocjitsu's shared FP64 effective-OMOD policy.
+- Guest input/output denormal controls are value transforms on scalar and
+  four-lane AVX2 paths. FMA flushes all three selected operands before its fused
+  operation. Staged low/high destination writes preserve cross-half aliases.
+- Existing RDNA4 modifier, special-value and output tests retain their behavior
+  under suffixed APIs. New tests combine both architectures/widths, guest flags,
+  scaling/source modifiers/CLAMP, denormals and special values, EXEC masks, cross-
+  half aliases and duplicate destination buffers.
+- Other FP64 families still reject these guest flags pending policy review.
+  Exact arithmetic, guest rounding modes and faithful optional exception reporting
+  remain unsupported; this slice does not claim those numerical guarantees.
+- Validation: all 942 tests pass with Clang 21 and GCC 15 Release; all 13
+  Fp64/Fp64Output/InstructionFlags tests pass with ASan/UBSan. The new policy test
+  also passes after the final GCC assertion-bracing correction. Four audit-tool
+  tests pass. Logs: `../goc-build/coverage-work/fp64-policy-*-tests.log`.

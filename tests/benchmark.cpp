@@ -5652,9 +5652,9 @@ bool benchmark_fp64(uint64_t cpu, int iterations, int min_ms) {
                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *c) {
         if (op == 0)
-          return goc_v_add_f64(flags, exec_mask, modifiers, d, a, b, nullptr);
+          return goc_v_add_f64_rdna4(flags, exec_mask, modifiers, d, a, b, nullptr);
         if (op == 1)
-          return goc_v_mul_f64(flags, exec_mask, modifiers, d, a, b, nullptr);
+          return goc_v_mul_f64_rdna4(flags, exec_mask, modifiers, d, a, b, nullptr);
         if (op == 3)
           return goc_v_min_num_f64(flags, exec_mask, modifiers, d, a, b, nullptr);
         if (op == 4)
@@ -5663,7 +5663,7 @@ bool benchmark_fp64(uint64_t cpu, int iterations, int min_ms) {
           return goc_v_minimum_f64(flags, exec_mask, modifiers, d, a, b, nullptr);
         if (op == 6)
           return goc_v_maximum_f64(flags, exec_mask, modifiers, d, a, b, nullptr);
-        return goc_v_fma_f64(flags, exec_mask, modifiers, d, a, b, c, nullptr);
+        return goc_v_fma_f64_rdna4(flags, exec_mask, modifiers, d, a, b, c, nullptr);
       };
       const char *label = mode ? "ABS/NEG/half/clamp" : "none";
       double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);

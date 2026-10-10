@@ -2030,6 +2030,11 @@ IEEE/denormal controls. Both widths retain AVX2, half selectors, DPP, and FP16
 overflow saturation. Packed FP16 and FP16 min/max have separate flag contracts;
 these ordinary arithmetic changes do not imply support there.
 
+FP64 `v_add_f64`, `v_mul_f64`, and `v_fma_f64` follow the same architecture
+naming and guest IEEE/denormal controls. Both widths retain the four-lane AVX2
+kernel and staged writes for cross-half aliases. Other FP64 families still have
+separate flag contracts pending their architecture-policy audit.
+
 FP32 `v_mul_dx9_zero_f32` likewise has RDNA3 and `_rdna4` variants in both wave
 sizes. RDNA3 `v_min_f32`/`v_max_f32` use guest IEEE mode for signaling-NaN
 selection and obey RDNA3 OMOD gating; RDNA4 `v_min_num_f32`/`v_max_num_f32`

@@ -48,6 +48,14 @@ inline double as_double(uint64_t bits) { return FloatBits<double>::value(bits); 
 
 inline uint64_t double_bits(double value) { return FloatBits<double>::bits(value); }
 
+// Flush FP64 subnormals to zero of the same sign without touching host FP state.
+inline double fp64_flush_denorm(double value) {
+  uint64_t raw = double_bits(value);
+  return (raw & 0x7fffffffffffffffULL) < 0x0010000000000000ULL
+             ? as_double(raw & 0x8000000000000000ULL)
+             : value;
+}
+
 // Round to an integral FP64 value, ties to even, preserving signed zero and
 // quieting NaNs. Adapted from the rocjitsu-derived FP32 rndne helper.
 inline double fp64_rndne(double value) {
@@ -104,7 +112,7 @@ inline double fp64_output(double value, uint32_t mode) {
 }
 
 #if defined(GOC_HAVE_X86_64_V3)
-void fp64_x86_64_v3(Fp64 op, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+void fp64_x86_64_v3(Fp64 op, uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c);
 #endif
 

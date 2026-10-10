@@ -15,11 +15,11 @@ int call(unsigned op, uint64_t cpu, uint64_t mode, uint32_t *const *d, const uin
          const uint32_t *const *b, const uint32_t *const *c) {
   switch (op) {
   case 0:
-    return goc_v_add_f64(cpu, UINT32_MAX, mode, d, a, b, nullptr);
+    return goc_v_add_f64_rdna4(cpu, UINT32_MAX, mode, d, a, b, nullptr);
   case 1:
-    return goc_v_mul_f64(cpu, UINT32_MAX, mode, d, a, b, nullptr);
+    return goc_v_mul_f64_rdna4(cpu, UINT32_MAX, mode, d, a, b, nullptr);
   case 2:
-    return goc_v_fma_f64(cpu, UINT32_MAX, mode, d, a, b, c, nullptr);
+    return goc_v_fma_f64_rdna4(cpu, UINT32_MAX, mode, d, a, b, c, nullptr);
   case 3:
     return goc_v_trunc_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 4:
