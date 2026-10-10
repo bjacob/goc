@@ -153,3 +153,41 @@ TEST(MadWave64, ScalarOutputAliasValidationAndEmptyExec) {
               GOC_ERROR_INVALID_FLAGS);
   }
 }
+
+TEST(MadWave64, OverlappingVectorAndScalarDestinations) {
+  // D0/D1 both overwrite C0; the scalar output then overwrites words straddling
+  // the wave32 boundary. All source reads must precede the overlapping writes.
+  const uint32_t factors[] = {0, 1, UINT32_MAX, 0x80000000, 0x7fffffff};
+  const uint64_t addends[] = {0, UINT64_MAX, 0x7fffffffffffffffULL, 0x8000000000000000ULL};
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (bool clamp : {false, true})
+          for (unsigned bit = 0; bit < 64; ++bit)
+            for (uint64_t exec_mask : {1ULL << bit, ~(1ULL << bit)}) {
+              uint32_t words[4][64], expected[64];
+              uint64_t expected_carry = 0;
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                words[0][lane] = factors[lane % 5];
+                words[1][lane] = factors[(lane / 5) % 5];
+                uint64_t c = addends[lane % 4];
+                words[2][lane] = uint32_t(c);
+                words[3][lane] = uint32_t(c >> 32);
+                auto result =
+                    goc_test::mad64_reference(op & 1, words[0][lane], words[1][lane], c, clamp);
+                bool active = (exec_mask >> lane) & 1;
+                expected[lane] = active ? uint32_t(result.value >> 32) : words[2][lane];
+                if (active && result.carry)
+                  expected_carry |= 1ULL << lane;
+              }
+              std::memcpy(expected + 31, &expected_carry, sizeof expected_carry);
+              const uint32_t *a = words[0], *b = words[1], *c[] = {words[2], words[3]};
+              uint32_t *d[] = {words[2], words[2]};
+              ASSERT_EQ(wide[op](cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask,
+                                 clamp ? GOC_ALU_CLAMP : 0, d,
+                                 reinterpret_cast<uint64_t *>(words[2] + 31), &a, &b, c),
+                        GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 64; ++lane)
+                ASSERT_EQ(words[2][lane], expected[lane]) << op << '/' << bit << '/' << lane;
+            }
+}

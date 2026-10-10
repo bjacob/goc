@@ -5577,3 +5577,42 @@ Validation: all 1,126 CTests pass under Clang and GCC Release; all thirteen
 integer-MAD/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests pass.
 Logs use `integer-mad-review-` in each build directory. The ledger records
 508 contracts; 301 in-scope mnemonics remain without recorded reviews.
+
+## Wide integer MAD architecture contracts
+
+Reviewed the RDNA3 MAD_I64_I32/MAD_U64_U32 and RDNA4 MAD_CO_I64_I32/
+MAD_CO_U64_U32 spellings at rocjitsu `ffc144c564c`. Four architecture handlers
+and four shared helpers are recorded in
+`../goc-build/coverage-work/mad64-upstream-review.json`. The inventory treats
+the renamed forms as architecture-exclusive canonical mnemonics; GoC shares
+the arithmetic through its existing spelling wrappers, without an `_rdna4`
+suffix because these are different mnemonic names.
+
+This review preserves the previously documented signed-mask correction:
+rocjitsu's signed helpers report overflow, whereas RDNA3 section 16.12 explicitly
+concatenates the full 65-bit sum into scalar bit 64 and vector bits 63:0.
+GoC's existing RDNA4 fixtures likewise distinguish the extended sign from an
+overflow flag. The unsigned scalar bit is ordinary carry. CLAMP changes the
+vector result on overflow but leaves that pre-clamp scalar bit intact. The
+required scalar output is not optional exception reporting. No new numerical
+model or hardware experiment was introduced by this review.
+
+The existing scalar/v3/v4 paths all preserve that contract. SIMD widths are
+four/eight 64-bit lanes, respectively; both vector words are staged before
+stores, with D1 winning coincident D0/D1 destinations. Wave64 defers its scalar
+store until both halves finish, permitting the scalar output to overlap source
+or destination words. It writes zero for empty EXEC, while vector destinations
+remain untouched. DPP and low flags other than CLAMP are rejected before access.
+
+Added a Wave64 test combining coincident D0/D1, D aliasing C0, and an unaligned
+scalar output straddling lanes 31/32 of that same register. Every single active
+lane and its complement are covered across all four spellings, both semantics,
+CLAMP settings and available CPU levels. It checks the complete aliased register,
+including inactive lanes and final scalar-write precedence. Existing wide-reference,
+RDNA4 hardware-corpus, saturation, cross-register alias and validation tests remain.
+No production change was required.
+
+Validation: all 1,127 CTests pass under Clang and GCC Release; all ten wide-MAD/
+Wave64 tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`mad64-review-` in each build directory. The ledger records 512 contracts;
+297 in-scope mnemonics remain without recorded reviews.
