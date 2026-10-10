@@ -2350,3 +2350,8 @@ subsequent GoC arithmetic calls.
 RDNA3 floating min/max/median spellings share the corresponding RDNA4 `*_num_*`
 loose implementations and SIMD dispatch. IEEE-mode bit-exact NaN behavior and
 exception reporting for these operations remain unsupported.
+
+Scalar relative-register moves support DWORD indexing, B64 register pairs and
+separate source/destination offsets, with SGPR/TTMP region bounds. Their shared
+RDNA3/RDNA4 implementation follows both ISA manuals; RDNA4 indexing is also
+checked against RX 9070 captures.

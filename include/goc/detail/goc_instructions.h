@@ -434,6 +434,35 @@ int goc_s_and_not0_wrexec_b64(uint64_t flags, uint64_t instruction_flags, uint64
 int goc_s_and_not1_wrexec_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
                               uint64_t exec_mask, uint64_t *exec, uint32_t *scc);
 
+// Scalar relative moves shared by RDNA3/RDNA4. Indexed arrays start at SGPR0;
+// indices 0..107 cover SGPRs/VCC and 108..123 cover TTMP0..15. Counts bound
+// accessible storage. For destinations, d_count must also exclude inaccessible
+// TTMPs (use at most 108 outside the trap handler). Zero counts permit NULL arrays.
+// Base indices and M0 offsets count 32-bit registers, including in B64 forms.
+// Indexing cannot cross regions; out-of-range reads redirect to SGPR0 (missing
+// words read as zero), and out-of-range writes are discarded. No index wraps.
+// B64 base indices and M0 must be even. A B64 value's low word occupies the lower
+// register index. RELSD_2 uses M0[9:0] for source and M0[25:16] for destination.
+// Non-indexed inputs are values; non-indexed outputs are ordinary scalar pointers.
+// Storage may overlap when the C/C++ types permit it; inputs are read before writes.
+// Both semantics are exact, instruction_flags must be zero, and EXEC is ignored.
+// Errors preserve all outputs. No implicit global register is modified.
+int goc_s_movrels_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, const uint32_t *a,
+                      uint32_t a_count, uint32_t a_base, uint32_t m0);
+
+int goc_s_movrels_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, const uint32_t *a,
+                      uint32_t a_count, uint32_t a_base, uint32_t m0);
+
+int goc_s_movreld_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                      uint32_t d_count, uint32_t d_base, uint32_t m0);
+
+int goc_s_movreld_b64(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint64_t a,
+                      uint32_t d_count, uint32_t d_base, uint32_t m0);
+
+int goc_s_movrelsd_2_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, const uint32_t *a,
+                         uint32_t d_count, uint32_t a_count, uint32_t d_base, uint32_t a_base,
+                         uint32_t m0);
+
 // Scalar moves shared by RDNA3/RDNA4. Copy raw bits; MOVK/CMOVK sign-extend
 // their 16-bit immediate. Conditional forms write only when input_scc bit 0
 // is set, otherwise d is unchanged. SCC and EXEC are not modified; EXEC is

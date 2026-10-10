@@ -371,3 +371,40 @@ complete architectural coverage.
 Validation: all 720 tests pass with Clang and GCC; all four new tests pass under
 ASan/UBSan. Public standalone-header checks and exhaustive instruction-flag
 checks include the new entry points.
+
+## Scalar relative-register moves
+
+Implemented S_MOVRELS_B32/B64, S_MOVRELD_B32/B64 and S_MOVRELSD_2_B32,
+shared by RDNA3 and RDNA4. These are raw integer transfers in both semantics,
+independent of EXEC and the host FP environment. B64 uses two consecutive
+32-bit registers, with even base/index preconditions from the ISA.
+
+Both manuals' S_MOVREL pseudocode adds DWORD offsets without scaling; RELSD_2
+extracts M0[9:0] and M0[25:16]. The audited rocjitsu revision instead scales B64
+offsets and extracts different fields, so those particular handlers were not
+copied. A new RX 9070/gfx1201 probe covers all five instructions at five offsets
+and confirms the manual interpretation. Its 450 captured register words and
+SHA-256 are recorded in `tests/scalar_relative_hardware.h`; the reproducible
+probe generator is `tests/capture_scalar_relative.py`. The probe saves/restores
+M0 and SGPR0/1; M0 is the only reserved register it temporarily uses. No RDNA3 hardware capture
+is claimed.
+
+Indexed arrays map SGPR0..107 (including VCC) and TTMP0..15 at indices108..123.
+The manuals' region rule forbids indexing across these ranges: out-of-range
+reads redirect to SGPR0; writes are discarded. Explicit counts additionally
+bound available storage. Destination counts must exclude TTMPs outside the
+trap handler. Non-indexed scalar inputs are passed by value and non-indexed
+outputs are ordinary destination pointers, allowing the caller to decode any
+valid scalar operand. Widened address arithmetic prevents host overflow from
+wrapping a bad index into an accessible register. Boundary behavior follows
+both manuals and is separately tested; the GPU capture covers ordinary
+SGPR indexing plus offset 256, confirming fallback to SGPR0/1 on reads and
+discarded writes without truncating the M0 offset.
+
+Tests cover region/count boundaries, full-width M0, split-field reserved bits,
+source/destination overlap, zero-sized arrays, and flag validation before
+operand access. Canonical name gaps are now 35 (774 present of 809 in scope).
+
+Validation: all 724 tests pass with Clang/GCC; all four new scalar-relative tests
+pass under ASan/UBSan. Header standalone checks and exhaustive instruction-flag
+checks cover the new APIs. Existing SIMD code is unchanged.

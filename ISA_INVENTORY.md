@@ -20,8 +20,8 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 40
-- in, API present: 769
+- in, API absent: 35
+- in, API present: 774
 - out, API absent: 587
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
@@ -691,11 +691,11 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_mov_b32` | yes | yes | in | `goc_s_mov_b32` | — | API present; semantic audit pending |
 | `s_mov_b64` | yes | yes | in | `goc_s_mov_b64` | — | API present; semantic audit pending |
 | `s_movk_i32` | yes | yes | in | `goc_s_movk_i32` | — | API present; semantic audit pending |
-| `s_movreld_b32` | yes | yes | in: register access | — | — | missing API |
-| `s_movreld_b64` | yes | yes | in: register access | — | — | missing API |
-| `s_movrels_b32` | yes | yes | in: register access | — | — | missing API |
-| `s_movrels_b64` | yes | yes | in: register access | — | — | missing API |
-| `s_movrelsd_2_b32` | yes | yes | in: register access | — | — | missing API |
+| `s_movreld_b32` | yes | yes | in: register access | `goc_s_movreld_b32` | — | API present; semantic audit pending |
+| `s_movreld_b64` | yes | yes | in: register access | `goc_s_movreld_b64` | — | API present; semantic audit pending |
+| `s_movrels_b32` | yes | yes | in: register access | `goc_s_movrels_b32` | — | API present; semantic audit pending |
+| `s_movrels_b64` | yes | yes | in: register access | `goc_s_movrels_b64` | — | API present; semantic audit pending |
+| `s_movrelsd_2_b32` | yes | yes | in: register access | `goc_s_movrelsd_2_b32` | — | API present; semantic audit pending |
 | `s_mul_f16` | — | yes | in | `goc_s_mul_f16` | — | API present; semantic audit pending |
 | `s_mul_f32` | — | yes | in | `goc_s_mul_f32` | — | API present; semantic audit pending |
 | `s_mul_hi_i32` | yes | yes | in | `goc_s_mul_hi_i32` | — | API present; semantic audit pending |
