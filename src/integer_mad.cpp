@@ -22,7 +22,7 @@ int mad(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
         });
 
   const uint32_t known = GOC_ALU_CLAMP | (Bits == 16 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0);
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
@@ -50,6 +50,29 @@ int mad(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+template <int Bits, bool Signed>
+int mad_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (int error = mad<Bits, Signed>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32,
+                   *source_c = c[0] + half * 32;
+    if (int error = mad<Bits, Signed>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                                      &source_a, &source_b, &source_c))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_mad_u32_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -74,4 +97,28 @@ int goc_v_mad_i32_i24(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       const uint32_t *const *c) {
   return mad<24, true>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_mad_u32_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c) {
+  return mad_wave64<16, false>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_mad_i32_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c) {
+  return mad_wave64<16, true>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_mad_u32_u24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c) {
+  return mad_wave64<24, false>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_mad_i32_i24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c) {
+  return mad_wave64<24, true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }

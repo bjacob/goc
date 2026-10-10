@@ -223,8 +223,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
 | `v_dot4_f32_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar, x86-64-v3 | Not implemented |
 | `v_pk_add_i16`, `v_pk_sub_i16`, `v_pk_add_u16`, `v_pk_sub_u16` | Scalar, x86-64-v3; all half selectors and saturation | Exact integer operations; both wave sizes |
-| `v_mad_i32_i16`, `v_mad_u32_u16` | Scalar, x86-64-v3; factor half selectors and saturation | Not implemented |
-| `v_mad_i32_i24`, `v_mad_u32_u24` | Scalar, x86-64-v3; saturation | Not implemented |
+| `v_mad_i32_i16`, `v_mad_u32_u16` | Scalar, x86-64-v3; factor half selectors and saturation | Exact integer operations; both wave sizes |
+| `v_mad_i32_i24`, `v_mad_u32_u24` | Scalar, x86-64-v3; saturation | Exact integer operations; both wave sizes |
 | `v_mad_i16`, `v_mad_u16` | Scalar, x86-64-v3; half selectors and saturation | Exact integer operations; both wave sizes |
 | `v_min3_i16`, `v_min3_u16`, `v_max3_i16`, `v_max3_u16`, `v_med3_i16`, `v_med3_u16` | Scalar, x86-64-v3; half selectors | Exact integer operations; both wave sizes |
 | `v_add_nc_i16`, `v_sub_nc_i16`, `v_add_nc_u16`, `v_sub_nc_u16` | Scalar, x86-64-v3; half selectors and saturation | Exact integer operations; both wave sizes |
@@ -2444,3 +2444,11 @@ strict exact semantics at both widths. Ordinary operations preserve the other
 half of D and apply DPP before selecting A's half. Packed operations compute
 both halves using their independent selectors and reject DPP. Both reuse the
 existing scalar and x86-64-v3 kernels, including saturation and whole-VGPR aliases.
+
+
+Integer MAD with 16/24-bit factors and 32-bit results, and signed/unsigned MAD
+with 64-bit results, also provides `_wave64` variants. Both widths accept strict
+exact semantics. Wide forms use two VGPRs for C/D, one each for A/B, and a
+required 64-bit carry result committed after vector writes. Carry records the
+extended sum's bit 64 before saturation, including for signed MAD. Narrow-factor
+forms retain DPP and v3 paths; wide forms reject DPP and retain v3/v4 paths.

@@ -2848,7 +2848,7 @@ int goc_v_ashrrev_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
 // forms sign-extend the selected factors and interpret C as signed 32-bit.
 // CLAMP saturates the full product plus C to the result's 32-bit range;
 // otherwise results wrap. Supports DPP8/DPP16 on A before half selection. Other
-// instruction flags are invalid. Loose semantics only; independent of host FP
+// instruction flags are invalid. Both semantics are exact; independent of host FP
 // state. Whole-register aliases are supported.
 int goc_v_mad_u32_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
@@ -3860,6 +3860,45 @@ int goc_v_wmma_i32_16x16x16_iu4_rdna4(uint64_t flags, uint64_t instruction_flags
 int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c);
+
+// Wave64 integer MAD. EXEC has 64 bits; 16/24-bit factors produce one VGPR
+// using a one-VGPR addend. The 64-bit-result forms take one VGPR per factor and
+// two each for addend/destination, low word first. Their required scalar carry
+// output has 64 bits and is stored last, including zero for zero EXEC. Signed
+// carry is bit 64 of the extended sum, before saturation. Modifiers and whole-
+// VGPR aliases match Wave32; the 64-bit-result forms reject DPP. Both semantics
+// are exact and preserve host FP state.
+int goc_v_mad_u32_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c);
+
+int goc_v_mad_i32_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c);
+
+int goc_v_mad_u32_u24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c);
+
+int goc_v_mad_i32_i24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c);
+
+int goc_v_mad_co_u64_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_mad_co_i64_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_mad_u64_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                             const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_mad_i64_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                             const uint32_t *const *b, const uint32_t *const *c);
 
 // Wave64 ordinary and packed 16-bit integer operations. EXEC has 64 bits;
 // each operand uses one 64-lane VGPR. Ordinary forms preserve the unselected

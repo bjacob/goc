@@ -867,3 +867,27 @@ are claimed. The width-review queue is now 236 candidates.
 Validation: all 767 tests pass on Clang 21 and GCC 15 Release. All 31 ordinary
 and packed integer16, Wave64, DPP, zero-EXEC and instruction-flag tests pass
 under ASan/UBSan, including both exhaustive ordinary DPP suites.
+
+
+## Wave64 narrow-factor and wide-result integer MAD
+
+Added four 16/24-bit-factor MAD and four wide-result MAD APIs (including RDNA3
+spellings). Narrow-factor forms now accept strict exact semantics at both
+widths and reuse existing scalar/v3 kernels, DPP and selectors. Wide forms
+reuse scalar/v3/v4 kernels, require one VGPR per factor and two for C/D, reject
+DPP and produce a 64-bit carry mask. Their signed carry is the extended sum's
+bit 64 before saturation. The scalar output is committed after all source
+reads and vector writes, including zero for zero EXEC.
+
+Independent tests cover boundary factors/addends, saturation, both semantics,
+every CPU path, DPP row masks and selectors where supported, differing EXEC
+halves, whole-source aliases, guards and invalid/empty calls. Wide results and
+carry use the independent 128-bit reference, including negative sums and signed
+overflow. A scalar-output alias in the upper source half checks delayed carry
+stores against separately captured vector results. Existing Wave32 hardware
+corpora remain the direct numerical evidence; no new Wave64 capture or speedup
+claim is made. The width-review queue is now 228 candidates.
+
+Validation: all 770 tests pass on Clang 21 and GCC 15 Release. All twenty
+integer/wide MAD, Wave64, DPP, zero-EXEC and instruction-flag tests pass under
+ASan/UBSan.

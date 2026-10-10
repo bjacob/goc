@@ -15,6 +15,11 @@ using IntegerMadFn = decltype(&goc_v_mad_u32_u16);
 inline const IntegerMadFn integer_mad_functions[] = {goc_v_mad_u32_u16, goc_v_mad_i32_i16,
                                                      goc_v_mad_u32_u24, goc_v_mad_i32_i24};
 
+using IntegerMadWave64Fn = decltype(&goc_v_mad_u32_u16_wave64);
+inline const IntegerMadWave64Fn integer_mad_wave64_functions[] = {
+    goc_v_mad_u32_u16_wave64, goc_v_mad_i32_i16_wave64, goc_v_mad_u32_u24_wave64,
+    goc_v_mad_i32_i24_wave64};
+
 inline uint32_t integer_mad_mode_bits(int mode) {
   return (mode & 1 ? GOC_ALU_CLAMP : 0) | (mode & 2 ? GOC_ALU_HIGH_A : 0) |
          (mode & 4 ? GOC_ALU_HIGH_B : 0);

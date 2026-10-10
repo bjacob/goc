@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 
+#include <cstring>
 #include <stdint.h>
 
 namespace {
@@ -64,6 +65,29 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
   return GOC_SUCCESS;
 }
 
+template <bool Signed>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
+               uint64_t *carry, const uint32_t *const *a, const uint32_t *const *b,
+               const uint32_t *const *c) {
+  uint32_t output[2] = {};
+  if (int error = run<Signed>(flags, 0, mode, nullptr, output, nullptr, nullptr, nullptr))
+    return error;
+  if (exec_mask) {
+    for (unsigned half = 0; half < 2; ++half) {
+      uint32_t *dest[] = {d[0] + half * 32, d[1] + half * 32};
+      const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32;
+      const uint32_t *source_c[] = {c[0] + half * 32, c[1] + half * 32};
+      if (int error = run<Signed>(flags, uint32_t(exec_mask >> (half * 32)), mode, dest,
+                                  output + half, &source_a, &source_b, source_c))
+        return error;
+    }
+  }
+  // Scalar carry storage may overlap a source VGPR, so commit it last.
+  uint64_t result = output[0] | (uint64_t(output[1]) << 32);
+  std::memcpy(carry, &result, sizeof result);
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_mad_co_u64_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -92,4 +116,32 @@ int goc_v_mad_i64_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
                       const uint32_t *const *b, const uint32_t *const *c) {
   return goc_v_mad_co_i64_i32(flags, exec_mask, instruction_flags, d, carry, a, b, c);
+}
+
+int goc_v_mad_co_u64_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run_wave64<false>(flags, exec_mask, instruction_flags, d, carry, a, b, c);
+}
+
+int goc_v_mad_co_i64_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run_wave64<true>(flags, exec_mask, instruction_flags, d, carry, a, b, c);
+}
+
+int goc_v_mad_u64_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                             const uint32_t *const *b, const uint32_t *const *c) {
+  return goc_v_mad_co_u64_u32_wave64(flags, exec_mask, instruction_flags, d, carry, a, b, c);
+}
+
+int goc_v_mad_i64_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                             const uint32_t *const *b, const uint32_t *const *c) {
+  return goc_v_mad_co_i64_i32_wave64(flags, exec_mask, instruction_flags, d, carry, a, b, c);
 }
