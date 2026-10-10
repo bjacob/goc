@@ -1540,3 +1540,24 @@ The vector width queue is 24 APIs.
 Validation: all 864 tests pass on Clang 21 and GCC 15 Release. All six
 Wave64 DIV_SCALE and instruction-flag tests pass under ASan/UBSan, including
 unaligned scalar-output aliases and captured value/condition digests.
+
+
+## Wave64 RCP_IFLAG
+
+Added RCP_IFLAG Wave64 using its existing loose scalar/v3/v4 kernels and
+inexpensive INT_DIV0 classification. This preserves the existing reporting
+behavior even in loose mode; it does not introduce exact reciprocal support.
+Four DPP rows are independent. The wrapper snapshots the prior exception
+register and commits accumulated flags after all source reads and destination
+writes, including when the register aliases an upper input or destination.
+
+Independent references cover every modifier, all row-enable patterns,
+full/upper-only/sparse EXEC, preserved guards, input/output/status aliases and
+null reporting. Existing hardware status digests are replayed in lanes 32–63;
+inactive lower zeros must not contribute. Invalid modes and strict exact
+requests preserve state. No new native Wave64 capture or throughput is claimed.
+The width queue is 23 APIs.
+
+Validation: all 869 tests pass on Clang 21 and GCC 15 Release. All six
+Wave64 RCP_IFLAG and instruction-flag tests pass under ASan/UBSan, including
+the full upper-half hardware status corpus.

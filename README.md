@@ -566,7 +566,7 @@ preservation, overflow settings and preservation of host rounding. Earlier
 throughput measurements predate the software RTZ implementation and do not
 characterize the current RTZ path.
 
-`v_rcp_iflag_f32` computes a reciprocal and returns sticky guest exception
+`v_rcp_iflag_f32` and its `_wave64` variant compute a reciprocal and return sticky guest exception
 status through a separate scalar output. Active signed-zero and subnormal inputs
 raise `GOC_EXCEPTION_INT_DIV0`; CLAMP suppresses a new cause but preserves
 any pre-existing status bit. Other status bits survive unchanged. The scalar

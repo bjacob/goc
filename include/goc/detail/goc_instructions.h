@@ -1279,6 +1279,12 @@ static const uint32_t GOC_EXCEPTION_INT_DIV0 = 1U << 6;
 int goc_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
+// Wave64 retains the same loose numerical and optional accumulation behavior,
+// with four independent DPP rows. Status is committed after all VGPR writes.
+int goc_v_rcp_iflag_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
+
 // Pseudo-scalar transcendental math on raw SGPR values. Executes once regardless
 // of EXEC, including zero. a is a scalar value; d must always be writable.
 // FP16 reads a's low half, ignores its high half, and zeros d's upper half.

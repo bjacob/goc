@@ -84,3 +84,29 @@ int goc_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint3
                       ((zeros & exec_mask) && !(mode & GOC_ALU_CLAMP) ? GOC_EXCEPTION_INT_DIV0 : 0);
   return GOC_SUCCESS;
 }
+
+int goc_v_rcp_iflag_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user) {
+  if (int error = goc_v_rcp_iflag_f32(flags, 0, mode, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  // Preserve the register's pre-instruction value even when it aliases D.
+  uint32_t exceptions = excp_flag_user ? *excp_flag_user : 0;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source = a[0] + half * 32;
+    if (int error = goc_v_rcp_iflag_f32(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                                        &source, excp_flag_user ? &exceptions : nullptr))
+      return error;
+  }
+  if (excp_flag_user)
+    *excp_flag_user = exceptions;
+  return GOC_SUCCESS;
+}
