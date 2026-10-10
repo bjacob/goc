@@ -5,11 +5,13 @@ specifications is listed, including exclusions. Alias spellings in XML are not
 separate instructions. API presence is **not** semantic verification, bit-exact
 coverage, modifier coverage, global-state support, or SIMD coverage. These gates
 are tracked in [COVERAGE.md](COVERAGE.md). Do not infer architecture compatibility
-from equal mnemonics or descriptions. Boundary rows remain open until reviewed.
+from equal mnemonics or descriptions. Boundary rows remain open until reviewed; resolved scope decisions are recorded there.
 
 Memory operations, exports, branches, messages, traps, and scheduling are outside
 GoC's arithmetic/register-operation scope. Register-only data-share permutations
-are included. SALU/VALU register/control boundaries are not silently excluded.
+are included. SALU/VALU register/control boundaries are not silently excluded. Explicit branch
+flags and reviewed memory/scheduling descriptions override misleading group labels.
+Relative register addressing and hardware-register access remain in scope.
 
 ## Source fingerprints
 
@@ -18,10 +20,9 @@ are included. SALU/VALU register/control boundaries are not silently excluded.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 72
+- in, API absent: 76
 - in, API present: 732
-- out, API absent: 578
-- review, API absent: 14
+- out, API absent: 588
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
 |---|---|---|---|---|---|---|
@@ -480,8 +481,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `image_store_mip` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `image_store_mip_pck` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `image_store_pck` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
-| `lds_direct_load` | yes | — | in | — | — | missing API |
-| `lds_param_load` | yes | — | in | — | — | missing API |
+| `lds_direct_load` | yes | — | out: LDS memory access | — | — | excluded: memory/control/scheduling |
+| `lds_param_load` | yes | — | out: LDS memory access | — | — | excluded: memory/control/scheduling |
 | `s_abs_i32` | yes | yes | in | `goc_s_abs_i32` | — | API present; semantic audit pending |
 | `s_absdiff_i32` | yes | yes | in | `goc_s_absdiff_i32` | — | API present; semantic audit pending |
 | `s_add_co_ci_u32` | — | yes | in | `goc_s_add_co_ci_u32` | `s_addc_u32` | API present; semantic audit pending |
@@ -495,7 +496,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_addc_u32` | yes | — | in | `goc_s_addc_u32` | — | API present; semantic audit pending |
 | `s_addk_co_i32` | — | yes | in | `goc_s_addk_co_i32` | `s_addk_i32` | API present; semantic audit pending |
 | `s_addk_i32` | yes | — | in | `goc_s_addk_i32` | — | API present; semantic audit pending |
-| `s_alloc_vgpr` | — | yes | in | — | — | missing API |
+| `s_alloc_vgpr` | — | yes | out: resource allocation/scheduling | — | — | excluded: memory/control/scheduling |
 | `s_and_b32` | yes | yes | in | `goc_s_and_b32` | — | API present; semantic audit pending |
 | `s_and_b64` | yes | yes | in | `goc_s_and_b64` | — | API present; semantic audit pending |
 | `s_and_not0_saveexec_b32` | yes | yes | in | `goc_s_and_not0_saveexec_b32` | `s_andn1_saveexec_b32` | API present; semantic audit pending |
@@ -537,7 +538,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_bitset0_b64` | yes | yes | in | `goc_s_bitset0_b64` | — | API present; semantic audit pending |
 | `s_bitset1_b32` | yes | yes | in | `goc_s_bitset1_b32` | — | API present; semantic audit pending |
 | `s_bitset1_b64` | yes | yes | in | `goc_s_bitset1_b64` | — | API present; semantic audit pending |
-| `s_branch` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
+| `s_branch` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_brev_b32` | yes | yes | in | `goc_s_brev_b32` | — | API present; semantic audit pending |
 | `s_brev_b64` | yes | yes | in | `goc_s_brev_b64` | — | API present; semantic audit pending |
 | `s_buffer_load_b128` | yes | yes | out: SMEM | — | `s_buffer_load_dwordx4` | excluded: memory/control/scheduling |
@@ -551,17 +552,17 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_buffer_load_u16` | — | yes | out: SMEM | — | — | excluded: memory/control/scheduling |
 | `s_buffer_load_u8` | — | yes | out: SMEM | — | — | excluded: memory/control/scheduling |
 | `s_buffer_prefetch_data` | — | yes | out: SMEM | — | — | excluded: memory/control/scheduling |
-| `s_call_b64` | yes | yes | in | — | — | missing API |
-| `s_cbranch_cdbgsys` | yes | — | out: BRANCH | — | — | excluded: memory/control/scheduling |
-| `s_cbranch_cdbgsys_and_user` | yes | — | out: BRANCH | — | — | excluded: memory/control/scheduling |
-| `s_cbranch_cdbgsys_or_user` | yes | — | out: BRANCH | — | — | excluded: memory/control/scheduling |
-| `s_cbranch_cdbguser` | yes | — | out: BRANCH | — | — | excluded: memory/control/scheduling |
-| `s_cbranch_execnz` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
-| `s_cbranch_execz` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
-| `s_cbranch_scc0` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
-| `s_cbranch_scc1` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
-| `s_cbranch_vccnz` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
-| `s_cbranch_vccz` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
+| `s_call_b64` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_cbranch_cdbgsys` | yes | — | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_cbranch_cdbgsys_and_user` | yes | — | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_cbranch_cdbgsys_or_user` | yes | — | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_cbranch_cdbguser` | yes | — | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_cbranch_execnz` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_cbranch_execz` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_cbranch_scc0` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_cbranch_scc1` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_cbranch_vccnz` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_cbranch_vccz` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_ceil_f16` | — | yes | in | `goc_s_ceil_f16` | — | API present; semantic audit pending |
 | `s_ceil_f32` | — | yes | in | `goc_s_ceil_f32` | — | API present; semantic audit pending |
 | `s_clause` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
@@ -626,7 +627,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_cmpk_lg_u32` | yes | — | in | `goc_s_cmpk_lg_u32` | — | API present; semantic audit pending |
 | `s_cmpk_lt_i32` | yes | — | in | `goc_s_cmpk_lt_i32` | — | API present; semantic audit pending |
 | `s_cmpk_lt_u32` | yes | — | in | `goc_s_cmpk_lt_u32` | — | API present; semantic audit pending |
-| `s_code_end` | yes | yes | in | — | — | missing API |
+| `s_code_end` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_cselect_b32` | yes | yes | in | `goc_s_cselect_b32` | — | API present; semantic audit pending |
 | `s_cselect_b64` | yes | yes | in | `goc_s_cselect_b64` | — | API present; semantic audit pending |
 | `s_ctz_i32_b32` | yes | yes | in | `goc_s_ctz_i32_b32` | `s_ff1_i32_b32` | API present; semantic audit pending |
@@ -643,9 +644,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_decperflevel` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
 | `s_delay_alu` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
 | `s_denorm_mode` | yes | yes | in | — | — | missing API |
-| `s_endpgm` | yes | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |
-| `s_endpgm_ordered_ps_done` | yes | — | out: MESSAGE | — | — | excluded: memory/control/scheduling |
-| `s_endpgm_saved` | yes | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |
+| `s_endpgm` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_endpgm_ordered_ps_done` | yes | — | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_endpgm_saved` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_floor_f16` | — | yes | in | `goc_s_floor_f16` | — | API present; semantic audit pending |
 | `s_floor_f32` | — | yes | in | `goc_s_floor_f32` | — | API present; semantic audit pending |
 | `s_fmaak_f32` | — | yes | in | `goc_s_fmaak_f32` | — | API present; semantic audit pending |
@@ -653,7 +654,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_fmac_f32` | — | yes | in | `goc_s_fmac_f32` | — | API present; semantic audit pending |
 | `s_fmamk_f32` | — | yes | in | `goc_s_fmamk_f32` | — | API present; semantic audit pending |
 | `s_getpc_b64` | yes | yes | in | — | — | missing API |
-| `s_getreg_b32` | yes | yes | review: control/register boundary | — | — | missing API |
+| `s_getreg_b32` | yes | yes | in: register access | — | — | missing API |
 | `s_gl1_inv` | yes | — | out: SMEM | — | — | excluded: memory/control/scheduling |
 | `s_icache_inv` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
 | `s_incperflevel` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
@@ -690,11 +691,11 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_mov_b32` | yes | yes | in | `goc_s_mov_b32` | — | API present; semantic audit pending |
 | `s_mov_b64` | yes | yes | in | `goc_s_mov_b64` | — | API present; semantic audit pending |
 | `s_movk_i32` | yes | yes | in | `goc_s_movk_i32` | — | API present; semantic audit pending |
-| `s_movreld_b32` | yes | yes | review: control/register boundary | — | — | missing API |
-| `s_movreld_b64` | yes | yes | review: control/register boundary | — | — | missing API |
-| `s_movrels_b32` | yes | yes | review: control/register boundary | — | — | missing API |
-| `s_movrels_b64` | yes | yes | review: control/register boundary | — | — | missing API |
-| `s_movrelsd_2_b32` | yes | yes | review: control/register boundary | — | — | missing API |
+| `s_movreld_b32` | yes | yes | in: register access | — | — | missing API |
+| `s_movreld_b64` | yes | yes | in: register access | — | — | missing API |
+| `s_movrels_b32` | yes | yes | in: register access | — | — | missing API |
+| `s_movrels_b64` | yes | yes | in: register access | — | — | missing API |
+| `s_movrelsd_2_b32` | yes | yes | in: register access | — | — | missing API |
 | `s_mul_f16` | — | yes | in | `goc_s_mul_f16` | — | API present; semantic audit pending |
 | `s_mul_f32` | — | yes | in | `goc_s_mul_f32` | — | API present; semantic audit pending |
 | `s_mul_hi_i32` | yes | yes | in | `goc_s_mul_hi_i32` | — | API present; semantic audit pending |
@@ -733,7 +734,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_prefetch_inst_pc_rel` | — | yes | out: SMEM | — | — | excluded: memory/control/scheduling |
 | `s_quadmask_b32` | yes | yes | in | `goc_s_quadmask_b32` | — | API present; semantic audit pending |
 | `s_quadmask_b64` | yes | yes | in | `goc_s_quadmask_b64` | — | API present; semantic audit pending |
-| `s_rfe_b64` | yes | yes | out: TRAP | — | — | excluded: memory/control/scheduling |
+| `s_rfe_b64` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_rndne_f16` | — | yes | in | `goc_s_rndne_f16` | — | API present; semantic audit pending |
 | `s_rndne_f32` | — | yes | in | `goc_s_rndne_f32` | — | API present; semantic audit pending |
 | `s_round_mode` | yes | yes | in | — | — | missing API |
@@ -744,14 +745,14 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_set_inst_prefetch_distance` | yes | — | out: WAVE_CONTROL | — | `s_inst_prefetch` | excluded: memory/control/scheduling |
 | `s_sethalt` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
 | `s_setkill` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
-| `s_setpc_b64` | yes | yes | in | — | — | missing API |
+| `s_setpc_b64` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_setprio` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
-| `s_setreg_b32` | yes | yes | review: control/register boundary | — | — | missing API |
-| `s_setreg_imm32_b32` | yes | yes | review: control/register boundary | — | — | missing API |
+| `s_setreg_b32` | yes | yes | in: register access | — | — | missing API |
+| `s_setreg_imm32_b32` | yes | yes | in: register access | — | — | missing API |
 | `s_sext_i32_i16` | yes | yes | in | `goc_s_sext_i32_i16` | — | API present; semantic audit pending |
 | `s_sext_i32_i8` | yes | yes | in | `goc_s_sext_i32_i8` | — | API present; semantic audit pending |
 | `s_sleep` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
-| `s_sleep_var` | — | yes | in | — | — | missing API |
+| `s_sleep_var` | — | yes | out: resource allocation/scheduling | — | — | excluded: memory/control/scheduling |
 | `s_sub_co_ci_u32` | — | yes | in | `goc_s_sub_co_ci_u32` | `s_subb_u32` | API present; semantic audit pending |
 | `s_sub_co_i32` | — | yes | in | `goc_s_sub_co_i32` | `s_sub_i32` | API present; semantic audit pending |
 | `s_sub_co_u32` | — | yes | in | `goc_s_sub_co_u32` | `s_sub_u32` | API present; semantic audit pending |
@@ -761,8 +762,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_sub_nc_u64` | — | yes | in | `goc_s_sub_nc_u64` | `s_sub_u64` | API present; semantic audit pending |
 | `s_sub_u32` | yes | — | in | `goc_s_sub_u32` | — | API present; semantic audit pending |
 | `s_subb_u32` | yes | — | in | `goc_s_subb_u32` | — | API present; semantic audit pending |
-| `s_swappc_b64` | yes | yes | in | — | — | missing API |
-| `s_trap` | yes | yes | out: TRAP | — | — | excluded: memory/control/scheduling |
+| `s_swappc_b64` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
+| `s_trap` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_trunc_f16` | — | yes | in | `goc_s_trunc_f16` | — | API present; semantic audit pending |
 | `s_trunc_f32` | — | yes | in | `goc_s_trunc_f32` | — | API present; semantic audit pending |
 | `s_ttracedata` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
@@ -1282,10 +1283,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_minmax_u32` | yes | yes | in | `goc_v_minmax_u32` | — | API present; semantic audit pending |
 | `v_mov_b16` | yes | yes | in | — | — | missing API |
 | `v_mov_b32` | yes | yes | in | `goc_v_mov_b32` | — | API present; semantic audit pending |
-| `v_movreld_b32` | yes | yes | review: control/register boundary | — | — | missing API |
-| `v_movrels_b32` | yes | yes | review: control/register boundary | — | — | missing API |
-| `v_movrelsd_2_b32` | yes | yes | review: control/register boundary | — | — | missing API |
-| `v_movrelsd_b32` | yes | yes | review: control/register boundary | — | — | missing API |
+| `v_movreld_b32` | yes | yes | in: register access | — | — | missing API |
+| `v_movrels_b32` | yes | yes | in: register access | — | — | missing API |
+| `v_movrelsd_2_b32` | yes | yes | in: register access | — | — | missing API |
+| `v_movrelsd_b32` | yes | yes | in: register access | — | — | missing API |
 | `v_mqsad_pk_u16_u8` | yes | yes | in | `goc_v_mqsad_pk_u16_u8` | — | API present; semantic audit pending |
 | `v_mqsad_u32_u8` | yes | yes | in | `goc_v_mqsad_u32_u8` | — | API present; semantic audit pending |
 | `v_msad_u8` | yes | yes | in | `goc_v_msad_u8` | — | API present; semantic audit pending |
@@ -1302,7 +1303,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_mul_lo_u32` | yes | yes | in | `goc_v_mul_lo_u32` | — | API present; semantic audit pending |
 | `v_mul_u32_u24` | yes | yes | in | `goc_v_mul_u32_u24` | — | API present; semantic audit pending |
 | `v_mullit_f32` | yes | yes | in | `goc_v_mullit_f32` | — | API present; semantic audit pending |
-| `v_nop` | yes | yes | review: control/register boundary | — | — | missing API |
+| `v_nop` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
 | `v_not_b16` | yes | yes | in | `goc_v_not_b16` | — | API present; semantic audit pending |
 | `v_not_b32` | yes | yes | in | `goc_v_not_b32` | — | API present; semantic audit pending |
 | `v_or3_b32` | yes | yes | in | `goc_v_or3_b32` | — | API present; semantic audit pending |
@@ -1315,7 +1316,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_permlane64_b32` | yes | yes | in | — | — | missing API |
 | `v_permlanex16_b32` | yes | yes | in | `goc_v_permlanex16_b32` | — | API present; semantic audit pending |
 | `v_permlanex16_var_b32` | — | yes | in | `goc_v_permlanex16_var_b32` | — | API present; semantic audit pending |
-| `v_pipeflush` | yes | yes | review: control/register boundary | — | — | missing API |
+| `v_pipeflush` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
 | `v_pk_add_f16` | yes | yes | in | `goc_v_pk_add_f16` | — | API present; semantic audit pending |
 | `v_pk_add_i16` | yes | yes | in | `goc_v_pk_add_i16` | — | API present; semantic audit pending |
 | `v_pk_add_u16` | yes | yes | in | `goc_v_pk_add_u16` | — | API present; semantic audit pending |

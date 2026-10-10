@@ -29,8 +29,8 @@ paths must retain their existing performance and may skip optional state outputs
 ## Cross-cutting completion gates
 
 - [x] Enumerate both XML instruction sets and identify matching public API names.
-- [ ] Resolve every boundary row, including relative register addressing and
-  hardware-register access, without excluding register operations for convenience.
+- [x] Resolve the initial boundary rows: relative addressing and hardware-register
+  access remain in scope; pipeline no-ops/flushes are scheduling exclusions.
 - [ ] Map XML aliases and dual-issue operations; distinguish assembly aliases
   from missing semantics and define simultaneous-read behavior for paired outputs.
 - [ ] Review every shared mnemonic for architectural differences, including
@@ -106,3 +106,40 @@ a green test suite that exercises only the current implementation.
   all new forms, CPU selections, semantics, masks and validation. All 689 tests
   pass on Clang/GCC; the new test passes under ASan/UBSan. Missing API names: 72.
   Floating F/T exception behavior and Wave64 comparison APIs remain open.
+
+## Scope review after initial implementation increments
+
+The functional-group labels in AMD's XML are not sufficient to decide scope.
+The generator now honors explicit branch/termination flags even within SALU.
+`S_CALL_B64`, `S_SETPC_B64`, `S_SWAPPC_B64`, and `S_CODE_END` are excluded as
+control flow/traps. RDNA3 `LDS_DIRECT_LOAD` and `LDS_PARAM_LOAD` are labeled VALU
+but their descriptions explicitly read LDS memory; they are excluded as memory
+operations. `S_ALLOC_VGPR` allocates wave resources, `S_SLEEP_VAR` schedules sleep,
+and `V_NOP`/`V_PIPEFLUSH` concern pipeline scheduling; these are excluded.
+
+All twelve initially ambiguous relative-register and GETREG/SETREG operations
+remain **in scope**. So do `S_GETPC_B64` (reads PC without branching),
+`S_ROUND_MODE`, and `S_DENORM_MODE` (modify guest FP state, never host FP state).
+This is not permission to implement guest mode updates with host fenv mutations.
+
+All 1,396 canonical names remain listed. The revised scope contains 808 names:
+732 have APIs and **76 are missing**. The 588 exclusions are explicit. The rise
+from 72 missing names reflects twelve register operations admitted from the
+review list and eight former in-scope exclusions; two other exclusions came
+from the review list. No implementation was removed and no unresolved register
+operation was silently excluded. Scope checks verified each reclassification.
+
+## Floating min/max review in progress
+
+At rocjitsu revision `ffc144c564c`, generated FP32 MIN/MAX, MIN3/MAX3 and
+MINMAX/MAXMIN execution bodies for RDNA3 spellings and RDNA4 NUM spellings are
+identical after whitespace normalization. MED3's wrappers differ in SIMD
+availability; FP64 MIN/MAX have different first available encodings, requiring
+like-for-like VOP3 review. FP16 and packed forms use other generated execution
+paths and were not covered by that text comparison.
+
+This supports sharing **loose** arithmetic, not a bit-exact equivalence claim.
+Before adding these names, review NaNs (especially signaling NaNs), zero ties,
+operand ordering in median networks, guest FP flags, output modifiers and
+exception updates. Existing GoC loose/SIMD tests must remain valid, but cannot
+substitute for RDNA3 hardware evidence. No min/max API was added by this audit.

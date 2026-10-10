@@ -44,6 +44,19 @@ for name in sorted(set(instructions[3]) | set(instructions[4])):
     if scope == "in" and (name.startswith(("s_wait", "s_setreg", "s_getreg", "s_movrel", "v_movrel"))
                            or name in {"s_nop", "v_nop", "s_version", "v_pipeflush"}):
         scope = "review: control/register boundary"
+    # FunctionalGroup alone is insufficient: SALU includes indirect branches,
+    # and the RDNA3 LDS direct loads are labeled VALU in this XML revision.
+    if any(e.findtext("InstructionFlags/IsBranch") == "TRUE" or
+           e.findtext("InstructionFlags/IsProgramTerminator") == "TRUE" for e in entries):
+        scope = "out: branch/termination"
+    elif name in {"lds_direct_load", "lds_param_load"}:
+        scope = "out: LDS memory access"
+    elif name in {"s_alloc_vgpr", "s_sleep_var"}:
+        scope = "out: resource allocation/scheduling"
+    elif name in {"v_nop", "v_pipeflush"}:
+        scope = "out: pipeline scheduling"
+    elif name.startswith(("s_getreg", "s_setreg", "s_movrel", "v_movrel")):
+        scope = "in: register access"
     aliases = sorted({a.text.lower() for e in entries
                       for a in e.findall("AliasedInstructionNames/*")})
     alias_text = ", ".join(f"`{a}`" for a in aliases) or "—"
@@ -66,11 +79,13 @@ specifications is listed, including exclusions. Alias spellings in XML are not
 separate instructions. API presence is **not** semantic verification, bit-exact
 coverage, modifier coverage, global-state support, or SIMD coverage. These gates
 are tracked in [COVERAGE.md](COVERAGE.md). Do not infer architecture compatibility
-from equal mnemonics or descriptions. Boundary rows remain open until reviewed.
+from equal mnemonics or descriptions. Boundary rows remain open until reviewed; resolved scope decisions are recorded there.
 
 Memory operations, exports, branches, messages, traps, and scheduling are outside
 GoC's arithmetic/register-operation scope. Register-only data-share permutations
-are included. SALU/VALU register/control boundaries are not silently excluded.
+are included. SALU/VALU register/control boundaries are not silently excluded. Explicit branch
+flags and reviewed memory/scheduling descriptions override misleading group labels.
+Relative register addressing and hardware-register access remain in scope.
 
 ## Source fingerprints
 
