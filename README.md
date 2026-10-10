@@ -2027,8 +2027,11 @@ IEEE-mode support here does not promise exact signaling-NaN behavior.
 Ordinary FP16 `v_add_f16`, `v_sub_f16`, `v_subrev_f16`, and `v_mul_f16` also
 use unsuffixed RDNA3 and `_rdna4` APIs, with the same OMOD gating and guest
 IEEE/denormal controls. Both widths retain AVX2, half selectors, DPP, and FP16
-overflow saturation. Packed FP16 and FP16 min/max have separate flag contracts;
-these ordinary arithmetic changes do not imply support there.
+overflow saturation. Ordinary and packed FP16 binary min/max also accept guest input flushing and
+IEEE mode: RDNA3 gives signaling NaNs priority only in IEEE mode, while RDNA4
+retains its number/propagating distinctions. SIMD selection preserves NaN bits
+through half conversion. Output flushing has no effect on min/max except through
+ordinary OMOD; packed forms have no OMOD. Packed arithmetic has separate flags.
 
 FP64 `v_add_f64`, `v_mul_f64`, and `v_fma_f64` follow the same architecture
 naming and guest IEEE/denormal controls. Both widths retain the four-lane AVX2

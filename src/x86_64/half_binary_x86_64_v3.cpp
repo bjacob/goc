@@ -17,6 +17,9 @@ void half_binary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, ui
                            const uint32_t *a, const uint32_t *b) {
   constexpr bool arithmetic = !Packed && (Op == Binary::Add || Op == Binary::Sub ||
                                           Op == Binary::Subrev || Op == Binary::Mul);
+  constexpr bool legacy = Op == Binary::MinLegacy || Op == Binary::MaxLegacy;
+  constexpr bool preserve_nan_inputs = legacy || Op == Binary::Minimum || Op == Binary::Maximum;
+  constexpr bool selection = preserve_nan_inputs || Op == Binary::MinNum || Op == Binary::MaxNum;
   uint32_t modes[] = {Packed ? packed_half_mode(mode, false) : mode, packed_half_mode(mode, true)};
   int d_shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
   auto keep = _mm256_set1_epi32(d_shift ? 65535 : -65536);
@@ -27,9 +30,9 @@ void half_binary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, ui
     auto result = _mm256_setzero_si256();
     for (int half = 0; half < (Packed ? 2 : 1); ++half) {
       uint32_t m = modes[half];
-      auto x = half_input<false>(a_words, m & GOC_ALU_HIGH_A ? 16 : 0, m);
-      auto y = half_input<false>(b_words, m & GOC_ALU_HIGH_B ? 16 : 0, m >> 1);
-      if (arithmetic && (flags & GOC_FP_FLUSH_INPUT_DENORMALS)) {
+      auto x = half_input<false, preserve_nan_inputs>(a_words, m & GOC_ALU_HIGH_A ? 16 : 0, m);
+      auto y = half_input<false, preserve_nan_inputs>(b_words, m & GOC_ALU_HIGH_B ? 16 : 0, m >> 1);
+      if ((arithmetic || selection) && (flags & GOC_FP_FLUSH_INPUT_DENORMALS)) {
         // FP16 subnormals are normal FP32 values after conversion. Compare the
         // promoted magnitude against FP16's minimum normal, retaining the sign.
         auto flush_input = [](__m256 input) {
@@ -51,6 +54,8 @@ void half_binary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, ui
         value = _mm256_sub_ps(y, x);
       if constexpr (Op == Binary::Mul)
         value = _mm256_mul_ps(x, y);
+      if constexpr (Op == Binary::MinLegacy || Op == Binary::MaxLegacy)
+        value = minmax_rdna3<Op == Binary::MaxLegacy>(x, y, flags & GOC_FP_IEEE_MODE);
       if constexpr (Op == Binary::MinNum)
         value = minmax<false, false>(x, y);
       if constexpr (Op == Binary::MaxNum)
@@ -65,7 +70,7 @@ void half_binary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, ui
       }
       if (m & GOC_ALU_CLAMP)
         value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
-      auto encoded = half_narrow<false>(value, flags & GOC_FP16_OVFL);
+      auto encoded = half_narrow<false, legacy>(value, flags & GOC_FP16_OVFL);
       if (arithmetic && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)) {
         auto magnitude = _mm256_and_si256(encoded, _mm256_set1_epi32(0x7fff));
         auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x0400), magnitude);
@@ -116,5 +121,16 @@ template void half_binary_x86_64_v3<Binary::Minimum, true>(uint64_t, uint32_t, u
                                                            const uint32_t *, const uint32_t *);
 template void half_binary_x86_64_v3<Binary::Maximum, true>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                            const uint32_t *, const uint32_t *);
+
+template void half_binary_x86_64_v3<Binary::MinLegacy>(uint64_t, uint32_t, uint32_t, uint32_t *,
+                                                       const uint32_t *, const uint32_t *);
+template void half_binary_x86_64_v3<Binary::MaxLegacy>(uint64_t, uint32_t, uint32_t, uint32_t *,
+                                                       const uint32_t *, const uint32_t *);
+template void half_binary_x86_64_v3<Binary::MinLegacy, true>(uint64_t, uint32_t, uint32_t,
+                                                             uint32_t *, const uint32_t *,
+                                                             const uint32_t *);
+template void half_binary_x86_64_v3<Binary::MaxLegacy, true>(uint64_t, uint32_t, uint32_t,
+                                                             uint32_t *, const uint32_t *,
+                                                             const uint32_t *);
 
 } // namespace goc

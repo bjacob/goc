@@ -1948,3 +1948,39 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   regression; it does not establish performance for every instruction or host.
   Scratch driver, parent objects and raw samples are in
   `../goc-build/coverage-work/fp64-selection-*`, including `fp64-selection-timing.json`.
+
+## Ordinary and packed FP16 binary min/max policies
+
+- RDNA3 MIN/MAX and PK_MIN/PK_MAX now use IEEE-mode signaling-NaN priority and
+  preserve A unchanged when both inputs are NaNs outside IEEE mode. Ordinary
+  forms gate OMOD; packed forms do not interpret packed modifier bits as OMOD.
+  All binary min/max forms accept guest input flushing and ignore output flushing
+  except through ordinary OMOD, in both wave widths.
+- Existing scalar and SIMD RDNA3 selection helpers now serve FP16 as well as
+  FP32/FP64. FP16 SIMD conversion gains an opt-in NaN-bit-preserving path for
+  legacy and propagating selection; narrowing preserves signaling bits only for
+  the legacy forms. Arithmetic and RDNA4 number-selection conversion paths retain
+  their existing defaults. This also fixes RDNA4 propagating FP16 min/max's sNaN
+  priority when a quiet NaN competes with a signaling NaN.
+- Literal tests distinguish all three selection policies using raw payloads,
+  signs and quiet bits, ordinary/packed forms, both widths, guest flag combinations,
+  half selectors, independent negations, clamp, masks and aliases. The ordinary
+  architecture-policy matrix now includes min/max scaling/denormal combinations.
+- Exact semantics and faithful exception reporting remain unsupported for these
+  APIs. Ternary FP16 min/max/median are a separate policy-audit item.
+- An additional all-65,536-encodings MIN/MAX test verifies that IEEE-disabled
+  selection against a quiet NaN preserves every FP16 sign, payload and signaling
+  bit, including through the F16C path. Conversion repair restores only the quiet
+  bit changed by F16C; it does not reconstruct the entire NaN encoding.
+- Validation: all 945 tests pass under Clang 21 and GCC 15 Release; all 24
+  HalfBinary/PackedBinary/MinmaxSpellings/InstructionFlags tests pass under
+  ASan/UBSan. Four audit-tool tests pass. Logs:
+  `../goc-build/coverage-work/half-selection-*-tests.log`.
+- Performance check against parent `23bbf06`: eleven alternating samples pinned
+  to CPU 2, each at least 50 ms thread CPU time. AVX2 MIN_NUM_F16 medians changed
+  24.607 -> 23.117 ns unmodified and 26.173 -> 25.274 ns with ABS/NEG/OMOD/CLAMP.
+  MINIMUM_F16 changed 26.815 -> 26.664 ns unmodified and 28.627 -> 29.798 ns with
+  modifiers (about +4.1% for that case). The measured cost buys correct sNaN
+  priority; this limited finite-input check is not a whole-library performance
+  result. Driver, parent objects and raw samples are in
+  `../goc-build/coverage-work/half-selection-*`, including `half-selection-timing.json`.

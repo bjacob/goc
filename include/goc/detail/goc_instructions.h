@@ -3496,10 +3496,15 @@ int goc_v_maximum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       uint32_t *excp_flag_user);
 
-// RDNA3 FP32/FP64 MIN/MAX use guest IEEE mode: signaling NaNs take priority when set;
+// RDNA3 FP16/FP32/FP64 MIN/MAX use guest IEEE mode: signaling NaNs take priority when set;
 // otherwise a lone NaN is ignored and two NaNs select A unchanged. OMOD is ignored
 // when IEEE is set or output denormals are preserved. Input flushing precedes
 // selection; output flushing otherwise has no effect. Both widths use SIMD.
+//
+// Packed FP16 MIN/MAX apply the same NaN and input-denormal selection rules to
+// both halves, with their independent selectors/negations. Packed forms have no
+// OMOD; guest output-denormal mode has no effect. FP16 narrowing preserves the
+// selected signaling bit when quieting is not requested.
 //
 // Other RDNA3 floating min/max/median spellings share the corresponding *_num_*
 // loose implementations, operand widths, modifiers, alias rules and SIMD paths.

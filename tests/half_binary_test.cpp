@@ -245,9 +245,10 @@ TEST(HalfBinary, Wave64ModifiersSelectorsDppAndAliases) {
                                         : ((exec_mask >> lane) & 1);
               if (enabled)
                 check(d[lane], before[dest][lane + 1],
-                      goc_test::half_binary_reference(op >= 8 ? op - 4 : op,
-                                                      source < 0 ? 0 : before[0][source + 1],
-                                                      before[1][lane + 1], mode, saturate),
+                      goc_test::half_binary_reference(
+                          op >= 8 ? op - 4 : op, source < 0 ? 0 : before[0][source + 1],
+                          before[1][lane + 1], op >= 8 ? mode & ~GOC_ALU_OMOD_HALF : mode,
+                          saturate),
                       mode);
               else
                 EXPECT_EQ(d[lane], before[dest][lane + 1]);
@@ -277,15 +278,16 @@ TEST(HalfBinary, Wave64ValidationAndOptionalState) {
 
 TEST(HalfBinary, ArchitectureScalingDenormalsSelectorsDppAndAliases) {
   const goc_test::HalfBinaryFn rdna3[] = {goc_v_add_f16, goc_v_sub_f16, goc_v_subrev_f16,
-                                          goc_v_mul_f16};
+                                          goc_v_mul_f16, goc_v_min_f16, goc_v_max_f16};
   const decltype(&goc_v_add_f16_wave64) rdna3_wide[] = {
-      goc_v_add_f16_wave64, goc_v_sub_f16_wave64, goc_v_subrev_f16_wave64, goc_v_mul_f16_wave64};
+      goc_v_add_f16_wave64, goc_v_sub_f16_wave64, goc_v_subrev_f16_wave64,
+      goc_v_mul_f16_wave64, goc_v_min_f16_wave64, goc_v_max_f16_wave64};
   const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x03ff, 0x83ff, 0x0400,
                              0x8400, 0x3800, 0x3c00, 0xc000, 0x7bff, 0x7c00, 0x7e01};
   const uint64_t routes[] = {0, goc_test::dpp_modes[0], goc_test::dpp_modes[6]};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned arch = 0; arch < 2; ++arch)
-      for (unsigned op = 0; op < 4; ++op)
+      for (unsigned op = 0; op < 6; ++op)
         for (unsigned settings = 0; settings < 16; ++settings)
           for (unsigned selector = 0; selector < 8; ++selector)
             for (unsigned scale = 0; scale < 4; ++scale)
@@ -346,7 +348,7 @@ TEST(HalfBinary, ArchitectureScalingDenormalsSelectorsDppAndAliases) {
                       }
                       uint16_t expected =
                           goc_test::half_binary_reference(op, x, y, effective_mode, settings & 8);
-                      if ((settings & 2) && (expected & 0x7fff) < 0x400)
+                      if (op < 4 && (settings & 2) && (expected & 0x7fff) < 0x400)
                         expected &= 0x8000;
                       check(d[lane], before[alias][lane + 1], expected, mode);
                     }
@@ -371,4 +373,121 @@ TEST(HalfBinary, Rdna3GuestFlagsDoNotEnableExactReporting) {
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(fn(flags, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
   }
+}
+
+TEST(HalfBinary, MinmaxRawNanBitsGuestModesAndPackedSelectors) {
+  // A/B, then selected source for legacy IEEE=0, legacy IEEE=1, RDNA4 number,
+  // and RDNA4 propagating forms. 0/1 select A/B; 2/3 quiet the selected A/B NaN.
+  struct Case {
+    uint16_t a, b;
+    unsigned selected[8];
+  };
+
+  const Case cases[] = {
+      {0x7c11, 0x3c00, {1, 1, 2, 2, 1, 1, 2, 2}}, {0xbc00, 0xfc23, {0, 0, 3, 3, 0, 0, 3, 3}},
+      {0x7e11, 0xfc23, {0, 0, 3, 3, 0, 0, 3, 3}}, {0x7c11, 0xfc23, {0, 0, 2, 2, 2, 2, 2, 2}},
+      {0x7c11, 0xfe23, {0, 0, 2, 2, 2, 2, 2, 2}}, {0x7e11, 0xfe23, {0, 0, 0, 0, 0, 0, 0, 0}},
+      {0x7e11, 0x3c00, {1, 1, 1, 1, 1, 1, 0, 0}}, {0x8000, 0, {0, 1, 0, 1, 0, 1, 0, 1}},
+      {0x8001, 1, {0, 1, 0, 1, 0, 1, 0, 1}},
+  };
+  const goc_test::HalfBinaryFn narrow[][6] = {
+      {goc_v_min_f16, goc_v_max_f16, goc_v_min_num_f16, goc_v_max_num_f16, goc_v_minimum_f16,
+       goc_v_maximum_f16},
+      {goc_v_pk_min_f16, goc_v_pk_max_f16, goc_v_pk_min_num_f16, goc_v_pk_max_num_f16,
+       goc_v_pk_minimum_f16, goc_v_pk_maximum_f16}};
+  const decltype(&goc_v_min_f16_wave64) wide[][6] = {
+      {goc_v_min_f16_wave64, goc_v_max_f16_wave64, goc_v_min_num_f16_wave64,
+       goc_v_max_num_f16_wave64, goc_v_minimum_f16_wave64, goc_v_maximum_f16_wave64},
+      {goc_v_pk_min_f16_wave64, goc_v_pk_max_f16_wave64, goc_v_pk_min_num_f16_wave64,
+       goc_v_pk_max_num_f16_wave64, goc_v_pk_minimum_f16_wave64, goc_v_pk_maximum_f16_wave64}};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned packed = 0; packed < 2; ++packed)
+      for (unsigned op = 0; op < 6; ++op)
+        for (unsigned settings = 0; settings < 8; ++settings)
+          for (unsigned selector = 0; selector < 8; ++selector)
+            for (unsigned width : {32U, 64U})
+              for (unsigned alias = 0; alias < 3; ++alias) {
+                uint32_t words[3][64], before[3][64];
+                // Each input's two halves use the same case but independently
+                // negated payloads. Selectors therefore expose sign/half mistakes.
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  const auto &test = cases[lane % 9];
+                  words[0][lane] = test.a | (uint32_t(test.a ^ 0x8000) << 16);
+                  words[1][lane] = test.b | (uint32_t(test.b ^ 0x8000) << 16);
+                  words[2][lane] = 0xdeadbeef;
+                }
+                // Select both inputs from the same half so the literal order table
+                // remains valid; undo the upper-half sign with NEG when selected.
+                bool upper = selector & 1;
+                uint32_t mode =
+                    packed
+                        ? (upper ? GOC_PK_LO_A_HIGH | GOC_PK_LO_B_HIGH | GOC_PK_NEG_LO_A |
+                                       GOC_PK_NEG_LO_B
+                                 : 0) |
+                              (selector & 2 ? GOC_PK_HI_A_LOW | GOC_PK_HI_B_LOW
+                                            : GOC_PK_NEG_HI_A | GOC_PK_NEG_HI_B) |
+                              (selector & 4 ? GOC_PK_CLAMP : 0)
+                        : (upper ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_NEG_A | GOC_ALU_NEG_B
+                                 : 0) |
+                              (selector & 2 ? GOC_ALU_HIGH_D : 0) |
+                              (selector & 4 ? GOC_ALU_CLAMP : 0);
+                std::memcpy(before, words, sizeof words);
+                uint32_t *d = words[alias];
+                const uint32_t *a = words[0], *b = words[1];
+                uint64_t flags = cpu | (settings & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                 (settings & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                 (settings & 4 ? GOC_FP_IEEE_MODE : 0);
+                uint64_t exec_mask = 0x87654321fedcba98ULL;
+                uint32_t state = 0x12345678;
+                ASSERT_EQ(
+                    width == 32
+                        ? narrow[packed][op](flags, uint32_t(exec_mask), mode, &d, &a, &b, &state)
+                        : wide[packed][op](flags, exec_mask, mode, &d, &a, &b, &state),
+                    GOC_SUCCESS);
+                EXPECT_EQ(state, 0x12345678U);
+                unsigned column = (op >= 4 ? 6 : op >= 2 ? 4 : settings & 4 ? 2 : 0) + (op & 1);
+                for (unsigned lane = 0; lane < width; ++lane) {
+                  const auto &test = cases[lane % 9];
+                  unsigned choice = test.selected[column];
+                  uint16_t expected = choice & 1 ? test.b : test.a;
+                  if (choice >= 2)
+                    expected |= 0x0200;
+                  if ((settings & 1) && lane % 9 == 8)
+                    expected &= 0x8000;
+                  if (selector & 4) {
+                    if ((expected & 0x8000) || (expected & 0x7fff) > 0x7c00)
+                      expected = 0;
+                    else if (expected > 0x3c00)
+                      expected = 0x3c00;
+                  }
+                  unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
+                  uint32_t want = packed ? uint32_t(expected) * 0x10001U
+                                         : (before[alias][lane] & ~(0xffffU << shift)) |
+                                               (uint32_t(expected) << shift);
+                  if (!((exec_mask >> lane) & 1))
+                    want = before[alias][lane];
+                  EXPECT_EQ(d[lane], want) << cpu << '/' << packed << '/' << op << '/' << settings
+                                           << '/' << selector << '/' << lane;
+                }
+              }
+}
+
+TEST(HalfBinary, LegacySelectionPreservesEveryHalfEncoding) {
+  // With IEEE=0 and B a quiet NaN, MIN/MAX must select A unchanged. This also
+  // checks every signaling-NaN sign/payload across F16C promotion and narrowing.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (auto fn : {goc_v_min_f16, goc_v_max_f16})
+      for (unsigned base = 0; base < 65536; base += 32) {
+        uint32_t a[32], b[32], d[32];
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          a[lane] = base + lane;
+          b[lane] = 0x7e01;
+          d[lane] = 0x7c110000;
+        }
+        uint32_t *pd = d;
+        const uint32_t *pa = a, *pb = b;
+        ASSERT_EQ(fn(cpu, UINT32_MAX, 0, &pd, &pa, &pb, nullptr), GOC_SUCCESS);
+        for (unsigned lane = 0; lane < 32; ++lane)
+          EXPECT_EQ(d[lane], 0x7c110000U | (base + lane)) << cpu;
+      }
 }
