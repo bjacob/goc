@@ -2858,7 +2858,14 @@ int goc_v_div_scale_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
 // FP16_OVFL saturates FP16 provisional-quotient overflow before OMOD and finite
 // scaling overflow; exceptional B/C cases retain their infinity/NaN behavior.
 // Loose and empirical exact semantics use fixed nearest-even rounding with
-// input/output denormals enabled. All EXEC masks and whole-register aliases
+// preserved denormals by default. FP32/FP64 accept guest input/output-denormal
+// flags and IEEE mode. Input flushing applies to B/C, never A; output flushing
+// does not flush the provisional quotient. RDNA3 ignores OMOD with preserved
+// output denormals or IEEE mode, while RDNA4 applies it independently.
+// Unsuffixed FP32/FP64 APIs use RDNA3 TRAPSTS; _rdna4 uses EXCP_FLAG_USER.
+// Exact non-null reporting is unsupported for RDNA3 and for RDNA4 input flushing.
+// Loose calls leave optional state unchanged. FP16 retains its RDNA4 contract.
+// All EXEC masks and whole-register aliases
 // are supported; results are independent of host FP state and preserve it.
 int goc_v_div_fixup_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
@@ -2866,11 +2873,11 @@ int goc_v_div_fixup_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 
 int goc_v_div_fixup_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c, uint32_t *excp_flag_user);
+                        const uint32_t *const *c, uint32_t *trapsts);
 
 int goc_v_div_fixup_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c, uint32_t *excp_flag_user);
+                        const uint32_t *const *c, uint32_t *trapsts);
 
 // Wave64 retains each format's operand layout, modifiers and exact exception
 // accumulation. FP16 supports four independent DPP rows.
@@ -2881,11 +2888,31 @@ int goc_v_div_fixup_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
 int goc_v_div_fixup_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c,
-                               uint32_t *excp_flag_user);
+                               uint32_t *trapsts);
 int goc_v_div_fixup_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c,
-                               uint32_t *excp_flag_user);
+                               uint32_t *trapsts);
+
+int goc_v_div_fixup_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint32_t *excp_flag_user);
+
+int goc_v_div_fixup_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint32_t *excp_flag_user);
+
+int goc_v_div_fixup_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c,
+                                     uint32_t *excp_flag_user);
+
+int goc_v_div_fixup_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c,
+                                     uint32_t *excp_flag_user);
 
 // Cube-map face ID, S/T coordinates and signed doubled major axis, respectively.
 // A/B/C contain X/Y/Z in one VGPR each; D holds one VGPR. Z wins magnitude ties,

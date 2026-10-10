@@ -253,5 +253,14 @@
       "v_div_fmas_f32",
       "v_div_fmas_f64"
     ]
+  },
+  {
+    "heading": "FP32/FP64 DIV_FIXUP architecture policies",
+    "semantics": "loose and exact",
+    "tests": "tests/div_fixup_architecture_test.cpp",
+    "mnemonics": [
+      "v_div_fixup_f32",
+      "v_div_fixup_f64"
+    ]
   }
 ]

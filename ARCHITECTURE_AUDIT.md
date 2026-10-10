@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-143 in-scope mnemonics have explicit contract-review records in
+145 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 666 in-scope mnemonics need a recorded review.
+The remaining 664 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -440,8 +440,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cvt_u32_f64` | SIMD macro, output helper | yes | 10254, 10278 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-conversion-architecture-review) |
 | `v_cvt_u32_u16` | SIMD macro, output helper | no | 10302 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-conversion-architecture-review) |
 | `v_div_fixup_f16` | IEEE mode, OMOD, SIMD macro, architecture query | no | 10316 | review required |
-| `v_div_fixup_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 10367 | review required |
-| `v_div_fixup_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 10412 | review required |
+| `v_div_fixup_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 10367 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32fp64-div_fixup-architecture-policies) |
+| `v_div_fixup_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 10412 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32fp64-div_fixup-architecture-policies) |
 | `v_div_fmas_f32` | SIMD macro, output helper | yes | 10457 | [loose and exact contract reviewed; see limitations](COVERAGE.md#div_fmas-architecture-policies) |
 | `v_div_fmas_f64` | SIMD macro | yes | 10488 | [loose and exact contract reviewed; see limitations](COVERAGE.md#div_fmas-architecture-policies) |
 | `v_div_scale_f32` | output helper | no | 10519 | review required |

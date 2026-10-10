@@ -1117,8 +1117,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cvt_u32_f64` | yes | yes | in | `goc_v_cvt_u32_f64`<br>`goc_v_cvt_u32_f64_wave64`<br>`goc_v_cvt_u32_f64_rdna4`<br>`goc_v_cvt_u32_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-conversion-architecture-review) |
 | `v_cvt_u32_u16` | yes | yes | in | `goc_v_cvt_u32_u16`<br>`goc_v_cvt_u32_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-conversion-architecture-review) |
 | `v_div_fixup_f16` | yes | yes | in | `goc_v_div_fixup_f16`<br>`goc_v_div_fixup_f16_wave64` | — | API present; semantic audit pending |
-| `v_div_fixup_f32` | yes | yes | in | `goc_v_div_fixup_f32`<br>`goc_v_div_fixup_f32_wave64` | — | API present; semantic audit pending |
-| `v_div_fixup_f64` | yes | yes | in | `goc_v_div_fixup_f64`<br>`goc_v_div_fixup_f64_wave64` | — | API present; semantic audit pending |
+| `v_div_fixup_f32` | yes | yes | in | `goc_v_div_fixup_f32`<br>`goc_v_div_fixup_f32_wave64`<br>`goc_v_div_fixup_f32_rdna4`<br>`goc_v_div_fixup_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32fp64-div_fixup-architecture-policies) |
+| `v_div_fixup_f64` | yes | yes | in | `goc_v_div_fixup_f64`<br>`goc_v_div_fixup_f64_wave64`<br>`goc_v_div_fixup_f64_rdna4`<br>`goc_v_div_fixup_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32fp64-div_fixup-architecture-policies) |
 | `v_div_fmas_f32` | yes | yes | in | `goc_v_div_fmas_f32`<br>`goc_v_div_fmas_f32_wave64`<br>`goc_v_div_fmas_f32_rdna4`<br>`goc_v_div_fmas_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#div_fmas-architecture-policies) |
 | `v_div_fmas_f64` | yes | yes | in | `goc_v_div_fmas_f64`<br>`goc_v_div_fmas_f64_wave64`<br>`goc_v_div_fmas_f64_rdna4`<br>`goc_v_div_fmas_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#div_fmas-architecture-policies) |
 | `v_div_scale_f32` | yes | yes | in | `goc_v_div_scale_f32`<br>`goc_v_div_scale_f32_wave64` | — | API present; semantic audit pending |

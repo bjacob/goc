@@ -20,9 +20,9 @@
 namespace {
 
 using Fn = decltype(&goc_v_div_fixup_f16);
-const Fn functions[] = {goc_v_div_fixup_f16, goc_v_div_fixup_f32, goc_v_div_fixup_f64};
+const Fn functions[] = {goc_v_div_fixup_f16, goc_v_div_fixup_f32_rdna4, goc_v_div_fixup_f64_rdna4};
 const decltype(&goc_v_div_fixup_f16_wave64) wave64_functions[] = {
-    goc_v_div_fixup_f16_wave64, goc_v_div_fixup_f32_wave64, goc_v_div_fixup_f64_wave64};
+    goc_v_div_fixup_f16_wave64, goc_v_div_fixup_f32_rdna4_wave64, goc_v_div_fixup_f64_rdna4_wave64};
 const unsigned widths[] = {16, 32, 64};
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 

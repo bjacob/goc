@@ -4158,3 +4158,58 @@ mutator references (`div-fmas-fp-environment-audit.json` in the coverage work
 folder). The ledger records 143 contracts; the native-state naming audit resolves
 918 of 940 signatures, with zero mismatches and 22 unresolved. These counts are
 review progress, not whole-project completion claims.
+
+## FP32/FP64 DIV_FIXUP architecture policies
+
+Reviewed both architectures' FP32/FP64 VOP3 handlers at rocjitsu `ffc144c564c`.
+They delegate to the shared integer `division.h::div_fixup` and `div_apply_omod`
+models. Guest input flushing affects the original denominator/numerator, never
+the provisional quotient. Output-denormal mode does not generally flush that
+quotient; nearest-even extreme exponent-gap recovery already produces signed
+zero. `fp_mode::effective_omod` gates RDNA3 output scaling on preserved output
+denormals and IEEE mode, while RDNA4 applies scaling independently.
+
+Unsuffixed FP32/FP64 APIs now take native RDNA3 `trapsts`; `_rdna4` variants
+retain `excp_flag_user`, with `_wave64` last. The shared numerical model supports
+loose and exact results with all eight combinations of the exposed IEEE and
+denormal flags. A separate integer preprocessing helper flushes B/C when asked,
+then calls the established kernel with that input-flush bit consumed. This
+preserves A and all source reads before stores, and lets both architectures reuse
+the same scalar, AVX2 and AVX512 arithmetic without adding guest-flush branches
+to each SIMD batch. No host FP-environment changes are performed.
+
+Existing RDNA4 exact reporting remains supported when input flushing is off.
+Exact non-null reporting with input flushing, and all RDNA3 exact non-null
+reporting, return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE` before source access,
+including zero EXEC. Rocjitsu's classifier includes gfx1201-specific findings;
+this slice does not assume those prove RDNA3 flags or invent a classifier for
+the new input policy. Loose calls leave optional state unchanged. FP16 is still
+an explicit follow-up: its promoted arithmetic, narrowing and saturation rules
+need their own review and its current unsuffixed RDNA4 contract is unchanged.
+
+Three new architecture tests cover FP32/FP64, both wave sizes and architectures,
+all eight guest policies and all 512 source/output modifier encodings, every
+available CPU level, masks, source/destination and D0/D1 aliases. Expected values
+use the existing independent long-double reference with only B/C preflushed;
+literal cases borrowed from rocjitsu's division tests distinguish preserved A
+from flushed B/C. Errors leave destination/state untouched, DPP remains rejected
+for these two formats, and all host rounding/FTZ/DAZ controls remain unchanged.
+Existing RDNA4 hardware and exception fixtures use explicit RDNA4 names.
+
+Performance: seven alternating before/after runs, CPU 2 affinity, thread CPU
+time, at least 20 ms per case, plain and source-modified FP32/FP64 calls with
+non-null loose reporting in the modified cases. Median time changes are -2.47%
+scalar, +0.70% AVX2 and -0.89% AVX512; the largest slowdown is +3.67%. Both SIMD
+objects are byte-identical to the baseline (9,976 and 9,736 bytes respectively).
+Raw samples are `../goc-build/coverage-work/div-fixup-performance.json`.
+
+Validation: all 1,078 CTests pass in Clang 21 Release and GCC 15 Release;
+27 targeted ASan/UBSan cases pass, including existing FP16 DPP/alias coverage,
+FP32/FP64 architecture tests, modifiers and optional-state contracts. Logs are
+`div-fixup-tests.log` under `../goc-build/coverage-work/`, `../goc-build-gcc/`
+and `../goc-build-sanitize/`. All nine audit-tool tests pass. Disassembly and
+undefined-symbol scans of all 192 library objects in both compiler builds find
+no explicit host FP-environment mutation (`div-fixup-fp-environment-audit.json`
+in the coverage work folder). The ledger records 145 contracts; the native-state
+naming audit resolves 926 of 944 signatures, with zero mismatches and 18 unresolved.
+These counts do not establish whole-project completion.
