@@ -38,13 +38,15 @@ const Fn functions[] = {goc_test::count_leading,       goc_test::count_trailing,
                          : words[2][lane];
   const uint32_t *a[] = {words[0]}, *b[] = {words[1]};
   uint32_t *d[] = {words[2]};
-  int status = functions[op](flags, UINT64_MAX, 0, d, a, b);
-  if (status != GOC_SUCCESS)
-    return ::testing::AssertionFailure() << "status " << status;
-  for (int lane = 0; lane < 64; ++lane)
-    if (words[2][lane] != expected[lane])
-      return ::testing::AssertionFailure() << op << "/" << flags << "/" << lane << ": "
-                                           << words[2][lane] << " != " << expected[lane];
+  for (uint32_t mode : {0U, GOC_ALU_CLAMP}) {
+    int status = functions[op](flags, UINT64_MAX, mode, d, a, b);
+    if (status != GOC_SUCCESS)
+      return ::testing::AssertionFailure() << "status " << status;
+    for (int lane = 0; lane < 64; ++lane)
+      if (words[2][lane] != expected[lane])
+        return ::testing::AssertionFailure() << op << "/" << flags << "/" << mode << "/" << lane
+                                             << ": " << words[2][lane] << " != " << expected[lane];
+  }
   return ::testing::AssertionSuccess();
 }
 
@@ -208,9 +210,12 @@ TEST(BitCount, ValidationAndHostFpState) {
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]};
           uint32_t *d[] = {words[2]};
           for (uint64_t exec_mask : std::initializer_list<uint64_t>{0ULL, UINT64_MAX}) {
-            for (int bit = 0; bit < 32; ++bit)
+            for (int bit = 0; bit < 32; ++bit) {
+              if ((1U << bit) == GOC_ALU_CLAMP)
+                continue;
               EXPECT_EQ(functions[op](cpu, exec_mask, uint32_t(1) << bit, d, a, b),
                         GOC_ERROR_INVALID_FLAGS);
+            }
             EXPECT_EQ(functions[op](cpu | (1ULL << 63), exec_mask, 0, d, a, b),
                       GOC_ERROR_INVALID_FLAGS);
           }
@@ -232,34 +237,35 @@ TEST(BitCount, ValidationAndHostFpState) {
 TEST(BitCount, Wave64DppUsesPhysicalDestinationLane) {
   for (unsigned op : {6U, 7U})
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (uint64_t mode : goc_test::dpp_modes)
-        for (unsigned rows = 0; rows < 16; ++rows)
-          for (uint64_t exec_mask : {0ULL, 1ULL << 63, 0xaaaaaaaa55555555ULL, ~0ULL})
-            for (unsigned target = 0; target < 3; ++target) {
-              uint32_t data[3][66], expected[3][66];
-              for (unsigned r = 0; r < 3; ++r)
-                for (unsigned lane = 0; lane < 66; ++lane)
-                  data[r][lane] = expected[r][lane] =
-                      (0x85930271U * lane) ^ (0xffffffffU - r * 12345);
-              uint64_t descriptor = mode;
-              if (descriptor & GOC_DPP16)
-                descriptor =
-                    (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
-              for (unsigned lane = 0; lane < 64; ++lane) {
-                int source;
-                if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
-                  expected[target][lane + 1] = goc_test::bit_count_reference(
-                      op, source < 0 ? 0 : data[0][source + 1], data[1][lane + 1], lane);
+      for (uint32_t clamp : {0U, GOC_ALU_CLAMP})
+        for (uint64_t mode : goc_test::dpp_modes)
+          for (unsigned rows = 0; rows < 16; ++rows)
+            for (uint64_t exec_mask : {0ULL, 1ULL << 63, 0xaaaaaaaa55555555ULL, ~0ULL})
+              for (unsigned target = 0; target < 3; ++target) {
+                uint32_t data[3][66], expected[3][66];
+                for (unsigned r = 0; r < 3; ++r)
+                  for (unsigned lane = 0; lane < 66; ++lane)
+                    data[r][lane] = expected[r][lane] =
+                        (0x85930271U * lane) ^ (0xffffffffU - r * 12345);
+                uint64_t descriptor = mode | clamp;
+                if (descriptor & GOC_DPP16)
+                  descriptor =
+                      (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  int source;
+                  if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
+                    expected[target][lane + 1] = goc_test::bit_count_reference(
+                        op, source < 0 ? 0 : data[0][source + 1], data[1][lane + 1], lane);
+                }
+                auto d = data[target] + 1;
+                const uint32_t *a = data[0] + 1, *b = data[1] + 1;
+                ASSERT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                        exec_mask, descriptor, &d, &a, &b),
+                          GOC_SUCCESS);
+                for (unsigned r = 0; r < 3; ++r)
+                  ASSERT_TRUE(std::equal(data[r], data[r] + 66, expected[r]))
+                      << op << '/' << mode << '/' << rows;
               }
-              auto d = data[target] + 1;
-              const uint32_t *a = data[0] + 1, *b = data[1] + 1;
-              ASSERT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                      exec_mask, descriptor, &d, &a, &b),
-                        GOC_SUCCESS);
-              for (unsigned r = 0; r < 3; ++r)
-                ASSERT_TRUE(std::equal(data[r], data[r] + 66, expected[r]))
-                    << op << '/' << mode << '/' << rows;
-            }
   for (unsigned op : {6U, 7U}) {
     EXPECT_EQ(functions[op](0, 0, GOC_DPP8, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(functions[op](0, UINT64_MAX, GOC_DPP8 | GOC_ALU_NEG_A, nullptr, nullptr, nullptr),
@@ -315,30 +321,32 @@ TEST(BitCount, Wave64ScansAndPopulationDppMasksAliases) {
   for (unsigned op = 0; op < 4; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
-        for (int routing = -1; routing < 7; ++routing)
-          for (uint64_t exec_mask : {0ULL, 1ULL << 63, 0xaaaaaaaa55555555ULL, ~0ULL})
-            for (unsigned target = 0; target < 3; ++target) {
-              uint32_t data[3][66], expected[3][66];
-              for (unsigned r = 0; r < 3; ++r)
-                for (unsigned lane = 0; lane < 66; ++lane)
-                  data[r][lane] = expected[r][lane] = (0x73951a83U * lane) ^ (0xfffffffeU * r);
-              uint64_t mode = routing < 0 ? 0 : goc_test::dpp_modes[routing];
-              for (unsigned lane = 0; lane < 64; ++lane) {
-                int source = int(lane);
-                bool write = routing < 0 ? (exec_mask >> lane) & 1
-                                         : goc_test::dpp_source(mode, exec_mask, lane, source);
-                if (write)
-                  expected[target][lane + 1] = goc_test::bit_count_reference(
-                      op, source < 0 ? 0 : data[0][source + 1], data[1][lane + 1], lane);
+        for (uint32_t clamp : {0U, GOC_ALU_CLAMP})
+          for (int routing = -1; routing < 7; ++routing)
+            for (uint64_t exec_mask : {0ULL, 1ULL << 63, 0xaaaaaaaa55555555ULL, ~0ULL})
+              for (unsigned target = 0; target < 3; ++target) {
+                uint32_t data[3][66], expected[3][66];
+                for (unsigned r = 0; r < 3; ++r)
+                  for (unsigned lane = 0; lane < 66; ++lane)
+                    data[r][lane] = expected[r][lane] = (0x73951a83U * lane) ^ (0xfffffffeU * r);
+                uint64_t mode = clamp | (routing < 0 ? 0 : goc_test::dpp_modes[routing]);
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  int source = int(lane);
+                  bool write = routing < 0 ? (exec_mask >> lane) & 1
+                                           : goc_test::dpp_source(mode, exec_mask, lane, source);
+                  if (write)
+                    expected[target][lane + 1] = goc_test::bit_count_reference(
+                        op, source < 0 ? 0 : data[0][source + 1], data[1][lane + 1], lane);
+                }
+                auto d = data[target] + 1;
+                const uint32_t *a = data[0] + 1, *b = data[1] + 1;
+                ASSERT_EQ(count_wave64(op, cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode,
+                                       &d, &a, &b),
+                          GOC_SUCCESS);
+                for (unsigned r = 0; r < 3; ++r)
+                  ASSERT_TRUE(std::equal(data[r], data[r] + 66, expected[r]))
+                      << op << '/' << routing;
               }
-              auto d = data[target] + 1;
-              const uint32_t *a = data[0] + 1, *b = data[1] + 1;
-              ASSERT_EQ(count_wave64(op, cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode,
-                                     &d, &a, &b),
-                        GOC_SUCCESS);
-              for (unsigned r = 0; r < 3; ++r)
-                ASSERT_TRUE(std::equal(data[r], data[r] + 66, expected[r])) << op << '/' << routing;
-            }
 }
 
 TEST(BitCount, Wave64ScansAndPopulationEveryHalfWord) {

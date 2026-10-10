@@ -7589,7 +7589,8 @@ int goc_v_dual_dot2acc_f32_bf16_rdna4(uint64_t flags, uint32_t exec_mask,
 // MBCNT_LO counts A bits below min(lane, 32); MBCNT_HI counts A bits below
 // max(lane - 32, 0). Both add B with wrapping. The lane index is physical and
 // independent of EXEC. Wave64 forms use 64 lane words per VGPR.
-// Both wave sizes support DPP8/DPP16 on A; low 32 instruction-flag bits must be zero.
+// Both wave sizes support DPP8/DPP16 on A. CLAMP is accepted and ignored;
+// other low flags are invalid.
 // DPP changes the source value, not the physical destination lane used for counting.
 // Both semantics are exact; all host FP state is preserved.
 int goc_v_clz_i32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,

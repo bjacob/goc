@@ -946,5 +946,18 @@
       "v_lshrrev_b32",
       "v_lshrrev_b64"
     ]
+  },
+  {
+    "heading": "Vector bit-count architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/bit_count_test.cpp",
+    "mnemonics": [
+      "v_bcnt_u32_b32",
+      "v_cls_i32",
+      "v_clz_i32_u32",
+      "v_ctz_i32_b32",
+      "v_mbcnt_hi_u32_b32",
+      "v_mbcnt_lo_u32_b32"
+    ]
   }
 ]

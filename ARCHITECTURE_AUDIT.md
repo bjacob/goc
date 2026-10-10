@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-549 in-scope mnemonics have explicit contract-review records in
+555 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 260 in-scope mnemonics need a recorded review.
+The remaining 254 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -220,7 +220,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_ashrrev_i16` | SIMD macro, output helper | no | 3542, 3566 | review required |
 | `v_ashrrev_i32` | SIMD macro, output helper | no | 3590, 3607 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
 | `v_ashrrev_i64` | SIMD macro | no | 3624 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
-| `v_bcnt_u32_b32` | SIMD macro, output helper | no | 3642 | review required |
+| `v_bcnt_u32_b32` | SIMD macro, output helper | no | 3642 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
 | `v_bfe_i32` | SIMD macro, output helper | no | 3658 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_bfe_u32` | SIMD macro, output helper | no | 3686 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_bfi_b32` | SIMD macro, output helper | no | 3706 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
@@ -229,8 +229,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_ceil_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3786, 3810 | review required |
 | `v_ceil_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3855, 3869 | review required |
 | `v_ceil_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 3899, 3913 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
-| `v_cls_i32` | SIMD macro, output helper | no | 3956, 3977 | review required |
-| `v_clz_i32_u32` | SIMD macro, output helper | no | 3998, 4017 | review required |
+| `v_cls_i32` | SIMD macro, output helper | no | 3956, 3977 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
+| `v_clz_i32_u32` | SIMD macro, output helper | no | 3998, 4017 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
 | `v_cmp_class_f16` | SIMD macro | no | 4036, 4113 | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
 | `v_cmp_class_f32` | SIMD macro | no | 4183, 4251 | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
 | `v_cmp_class_f64` | SIMD macro | no | 4314, 4386 | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
@@ -397,7 +397,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cndmask_b32` | SIMD macro, output helper | no | 8153, 8169 | review required |
 | `v_cos_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 8187, 8206 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-sincos-architecture-policies) |
 | `v_cos_f32` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 8245, 8260 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-sincos-architecture-policies) |
-| `v_ctz_i32_b32` | SIMD macro, output helper | no | 8293, 8312 | review required |
+| `v_ctz_i32_b32` | SIMD macro, output helper | no | 8293, 8312 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
 | `v_cubeid_f32` | IEEE mode, SIMD macro, architecture query, output helper | no | 8331 | review required |
 | `v_cubema_f32` | IEEE mode, SIMD macro, architecture query, output helper | no | 8385 | review required |
 | `v_cubesc_f32` | IEEE mode, SIMD macro, architecture query, output helper | no | 8439 | review required |
@@ -532,8 +532,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_max_u32` | SIMD macro, output helper | no | 14725, 14739 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_maxmin_i32` | output helper | no | 15019 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_maxmin_u32` | output helper | no | 15085 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
-| `v_mbcnt_hi_u32_b32` | output helper | no | 15099 | review required |
-| `v_mbcnt_lo_u32_b32` | output helper | no | 15115 | review required |
+| `v_mbcnt_hi_u32_b32` | output helper | no | 15099 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
+| `v_mbcnt_lo_u32_b32` | output helper | no | 15115 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
 | `v_med3_i16` | SIMD macro, output helper | no | 15251 | review required |
 | `v_med3_i32` | SIMD macro, output helper | no | 15277 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_med3_u16` | SIMD macro, output helper | no | 15346 | review required |

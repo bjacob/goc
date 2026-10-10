@@ -861,7 +861,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_ashrrev_i16` | yes | yes | in | `goc_v_ashrrev_i16`<br>`goc_v_ashrrev_i16_wave64` | — | API present; semantic audit pending |
 | `v_ashrrev_i32` | yes | yes | in | `goc_v_ashrrev_i32`<br>`goc_v_ashrrev_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
 | `v_ashrrev_i64` | yes | yes | in | `goc_v_ashrrev_i64`<br>`goc_v_ashrrev_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
-| `v_bcnt_u32_b32` | yes | yes | in | `goc_v_bcnt_u32_b32`<br>`goc_v_bcnt_u32_b32_wave64` | — | API present; semantic audit pending |
+| `v_bcnt_u32_b32` | yes | yes | in | `goc_v_bcnt_u32_b32`<br>`goc_v_bcnt_u32_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
 | `v_bfe_i32` | yes | yes | in | `goc_v_bfe_i32`<br>`goc_v_bfe_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_bfe_u32` | yes | yes | in | `goc_v_bfe_u32`<br>`goc_v_bfe_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_bfi_b32` | yes | yes | in | `goc_v_bfi_b32`<br>`goc_v_bfi_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
@@ -870,8 +870,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_ceil_f16` | yes | yes | in | `goc_v_ceil_f16`<br>`goc_v_ceil_f16_wave64`<br>`goc_v_ceil_f16_rdna4`<br>`goc_v_ceil_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_ceil_f32` | yes | yes | in | `goc_v_ceil_f32`<br>`goc_v_ceil_f32_wave64`<br>`goc_v_ceil_f32_rdna4`<br>`goc_v_ceil_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_ceil_f64` | yes | yes | in | `goc_v_ceil_f64`<br>`goc_v_ceil_f64_wave64`<br>`goc_v_ceil_f64_rdna4`<br>`goc_v_ceil_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
-| `v_cls_i32` | yes | yes | in | `goc_v_cls_i32`<br>`goc_v_cls_i32_wave64` | `v_ffbh_i32` | API present; semantic audit pending |
-| `v_clz_i32_u32` | yes | yes | in | `goc_v_clz_i32_u32`<br>`goc_v_clz_i32_u32_wave64` | `v_ffbh_u32` | API present; semantic audit pending |
+| `v_cls_i32` | yes | yes | in | `goc_v_cls_i32`<br>`goc_v_cls_i32_wave64` | `v_ffbh_i32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
+| `v_clz_i32_u32` | yes | yes | in | `goc_v_clz_i32_u32`<br>`goc_v_clz_i32_u32_wave64` | `v_ffbh_u32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
 | `v_cmp_class_f16` | yes | yes | in | `goc_v_cmp_class_f16`<br>`goc_v_cmp_class_f16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
 | `v_cmp_class_f32` | yes | yes | in | `goc_v_cmp_class_f32`<br>`goc_v_cmp_class_f32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
 | `v_cmp_class_f64` | yes | yes | in | `goc_v_cmp_class_f64`<br>`goc_v_cmp_class_f64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#classification-architecture-contracts) |
@@ -1066,7 +1066,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cndmask_b32` | yes | yes | in | `goc_v_cndmask_b32`<br>`goc_v_cndmask_b32_wave64` | — | API present; semantic audit pending |
 | `v_cos_f16` | yes | yes | in | `goc_v_cos_f16`<br>`goc_v_cos_f16_wave64`<br>`goc_v_cos_f16_rdna4`<br>`goc_v_cos_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-sincos-architecture-policies) |
 | `v_cos_f32` | yes | yes | in | `goc_v_cos_f32`<br>`goc_v_cos_f32_wave64`<br>`goc_v_cos_f32_rdna4`<br>`goc_v_cos_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-sincos-architecture-policies) |
-| `v_ctz_i32_b32` | yes | yes | in | `goc_v_ctz_i32_b32`<br>`goc_v_ctz_i32_b32_wave64` | `v_ffbl_b32` | API present; semantic audit pending |
+| `v_ctz_i32_b32` | yes | yes | in | `goc_v_ctz_i32_b32`<br>`goc_v_ctz_i32_b32_wave64` | `v_ffbl_b32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
 | `v_cubeid_f32` | yes | yes | in | `goc_v_cubeid_f32`<br>`goc_v_cubeid_f32_wave64` | — | API present; semantic audit pending |
 | `v_cubema_f32` | yes | yes | in | `goc_v_cubema_f32`<br>`goc_v_cubema_f32_wave64` | — | API present; semantic audit pending |
 | `v_cubesc_f32` | yes | yes | in | `goc_v_cubesc_f32`<br>`goc_v_cubesc_f32_wave64` | — | API present; semantic audit pending |
@@ -1244,8 +1244,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_maxmin_num_f16` | — | yes | in | `goc_v_maxmin_num_f16`<br>`goc_v_maxmin_num_f16_wave64` | `v_maxmin_f16` | [loose contract reviewed; see limitations](COVERAGE.md#fp16-ternary-minmax-architecture-contracts) |
 | `v_maxmin_num_f32` | — | yes | in | `goc_v_maxmin_num_f32`<br>`goc_v_maxmin_num_f32_wave64` | `v_maxmin_f32` | [loose contract reviewed; see limitations](COVERAGE.md#fp32-ternary-minmax-architecture-contracts) |
 | `v_maxmin_u32` | yes | yes | in | `goc_v_maxmin_u32`<br>`goc_v_maxmin_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
-| `v_mbcnt_hi_u32_b32` | yes | yes | in | `goc_v_mbcnt_hi_u32_b32`<br>`goc_v_mbcnt_hi_u32_b32_wave64` | — | API present; semantic audit pending |
-| `v_mbcnt_lo_u32_b32` | yes | yes | in | `goc_v_mbcnt_lo_u32_b32`<br>`goc_v_mbcnt_lo_u32_b32_wave64` | — | API present; semantic audit pending |
+| `v_mbcnt_hi_u32_b32` | yes | yes | in | `goc_v_mbcnt_hi_u32_b32`<br>`goc_v_mbcnt_hi_u32_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
+| `v_mbcnt_lo_u32_b32` | yes | yes | in | `goc_v_mbcnt_lo_u32_b32`<br>`goc_v_mbcnt_lo_u32_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
 | `v_med3_f16` | yes | — | in | `goc_v_med3_f16`<br>`goc_v_med3_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-ternary-minmax-architecture-contracts) |
 | `v_med3_f32` | yes | — | in | `goc_v_med3_f32`<br>`goc_v_med3_f32_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-ternary-minmax-architecture-contracts) |
 | `v_med3_i16` | yes | yes | in | `goc_v_med3_i16`<br>`goc_v_med3_i16_wave64` | — | API present; semantic audit pending |

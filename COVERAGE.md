@@ -5821,3 +5821,44 @@ Validation: all 1,128 CTests pass under Clang and GCC Release; all nineteen
 shift/Wave64/DPP regression tests pass under ASan/UBSan. All nine audit-tool
 tests pass. Logs use `shift-review-` in each build directory. The ledger records
 549 contracts; 260 in-scope mnemonics remain without recorded reviews.
+
+## Vector bit-count architecture contracts
+
+Reviewed CLZ, CTZ, CLS, BCNT and MBCNT_LO/HI at rocjitsu `ffc144c564c`.
+All eighteen architecture-specific execution/modifier pairs are identical
+(36 bodies). Nine shared execution helpers were checked against GoC's scalar,
+v3 and v4 implementations. Locations, hashes and shared bodies are recorded in
+`../goc-build/coverage-work/bit-count-upstream-review.json`. No architecture
+suffix or optional exception-register output is needed.
+
+CLZ/CTZ return UINT32_MAX for zero, rather than a count of 32. CLS complements
+negative inputs before counting leading zeros, including the sign bit, and
+returns UINT32_MAX for both zero and all ones. BCNT adds the population count
+to B modulo 2^32. MBCNT first intersects A with the low/high half of the physical
+lane's exclusive prefix mask, then adds B with the same wrapping. The prefix
+uses the destination lane number, independently of EXEC and DPP's source lane.
+In particular, Wave32 MBCNT_HI copies B and Wave64 MBCNT_LO counts all A bits in
+the upper half of the wave. Existing GoC arithmetic agrees with these helpers.
+
+Fixed rejection of CLAMP, which all reviewed helpers ignore. Other low flags
+remain invalid. Wave64 DPP stages both input halves before storing results and
+retains physical lane numbering in the counting kernel. Both wave sizes retain
+masked stores and source/destination aliases. The SIMD kernels are unchanged:
+v3 processes eight lanes using nibble-table population counts and bit
+propagation for scans; v4 processes sixteen lanes, with LZCNT for scans and the
+same nibble-table population strategy. The existing baseline selection for
+Wave32 MBCNT_HI below v4 is retained.
+
+Expanded per-bit-pair/complement and half-encoding/random reference checks to
+both CLAMP settings, including accumulator wrapping. Wave64 DPP prefix tests
+now combine both settings with every row mask, empty/single/mixed/full EXEC,
+unaligned storage and each source alias. Wave64 scan/population DPP tests also
+exercise both settings in strict exact and loose semantics. Existing literal
+sentinels, count composition, and gfx1201 Wave32/Wave64 DPP fixtures remain
+unchanged. This review ports the existing operation/modifier contract without
+new hardware characterization.
+
+Validation: all 1,128 CTests pass under Clang and GCC Release; all sixteen
+bit-count/DPP regression tests pass under ASan/UBSan. All nine audit-tool tests
+pass. Logs use `bit-count-review-` in each build directory. The ledger records
+555 contracts; 254 in-scope mnemonics remain without recorded reviews.
