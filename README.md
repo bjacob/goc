@@ -2467,10 +2467,12 @@ a fractional part. Another 6,291,456 RX 9070 captures cover all FP16 encodings,
 masks. Capture probes can be regenerated with
 [the HIP probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_fp_exceptions.py).
 
-Division-fixup reporting is also implemented for FP16/32/64,
+RDNA4 division-fixup reporting is also implemented for FP16/32/64,
 including invalid, input-denormal, floating-divide-by-zero, overflow, underflow,
-and inexact flags. `CLAMP` suppresses all flags; output scaling suppresses
-underflow/inexact flags. Its 786,432 RX 9070 flag captures cover edge/random triples,
+and inexact flags. Guest input flushing classifies the flushed denominator and
+numerator, suppressing input-denormal flags; the provisional quotient is never
+input-flushed. RDNA3 exact reporting remains unsupported. `CLAMP` suppresses
+all flags; output scaling suppresses underflow/inexact flags. Its 786,432 RX 9070 flag captures cover edge/random triples,
 source/output modifiers, and both FP16 saturation settings; regenerate them with
 [the arithmetic probe generator](https://github.com/bjacob/goc/blob/main/tests/capture_arithmetic_exceptions.py).
 

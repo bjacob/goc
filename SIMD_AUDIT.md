@@ -16,7 +16,7 @@ timings later in this document describe the initial audit pass.
 - [x] SIMD loose packed-result FP16/BF16 WMMA with intermediate narrowing.
 - [x] AVX2 coverage for Boolean/CNDMASK, bitfield insert, non-saturating
   integer add, and the remaining ternary/count/conversion gaps listed below.
-- [ ] Review incomplete exact-state families against rocjitsu and the ISA;
+- [x] Review incomplete exact-state families against rocjitsu and the ISA;
   implement available borrowed/simple rules, retaining explicit unsupported
   results where completion would require forbidden reverse-engineering.
 - [x] Assess scalar routing/copy opportunities and justify any retained scalar
@@ -367,3 +367,64 @@ its substantial full-wave improvement and roughly constant work across masks,
 rather than adding the expressly unwanted mask-density specialization. The
 same-register reload regression is eliminated. These measurements describe
 these cases, not a workload-weighted performance estimate.
+
+
+## Follow-up: exact architectural-state review
+
+Rechecked rocjitsu at `ffc144c564c`, including `shared/alu_exceptions.h`,
+`generated/shared/execute_shared.h`, and the numerical-model map and classifier
+review in [COVERAGE.md](COVERAGE.md#borrowed-numerical-model-map). The upstream
+explicit arithmetic classifiers cover MUL, SQRT, RCP_IFLAG, and DIV_FIXUP;
+sharing an exact numerical model does not supply an exception model.
+
+| Family | Disposition |
+| --- | --- |
+| RDNA4 DIV_FIXUP FP16/32/64 | Extended reporting to input-flushing modes. Rocjitsu flushes denominator/numerator before classifying arithmetic and suppresses their input-denormal causes. GoC's existing staging already performs this transformation; removing the premature rejection lets the retained classifier consume those transformed bits. The provisional quotient remains untouched. |
+| RDNA3 DIV_FIXUP | Retain unsupported exact reporting. Upstream's recovery-flag evidence is gfx1201; GoC's retained corrections, including CLAMP suppression, cannot establish RDNA3 behavior merely by reusing the numerical model. |
+| FP32 MUL and arithmetic/FMA/literal forms | Upstream MUL classifier lacks invalid-arithmetic/signaling-NaN branches and computes rounded intermediates with host arithmetic. It is not a complete model for GoC's exact optional-state contract. No complete upstream FP32 FMA exception model was found. Retain explicit unsupported reporting. |
+| SQRT and other unary/pseudo-scalar numerical ports | Upstream SQRT only classifies negative input. It does not establish the other exception causes or guest-mode interactions. RCP/RSQ/EXP/LOG numerical helpers likewise do not supply complete reporting. No new classifiers are inferred. |
+| RCP_IFLAG | Keep existing RDNA4 reporting. Upstream's original-input zero comparison omits CLAMP/guest-flush treatment and is called before DPP routing; it does not establish complete RDNA3 reporting. |
+| FP16 FMA/packed FMA, trig, DIV_FMAS, mixed FMA and DOT2 | Keep existing documented reporting subsets and existing corpus tests. Unsupported architecture/guest-policy combinations remain explicit; extrapolating captured policies is not an available borrowed rule. |
+| Floating/scalar comparisons and scalar rounding | Keep existing RDNA4 classifiers. RDNA3 and constant-predicate reporting remain explicitly unsupported; numeric mask/rounding behavior alone does not establish signaling/denormal flag behavior. |
+| Conversions/packing, FREXP/LDEXP, min/max, FP64 arithmetic and remaining floating helpers | No complete upstream optional-state model for their currently unsupported combinations. Some have exact bit-based numeric transformations, others are loose-only; neither condition is permission to invent hardware flags. Preserve the non-null exact rejection contract. |
+| Integer/carry/SCC/EXEC, MODE and ordinary hardware-register updates | Existing required outputs and simple register-field updates remain implemented; no FP classification is involved. Exact FLUSH_IB reporting remains unsupported because its side effects are not modeled. |
+
+The new DIV_FIXUP test covers all three formats and both widths, all CPU levels,
+selected halves, NEG/OMOD/CLAMP, destination aliases, inactive exceptional lanes,
+prior-state accumulation, and null opt-out. Literal expected causes cover flushed
+zero/zero, divide-by-zero, NaNs, infinity, signed subnormals, and an unflushed
+subnormal provisional quotient. Existing architecture rejection tests now reserve
+the old unsupported expectation for RDNA3. Numerical results with reporting match
+the opt-out path. The new behavior introduces neither host-control changes nor
+classification in loose SIMD paths.
+
+This closes the available-model review; it does **not** claim all exact reporting
+is implemented. Completing the listed unsupported numerical policies would exceed
+the user's borrowed/simple-model scope. The historical DX9 FMAC issue is retained
+as a documented limitation, not a blocker: the user explicitly accepted loose-only
+support rather than requiring new hardware reverse-engineering.
+
+## Final requirement-to-evidence review
+
+The completion claim is limited to the actionable audit items and the agreed
+borrowed/simple-model scope. It is not a claim of complete hardware equivalence
+for every instruction or unsupported encoding.
+
+| Requirement | Current evidence |
+| --- | --- |
+| Supported modifiers retain loose SIMD unless justified | Dispatch review above and new WMMA, integer, DS, MOV16/SWAP16 kernels; source/output modifiers and DPP feed the vector paths. Existing and expanded per-family tests run all supported CPU levels. Retained scalar operations have operation-specific or measured reasons. |
+| Loose arithmetic normally uses SIMD | Matrix and AVX2 arithmetic gaps addressed in the committed follow-ups. Explicit exceptions include scalar-register operations, small measured copy/half-Boolean cases, ordered scatter, and already-documented model/tier limitations. No density-dependent dispatch was introduced. |
+| EXEC and aliases remain faithful | Full test suites include zero/full/partial masks, upper Wave64 lanes, DPP row enables, source participation, guard words and aliases. New routing kernels stage required cross-lane inputs or paired exchange chunks before writes. Destinations use masked vector stores. |
+| EXEC absent where ignored | Public scalar/pseudo-scalar and WMMA/SWMMAC interfaces retain their EXEC-free signatures; no API migration in these follow-ups reintroduced EXEC. SAVEEXEC/WREXEC take it as required register data. |
+| Optional state contract | Exact non-null rejection/atomicity tests, existing reporting corpora, new DIV_FIXUP flush rules, and loose non-null tests. Numeric outputs stay mandatory; loose state computation is not added to SIMD kernels. |
+| No explicit host FP-control mutation | Earlier one-time source/archive audit remains recorded above. Follow-ups add integer/vector operations or ordinary host arithmetic, with no environment-setting helpers. Existing host-control regression tests remain in the final suites; no repeated host-write audit was required. |
+| Stay within numerical-model scope | Provenance review above; no hardware probes or new reverse-engineered model were added. Incomplete reporting remains explicit rather than inferred from host exceptions or numerical results. |
+| Maintain readable organization | Direct per-operation kernels and limited existing-kernel extensions, with shared rules only where already used. Rejected slow candidates removed. Per-family performance and costs documented rather than reduced to a misleading overall percentage. |
+| Public/API/tooling validation | Standalone C99/C++17 header compilation, linkage/embedding checks, API-wide high-bit validation tests, regenerated architecture and global-state naming reports, and ten tooling tests. Naming reports make no reporting-accuracy claim. |
+
+Validation of the final DIV_FIXUP change: **1,190 tests pass** in each of Clang,
+GCC, and the no-SIMD build. **32 DIV_FIXUP/global-state tests pass under
+ASan/UBSan**, and all ten audit-tooling tests pass. Regenerated architecture and
+state-naming reports are unchanged (587 shared-mnemonic reviews, 962 resolved
+state-output signatures). A full ASan/UBSan run is still in progress; the final
+checklist item remains open until its result is inspected.

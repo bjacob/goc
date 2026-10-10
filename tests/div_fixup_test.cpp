@@ -727,3 +727,75 @@ TEST(DivFixup, Wave64DppExceptionAccumulation) {
       }
     }
 }
+
+TEST(DivFixup, FlushedInputExceptionRulesBothWaves) {
+  // rocjitsu classifies after denominator/numerator flushing, suppressing their
+  // input-denormal causes. The provisional quotient is not an input to flush.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned type = 0; type < 3; ++type)
+      for (unsigned lanes : {32U, 64U})
+        for (unsigned modifiers = 0; modifiers < 8; ++modifiers)
+          for (unsigned alias = 0; alias < 3; ++alias) {
+            SCOPED_TRACE(cpu);
+            SCOPED_TRACE(type);
+            SCOPED_TRACE(lanes);
+            SCOPED_TRACE(modifiers);
+            const unsigned width = widths[type];
+            const uint64_t one = type == 0   ? 0x3c00ULL
+                                 : type == 1 ? 0x3f800000ULL
+                                             : 0x3ff0000000000000ULL;
+            const uint64_t infinity = type == 0   ? 0x7c00ULL
+                                      : type == 1 ? 0x7f800000ULL
+                                                  : 0x7ff0000000000000ULL;
+            const uint64_t quiet = type == 0   ? 0x200ULL
+                                   : type == 1 ? 0x400000ULL
+                                               : 0x8000000000000ULL;
+            const uint64_t sign = 1ULL << (width - 1);
+            const uint64_t denominators[] = {1, 1, one, one, 1, 1, 1, one};
+            const uint64_t numerators[] = {
+                one, 1, 1, one, infinity | 1, infinity | quiet, infinity, sign | 1};
+            const uint32_t causes[] = {GOC_EXCEPTION_FLOAT_DIV0,
+                                       GOC_EXCEPTION_INVALID,
+                                       0,
+                                       0,
+                                       GOC_EXCEPTION_INVALID,
+                                       0,
+                                       0,
+                                       0};
+            uint32_t mode = (modifiers & 1 ? GOC_ALU_CLAMP : 0) |
+                            (modifiers & 2 ? GOC_ALU_OMOD_2 | GOC_ALU_NEG_B : 0) |
+                            (width == 16 && (modifiers & 4)
+                                 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D
+                                 : 0);
+            for (unsigned sample = 0; sample < 8; ++sample) {
+              uint32_t words[4][2][66], expected[2][66];
+              for (auto &operand : words)
+                for (auto &reg : operand)
+                  std::fill_n(reg, 66, 0xdeadbeefU);
+              uint32_t *p[] = {words[0][0] + 1, words[0][1] + 1};
+              uint32_t *b[] = {words[1][0] + 1, words[1][1] + 1};
+              uint32_t *c[] = {words[2][0] + 1, words[2][1] + 1};
+              uint32_t *d[] = {words[alias + 1][0] + 1, words[alias + 1][1] + 1};
+              for (unsigned lane = 0; lane < lanes; ++lane) {
+                // Inactive lanes would raise invalid, and must not contribute.
+                store(width, p, lane, mode, sample == 3 ? 1 : one);
+                store(width, b, lane, mode, lane == lanes - 1 ? denominators[sample] : 0);
+                store(width, c, lane, mode, lane == lanes - 1 ? numerators[sample] : 0);
+              }
+              std::memcpy(expected, words[alias + 1], sizeof(expected));
+              uint32_t *gold[] = {expected[0] + 1, expected[1] + 1};
+              const uint64_t flags = cpu | exact | GOC_FP_FLUSH_INPUT_DENORMALS;
+              const uint64_t exec_mask = 1ULL << (lanes - 1);
+              auto call = [&](uint32_t *const *dest, uint32_t *state) {
+                return lanes == 32
+                           ? functions[type](flags, uint32_t(exec_mask), mode, dest, p, b, c, state)
+                           : wave64_functions[type](flags, exec_mask, mode, dest, p, b, c, state);
+              };
+              ASSERT_EQ(call(gold, nullptr), GOC_SUCCESS);
+              uint32_t state = 0x80000000U;
+              ASSERT_EQ(call(d, &state), GOC_SUCCESS);
+              EXPECT_EQ(state, 0x80000000U | (mode & GOC_ALU_CLAMP ? 0 : causes[sample]));
+              EXPECT_EQ(std::memcmp(expected, words[alias + 1], sizeof(expected)), 0);
+            }
+          }
+}

@@ -2929,7 +2929,8 @@ int goc_v_div_scale_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_
 // does not flush the provisional quotient. RDNA3 ignores OMOD with preserved
 // output denormals or IEEE mode, while RDNA4 applies it independently.
 // Unsuffixed APIs use RDNA3 TRAPSTS; _rdna4 uses EXCP_FLAG_USER.
-// Exact non-null reporting is unsupported for RDNA3 and for RDNA4 input flushing.
+// Exact non-null reporting is unsupported for RDNA3. RDNA4 input flushing
+// classifies the flushed denominator/numerator and suppresses input-denormal flags.
 // Loose calls leave optional state unchanged.
 // All EXEC masks and whole-register aliases are supported. Results are
 // independent of host FP controls, which are preserved; ordinary instructions

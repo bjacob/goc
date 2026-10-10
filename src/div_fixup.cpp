@@ -17,6 +17,9 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
 
 // Flush only denominator/numerator subnormals, retaining their signs and all
 // provisional-quotient bits. All source reads precede the instruction's stores.
+// rocjitsu's classify_div_fixup applies this same flush before classifying
+// exceptional arithmetic, with input-denormal causes suppressed. Classifying
+// these already-flushed operands implements that rule without a second model.
 template <unsigned Width, bool Rdna3Half>
 [[gnu::noinline]] int run_flushed(uint64_t flags, uint32_t exec_mask, uint32_t mode,
                                   uint32_t *const *d, const uint32_t *const *a,
@@ -57,9 +60,6 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
         uint32_t *excp_flag_user) {
   constexpr uint64_t fp_flags =
       GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE &&
-      (flags & GOC_FP_FLUSH_INPUT_DENORMALS))
-    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (int error =
           goc::validate(flags, mode & ~uint32_t(Width == 16 ? 0x1fff : 0x1ff), true, fp_flags))
     return error;

@@ -162,7 +162,7 @@ TEST(DivFixupArchitecture, ErrorsAndHostEnvironment) {
             std::fill_n(data[1], 64, 0);
             const uint32_t *a[] = {data[0], data[1]};
             uint32_t *d[] = {data[0], data[1]};
-            if (!arch || (guest & 1))
+            if (!arch)
               for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT})
                 for (uint64_t exec_mask : {uint64_t(0), UINT64_MAX}) {
                   ASSERT_EQ(call(arch, wide, op,

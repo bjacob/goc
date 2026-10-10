@@ -188,7 +188,7 @@ TEST(HalfDivFixupArchitecture, ErrorsAndHostEnvironment) {
           std::fill_n(data, 64, 0x3c0007ff);
           const uint32_t *a[] = {data};
           uint32_t *d[] = {data};
-          if (!arch || (guest & 1))
+          if (!arch)
             for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT})
               for (uint64_t exec_mask : {uint64_t(0), UINT64_MAX}) {
                 EXPECT_EQ(
