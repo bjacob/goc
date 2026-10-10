@@ -180,8 +180,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_quadmask_b32` | no direct policy detected | no | 2340 | review required |
 | `s_quadmask_b64` | no direct policy detected | no | 2355 | review required |
 | `s_round_mode` | no direct policy detected | no | 2426 | review required |
-| `s_setreg_b32` | no direct policy detected | no | not found | review required |
-| `s_setreg_imm32_b32` | no direct policy detected | no | not found | review required |
+| `s_setreg_b32` | no direct policy detected | yes | not found | review required |
+| `s_setreg_imm32_b32` | no direct policy detected | yes | not found | review required |
 | `s_sext_i32_i16` | no direct policy detected | no | 2571 | review required |
 | `s_sext_i32_i8` | no direct policy detected | no | 2581 | review required |
 | `s_wqm_b32` | no direct policy detected | no | 2739 | review required |

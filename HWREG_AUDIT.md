@@ -1,7 +1,8 @@
 # Hardware-register implementation audit
 
-This is an implementation checklist, not a coverage-completion claim. None of
-`S_GETREG_B32`, `S_SETREG_B32`, or `S_SETREG_IMM32_B32` has a public GoC API yet.
+This is an implementation checklist, not a coverage-completion claim.
+`S_SETREG_B32` and `S_SETREG_IMM32_B32` now have RDNA4 APIs. RDNA3 writes and
+both architectures' `S_GETREG_B32` APIs remain unimplemented.
 
 Evidence inspected: AMD RDNA3 and RDNA4 ISA manuals, sections 3.4 and 16.2;
 `amdgpu_isa_rdna3.xml` and `amdgpu_isa_rdna4.xml`, `OPR_HWREG`; and rocjitsu
@@ -181,11 +182,48 @@ python3 tests/check_hwreg_capture.py ../goc-build/coverage-work/hwreg-report-cap
 
 ## API and validation gates
 
+### Implemented RDNA4 writes
+
+`goc_s_setreg_b32_rdna4` and `goc_s_setreg_imm32_b32_rdna4` share one decoder.
+The explicit operands are the encoded HWREG selector and scalar/literal source;
+the implicit `STATUS` input is by value. Six trailing nullable outputs represent
+`MODE`, `STATE_PRIV`, `EXCP_FLAG_PRIV`, `EXCP_FLAG_USER`, `TRAP_CTRL` and the
+64-bit `SCRATCH_BASE`. No context struct or per-half scratch output is introduced.
+The selected pointer supplies the old register value and receives a masked
+replacement. Other pointers are not accessed. Cheap updates are performed in
+both semantics; null opts out.
+
+In addition to the two captured user masks above, privileged masks follow the
+RDNA4 manual's named register fields: `STATE_PRIV = 0x00047e07`,
+`EXCP_FLAG_PRIV = 0xc0000fff` and `TRAP_CTRL = 0x000003ff`.
+`STATUS.PRIV` (bit 5) enables these writes.
+These privileged masks have **manual/reference-test
+evidence, not native privileged hardware captures**. The implementation reports
+raw register changes; scheduling, trap delivery and scratch memory are external.
+
+Privileged scratch writes remain unsupported in non-loose semantics when either
+`scratch_base` or `state_priv` is non-null. Loose semantics skip them. The manual
+requires an aligned address, but that alone does not establish a low-bit write
+mask or whether writes affect `STATE_PRIV.SCRATCH_EN`. Do not silently turn the
+alignment requirement into a hardware mask. Unprivileged scratch writes are
+permitted no-ops. The native-width API is in place for the remaining work.
+
+All 20 recognized IDs (including read-only IDs 5/6 and prose-only ID 28) are
+handled. Read-only and privilege-denied writes succeed without touching state.
+Unknown/reserved IDs return `GOC_ERROR_INVALID_FLAGS`, an API validation policy,
+not a claim about how hardware executes an invalid selector. Tests cover all
+64 IDs × 32 offsets × 32 widths in both privilege states, both SETREG spellings,
+unselected/reserved-bit preservation, null outputs, validation and unchanged
+host FP controls. The two user-register paths also match captured hardware
+hashes. GETREG snapshot side effects remain outside this implemented write path.
+
+### Remaining gates
+
 - Preserve one trailing nullable output pointer per architectural register that
   the instruction may write. Do not put writable state in an opaque context
   object. Required instruction results remain required; optional side-output
   fidelity follows the existing loose/exact contract.
-- Input packaging is the outstanding API choice: individual by-value implicit
+- GETREG input packaging is the outstanding API choice: individual by-value implicit
   inputs match the current PLAN, while a named read-only HWREG state struct
   would avoid roughly twenty input parameters. Either must use explicit guest
   values and preserve the architecture-specific layouts above.

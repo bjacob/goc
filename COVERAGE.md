@@ -3222,3 +3222,33 @@ for RDNA4 MIXLO/MIXHI following the new captures.
 - No production APIs changed in this evidence-only checkpoint. Inventory
   remains **806/809**; privileged accesses, other register IDs, snapshot read
   effects, RDNA3 masks, and the public HWREG APIs remain outstanding.
+
+### RDNA4 SETREG native-register APIs
+
+- Added `goc_s_setreg_b32_rdna4` and `goc_s_setreg_imm32_b32_rdna4`. The literal
+  form delegates to the same concrete decoder. Explicit operands remain in
+  assembly order, guest `STATUS` is passed by value, and six native register
+  outputs are separately nullable. `SCRATCH_BASE` uses one `uint64_t *` rather
+  than two half-register pointers. These scalar operations have no EXEC input.
+- MODE and EXCP_FLAG_USER updates match the gfx1201 capture. Privileged
+  STATE_PRIV, EXCP_FLAG_PRIV and TRAP_CTRL masks follow the manual's field
+  definitions; they have reference-test coverage, not privileged GPU captures.
+  Read-only and privilege-denied writes are no-ops. Unknown/reserved IDs return
+  an API validation error. Exception writes perform replacement, allowing clears.
+- Exact privileged scratch reporting remains explicitly unsupported when either
+  `scratch_base` or `state_priv` is requested. Loose mode skips it and null opts
+  out. The manual's alignment requirement does not prove a low-bit hardware
+  write mask or rule out a SCRATCH_EN side effect, so no such rule is guessed.
+- Added hardware hashes for all 20,480 captured write cases, a bit-by-bit reference
+  covering all 64 IDs × 32 offsets × 32 widths and both privilege states for
+  both spellings, and null/error/host-environment tests. Existing arithmetic and
+  SIMD implementations are unchanged; no existing fast path is rerouted.
+- Canonical API presence is now **808/809**, but the two new names have only
+  RDNA4 variants. RDNA3 SETREG, both GETREG APIs, snapshot side effects and exact
+  scratch writes remain outstanding. Refreshed audits show 674 exception-output
+  signatures, 388 resolved names matching, zero mismatches and 286 still pending.
+- Clang 21 and GCC 15 Release each pass **1,037/1,037** tests; targeted Clang
+  ASan/UBSan passes **19/19** HWREG, guest-mode and instruction-flag tests.
+  Final logs: `/tmp/goc-hwreg-final-{clang,gcc,san}-tests.log`. The raw capture
+  checker also continues to pass. No performance claim is inferred from these
+  correctness tests.

@@ -29,6 +29,16 @@
 
 namespace {
 
+// HWREG writes have an encoded register selector before their scalar source.
+void check_high_flags(const char *name, decltype(&goc_s_setreg_b32_rdna4) instruction) {
+  SCOPED_TRACE(name);
+  for (unsigned bit = 32; bit < 64; ++bit)
+    EXPECT_EQ(
+        instruction(0, 1ULL << bit, 1, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr),
+        GOC_ERROR_INVALID_FLAGS)
+        << bit;
+}
+
 // State-only scalar instructions have an immediate before the optional output.
 void check_high_flags(const char *name,
                       int (*instruction)(uint64_t, uint64_t, uint16_t, uint32_t *)) {

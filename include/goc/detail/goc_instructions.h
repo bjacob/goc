@@ -295,6 +295,30 @@ int goc_s_wqm_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint3
 int goc_s_wqm_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
                   uint32_t *scc);
 
+// RDNA4 S_SETREG: hwreg encodes ID[5:0], offset[10:6], width-minus-one[15:11].
+// Supports loose and exact semantics. instruction_flags must be zero. STATUS.PRIV
+// (bit 5) controls privileged writes. Each nullable output holds the old native
+// register and receives its masked replacement; only the selected register is
+// accessed. Distinct non-null outputs must not overlap. SCRATCH_BASE is one
+// 64-bit register, selected by IDs 20/21. Privileged scratch writes are currently
+// unsupported: non-loose semantics with scratch_base or state_priv non-NULL
+// return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE before other validation; loose mode
+// skips these writes. Unprivileged scratch writes remain no-ops.
+// Read-only IDs and privilege-denied fields are no-ops. Unknown/reserved IDs
+// return GOC_ERROR_INVALID_FLAGS. Unselected and reserved bits are preserved.
+// Exception-register writes replace bits (and can clear them), rather than OR.
+// Guest MODE writes never change host FP controls. These functions update raw
+// register state; scheduling, trap delivery and scratch memory remain external.
+int goc_s_setreg_b32_rdna4(uint64_t flags, uint64_t instruction_flags, uint16_t hwreg, uint32_t a,
+                           uint32_t status, uint32_t *mode, uint32_t *state_priv,
+                           uint32_t *excp_flag_priv, uint32_t *excp_flag_user, uint32_t *trap_ctrl,
+                           uint64_t *scratch_base);
+int goc_s_setreg_imm32_b32_rdna4(uint64_t flags, uint64_t instruction_flags, uint16_t hwreg,
+                                 uint32_t immediate, uint32_t status, uint32_t *mode,
+                                 uint32_t *state_priv, uint32_t *excp_flag_priv,
+                                 uint32_t *excp_flag_user, uint32_t *trap_ctrl,
+                                 uint64_t *scratch_base);
+
 // Set guest MODE rounding bits [3:0] or denormal bits [7:4] to immediate[3:0].
 // Higher immediate bits are ignored and every other MODE bit is preserved.
 // mode is an optional read/write architectural register pointer; NULL opts out.
