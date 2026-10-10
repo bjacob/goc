@@ -3,6 +3,7 @@
 #include "dot.h"
 #include "dpp.h"
 #include "float_formats.h"
+#include "gfx11_dot2.h"
 #include "goc/goc.h"
 #include "internal.h"
 #include "simd.h"
@@ -13,14 +14,14 @@
 
 namespace {
 
-template <bool Bf16>
+template <bool Bf16, bool Rdna4>
 int dot(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return goc::execute_dpp(flags, exec_mask, instruction_flags, a,
                             [&](uint32_t exec_mask, const uint32_t *const *source) {
-                              return dot<Bf16>(flags, exec_mask, uint32_t(instruction_flags), d,
-                                               source, b, c);
+                              return dot<Bf16, Rdna4>(flags, exec_mask, uint32_t(instruction_flags),
+                                                      d, source, b, c);
                             });
   // Bits 0..4: negation; bit 6: CLAMP; bits 7..10: half selection.
   if (int error = goc::validate(flags, instruction_flags & ~0x7dfU, true))
@@ -54,9 +55,12 @@ int dot(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t
     if (instruction_flags & GOC_DOT_NEG_HI_B)
       right[1] ^= 0x8000;
     uint32_t acc_bits = c[0][lane] ^ (instruction_flags & GOC_DOT_NEG_C ? 0x80000000 : 0);
-    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
-      result[lane] = goc::gfx12_dot_bits<Bf16, 2>(left, right, acc_bits);
-    else {
+    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
+      if constexpr (Rdna4)
+        result[lane] = goc::gfx12_dot_bits<Bf16, 2>(left, right, acc_bits);
+      else
+        result[lane] = goc::gfx11_dot2_f32<Bf16>(left[0], right[0], left[1], right[1], acc_bits);
+    } else {
       float acc = goc::as_float(acc_bits);
       for (int j = 0; j < 2; ++j) {
         float x = Bf16 ? goc::bf16_to_float(left[j]) : goc::f16_to_float(left[j]);
@@ -77,18 +81,37 @@ int dot(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t
 
 // RX 9070 DOT2 does not generate EXCP_FLAG_USER updates, including NaNs,
 // denormals and overflow. Reporting leaves the register unchanged.
+int goc_v_dot2_f32_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return dot<false, true>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_dot2_f32_bf16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return dot<true, true>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
 int goc_v_dot2_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+  // GFX11 result bits are characterized; its exception-register updates are not.
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return dot<false>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return dot<false, false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
 int goc_v_dot2_f32_bf16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+  // GFX11 result bits are characterized; its exception-register updates are not.
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return dot<true>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return dot<true, false>(flags, exec_mask, instruction_flags, d, a, b, c);
 }

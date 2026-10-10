@@ -105,7 +105,8 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : {"v_dot2_f16_f16", "v_dot2_bf16_bf16"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
-  for (auto mnemonic : {"v_dot2_f32_f16", "v_dot2_f32_bf16"})
+  for (auto mnemonic :
+       {"v_dot2_f32_f16", "v_dot2_f32_bf16", "v_dot2_f32_f16_rdna4", "v_dot2_f32_bf16_rdna4"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : {"v_sat_pk_u8_i16", "v_pack_b32_f16"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;

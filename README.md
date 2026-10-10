@@ -250,8 +250,9 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_dot4_i32_iu8`, `v_dot4_u32_u8` | Scalar, x86-64-v3 | Same integer result |
 | `v_dot8_i32_iu4`, `v_dot8_u32_u4` | Scalar, x86-64-v3 | Same integer result |
 | `v_dot2_f16_f16`, `v_dot2_bf16_bf16` | Scalar, x86-64-v3 | Not implemented |
-| `v_dot2_f32_f16` | Scalar, x86-64-v3 | Integer arithmetic model |
-| `v_dot2_f32_bf16` | Scalar, x86-64-v3 | Integer arithmetic model |
+| `v_dot2_f32_f16`, `v_dot2_f32_bf16` (RDNA3) | Scalar, x86-64-v3 | Borrowed GFX11 DOT2 model; reporting unsupported |
+| `v_dot2_f32_f16_rdna4` | Scalar, x86-64-v3 | Integer arithmetic model |
+| `v_dot2_f32_bf16_rdna4` | Scalar, x86-64-v3 | Integer arithmetic model |
 | `v_wmma_f32_16x16x16_f16` (RDNA3) | Scalar, Wave32/Wave64 | Borrowed GFX11 DOT2 model |
 | `v_wmma_f32_16x16x16_bf16` (RDNA3) | Scalar, Wave32/Wave64 | Borrowed GFX11 DOT2 model |
 | `v_wmma_f16_16x16x16_f16`, `v_wmma_bf16_16x16x16_bf16` (RDNA3) | Scalar, Wave32/Wave64 | Borrowed GFX11 DOT2 model |
@@ -332,7 +333,16 @@ byte pairs for every format combination, modifier combination and CPU level.
 Strict exact requests are rejected. Each combination has unmodified and
 ABS_C/NEG_C benchmark rows, labeled with its full `v_dot4_f32_*` mnemonic.
 
-The FP32-result `v_dot2_f32_f16` and `v_dot2_f32_bf16` forms also support
+The unsuffixed FP32-result `v_dot2_f32_f16` and `v_dot2_f32_bf16` APIs use
+RDNA3's empirical GFX11 accumulation, borrowed from rocjitsu. Their sign and half
+selectors, masking, aliases, and DPP routing share the RDNA4 implementation;
+loose SIMD execution is shared as well. Exact RDNA3 results are tested against
+103 GFX1100 captures. RDNA3 exception reporting is not yet characterized:
+non-null `excp_flag_user` is rejected in exact mode, while loose mode leaves it
+unchanged. RDNA4 APIs now carry `_rdna4`, because equal operands can produce
+different result bits even for small finite values.
+
+The FP32-result `v_dot2_f32_f16_rdna4` and `v_dot2_f32_bf16_rdna4` forms also support
 DPP8/DPP16 in loose and borrowed exact semantics. A's packed word is permuted
 before sign/half selection, while B and C stay in their original lanes.
 Tests cover every modifier combination, masks, aliases and guards, plus

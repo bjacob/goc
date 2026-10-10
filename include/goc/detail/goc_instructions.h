@@ -2878,6 +2878,19 @@ static const uint32_t GOC_DOT_HI_B_LOW = 1U << 10;
 // C/D each hold one FP32 value per lane. Loose and exact modes are supported.
 // Supports all floating DOT2 sign/half-selection flags. GOC_DOT_CLAMP is
 // accepted but has no effect on these floating DOT2 forms (as in rocjitsu).
+int goc_v_dot2_f32_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_dot2_f32_bf16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint32_t *excp_flag_user);
+
+// RDNA3 DOT2 has the same register layout, sign/half selection and ignored
+// CLAMP, but different empirical accumulation. Exact result bits are supported;
+// exact requests with non-null excp_flag_user return UNSUPPORTED_GLOBAL_STATE.
+// Loose semantics share the RDNA4 SIMD path and leave optional state unchanged.
 int goc_v_dot2_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c, uint32_t *excp_flag_user);

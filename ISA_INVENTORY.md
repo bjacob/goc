@@ -1120,8 +1120,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_div_scale_f64` | yes | yes | in | `goc_v_div_scale_f64` | API present; semantic audit pending |
 | `v_dot2_bf16_bf16` | yes | yes | in | `goc_v_dot2_bf16_bf16` | API present; semantic audit pending |
 | `v_dot2_f16_f16` | yes | yes | in | `goc_v_dot2_f16_f16` | API present; semantic audit pending |
-| `v_dot2_f32_bf16` | yes | yes | in | `goc_v_dot2_f32_bf16` | API present; semantic audit pending |
-| `v_dot2_f32_f16` | yes | yes | in | `goc_v_dot2_f32_f16` | API present; semantic audit pending |
+| `v_dot2_f32_bf16` | yes | yes | in | `goc_v_dot2_f32_bf16`<br>`goc_v_dot2_f32_bf16_rdna4` | API present; semantic audit pending |
+| `v_dot2_f32_f16` | yes | yes | in | `goc_v_dot2_f32_f16`<br>`goc_v_dot2_f32_f16_rdna4` | API present; semantic audit pending |
 | `v_dot2acc_f32_f16` | yes | — | in | — | missing API |
 | `v_dot4_f32_bf8_bf8` | — | yes | in | `goc_v_dot4_f32_bf8_bf8` | API present; semantic audit pending |
 | `v_dot4_f32_bf8_fp8` | — | yes | in | `goc_v_dot4_f32_bf8_fp8` | API present; semantic audit pending |

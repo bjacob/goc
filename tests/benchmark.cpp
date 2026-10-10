@@ -5877,8 +5877,8 @@ bool benchmark_dot2(uint64_t cpu, int iterations, int min_ms) {
             dot = 0;
           r.expected[128 * (lane / 16) + lane % 16] = bits(float(dot + c));
         }
-        Ternary fn = bf16 ? goc_v_dot2_f32_bf16 : goc_v_dot2_f32_f16;
-        const char *name = bf16 ? "v_dot2_f32_bf16" : "v_dot2_f32_f16";
+        Ternary fn = bf16 ? goc_v_dot2_f32_bf16_rdna4 : goc_v_dot2_f32_f16_rdna4;
+        const char *name = bf16 ? "v_dot2_f32_bf16_rdna4" : "v_dot2_f32_f16_rdna4";
         const char *mode = modifiers == 0                  ? "none"
                            : modifiers == GOC_DOT_NEG_LO_A ? "NEG_LO_A"
                                                            : "select/NEG_HI_B";

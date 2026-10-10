@@ -286,8 +286,8 @@ const Case cases[] = {
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
     {unary<goc_v_rndne_f32>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
-    {goc_v_dot2_f32_f16, true, 0x7df},
-    {goc_v_dot2_f32_bf16, true, 0x7df},
+    {goc_v_dot2_f32_f16_rdna4, true, 0x7df},
+    {goc_v_dot2_f32_bf16_rdna4, true, 0x7df},
 };
 
 } // namespace

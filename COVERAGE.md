@@ -49,7 +49,7 @@ paths must retain their existing performance and may skip optional state outputs
 |---|---|---|
 | RDNA3 WMMA | All six mnemonics, both widths, exact rocjitsu GFX11 model; `wmma_replicated_exact_test.cpp`; 103 DOT2 captures and 28 packed matrices | Scalar implementations; verify inventory integration as other APIs evolve |
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
-| DOT2 and DOT2ACC | GFX11 integer model now available in `gfx11_dot2.h` | Split differing shared mnemonics; add accumulator/dual forms; borrow captures; review reporting |
+| DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | Add accumulator/dual forms; RDNA3 reporting uncharacterized; Wave64 |
 | Floating min/max/median | Existing RDNA4 NUM forms | RDNA3 names and NaN/zero policies, signaling NaNs, all widths and packed forms |
 | Scalar integer arithmetic | Existing RDNA4 CO forms and captured SCC tests | RDNA3 names, immediate comparisons/add, all carry/borrow/overflow contracts |
 | Scalar/register moves | Incomplete API inventory | Moves, conditional moves, immediate and relative addressing, saveexec/wrexec |
@@ -63,3 +63,14 @@ paths must retain their existing performance and may skip optional state outputs
 
 Keep this checklist conservative: unchecked review work is not made complete by
 a green test suite that exercises only the current implementation.
+
+## Validated increments
+
+- DOT2 architectural split: all 677 tests pass in Clang 21 and GCC 15 Release
+  builds; all 10 DOT2 tests pass under Clang ASan/UBSan. The new API tests cover
+  GFX1100 result captures, all sign/half selectors with DPP8/DPP16, EXEC masks,
+  aliases and guards, all host rounding modes, and an explicit RDNA3/RDNA4
+  result difference. RDNA3 optional exact exception reporting remains unsupported.
+  Existing RDNA4 tests and benchmark rows now use the suffixed names. The loose
+  SIMD kernel and its dispatch conditions are unchanged; no performance gain is
+  claimed for this increment.

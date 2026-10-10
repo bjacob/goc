@@ -188,8 +188,8 @@ TEST(Dot, PublicApiHardwareFixturesMaskAndOverlap) {
           EXPECT_EQ(r.v[dst][lane], lane % 2 ? f.expected : old[lane]);
       }
   };
-  check(kGfx12DotF16Cases, goc_v_dot2_f32_f16);
-  check(kGfx12DotBF16Cases, goc_v_dot2_f32_bf16);
+  check(kGfx12DotF16Cases, goc_v_dot2_f32_f16_rdna4);
+  check(kGfx12DotBF16Cases, goc_v_dot2_f32_bf16_rdna4);
 }
 
 TEST(Wmma, AllModifierCombinations) {
@@ -296,7 +296,7 @@ TEST(Dot, LooseAndFallbackIntegerGolden) {
         r.v[1][lane] = b;
         r.v[2][lane] = 0xbf800000;
       }
-      auto fn = bf16 ? goc_v_dot2_f32_bf16 : goc_v_dot2_f32_f16;
+      auto fn = bf16 ? goc_v_dot2_f32_bf16_rdna4 : goc_v_dot2_f32_f16_rdna4;
       ASSERT_EQ(fn(semantics, UINT32_MAX, 0, r.v + 2, r.v, r.v + 1, r.v + 2, nullptr), 0);
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(r.v[2][lane], 0x41200000u); // 1*3+2*4-1=10

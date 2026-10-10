@@ -54,7 +54,7 @@ foreach(declaration IN LISTS goc_reporting_declarations)
      symbol MATCHES "^goc_(s_cmp|v_cmpx?)_[a-z]+_f(16|32|64)$" OR
      symbol MATCHES "^goc_v_(fma|fmac|fmamk|fmaak|pk_fma|pk_fmac)_f16$" OR
      symbol MATCHES "^goc_v_(sin|cos)_f(16|32)$" OR
-     symbol MATCHES "^goc_v_dot2_f32_(f16|bf16)$" OR
+     symbol MATCHES "^goc_v_dot2_f32_(f16|bf16)_rdna4$" OR
      symbol MATCHES "^goc_v_fma_mix(lo|hi)_f16$" OR
      symbol MATCHES "^goc_v_div_fmas_f(32|64)$" OR
      symbol MATCHES "^goc_v_div_fixup_f(16|32|64)$" OR
@@ -65,7 +65,7 @@ foreach(declaration IN LISTS goc_reporting_declarations)
 endforeach()
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/reporting_symbols.inc" "${goc_reporting_list}")
 
-foreach(test IN ITEMS move wmma_replicated wmma_replicated_exact fma_rounding_exceptions trig_exceptions arithmetic_exceptions compare_exceptions exception_registers dpp_half_unary dpp_half_fma dpp_half_minmax dpp_half_binary dpp_integer16_ternary dpp_integer16 dpp_boolean16 dpp_integer_mad dpp_integer_mul dpp_integer_add dpp_bitfield dpp_integer_ternary dpp_integer_minmax dpp_integer dpp_unary fp64_output output_scaling dpp_arithmetic dpp16 dpp8 instruction_flags permlane scalar_pack scalar_compare scalar_convert scalar_round scalar_fma scalar_fp scalar_field scalar_bits scalar_integer rcp_iflag pseudo_scalar float_compare integer_compare class interp16 interp32 cndmask trig_preop mullit pack swmmac_integer swmmac8 swmmac16 mad64 carry div_fmas div_scale div_fixup cube fp8_narrow byte_pack integer_conversion normalized packed_conversion fp8_conversion byte_conversion conversion16 conversion64 conversion32 mixed_fma bit_count boolean bitfield integer_ternary sad shift half_trig trig integer_mad integer16_ternary integer16 packed_mad packed_integer packed_binary packed_fma literal_fma fmac half_fma half_minmax half_exponent half_unary half_binary integer_add integer_mul integer_minmax ldexp frexp_exp fp64_unary fp64 minmax binary half_dot fp8_dot dot2 integer_dot arithmetic unary exec_mask cpu wmma packed_wmma subbyte_wmma)
+foreach(test IN ITEMS dot2_architecture move wmma_replicated wmma_replicated_exact fma_rounding_exceptions trig_exceptions arithmetic_exceptions compare_exceptions exception_registers dpp_half_unary dpp_half_fma dpp_half_minmax dpp_half_binary dpp_integer16_ternary dpp_integer16 dpp_boolean16 dpp_integer_mad dpp_integer_mul dpp_integer_add dpp_bitfield dpp_integer_ternary dpp_integer_minmax dpp_integer dpp_unary fp64_output output_scaling dpp_arithmetic dpp16 dpp8 instruction_flags permlane scalar_pack scalar_compare scalar_convert scalar_round scalar_fma scalar_fp scalar_field scalar_bits scalar_integer rcp_iflag pseudo_scalar float_compare integer_compare class interp16 interp32 cndmask trig_preop mullit pack swmmac_integer swmmac8 swmmac16 mad64 carry div_fmas div_scale div_fixup cube fp8_narrow byte_pack integer_conversion normalized packed_conversion fp8_conversion byte_conversion conversion16 conversion64 conversion32 mixed_fma bit_count boolean bitfield integer_ternary sad shift half_trig trig integer_mad integer16_ternary integer16 packed_mad packed_integer packed_binary packed_fma literal_fma fmac half_fma half_minmax half_exponent half_unary half_binary integer_add integer_mul integer_minmax ldexp frexp_exp fp64_unary fp64 minmax binary half_dot fp8_dot dot2 integer_dot arithmetic unary exec_mask cpu wmma packed_wmma subbyte_wmma)
   set(target "goc_${test}_test")
   add_executable(${target} "${test}_test.cpp")
   if(test STREQUAL "arithmetic")

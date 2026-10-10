@@ -20,7 +20,7 @@ TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
   const int values[] = {-2, -1, 1, 2};
   for (bool brain : {false, true}) {
     const auto *codes = brain ? bf16 : f16;
-    auto fn = brain ? goc_v_dot2_f32_bf16 : goc_v_dot2_f32_f16;
+    auto fn = brain ? goc_v_dot2_f32_bf16_rdna4 : goc_v_dot2_f32_f16_rdna4;
     for (uint32_t selection = 0; selection < 16; ++selection)
       for (uint32_t negate = 0; negate < 32; ++negate)
         for (uint32_t clamp : {0U, GOC_DOT_CLAMP}) {
@@ -108,8 +108,8 @@ TEST(Dot2, ExactModifiersRecoverHardwareGoldens) {
             EXPECT_EQ(word, f.expected);
         }
   };
-  check(kGfx12DotF16Cases, goc_v_dot2_f32_f16);
-  check(kGfx12DotBF16Cases, goc_v_dot2_f32_bf16);
+  check(kGfx12DotF16Cases, goc_v_dot2_f32_f16_rdna4);
+  check(kGfx12DotBF16Cases, goc_v_dot2_f32_bf16_rdna4);
 }
 
 TEST(Dot2, SimdSpecialValuesAndEveryExecMask) {
@@ -122,7 +122,7 @@ TEST(Dot2, SimdSpecialValuesAndEveryExecMask) {
          {0U, GOC_DOT_NEG_C | GOC_DOT_NEG_LO_A | GOC_DOT_LO_B_HIGH | GOC_DOT_HI_A_LOW})
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (uint32_t exec_mask : exec_masks()) {
-          auto fn = brain ? goc_v_dot2_f32_bf16 : goc_v_dot2_f32_f16;
+          auto fn = brain ? goc_v_dot2_f32_bf16_rdna4 : goc_v_dot2_f32_f16_rdna4;
           uint32_t a[32], b[32], c[32], ref[32], d[32];
           for (int i = 0; i < 32; ++i) {
             a[i] = (brain ? abf : a16)[i % 6];
@@ -197,7 +197,7 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
                 const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[1] + 1},
                                *c[] = {storage[2] + 1};
                 uint32_t *d[] = {storage[alias] + 1};
-                auto fn = brain ? goc_v_dot2_f32_bf16 : goc_v_dot2_f32_f16;
+                auto fn = brain ? goc_v_dot2_f32_bf16_rdna4 : goc_v_dot2_f32_f16_rdna4;
                 uint32_t exceptions = 0x80000055;
                 ASSERT_EQ(fn(cpu | semantics, exec_mask, mode, d, a, b, c, &exceptions),
                           GOC_SUCCESS);
@@ -211,7 +211,7 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
 }
 
 TEST(Dot2, DppValidation) {
-  for (auto fn : {goc_v_dot2_f32_f16, goc_v_dot2_f32_bf16})
+  for (auto fn : {goc_v_dot2_f32_f16_rdna4, goc_v_dot2_f32_bf16_rdna4})
     for (auto descriptor : goc_test::dpp_modes) {
       EXPECT_EQ(fn(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
       for (auto invalid : {1ULL << 36, 1ULL << 5})
@@ -247,7 +247,7 @@ TEST(Dot2, DppHardwareCorpus) {
               }
               const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
               uint32_t *d[] = {output};
-              auto fn = brain ? goc_v_dot2_f32_bf16 : goc_v_dot2_f32_f16;
+              auto fn = brain ? goc_v_dot2_f32_bf16_rdna4 : goc_v_dot2_f32_f16_rdna4;
               ASSERT_EQ(fn(cpu | semantics, exec_mask, descriptor | mode, d, a, b, c, nullptr),
                         GOC_SUCCESS);
               for (auto word : output) {
@@ -287,7 +287,7 @@ TEST(Dot2, NoExceptionHardwareCorpora) {
                                infinity | 1,
                                0x8000 | infinity | (1U << (fraction - 1)) | 3,
                                2U << fraction};
-    auto fn = brain ? goc_v_dot2_f32_bf16 : goc_v_dot2_f32_f16;
+    auto fn = brain ? goc_v_dot2_f32_bf16_rdna4 : goc_v_dot2_f32_f16_rdna4;
     for (unsigned variant = 0; variant < 32; ++variant) {
       uint32_t mode =
           (variant & 1 ? GOC_DOT_NEG_LO_A | GOC_DOT_NEG_C : 0) |
