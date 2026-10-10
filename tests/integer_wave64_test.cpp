@@ -160,8 +160,11 @@ TEST(IntegerWave64, SelectionAndTernaryValidation) {
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr,
                  nullptr, nullptr),
               GOC_SUCCESS);
-    for (unsigned bit = 0; bit < 32; ++bit)
+    for (unsigned bit = 0; bit < 32; ++bit) {
+      if (op < 14 && (1ULL << bit) == GOC_ALU_CLAMP)
+        continue;
       EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << bit, nullptr, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
+    }
   }
 }

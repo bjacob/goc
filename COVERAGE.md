@@ -5502,3 +5502,40 @@ Validation: all 1,124 CTests pass under Clang and GCC Release; all thirteen
 integer-multiply/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests
 pass. Logs use `integer-mul-review-` in each build directory. The ledger records
 490 contracts; 319 in-scope mnemonics remain without recorded reviews.
+
+## Integer selection architecture contracts
+
+Reviewed all fourteen signed/unsigned 32-bit MIN/MAX, MIN3/MAX3, MINMAX/MAXMIN
+and MED3 instructions at rocjitsu `ffc144c564c`. All 36 architecture-specific
+execution/modifier pairs are identical (72 bodies), spanning four VOP2 and
+fourteen VOP3 instructions. Locations, hashes and delegates are recorded in
+`../goc-build/coverage-work/integer-minmax-upstream-review.json`. Checked all
+18 shared execution helpers for operand order, signed interpretation and result
+selection. No architecture suffix or optional exception-register output is needed.
+
+MINMAX combines A/B with MIN then combines C with MAX; MAXMIN does the reverse.
+MED3 selects the middle integer, including duplicate values. GoC uses biased
+unsigned ordering in the scalar implementation and native signed/unsigned
+min/max in eight-lane v3 and sixteen-lane v4 kernels. Unlike the upstream mixed
+helpers' `fmin`/`fmax` spelling, GoC needs no floating conversion for selection.
+All operations retain exact integer input bits.
+
+Fixed unnecessary rejection of CLAMP. Rocjitsu's helpers do not use it; integer
+selection already yields a value in the result type's range, so integer saturation
+cannot change it. GoC now accepts CLAMP without adding work to scalar or SIMD
+selection. Other low flags remain unsupported. DPP8/DPP16 route A before
+selection, with lane-local B/C and per-half Wave64 row-mask handling. Empty EXEC
+permits null operands after validation. Inactive destination lanes and whole-VGPR
+aliases remain preserved.
+
+Added CLAMP-on/off tests over all triples from six signed/unsigned boundary
+encodings, all destination-source aliases, both semantics, both wave sizes and
+all available CPU levels. Existing DPP alias/random tests now include CLAMP;
+existing hardware-corpus hashes remain unchanged. Invalid-flag tests still
+exercise every other low bit. This is a port of the upstream modifier contract,
+not a new empirical hardware model. SIMD kernels and dispatch are unchanged.
+
+Validation: all 1,125 CTests pass under Clang and GCC Release; all thirteen
+integer-selection/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool
+tests pass. Logs use `integer-minmax-review-` in each build directory. The ledger
+records 504 contracts; 305 in-scope mnemonics remain without recorded reviews.

@@ -831,5 +831,26 @@
       "v_mul_lo_u32",
       "v_mul_u32_u24"
     ]
+  },
+  {
+    "heading": "Integer selection architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/integer_minmax_test.cpp",
+    "mnemonics": [
+      "v_max3_i32",
+      "v_max3_u32",
+      "v_max_i32",
+      "v_max_u32",
+      "v_maxmin_i32",
+      "v_maxmin_u32",
+      "v_med3_i32",
+      "v_med3_u32",
+      "v_min3_i32",
+      "v_min3_u32",
+      "v_min_i32",
+      "v_min_u32",
+      "v_minmax_i32",
+      "v_minmax_u32"
+    ]
   }
 ]

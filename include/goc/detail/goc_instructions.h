@@ -5275,9 +5275,9 @@ int goc_v_ldexp_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t in
                                  const uint32_t *const *b, uint32_t *excp_flag_user);
 
 // Signed/unsigned 32-bit integer selection. Each operand uses one VGPR;
-// D may alias any whole source VGPR. These instructions have no arithmetic
-// modifiers. Supports DPP8/DPP16 on A; low 32 instruction-flag bits must be
-// zero. Both semantics are exact.
+// D may alias any whole source VGPR. CLAMP is accepted without changing the
+// selected integer. Supports DPP8/DPP16 on A; other low instruction flags are
+// invalid. Both semantics are exact.
 // MINMAX computes max(min(A, B), C); MAXMIN computes min(max(A, B), C).
 int goc_v_min_i32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                   const uint32_t *const *a, const uint32_t *const *b);

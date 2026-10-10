@@ -53,10 +53,11 @@ TEST(DppIntegerMinmax, MasksAliasesAndRandomWords) {
   const unsigned layouts[][3] = {{0, 1, 2}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 14; ++op)
-      for (uint64_t mode : goc_test::dpp_modes)
+      for (uint64_t descriptor : goc_test::dpp_modes)
         for (uint32_t exec_mask : exec_masks())
           for (const auto &layout : layouts)
             for (unsigned dest = 0; dest < 4; ++dest) {
+              uint64_t mode = descriptor | GOC_ALU_CLAMP;
               SCOPED_TRACE(::testing::Message()
                            << cpu << '/' << op << '/' << mode << '/' << exec_mask << '/' << dest);
               uint32_t words[4][34], before[4][34];

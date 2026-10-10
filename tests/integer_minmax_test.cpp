@@ -104,8 +104,11 @@ TEST(IntegerMinmax, ValidationAndFpEnvironment) {
       std::fill(output, output + 32, 0xdeadbeef);
       auto a = input, d = output;
       for (uint32_t exec_mask : {0U, UINT32_MAX}) {
-        for (int bit = 0; bit < 32; ++bit)
+        for (int bit = 0; bit < 32; ++bit) {
+          if ((1U << bit) == GOC_ALU_CLAMP)
+            continue;
           EXPECT_EQ(fn(cpu, exec_mask, 1U << bit, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
+        }
         EXPECT_EQ(fn(cpu | (1ULL << 63), exec_mask, 0, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &d, &a, &a, &a),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
@@ -147,4 +150,44 @@ TEST(IntegerMinmax, EverySingleLaneAndComplementWithAlias) {
           for (unsigned lane = 0; lane < 32; ++lane)
             EXPECT_EQ(words[1][lane], expected[lane]);
         }
+}
+
+TEST(IntegerMinmax, ClampPreservesIntegerSelection) {
+  const uint32_t values[] = {0, 1, 0x7fffffff, 0x80000000, 0x80000001, UINT32_MAX};
+  for (unsigned op = 0; op < 14; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (unsigned start = 0; start < 216; start += 64)
+          for (unsigned alias = 0; alias < 3; ++alias) {
+            uint32_t initial[3][64], words[3][64], expected[64];
+            const uint64_t exec_mask = 0x87654321fedcba98ULL;
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              unsigned index = (start + lane) % 216;
+              for (unsigned operand = 0; operand < 3; ++operand) {
+                initial[operand][lane] = values[index % 6];
+                index /= 6;
+              }
+              expected[lane] = (exec_mask >> lane) & 1
+                                   ? goc_test::integer_minmax_reference(
+                                         op, initial[0][lane], initial[1][lane], initial[2][lane])
+                                   : initial[alias][lane];
+            }
+            const uint32_t *a = words[0], *b = words[1], *c = words[2];
+            uint32_t *d = words[alias];
+            uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+            for (uint64_t mode : {uint64_t(0), uint64_t(GOC_ALU_CLAMP)}) {
+              std::memcpy(words, initial, sizeof words);
+              ASSERT_EQ(goc_test::integer_minmax_functions[op](flags, uint32_t(exec_mask), mode, &d,
+                                                               &a, &b, &c),
+                        GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 32; ++lane)
+                EXPECT_EQ(d[lane], expected[lane]);
+              std::memcpy(words, initial, sizeof words);
+              ASSERT_EQ(goc_test::integer_minmax_wave64_functions[op](flags, exec_mask, mode, &d,
+                                                                      &a, &b, &c),
+                        GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 64; ++lane)
+                EXPECT_EQ(d[lane], expected[lane]);
+            }
+          }
 }

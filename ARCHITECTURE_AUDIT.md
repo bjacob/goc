@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-490 in-scope mnemonics have explicit contract-review records in
+504 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 319 in-scope mnemonics need a recorded review.
+The remaining 305 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -523,31 +523,31 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_mad_u32_u16` | SIMD macro, output helper | no | 13881 | review required |
 | `v_mad_u32_u24` | SIMD macro, output helper | no | 13900 | review required |
 | `v_max3_i16` | SIMD macro, output helper | no | 14179 | review required |
-| `v_max3_i32` | SIMD macro, output helper | no | 14203 | review required |
+| `v_max3_i32` | SIMD macro, output helper | no | 14203 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_max3_u16` | SIMD macro, output helper | no | 14271 | review required |
-| `v_max3_u32` | SIMD macro, output helper | no | 14292 | review required |
+| `v_max3_u32` | SIMD macro, output helper | no | 14292 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_max_i16` | SIMD macro, output helper | no | 14505, 14524 | review required |
-| `v_max_i32` | SIMD macro, output helper | no | 14543, 14557 | review required |
+| `v_max_i32` | SIMD macro, output helper | no | 14543, 14557 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_max_u16` | SIMD macro, output helper | no | 14693, 14709 | review required |
-| `v_max_u32` | SIMD macro, output helper | no | 14725, 14739 | review required |
-| `v_maxmin_i32` | output helper | no | 15019 | review required |
-| `v_maxmin_u32` | output helper | no | 15085 | review required |
+| `v_max_u32` | SIMD macro, output helper | no | 14725, 14739 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
+| `v_maxmin_i32` | output helper | no | 15019 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
+| `v_maxmin_u32` | output helper | no | 15085 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_mbcnt_hi_u32_b32` | output helper | no | 15099 | review required |
 | `v_mbcnt_lo_u32_b32` | output helper | no | 15115 | review required |
 | `v_med3_i16` | SIMD macro, output helper | no | 15251 | review required |
-| `v_med3_i32` | SIMD macro, output helper | no | 15277 | review required |
+| `v_med3_i32` | SIMD macro, output helper | no | 15277 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_med3_u16` | SIMD macro, output helper | no | 15346 | review required |
-| `v_med3_u32` | SIMD macro, output helper | no | 15369 | review required |
+| `v_med3_u32` | SIMD macro, output helper | no | 15369 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_min3_i16` | SIMD macro, output helper | no | 15503 | review required |
-| `v_min3_i32` | SIMD macro, output helper | no | 15527 | review required |
+| `v_min3_i32` | SIMD macro, output helper | no | 15527 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_min3_u16` | SIMD macro, output helper | no | 15595 | review required |
-| `v_min3_u32` | SIMD macro, output helper | no | 15616 | review required |
+| `v_min3_u32` | SIMD macro, output helper | no | 15616 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_min_i16` | SIMD macro, output helper | no | 15829, 15848 | review required |
-| `v_min_i32` | SIMD macro, output helper | no | 15867, 15881 | review required |
+| `v_min_i32` | SIMD macro, output helper | no | 15867, 15881 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_min_u16` | SIMD macro, output helper | no | 16017, 16033 | review required |
-| `v_min_u32` | SIMD macro, output helper | no | 16049, 16063 | review required |
-| `v_minmax_i32` | output helper | no | 16343 | review required |
-| `v_minmax_u32` | output helper | no | 16409 | review required |
+| `v_min_u32` | SIMD macro, output helper | no | 16049, 16063 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
+| `v_minmax_i32` | output helper | no | 16343 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
+| `v_minmax_u32` | output helper | no | 16409 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_mov_b16` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
 | `v_mov_b32` | SIMD macro, output helper | no | 16423, 16435 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
 | `v_movreld_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
