@@ -569,7 +569,7 @@ TEST(Cube, ArchitectureIeeeDenormalAndNanPolicies) {
       for (unsigned arch = 0; arch < 2; ++arch)
         for (unsigned op = 0; op < 4; ++op)
           for (unsigned width : {32U, 64U})
-            for (unsigned settings = 0; settings < 8; ++settings)
+            for (unsigned settings = 0; settings < (arch ? 8U : 16U); ++settings)
               for (unsigned scale = 0; scale < 4; ++scale)
                 for (bool clamp : {false, true})
                   for (unsigned alias : {0U, 3U})
@@ -582,7 +582,8 @@ TEST(Cube, ArchitectureIeeeDenormalAndNanPolicies) {
                                      << test.b << '/' << test.c);
                         uint64_t flags = cpu | semantics | (settings & 1 ? GOC_FP_IEEE_MODE : 0) |
                                          (settings & 2 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
-                                         (settings & 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+                                         (settings & 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                         (settings & 8 ? GOC_FP_DX10_CLAMP_OFF : 0);
                         uint64_t mode = route | (scale << 6) | (clamp ? GOC_ALU_CLAMP : 0);
                         uint64_t exec_mask = 0xa55aa55a5aa55aa5ULL;
                         uint32_t words[4][64];
@@ -609,7 +610,7 @@ TEST(Cube, ArchitectureIeeeDenormalAndNanPolicies) {
                                 std::ldexp(goc_test::cube_float(want),
                                            effective_scale == 3 ? -1 : int(effective_scale)));
                         }
-                        if (clamp) {
+                        if (clamp && (!(settings & 8) || (want & 0x7fffffffU) <= 0x7f800000U)) {
                           if ((want >> 31) || want > 0x7f800000U)
                             want = 0;
                           else if (want > 0x3f800000U)
@@ -620,4 +621,15 @@ TEST(Cube, ArchitectureIeeeDenormalAndNanPolicies) {
                                              : alias == 0                              ? test.a
                                                           : 0xdeadbeefU);
                       }
+}
+
+TEST(Cube, Dx10ClampFlagAvailability) {
+  // RDNA4 has no DX10_CLAMP control; reject the RDNA3-only flag before loads.
+  for (auto fn : functions)
+    EXPECT_EQ(fn(GOC_FP_DX10_CLAMP_OFF, 1, GOC_ALU_CLAMP, nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+  for (auto fn : wave64_functions)
+    EXPECT_EQ(
+        fn(GOC_FP_DX10_CLAMP_OFF, 1ULL << 63, GOC_ALU_CLAMP, nullptr, nullptr, nullptr, nullptr),
+        GOC_ERROR_INVALID_FLAGS);
 }

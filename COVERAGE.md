@@ -6718,3 +6718,45 @@ not a claim of every possible guest MODE setting or complete exception support.
 
 Validation: all nine RoundingArchitecture/HalfUnaryExact tests pass with
 Clang 21, GCC 15 and ASan/UBSan. All nine inventory-tool tests pass.
+
+
+## Cube-map DX10 CLAMP mode
+
+Added `GOC_FP_DX10_CLAMP_OFF` (bit 23) to expose the previously fixed RDNA3
+MODE.DX10_CLAMP setting. Its zero/default value preserves existing behavior.
+The four unsuffixed cube instructions accept it in both wave sizes and
+semantics; RDNA4 variants reject it before operand access because that
+architecture has no configurable DX10_CLAMP mode. Other instruction families
+still reject this flag until their specific implementations support it.
+
+The implementation ports rocjitsu `ffc144c564c` shared `simd_glue.h`:
+`floating_clamp_nan_to_zero` and `clamp_floating_result`. With DX10_CLAMP off,
+CLAMP retains selected NaN sign/payload after the separate IEEE-mode quieting
+step. Finite values and infinities still clamp to [0,1], and negative zero
+becomes positive zero. This is an existing upstream policy, not a new empirical
+model. It supersedes the fixed-DX10_CLAMP limitation in the earlier cube entry.
+
+Scalar, eight-lane AVX2 and sixteen-lane AVX-512 implementations all support
+this setting. SIMD reuses the existing NaN mask to preserve selected results;
+there is no scalar fallback, mask-density dispatch or duplicate kernel family.
+The additional uniform policy check is inside the CLAMP path. DPP callbacks and
+Wave64 halves retain the flag through the existing dispatch.
+
+Expanded the literal architecture-policy test across enabled/disabled DX10_CLAMP,
+IEEE/denormal settings, OMOD, CLAMP, NaN source positions, both semantics,
+wave sizes, CPU paths, masked writes, aliases and DPP8. Added RDNA4 rejection
+checks with null operands. Existing RDNA4 hardware-capture checks remain intact.
+Cube directed-rounding and exception-state applicability gaps are unchanged;
+this does not mark the family's entire contract reviewed.
+
+
+Validation: all 1,148 tests pass with Clang 21 and GCC 15. All 21 Cube and
+InstructionFlags tests pass under ASan/UBSan, as do all nine inventory-tool tests.
+A pinned CPU-2 comparison of the pre-change and updated static libraries used
+seven alternating runs with at least 50 ms thread-CPU time per case. Across
+four cube instructions, AVX2/AVX-512 and default/combined-modifier cases,
+the median relative change was +0.83% time, ranging from -1.43% to +2.51%.
+These 16 RDNA4 cases check existing-path overhead, not performance of all
+architectures or the new NaN-preserving mode. Samples, binaries and the driver
+are in `../goc-build/coverage-work/cube-dx10-performance/` (driver source in
+`../goc-build/coverage-work/cube-architecture-performance/bench.cpp`).

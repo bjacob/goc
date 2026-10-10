@@ -2996,7 +2996,9 @@ int goc_v_div_fixup_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_
 // inputs/outputs, maps input zeros to +0 and preserves NaN sign/payload.
 // Guest input/output denormal settings do not change those fixed rules.
 // RDNA3 disables OMOD with IEEE enabled; RDNA4 applies OMOD independently.
-// CLAMP converts NaNs to +0 (fixed DX10_CLAMP-enabled policy on RDNA3).
+// CLAMP converts NaNs to +0 by default. RDNA3 accepts GOC_FP_DX10_CLAMP_OFF
+// to preserve their sign/payload after the IEEE quieting policy. RDNA4 rejects
+// that flag and always converts clamped NaNs to +0.
 // Supports loose and empirical exact semantics with nearest-even rounding.
 // Full EXEC masking and all whole-register aliases are supported. Host FP state
 // is preserved and does not affect results; GOC_FP16_OVFL has no effect.

@@ -21,9 +21,11 @@ inline uint32_t cube_magnitude(uint32_t raw) {
 
 // Execute cube arithmetic with source/output modifiers and nearest-even
 // overflow handling. Optionally quiet selected NaNs, retaining sign/payload.
+// CLAMP maps NaNs to zero only when clamp_nan is set.
 // Integer operations preserve host floating-point state.
 template <Cube Op>
-inline uint32_t cube_value(uint32_t x, uint32_t y, uint32_t z, uint32_t mode, bool quiet_nan) {
+inline uint32_t cube_value(uint32_t x, uint32_t y, uint32_t z, uint32_t mode, bool quiet_nan,
+                           bool clamp_nan) {
   x = (x & (mode & GOC_ALU_ABS_A ? 0x7fffffff : UINT32_MAX)) ^
       (mode & GOC_ALU_NEG_A ? 0x80000000 : 0);
   y = (y & (mode & GOC_ALU_ABS_B ? 0x7fffffff : UINT32_MAX)) ^
@@ -67,7 +69,7 @@ inline uint32_t cube_value(uint32_t x, uint32_t y, uint32_t z, uint32_t mode, bo
                                                             : result + omod * 0x00800000;
     }
   }
-  if (mode & GOC_ALU_CLAMP) {
+  if ((mode & GOC_ALU_CLAMP) && (clamp_nan || (result & 0x7fffffff) <= 0x7f800000)) {
     if ((result >> 31) || result > 0x7f800000)
       result = 0;
     else if (result > 0x3f800000)
@@ -78,10 +80,10 @@ inline uint32_t cube_value(uint32_t x, uint32_t y, uint32_t z, uint32_t mode, bo
 
 template <Cube Op>
 void cube_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
-                    const uint32_t *b, const uint32_t *c, bool quiet_nan);
+                    const uint32_t *b, const uint32_t *c, bool quiet_nan, bool clamp_nan);
 
 template <Cube Op>
 void cube_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
-                    const uint32_t *b, const uint32_t *c, bool quiet_nan);
+                    const uint32_t *b, const uint32_t *c, bool quiet_nan, bool clamp_nan);
 
 } // namespace goc

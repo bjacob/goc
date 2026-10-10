@@ -46,6 +46,11 @@ static const uint64_t GOC_FP_FLUSH_OUTPUT_DENORMALS = 1ULL << 21;
 // This flag never changes the host FP environment.
 static const uint64_t GOC_FP_IEEE_MODE = 1ULL << 22;
 
+// Disable RDNA3 MODE.DX10_CLAMP for supporting instructions: CLAMP preserves
+// NaNs instead of replacing them with +0. Zero retains the default enabled
+// policy. Availability is instruction-specific; RDNA4 does not expose this mode.
+static const uint64_t GOC_FP_DX10_CLAMP_OFF = 1ULL << 23;
+
 // Status codes returned by instruction emulation functions.
 static const int GOC_SUCCESS = 0;
 static const int GOC_ERROR_UNSUPPORTED_SEMANTICS = 1;

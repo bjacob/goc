@@ -21,28 +21,31 @@ int execute(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   if constexpr (Rdna3)
     if (flags & GOC_FP_IEEE_MODE)
       mode &= ~GOC_ALU_OMOD_HALF;
-  if (int error = goc::validate(flags, mode & ~0x1ffU, true,
-                                GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
-                                    GOC_FP_FLUSH_OUTPUT_DENORMALS))
+  if (int error =
+          goc::validate(flags, mode & ~0x1ffU, true,
+                        GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                            GOC_FP_FLUSH_OUTPUT_DENORMALS | (Rdna3 ? GOC_FP_DX10_CLAMP_OFF : 0)))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
   const bool quiet_nan = !Rdna3 || (flags & GOC_FP_IEEE_MODE);
+  const bool clamp_nan = !(flags & GOC_FP_DX10_CLAMP_OFF);
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::cube_x86_64_v4<Op>(exec_mask, mode, d[0], a[0], b[0], c[0], quiet_nan);
+    goc::cube_x86_64_v4<Op>(exec_mask, mode, d[0], a[0], b[0], c[0], quiet_nan, clamp_nan);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::cube_x86_64_v3<Op>(exec_mask, mode, d[0], a[0], b[0], c[0], quiet_nan);
+    goc::cube_x86_64_v3<Op>(exec_mask, mode, d[0], a[0], b[0], c[0], quiet_nan, clamp_nan);
     return GOC_SUCCESS;
   }
 #endif
   uint32_t result[32];
   for (unsigned lane = 0; lane < 32; ++lane)
-    result[lane] = goc::cube_value<Op>(a[0][lane], b[0][lane], c[0][lane], mode, quiet_nan);
+    result[lane] =
+        goc::cube_value<Op>(a[0][lane], b[0][lane], c[0][lane], mode, quiet_nan, clamp_nan);
   for (unsigned lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];

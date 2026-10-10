@@ -38,7 +38,7 @@ namespace goc {
 
 template <Cube Op>
 void cube_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
-                    const uint32_t *b, const uint32_t *c, bool quiet_nan) {
+                    const uint32_t *b, const uint32_t *c, bool quiet_nan, bool clamp_nan) {
   auto keep_a = _mm256_set1_epi32(mode & GOC_ALU_ABS_A ? INT32_MAX : -1);
   auto keep_b = _mm256_set1_epi32(mode & GOC_ALU_ABS_B ? INT32_MAX : -1);
   auto keep_c = _mm256_set1_epi32(mode & GOC_ALU_ABS_C ? INT32_MAX : -1);
@@ -102,8 +102,11 @@ void cube_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32
       result = select(equal(exponent, zero), zero, result);
     }
     if (mode & GOC_ALU_CLAMP) {
+      auto unclamped = result;
       auto positive = select(greater(result, infinity), zero, result);
       result = _mm256_min_epi32(_mm256_max_epi32(positive, zero), _mm256_set1_epi32(0x3f800000));
+      if (!clamp_nan)
+        result = select(nan, unclamped, result);
     }
     auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
                                             _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
@@ -112,12 +115,12 @@ void cube_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32
 }
 
 template void cube_x86_64_v3<Cube::Id>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
-                                       const uint32_t *, const uint32_t *, bool);
+                                       const uint32_t *, const uint32_t *, bool, bool);
 template void cube_x86_64_v3<Cube::Sc>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
-                                       const uint32_t *, const uint32_t *, bool);
+                                       const uint32_t *, const uint32_t *, bool, bool);
 template void cube_x86_64_v3<Cube::Tc>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
-                                       const uint32_t *, const uint32_t *, bool);
+                                       const uint32_t *, const uint32_t *, bool, bool);
 template void cube_x86_64_v3<Cube::Ma>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
-                                       const uint32_t *, const uint32_t *, bool);
+                                       const uint32_t *, const uint32_t *, bool, bool);
 
 } // namespace goc
