@@ -413,7 +413,10 @@ raise inexact. Their reporting is checked against 6,291,456 RX 9070 captures.
 FP16/32/64 division-fixup reporting covers all six floating exception bits,
 including modifier suppression, and is checked against 786,432 RX 9070 captures.
 
-FP16 FMA, FMAC, both literal forms, and packed FMA/FMAC also report exceptions.
+RDNA4 FP16 FMA, FMAC, both literal forms, and packed FMA/FMAC also report
+exceptions with preserved input/output denormals. Their RDNA3 variants, and
+RDNA4 variants with guest denormal flushing, currently reject non-null exact
+reporting requests; a null pointer retains the implemented result semantics.
 Their integer FMA intermediate supplies inexact/underflow/overflow classification;
 `CLAMP` suppresses all flags and output scaling suppresses underflow/inexact.
 Packed results accumulate exceptions from both selected halves. Loose SIMD

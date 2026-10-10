@@ -242,9 +242,15 @@ TEST(PackedFma, ValidationAndZeroMasks) {
     std::fill(words, words + 32, 0xfacecafe);
     auto p = words;
     for (uint32_t exec_mask : {0U, UINT32_MAX}) {
-      for (unsigned bit = accumulate ? 0 : 13; bit < 32; ++bit)
+      for (unsigned bit = 0; bit < 32; ++bit) {
+        uint32_t allowed = accumulate ? GOC_ALU_ABS_A | GOC_ALU_ABS_B | GOC_ALU_NEG_A |
+                                            GOC_ALU_NEG_B | GOC_ALU_CLAMP | GOC_ALU_OMOD_HALF
+                                      : 0x1fffU;
+        if (allowed & (1U << bit))
+          continue;
         EXPECT_EQ(call(accumulate, 0, exec_mask, 1U << bit, &p, &p, &p, &p),
                   GOC_ERROR_INVALID_FLAGS);
+      }
       EXPECT_EQ(call(accumulate, 1ULL << 63, exec_mask, 0, &p, &p, &p, &p),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(call(accumulate, (2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p, &p),
@@ -506,4 +512,94 @@ TEST(PackedFma, ArchitectureGuestModes) {
               }
             }
           }
+}
+
+TEST(PackedFma, FmacVop3ModifiersAndAliases) {
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (bool exact : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned modifiers = 0; modifiers < 128; ++modifiers)
+            for (unsigned policy = 0; policy < 8; ++policy)
+              for (int alias = 0; alias < 3; ++alias) {
+                uint32_t mode =
+                    (modifiers & 1 ? GOC_ALU_ABS_A : 0) | (modifiers & 2 ? GOC_ALU_ABS_B : 0) |
+                    (modifiers & 4 ? GOC_ALU_NEG_A : 0) | (modifiers & 8 ? GOC_ALU_NEG_B : 0) |
+                    (modifiers & 16 ? GOC_ALU_CLAMP : 0) | ((modifiers >> 5) * GOC_ALU_OMOD_2);
+                uint64_t guest = (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                 (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                 (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+                uint64_t flags = cpu | guest |
+                                 (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0);
+                uint32_t words[3][64], before[3][64];
+                for (int reg = 0; reg < 3; ++reg)
+                  for (int lane = 0; lane < 64; ++lane)
+                    words[reg][lane] = values[(lane + reg * 7) % 20] |
+                                       (uint32_t(values[(lane * 3 + reg * 5) % 20]) << 16);
+                std::memcpy(before, words, sizeof(words));
+                uint32_t *d = words[alias];
+                const uint32_t *a = words[0], *b = words[1];
+                uint64_t exec_mask = 0xe5310fd8a71963c5ULL;
+                auto narrow = rdna3 ? goc_v_pk_fmac_f16 : goc_v_pk_fmac_f16_rdna4;
+                auto full = rdna3 ? goc_v_pk_fmac_f16_wave64 : goc_v_pk_fmac_f16_rdna4_wave64;
+                ASSERT_EQ(wide ? full(flags, exec_mask, mode, &d, &a, &b, nullptr)
+                               : narrow(flags, uint32_t(exec_mask), mode, &d, &a, &b, nullptr),
+                          GOC_SUCCESS);
+                for (int lane = 0; lane < 64; ++lane) {
+                  uint32_t expected = before[alias][lane];
+                  if (lane < (wide ? 64 : 32) && ((exec_mask >> lane) & 1)) {
+                    expected = 0;
+                    for (int half = 0; half < 2; ++half) {
+                      uint16_t x = uint16_t(before[0][lane] >> (16 * half));
+                      uint16_t y = uint16_t(before[1][lane] >> (16 * half));
+                      uint16_t z = uint16_t(before[alias][lane] >> (16 * half));
+                      if (mode & GOC_ALU_ABS_A)
+                        x &= 0x7fff;
+                      if (mode & GOC_ALU_ABS_B)
+                        y &= 0x7fff;
+                      if (mode & GOC_ALU_NEG_A)
+                        x ^= 0x8000;
+                      if (mode & GOC_ALU_NEG_B)
+                        y ^= 0x8000;
+                      // OMOD is architecturally ignored for packed F16 results.
+                      uint16_t result =
+                          goc_test::half_fma_reference::evaluate(x, y, z, 0, false, guest, rdna3);
+                      if (mode & GOC_ALU_CLAMP)
+                        result = (result & 0x8000) || (result & 0x7fff) > 0x7c00
+                                     ? 0
+                                     : std::min<uint16_t>(result, 0x3c00);
+                      expected |= uint32_t(result) << (16 * half);
+                    }
+                    check(d[lane], expected, exact);
+                  } else {
+                    EXPECT_EQ(d[lane], expected);
+                  }
+                }
+              }
+}
+
+TEST(PackedFma, FmacModifiersDetermineReportedInvalid) {
+  for (bool wide : {false, true})
+    for (uint32_t mode : {0U, GOC_ALU_ABS_A, GOC_ALU_ABS_A | GOC_ALU_NEG_B,
+                          GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_CLAMP}) {
+      uint32_t a[64], b[64], d[64];
+      std::fill(a, a + 64, 0xfc00fc00);
+      std::fill(b, b + 64, 0x3c003c00);
+      std::fill(d, d + 64, 0x7c007c00);
+      uint32_t *dest = d;
+      const uint32_t *x = a, *y = b;
+      uint32_t state = 0x80000000;
+      uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+      ASSERT_EQ(wide
+                    ? goc_v_pk_fmac_f16_rdna4_wave64(flags, 1ULL << 63, mode, &dest, &x, &y, &state)
+                    : goc_v_pk_fmac_f16_rdna4(flags, 1U << 31, mode, &dest, &x, &y, &state),
+                GOC_SUCCESS);
+      bool invalid = !(mode & GOC_ALU_ABS_A) || (mode & GOC_ALU_NEG_B);
+      // RDNA4 FP16 CLAMP suppresses exception flags, including invalid.
+      EXPECT_EQ(state,
+                0x80000000U | (invalid && !(mode & GOC_ALU_CLAMP) ? GOC_EXCEPTION_INVALID : 0));
+      unsigned lane = wide ? 63 : 31;
+      EXPECT_EQ(d[lane], mode & GOC_ALU_CLAMP ? 0U : invalid ? 0xfe00fe00U : 0x7c007c00U);
+      EXPECT_EQ(d[0], 0x7c007c00U);
+    }
 }

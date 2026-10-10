@@ -2219,3 +2219,42 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   PackedFma/ExceptionRegisters tests pass with ASan/UBSan. Seven audit-tool
   tests pass. The refreshed global-state audit has 628 signatures, 298 resolved
   register names, zero mismatches and 330 still requiring architecture review.
+
+## Packed FMAC VOP3 modifiers
+
+- `v_pk_fmac_f16` and its RDNA4/Wave64 variants now accept ordinary ALU
+  ABS/NEG for A/B and CLAMP. Each modifier applies to both packed components;
+  D remains an unmodified accumulator. All OMOD values are accepted and ignored
+  as specified by rocjitsu's `effective_f16_omod(..., packed_result=true, ...)`
+  for GFX11/GFX12. C modifiers and half-selection flags remain invalid.
+- Both manuals allow VOP2 instructions to use VOP3 controls (RDNA3 section
+  16.7.1 / RDNA4 section 16.7.1). The component rules follow rocjitsu's
+  `execute_v_pk_fmac_f16_vop3` (shared handler line 17627) and its FP16 model.
+  This closes the VOP3 modifier gap recorded in the previous slice; DPP/other
+  encoding-specific behavior is not implied by this change.
+- Scalar and AVX2 paths share the existing packed FMA computation. FMA obtains
+  per-component ALU modes from packed selectors; FMAC uses corresponding halves
+  and applies ordinary ALU modifiers. Both compile from the same source loop,
+  with a boolean template parameter distinguishing the operand forms. A single
+  compiled SIMD kernel accepting arbitrary per-half modes regressed existing
+  loose FMA by about 9%; the specialization removes its unused ABS checks.
+  SIMD object text grows from 1,793 to 3,221 bytes. No scalar fallback is added.
+- A new independent-oracle test covers all 128 modifier combinations, eight
+  guest-policy combinations, both semantics/architectures/wave widths, every
+  detected CPU level, masks, and destination aliases with either input.
+  Validation tests still reject unsupported instruction bits, including with
+  zero EXEC. Existing RDNA4 exception and result captures remain unchanged.
+- A reporting test also verifies that ABS/NEG changes invalid infinity
+  cancellation and that RDNA4 CLAMP suppresses its exception flags, with sticky
+  state and an active uppermost lane in each wave width.
+- Final performance against `f6cdd8c`: eleven alternating CPU-2-pinned samples,
+  at least 50 ms thread CPU time each. Existing RDNA4 packed FMA loose AVX2
+  medians were 39.549 -> 39.563 ns unmodified and 44.748 -> 44.758 ns with
+  selectors/negation/clamp (both within 0.1%). Exact scalar medians were
+  1645.582 -> 1651.787 ns and 1672.163 -> 1676.021 ns (both within 0.4%).
+  This checks the existing kernel, not all library instructions or new FMAC
+  modifier workloads. Samples/drivers: `../goc-build/coverage-work/packed-fmac-modifiers-*`.
+- Validation: all 957 tests pass under Clang 21 and GCC 15 Release; all 19
+  PackedFma/ExceptionRegisters tests pass under ASan/UBSan. `PLAN.md` now also
+  explicitly distinguishes implemented RDNA4 no-flush FP16 reporting from
+  unsupported RDNA3/flushing requests. Logs use the artifact prefix above.

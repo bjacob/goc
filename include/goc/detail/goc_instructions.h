@@ -3250,7 +3250,9 @@ int goc_v_pk_fma_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruct
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c, uint32_t *excp_flag_user);
 
-// Packed FP16 FMAC: component-wise A * B + D. No instruction flags are valid.
+// Packed FP16 FMAC: component-wise A * B + D. Supports GOC_ALU_ABS_A/B,
+// GOC_ALU_NEG_A/B and GOC_ALU_CLAMP, applied to both components. GOC_ALU_OMOD_*
+// is accepted but ignored by both architectures. C modifiers and selectors are invalid.
 // Supports GOC_FP16_OVFL and the same loose/exact semantics as packed FMA.
 int goc_v_pk_fmac_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
