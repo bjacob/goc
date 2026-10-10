@@ -135,8 +135,9 @@ Source SHA-256 (`execute_shared.h`): `{hashlib.sha256(source.encode()).hexdigest
 
 GoC now separates ordinary FP16/FP32 ADD/SUB/SUBREV/MUL and FP64 ADD/MUL/FMA
 into unsuffixed RDNA3 and `_rdna4` APIs, with guest IEEE/denormal flags and scalar/SIMD OMOD-policy tests in both
-wave sizes. They remain loose-only: this does not establish exact NaN behavior,
-rounding modes or exception reporting. Other RDNA4-based floating APIs must not
+wave sizes. FP32 ADD/MUL now reuse the borrowed FMA model for exact nearest-even
+results, including their dual forms. The other operations in this group remain
+loose-only; exact exception reporting is still unsupported. Other RDNA4-based floating APIs must not
 be advertised as complete RDNA3 implementations merely because mnemonics match.
 Preserve established tests under `_rdna4` when splitting other families and
 implement their RDNA3 policy and appropriate guest-state flags explicitly.

@@ -241,13 +241,13 @@ const Case cases[] = {
     {binary<goc_v_maximum_f32>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
 
-    {binary<goc_v_add_f32_rdna4>, false,
+    {binary<goc_v_add_f32_rdna4>, true,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
     {binary<goc_v_sub_f32_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
     {binary<goc_v_subrev_f32_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
-    {binary<goc_v_mul_f32_rdna4>, false,
+    {binary<goc_v_mul_f32_rdna4>, true,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
 
     {goc_v_dot4_i32_iu8, true, GOC_DOT_SIGNED_A | GOC_DOT_SIGNED_B | GOC_DOT_CLAMP},

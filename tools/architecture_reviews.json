@@ -1088,5 +1088,29 @@
       "v_dual_min_num_f32",
       "v_dual_max_num_f32"
     ]
+  },
+  {
+    "heading": "FP32 ADD and MUL borrowed exact architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/binary_test.cpp",
+    "mnemonics": [
+      "v_add_f32",
+      "v_mul_f32",
+      "v_dual_add_f32",
+      "v_dual_mul_f32"
+    ]
+  },
+  {
+    "heading": "FP32 loose subtract and legacy multiply architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/binary_test.cpp",
+    "mnemonics": [
+      "v_sub_f32",
+      "v_subrev_f32",
+      "v_mul_dx9_zero_f32",
+      "v_dual_sub_f32",
+      "v_dual_subrev_f32",
+      "v_dual_mul_dx9_zero_f32"
+    ]
   }
 ]

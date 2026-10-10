@@ -428,6 +428,14 @@ Their newly hardware-derived exception classifiers have been removed. Both
 architectures reject non-null exact reporting; loose paths skip state updates.
 DX9 forms retain their numerical model and have no optional state output.
 
+FP32 `ADD` and `MUL`, including Wave64 and VOPD forms, also reuse rocjitsu's
+numerical model: `ADD` is `FMA(A, 1, B)` and `MUL` is `FMA(A, B, signed_zero)`.
+The zero has the modified product's sign. Both architectures support exact
+nearest-even results, source/output modifiers, and guest denormal policies
+through GoC's existing integer FMA path. Non-null exact reporting remains
+unsupported; loose calls retain their SIMD paths and skip reporting.
+`SUB`, `SUBREV`, and `MUL_DX9_ZERO` remain loose-only.
+
 Existing RDNA4 FP16/32 `SIN`/`COS` report invalid, input-denormal, underflow,
 and inexact flags with denormals preserved. Unsuffixed RDNA3 APIs and
 RDNA4 guest-flushing modes reject non-null exact reporting; loose calls skip

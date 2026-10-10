@@ -6240,3 +6240,78 @@ Validation: all 1,136 CTests pass under Clang and GCC Release; all twenty-four
 Binary/Dual/MinmaxSpellings tests pass under ASan/UBSan. Logs use
 `fp32-minmax-review-` in each build directory. The ledger records 621 contracts;
 188 in-scope mnemonics remain without recorded reviews.
+
+## FP32 ADD and MUL borrowed exact architecture contracts
+
+Reviewed the FP32 binary backend against rocjitsu `ffc144c564c`: forty ordinary
+ADD/SUB/SUBREV/MUL/MUL_DX9_ZERO handler bodies form twenty identical RDNA3/RDNA4
+pairs and delegate to ten shared helpers. Architecture behavior is transitive
+through `fp_mode`, not established by identical wrapper bodies. Locations,
+hashes, bodies and limitations are in
+`../goc-build/coverage-work/fp32-binary-upstream-review.json`.
+
+Upstream `fp_mode::arithmetic` explicitly implements ADD through `FMA(A,1,B)`
+and MUL through `FMA(A,B,C)`, with C a zero carrying the product sign. Enabled
+exact ADD/MUL by forwarding those operands to GoC's existing integer FMA port.
+ADD remaps B's ABS/NEG bits to the addend; MUL computes its zero sign after
+ABS/NEG. This reuses the established NaN, signed-zero, rounding, tininess,
+OMOD and CLAMP implementation instead of introducing another numerical model.
+All extra operands are staged before the existing FMA path writes results.
+No upstream host-environment guards were imported and no hardware model was
+reverse-engineered.
+
+Both architectures support nearest-even exact results, guest input/output
+flushing, IEEE policy, source modifiers, effective OMOD, CLAMP, DPP and both
+wave sizes. RDNA3 preserves signaling NaNs outside IEEE mode and disables OMOD
+when output denormals are preserved or IEEE mode is set; RDNA4 quiets NaNs and
+applies OMOD independently. Existing `_rdna4` names remain necessary. Dual
+ADD/MUL inherit exact support through their ordinary wrappers, retaining zero
+instruction flags and Wave32-only contracts. Optional exact exception reporting
+remains explicitly unsupported before operand/EXEC access, even without strict
+semantics. Loose calls still skip reporting and use the existing eight-lane
+SIMD kernel on v3 and newer CPU tiers. Only exact requests enter the new helper.
+
+Ported the nearest-even subset of upstream `binary_f32_policy_cases`, whose
+comments identify gfx1100/gfx1201 captures: first/second signaling NaNs,
+negative/opposite zeros, and positive/negative products at the pre-packing
+underflow boundary. Tests cover both architectures, IEEE/denormal settings,
+all CPU levels, ordinary Wave32/Wave64 and dual forms, aliases, mixed EXEC,
+and nondefault host rounding/flush controls. Extended source/output modifier,
+mask, alias, OMOD-policy and DPP tests to exact ADD/MUL. Exact host-mode tests
+use integer expectations and do not assume host arithmetic matches the guest.
+
+## FP32 loose subtract and legacy multiply architecture contracts
+
+The same review covers ordinary and dual SUB, SUBREV and MUL_DX9_ZERO.
+SUBREV reverses arithmetic operands while DPP still routes A. DX9 multiplication
+flushes guest inputs before its zero test: either zero forces positive zero,
+even with a NaN or infinity in the other operand. Nonzero products retain their
+sign on underflow. Ordinary source/output modifiers and RDNA3/RDNA4 OMOD policy
+match the shared binary backend; dual forms encode no modifiers. Ordinary
+forms support both wave sizes and DPP; dual forms support Wave32 only.
+
+These three families remain loose-only. Upstream's SUB and legacy multiply
+paths rely on host rounding environment guards rather than the explicit
+architecture-aware FMA mapping used for ADD/MUL. No new exact subtraction or
+legacy-NaN model is inferred. Existing independent tests cover signed denormals,
+DX9 zero overrides, masks, aliases, guest policies and OMOD/DPP. The reporting
+contract test now covers all thirty ordinary/dual binary API variants with
+literal finite expected results, distinguishing implemented exact ADD/MUL from
+numerical fallback and preserving all outputs on rejected reporting requests.
+
+Validation: all 1,137 CTests pass under Clang and GCC Release; all thirty-two
+Binary/Dual/FmaExact/ExecMask/DppArithmetic tests pass under ASan/UBSan. The
+empty-mask and DPP validation tables now recognize ADD/MUL exact support instead
+of expecting rejection before operand access. All nine audit-tool tests pass.
+Final logs use `fp32-binary-exact-final-` in each build directory. The ledger
+records 631 contracts; 178 in-scope mnemonics remain without recorded reviews.
+
+A CPU-2-pinned comparison against parent `0d2976e` used seven alternating
+before/after samples, each at least 50 ms of thread CPU time. Thirty-two loose
+ADD/MUL cases cover both architectures, v3/v4 CPU levels, default/modified
+instructions and null/non-null reporting. Median change across cases was -0.75%;
+individual case medians ranged from -2.10% to +2.72%, with the largest increase
+0.433 ns. This limited check found no material loose-path regression; it does
+not characterize exact-path throughput or whole-library performance. Driver,
+parent object, executables and raw samples are in
+`../goc-build/coverage-work/fp32-binary-performance/`.

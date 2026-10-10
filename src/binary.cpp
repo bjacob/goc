@@ -11,6 +11,34 @@
 
 namespace {
 
+// rocjitsu fp_mode::arithmetic defines ADD as FMA(A, 1, B) and MUL as
+// FMA(A, B, a zero with the product sign). Reuse GoC's existing integer FMA
+// model, including modifiers and tiny-result scaling, without host FP changes.
+template <bool Multiply, bool Rdna3>
+[[gnu::noinline]] int binary_exact(uint64_t flags, uint32_t exec_mask, uint32_t mode,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b) {
+  uint32_t extra[32];
+  const uint32_t *source = extra;
+  auto fma = Rdna3 ? goc_v_fma_f32 : goc_v_fma_f32_rdna4;
+  if constexpr (Multiply) {
+    for (unsigned lane = 0; lane < 32; ++lane) {
+      uint32_t x = mode & GOC_ALU_ABS_A ? 0 : a[0][lane];
+      uint32_t y = mode & GOC_ALU_ABS_B ? 0 : b[0][lane];
+      uint32_t negate =
+          ((mode & GOC_ALU_NEG_A) ? 0x80000000U : 0) ^ ((mode & GOC_ALU_NEG_B) ? 0x80000000U : 0);
+      extra[lane] = (x ^ y ^ negate) & 0x80000000U;
+    }
+    return fma(flags, exec_mask, mode, d, a, b, &source, nullptr);
+  } else {
+    for (auto &value : extra)
+      value = 0x3f800000U;
+    const uint32_t b_modifiers = GOC_ALU_ABS_B | GOC_ALU_NEG_B;
+    mode = (mode & ~b_modifiers) | ((mode & b_modifiers) << 1);
+    return fma(flags, exec_mask, mode, d, a, &source, b, nullptr);
+  }
+}
+
 template <goc::Binary Op, bool Rdna3 = false>
 int binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
            const uint32_t *const *a, const uint32_t *const *b) {
@@ -25,7 +53,8 @@ int binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   constexpr uint64_t fp_flags =
       GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
-  if (int error = goc::validate(flags, mode & ~known, false, fp_flags))
+  if (int error = goc::validate(flags, mode & ~known,
+                                Op == goc::Binary::Add || Op == goc::Binary::Mul, fp_flags))
     return error;
   // RDNA3 ignores output scaling when denormal outputs are preserved or IEEE
   // mode is enabled. RDNA4 applies it independently of either guest setting.
@@ -34,6 +63,9 @@ int binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d
       mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
   if (exec_mask == 0)
     return GOC_SUCCESS;
+  if constexpr (Op == goc::Binary::Add || Op == goc::Binary::Mul)
+    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
+      return binary_exact<Op == goc::Binary::Mul, Rdna3>(flags, exec_mask, uint32_t(mode), d, a, b);
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
     goc::binary_x86_64_v3(Op, flags, exec_mask, mode, d[0], a[0], b[0]);

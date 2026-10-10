@@ -151,10 +151,11 @@ TEST(DppArithmetic, ValidationBeforeOperandAccess) {
       EXPECT_EQ(goc_test::dpp_arithmetic_call(op, 1ULL << 63, UINT32_MAX, descriptor, nullptr,
                                               nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(
-          goc_test::dpp_arithmetic_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                        UINT32_MAX, descriptor, nullptr, nullptr, nullptr, nullptr),
-          GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      EXPECT_EQ(goc_test::dpp_arithmetic_call(op,
+                                              GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                              op == 0 || op == 3 ? 0 : UINT32_MAX, descriptor,
+                                              nullptr, nullptr, nullptr, nullptr),
+                op == 0 || op == 3 ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
       EXPECT_EQ(
           goc_test::dpp_arithmetic_call(op, 0, 0, descriptor, nullptr, nullptr, nullptr, nullptr),
           GOC_SUCCESS);

@@ -4363,7 +4363,9 @@ static const uint32_t GOC_ALU_CLAMP = 1U << 8;
 // GOC_FP_FLUSH_INPUT_DENORMALS and GOC_FP_FLUSH_OUTPUT_DENORMALS. Active OMOD flushes tiny
 // results to +0; halving a normal result below twice minimum normal gives
 // signed zero. Supports ABS/NEG for A/B, OMOD, CLAMP, and DPP8/DPP16.
-// Flags for C and half selection are invalid. Loose semantics only.
+// Flags for C and half selection are invalid. ADD/MUL also support exact RNE
+// results through rocjitsu's FMA model; SUB/SUBREV/MUL_DX9_ZERO remain loose-only.
+// Exact non-null exception reporting is unsupported for these operations.
 int goc_v_add_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   uint32_t *trapsts);

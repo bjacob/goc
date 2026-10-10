@@ -3,14 +3,20 @@
 #include "binary_reference.h"
 #include "dpp_reference.h"
 #include "exec_masks.h"
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "internal.h"
 
 #include <algorithm>
+#include <cfenv>
 #include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
 #include <stdint.h>
+
+#if defined(__x86_64__) || defined(_M_X64)
+#include <immintrin.h>
+#endif
 
 namespace {
 
@@ -34,45 +40,49 @@ TEST(Binary, AllModifiersMasksAliasesAndSpecialValues) {
                              0x3e800000, 0x40000000, 0xc0400000};
   for (int op = 0; op < 9; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (uint32_t variant = 0; variant < 128; ++variant) {
-        uint32_t mode = (variant & 3) | ((variant & 12) << 1) | ((variant & 112) << 2);
-        for (uint32_t exec_mask : exec_masks())
-          for (int alias = 0; alias < 3; ++alias) {
-            SCOPED_TRACE(::testing::Message()
-                         << op << "/" << cpu << "/" << mode << "/" << exec_mask << "/" << alias);
-            uint32_t storage[3][34], before[32];
-            uint32_t *v[3];
-            for (int reg = 0; reg < 3; ++reg) {
-              std::fill(storage[reg], storage[reg] + 34, 0xdeadbeef);
-              v[reg] = storage[reg] + 1;
-            }
-            for (int lane = 0; lane < 32; ++lane) {
-              v[0][lane] = values[lane % 21];
-              v[1][lane] = values[(lane * 5 + 3) % 21];
-              before[lane] = v[alias][lane];
-            }
-            ASSERT_EQ(functions[op](cpu, exec_mask, mode, &v[alias], &v[0], &v[1], nullptr),
-                      GOC_SUCCESS);
-            for (int lane = 0; lane < 32; ++lane) {
-              if (!((exec_mask >> lane) & 1)) {
-                EXPECT_EQ(v[alias][lane], before[lane]);
-                continue;
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (uint32_t variant = 0; variant < 128; ++variant) {
+          if (semantics && op != 0 && op != 3)
+            continue;
+          uint32_t mode = (variant & 3) | ((variant & 12) << 1) | ((variant & 112) << 2);
+          for (uint32_t exec_mask : exec_masks())
+            for (int alias = 0; alias < 3; ++alias) {
+              SCOPED_TRACE(::testing::Message()
+                           << op << "/" << cpu << "/" << mode << "/" << exec_mask << "/" << alias);
+              uint32_t storage[3][34], before[32];
+              uint32_t *v[3];
+              for (int reg = 0; reg < 3; ++reg) {
+                std::fill(storage[reg], storage[reg] + 34, 0xdeadbeef);
+                v[reg] = storage[reg] + 1;
               }
-              float want =
-                  goc_test::binary_reference(op, goc::as_float(values[lane % 21]),
-                                             goc::as_float(values[(lane * 5 + 3) % 21]), mode);
-              if (std::isnan(want)) {
-                EXPECT_TRUE(std::isnan(goc::as_float(v[alias][lane])));
-              } else {
-                EXPECT_EQ(v[alias][lane], goc::as_bits(want));
+              for (int lane = 0; lane < 32; ++lane) {
+                v[0][lane] = values[lane % 21];
+                v[1][lane] = values[(lane * 5 + 3) % 21];
+                before[lane] = v[alias][lane];
+              }
+              ASSERT_EQ(functions[op](cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode,
+                                      &v[alias], &v[0], &v[1], nullptr),
+                        GOC_SUCCESS);
+              for (int lane = 0; lane < 32; ++lane) {
+                if (!((exec_mask >> lane) & 1)) {
+                  EXPECT_EQ(v[alias][lane], before[lane]);
+                  continue;
+                }
+                float want =
+                    goc_test::binary_reference(op, goc::as_float(values[lane % 21]),
+                                               goc::as_float(values[(lane * 5 + 3) % 21]), mode);
+                if (std::isnan(want)) {
+                  EXPECT_TRUE(std::isnan(goc::as_float(v[alias][lane])));
+                } else {
+                  EXPECT_EQ(v[alias][lane], goc::as_bits(want));
+                }
+              }
+              for (const auto &reg : storage) {
+                EXPECT_EQ(reg[0], 0xdeadbeef);
+                EXPECT_EQ(reg[33], 0xdeadbeef);
               }
             }
-            for (const auto &reg : storage) {
-              EXPECT_EQ(reg[0], 0xdeadbeef);
-              EXPECT_EQ(reg[33], 0xdeadbeef);
-            }
-          }
-      }
+        }
 }
 
 TEST(Binary, Validation) {
@@ -84,7 +94,8 @@ TEST(Binary, Validation) {
     EXPECT_EQ(fn(0, 0, GOC_ALU_HIGH_C, &pd, &pa, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(
         fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, &pd, &pa, &pa, nullptr),
-        GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        fn == goc_v_add_f32_rdna4 || fn == goc_v_mul_f32_rdna4 ? GOC_SUCCESS
+                                                               : GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0U, 0, &pd, &pa, &pa, nullptr), GOC_SUCCESS);
     for (auto value : d)
       EXPECT_EQ(value, 0xdeadbeef);
@@ -211,9 +222,11 @@ TEST(Binary, Wave64ValidationAndOptionalState) {
     EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(fn(0, UINT64_MAX, GOC_ALU_NEG_C, nullptr, nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, nullptr,
-                 nullptr, nullptr, nullptr),
-              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr,
+                 nullptr, nullptr),
+              fn == goc_v_add_f32_rdna4_wave64 || fn == goc_v_mul_f32_rdna4_wave64
+                  ? GOC_SUCCESS
+                  : GOC_ERROR_UNSUPPORTED_SEMANTICS);
     uint32_t excp_flag_user = 0x12345678;
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, nullptr,
                  &excp_flag_user),
@@ -235,65 +248,71 @@ TEST(Binary, ArchitectureOutputScalingGuestModesAndDpp) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned arch = 0; arch < 2; ++arch)
       for (unsigned op = 0; op < 7; ++op)
-        for (unsigned settings = 0; settings < 8; ++settings)
-          for (unsigned scale = 0; scale < 4; ++scale)
-            for (unsigned route = 0; route < 8; ++route)
-              for (unsigned width : {32U, 64U})
-                for (unsigned alias = 0; alias < 3; ++alias) {
-                  SCOPED_TRACE(::testing::Message()
-                               << cpu << '/' << arch << '/' << op << '/' << settings << '/' << scale
-                               << '/' << route << '/' << width << '/' << alias);
-                  uint64_t flags = cpu | (settings & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
-                                   (settings & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
-                                   (settings & 4 ? GOC_FP_IEEE_MODE : 0);
-                  uint32_t words[3][66], before[3][66];
-                  for (unsigned reg = 0; reg < 3; ++reg)
-                    for (unsigned lane = 0; lane < 66; ++lane)
-                      words[reg][lane] = goc::as_bits(float(1 + (lane + reg) % 8));
-                  std::memcpy(before, words, sizeof words);
-                  uint32_t *d = words[alias] + 1;
-                  const uint32_t *a = words[0] + 1, *b = words[1] + 1;
-                  uint64_t exec_mask = width == 32 ? 0xfedcba98ULL : 0x87654321fedcba98ULL;
-                  uint64_t descriptor = route ? goc_test::dpp_modes[route - 1] : 0;
-                  uint64_t mode = descriptor | (uint64_t(scale) << 6) | GOC_ALU_NEG_B;
-                  uint32_t state = 0x12345678;
-                  int status = width == 32
-                                   ? (arch ? functions[rdna4_index[op]] : rdna3[op])(
-                                         flags, uint32_t(exec_mask), mode, &d, &a, &b, &state)
-                                   : (arch ? wave64[rdna4_index[op]] : rdna3_wide[op])(
-                                         flags, exec_mask, mode, &d, &a, &b, &state);
-                  ASSERT_EQ(status, GOC_SUCCESS);
-                  EXPECT_EQ(state, 0x12345678U);
-                  const float scales[] = {1, 2, 4, 0.5f};
-                  float factor = scales[arch || ((settings & 2) && !(settings & 4)) ? scale : 0];
-                  for (unsigned lane = 0; lane < width; ++lane) {
-                    int source = int(lane);
-                    bool enabled = descriptor
-                                       ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
-                                       : ((exec_mask >> lane) & 1);
-                    uint32_t expected = before[alias][lane + 1];
-                    if (enabled) {
-                      float x = source < 0 ? 0 : goc::as_float(before[0][source + 1]);
-                      float y = -goc::as_float(before[1][lane + 1]);
-                      float value = op == 0   ? x + y
-                                    : op == 1 ? x - y
-                                    : op == 2 ? y - x
-                                    : op == 4 ? std::min(x, y)
-                                    : op == 5 ? std::max(x, y)
-                                              : x * y;
-                      if (op == 6 && (x == 0 || y == 0))
-                        value = 0;
-                      // Active OMOD maps an unscaled zero (including -0) to +0.
-                      bool active_omod = scale && (arch || ((settings & 2) && !(settings & 4)));
-                      expected = active_omod && value == 0 ? 0 : goc::as_bits(value * factor);
+        for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+          for (unsigned settings = 0; settings < 8; ++settings)
+            for (unsigned scale = 0; scale < 4; ++scale)
+              for (unsigned route = 0; route < 8; ++route)
+                for (unsigned width : {32U, 64U})
+                  for (unsigned alias = 0; alias < 3; ++alias) {
+                    if (semantics && op != 0 && op != 3)
+                      continue;
+                    SCOPED_TRACE(::testing::Message()
+                                 << cpu << '/' << arch << '/' << op << '/' << settings << '/'
+                                 << scale << '/' << route << '/' << width << '/' << alias);
+                    uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT |
+                                     (settings & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                     (settings & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                     (settings & 4 ? GOC_FP_IEEE_MODE : 0);
+                    uint32_t words[3][66], before[3][66];
+                    for (unsigned reg = 0; reg < 3; ++reg)
+                      for (unsigned lane = 0; lane < 66; ++lane)
+                        words[reg][lane] = goc::as_bits(float(1 + (lane + reg) % 8));
+                    std::memcpy(before, words, sizeof words);
+                    uint32_t *d = words[alias] + 1;
+                    const uint32_t *a = words[0] + 1, *b = words[1] + 1;
+                    uint64_t exec_mask = width == 32 ? 0xfedcba98ULL : 0x87654321fedcba98ULL;
+                    uint64_t descriptor = route ? goc_test::dpp_modes[route - 1] : 0;
+                    uint64_t mode = descriptor | (uint64_t(scale) << 6) | GOC_ALU_NEG_B;
+                    uint32_t state = 0x12345678;
+                    int status =
+                        width == 32
+                            ? (arch ? functions[rdna4_index[op]]
+                                    : rdna3[op])(flags, uint32_t(exec_mask), mode, &d, &a, &b,
+                                                 semantics ? nullptr : &state)
+                            : (arch ? wave64[rdna4_index[op]] : rdna3_wide[op])(
+                                  flags, exec_mask, mode, &d, &a, &b, semantics ? nullptr : &state);
+                    ASSERT_EQ(status, GOC_SUCCESS);
+                    EXPECT_EQ(state, 0x12345678U);
+                    const float scales[] = {1, 2, 4, 0.5f};
+                    float factor = scales[arch || ((settings & 2) && !(settings & 4)) ? scale : 0];
+                    for (unsigned lane = 0; lane < width; ++lane) {
+                      int source = int(lane);
+                      bool enabled = descriptor
+                                         ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                                         : ((exec_mask >> lane) & 1);
+                      uint32_t expected = before[alias][lane + 1];
+                      if (enabled) {
+                        float x = source < 0 ? 0 : goc::as_float(before[0][source + 1]);
+                        float y = -goc::as_float(before[1][lane + 1]);
+                        float value = op == 0   ? x + y
+                                      : op == 1 ? x - y
+                                      : op == 2 ? y - x
+                                      : op == 4 ? std::min(x, y)
+                                      : op == 5 ? std::max(x, y)
+                                                : x * y;
+                        if (op == 6 && (x == 0 || y == 0))
+                          value = 0;
+                        // Active OMOD maps an unscaled zero (including -0) to +0.
+                        bool active_omod = scale && (arch || ((settings & 2) && !(settings & 4)));
+                        expected = active_omod && value == 0 ? 0 : goc::as_bits(value * factor);
+                      }
+                      EXPECT_EQ(d[lane], expected) << lane;
                     }
-                    EXPECT_EQ(d[lane], expected) << lane;
+                    for (unsigned reg = 0; reg < 3; ++reg) {
+                      EXPECT_EQ(words[reg][0], before[reg][0]);
+                      EXPECT_EQ(words[reg][width + 1], before[reg][width + 1]);
+                    }
                   }
-                  for (unsigned reg = 0; reg < 3; ++reg) {
-                    EXPECT_EQ(words[reg][0], before[reg][0]);
-                    EXPECT_EQ(words[reg][width + 1], before[reg][width + 1]);
-                  }
-                }
 }
 
 TEST(Binary, GuestDenormalFlushingAndUnsupportedExactState) {
@@ -324,9 +343,9 @@ TEST(Binary, GuestDenormalFlushingAndUnsupportedExactState) {
                           nullptr, &state),
                   GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
         EXPECT_EQ(state, 0x12345678U);
-        EXPECT_EQ(all[fn](flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
-                          0, nullptr, nullptr, nullptr, nullptr),
-                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(all[fn](flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0,
+                          nullptr, nullptr, nullptr, nullptr),
+                  fn % 4 == 0 || fn % 4 == 3 ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
 }
 
@@ -418,17 +437,48 @@ TEST(Binary, Dx9GuestInputFlushPrecedesZeroOverride) {
         }
 }
 
-TEST(Binary, MinmaxExactOptOutFallbackAndErrorOrdering) {
-  const Fn narrow[] = {goc_v_min_f32,         goc_v_max_f32,      goc_v_min_num_f32,
-                       goc_v_max_num_f32,     goc_v_minimum_f32,  goc_v_maximum_f32,
-                       goc_v_dual_min_f32,    goc_v_dual_max_f32, goc_v_dual_min_num_f32,
-                       goc_v_dual_max_num_f32};
-  const decltype(&goc_v_min_f32_wave64) wide[] = {
-      goc_v_min_f32_wave64,     goc_v_max_f32_wave64,     goc_v_min_num_f32_wave64,
-      goc_v_max_num_f32_wave64, goc_v_minimum_f32_wave64, goc_v_maximum_f32_wave64};
-  for (unsigned op = 0; op < 10; ++op)
+TEST(Binary, ExactOptOutFallbackAndErrorOrdering) {
+  const struct {
+    Fn narrow;
+    decltype(&goc_v_add_f32_wave64) wide;
+    uint32_t expected;
+    bool exact;
+  } cases[] = {
+      {goc_v_min_f32, goc_v_min_f32_wave64, 0xc0000000U, false},
+      {goc_v_max_f32, goc_v_max_f32_wave64, 0x40400000U, false},
+      {goc_v_min_num_f32, goc_v_min_num_f32_wave64, 0xc0000000U, false},
+      {goc_v_max_num_f32, goc_v_max_num_f32_wave64, 0x40400000U, false},
+      {goc_v_minimum_f32, goc_v_minimum_f32_wave64, 0xc0000000U, false},
+      {goc_v_maximum_f32, goc_v_maximum_f32_wave64, 0x40400000U, false},
+      {goc_v_add_f32, goc_v_add_f32_wave64, 0x3f800000U, true},
+      {goc_v_add_f32_rdna4, goc_v_add_f32_rdna4_wave64, 0x3f800000U, true},
+      {goc_v_sub_f32, goc_v_sub_f32_wave64, 0xc0a00000U, false},
+      {goc_v_sub_f32_rdna4, goc_v_sub_f32_rdna4_wave64, 0xc0a00000U, false},
+      {goc_v_subrev_f32, goc_v_subrev_f32_wave64, 0x40a00000U, false},
+      {goc_v_subrev_f32_rdna4, goc_v_subrev_f32_rdna4_wave64, 0x40a00000U, false},
+      {goc_v_mul_f32, goc_v_mul_f32_wave64, 0xc0c00000U, true},
+      {goc_v_mul_f32_rdna4, goc_v_mul_f32_rdna4_wave64, 0xc0c00000U, true},
+      {goc_v_mul_dx9_zero_f32, goc_v_mul_dx9_zero_f32_wave64, 0xc0c00000U, false},
+      {goc_v_mul_dx9_zero_f32_rdna4, goc_v_mul_dx9_zero_f32_rdna4_wave64, 0xc0c00000U, false},
+      {goc_v_dual_min_f32, nullptr, 0xc0000000U, false},
+      {goc_v_dual_max_f32, nullptr, 0x40400000U, false},
+      {goc_v_dual_min_num_f32, nullptr, 0xc0000000U, false},
+      {goc_v_dual_max_num_f32, nullptr, 0x40400000U, false},
+      {goc_v_dual_add_f32, nullptr, 0x3f800000U, true},
+      {goc_v_dual_add_f32_rdna4, nullptr, 0x3f800000U, true},
+      {goc_v_dual_sub_f32, nullptr, 0xc0a00000U, false},
+      {goc_v_dual_sub_f32_rdna4, nullptr, 0xc0a00000U, false},
+      {goc_v_dual_subrev_f32, nullptr, 0x40a00000U, false},
+      {goc_v_dual_subrev_f32_rdna4, nullptr, 0x40a00000U, false},
+      {goc_v_dual_mul_f32, nullptr, 0xc0c00000U, true},
+      {goc_v_dual_mul_f32_rdna4, nullptr, 0xc0c00000U, true},
+      {goc_v_dual_mul_dx9_zero_f32, nullptr, 0xc0c00000U, false},
+      {goc_v_dual_mul_dx9_zero_f32_rdna4, nullptr, 0xc0c00000U, false},
+  };
+
+  for (const auto &test : cases)
     for (unsigned width : {32U, 64U}) {
-      if (width == 64 && op >= 6)
+      if (width == 64 && !test.wide)
         continue;
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (bool strict : {false, true}) {
@@ -439,8 +489,8 @@ TEST(Binary, MinmaxExactOptOutFallbackAndErrorOrdering) {
           const uint32_t *pa = a, *pb = b;
           uint32_t *d = output, state = 0x12345678U;
           auto call = [&](uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *report) {
-            return width == 32 ? narrow[op](flags, uint32_t(exec_mask), mode, &d, &pa, &pb, report)
-                               : wide[op](flags, exec_mask, mode, &d, &pa, &pb, report);
+            return width == 32 ? test.narrow(flags, uint32_t(exec_mask), mode, &d, &pa, &pb, report)
+                               : test.wide(flags, exec_mask, mode, &d, &pa, &pb, report);
           };
           uint64_t flags =
               cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | (strict ? GOC_SEMANTICS_STRICT : 0);
@@ -455,14 +505,82 @@ TEST(Binary, MinmaxExactOptOutFallbackAndErrorOrdering) {
           for (auto word : output)
             EXPECT_EQ(word, 0xdeadbeefU);
           int result = call(flags, 0xffffffffffffffffULL, 0, nullptr);
-          EXPECT_EQ(result, strict ? GOC_ERROR_UNSUPPORTED_SEMANTICS : GOC_SUCCESS);
+          EXPECT_EQ(result, strict && !test.exact ? GOC_ERROR_UNSUPPORTED_SEMANTICS : GOC_SUCCESS);
           for (unsigned lane = 0; lane < width; ++lane)
-            EXPECT_EQ(output[lane], strict ? 0xdeadbeefU : op & 1 ? 0x40400000U : 0xc0000000U);
+            EXPECT_EQ(output[lane], strict && !test.exact ? 0xdeadbeefU : test.expected);
           // Loose reporting is optional and never blocks the SIMD calculation.
           EXPECT_EQ(call(cpu, 0xffffffffffffffffULL, 0, &state), GOC_SUCCESS);
           EXPECT_EQ(state, 0x12345678U);
           for (unsigned lane = 0; lane < width; ++lane)
-            EXPECT_EQ(output[lane], op & 1 ? 0x40400000U : 0xc0000000U);
+            EXPECT_EQ(output[lane], test.expected);
         }
     }
+}
+
+TEST(Binary, BorrowedAddMulPolicyVectorsAcrossHostModes) {
+  // rocjitsu tests/valu_fp_mode_test.cpp, binary_f32_policy_cases: captured
+  // gfx1100/gfx1201 NaN, signed-zero and pre-packing tininess cases, round=RNE.
+  const uint32_t inputs[][2] = {{0x7f801abc, 0xffc00222}, {0x3f800000, 0x7f801abc},
+                                {0x80000000, 0x80000000}, {0, 0x80000000},
+                                {0x00800000, 0x3f7fffff}, {0x80800000, 0x3f7fffff}};
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
+    ASSERT_EQ(std::fesetround(rounding), 0);
+    for (bool host_flush : {false, true}) {
+#if defined(__x86_64__) || defined(_M_X64)
+      unsigned controls = _mm_getcsr();
+      controls = host_flush ? controls | 0x8040U : controls & ~0x8040U;
+      _mm_setcsr(controls);
+#else
+      (void)host_flush;
+#endif
+      for (bool multiply : {false, true})
+        for (bool rdna4 : {false, true})
+          for (unsigned policy = 0; policy < 8; ++policy)
+            for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+              for (unsigned form = 0; form < 3; ++form)
+                for (unsigned target = 0; target < 3; ++target) {
+                  uint32_t words[3][64], before[3][64], expected[64];
+                  for (unsigned lane = 0; lane < 64; ++lane) {
+                    unsigned row = lane % (multiply ? 6 : 4);
+                    words[0][lane] = inputs[row][0];
+                    words[1][lane] = multiply && row == 2 ? 0x3f800000U : inputs[row][1];
+                    words[2][lane] = 0xdeadbeefU;
+                    expected[lane] = row < 2 ? (rdna4 || (policy & 4) ? 0x7fc01abcU : 0x7f801abcU)
+                                     : row == 2 || (row == 3 && multiply) ? 0x80000000U
+                                     : row == 3                           ? 0U
+                                     : row == 4 ? (policy & 2 ? 0U : 0x00800000U)
+                                                : (policy & 2 ? 0x80000000U : 0x80800000U);
+                  }
+                  std::memcpy(before, words, sizeof words);
+                  uint32_t *d = words[target];
+                  const uint32_t *a = words[0], *b = words[1];
+                  uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                                   (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                   (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                   (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+                  Fn ordinary = multiply ? (rdna4 ? goc_v_mul_f32_rdna4 : goc_v_mul_f32)
+                                         : (rdna4 ? goc_v_add_f32_rdna4 : goc_v_add_f32);
+                  Fn dual = multiply ? (rdna4 ? goc_v_dual_mul_f32_rdna4 : goc_v_dual_mul_f32)
+                                     : (rdna4 ? goc_v_dual_add_f32_rdna4 : goc_v_dual_add_f32);
+                  auto wide = multiply
+                                  ? (rdna4 ? goc_v_mul_f32_rdna4_wave64 : goc_v_mul_f32_wave64)
+                                  : (rdna4 ? goc_v_add_f32_rdna4_wave64 : goc_v_add_f32_wave64);
+                  uint64_t exec_mask = 0xa5a55a5afedcba98ULL;
+                  ASSERT_EQ(form == 1 ? wide(flags, exec_mask, 0, &d, &a, &b, nullptr)
+                                      : (form == 2 ? dual : ordinary)(flags, uint32_t(exec_mask), 0,
+                                                                      &d, &a, &b, nullptr),
+                            GOC_SUCCESS);
+                  for (unsigned lane = 0; lane < 64; ++lane) {
+                    bool active = (form == 1 || lane < 32) && ((exec_mask >> lane) & 1);
+                    EXPECT_EQ(d[lane], active ? expected[lane] : before[target][lane]);
+                  }
+                }
+      EXPECT_EQ(std::fegetround(), rounding);
+#if defined(__x86_64__) || defined(_M_X64)
+      EXPECT_EQ(_mm_getcsr(), controls);
+#endif
+    }
+  }
 }
