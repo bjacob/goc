@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: MIT
 
 #include "exec_masks.h"
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "half_reference.h"
+#include "test_instruction.h"
 
 #include <algorithm>
+#include <cfenv>
 #include <cstring>
+
+#if defined(__x86_64__) || defined(_M_X64)
+#include <immintrin.h>
+#endif
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <random>
@@ -13,14 +20,14 @@
 
 namespace {
 
-const decltype(&goc_v_pk_add_f16_wave64) wave64[] = {
-    goc_v_pk_add_f16_wave64,     goc_v_pk_mul_f16_wave64,     goc_v_pk_min_num_f16_wave64,
-    goc_v_pk_max_num_f16_wave64, goc_v_pk_minimum_f16_wave64, goc_v_pk_maximum_f16_wave64,
-    goc_v_pk_min_f16_wave64,     goc_v_pk_max_f16_wave64};
+const decltype(&goc_v_pk_add_f16_rdna4_wave64) wave64[] = {
+    goc_v_pk_add_f16_rdna4_wave64, goc_v_pk_mul_f16_rdna4_wave64, goc_v_pk_min_num_f16_wave64,
+    goc_v_pk_max_num_f16_wave64,   goc_v_pk_minimum_f16_wave64,   goc_v_pk_maximum_f16_wave64,
+    goc_v_pk_min_f16_wave64,       goc_v_pk_max_f16_wave64};
 
-using Fn = decltype(&goc_v_pk_add_f16);
-const Fn functions[] = {goc_v_pk_add_f16,     goc_v_pk_mul_f16,     goc_v_pk_min_num_f16,
-                        goc_v_pk_max_num_f16, goc_v_pk_minimum_f16, goc_v_pk_maximum_f16};
+using Fn = decltype(&goc_v_pk_add_f16_rdna4);
+const Fn functions[] = {goc_v_pk_add_f16_rdna4, goc_v_pk_mul_f16_rdna4, goc_v_pk_min_num_f16,
+                        goc_v_pk_max_num_f16,   goc_v_pk_minimum_f16,   goc_v_pk_maximum_f16};
 const uint32_t known = GOC_PK_NEG_LO_A | GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_NEG_HI_B |
                        GOC_PK_CLAMP | GOC_PK_LO_A_HIGH | GOC_PK_LO_B_HIGH | GOC_PK_HI_A_LOW |
                        GOC_PK_HI_B_LOW;
@@ -28,13 +35,21 @@ const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3c0
                            0x3c01, 0x3bff, 0x3800, 0xb800, 0x4000, 0xc000, 0xbc00,
                            0x7bff, 0xfbff, 0x7c00, 0xfc00, 0x7c01, 0xfe12};
 
-uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t mode, bool saturate) {
+uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t mode, bool saturate,
+                   uint64_t fp_flags = 0) {
   uint32_t result = 0;
   for (int half = 0; half < 2; ++half) {
     bool a_high = half ? !(mode & GOC_PK_HI_A_LOW) : bool(mode & GOC_PK_LO_A_HIGH);
     bool b_high = half ? !(mode & GOC_PK_HI_B_LOW) : bool(mode & GOC_PK_LO_B_HIGH);
-    double x = goc_test::half_value(uint16_t(a >> (a_high ? 16 : 0)));
-    double y = goc_test::half_value(uint16_t(b >> (b_high ? 16 : 0)));
+    uint16_t ab = uint16_t(a >> (a_high ? 16 : 0)), bb = uint16_t(b >> (b_high ? 16 : 0));
+    if (fp_flags & GOC_FP_FLUSH_INPUT_DENORMALS) {
+      if ((ab & 0x7fff) < 0x400)
+        ab &= 0x8000;
+      if ((bb & 0x7fff) < 0x400)
+        bb &= 0x8000;
+    }
+    double x = goc_test::half_value(ab);
+    double y = goc_test::half_value(bb);
     if (mode & (half ? GOC_PK_NEG_HI_A : GOC_PK_NEG_LO_A))
       x = -x;
     if (mode & (half ? GOC_PK_NEG_HI_B : GOC_PK_NEG_LO_B))
@@ -42,7 +57,10 @@ uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t mode, bool saturate)
     double value = goc_test::half_binary(op == 0 ? 0 : op == 1 ? 3 : op + 2, x, y);
     if (mode & GOC_PK_CLAMP)
       value = !(value > 0) ? 0 : std::min(value, 1.0);
-    result |= uint32_t(goc_test::half_bits(value, saturate)) << (16 * half);
+    uint16_t encoded = goc_test::half_bits(value, saturate);
+    if ((fp_flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && (encoded & 0x7fff) < 0x400)
+      encoded &= 0x8000;
+    result |= uint32_t(encoded) << (16 * half);
   }
   return result;
 }
@@ -260,5 +278,130 @@ TEST(PackedBinary, Wave64ValidationAndOptionalState) {
         fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, nullptr, &exceptions),
         GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
     EXPECT_EQ(exceptions, 0x80000055U);
+  }
+}
+
+namespace {
+using Arithmetic =
+    goc_test::WaveInstruction<int (*)(uint64_t, uint32_t, uint64_t, uint32_t *const *,
+                                      const uint32_t *const *, const uint32_t *const *)>;
+const Arithmetic architecture[2][2][2] = {
+    {{goc_v_pk_add_f16, goc_v_pk_mul_f16}, {goc_v_pk_add_f16_wave64, goc_v_pk_mul_f16_wave64}},
+    {{goc_v_pk_add_f16_rdna4, goc_v_pk_mul_f16_rdna4},
+     {goc_v_pk_add_f16_rdna4_wave64, goc_v_pk_mul_f16_rdna4_wave64}}};
+
+uint64_t guest_policy(unsigned guest) {
+  return (guest & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+         (guest & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) | (guest & 4 ? GOC_FP_IEEE_MODE : 0);
+}
+} // namespace
+
+TEST(PackedBinary, ArchitecturePoliciesModifiersAndAliases) {
+  for (unsigned arch = 0; arch < 2; ++arch)
+    for (unsigned wide = 0; wide < 2; ++wide)
+      for (unsigned op = 0; op < 2; ++op)
+        for (unsigned guest = 0; guest < 8; ++guest)
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+            for (uint32_t mode = 0; mode < 8192; ++mode) {
+              if (mode & ~known)
+                continue;
+              uint32_t words[3][66], before[3][66];
+              for (unsigned reg = 0; reg < 3; ++reg)
+                for (unsigned lane = 0; lane < 66; ++lane)
+                  words[reg][lane] = values[(lane + reg * 7) % 20] |
+                                     (uint32_t(values[(lane * 3 + reg * 5) % 20]) << 16);
+              std::memcpy(before, words, sizeof(words));
+              unsigned target = mode % 3;
+              uint64_t exec_mask = mode & 1 ? 0x8181818155555555ULL : UINT64_MAX;
+              uint64_t flags = cpu | guest_policy(guest) | (mode & 2 ? GOC_FP16_OVFL : 0);
+              uint32_t state = 0x12345678;
+              const uint32_t *a[] = {words[0] + 1}, *b[] = {words[1] + 1};
+              uint32_t *d[] = {words[target] + 1};
+              ASSERT_EQ(architecture[arch][wide][op](flags, exec_mask, mode, d, a, b, &state),
+                        GOC_SUCCESS);
+              ASSERT_EQ(state, 0x12345678U);
+              for (unsigned reg = 0; reg < 3; ++reg)
+                for (unsigned lane = 0; lane < 66; ++lane) {
+                  if (reg == target && lane >= 1 && lane <= (wide ? 64u : 32u) &&
+                      ((exec_mask >> (lane - 1)) & 1))
+                    check(words[reg][lane], reference(op, before[0][lane], before[1][lane], mode,
+                                                      flags & GOC_FP16_OVFL, flags));
+                  else
+                    ASSERT_EQ(words[reg][lane], before[reg][lane]);
+                }
+            }
+}
+
+TEST(PackedBinary, LiteralGuestDenormalWitnesses) {
+  for (unsigned arch = 0; arch < 2; ++arch)
+    for (unsigned wide = 0; wide < 2; ++wide)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned guest = 0; guest < 8; ++guest) {
+          uint32_t a[64], b[64], result[64];
+          const uint32_t *ap[] = {a}, *bp[] = {b};
+          uint32_t *d[] = {result};
+          // Low half isolates input flushing; high half produces a subnormal from normal inputs.
+          std::fill_n(a, 64, 0x04010001U);
+          std::fill_n(b, 64, 0x84000000U);
+          ASSERT_EQ(
+              architecture[arch][wide][0](cpu | guest_policy(guest), UINT64_MAX, 0, d, ap, bp),
+              GOC_SUCCESS);
+          const uint32_t add_expected = (guest & 3 ? 0U : 1U) | (guest & 2 ? 0U : 0x10000U);
+          for (unsigned lane = 0; lane < (wide ? 64u : 32u); ++lane)
+            ASSERT_EQ(result[lane], add_expected);
+          std::fill_n(a, 64, 0x04000400U);
+          std::fill_n(b, 64, 0xb8003800U);
+          ASSERT_EQ(
+              architecture[arch][wide][1](cpu | guest_policy(guest), UINT64_MAX, 0, d, ap, bp),
+              GOC_SUCCESS);
+          for (unsigned lane = 0; lane < (wide ? 64u : 32u); ++lane)
+            ASSERT_EQ(result[lane], guest & 2 ? 0x80000000U : 0x82000200U);
+        }
+}
+
+TEST(PackedBinary, ArchitectureErrorsAndHostControls) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (int round : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+    ASSERT_EQ(std::fesetround(round), 0);
+#if defined(__x86_64__) || defined(_M_X64)
+    _mm_setcsr(_mm_getcsr() | 0x8040U);
+    const unsigned controls = _mm_getcsr() & ~0x3fU;
+#endif
+    for (unsigned arch = 0; arch < 2; ++arch)
+      for (unsigned wide = 0; wide < 2; ++wide)
+        for (unsigned op = 0; op < 2; ++op)
+          for (unsigned guest = 0; guest < 8; ++guest) {
+            uint32_t a[64], b[64], result[64], state = 0x12345678;
+            std::fill_n(a, 64, 0x00010001U);
+            std::fill_n(b, 64, 0x3c003c00U);
+            const uint32_t *ap[] = {a}, *bp[] = {b};
+            uint32_t *d[] = {result};
+            for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT})
+              for (uint64_t exec_mask : {uint64_t(0), UINT64_MAX}) {
+                std::fill_n(result, 64, 0xdeadbeef);
+                const auto fn = architecture[arch][wide][op];
+                uint64_t flags = guest_policy(guest) | GOC_SEMANTICS_EXACT_EMPIRICAL | strict;
+                EXPECT_EQ(fn(flags, exec_mask, 0, d, nullptr, nullptr, &state),
+                          GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+                EXPECT_EQ(state, 0x12345678U);
+                for (auto word : result)
+                  EXPECT_EQ(word, 0xdeadbeefU);
+                if (strict) {
+                  EXPECT_EQ(fn(flags, exec_mask, 0, d, nullptr, nullptr),
+                            GOC_ERROR_UNSUPPORTED_SEMANTICS);
+                }
+              }
+            for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+              ASSERT_EQ(architecture[arch][wide][op](cpu | guest_policy(guest), UINT64_MAX, 0, d,
+                                                     ap, bp, &state),
+                        GOC_SUCCESS);
+              EXPECT_EQ(state, 0x12345678U);
+              EXPECT_EQ(std::fegetround(), round);
+#if defined(__x86_64__) || defined(_M_X64)
+              EXPECT_EQ(_mm_getcsr() & ~0x3fU, controls);
+#endif
+            }
+          }
   }
 }

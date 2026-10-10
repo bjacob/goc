@@ -1321,7 +1321,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_permlanex16_b32` | yes | yes | in | `goc_v_permlanex16_b32`<br>`goc_v_permlanex16_b32_wave64` | — | API present; semantic audit pending |
 | `v_permlanex16_var_b32` | — | yes | in | `goc_v_permlanex16_var_b32`<br>`goc_v_permlanex16_var_b32_wave64` | — | API present; semantic audit pending |
 | `v_pipeflush` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
-| `v_pk_add_f16` | yes | yes | in | `goc_v_pk_add_f16`<br>`goc_v_pk_add_f16_wave64` | — | API present; semantic audit pending |
+| `v_pk_add_f16` | yes | yes | in | `goc_v_pk_add_f16`<br>`goc_v_pk_add_f16_wave64`<br>`goc_v_pk_add_f16_rdna4`<br>`goc_v_pk_add_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#packed-fp16-addmul-architecture-policies) |
 | `v_pk_add_i16` | yes | yes | in | `goc_v_pk_add_i16`<br>`goc_v_pk_add_i16_wave64` | — | API present; semantic audit pending |
 | `v_pk_add_u16` | yes | yes | in | `goc_v_pk_add_u16`<br>`goc_v_pk_add_u16_wave64` | — | API present; semantic audit pending |
 | `v_pk_ashrrev_i16` | yes | yes | in | `goc_v_pk_ashrrev_i16`<br>`goc_v_pk_ashrrev_i16_wave64` | — | API present; semantic audit pending |
@@ -1341,7 +1341,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_pk_min_num_f16` | — | yes | in | `goc_v_pk_min_num_f16`<br>`goc_v_pk_min_num_f16_wave64` | `v_pk_min_f16` | API present; semantic audit pending |
 | `v_pk_min_u16` | yes | yes | in | `goc_v_pk_min_u16`<br>`goc_v_pk_min_u16_wave64` | — | API present; semantic audit pending |
 | `v_pk_minimum_f16` | — | yes | in | `goc_v_pk_minimum_f16`<br>`goc_v_pk_minimum_f16_wave64` | — | API present; semantic audit pending |
-| `v_pk_mul_f16` | yes | yes | in | `goc_v_pk_mul_f16`<br>`goc_v_pk_mul_f16_wave64` | — | API present; semantic audit pending |
+| `v_pk_mul_f16` | yes | yes | in | `goc_v_pk_mul_f16`<br>`goc_v_pk_mul_f16_wave64`<br>`goc_v_pk_mul_f16_rdna4`<br>`goc_v_pk_mul_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#packed-fp16-addmul-architecture-policies) |
 | `v_pk_mul_lo_u16` | yes | yes | in | `goc_v_pk_mul_lo_u16`<br>`goc_v_pk_mul_lo_u16_wave64` | — | API present; semantic audit pending |
 | `v_pk_sub_i16` | yes | yes | in | `goc_v_pk_sub_i16`<br>`goc_v_pk_sub_i16_wave64` | — | API present; semantic audit pending |
 | `v_pk_sub_u16` | yes | yes | in | `goc_v_pk_sub_u16`<br>`goc_v_pk_sub_u16_wave64` | — | API present; semantic audit pending |

@@ -3986,3 +3986,65 @@ Validation: all 1,065 CTests pass with Clang 21 Release and GCC 15 Release;
 137 reviewed mnemonic contracts; the native-output audit resolves 894 of 928
 signatures with zero mismatches and 34 unresolved. Remaining families and
 whole-project gates are still open.
+
+## Packed FP16 ADD/MUL architecture policies
+
+Reviewed `v_pk_add_f16` and `v_pk_mul_f16` on RDNA3/RDNA4. Both generated VOP3P
+bodies at rocjitsu revision `ffc144c564c` use
+`fp_mode::packed_binary_f16`: source selection and per-half negation precede
+FP16 input flushing, arithmetic, destination rounding/clamp and output flushing.
+Packed arithmetic has no OMOD gate. The helper also contains architecture/IEEE
+NaN rules and guest rounding support; these are not claimed by GoC's loose path.
+
+GoC now accepts IEEE and input/output-denormal flags for packed ADD/MUL and
+extends the existing ordinary FP16 arithmetic flush rules to the packed scalar
+and AVX2 loops. Both output halves use original inputs before masked stores.
+No additional algorithm, sparse-mask optimization or per-lane state reporting
+was introduced. Unsuffixed APIs take RDNA3 `trapsts`; `_rdna4` APIs take
+`excp_flag_user`, with `_wave64` last. Both architectures share their numerical
+kernels. Loose calls leave state unchanged; exact non-null reporting remains
+unsupported before operand access, including empty EXEC and non-strict requests.
+
+Strict exact results remain unsupported. In particular, the upstream packed
+helper constructs `ScopedFenv`, which explicitly changes host FP controls. That
+implementation cannot be copied as-is: the host-environment prohibition takes
+precedence over porting upstream numerical code. No environment guard or new
+hardware-derived exact model was added. A future exact port must adapt the
+borrowed rounding/NaN logic without changing host controls; it is not established
+by this loose-policy review. Guest directed rounding is also not newly exposed.
+
+Three new cases in `packed_binary_test.cpp` cover both operations, targets and
+wave sizes, all guest policies, all packed source selectors/negations/clamp,
+all available CPU paths, overflow modes, sparse/full EXEC, destination aliases
+and guards. Literal witnesses separate input flushing from output flushing and
+check signed tiny multiplication results. Validation covers exact/reporting
+errors with untouched outputs and host rounding/FTZ/DAZ preservation. Existing
+packed min/max and ordinary FP16 arithmetic tests remain regression coverage for
+the shared implementation; their contracts are unchanged by this slice.
+
+The scalar lane loop is now named `binary_scalar` and remains shared with
+ordinary FP16 arithmetic and selection. A compile-time guest-flush switch keeps
+packed default-mode checks outside that loop. This adds one local parameter,
+not a second numerical implementation; a maintainer still edits arithmetic,
+modifiers, conversion and stores in one scalar body. The helper is not inlined
+so the compiler does not merge the default and guest branches back into a
+per-lane check. SIMD dispatch remains direct.
+
+Performance: seven alternating before/after samples per case, pinned to CPU 2,
+thread CPU time, at least 20 ms each, plain and modified/non-null loose-state
+ADD/MUL. Packed medians are -0.31% scalar, +0.20% AVX2 and +0.72% for the v4
+selection (which also uses AVX2); the largest slowdown is +0.95%. Ordinary FP16
+ADD/MUL regression medians are -0.32%, -0.65% and +0.07%, respectively, with a
+maximum +1.54%. Raw samples are `packed-binary-performance.json` and
+`half-binary-regression-performance.json` in `../goc-build/coverage-work/`.
+
+Validation: all 1,068 CTests pass with Clang 21 Release and GCC 15 Release;
+42 targeted ASan/UBSan tests pass, including ordinary/packed arithmetic,
+legacy/new min/max, DPP, instruction flags and optional-state contracts. The
+exhaustive sanitizer DPP min/max case completes in about 209 seconds; it was
+allowed to finish rather than restarted. Logs are `packed-binary-tests.log`
+under `../goc-build/coverage-work/`, `../goc-build-gcc/`, and
+`../goc-build-sanitize/`; the final test-bracing correction was rechecked with
+all ten `PackedBinary` sanitizer cases in `packed-binary-final-tests.log`.
+All nine audit-tool tests pass. The ledger records 139 contracts; the native
+state audit resolves 902 of 932 signatures with zero mismatches and 30 unresolved.

@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-137 in-scope mnemonics have explicit contract-review records in
+139 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 672 in-scope mnemonics need a recorded review.
+The remaining 670 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -580,7 +580,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_permlane16_b32` | no direct policy detected | no | not found | review required |
 | `v_permlane64_b32` | output helper | no | 17291 | review required |
 | `v_permlanex16_b32` | no direct policy detected | no | not found | review required |
-| `v_pk_add_f16` | IEEE mode, SIMD macro, architecture query, output helper | no | 17313 | review required |
+| `v_pk_add_f16` | IEEE mode, SIMD macro, architecture query, output helper | yes | 17313 | [loose contract reviewed; see limitations](COVERAGE.md#packed-fp16-addmul-architecture-policies) |
 | `v_pk_add_i16` | SIMD macro, output helper | no | 17399 | review required |
 | `v_pk_add_u16` | SIMD macro, output helper | no | 17430 | review required |
 | `v_pk_ashrrev_i16` | SIMD macro, output helper | no | 17461 | review required |
@@ -594,7 +594,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_pk_max_u16` | SIMD macro, output helper | no | 17887 | review required |
 | `v_pk_min_i16` | SIMD macro, output helper | no | 17959 | review required |
 | `v_pk_min_u16` | SIMD macro, output helper | no | 17995 | review required |
-| `v_pk_mul_f16` | IEEE mode, SIMD macro, architecture query, output helper | no | 18045 | review required |
+| `v_pk_mul_f16` | IEEE mode, SIMD macro, architecture query, output helper | yes | 18045 | [loose contract reviewed; see limitations](COVERAGE.md#packed-fp16-addmul-architecture-policies) |
 | `v_pk_mul_lo_u16` | SIMD macro, output helper | no | 18131 | review required |
 | `v_pk_sub_i16` | SIMD macro, output helper | no | 18160 | review required |
 | `v_pk_sub_u16` | SIMD macro, output helper | no | 18191 | review required |

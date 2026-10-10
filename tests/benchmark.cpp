@@ -5215,8 +5215,8 @@ bool benchmark_packed_integer(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_packed_binary(uint64_t cpu, int iterations, int min_ms) {
   using Binary = goc_test::WaveInstruction<decltype(&goc_v_min_u32)>;
-  const Binary functions[] = {goc_v_pk_add_f16,     goc_v_pk_mul_f16,     goc_v_pk_min_num_f16,
-                              goc_v_pk_max_num_f16, goc_v_pk_minimum_f16, goc_v_pk_maximum_f16};
+  const Binary functions[] = {goc_v_pk_add_f16_rdna4, goc_v_pk_mul_f16_rdna4, goc_v_pk_min_num_f16,
+                              goc_v_pk_max_num_f16,   goc_v_pk_minimum_f16,   goc_v_pk_maximum_f16};
   const char *names[] = {"v_pk_add_f16",     "v_pk_mul_f16",     "v_pk_min_num_f16",
                          "v_pk_max_num_f16", "v_pk_minimum_f16", "v_pk_maximum_f16"};
   for (int op = 0; op < 6; ++op)

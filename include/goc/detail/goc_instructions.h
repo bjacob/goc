@@ -3976,13 +3976,25 @@ int goc_v_pk_fmac_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instru
 // result rounds to FP16; the two results use original inputs even with aliases.
 // Number min/max ignore a lone NaN; minimum/maximum propagate NaNs. Both order
 // -0 below +0. Loose semantics require host nearest-even with denormals enabled.
+// ADD/MUL accept guest IEEE and input/output denormal flags. Flushing applies
+// to each selected input half and each rounded output half; IEEE does not change
+// their loose arithmetic. Unsuffixed ADD/MUL take RDNA3 trapsts; RDNA4 variants
+// take excp_flag_user. Both reject exact non-null reporting and skip loose state.
 int goc_v_pk_add_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                     uint32_t *excp_flag_user);
+                     uint32_t *trapsts);
+
+int goc_v_pk_add_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user);
 
 int goc_v_pk_mul_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                     uint32_t *excp_flag_user);
+                     uint32_t *trapsts);
+
+int goc_v_pk_mul_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user);
 
 int goc_v_pk_min_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
@@ -4725,11 +4737,19 @@ int goc_v_maximum_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instru
 
 int goc_v_pk_add_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                            uint32_t *excp_flag_user);
+                            uint32_t *trapsts);
+
+int goc_v_pk_add_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_pk_mul_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                            uint32_t *excp_flag_user);
+                            uint32_t *trapsts);
+
+int goc_v_pk_mul_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_pk_min_num_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,

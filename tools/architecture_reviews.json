@@ -226,5 +226,14 @@
       "v_pack_b32_f16",
       "v_cvt_pk_u8_f32"
     ]
+  },
+  {
+    "heading": "Packed FP16 ADD/MUL architecture policies",
+    "semantics": "loose",
+    "tests": "tests/packed_binary_test.cpp",
+    "mnemonics": [
+      "v_pk_add_f16",
+      "v_pk_mul_f16"
+    ]
   }
 ]

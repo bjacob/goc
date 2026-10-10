@@ -15,8 +15,8 @@ namespace goc {
 template <Binary Op, bool Packed>
 void half_binary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                            const uint32_t *a, const uint32_t *b) {
-  constexpr bool arithmetic = !Packed && (Op == Binary::Add || Op == Binary::Sub ||
-                                          Op == Binary::Subrev || Op == Binary::Mul);
+  constexpr bool arithmetic =
+      Op == Binary::Add || Op == Binary::Sub || Op == Binary::Subrev || Op == Binary::Mul;
   constexpr bool legacy = Op == Binary::MinLegacy || Op == Binary::MaxLegacy;
   constexpr bool preserve_nan_inputs = legacy || Op == Binary::Minimum || Op == Binary::Maximum;
   constexpr bool selection = preserve_nan_inputs || Op == Binary::MinNum || Op == Binary::MaxNum;

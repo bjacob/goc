@@ -47,9 +47,9 @@ struct Case {
 };
 
 const Case cases[] = {
-    {binary<goc_v_pk_add_f16>, false,
+    {binary<goc_v_pk_add_f16_rdna4>, false,
      GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW | GOC_PK_CLAMP},
-    {binary<goc_v_pk_mul_f16>, false,
+    {binary<goc_v_pk_mul_f16_rdna4>, false,
      GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW | GOC_PK_CLAMP},
     {binary<goc_v_pk_min_num_f16>, false,
      GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW | GOC_PK_CLAMP},
