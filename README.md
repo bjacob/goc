@@ -505,8 +505,11 @@ measured 4.77–11.19x for v3 and 4.81–11.84x for v4 versus scalar, including
 negation and index-key selection (seven samples, each at least 10 ms).
 
 Sparse FP8/BF8 WMMA covers all four `v_swmmac_f32_16x16x32_*_*`
-combinations. A uses two VGPRs, B four, the index one, and in/out D eight.
-Both index keys are supported; these instructions have no negation or CLAMP
+combinations at both wave widths. Wave32 uses two A VGPRs, four B VGPRs,
+one index VGPR and eight in/out D VGPRs; Wave64 uses one, two, one and four.
+Wave32 supports two 16-bit index sets; Wave64 supports four 8-bit sets,
+selected by combining `GOC_SWMMAC_INDEX_KEY_1` and `GOC_SWMMAC_INDEX_KEY_2`.
+All index keys are supported; these instructions have no negation or CLAMP
 modifiers. The scalar and shared floating-point v3/v4 backends use loose FP32
 FMA semantics, with full input snapshots and destination stores.
 Tests check 32,768 GPU-captured logical results, all 256 encodings of each

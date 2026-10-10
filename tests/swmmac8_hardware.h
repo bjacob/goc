@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstring>
 #include <stdint.h>
 
@@ -87,7 +88,8 @@ static const uint64_t swmmac8_capture_digests[4][16][2] = {
 };
 
 // Reproduce physical inputs from one captured matrix operation.
-inline void swmmac8_capture_inputs(unsigned op, unsigned sample, uint32_t (&data)[15][32]) {
+template <size_t Lanes>
+inline void swmmac8_capture_inputs(unsigned op, unsigned sample, uint32_t (&data)[15][Lanes]) {
   std::memset(data, 0, sizeof(data));
   uint32_t state = 0x7381a593u + sample;
   auto next = [&]() {

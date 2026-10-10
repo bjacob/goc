@@ -1729,3 +1729,28 @@ architecture audits still tracked separately.
 Validation: all 921 tests pass on Clang 21 and GCC 15 Release. Five targeted
 integer WMMA and instruction-flag tests pass under ASan/UBSan, including the
 existing Wave32 capture corpus after making its input generator width-aware.
+
+## Wave64 FP8/BF8 SWMMAC and four index sets
+
+Added all four FP8/BF8 sparse matrix formats at Wave64. The family decoder
+now handles both register layouts and feeds the existing scalar, AVX2 and
+AVX-512 accumulation kernels. Wave64 uses one A VGPR, two B VGPRs, four
+in/out D VGPRs and one index VGPR. Its four 8-bit metadata sets use both
+selector bits; `GOC_SWMMAC_INDEX_KEY_2` exposes the second bit. Wave32 retains
+its two 16-bit sets and rejects the new bit. Arithmetic remains loose-only.
+
+Native RX 9070 gfx1201 captures cover four format pairs, sixteen input sets
+and all four keys: 256 word-FNV digests over 65,536 output words. Every digest
+matches all CPU paths. The generator `capture_swmmac8_wave64.cpp` has SHA-256
+`9a691f2cfd9d341b6f2e0abcbb7994bbee8d8e3562faa4a5adc9b6f43e7c2b54`.
+Fixtures are in `swmmac8_wave64_hardware.h`. Exactly representable input sums
+validate the routing and selectors without claiming general exact arithmetic.
+The lane routing follows rocjitsu's Wave64 sparse layout; four-byte selector
+handling follows the ISA and native capture rather than its 16-entry helper.
+
+Tests additionally cover every byte encoding, source/index/destination aliases,
+duplicate destinations and rejected flags. The existing Wave32 captures remain
+in the suite. Seven matrix width gaps remain: FP16/BF16 and integer SWMMAC.
+
+Validation: all 925 tests pass with Clang 21 and GCC 15 Release. All ten
+SWMMAC8 and instruction-flag tests pass under ASan/UBSan.

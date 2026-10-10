@@ -2182,6 +2182,30 @@ int goc_v_swmmac_f32_16x16x32_bf8_bf8(uint64_t flags, uint64_t instruction_flags
                                       uint32_t *const *d, const uint32_t *const *a,
                                       const uint32_t *const *b, const uint32_t *const *index);
 
+// Wave64 FP8/BF8 SWMMAC: A one VGPR, B two, D four, index one.
+// KEY_1/KEY_2 combine to select one of four consecutive metadata bytes per
+// lane. Four compressed elements use four 2-bit indices from that byte.
+// Loose-only semantics and alias/error guarantees match the Wave32 forms.
+int goc_v_swmmac_f32_16x16x32_fp8_fp8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                             uint32_t *const *d, const uint32_t *const *a,
+                                             const uint32_t *const *b,
+                                             const uint32_t *const *index);
+
+int goc_v_swmmac_f32_16x16x32_fp8_bf8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                             uint32_t *const *d, const uint32_t *const *a,
+                                             const uint32_t *const *b,
+                                             const uint32_t *const *index);
+
+int goc_v_swmmac_f32_16x16x32_bf8_fp8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                             uint32_t *const *d, const uint32_t *const *a,
+                                             const uint32_t *const *b,
+                                             const uint32_t *const *index);
+
+int goc_v_swmmac_f32_16x16x32_bf8_bf8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                             uint32_t *const *d, const uint32_t *const *a,
+                                             const uint32_t *const *b,
+                                             const uint32_t *const *index);
+
 // Sparse 2:4 matrix multiply-accumulate. D is both the initial accumulator and
 // destination; A holds 16 compressed elements per row, B the dense 32x16 matrix,
 // and index holds packed 2-bit positions. Within each four-element K group the
@@ -4582,8 +4606,12 @@ static const uint32_t GOC_WMMA_NEG_HI_A = 1U << 3;
 static const uint32_t GOC_WMMA_NEG_HI_B = 1U << 4;
 static const uint32_t GOC_WMMA_ABS_C = 1U << 5;
 
-// Sparse WMMA metadata selector. This bit selects the upper half of each index VGPR lane.
+// Sparse WMMA selector low bit: selects the upper 16-bit set in Wave32,
+// or advances by one 8-bit set in Wave64 forms with four index sets.
 static const uint32_t GOC_SWMMAC_INDEX_KEY_1 = 1U << 7;
+
+// High selector bit for Wave64 sparse forms with four index sets.
+static const uint32_t GOC_SWMMAC_INDEX_KEY_2 = 1U << 8;
 
 // RDNA3 packed WMMA OPSEL selects the same half of C and D. The other half
 // of D is preserved. This is not a packed adjacent-row output as on RDNA4.
