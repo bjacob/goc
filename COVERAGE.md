@@ -779,3 +779,25 @@ claimed. The width-review queue now has 319 candidates.
 
 Validation: all 758 tests pass with Clang 21 and GCC 15 Release builds. All
 twelve carry/borrow and instruction-flag tests pass under ASan/UBSan.
+
+
+## Wave64 shifts and bitfields
+
+Added six reverse-shift and eight bitfield APIs. The 64-bit shift adapter takes
+one count VGPR and two value/destination VGPRs, and rejects DPP. The 32-bit
+shifts and all bitfield operations retain DPP on A with four Wave64 row-enable
+bits. Each executes the existing kernels for both halves; whole-VGPR aliases
+are safe because DPP stays within 16-lane rows. Scalar/v3/v4 dispatch policies
+and numerical kernels are unchanged, including BFI's portable fallback on v3.
+
+Strict exact semantics is now accepted at both widths: these operations use
+integer bit manipulation only. Tests check shifts at every bit position and
+count, sign extension, wrapped counts, bitfield offsets/widths across bit 31,
+byte selectors, DPP8/DPP16, all row masks, both semantics, every CPU path,
+whole-source aliases, guards and invalid/zero-EXEC calls. Existing Wave32
+hardware captures continue to validate shared kernels; no new Wave64 capture
+or throughput measurement is claimed. The width-review queue now contains
+305 candidates; canonical-name counts remain 806 present and three absent.
+
+Validation: all 761 tests pass on Clang 21 and GCC 15 Release. All 23 shift,
+bitfield, Wave64, DPP and instruction-flag tests pass under ASan/UBSan.

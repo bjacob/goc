@@ -2646,7 +2646,7 @@ int goc_v_mqsad_u32_u8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
 // wrap modulo 32 or 64. ASHR replicates the sign bit; logical shifts insert
 // zero bits. The 32-bit forms support DPP8/DPP16 on A (the shift count); their
 // low 32 instruction-flag bits must be zero. The 64-bit forms require zero
-// instruction_flags. Loose semantics only; preserves all host floating-point state.
+// instruction_flags. Both semantics are exact; preserves all host floating-point state.
 int goc_v_lshlrev_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
 int goc_v_lshrrev_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -3861,6 +3861,59 @@ int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c);
 
+// Wave64 shifts and bitfields. EXEC has 64 bits; operand VGPR counts, count
+// wrapping, modifiers and whole-VGPR aliases match Wave32. Shifts of 64-bit
+// elements still take one count VGPR and two value/destination VGPRs. Only
+// 32-bit shifts support DPP; all bitfield forms support DPP on A. Both
+// semantics are exact, with inactive lanes preserved and no host FP changes.
+int goc_v_lshlrev_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_lshrrev_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_ashrrev_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_lshlrev_b64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_lshrrev_b64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_ashrrev_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_bfe_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c);
+
+int goc_v_bfe_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c);
+
+int goc_v_bfi_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c);
+
+int goc_v_bfm_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_bfrev_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_alignbit_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_alignbyte_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_perm_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c);
+
 // Wave64 carry/borrow operations. EXEC, input_carry and the required carry
 // output have 64 bits. Inactive/DPP-filtered carry bits are zero. The scalar
 // output is stored after all VGPR reads/writes; zero EXEC permits null VGPR
@@ -4559,7 +4612,7 @@ int goc_v_not_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
                   uint32_t *const *d, const uint32_t *const *a);
 
 // Wave32 bit operations: every operand holds one VGPR. Supports DPP8/DPP16 on A;
-// low 32 instruction-flag bits must be zero. Only loose semantics are implemented.
+// low 32 instruction-flag bits must be zero. Both semantics are exact.
 // BFE offsets and widths, and BFM widths and offsets, use their low five bits;
 // a zero width produces zero.
 // Signed BFE sign-extends A before extraction and sign-extends the extracted field.

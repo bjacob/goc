@@ -849,20 +849,20 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_add_nc_i32` | yes | yes | in | `goc_v_add_nc_i32` | — | API present; semantic audit pending |
 | `v_add_nc_u16` | yes | yes | in | `goc_v_add_nc_u16` | — | API present; semantic audit pending |
 | `v_add_nc_u32` | yes | yes | in | `goc_v_add_nc_u32` | — | API present; semantic audit pending |
-| `v_alignbit_b32` | yes | yes | in | `goc_v_alignbit_b32` | — | API present; semantic audit pending |
-| `v_alignbyte_b32` | yes | yes | in | `goc_v_alignbyte_b32` | — | API present; semantic audit pending |
+| `v_alignbit_b32` | yes | yes | in | `goc_v_alignbit_b32`<br>`goc_v_alignbit_b32_wave64` | — | API present; semantic audit pending |
+| `v_alignbyte_b32` | yes | yes | in | `goc_v_alignbyte_b32`<br>`goc_v_alignbyte_b32_wave64` | — | API present; semantic audit pending |
 | `v_and_b16` | yes | yes | in | `goc_v_and_b16`<br>`goc_v_and_b16_wave64` | — | API present; semantic audit pending |
 | `v_and_b32` | yes | yes | in | `goc_v_and_b32`<br>`goc_v_and_b32_wave64` | — | API present; semantic audit pending |
 | `v_and_or_b32` | yes | yes | in | `goc_v_and_or_b32` | — | API present; semantic audit pending |
 | `v_ashrrev_i16` | yes | yes | in | `goc_v_ashrrev_i16` | — | API present; semantic audit pending |
-| `v_ashrrev_i32` | yes | yes | in | `goc_v_ashrrev_i32` | — | API present; semantic audit pending |
-| `v_ashrrev_i64` | yes | yes | in | `goc_v_ashrrev_i64` | — | API present; semantic audit pending |
+| `v_ashrrev_i32` | yes | yes | in | `goc_v_ashrrev_i32`<br>`goc_v_ashrrev_i32_wave64` | — | API present; semantic audit pending |
+| `v_ashrrev_i64` | yes | yes | in | `goc_v_ashrrev_i64`<br>`goc_v_ashrrev_i64_wave64` | — | API present; semantic audit pending |
 | `v_bcnt_u32_b32` | yes | yes | in | `goc_v_bcnt_u32_b32`<br>`goc_v_bcnt_u32_b32_wave64` | — | API present; semantic audit pending |
-| `v_bfe_i32` | yes | yes | in | `goc_v_bfe_i32` | — | API present; semantic audit pending |
-| `v_bfe_u32` | yes | yes | in | `goc_v_bfe_u32` | — | API present; semantic audit pending |
-| `v_bfi_b32` | yes | yes | in | `goc_v_bfi_b32` | — | API present; semantic audit pending |
-| `v_bfm_b32` | yes | yes | in | `goc_v_bfm_b32` | — | API present; semantic audit pending |
-| `v_bfrev_b32` | yes | yes | in | `goc_v_bfrev_b32` | — | API present; semantic audit pending |
+| `v_bfe_i32` | yes | yes | in | `goc_v_bfe_i32`<br>`goc_v_bfe_i32_wave64` | — | API present; semantic audit pending |
+| `v_bfe_u32` | yes | yes | in | `goc_v_bfe_u32`<br>`goc_v_bfe_u32_wave64` | — | API present; semantic audit pending |
+| `v_bfi_b32` | yes | yes | in | `goc_v_bfi_b32`<br>`goc_v_bfi_b32_wave64` | — | API present; semantic audit pending |
+| `v_bfm_b32` | yes | yes | in | `goc_v_bfm_b32`<br>`goc_v_bfm_b32_wave64` | — | API present; semantic audit pending |
+| `v_bfrev_b32` | yes | yes | in | `goc_v_bfrev_b32`<br>`goc_v_bfrev_b32_wave64` | — | API present; semantic audit pending |
 | `v_ceil_f16` | yes | yes | in | `goc_v_ceil_f16` | — | API present; semantic audit pending |
 | `v_ceil_f32` | yes | yes | in | `goc_v_ceil_f32` | — | API present; semantic audit pending |
 | `v_ceil_f64` | yes | yes | in | `goc_v_ceil_f64` | — | API present; semantic audit pending |
@@ -1194,11 +1194,11 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_lshl_add_u32` | yes | yes | in | `goc_v_lshl_add_u32` | — | API present; semantic audit pending |
 | `v_lshl_or_b32` | yes | yes | in | `goc_v_lshl_or_b32` | — | API present; semantic audit pending |
 | `v_lshlrev_b16` | yes | yes | in | `goc_v_lshlrev_b16` | — | API present; semantic audit pending |
-| `v_lshlrev_b32` | yes | yes | in | `goc_v_lshlrev_b32` | — | API present; semantic audit pending |
-| `v_lshlrev_b64` | yes | yes | in | `goc_v_lshlrev_b64` | — | API present; semantic audit pending |
+| `v_lshlrev_b32` | yes | yes | in | `goc_v_lshlrev_b32`<br>`goc_v_lshlrev_b32_wave64` | — | API present; semantic audit pending |
+| `v_lshlrev_b64` | yes | yes | in | `goc_v_lshlrev_b64`<br>`goc_v_lshlrev_b64_wave64` | — | API present; semantic audit pending |
 | `v_lshrrev_b16` | yes | yes | in | `goc_v_lshrrev_b16` | — | API present; semantic audit pending |
-| `v_lshrrev_b32` | yes | yes | in | `goc_v_lshrrev_b32` | — | API present; semantic audit pending |
-| `v_lshrrev_b64` | yes | yes | in | `goc_v_lshrrev_b64` | — | API present; semantic audit pending |
+| `v_lshrrev_b32` | yes | yes | in | `goc_v_lshrrev_b32`<br>`goc_v_lshrrev_b32_wave64` | — | API present; semantic audit pending |
+| `v_lshrrev_b64` | yes | yes | in | `goc_v_lshrrev_b64`<br>`goc_v_lshrrev_b64_wave64` | — | API present; semantic audit pending |
 | `v_mad_co_i64_i32` | — | yes | in | `goc_v_mad_co_i64_i32` | `v_mad_i64_i32` | API present; semantic audit pending |
 | `v_mad_co_u64_u32` | — | yes | in | `goc_v_mad_co_u64_u32` | `v_mad_u64_u32` | API present; semantic audit pending |
 | `v_mad_i16` | yes | yes | in | `goc_v_mad_i16` | — | API present; semantic audit pending |
@@ -1310,7 +1310,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_or_b16` | yes | yes | in | `goc_v_or_b16`<br>`goc_v_or_b16_wave64` | — | API present; semantic audit pending |
 | `v_or_b32` | yes | yes | in | `goc_v_or_b32`<br>`goc_v_or_b32_wave64` | — | API present; semantic audit pending |
 | `v_pack_b32_f16` | yes | yes | in | `goc_v_pack_b32_f16` | — | API present; semantic audit pending |
-| `v_perm_b32` | yes | yes | in | `goc_v_perm_b32` | — | API present; semantic audit pending |
+| `v_perm_b32` | yes | yes | in | `goc_v_perm_b32`<br>`goc_v_perm_b32_wave64` | — | API present; semantic audit pending |
 | `v_permlane16_b32` | yes | yes | in | `goc_v_permlane16_b32` | — | API present; semantic audit pending |
 | `v_permlane16_var_b32` | — | yes | in | `goc_v_permlane16_var_b32` | — | API present; semantic audit pending |
 | `v_permlane64_b32` | yes | yes | in | `goc_v_permlane64_b32`<br>`goc_v_permlane64_b32_wave64` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 319 Wave32 EXEC-taking APIs without a corresponding
+There are 305 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1436,7 +1436,6 @@ this screen; their width requirements remain a separate audit.
 |---|---|
 | [`arithmetic.cpp`](src/arithmetic.cpp) | `goc_v_fma_dx9_zero_f32`, `goc_v_fma_f32`, `goc_v_fmaak_f32`, `goc_v_fmac_dx9_zero_f32`, `goc_v_fmac_f32`, `goc_v_fmamk_f32` |
 | [`binary.cpp`](src/binary.cpp) | `goc_v_add_f32`, `goc_v_max_f32`, `goc_v_max_num_f32`, `goc_v_maximum_f32`, `goc_v_min_f32`, `goc_v_min_num_f32`, `goc_v_minimum_f32`, `goc_v_mul_dx9_zero_f32`, `goc_v_mul_f32`, `goc_v_sub_f32`, `goc_v_subrev_f32` |
-| [`bitfield.cpp`](src/bitfield.cpp) | `goc_v_alignbit_b32`, `goc_v_alignbyte_b32`, `goc_v_bfe_i32`, `goc_v_bfe_u32`, `goc_v_bfi_b32`, `goc_v_bfm_b32`, `goc_v_bfrev_b32`, `goc_v_perm_b32` |
 | [`byte_conversion.cpp`](src/byte_conversion.cpp) | `goc_v_cvt_f32_ubyte0`, `goc_v_cvt_f32_ubyte1`, `goc_v_cvt_f32_ubyte2`, `goc_v_cvt_f32_ubyte3`, `goc_v_cvt_off_f32_i4`, `goc_v_cvt_pk_u8_f32` |
 | [`conversion16.cpp`](src/conversion16.cpp) | `goc_v_cvt_f16_f32`, `goc_v_cvt_f16_i16`, `goc_v_cvt_f16_u16`, `goc_v_cvt_f32_f16`, `goc_v_cvt_i16_f16`, `goc_v_cvt_u16_f16` |
 | [`conversion32.cpp`](src/conversion32.cpp) | `goc_v_cvt_f32_i32`, `goc_v_cvt_f32_u32`, `goc_v_cvt_floor_i32_f32`, `goc_v_cvt_i32_f32`, `goc_v_cvt_nearest_i32_f32`, `goc_v_cvt_u32_f32` |
@@ -1482,7 +1481,6 @@ this screen; their width requirements remain a separate audit.
 | [`rcp_iflag.cpp`](src/rcp_iflag.cpp) | `goc_v_rcp_iflag_f32` |
 | [`sad.cpp`](src/sad.cpp) | `goc_v_mqsad_pk_u16_u8`, `goc_v_mqsad_u32_u8`, `goc_v_msad_u8`, `goc_v_qsad_pk_u16_u8`, `goc_v_sad_hi_u8`, `goc_v_sad_u16`, `goc_v_sad_u32`, `goc_v_sad_u8` |
 | [`scalar_exec.cpp`](src/scalar_exec.cpp) | `goc_s_and_not0_saveexec_b32`, `goc_s_and_not0_wrexec_b32`, `goc_s_and_not1_saveexec_b32`, `goc_s_and_not1_wrexec_b32`, `goc_s_and_saveexec_b32`, `goc_s_nand_saveexec_b32`, `goc_s_nor_saveexec_b32`, `goc_s_or_not0_saveexec_b32`, `goc_s_or_not1_saveexec_b32`, `goc_s_or_saveexec_b32`, `goc_s_xnor_saveexec_b32`, `goc_s_xor_saveexec_b32` |
-| [`shift.cpp`](src/shift.cpp) | `goc_v_ashrrev_i32`, `goc_v_ashrrev_i64`, `goc_v_lshlrev_b32`, `goc_v_lshlrev_b64`, `goc_v_lshrrev_b32`, `goc_v_lshrrev_b64` |
 | [`trig.cpp`](src/trig.cpp) | `goc_v_cos_f32`, `goc_v_sin_f32` |
 | [`trig_preop.cpp`](src/trig_preop.cpp) | `goc_v_trig_preop_f64` |
 | [`unary.cpp`](src/unary.cpp) | `goc_v_ceil_f32`, `goc_v_exp_f32`, `goc_v_floor_f32`, `goc_v_fract_f32`, `goc_v_frexp_mant_f32`, `goc_v_log_f32`, `goc_v_rcp_f32`, `goc_v_rndne_f32`, `goc_v_rsq_f32`, `goc_v_sqrt_f32`, `goc_v_trunc_f32` |

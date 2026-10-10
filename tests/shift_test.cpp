@@ -172,7 +172,7 @@ TEST(Shift, RejectsModifiersAndStrictExactBeforeEmptyMask) {
       for (int bit = 0; bit < 32; ++bit)
         EXPECT_EQ(fn(0, exec_mask, uint32_t(1) << bit, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, dp, ap, bp),
+      EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, dp, ap, bp),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
     for (const auto &reg : d)

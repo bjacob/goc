@@ -178,8 +178,7 @@ TEST(Bitfield, ValidationAndHostFpState) {
             EXPECT_EQ(
                 goc_test::bitfield_functions[op](cpu | (1ULL << 63), exec_mask, 0, d, a, b, c),
                 GOC_ERROR_INVALID_FLAGS);
-            EXPECT_EQ(goc_test::bitfield_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
-                                                           GOC_SEMANTICS_STRICT,
+            EXPECT_EQ(goc_test::bitfield_functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT,
                                                        exec_mask, 0, d, a, b, c),
                       GOC_ERROR_UNSUPPORTED_SEMANTICS);
           }

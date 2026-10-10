@@ -23,7 +23,7 @@ int shift(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
     }
   }
 
-  if (int error = goc::validate(flags, mode))
+  if (int error = goc::validate(flags, mode, true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -58,6 +58,32 @@ int shift(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
     for (int lane = 0; lane < 32; ++lane)
       if ((exec_mask >> lane) & 1)
         d[reg][lane] = result[reg][lane];
+  return GOC_SUCCESS;
+}
+
+template <int Bits, goc::Shift Op>
+int shift_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                 const uint32_t *const *a, const uint32_t *const *b) {
+  if (int error = shift<Bits, Op>(flags, 0, mode, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    const uint32_t *counts = a[0] + half * 32, *values[Bits / 32];
+    uint32_t *dest[Bits / 32];
+    for (unsigned word = 0; word < Bits / 32; ++word) {
+      values[word] = b[word] + half * 32;
+      dest[word] = d[word] + half * 32;
+    }
+    if (int error = shift<Bits, Op>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, dest,
+                                    &counts, values))
+      return error;
+  }
   return GOC_SUCCESS;
 }
 
@@ -97,4 +123,40 @@ int goc_v_ashrrev_i64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return shift<64, goc::Shift::ArithmeticRight>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_lshlrev_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b) {
+  return shift_wave64<32, goc::Shift::Left>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_lshrrev_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b) {
+  return shift_wave64<32, goc::Shift::LogicalRight>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_ashrrev_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b) {
+  return shift_wave64<32, goc::Shift::ArithmeticRight>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_lshlrev_b64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return shift_wave64<64, goc::Shift::Left>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_lshrrev_b64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return shift_wave64<64, goc::Shift::LogicalRight>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_ashrrev_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b) {
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return shift_wave64<64, goc::Shift::ArithmeticRight>(flags, exec_mask, mode, d, a, b);
 }

@@ -68,7 +68,14 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_cndmask_b16" || base_name == "goc_v_cndmask_b32" ||
         base_name == "goc_v_add_co_u32" || base_name == "goc_v_add_co_ci_u32" ||
         base_name == "goc_v_sub_co_u32" || base_name == "goc_v_sub_co_ci_u32" ||
-        base_name == "goc_v_subrev_co_u32" || base_name == "goc_v_subrev_co_ci_u32")
+        base_name == "goc_v_subrev_co_u32" || base_name == "goc_v_subrev_co_ci_u32" ||
+        base_name == "goc_v_lshlrev_b32" || base_name == "goc_v_lshrrev_b32" ||
+        base_name == "goc_v_ashrrev_i32" || base_name == "goc_v_lshlrev_b64" ||
+        base_name == "goc_v_lshrrev_b64" || base_name == "goc_v_ashrrev_i64" ||
+        base_name == "goc_v_bfe_u32" || base_name == "goc_v_bfe_i32" ||
+        base_name == "goc_v_bfi_b32" || base_name == "goc_v_bfm_b32" ||
+        base_name == "goc_v_bfrev_b32" || base_name == "goc_v_alignbit_b32" ||
+        base_name == "goc_v_alignbyte_b32" || base_name == "goc_v_perm_b32")
       name = base_name.c_str();
   } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));

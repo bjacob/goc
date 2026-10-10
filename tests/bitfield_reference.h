@@ -65,6 +65,24 @@ inline const BitfieldFn bitfield_functions[] = {
     goc_v_bfe_u32,    goc_v_bfe_i32,      goc_v_bfi_b32,       bitfield_mask,
     bitfield_reverse, goc_v_alignbit_b32, goc_v_alignbyte_b32, goc_v_perm_b32};
 
+inline int bitfield_mask_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *) {
+  return goc_v_bfm_b32_wave64(flags, exec_mask, mode, d, a, b);
+}
+
+inline int bitfield_reverse_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *, const uint32_t *const *) {
+  return goc_v_bfrev_b32_wave64(flags, exec_mask, mode, d, a);
+}
+
+using BitfieldWave64Fn = decltype(&goc_v_bfe_u32_wave64);
+inline const BitfieldWave64Fn bitfield_wave64_functions[] = {
+    goc_v_bfe_u32_wave64,       goc_v_bfe_i32_wave64,    goc_v_bfi_b32_wave64,
+    bitfield_mask_wave64,       bitfield_reverse_wave64, goc_v_alignbit_b32_wave64,
+    goc_v_alignbyte_b32_wave64, goc_v_perm_b32_wave64};
+
 } // namespace goc_test
 
 #endif
