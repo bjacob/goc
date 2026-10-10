@@ -4771,17 +4771,37 @@ int goc_v_frexp_exp_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t 
 // Supports DPP8/DPP16 on A. Loose semantics require host nearest-even arithmetic
 // with denormals enabled. EXP/LOG round to FP16 before OMOD; other forms apply
 // output modifiers before final FP16 narrowing.
+// TRUNC/CEIL/RNDNE/FLOOR/FREXP_MANT support integer bit-exact results and guest
+// input/output-denormal flags plus IEEE. Their nonzero finite outputs remain
+// normal after OMOD. Unsuffixed APIs select RDNA3: OMOD is disabled when IEEE is set or
+// output denormals are preserved. RDNA4 OMOD is independent of these guest modes.
+// RDNA4 exact reporting supports INVALID/INPUT_DENORM; FREXP_MANT also reports
+// INVALID for infinity. CLAMP suppresses these flags. RDNA3 non-null non-loose
+// reporting remains unsupported. Loose paths leave optional state unchanged.
+// Other FP16 unary operations here retain their existing loose-only behavior.
 int goc_v_trunc_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_trunc_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_ceil_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                   uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_ceil_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_rndne_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rndne_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_floor_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_floor_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_sqrt_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
@@ -4802,21 +4822,41 @@ int goc_v_fract_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fla
                     uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_frexp_mant_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_frexp_mant_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 // Wave64 F16 unary forms retain Wave32 modifiers, DPP routing,
-// loose numerical behavior, destination preservation and optional-state contracts.
+// numerical behavior, destination preservation and optional-state contracts.
 int goc_v_trunc_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_trunc_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_ceil_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_ceil_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                uint32_t *excp_flag_user);
 
 int goc_v_rndne_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rndne_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_floor_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_floor_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_sqrt_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
@@ -4837,8 +4877,11 @@ int goc_v_fract_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruct
                            uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_frexp_mant_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                                uint32_t *const *d, const uint32_t *const *a,
-                                uint32_t *excp_flag_user);
+                                uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_frexp_mant_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, uint32_t *excp_flag_user);
 
 // DPP8/DPP16 permute the complete A word before modifiers; B/C stay in their
 // original lanes.

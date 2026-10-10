@@ -12,8 +12,9 @@
 namespace goc {
 
 template <Unary Op>
-void half_unary_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+void half_unary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                           const uint32_t *a) {
+  bool saturate = flags & GOC_FP16_OVFL;
   int a_shift = mode & GOC_ALU_HIGH_A ? 16 : 0;
   int d_shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
   auto keep = _mm256_set1_epi32(d_shift ? 65535 : -65536);
@@ -22,6 +23,14 @@ void half_unary_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint
   for (int lane = 0; lane < 32; lane += 8) {
     auto x = half_input<false>(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)),
                                a_shift, mode);
+    if constexpr (unary_rounds_f32<Op> || Op == Unary::FrexpMant)
+      if (flags & GOC_FP_FLUSH_INPUT_DENORMALS) {
+        auto bits = _mm256_castps_si256(x);
+        auto magnitude = _mm256_and_si256(bits, _mm256_set1_epi32(0x7fffffff));
+        auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x38800000), magnitude);
+        auto sign = _mm256_and_si256(bits, _mm256_set1_epi32(int(0x80000000U)));
+        x = _mm256_castsi256_ps(_mm256_blendv_epi8(bits, sign, tiny));
+      }
     auto value = unary_value<Op, true>(x);
     if constexpr (Op == Unary::Log) {
       if (saturate)
@@ -45,28 +54,28 @@ void half_unary_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint
   }
 }
 
-template void half_unary_x86_64_v3<Unary::Trunc>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_unary_x86_64_v3<Unary::Trunc>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                  const uint32_t *);
-template void half_unary_x86_64_v3<Unary::Ceil>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_unary_x86_64_v3<Unary::Ceil>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                 const uint32_t *);
-template void half_unary_x86_64_v3<Unary::Rndne>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_unary_x86_64_v3<Unary::Rndne>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                  const uint32_t *);
-template void half_unary_x86_64_v3<Unary::Floor>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_unary_x86_64_v3<Unary::Floor>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                  const uint32_t *);
-template void half_unary_x86_64_v3<Unary::Sqrt>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_unary_x86_64_v3<Unary::Sqrt>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                 const uint32_t *);
-template void half_unary_x86_64_v3<Unary::Rcp>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_unary_x86_64_v3<Unary::Rcp>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                const uint32_t *);
-template void half_unary_x86_64_v3<Unary::Rsq>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_unary_x86_64_v3<Unary::Rsq>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                const uint32_t *);
-template void half_unary_x86_64_v3<Unary::Fract>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_unary_x86_64_v3<Unary::Fract>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                  const uint32_t *);
-template void half_unary_x86_64_v3<Unary::FrexpMant>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_unary_x86_64_v3<Unary::FrexpMant>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                      const uint32_t *);
 
-template void half_unary_x86_64_v3<Unary::Exp>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_unary_x86_64_v3<Unary::Exp>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                const uint32_t *);
-template void half_unary_x86_64_v3<Unary::Log>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_unary_x86_64_v3<Unary::Log>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                const uint32_t *);
 
 } // namespace goc

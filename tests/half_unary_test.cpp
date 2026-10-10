@@ -15,11 +15,17 @@
 #include <stdint.h>
 
 namespace {
-const decltype(&goc_v_trunc_f16_wave64) wave64[] = {
-    goc_v_trunc_f16_wave64, goc_v_ceil_f16_wave64,      goc_v_rndne_f16_wave64,
-    goc_v_floor_f16_wave64, goc_v_sqrt_f16_wave64,      goc_v_rcp_f16_wave64,
-    goc_v_rsq_f16_wave64,   goc_v_exp_f16_wave64,       goc_v_log_f16_wave64,
-    goc_v_fract_f16_wave64, goc_v_frexp_mant_f16_wave64};
+const decltype(&goc_v_trunc_f16_rdna4_wave64) wave64[] = {goc_v_trunc_f16_rdna4_wave64,
+                                                          goc_v_ceil_f16_rdna4_wave64,
+                                                          goc_v_rndne_f16_rdna4_wave64,
+                                                          goc_v_floor_f16_rdna4_wave64,
+                                                          goc_v_sqrt_f16_wave64,
+                                                          goc_v_rcp_f16_wave64,
+                                                          goc_v_rsq_f16_wave64,
+                                                          goc_v_exp_f16_wave64,
+                                                          goc_v_log_f16_wave64,
+                                                          goc_v_fract_f16_wave64,
+                                                          goc_v_frexp_mant_f16_rdna4_wave64};
 
 void check(int op, uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
   int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
@@ -158,7 +164,8 @@ TEST(HalfUnary, LiteralBoundaries) {
 }
 
 TEST(HalfUnary, ValidationAndSemantics) {
-  for (auto fn : goc_test::half_unary_functions) {
+  for (unsigned op = 0; op < 11; ++op) {
+    auto fn = goc_test::half_unary_functions[op];
     uint32_t data[32];
     std::fill(data, data + 32, 0xdeadbeef);
     auto p = data;
@@ -171,10 +178,12 @@ TEST(HalfUnary, ValidationAndSemantics) {
       EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, nullptr), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(
           fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, nullptr),
-          GOC_ERROR_UNSUPPORTED_SEMANTICS);
+          op < 4 || op == 10 ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
-    for (auto word : data)
-      EXPECT_EQ(word, 0xdeadbeef);
+    if (op >= 4 && op != 10) {
+      for (auto word : data)
+        EXPECT_EQ(word, 0xdeadbeef);
+    }
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &p, &p, nullptr), GOC_SUCCESS);
   }
 }
@@ -299,15 +308,20 @@ TEST(HalfUnary, Wave64ModifiersDppSelectorsAndAliases) {
 }
 
 TEST(HalfUnary, Wave64ValidationAndOptionalState) {
-  for (auto fn : wave64) {
+  for (unsigned op = 0; op < 11; ++op) {
+    auto fn = wave64[op];
+    bool supported = op < 4 || op == 10;
+    uint32_t words[64] = {};
+    uint32_t *d = words;
+    const uint32_t *a = words;
     EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(fn(0, UINT64_MAX, GOC_ALU_NEG_B, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, nullptr,
-                 nullptr, nullptr),
-              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(
+        fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, &d, &a, nullptr),
+        supported ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
     uint32_t exceptions = 0x80000055;
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, &exceptions),
-              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, &d, &a, &exceptions),
+              supported ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
     EXPECT_EQ(exceptions, 0x80000055U);
   }
 }

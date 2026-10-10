@@ -206,8 +206,9 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_min3_num_f16`, `v_max3_num_f16`, `v_minmax_num_f16`, `v_maxmin_num_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_minimum3_f16`, `v_maximum3_f16`, `v_minimummaximum_f16`, `v_maximumminimum_f16`, `v_med3_num_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_ldexp_f16`, `v_frexp_exp_i16_f16` | Scalar, x86-64-v3 | Not implemented |
-| `v_trunc_f16`, `v_ceil_f16`, `v_rndne_f16`, `v_floor_f16`, `v_fract_f16` | Scalar, x86-64-v3 | Not implemented |
-| `v_sqrt_f16`, `v_rcp_f16`, `v_rsq_f16`, `v_frexp_mant_f16` | Scalar, x86-64-v3 | Not implemented |
+| `v_trunc_f16`, `v_ceil_f16`, `v_rndne_f16`, `v_floor_f16`, `v_frexp_mant_f16` | Scalar, x86-64-v3 | Integer model; both architectures, RDNA4 reporting |
+| `v_fract_f16` | Scalar, x86-64-v3 | Not implemented |
+| `v_sqrt_f16`, `v_rcp_f16`, `v_rsq_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f16`, `v_log_f16` | Scalar | Not implemented |
 | `v_add_f16`, `v_sub_f16`, `v_subrev_f16`, `v_mul_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_min_num_f16`, `v_max_num_f16`, `v_minimum_f16`, `v_maximum_f16` | Scalar, x86-64-v3 | Not implemented |
@@ -2293,6 +2294,18 @@ accumulator input on every call to keep repeated measurements stable. On the
 Ryzen 9 7950X3D, these cases measure 30.6–54.5 ns on AVX2 (9.7–11.8× scalar
 speed) and 30.5–53.5 ns with AVX-512 permutation plus AVX2 arithmetic
 (10.1–11.9×), using seven pinned samples of at least 10 ms each.
+
+FP16 TRUNC, CEIL, RNDNE, FLOOR and FREXP_MANT have exact integer paths and
+RDNA4 exception reporting, checked against 83,886,080 gfx1201 result/flag pairs.
+Rounding reuses the scalar integer model; FREXP normalizes the raw significand.
+NaN payloads and signed zeros are preserved according to the captured rules;
+OMOD canonicalizes zero to positive zero and CLAMP suppresses exceptions.
+The unsuffixed APIs use RDNA3's conditional OMOD policy and native `trapsts`;
+`_rdna4` variants use `excp_flag_user`, with `_wave64` last. Requested exact
+RDNA3 reporting remains unsupported. Guest input flushing is supported in
+scalar and AVX2 loose paths; loose calls skip optional reporting. Exact paths
+are independent of host rounding and denormal controls. Native RDNA3 captures
+are not available, so its architecture policy follows rocjitsu and the ISA.
 
 All eleven FP16 unary operations now support DPP8/DPP16 with source NEG/ABS,
 OMOD/CLAMP, and source/destination half selectors. Two GFX1201 captures check

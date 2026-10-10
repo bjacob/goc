@@ -174,8 +174,9 @@ TEST(DppHalfUnary, MasksAliasesAndRandomWords) {
 }
 
 TEST(DppHalfUnary, Validation) {
-  for (auto fn : goc_test::half_unary_functions)
+  for (unsigned op = 0; op < 11; ++op)
     for (uint64_t mode : modes()) {
+      auto fn = goc_test::half_unary_functions[op];
       EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr, nullptr), GOC_SUCCESS);
       for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         EXPECT_EQ(fn(0, exec_mask, mode | GOC_ALU_NEG_C, nullptr, nullptr, nullptr),
@@ -184,9 +185,12 @@ TEST(DppHalfUnary, Validation) {
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, mode, nullptr,
-                     nullptr, nullptr),
-                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        uint32_t words[32] = {};
+        const uint32_t *a = words;
+        uint32_t *d = words;
+        EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, mode, &d, &a,
+                     nullptr),
+                  op < 4 || op == 10 ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
     }
 }

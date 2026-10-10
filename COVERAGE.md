@@ -3367,3 +3367,63 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   implementation changed in this checkpoint. Native RDNA3 behavior, other guest
   rounding modes, high-half selectors and per-lane routing are not established
   by these low-half, uniform-wave captures.
+
+### Exact FP16 rounding and FREXP_MANT integration
+
+- Integrated TRUNC, CEIL, RNDNE, FLOOR and FREXP_MANT exact results for Wave32
+  and Wave64. The four rounding operations reuse `round_integral_bits`;
+  FREXP_MANT normalizes the half significand with integer operations. The exact
+  paths neither depend on nor explicitly change host FP controls or flags.
+- Unsuffixed APIs now represent RDNA3, with native optional `trapsts` output.
+  The RDNA4 variants end in `_rdna4`, before `_wave64`. RDNA3 disables OMOD
+  under IEEE mode or when output denormals are preserved; RDNA4 does not.
+  Guest input flushing is also supported by the scalar and AVX2 loose paths.
+- RDNA4 exact reporting accumulates INVALID for sNaNs (also infinity for
+  FREXP_MANT) and INPUT_DENORM for preserved nonzero subnormal inputs. CLAMP
+  suppresses reporting. Rounding discarded fractions and OMOD finite overflow
+  do not add INEXACT/OVERFLOW for these operations, following the captures.
+  Loose calls leave optional state unchanged. Non-null RDNA3 exact reporting
+  remains explicitly unsupported, independently of STRICT and EXEC.
+- The compact hardware fixture records hashes of the preceding **83,886,080**
+  captured result/flag pairs. New tests exhaust all half encodings and captured
+  modifiers/denormal policies/FP16_OVFL settings through the public APIs, vary
+  CPU dispatch and half selectors, and independently check per-lane reporting.
+  Additional tests cover DPP, in-place operands, inactive lanes, both wave
+  sizes, architecture policies, errors, and all host rounding/DAZ/FTZ settings.
+  These routing tests supplement the uniform-wave hardware evidence; they are
+  not native captures of those routing configurations.
+- Clang 21 and GCC 15 Release each pass **1,048/1,048** tests after the
+  final scalar-sharing change. Targeted Clang ASan/UBSan passed **25/25**
+  tests before that change and **18/18** affected tests afterward. Logs use
+  `/tmp/goc-half-exact-final4-{clang,gcc,san}-tests.log`.
+- The refreshed audit has **686 signatures, 410 resolved matching names,
+  zero mismatches, and 276 pending reviews**. API-name coverage remains 809/809;
+  that does not establish semantic completeness. Native RDNA3 captures and its
+  reporting rules remain unavailable; the other six FP16 unary operations
+  remain loose-only. No claim of full architecture coverage is made.
+- Loose-path timing used eleven alternating before/after samples, pinned to
+  CPU 2, with at least 50 ms thread CPU time per case. The 176 cases cover all
+  eleven operations, scalar/AVX2, normal/subnormal inputs, null/non-null state,
+  and default/combined modifiers. The baseline archive is from `a7eb6c2`.
+  An initial scalar input-flushing implementation regressed; it was replaced
+  with reuse of the exact integer implementation for these five scalar loose
+  paths, always with reporting disabled. This also removes their redundant
+  half/float conversions.
+
+  | Loose cases | Median time change | Per-case range |
+  |---|---:|---:|
+  | Five changed operations, scalar | -48.51% | -75.92% to -2.29% |
+  | Five changed operations, AVX2 | +1.46% | -4.66% to +4.21% |
+  | Six neighboring operations, scalar | -0.24% | -3.78% to +2.05% |
+  | Six neighboring operations, AVX2 | -0.69% | -8.35% to +6.74% |
+
+  The maximum added AVX2 time is 0.827 ns for changed operations and 1.158 ns
+  for neighboring controls; percentage changes on these short calls should not
+  be treated as exact performance guarantees. For the changed operations,
+  null/non-null state groups have scalar medians -48.70%/-48.49% and AVX2
+  medians +1.76%/+1.14%; loose reporting remains skipped. Samples are in
+  `../goc-build/coverage-work/half-unary-timing-samples.json`, with driver
+  `/tmp/goc-half-unary-perf.py`, sampler `/tmp/goc-half-unary-sample.py` and
+  output `/tmp/goc-half-unary-timing.log`. The two production object text sizes
+  total 50,367 bytes versus 36,057 before adding exact paths, architecture APIs
+  and guest flushing; this feature addition is not a code-size reduction.
