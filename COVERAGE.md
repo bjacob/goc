@@ -6450,3 +6450,47 @@ implementation retains shared kernels and avoids duplicating them just to remove
 that cost. Artifacts are under
 `../goc-build/coverage-work/div-scale-denorm-performance/`; the final samples
 are `timings-argument-order.json` (earlier samples include concurrent test load).
+
+## DIV_SCALE architecture output-modifier policies
+
+FP32 DIV_SCALE now follows the same naming split as FP64: unsuffixed APIs are
+RDNA3, and `_rdna4` (before `_wave64`) retains RDNA4 behavior. The existing
+RDNA4 captures and benchmark use the suffixed APIs. Both formats accept
+`GOC_FP_IEEE_MODE` as well as input/output denormal controls. RDNA3 ignores OMOD
+with output denormals preserved or IEEE enabled; RDNA4 applies it independently.
+These rules come from the manuals' output-operand-modifier sections, consistent
+with the existing ordinary arithmetic and DIV_FMAS architecture policies.
+
+Rocjitsu's shared DIV_SCALE model supplies the unscaled result. Its RDNA3 handler
+does not implement OMOD, so active RDNA3 OMOD is explicitly loose-only:
+strict exact requests fail with `GOC_ERROR_UNSUPPORTED_SEMANTICS`, while
+non-strict requests may fall back. Encoded OMOD that the guest policy disables
+retains exact support. Existing RDNA4 captures cover every NEG/OMOD/CLAMP
+combination and continue to pass. FP32 NaNs are quieted on both architectures,
+matching the upstream call's default `quiet_nan=true`; FP64 retains the prior
+architecture distinction. This adds no newly characterized exact model.
+
+`DivScale.ArchitectureOutputModifiers` covers both formats/architectures/widths,
+all eight guest IEEE/denormal combinations, all OMOD values, signs and CLAMP,
+both numerator/denominator roles, aliases, masks, every CPU path, loose semantics,
+non-strict fallback and strict rejection. Literal powers of two keep the expected
+scaling results independent of the implementation. The guest-denormal test also
+now covers the new RDNA3 FP32 APIs. SIMD arithmetic kernels are unchanged; the
+architecture-specific wrapper selects the effective mode before dispatch.
+
+The required per-lane condition output remains separate from optional exception
+state. The manuals' mask/carry tables identify DIV_SCALE's condition result and
+its instruction pseudocode initializes inactive bits to zero; the existing
+output contract is retained. The general exception-register descriptions do not
+by themselves establish this instruction's complete reporting behavior, and
+rocjitsu's inspected DIV_SCALE handlers only explicitly commit the scaled VGPR
+and condition result. Optional implicit-state applicability still needs a
+per-instruction audit; absence of an upstream reporting call is not proof that
+no architectural exception update is required. Directed guest rounding is also
+not supported. These limitations keep the two mnemonics outside the completed
+review ledger for now.
+
+Validation: all 1,141 tests pass with Clang 21 and GCC 15 Release; all 13
+DIV_SCALE tests pass with ASan/UBSan, and all nine audit-tool tests pass.
+Logs are `../goc-build/coverage-work/div-scale-omod-*`. This change does not alter
+SIMD kernel bodies or add a fallback for supported modifiers.

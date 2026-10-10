@@ -2861,9 +2861,16 @@ int goc_v_div_fmas_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t
 // Results preserve host FP state
 // and do not depend on it. GOC_FP16_OVFL has no effect.
 // FP64 preserves source signaling NaNs on RDNA3; the _rdna4 variants quiet them.
+// RDNA3 ignores OMOD unless output denormals are flushed and IEEE mode is clear.
+// RDNA4 applies OMOD independently of these guest settings. Active RDNA3 OMOD
+// supports loose semantics only; strict exact returns unsupported semantics.
 int goc_v_div_scale_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, uint32_t *condition, const uint32_t *const *a,
                         const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_div_scale_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, uint32_t *condition, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c);
 
 int goc_v_div_scale_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, uint32_t *condition, const uint32_t *const *a,
@@ -2879,6 +2886,11 @@ int goc_v_div_scale_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instr
 int goc_v_div_scale_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, uint64_t *condition, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_div_scale_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, uint64_t *condition,
+                                     const uint32_t *const *a, const uint32_t *const *b,
+                                     const uint32_t *const *c);
 int goc_v_div_scale_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, uint64_t *condition, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c);

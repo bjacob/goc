@@ -445,7 +445,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_div_fixup_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 10412 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32fp64-div_fixup-architecture-policies) |
 | `v_div_fmas_f32` | SIMD macro, output helper | yes | 10457 | [loose and exact contract reviewed; see limitations](COVERAGE.md#div_fmas-architecture-policies) |
 | `v_div_fmas_f64` | SIMD macro | yes | 10488 | [loose and exact contract reviewed; see limitations](COVERAGE.md#div_fmas-architecture-policies) |
-| `v_div_scale_f32` | output helper | no | 10519 | review required |
+| `v_div_scale_f32` | output helper | yes | 10519 | review required |
 | `v_div_scale_f64` | architecture query | yes | 10551 | review required |
 | `v_dot2_bf16_bf16` | no direct policy detected | yes | not found | [loose contract reviewed; see limitations](COVERAGE.md#half-result-dot2-architecture-contracts) |
 | `v_dot2_f16_f16` | no direct policy detected | yes | not found | [loose contract reviewed; see limitations](COVERAGE.md#half-result-dot2-architecture-contracts) |

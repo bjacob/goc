@@ -3995,8 +3995,8 @@ bool benchmark_div_fmas(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_div_scale(uint64_t cpu, int iterations, int min_ms) {
-  using Scale = decltype(&goc_v_div_scale_f32);
-  const Scale functions[] = {goc_v_div_scale_f32, goc_v_div_scale_f64_rdna4};
+  using Scale = decltype(&goc_v_div_scale_f32_rdna4);
+  const Scale functions[] = {goc_v_div_scale_f32_rdna4, goc_v_div_scale_f64_rdna4};
   const char *names[] = {"v_div_scale_f32", "v_div_scale_f64"};
   const uint64_t semantics = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 

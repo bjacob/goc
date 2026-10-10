@@ -15,8 +15,14 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   const uint32_t known =
       GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  if (int error = goc::validate(flags, mode & ~known, true,
-                                GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
+  // RDNA3 ignores OMOD with preserved output denormals or IEEE enabled.
+  if constexpr (Rdna3)
+    if (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE))
+      mode &= ~GOC_ALU_OMOD_HALF;
+  // The borrowed RDNA3 model covers unscaled results, not active OMOD.
+  if (int error = goc::validate(flags, mode & ~known, !Rdna3 || !(mode & GOC_ALU_OMOD_HALF),
+                                GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS |
+                                    GOC_FP_IEEE_MODE))
     return error;
   if (!exec_mask) {
     *condition = 0;
@@ -24,13 +30,15 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
   }
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    *condition = goc::div_scale_x86_64_v4<Width>(exec_mask, mode, d, a, b, c, !Rdna3, flags);
+    *condition =
+        goc::div_scale_x86_64_v4<Width>(exec_mask, mode, d, a, b, c, Width == 32 || !Rdna3, flags);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    *condition = goc::div_scale_x86_64_v3<Width>(exec_mask, mode, d, a, b, c, !Rdna3, flags);
+    *condition =
+        goc::div_scale_x86_64_v3<Width>(exec_mask, mode, d, a, b, c, Width == 32 || !Rdna3, flags);
     return GOC_SUCCESS;
   }
 #endif
@@ -44,7 +52,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
       bv |= T(b[1][lane]) << 32;
       cv |= T(c[1][lane]) << 32;
     }
-    auto scaled = goc::division_scale<Width>(av, bv, cv, mode, !Rdna3, flags);
+    auto scaled = goc::division_scale<Width>(av, bv, cv, mode, Width == 32 || !Rdna3, flags);
     result[lane] = scaled.value;
     output_mask |= uint32_t(scaled.post_scale) << lane;
   }
@@ -88,9 +96,9 @@ int run_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *cons
 
 } // namespace
 
-int goc_v_div_scale_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                        uint32_t *const *d, uint32_t *condition, const uint32_t *const *a,
-                        const uint32_t *const *b, const uint32_t *const *c) {
+int goc_v_div_scale_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, uint32_t *condition, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run<32>(flags, exec_mask, instruction_flags, d, condition, a, b, c);
@@ -104,9 +112,10 @@ int goc_v_div_scale_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instr
   return run<64>(flags, exec_mask, instruction_flags, d, condition, a, b, c);
 }
 
-int goc_v_div_scale_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                               uint32_t *const *d, uint64_t *condition, const uint32_t *const *a,
-                               const uint32_t *const *b, const uint32_t *const *c) {
+int goc_v_div_scale_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, uint64_t *condition,
+                                     const uint32_t *const *a, const uint32_t *const *b,
+                                     const uint32_t *const *c) {
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run_wave64<32>(flags, exec_mask, instruction_flags, d, condition, a, b, c);
@@ -135,4 +144,20 @@ int goc_v_div_scale_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run_wave64<64, true>(flags, exec_mask, instruction_flags, d, condition, a, b, c);
+}
+
+int goc_v_div_scale_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, uint32_t *condition, const uint32_t *const *a,
+                        const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run<32, true>(flags, exec_mask, instruction_flags, d, condition, a, b, c);
+}
+
+int goc_v_div_scale_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, uint64_t *condition, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run_wave64<32, true>(flags, exec_mask, instruction_flags, d, condition, a, b, c);
 }

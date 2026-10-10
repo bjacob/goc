@@ -16,10 +16,10 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_div_scale_f32);
-const Fn functions[] = {goc_v_div_scale_f32, goc_v_div_scale_f64_rdna4};
-const decltype(&goc_v_div_scale_f32_wave64) wave64_functions[] = {goc_v_div_scale_f32_wave64,
-                                                                  goc_v_div_scale_f64_rdna4_wave64};
+using Fn = decltype(&goc_v_div_scale_f32_rdna4);
+const Fn functions[] = {goc_v_div_scale_f32_rdna4, goc_v_div_scale_f64_rdna4};
+const decltype(&goc_v_div_scale_f32_rdna4_wave64) wave64_functions[] = {
+    goc_v_div_scale_f32_rdna4_wave64, goc_v_div_scale_f64_rdna4_wave64};
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 
 uint32_t mode_for(unsigned variant) {
@@ -477,12 +477,14 @@ TEST(DivScale, ArchitectureNanPayloadsAndAliases) {
 TEST(DivScale, GuestDenormalPolicies) {
   // The input-flush policy is borrowed from rocjitsu DivisionTest's guest-mode
   // cases: a flushed tiny numerator/denominator produces the zero-operand NaN.
-  const Fn narrow[] = {goc_v_div_scale_f32, goc_v_div_scale_f64, goc_v_div_scale_f64_rdna4};
-  const decltype(&goc_v_div_scale_f32_wave64) wide[] = {
-      goc_v_div_scale_f32_wave64, goc_v_div_scale_f64_wave64, goc_v_div_scale_f64_rdna4_wave64};
+  const Fn narrow[] = {goc_v_div_scale_f32_rdna4, goc_v_div_scale_f64, goc_v_div_scale_f64_rdna4,
+                       goc_v_div_scale_f32};
+  const decltype(&goc_v_div_scale_f32_rdna4_wave64) wide[] = {
+      goc_v_div_scale_f32_rdna4_wave64, goc_v_div_scale_f64_wave64,
+      goc_v_div_scale_f64_rdna4_wave64, goc_v_div_scale_f32_wave64};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint64_t semantics : {uint64_t(0), exact})
-      for (unsigned op = 0; op < 3; ++op)
+      for (unsigned op = 0; op < 4; ++op)
         for (unsigned width : {32U, 64U})
           for (unsigned settings = 0; settings < 4; ++settings)
             for (unsigned pair = 0; pair < 4; ++pair)
@@ -493,9 +495,10 @@ TEST(DivScale, GuestDenormalPolicies) {
                                  << cpu << '/' << semantics << '/' << op << '/' << width << '/'
                                  << settings << '/' << pair << '/' << role << '/' << alias << '/'
                                  << exec_mask);
-                    uint64_t one = op ? 0x3ff0000000000000ULL : 0x3f800000ULL;
-                    uint64_t minimum = op ? 0x0010000000000000ULL : 0x00800000ULL;
-                    uint64_t sign = op ? 1ULL << 63 : 1ULL << 31;
+                    const bool is64 = op == 1 || op == 2;
+                    uint64_t one = is64 ? 0x3ff0000000000000ULL : 0x3f800000ULL;
+                    uint64_t minimum = is64 ? 0x0010000000000000ULL : 0x00800000ULL;
+                    uint64_t sign = is64 ? 1ULL << 63 : 1ULL << 31;
                     uint64_t bv = pair == 3 ? minimum : pair == 2 ? one : 1;
                     uint64_t cv = pair == 3 ? minimum : pair == 1 ? one : 1;
                     uint64_t flags = cpu | semantics |
@@ -533,12 +536,12 @@ TEST(DivScale, GuestDenormalPolicies) {
                           before[2 * alias][lane] | (uint64_t(before[2 * alias + 1][lane]) << 32);
                       if (lane < width && ((exec_mask >> lane) & 1)) {
                         if ((settings & 1) && pair != 3)
-                          want = op ? 0xfff8000000000000ULL : 0xffc00000ULL;
+                          want = is64 ? 0xfff8000000000000ULL : 0xffc00000ULL;
                         else {
                           // min-subnormal * 2^64/2^128, or min-normal * that scale.
-                          want = pair == 3 ? (op ? 0x0810000000000000ULL : 0x20800000ULL)
+                          want = pair == 3 ? (is64 ? 0x0810000000000000ULL : 0x20800000ULL)
                                  : (role ? cv : bv) == one ? one
-                                 : op                      ? 0x04d0000000000000ULL
+                                 : is64                    ? 0x04d0000000000000ULL
                                                            : 0x15000000ULL;
                           if (lane & 1)
                             want |= sign;
@@ -546,7 +549,80 @@ TEST(DivScale, GuestDenormalPolicies) {
                       }
                       EXPECT_EQ(d[0][lane], uint32_t(want));
                       EXPECT_EQ(d[1][lane],
-                                op ? uint32_t(want >> 32) : before[2 * alias + 1][lane]);
+                                is64 ? uint32_t(want >> 32) : before[2 * alias + 1][lane]);
                     }
                   }
+}
+
+TEST(DivScale, ArchitectureOutputModifiers) {
+  const Fn narrow[] = {goc_v_div_scale_f32, goc_v_div_scale_f32_rdna4, goc_v_div_scale_f64,
+                       goc_v_div_scale_f64_rdna4};
+  const decltype(&goc_v_div_scale_f32_wave64) wide[] = {
+      goc_v_div_scale_f32_wave64, goc_v_div_scale_f32_rdna4_wave64, goc_v_div_scale_f64_wave64,
+      goc_v_div_scale_f64_rdna4_wave64};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {uint64_t(0), GOC_SEMANTICS_EXACT_EMPIRICAL, exact})
+      for (unsigned op = 0; op < 4; ++op)
+        for (unsigned width : {32U, 64U})
+          for (unsigned settings = 0; settings < 8; ++settings)
+            for (unsigned scale = 0; scale < 4; ++scale)
+              for (unsigned modifiers = 0; modifiers < 4; ++modifiers)
+                for (unsigned role = 0; role < 2; ++role)
+                  for (unsigned alias : {0U, 3U})
+                    for (uint64_t exec_mask : {0ULL, 0xa55aa55a5aa55aa5ULL}) {
+                      SCOPED_TRACE(::testing::Message()
+                                   << cpu << '/' << semantics << '/' << op << '/' << width << '/'
+                                   << settings << '/' << scale << '/' << modifiers << '/' << role
+                                   << '/' << alias << '/' << exec_mask);
+                      bool is64 = op >= 2, rdna3 = !(op & 1);
+                      unsigned fraction = is64 ? 52 : 23, bias = is64 ? 1023 : 127;
+                      uint64_t flags = cpu | semantics |
+                                       (settings & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                       (settings & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                       (settings & 4 ? GOC_FP_IEEE_MODE : 0);
+                      unsigned effective_scale =
+                          rdna3 && (!(settings & 2) || (settings & 4)) ? 0 : scale;
+                      bool unsupported = rdna3 && effective_scale && semantics == exact;
+                      uint32_t mode = scale << 6;
+                      if (modifiers & 1)
+                        mode |= GOC_ALU_NEG_A | (role ? GOC_ALU_NEG_C : GOC_ALU_NEG_B);
+                      if (modifiers & 2)
+                        mode |= GOC_ALU_CLAMP;
+                      uint32_t words[8][64], before[8][64];
+                      const uint64_t values[] = {uint64_t(bias + !role) << fraction,
+                                                 uint64_t(bias + 1) << fraction,
+                                                 uint64_t(bias) << fraction, 0xdeadbeef01234567ULL};
+                      for (unsigned reg = 0; reg < 4; ++reg)
+                        for (unsigned lane = 0; lane < 64; ++lane) {
+                          words[2 * reg][lane] = uint32_t(values[reg]);
+                          words[2 * reg + 1][lane] = uint32_t(values[reg] >> 32);
+                        }
+                      std::memcpy(before, words, sizeof(words));
+                      const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]},
+                                     *c[] = {words[4], words[5]};
+                      uint32_t *d[] = {words[2 * alias], words[2 * alias + 1]};
+                      uint32_t condition32 = 0xdeadbeef;
+                      uint64_t condition64 = 0xdeadbeef;
+                      int status = width == 32
+                                       ? narrow[op](flags, uint32_t(exec_mask), mode, d,
+                                                    &condition32, a, b, c)
+                                       : wide[op](flags, exec_mask, mode, d, &condition64, a, b, c);
+                      ASSERT_EQ(status,
+                                unsupported ? GOC_ERROR_UNSUPPORTED_SEMANTICS : GOC_SUCCESS);
+                      EXPECT_EQ(width == 32 ? condition32 : condition64,
+                                unsupported ? 0xdeadbeefU : 0U);
+                      int exponent =
+                          int(bias + !role) + (effective_scale == 3 ? -1 : int(effective_scale));
+                      uint64_t value = uint64_t(exponent) << fraction;
+                      if (modifiers & 1)
+                        value |= 1ULL << (is64 ? 63 : 31);
+                      if (modifiers & 2)
+                        value = modifiers & 1 ? 0 : std::min(value, uint64_t(bias) << fraction);
+                      for (unsigned lane = 0; lane < 64; ++lane) {
+                        bool active = !unsupported && lane < width && ((exec_mask >> lane) & 1);
+                        EXPECT_EQ(d[0][lane], active ? uint32_t(value) : before[2 * alias][lane]);
+                        EXPECT_EQ(d[1][lane], active && is64 ? uint32_t(value >> 32)
+                                                             : before[2 * alias + 1][lane]);
+                      }
+                    }
 }
