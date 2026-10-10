@@ -3073,21 +3073,41 @@ int goc_v_fma_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   const uint32_t *const *c, uint32_t *excp_flag_user);
 
-// FMA supports all GOC_ALU source/output modifiers. Exact semantics requests
-// fall back to loose unless GOC_SEMANTICS_STRICT is set.
+// FP32 FMA/FMAC support GOC_ALU source/output modifiers and guest input/output
+// denormal flushing. Unsuffixed APIs model RDNA3: OMOD is ignored if output
+// denormals are preserved or GOC_FP_IEEE_MODE is set. The _rdna4 variants apply
+// OMOD independently of these guest settings. FMAC_DX9_ZERO is RDNA3-only.
+// DX9-zero forms always flush input
+// and output denormals, while retaining the architecture's OMOD gating rule.
+// All retain their scalar, eight-lane AVX2 and sixteen-lane AVX512 paths.
+// Exact requests fall back to loose unless STRICT is set; faithful optional
+// exception output remains unsupported. Loose execution skips that output.
+// Host nearest-even arithmetic and enabled denormals are required; guest mode
+// does not change the host FP environment.
 int goc_v_fma_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                  const uint32_t *const *c, uint32_t *excp_flag_user);
+                  const uint32_t *const *c, uint32_t *trapsts);
+int goc_v_fma_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *c, uint32_t *excp_flag_user);
 
 // Wave64 FP32 FMA forms retain the corresponding Wave32 modifier, literal,
 // DX9-zero, loose-semantics and optional-state contracts. DPP routes only A.
 int goc_v_fma_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                         const uint32_t *const *c, uint32_t *excp_flag_user);
+                         const uint32_t *const *c, uint32_t *trapsts);
+int goc_v_fma_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user);
 
 int goc_v_fma_dx9_zero_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_fma_dx9_zero_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                        uint64_t instruction_flags, uint32_t *const *d,
+                                        const uint32_t *const *a, const uint32_t *const *b,
+                                        const uint32_t *const *c);
 
 int goc_v_fmac_dx9_zero_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                    uint32_t *const *d, const uint32_t *const *a,
@@ -3095,7 +3115,10 @@ int goc_v_fmac_dx9_zero_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t 
 
 int goc_v_fmac_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                          uint32_t *excp_flag_user);
+                          uint32_t *trapsts);
+int goc_v_fmac_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_fmamk_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
@@ -3117,7 +3140,10 @@ int goc_v_fmac_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flag
 // C modifiers and half selectors are invalid. Loose semantics only.
 int goc_v_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                    uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                   uint32_t *excp_flag_user);
+                   uint32_t *trapsts);
+int goc_v_fmac_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         uint32_t *excp_flag_user);
 
 // Literal FP16 FMA: FMAMK computes A * literal + B; FMAAK computes A * B +
 // literal. The literal is a raw FP16 encoding. HIGH_A/B/D select the two VGPR
@@ -3170,6 +3196,9 @@ int goc_v_fmaak_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fla
 int goc_v_fma_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c);
+int goc_v_fma_dx9_zero_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c);
 
 // RDNA3 DX9 fused multiply-accumulate into D, with the same flushing and
 // zero-product rules as DX9 FMA. Supports A/B ABS/NEG, OMOD, CLAMP and DPP

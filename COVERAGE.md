@@ -2099,3 +2099,43 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   against manual sections 3.4/16.2 and rocjitsu's HWREG implementation. This was
   documentation-only; the last production gates remain 950 Clang/GCC tests and
   12 FP16 ternary sanitizer tests from `422fbfd`.
+
+## FP32 FMA architecture and guest-mode policies
+
+- Split FMA, FMAC and FMA_DX9_ZERO into unsuffixed RDNA3 and `_rdna4` APIs in
+  both wave widths. FMAC_DX9_ZERO is RDNA3-only in the XML and keeps only its
+  unsuffixed APIs. RDNA3 OMOD is disabled with preserved output denormals or
+  IEEE mode; RDNA4 always applies it. This follows the manuals' OMOD rule and
+  rocjitsu's effective_omod/effective_vop3_omod_f32 handling.
+- Ordinary FMA/FMAC now accept guest input/output-denormal flushing and IEEE
+  mode in scalar, eight-lane AVX2 and sixteen-lane AVX512 paths. DX9-zero forms
+  retain their fixed input/output flushing and zero-product rule, independent
+  of guest flush flags; architecture-specific OMOD gating still applies.
+- Both architectures share the arithmetic kernels and DPP routing. Existing
+  RDNA4 captures/tests/benchmarks now call the suffixed APIs. The RDNA3-only
+  DX9 accumulator routing test explicitly enables output flushing when comparing
+  against RDNA4 FMA with OMOD enabled. New tests cover every guest-mode
+  combination, all four OMOD values, normal/subnormal operands through each
+  input, generated subnormal outputs, masks, both widths and accumulator forms.
+- Optional exception reporting remains unsupported in exact semantics; loose
+  execution skips it. No host FP control writes were introduced. Literal FMA,
+  FP16 FMA and dual-issue architecture policies remain separate audit items.
+- Validation and DPP scratch allocation are centralized without burdening ordinary
+  FMA: only the DPP helper validates routing and stages a temporary VGPR. Flags
+  and low modifier bits are checked once before arithmetic, and zero-mask DPP
+  calls still validate their descriptors before returning.
+- Performance against `17bea5f`: eleven alternating samples pinned to CPU 2,
+  each at least 50 ms thread CPU time. Ordinary RDNA4 FMA AVX2 medians changed
+  17.189 -> 16.301 ns unmodified and 19.675 -> 19.250 ns with ABS/NEG/OMOD/CLAMP;
+  AVX512 changed 7.848 -> 7.147 ns and 9.115 -> 8.073 ns. DX9-zero AVX2 changed
+  21.242 -> 21.313 ns and 23.477 -> 23.591 ns; AVX512 changed 7.620 -> 7.701 ns
+  and 10.447 -> 10.664 ns. These are limited finite-input checks, not overall
+  library speedups. Raw samples and driver/parent objects are under
+  `../goc-build/coverage-work/fma-architecture-*`, including
+  `fma-architecture-timing.json`.
+- Final validation: all 951 tests pass under Clang 21 and GCC 15 Release; all
+  20 Arithmetic/InstructionFlags tests pass under ASan/UBSan. Seven audit-tool
+  tests pass. Regenerated ISA/architecture/global-state inventories: the latter
+  now has 616 reporting signatures, 274 resolved names, zero mismatches and
+  342 unresolved shared signatures. Logs:
+  `../goc-build/coverage-work/fma-architecture-*-tests.log`.

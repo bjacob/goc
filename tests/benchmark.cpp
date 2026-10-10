@@ -520,7 +520,7 @@ bool benchmark_fma(uint64_t cpu, int iterations, int min_ms, uint32_t modifiers,
                                         : (modifiers ? "DPP16/modified" : "DPP16");
   double scalar = 0;
   const auto run = [&](const char *path, uint64_t level) {
-    Ternary fn = dx9 ? Ternary(goc_v_fma_dx9_zero_f32) : Ternary(goc_v_fma_f32);
+    Ternary fn = dx9 ? Ternary(goc_v_fma_dx9_zero_f32_rdna4) : Ternary(goc_v_fma_f32_rdna4);
     double time = measure(fn, level, r, iterations, min_ms, mode);
     if (time < 0)
       return false;
@@ -2413,13 +2413,13 @@ bool benchmark_dpp16(uint64_t cpu, int iterations, int min_ms) {
       r.expected[128 * (lane / 16) + lane % 16] = bits(value);
     }
     const char *label = modified ? "DPP16/FI/NEG/mul2" : "DPP16";
-    double scalar = measure(goc_v_fma_f32, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+    double scalar = measure(goc_v_fma_f32_rdna4, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
     if (scalar < 0)
       return false;
     print_result("v_fma_f32", "loose", label, "scalar", scalar, 1);
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
     if (cpu >= GOC_CPU_X86_64_V3) {
-      double simd = measure(goc_v_fma_f32, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+      double simd = measure(goc_v_fma_f32_rdna4, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
       if (simd < 0)
         return false;
       print_result("v_fma_f32", "loose", label, "x86-64-v3", simd, scalar / simd);
@@ -2427,7 +2427,7 @@ bool benchmark_dpp16(uint64_t cpu, int iterations, int min_ms) {
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
     if (cpu >= GOC_CPU_X86_64_V4) {
-      double simd = measure(goc_v_fma_f32, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+      double simd = measure(goc_v_fma_f32_rdna4, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
       if (simd < 0)
         return false;
       print_result("v_fma_f32", "loose", label, "x86-64-v4", simd, scalar / simd);
@@ -2459,13 +2459,13 @@ bool benchmark_dpp8(uint64_t cpu, int iterations, int min_ms) {
       r.expected[128 * (lane / 16) + lane % 16] = bits(value);
     }
     const char *label = modified ? "DPP8/FI/NEG/mul2" : "DPP8";
-    double scalar = measure(goc_v_fma_f32, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
+    double scalar = measure(goc_v_fma_f32_rdna4, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
     if (scalar < 0)
       return false;
     print_result("v_fma_f32", "loose", label, "scalar", scalar, 1);
 #if defined(GOC_BENCH_HAVE_X86_64_V3)
     if (cpu >= GOC_CPU_X86_64_V3) {
-      double simd = measure(goc_v_fma_f32, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
+      double simd = measure(goc_v_fma_f32_rdna4, GOC_CPU_X86_64_V3, r, iterations, min_ms, mode);
       if (simd < 0)
         return false;
       print_result("v_fma_f32", "loose", label, "x86-64-v3", simd, scalar / simd);
@@ -2473,7 +2473,7 @@ bool benchmark_dpp8(uint64_t cpu, int iterations, int min_ms) {
 #endif
 #if defined(GOC_BENCH_HAVE_X86_64_V4)
     if (cpu >= GOC_CPU_X86_64_V4) {
-      double simd = measure(goc_v_fma_f32, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
+      double simd = measure(goc_v_fma_f32_rdna4, GOC_CPU_X86_64_V4, r, iterations, min_ms, mode);
       if (simd < 0)
         return false;
       print_result("v_fma_f32", "loose", label, "x86-64-v4", simd, scalar / simd);
@@ -5412,7 +5412,7 @@ bool benchmark_fmac(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] = bits(want);
         }
       }
-      auto operation = half ? goc_v_fmac_f16 : goc_v_fmac_f32;
+      auto operation = half ? goc_v_fmac_f16 : goc_v_fmac_f32_rdna4;
       const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *c) {
@@ -5563,7 +5563,7 @@ bool benchmark_half_minmax3(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_minmax3(uint64_t cpu, int iterations, int min_ms) {
-  using Ternary = decltype(&goc_v_fma_f32);
+  using Ternary = decltype(&goc_v_fma_f32_rdna4);
   const Ternary functions[] = {
       goc_v_min3_num_f32,       goc_v_max3_num_f32,       goc_v_minmax_num_f32,
       goc_v_maxmin_num_f32,     goc_v_minimum3_f32,       goc_v_maximum3_f32,

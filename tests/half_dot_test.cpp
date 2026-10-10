@@ -16,7 +16,7 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_fma_f32);
+using Fn = decltype(&goc_v_fma_f32_rdna4);
 const Fn functions[] = {goc_v_dot2_f16_f16, goc_v_dot2_bf16_bf16};
 
 const decltype(&goc_v_dot2_f16_f16_wave64) wave64_functions[] = {goc_v_dot2_f16_f16_wave64,

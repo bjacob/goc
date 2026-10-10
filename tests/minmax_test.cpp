@@ -24,7 +24,7 @@ const decltype(&goc_v_min3_num_f32_wave64) wave64[] = {
     goc_v_max3_f32_wave64,           goc_v_minmax_f32_wave64,
     goc_v_maxmin_f32_wave64,         goc_v_med3_f32_wave64};
 
-using Fn = decltype(&goc_v_fma_f32);
+using Fn = decltype(&goc_v_fma_f32_rdna4);
 const Fn functions[] = {goc_v_min3_num_f32,       goc_v_max3_num_f32,       goc_v_minmax_num_f32,
                         goc_v_maxmin_num_f32,     goc_v_minimum3_f32,       goc_v_maximum3_f32,
                         goc_v_minimummaximum_f32, goc_v_maximumminimum_f32, goc_v_med3_num_f32};

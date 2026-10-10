@@ -14,7 +14,7 @@ namespace {
 
 template <bool Dx9Zero, FmaOperands Operands = FmaOperands::Registers>
 void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, const uint32_t *b,
-         const uint32_t *c, uint32_t literal = 0) {
+         const uint32_t *c, uint32_t literal = 0, uint64_t flags = 0) {
   const __m256i keep_a = _mm256_set1_epi32((modifiers & GOC_ALU_ABS_A) ? 0x7fffffff : -1);
   const __m256i flip_a = _mm256_set1_epi32((modifiers & GOC_ALU_NEG_A) ? INT32_MIN : 0);
   const __m256i keep_b = _mm256_set1_epi32((modifiers & GOC_ALU_ABS_B) ? 0x7fffffff : -1);
@@ -41,10 +41,12 @@ void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
           _mm256_and_si256(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(c + i)), keep_c),
           flip_c));
     }
-    if constexpr (Dx9Zero) {
+    if (Dx9Zero || (flags & GOC_FP_FLUSH_INPUT_DENORMALS)) {
       va = flush_denorm_f32(va);
       vb = flush_denorm_f32(vb);
       vc = flush_denorm_f32(vc);
+    }
+    if constexpr (Dx9Zero) {
       auto zero = _mm256_setzero_ps();
       auto has_zero =
           _mm256_or_ps(_mm256_cmp_ps(va, zero, _CMP_EQ_OQ), _mm256_cmp_ps(vb, zero, _CMP_EQ_OQ));
@@ -52,7 +54,7 @@ void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
       vb = _mm256_blendv_ps(vb, _mm256_set1_ps(1), has_zero);
     }
     auto result = _mm256_fmadd_ps(va, vb, vc);
-    if constexpr (Dx9Zero)
+    if (Dx9Zero || (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
       result = flush_denorm_f32(result);
     if (modifiers & GOC_ALU_OMOD_HALF) {
       result = prepare_omod_f32(result, modifiers);
@@ -69,9 +71,9 @@ void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
 
 } // namespace
 
-void fma_x86_64_v3(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
-                   const uint32_t *b, const uint32_t *c) {
-  run<false>(exec_mask, modifiers, d, a, b, c);
+void fma_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t modifiers, uint32_t *d,
+                   const uint32_t *a, const uint32_t *b, const uint32_t *c) {
+  run<false>(exec_mask, modifiers, d, a, b, c, 0, flags);
 }
 
 void fma_dx9_zero_x86_64_v3(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,

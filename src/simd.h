@@ -37,8 +37,8 @@ template <bool Multiply>
 void literal_fma_x86_64_v3(uint32_t exec_mask, uint32_t literal, uint32_t *d, const uint32_t *a,
                            const uint32_t *b);
 
-void fma_x86_64_v3(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
-                   const uint32_t *b, const uint32_t *c);
+void fma_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t modifiers, uint32_t *d,
+                   const uint32_t *a, const uint32_t *b, const uint32_t *c);
 
 void fma_dx9_zero_x86_64_v3(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
                             const uint32_t *b, const uint32_t *c);
@@ -49,8 +49,8 @@ template <bool Multiply>
 void literal_fma_x86_64_v4(uint32_t exec_mask, uint32_t literal, uint32_t *d, const uint32_t *a,
                            const uint32_t *b);
 
-void fma_x86_64_v4(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
-                   const uint32_t *b, const uint32_t *c);
+void fma_x86_64_v4(uint64_t flags, uint32_t exec_mask, uint32_t modifiers, uint32_t *d,
+                   const uint32_t *a, const uint32_t *b, const uint32_t *c);
 
 void fma_dx9_zero_x86_64_v4(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
                             const uint32_t *b, const uint32_t *c);

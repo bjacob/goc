@@ -28,8 +28,8 @@ float number(uint32_t u) {
 
 int call(bool accumulate, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  return accumulate ? goc_v_fmac_f32(flags, exec_mask, mode, d, a, b, nullptr)
-                    : goc_v_fma_f32(flags, exec_mask, mode, d, a, b, c, nullptr);
+  return accumulate ? goc_v_fmac_f32_rdna4(flags, exec_mask, mode, d, a, b, nullptr)
+                    : goc_v_fma_f32_rdna4(flags, exec_mask, mode, d, a, b, c, nullptr);
 }
 
 float modify(uint32_t raw, uint32_t mode, unsigned operand) {
@@ -153,9 +153,9 @@ TEST(Dpp8, InvalidFlagsAndSemantics) {
     for (auto word : d)
       EXPECT_EQ(word, 0x12345678u);
   }
-  EXPECT_EQ(goc_v_fma_dx9_zero_f32(0, 0, GOC_DPP8, nullptr, nullptr, nullptr, nullptr),
+  EXPECT_EQ(goc_v_fma_dx9_zero_f32_rdna4(0, 0, GOC_DPP8, nullptr, nullptr, nullptr, nullptr),
             GOC_SUCCESS);
-  EXPECT_EQ(goc_v_fma_dx9_zero_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
-                                   GOC_DPP8, nullptr, nullptr, nullptr, nullptr),
+  EXPECT_EQ(goc_v_fma_dx9_zero_f32_rdna4(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
+                                         GOC_DPP8, nullptr, nullptr, nullptr, nullptr),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
 }

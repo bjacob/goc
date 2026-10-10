@@ -28,7 +28,7 @@ TEST(Arithmetic, ConstInputs) {
   const uint32_t *const pa = a, *const pb = b, *const pc = c;
   uint32_t d[32] = {};
   uint32_t *pd = d;
-  ASSERT_EQ(goc_v_fma_f32(0, 1, 0, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
+  ASSERT_EQ(goc_v_fma_f32_rdna4(0, 1, 0, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
   EXPECT_EQ(d[0], 0x41200000u);
 }
 
@@ -45,7 +45,7 @@ TEST(Arithmetic, DeterministicFmaMaskAndAliasing) {
   }
   const auto original = a;
   auto pa = a.data(), pb = b.data(), pc = c.data();
-  ASSERT_EQ(goc_v_fma_f32(0, 0xaaaaaaaa, 0, &pa, &pa, &pb, &pc, nullptr), 0);
+  ASSERT_EQ(goc_v_fma_f32_rdna4(0, 0xaaaaaaaa, 0, &pa, &pa, &pb, &pc, nullptr), 0);
   for (int i = 0; i < 32; ++i)
     EXPECT_EQ(a[i], (i % 2) ? expected[i] : original[i]);
 }
@@ -55,15 +55,16 @@ TEST(Arithmetic, ErrorsPreserveDestination) {
   auto pa = a, pd = d;
   for (auto &v : d)
     v = 0xdeadbeef;
-  EXPECT_EQ(goc_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, &pd,
-                          &pa, &pa, &pa, nullptr),
+  EXPECT_EQ(goc_v_fma_f32_rdna4(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0,
+                                &pd, &pa, &pa, &pa, nullptr),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
   EXPECT_EQ(goc_v_log_f32(0, UINT32_MAX, GOC_ALU_NEG_B, &pd, &pa, nullptr),
             GOC_ERROR_INVALID_FLAGS);
   EXPECT_EQ(goc_v_log_f32(1ULL << 63, UINT32_MAX, 0, &pd, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
   for (auto v : d)
     EXPECT_EQ(v, 0xdeadbeef);
-  EXPECT_EQ(goc_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &pd, &pa, &pa, &pa, nullptr), 0);
+  EXPECT_EQ(goc_v_fma_f32_rdna4(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, &pd, &pa, &pa, &pa, nullptr),
+            0);
   for (auto v : d)
     EXPECT_EQ(v, 0xdeadbeef);
 }
@@ -110,9 +111,9 @@ TEST(Arithmetic, AllCpuLevelsFmaGoldenAndAliasing) {
         }
         std::array<uint32_t, 32> before;
         std::copy(ptrs[alias], ptrs[alias] + 32, before.begin());
-        ASSERT_EQ(
-            goc_v_fma_f32(level, exec_mask, 0, &ptrs[alias], &ptrs[0], &ptrs[1], &ptrs[2], nullptr),
-            0);
+        ASSERT_EQ(goc_v_fma_f32_rdna4(level, exec_mask, 0, &ptrs[alias], &ptrs[0], &ptrs[1],
+                                      &ptrs[2], nullptr),
+                  0);
         for (int i = 0; i < 32; ++i)
           EXPECT_EQ(ptrs[alias][i], ((exec_mask >> i) & 1) ? golden[i % 8] : before[i]);
         for (int j = 0; j < 4; ++j) {
@@ -126,7 +127,7 @@ namespace {
 
 void check_fma_modifiers(bool dx9) {
   using Fn = goc_test::WaveInstruction<decltype(&goc_v_mad_u32_u24)>;
-  Fn fn = dx9 ? Fn(goc_v_fma_dx9_zero_f32) : Fn(goc_v_fma_f32);
+  Fn fn = dx9 ? Fn(goc_v_fma_dx9_zero_f32_rdna4) : Fn(goc_v_fma_f32_rdna4);
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (uint32_t modifiers = 0; modifiers < 512; ++modifiers)
       for (uint32_t exec_mask : exec_masks())
@@ -192,7 +193,7 @@ TEST(Arithmetic, FmaModifierSpecialValues) {
       std::fill(b, b + 32, b_bits[test]);
       std::fill(c, c + 32, c_bits[test]);
       auto pa = a, pb = b, pc = c, pd = d;
-      ASSERT_EQ(goc_v_fma_f32(cpu, UINT32_MAX, modes[test], &pd, &pa, &pb, &pc, nullptr),
+      ASSERT_EQ(goc_v_fma_f32_rdna4(cpu, UINT32_MAX, modes[test], &pd, &pa, &pb, &pc, nullptr),
                 GOC_SUCCESS);
       for (uint32_t value : d)
         EXPECT_EQ(value, golden[test]);
@@ -235,8 +236,9 @@ TEST(Arithmetic, Dx9FmaZeroProductAdditionWithEveryModifierAndAlias) {
             }
             expected[lane] = want;
           }
-          ASSERT_EQ(goc_v_fma_dx9_zero_f32(cpu, UINT32_MAX, mode, &v[alias], &v[0], &v[1], &v[2]),
-                    GOC_SUCCESS);
+          ASSERT_EQ(
+              goc_v_fma_dx9_zero_f32_rdna4(cpu, UINT32_MAX, mode, &v[alias], &v[0], &v[1], &v[2]),
+              GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane)
             EXPECT_EQ(v[alias][lane], expected[lane]);
         }
@@ -251,14 +253,15 @@ TEST(Arithmetic, Dx9FmaFusedRoundingAndValidation) {
   auto pa = a, pb = b, pc = c, pd = d;
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     std::fill(d, d + 32, 0xdeadbeef);
-    EXPECT_EQ(goc_v_fma_dx9_zero_f32(cpu, UINT32_MAX, GOC_ALU_HIGH_C, &pd, &pa, &pb, &pc),
+    EXPECT_EQ(goc_v_fma_dx9_zero_f32_rdna4(cpu, UINT32_MAX, GOC_ALU_HIGH_C, &pd, &pa, &pb, &pc),
               GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(goc_v_fma_dx9_zero_f32(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+    EXPECT_EQ(
+        goc_v_fma_dx9_zero_f32_rdna4(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                                      UINT32_MAX, 0, &pd, &pa, &pb, &pc),
-              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        GOC_ERROR_UNSUPPORTED_SEMANTICS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0xdeadbeef);
-    ASSERT_EQ(goc_v_fma_dx9_zero_f32(cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc), GOC_SUCCESS);
+    ASSERT_EQ(goc_v_fma_dx9_zero_f32_rdna4(cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc), GOC_SUCCESS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0xa8800000);
   }
@@ -290,10 +293,10 @@ TEST(Arithmetic, FmaAndFmacOmodHardwareBoundaries) {
                 uint32_t before[32];
                 std::copy(p[alias], p[alias] + 32, before);
                 uint64_t mode = (omod << 6) | (clamp ? GOC_ALU_CLAMP : 0) | neg;
-                int error =
-                    fmac ? goc_v_fmac_f32(cpu, exec_mask, mode, &p[alias], &p[1], &p[2], nullptr)
-                         : goc_v_fma_f32(cpu, exec_mask, mode, &p[alias], &p[1], &p[2], &p[3],
-                                         nullptr);
+                int error = fmac ? goc_v_fmac_f32_rdna4(cpu, exec_mask, mode, &p[alias], &p[1],
+                                                        &p[2], nullptr)
+                                 : goc_v_fma_f32_rdna4(cpu, exec_mask, mode, &p[alias], &p[1],
+                                                       &p[2], &p[3], nullptr);
                 ASSERT_EQ(error, GOC_SUCCESS);
                 for (int lane = 0; lane < 32; ++lane) {
                   uint32_t want = (exec_mask >> lane) & 1
@@ -326,9 +329,9 @@ TEST(Arithmetic, Dx9HardwareAllModifiersAndDenormalModes) {
               goc_test::dx9_hardware_inputs(set, lane, words[0][lane], words[1][lane],
                                             words[2][lane]);
             uint32_t *p[] = {words[0], words[1], words[2], words[3]};
-            ASSERT_EQ(
-                goc_v_fma_dx9_zero_f32(flags, UINT32_MAX, mode, &p[alias], &p[0], &p[1], &p[2]),
-                GOC_SUCCESS);
+            ASSERT_EQ(goc_v_fma_dx9_zero_f32_rdna4(flags, UINT32_MAX, mode, &p[alias], &p[0], &p[1],
+                                                   &p[2]),
+                      GOC_SUCCESS);
             for (uint32_t value : words[alias]) {
               if ((value & 0x7fffffff) > 0x7f800000)
                 value = 0x7fc00000;
@@ -361,7 +364,7 @@ TEST(Arithmetic, Dx9DppHardwareCorpus) {
           }
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
-          ASSERT_EQ(goc_v_fma_dx9_zero_f32(cpu, exec_mask, descriptor | mode, d, a, b, c),
+          ASSERT_EQ(goc_v_fma_dx9_zero_f32_rdna4(cpu, exec_mask, descriptor | mode, d, a, b, c),
                     GOC_SUCCESS);
           for (uint32_t word : words[3]) {
             if ((word & 0x7fffffff) > 0x7f800000)
@@ -413,7 +416,7 @@ TEST(Arithmetic, Dx9DppModifiersMasksAliasesAndGuards) {
               const uint32_t *a[] = {words[0] + 1}, *b[] = {words[shared ? 0 : 1] + 1},
                              *c[] = {words[shared ? 0 : 2] + 1};
               uint32_t *d[] = {words[target] + 1};
-              ASSERT_EQ(goc_v_fma_dx9_zero_f32(cpu, exec_mask, descriptor | mode, d, a, b, c),
+              ASSERT_EQ(goc_v_fma_dx9_zero_f32_rdna4(cpu, exec_mask, descriptor | mode, d, a, b, c),
                         GOC_SUCCESS);
               for (unsigned reg = 0; reg < 4; ++reg)
                 for (unsigned lane = 0; lane < 34; ++lane) {
@@ -445,9 +448,11 @@ TEST(Arithmetic, Dx9FmacModifiersRoutingAndAliases) {
             std::copy_n(words[alias], 32, expected);
             uint32_t *d[] = {words[alias]}, *reference[] = {expected};
             const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[alias]};
-            ASSERT_EQ(goc_v_fma_dx9_zero_f32(cpu, exec_mask, descriptor | mode, reference, a, b, c),
-                      GOC_SUCCESS);
-            ASSERT_EQ(goc_v_fmac_dx9_zero_f32(cpu, exec_mask, descriptor | mode, d, a, b),
+            ASSERT_EQ(
+                goc_v_fma_dx9_zero_f32_rdna4(cpu, exec_mask, descriptor | mode, reference, a, b, c),
+                GOC_SUCCESS);
+            ASSERT_EQ(goc_v_fmac_dx9_zero_f32(cpu | GOC_FP_FLUSH_OUTPUT_DENORMALS, exec_mask,
+                                              descriptor | mode, d, a, b),
                       GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane)
               ASSERT_EQ(words[alias][lane], expected[lane])
@@ -489,13 +494,14 @@ int fma_wave64_call(unsigned op, uint64_t flags, uint64_t exec_mask, uint64_t mo
                     const uint32_t *const *c, uint32_t literal, uint32_t *excp_flag_user) {
   switch (op) {
   case 0:
-    return goc_v_fma_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+    return goc_v_fma_f32_rdna4_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
   case 1:
-    return goc_v_fmac_f32_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return goc_v_fmac_f32_rdna4_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
   case 2:
-    return goc_v_fma_dx9_zero_f32_wave64(flags, exec_mask, mode, d, a, b, c);
+    return goc_v_fma_dx9_zero_f32_rdna4_wave64(flags, exec_mask, mode, d, a, b, c);
   case 3:
-    return goc_v_fmac_dx9_zero_f32_wave64(flags, exec_mask, mode, d, a, b);
+    return goc_v_fmac_dx9_zero_f32_wave64(flags | GOC_FP_FLUSH_OUTPUT_DENORMALS, exec_mask, mode, d,
+                                          a, b);
   case 4:
     return goc_v_fmamk_f32_wave64(flags, exec_mask, mode, d, a, literal, b, excp_flag_user);
   default:
@@ -606,4 +612,84 @@ TEST(Arithmetic, Wave64FmaValidation) {
       EXPECT_EQ(excp_flag_user, 0x12345678U);
     }
   }
+}
+
+TEST(Arithmetic, FmaArchitectureGuestModes) {
+  // Each case has an exactly representable fused result, including underflow
+  // generated from normal operands and a subnormal supplied through each input.
+  const uint32_t cases[][3] = {{0x3f800000, 0x40000000, 0x3f800000},
+                               {1, 0x3f800000, 0},
+                               {0x3f800000, 1, 0},
+                               {0, 0x3f800000, 1},
+                               {0x00800000, 0x3f000000, 0},
+                               {0x80000001, 0x3f800000, 0x80000000}};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (bool rdna3 : {false, true})
+      for (bool dx9 : {false, true})
+        for (bool accumulator : {false, true})
+          for (bool wide : {false, true})
+            for (unsigned settings = 0; settings < 8; ++settings)
+              for (uint32_t mode : {0U, GOC_ALU_OMOD_2, GOC_ALU_OMOD_4, GOC_ALU_OMOD_HALF})
+                for (const auto &input : cases) {
+                  if (!rdna3 && dx9 && accumulator)
+                    continue;
+                  uint64_t flags = cpu | ((settings & 1) ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                   ((settings & 2) ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                   ((settings & 4) ? GOC_FP_IEEE_MODE : 0);
+                  uint32_t words[4][64];
+                  for (unsigned r = 0; r < 3; ++r)
+                    std::fill_n(words[r], 64, input[r]);
+                  std::fill_n(words[3], 64, accumulator ? input[2] : 0xdeadbeefU);
+                  const uint32_t *a = words[0], *b = words[1], *c = words[2];
+                  uint32_t *d = words[3], state = 0x80000055;
+                  uint64_t exec_mask = wide ? 0x55555555aaaaaaaaULL : 0xaaaaaaaaULL;
+                  int error;
+                  if (dx9 && accumulator) {
+                    auto fn = goc_v_fmac_dx9_zero_f32;
+                    auto fn64 = goc_v_fmac_dx9_zero_f32_wave64;
+                    error = wide ? fn64(flags, exec_mask, mode, &d, &a, &b)
+                                 : fn(flags, uint32_t(exec_mask), mode, &d, &a, &b);
+                  } else if (dx9) {
+                    auto fn = rdna3 ? goc_v_fma_dx9_zero_f32 : goc_v_fma_dx9_zero_f32_rdna4;
+                    auto fn64 =
+                        rdna3 ? goc_v_fma_dx9_zero_f32_wave64 : goc_v_fma_dx9_zero_f32_rdna4_wave64;
+                    error = wide ? fn64(flags, exec_mask, mode, &d, &a, &b, &c)
+                                 : fn(flags, uint32_t(exec_mask), mode, &d, &a, &b, &c);
+                  } else if (accumulator) {
+                    auto fn = rdna3 ? goc_v_fmac_f32 : goc_v_fmac_f32_rdna4;
+                    auto fn64 = rdna3 ? goc_v_fmac_f32_wave64 : goc_v_fmac_f32_rdna4_wave64;
+                    error = wide ? fn64(flags, exec_mask, mode, &d, &a, &b, &state)
+                                 : fn(flags, uint32_t(exec_mask), mode, &d, &a, &b, &state);
+                  } else {
+                    auto fn = rdna3 ? goc_v_fma_f32 : goc_v_fma_f32_rdna4;
+                    auto fn64 = rdna3 ? goc_v_fma_f32_wave64 : goc_v_fma_f32_rdna4_wave64;
+                    error = wide ? fn64(flags, exec_mask, mode, &d, &a, &b, &c, &state)
+                                 : fn(flags, uint32_t(exec_mask), mode, &d, &a, &b, &c, &state);
+                  }
+                  ASSERT_EQ(error, GOC_SUCCESS);
+                  EXPECT_EQ(state, 0x80000055U);
+                  float x[3];
+                  for (unsigned r = 0; r < 3; ++r) {
+                    uint32_t bits = input[r];
+                    if ((dx9 || (settings & 1)) && (bits & 0x7fffffffU) < 0x00800000U)
+                      bits &= 0x80000000U;
+                    x[r] = goc::as_float(bits);
+                  }
+                  if (dx9 && (x[0] == 0 || x[1] == 0)) {
+                    x[0] = 0;
+                    x[1] = 1;
+                  }
+                  uint32_t expected = goc::as_bits(std::fma(x[0], x[1], x[2]));
+                  if ((dx9 || (settings & 2)) && (expected & 0x7fffffffU) < 0x00800000U)
+                    expected &= 0x80000000U;
+                  uint32_t effective_mode = rdna3 && (!(settings & 2) || (settings & 4)) ? 0 : mode;
+                  expected = goc::as_bits(
+                      goc_test::omod_f32_reference(goc::as_float(expected), effective_mode));
+                  for (unsigned lane = 0; lane < 64; ++lane)
+                    EXPECT_EQ(d[lane], ((exec_mask >> lane) & 1)
+                                           ? expected
+                                           : (accumulator ? input[2] : 0xdeadbeefU))
+                        << cpu << "/" << rdna3 << "/" << dx9 << "/" << accumulator << "/"
+                        << settings << "/" << mode;
+                }
 }

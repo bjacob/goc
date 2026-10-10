@@ -17,8 +17,8 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_fmac_f32);
-const Fn functions[] = {goc_v_fmac_f32, goc_v_fmac_f16};
+using Fn = decltype(&goc_v_fmac_f32_rdna4);
+const Fn functions[] = {goc_v_fmac_f32_rdna4, goc_v_fmac_f16};
 const uint32_t known32 = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
 const uint32_t known16 = known32 | GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D;
@@ -183,7 +183,7 @@ TEST(Fmac, HalfEveryEncodingAndFusedRounding) {
     std::fill(words[0], words[0] + 32, 0x3f800001);
     std::fill(words[1], words[1] + 32, 0x3f7ffffe);
     std::fill(words[2], words[2] + 32, 0xbf800000);
-    ASSERT_EQ(goc_v_fmac_f32(cpu, UINT32_MAX, 0, p + 2, p, p + 1, nullptr), GOC_SUCCESS);
+    ASSERT_EQ(goc_v_fmac_f32_rdna4(cpu, UINT32_MAX, 0, p + 2, p, p + 1, nullptr), GOC_SUCCESS);
     for (auto word : words[2])
       EXPECT_EQ(word, 0xa8800000u);
   }

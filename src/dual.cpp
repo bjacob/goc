@@ -11,10 +11,10 @@ int goc_v_dual_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         uint32_t *excp_flag_user) {
   if (instruction_flags) {
-    int error = goc_v_fmac_f32(flags, 0, 0, d, a, b, excp_flag_user);
+    int error = goc_v_fmac_f32_rdna4(flags, 0, 0, d, a, b, excp_flag_user);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
   }
-  return goc_v_fmac_f32(flags, exec_mask, 0, d, a, b, excp_flag_user);
+  return goc_v_fmac_f32_rdna4(flags, exec_mask, 0, d, a, b, excp_flag_user);
 }
 
 int goc_v_dual_fmaak_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
