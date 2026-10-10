@@ -32,6 +32,30 @@ static const CarryFn carry_functions[] = {carry_add,           carry_sub,
                                           carry_subrev,        goc_v_add_co_ci_u32,
                                           goc_v_sub_co_ci_u32, goc_v_subrev_co_ci_u32};
 
+using CarryWave64Fn = decltype(&goc_v_add_co_ci_u32_wave64);
+
+inline int carry_add_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            uint64_t *carry, const uint32_t *const *a, const uint32_t *const *b,
+                            uint64_t) {
+  return goc_v_add_co_u32_wave64(flags, exec_mask, mode, d, carry, a, b);
+}
+
+inline int carry_sub_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            uint64_t *carry, const uint32_t *const *a, const uint32_t *const *b,
+                            uint64_t) {
+  return goc_v_sub_co_u32_wave64(flags, exec_mask, mode, d, carry, a, b);
+}
+
+inline int carry_subrev_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                               const uint32_t *const *b, uint64_t) {
+  return goc_v_subrev_co_u32_wave64(flags, exec_mask, mode, d, carry, a, b);
+}
+
+static const CarryWave64Fn carry_wave64_functions[] = {
+    carry_add_wave64,           carry_sub_wave64,           carry_subrev_wave64,
+    goc_v_add_co_ci_u32_wave64, goc_v_sub_co_ci_u32_wave64, goc_v_subrev_co_ci_u32_wave64};
+
 struct CarryResult {
   uint32_t value;
   bool carry;

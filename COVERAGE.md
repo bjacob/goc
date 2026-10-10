@@ -758,3 +758,24 @@ counts are unchanged at 806 present and three absent.
 Validation: all 755 tests pass on Clang 21 and GCC 15 Release builds. All 24
 Boolean, conditional-selection, integer DPP and instruction-flag tests pass
 under ASan/UBSan, including the existing exhaustive routing suites.
+
+
+## Wave64 carry/borrow arithmetic
+
+Added the six ADD/SUB/SUBREV CO and CO_CI Wave64 APIs, with 64-bit EXEC,
+input-carry and scalar output masks. Both semantics reuse the existing scalar,
+x86-64-v3 and x86-64-v4 kernels. DPP row enables are remapped per half; SUBREV
+continues to route B, while ADD/SUB route A. Carry-in bits retain their original
+lanes. The scalar output is staged until after both halves, preserving source
+aliasing, and zero EXEC writes a zero carry mask without touching VGPR pointers.
+
+Tests independently evaluate all boundary operand pairs, carry/borrow patterns
+with different upper/lower halves, saturation, both semantics and every CPU
+path. They cover DPP8/DPP16 and all row masks, whole-VGPR aliases, scalar carry
+output overlapping the upper source half, guards, error preservation and null
+VGPRs at zero EXEC. Existing Wave32 hardware captures still validate the shared
+arithmetic; no new direct Wave64 GPU capture or performance measurement is
+claimed. The width-review queue now has 319 candidates.
+
+Validation: all 758 tests pass with Clang 21 and GCC 15 Release builds. All
+twelve carry/borrow and instruction-flag tests pass under ASan/UBSan.

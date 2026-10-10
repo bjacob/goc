@@ -3861,6 +3861,35 @@ int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c);
 
+// Wave64 carry/borrow operations. EXEC, input_carry and the required carry
+// output have 64 bits. Inactive/DPP-filtered carry bits are zero. The scalar
+// output is stored after all VGPR reads/writes; zero EXEC permits null VGPR
+// pointers but still writes carry=0. Modifiers and whole-VGPR aliases match
+// Wave32, including DPP on B for SUBREV. Both semantics are exact.
+int goc_v_add_co_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                            const uint32_t *const *b);
+
+int goc_v_sub_co_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                            const uint32_t *const *b);
+
+int goc_v_subrev_co_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                               const uint32_t *const *b);
+
+int goc_v_add_co_ci_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                               const uint32_t *const *b, uint64_t input_carry);
+
+int goc_v_sub_co_ci_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                               const uint32_t *const *b, uint64_t input_carry);
+
+int goc_v_subrev_co_ci_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, uint64_t *carry, const uint32_t *const *a,
+                                  const uint32_t *const *b, uint64_t input_carry);
+
 // Wave64 Boolean operations and conditional selects. EXEC and the CNDMASK
 // condition have one bit per lane. Modifiers, DPP and whole-VGPR aliasing match
 // Wave32; inactive lanes and unselected destination halves are preserved.

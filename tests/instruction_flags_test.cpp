@@ -65,7 +65,10 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_xnor_b32" || base_name == "goc_v_not_b32" ||
         base_name == "goc_v_and_b16" || base_name == "goc_v_or_b16" ||
         base_name == "goc_v_xor_b16" || base_name == "goc_v_not_b16" ||
-        base_name == "goc_v_cndmask_b16" || base_name == "goc_v_cndmask_b32")
+        base_name == "goc_v_cndmask_b16" || base_name == "goc_v_cndmask_b32" ||
+        base_name == "goc_v_add_co_u32" || base_name == "goc_v_add_co_ci_u32" ||
+        base_name == "goc_v_sub_co_u32" || base_name == "goc_v_sub_co_ci_u32" ||
+        base_name == "goc_v_subrev_co_u32" || base_name == "goc_v_subrev_co_ci_u32")
       name = base_name.c_str();
   } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));

@@ -279,3 +279,104 @@ TEST(Carry, DppHardwareCorpusAndHostFpState) {
       }
   }
 }
+
+TEST(Carry, Wave64BoundaryPairsInputCarryAndSaturation) {
+  const uint32_t edges[] = {0, 1, 2, 0x7fffffff, 0x80000000, 0xfffffffd, 0xfffffffe, UINT32_MAX};
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (unsigned clamp = 0; clamp < 2; ++clamp)
+          for (uint64_t input : {uint64_t(0), UINT64_MAX, uint64_t(0xaaaaaaaa55555555ULL)})
+            for (uint64_t exec_mask : {uint64_t(0), UINT64_MAX, uint64_t(0x87654321fedcba98ULL)}) {
+              uint32_t words[3][64];
+              uint64_t expected_carry = 0, carry = 123;
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                words[0][lane] = edges[lane / 8];
+                words[1][lane] = edges[lane % 8];
+                words[2][lane] = 0xdeadbeef;
+              }
+              const uint32_t *a = words[0], *b = words[1];
+              uint32_t *d = words[2];
+              ASSERT_EQ(goc_test::carry_wave64_functions[op](cpu | semantics | GOC_SEMANTICS_STRICT,
+                                                             exec_mask, clamp ? GOC_ALU_CLAMP : 0,
+                                                             &d, &carry, &a, &b, input),
+                        GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                auto ref = goc_test::carry_reference(op, words[0][lane], words[1][lane],
+                                                     (input >> lane) & 1, clamp);
+                bool enabled = (exec_mask >> lane) & 1;
+                EXPECT_EQ(d[lane], enabled ? ref.value : 0xdeadbeefU);
+                if (enabled && ref.carry)
+                  expected_carry |= 1ULL << lane;
+              }
+              EXPECT_EQ(carry, expected_carry);
+            }
+}
+
+TEST(Carry, Wave64DppRowsAndWholeRegisterAliases) {
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned rows = 0; rows < 16; ++rows)
+        for (uint64_t route : goc_test::dpp_modes)
+          for (unsigned alias = 0; alias < 3; ++alias) {
+            uint64_t mode = route;
+            if (route & GOC_DPP16)
+              mode = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+            mode |= rows & 1 ? GOC_ALU_CLAMP : 0;
+            uint32_t words[3][66], initial[3][66];
+            for (unsigned j = 0; j < 3; ++j)
+              for (unsigned lane = 0; lane < 66; ++lane)
+                initial[j][lane] = words[j][lane] = (lane * (0x9e3779b9U + j)) ^ (0xa5a59669U >> j);
+            unsigned dest = alias == 0 ? 2 : alias - 1;
+            uint32_t *d = words[dest] + 1;
+            const uint32_t *a = words[0] + 1, *b = words[1] + 1;
+            uint64_t exec_mask = 0x87654321fedcba98ULL, input = 0xa5a5a5a55a5a5a5aULL;
+            uint64_t carry = 123, expected_carry = 0;
+            ASSERT_EQ(goc_test::carry_wave64_functions[op](cpu | exact, exec_mask, mode, &d, &carry,
+                                                           &a, &b, input),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              int source;
+              bool enabled = goc_test::dpp_source(mode, exec_mask, lane, source);
+              bool reverse = op % 3 == 2;
+              uint32_t permuted = source < 0 ? 0 : initial[reverse ? 1 : 0][source + 1];
+              auto ref = goc_test::carry_reference(op, reverse ? initial[0][lane + 1] : permuted,
+                                                   reverse ? permuted : initial[1][lane + 1],
+                                                   (input >> lane) & 1, mode & GOC_ALU_CLAMP);
+              EXPECT_EQ(d[lane], enabled ? ref.value : initial[dest][lane + 1]);
+              if (enabled && ref.carry)
+                expected_carry |= 1ULL << lane;
+            }
+            EXPECT_EQ(carry, expected_carry);
+            EXPECT_EQ(words[dest][0], initial[dest][0]);
+            EXPECT_EQ(words[dest][65], initial[dest][65]);
+          }
+}
+
+TEST(Carry, Wave64ScalarOutputAliasAndErrors) {
+  for (auto fn : goc_test::carry_wave64_functions) {
+    uint32_t a[64], b[64], d[64];
+    std::fill_n(a, 64, UINT32_MAX);
+    std::fill_n(b, 64, 1);
+    const uint32_t *pa = a, *pb = b;
+    uint32_t *pd = d;
+    uint64_t expected_carry = 0;
+    ASSERT_EQ(fn(exact, UINT64_MAX, 0, &pd, &expected_carry, &pa, &pb, 0x8000000000000001ULL),
+              GOC_SUCCESS);
+    uint32_t expected[64];
+    std::copy_n(d, 64, expected);
+    ASSERT_EQ(fn(exact, UINT64_MAX, 0, &pd, reinterpret_cast<uint64_t *>(a + 33), &pa, &pb,
+                 0x8000000000000001ULL),
+              GOC_SUCCESS);
+    uint64_t carry;
+    std::memcpy(&carry, a + 33, sizeof carry);
+    EXPECT_EQ(carry, expected_carry);
+    EXPECT_TRUE(std::equal(d, d + 64, expected));
+    carry = 123;
+    EXPECT_EQ(fn(exact, UINT64_MAX, 1ULL << 63, nullptr, &carry, nullptr, nullptr, 0),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(carry, 123U);
+    EXPECT_EQ(fn(exact, 0, 0, nullptr, &carry, nullptr, nullptr, UINT64_MAX), GOC_SUCCESS);
+    EXPECT_EQ(carry, 0U);
+  }
+}

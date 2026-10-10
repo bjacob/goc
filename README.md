@@ -808,6 +808,8 @@ scalar, including CLAMP (seven samples, each at least 10 ms).
 Carry/borrow arithmetic covers `v_add_co_u32`, `v_sub_co_u32`,
 `v_subrev_co_u32`, and their `co_ci` forms. The scalar carry/borrow output follows
 D in assembly operand order; CI forms take the input mask by value after A/B.
+All six have `_wave64` variants with 64-bit EXEC, input-carry and output-carry
+masks; their VGPR operands contain 64 lanes.
 CLAMP saturates the VGPR result while preserving the unsaturated carry/borrow
 indication. Inactive scalar output bits are cleared, including for zero EXEC;
 inactive VGPR lanes remain unchanged. The scalar output is written last and may
