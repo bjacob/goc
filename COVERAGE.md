@@ -3821,3 +3821,58 @@ Validation: all 1,054 CTests pass with Clang 21 Release and GCC 15 Release;
 `../goc-build-sanitize/`. All nine audit-tool tests pass. The native-register
 naming audit resolves 514 of 738 reporting signatures, with zero mismatches and
 224 still unresolved; numerical/reporting completeness remains a separate gate.
+
+## FP64 unary architecture policies
+
+Reviewed all nine unary operations in `fp64.cpp`: `v_trunc_f64`, `v_ceil_f64`,
+`v_rndne_f64`, `v_floor_f64`, `v_fract_f64`, `v_sqrt_f64`, `v_rcp_f64`,
+`v_rsq_f64`, and `v_frexp_mant_f64`. Rocjitsu revision `ffc144c564c` delegates
+both architectures' VOP3 forms to the corresponding shared execution helpers.
+Each uses `fp_mode::effective_omod` with `fp_denorm_mode_f16_f64()` and IEEE mode.
+The SFU helpers in `shared/transcendental.h` use host reciprocal/square-root
+arithmetic with special-value handling; this is not a newly borrowed empirical
+bit-exact FP64 model.
+
+- Unsuffixed APIs now select RDNA3, with `_rdna4` before `_wave64` where needed.
+  The trailing optional state pointers name `trapsts` or `excp_flag_user`.
+  Both wave sizes share the existing scalar and AVX2 numerical kernels.
+- All nine accept guest IEEE/input/output-denormal flags. These flags gate RDNA3
+  OMOD: IEEE mode or preserved output denormals disables scaling. RDNA4 scaling
+  is independent. The reviewed upstream unary bodies do not otherwise flush
+  inputs/results using these guest flags; GoC retains that behavior.
+- The RDNA3 output-modifier rule is centralized locally and also used by the
+  existing FP64 ADD/MUL/FMA and legacy selection dispatch. No arithmetic loop,
+  per-lane reporting work, or sparse-mask optimization was added. FP64 unary
+  DPP remains explicitly rejected.
+- All nine remain loose-only, with exact non-null optional reporting unsupported.
+  Guest rounding modes, NaN payload/signaling fidelity and exact SFU behavior
+  are not newly claimed. Existing GoC FRACT capping below one is retained; the
+  upstream shared helper merely subtracts FLOOR. This review does not infer
+  a hardware difference from that discrepancy or introduce a new exact model.
+
+Three new cases in `fp64_unary_test.cpp` test literal scaling witnesses for every
+operation, both targets and wave sizes, all eight guest policies, all low
+modifiers, all available CPU selections, normal/subnormal/special inputs,
+sparse EXEC, whole-VGPR and cross-word aliases, coincident destinations, unaligned
+storage and guards. Separate tests cover error atomicity, optional state and
+host rounding/FTZ/DAZ/sticky-flag preservation. Loose SFU results use the existing
+independent long-double reference with a floating comparison; coincident
+high-word stores are checked against a disjoint invocation because an allowed
+ULP difference can cross a word boundary. Existing RDNA4 numerical/output tests
+now call the explicit `_rdna4` APIs.
+
+Performance: seven alternating before/after samples per case, pinned to CPU 2,
+using thread CPU time and at least 20 ms per sample. Across all nine operations
+with plain/modified forms, median time changes are +0.14% scalar, +0.18% for
+AVX2 and +0.08% for the v4 CPU selection (also AVX2 for these operations).
+The largest measured slowdown is modified scalar RNDNE, 107.216 ns to
+108.601 ns (+1.29%). The SIMD object is byte-identical before and after.
+Raw samples are in `../goc-build/coverage-work/fp64-unary-performance.json`.
+
+Validation: all 1,057 CTests pass with Clang 21 Release and GCC 15 Release;
+25 targeted ASan/UBSan tests pass, including existing FP64 arithmetic/selection
+regressions for the centralized modifier rule. Logs are `fp64-unary-tests.log`
+under `../goc-build/coverage-work/`, `../goc-build-gcc/`, and
+`../goc-build-sanitize/`. All nine audit-tool tests pass. The naming audit
+resolves 550 of 756 reporting signatures with zero mismatches and 206 remaining
+unresolved; this remains separate from numerical and reporting fidelity.

@@ -110,5 +110,21 @@
     "mnemonics": [
       "v_frexp_exp_i32_f64"
     ]
+  },
+  {
+    "heading": "FP64 unary architecture policies",
+    "semantics": "loose",
+    "tests": "tests/fp64_unary_test.cpp",
+    "mnemonics": [
+      "v_trunc_f64",
+      "v_ceil_f64",
+      "v_rndne_f64",
+      "v_floor_f64",
+      "v_fract_f64",
+      "v_sqrt_f64",
+      "v_rcp_f64",
+      "v_rsq_f64",
+      "v_frexp_mant_f64"
+    ]
   }
 ]

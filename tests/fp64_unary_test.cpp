@@ -1,25 +1,33 @@
 // SPDX-License-Identifier: MIT
 
 #include "exec_masks.h"
+#include "fp_environment.h"
 #include "goc/goc.h"
 #include "omod_reference.h"
+#include "test_instruction.h"
 
 #include <algorithm>
+#include <cfenv>
 #include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <stdint.h>
+
+#if defined(__x86_64__) || defined(_M_X64)
+#include <immintrin.h>
+#endif
 
 namespace {
 
-using Fn = decltype(&goc_v_sqrt_f64);
-const Fn functions[] = {goc_v_trunc_f64, goc_v_ceil_f64,  goc_v_rndne_f64,
-                        goc_v_floor_f64, goc_v_fract_f64, goc_v_sqrt_f64,
-                        goc_v_rcp_f64,   goc_v_rsq_f64,   goc_v_frexp_mant_f64};
-const decltype(&goc_v_sqrt_f64_wave64) wave64[] = {
-    goc_v_trunc_f64_wave64, goc_v_ceil_f64_wave64,  goc_v_rndne_f64_wave64,
-    goc_v_floor_f64_wave64, goc_v_fract_f64_wave64, goc_v_sqrt_f64_wave64,
-    goc_v_rcp_f64_wave64,   goc_v_rsq_f64_wave64,   goc_v_frexp_mant_f64_wave64};
+using Fn = decltype(&goc_v_sqrt_f64_rdna4);
+const Fn functions[] = {goc_v_trunc_f64_rdna4, goc_v_ceil_f64_rdna4,  goc_v_rndne_f64_rdna4,
+                        goc_v_floor_f64_rdna4, goc_v_fract_f64_rdna4, goc_v_sqrt_f64_rdna4,
+                        goc_v_rcp_f64_rdna4,   goc_v_rsq_f64_rdna4,   goc_v_frexp_mant_f64_rdna4};
+const decltype(&goc_v_sqrt_f64_rdna4_wave64) wave64[] = {
+    goc_v_trunc_f64_rdna4_wave64, goc_v_ceil_f64_rdna4_wave64,  goc_v_rndne_f64_rdna4_wave64,
+    goc_v_floor_f64_rdna4_wave64, goc_v_fract_f64_rdna4_wave64, goc_v_sqrt_f64_rdna4_wave64,
+    goc_v_rcp_f64_rdna4_wave64,   goc_v_rsq_f64_rdna4_wave64,   goc_v_frexp_mant_f64_rdna4_wave64};
 
 uint64_t bits(double value) {
   uint64_t result;
@@ -259,7 +267,7 @@ TEST(Fp64Unary, MantissaLiteralSubnormalsAndPassthrough) {
       uint32_t *pa[] = {a[0], a[1]}, *pd[] = {d[0], d[1]};
       std::fill(a[0], a[0] + 32, uint32_t(test[0]));
       std::fill(a[1], a[1] + 32, uint32_t(test[0] >> 32));
-      ASSERT_EQ(goc_v_frexp_mant_f64(cpu, UINT32_MAX, 0, pd, pa, nullptr), GOC_SUCCESS);
+      ASSERT_EQ(goc_v_frexp_mant_f64_rdna4(cpu, UINT32_MAX, 0, pd, pa, nullptr), GOC_SUCCESS);
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(d[0][lane] | (uint64_t(d[1][lane]) << 32), test[1]);
     }
@@ -369,4 +377,200 @@ TEST(Fp64Unary, Wave64ReportingAndValidation) {
               GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
     EXPECT_EQ(exceptions, 0x80000055U);
   }
+}
+
+namespace {
+
+using UnaryInstruction = goc_test::WaveInstruction<decltype(&goc_v_cvt_f64_i32)>;
+const UnaryInstruction architecture_functions[2][2][9] = {
+    {
+        {goc_v_trunc_f64, goc_v_ceil_f64, goc_v_rndne_f64, goc_v_floor_f64, goc_v_fract_f64,
+         goc_v_sqrt_f64, goc_v_rcp_f64, goc_v_rsq_f64, goc_v_frexp_mant_f64},
+        {goc_v_trunc_f64_wave64, goc_v_ceil_f64_wave64, goc_v_rndne_f64_wave64,
+         goc_v_floor_f64_wave64, goc_v_fract_f64_wave64, goc_v_sqrt_f64_wave64,
+         goc_v_rcp_f64_wave64, goc_v_rsq_f64_wave64, goc_v_frexp_mant_f64_wave64},
+    },
+    {
+        {goc_v_trunc_f64_rdna4, goc_v_ceil_f64_rdna4, goc_v_rndne_f64_rdna4, goc_v_floor_f64_rdna4,
+         goc_v_fract_f64_rdna4, goc_v_sqrt_f64_rdna4, goc_v_rcp_f64_rdna4, goc_v_rsq_f64_rdna4,
+         goc_v_frexp_mant_f64_rdna4},
+        {goc_v_trunc_f64_rdna4_wave64, goc_v_ceil_f64_rdna4_wave64, goc_v_rndne_f64_rdna4_wave64,
+         goc_v_floor_f64_rdna4_wave64, goc_v_fract_f64_rdna4_wave64, goc_v_sqrt_f64_rdna4_wave64,
+         goc_v_rcp_f64_rdna4_wave64, goc_v_rsq_f64_rdna4_wave64, goc_v_frexp_mant_f64_rdna4_wave64},
+    },
+};
+
+uint64_t unary_policy(unsigned guest) {
+  return (guest & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+         (guest & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) | (guest & 4 ? GOC_FP_IEEE_MODE : 0);
+}
+
+uint32_t unary_modifiers(unsigned m) {
+  return (m & 1 ? GOC_ALU_NEG_A : 0) | (m & 2 ? GOC_ALU_ABS_A : 0) | ((m >> 2 & 3) << 6) |
+         (m & 16 ? GOC_ALU_CLAMP : 0);
+}
+
+} // namespace
+
+TEST(Fp64Unary, ArchitectureLiteralOutputScaling) {
+  const uint64_t input[] = {0x400a000000000000ULL, 0x400a000000000000ULL, 0x400a000000000000ULL,
+                            0x400a000000000000ULL, 0x400a000000000000ULL, 0x4010000000000000ULL,
+                            0x4010000000000000ULL, 0x4010000000000000ULL, 0x4008000000000000ULL};
+  const double unscaled[] = {3, 4, 3, 3, .25, 2, .25, .5, .75};
+  for (unsigned arch = 0; arch < 2; ++arch)
+    for (unsigned wide = 0; wide < 2; ++wide)
+      for (unsigned op = 0; op < 9; ++op)
+        for (unsigned guest = 0; guest < 8; ++guest)
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            uint32_t a[2][64], d[2][64];
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              a[0][lane] = uint32_t(input[op]);
+              a[1][lane] = uint32_t(input[op] >> 32);
+              d[0][lane] = d[1][lane] = 0xdeadbeef;
+            }
+            const uint32_t *pa[] = {a[0], a[1]};
+            uint32_t *pd[] = {d[0], d[1]}, state = 0x80000055;
+            ASSERT_EQ(architecture_functions[arch][wide][op](cpu | unary_policy(guest), UINT64_MAX,
+                                                             GOC_ALU_OMOD_2, pd, pa, &state),
+                      GOC_SUCCESS);
+            bool scale = arch || ((guest & 2) && !(guest & 4));
+            uint64_t want = bits(unscaled[op] * (scale ? 2 : 1));
+            for (unsigned lane = 0; lane < 64; ++lane)
+              for (unsigned reg = 0; reg < 2; ++reg)
+                EXPECT_EQ(d[reg][lane],
+                          lane < (wide ? 64U : 32U) ? uint32_t(want >> (reg * 32)) : 0xdeadbeefU);
+            EXPECT_EQ(state, 0x80000055U);
+          }
+}
+
+TEST(Fp64Unary, ArchitecturePoliciesModifiersAndAliases) {
+  const uint64_t inputs[] = {0,
+                             0x8000000000000000ULL,
+                             1,
+                             0x8000000000000001ULL,
+                             0xfffffffffffffULL,
+                             0x10000000000000ULL,
+                             0x10000000000001ULL,
+                             0x3ff0000000000001ULL,
+                             0x3ff8000000000000ULL,
+                             0xbfefffffffffffffULL,
+                             0x7fefffffffffffffULL,
+                             0x7ff0000000000000ULL,
+                             0xfff0000000000000ULL,
+                             0x7ff0000000000001ULL,
+                             0xfff0000000000001ULL,
+                             0x7ff8000000004321ULL};
+  const unsigned aliases[][2] = {{2, 3}, {0, 1}, {1, 0}, {2, 2}, {0, 2}};
+  for (unsigned arch = 0; arch < 2; ++arch)
+    for (unsigned wide = 0; wide < 2; ++wide)
+      for (unsigned op = 0; op < 9; ++op)
+        for (unsigned guest = 0; guest < 8; ++guest)
+          for (unsigned m = 0; m < 32; ++m)
+            for (const auto &alias : aliases)
+              for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+                uint32_t words[4][66], before[4][66];
+                for (unsigned lane = 0; lane < 66; ++lane) {
+                  uint64_t input = inputs[(lane + lane / 32) % 16];
+                  words[0][lane] = uint32_t(input);
+                  words[1][lane] = uint32_t(input >> 32);
+                  words[2][lane] = words[3][lane] = 0xdeadbeef;
+                }
+                std::memcpy(before, words, sizeof(words));
+                const uint32_t *a[] = {words[0] + 1, words[1] + 1};
+                uint32_t *d[] = {words[alias[0]] + 1, words[alias[1]] + 1};
+                const uint64_t exec_mask = 0xf13579bde2468acfULL;
+                uint32_t mode = unary_modifiers(m);
+                uint32_t effective =
+                    !arch && (!(guest & 2) || (guest & 4)) ? mode & ~GOC_ALU_OMOD_HALF : mode;
+                uint32_t separate[2][64];
+                if (alias[0] == alias[1]) {
+                  uint32_t *separate_d[] = {separate[0], separate[1]};
+                  ASSERT_EQ(architecture_functions[arch][wide][op](cpu | unary_policy(guest),
+                                                                   exec_mask, mode, separate_d, a),
+                            GOC_SUCCESS);
+                }
+                ASSERT_EQ(architecture_functions[arch][wide][op](cpu | unary_policy(guest),
+                                                                 exec_mask, mode, d, a),
+                          GOC_SUCCESS);
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  bool active = lane < (wide ? 64U : 32U) && ((exec_mask >> lane) & 1);
+                  if (!active) {
+                    EXPECT_EQ(d[0][lane], before[alias[0]][lane + 1]);
+                    EXPECT_EQ(d[1][lane], before[alias[1]][lane + 1]);
+                    continue;
+                  }
+                  uint64_t input =
+                      uint64_t(before[0][lane + 1]) | (uint64_t(before[1][lane + 1]) << 32);
+                  double want = reference(op, input, effective);
+                  uint64_t got = uint64_t(d[0][lane]) | (uint64_t(d[1][lane]) << 32);
+                  if (alias[0] == alias[1]) {
+                    // Compare with a disjoint invocation: the loose SFU result can
+                    // differ from the reference by an ULP that crosses a word boundary.
+                    EXPECT_EQ(d[0][lane], separate[1][lane]);
+                  } else if (std::isnan(want)) {
+                    EXPECT_TRUE(std::isnan(number(got)));
+                  } else if (op < 5 || want == 0 || std::isinf(want)) {
+                    EXPECT_EQ(got, bits(want));
+                  } else {
+                    EXPECT_DOUBLE_EQ(number(got), want);
+                  }
+                }
+                for (unsigned reg = 0; reg < 4; ++reg) {
+                  EXPECT_EQ(words[reg][0], before[reg][0]);
+                  EXPECT_EQ(words[reg][65], before[reg][65]);
+                  if (reg != alias[0] && reg != alias[1]) {
+                    EXPECT_EQ(std::memcmp(words[reg], before[reg], sizeof(words[reg])), 0);
+                  }
+                }
+              }
+}
+
+TEST(Fp64Unary, ArchitectureValidationAndHostControls) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (const auto &arch : architecture_functions)
+    for (const auto &wave : arch)
+      for (auto instruction : wave)
+        for (unsigned guest = 0; guest < 8; ++guest)
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            uint32_t a[2][64] = {}, d[2][64], state = 0x80000055;
+            for (auto &reg : d)
+              for (auto &word : reg)
+                word = 0xdeadbeef;
+            const uint32_t *pa[] = {a[0], a[1]};
+            uint32_t *pd[] = {d[0], d[1]};
+            for (uint64_t exec_mask : {0ULL, ~0ULL}) {
+              EXPECT_EQ(instruction(cpu | unary_policy(guest) | GOC_SEMANTICS_EXACT_EMPIRICAL,
+                                    exec_mask, 0, pd, pa, &state),
+                        GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+              EXPECT_EQ(instruction(cpu | unary_policy(guest) | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                        GOC_SEMANTICS_STRICT,
+                                    exec_mask, 0, pd, pa),
+                        GOC_ERROR_UNSUPPORTED_SEMANTICS);
+              EXPECT_EQ(instruction(cpu | unary_policy(guest), exec_mask, GOC_DPP8, pd, pa),
+                        GOC_ERROR_INVALID_FLAGS);
+              EXPECT_EQ(instruction(cpu | unary_policy(guest), exec_mask, GOC_ALU_NEG_B, pd, pa),
+                        GOC_ERROR_INVALID_FLAGS);
+            }
+            for (const auto &reg : d)
+              for (auto word : reg)
+                EXPECT_EQ(word, 0xdeadbeefU);
+            for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
+              ASSERT_EQ(std::fesetround(rounding), 0);
+              EXPECT_EQ(instruction(cpu | unary_policy(guest), UINT64_MAX, 0, pd, pa, &state),
+                        GOC_SUCCESS);
+              EXPECT_EQ(std::fegetround(), rounding);
+#if defined(__x86_64__) || defined(_M_X64)
+              for (unsigned denorm : {0U, 0x40U, 0x8000U, 0x8040U}) {
+                unsigned control = (_mm_getcsr() & ~0x8040U) | denorm;
+                _mm_setcsr(control | 0x20U);
+                EXPECT_EQ(instruction(cpu | unary_policy(guest), UINT64_MAX, 0, pd, pa, &state),
+                          GOC_SUCCESS);
+                EXPECT_EQ(_mm_getcsr() & ~0x3fU, control & ~0x3fU);
+                EXPECT_NE(_mm_getcsr() & 0x20U, 0U);
+              }
+#endif
+            }
+            EXPECT_EQ(state, 0x80000055U);
+          }
 }

@@ -4060,28 +4060,60 @@ int goc_v_fma_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
                                uint32_t *excp_flag_user);
 
 int goc_v_trunc_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_trunc_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_ceil_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_ceil_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                uint32_t *excp_flag_user);
 
 int goc_v_rndne_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rndne_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_floor_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_floor_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_fract_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_fract_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_sqrt_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_sqrt_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                uint32_t *excp_flag_user);
 
 int goc_v_rcp_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rcp_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 int goc_v_rsq_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rsq_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 int goc_v_min_num_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
@@ -4100,8 +4132,11 @@ int goc_v_maximum_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instru
                              uint32_t *excp_flag_user);
 
 int goc_v_frexp_mant_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                                uint32_t *const *d, const uint32_t *const *a,
-                                uint32_t *excp_flag_user);
+                                uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_frexp_mant_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_min_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
@@ -4511,32 +4546,60 @@ int goc_v_maximum_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       uint32_t *excp_flag_user);
 
-// Unary FP64 arithmetic uses the same low/high VGPR layout. Supports A ABS/NEG,
+// Unary FP64 arithmetic uses the same low/high VGPR layout. Guest IEEE and
+// input/output-denormal flags are accepted. They only affect RDNA3 OMOD:
+// scaling is disabled when IEEE is set or output denormals are preserved.
+// RDNA4 applies OMOD independently. These unary operations do not otherwise
+// flush guest denormals. Supports A ABS/NEG,
 // OMOD and CLAMP, with loose semantics. RNDNE rounds ties to even; FRACT computes
 // x - floor(x), capped at 0x3fefffffffffffff before output modifiers.
 int goc_v_trunc_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_trunc_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_ceil_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                   uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_ceil_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_rndne_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rndne_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_floor_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_floor_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_fract_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_fract_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_sqrt_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                   uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_sqrt_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_rcp_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rcp_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_rsq_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_rsq_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 // Binary-significand extraction: finite nonzero inputs produce magnitude in
 // [0.5,1); zeros and infinities pass through before output modifiers. FP32
@@ -4621,7 +4684,11 @@ int goc_v_frexp_mant_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
                                       const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_frexp_mant_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_frexp_mant_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 // Binary exponent extraction into one signed 32-bit VGPR. A uses one FP32
 // VGPR or an FP64 low/high pair. Returns zero for zeros, infinities and NaNs;

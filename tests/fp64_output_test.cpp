@@ -21,21 +21,21 @@ int call(unsigned op, uint64_t cpu, uint64_t mode, uint32_t *const *d, const uin
   case 2:
     return goc_v_fma_f64_rdna4(cpu, UINT32_MAX, mode, d, a, b, c, nullptr);
   case 3:
-    return goc_v_trunc_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
+    return goc_v_trunc_f64_rdna4(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 4:
-    return goc_v_ceil_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
+    return goc_v_ceil_f64_rdna4(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 5:
-    return goc_v_rndne_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
+    return goc_v_rndne_f64_rdna4(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 6:
-    return goc_v_floor_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
+    return goc_v_floor_f64_rdna4(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 7:
-    return goc_v_fract_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
+    return goc_v_fract_f64_rdna4(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 8:
-    return goc_v_sqrt_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
+    return goc_v_sqrt_f64_rdna4(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 9:
-    return goc_v_rcp_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
+    return goc_v_rcp_f64_rdna4(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 10:
-    return goc_v_rsq_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
+    return goc_v_rsq_f64_rdna4(cpu, UINT32_MAX, mode, d, a, nullptr);
   case 11:
     return goc_v_min_num_f64(cpu, UINT32_MAX, mode, d, a, b, nullptr);
   case 12:
@@ -45,7 +45,7 @@ int call(unsigned op, uint64_t cpu, uint64_t mode, uint32_t *const *d, const uin
   case 14:
     return goc_v_maximum_f64(cpu, UINT32_MAX, mode, d, a, b, nullptr);
   case 15:
-    return goc_v_frexp_mant_f64(cpu, UINT32_MAX, mode, d, a, nullptr);
+    return goc_v_frexp_mant_f64_rdna4(cpu, UINT32_MAX, mode, d, a, nullptr);
   }
   return GOC_ERROR_INVALID_FLAGS;
 }

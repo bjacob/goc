@@ -5704,9 +5704,10 @@ bool benchmark_fp64(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_fp64_unary(uint64_t cpu, int iterations, int min_ms) {
   using Unary = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
-  const Unary functions[] = {goc_v_trunc_f64, goc_v_ceil_f64,  goc_v_rndne_f64,
-                             goc_v_floor_f64, goc_v_fract_f64, goc_v_sqrt_f64,
-                             goc_v_rcp_f64,   goc_v_rsq_f64,   goc_v_frexp_mant_f64};
+  const Unary functions[] = {
+      goc_v_trunc_f64_rdna4, goc_v_ceil_f64_rdna4,  goc_v_rndne_f64_rdna4,
+      goc_v_floor_f64_rdna4, goc_v_fract_f64_rdna4, goc_v_sqrt_f64_rdna4,
+      goc_v_rcp_f64_rdna4,   goc_v_rsq_f64_rdna4,   goc_v_frexp_mant_f64_rdna4};
   const char *names[] = {"v_trunc_f64", "v_ceil_f64",  "v_rndne_f64",
                          "v_floor_f64", "v_fract_f64", "v_sqrt_f64",
                          "v_rcp_f64",   "v_rsq_f64",   "v_frexp_mant_f64"};

@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-42 in-scope mnemonics have explicit contract-review records in
+51 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 767 in-scope mnemonics need a recorded review.
+The remaining 758 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -228,7 +228,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_bfrev_b32` | SIMD macro, output helper | no | 3738, 3762 | review required |
 | `v_ceil_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3786, 3810 | review required |
 | `v_ceil_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3855, 3869 | review required |
-| `v_ceil_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 3899, 3913 | review required |
+| `v_ceil_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 3899, 3913 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_cls_i32` | SIMD macro, output helper | no | 3956, 3977 | review required |
 | `v_clz_i32_u32` | SIMD macro, output helper | no | 3998, 4017 | review required |
 | `v_cmp_class_f16` | SIMD macro | no | 4036, 4113 | review required |
@@ -473,7 +473,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_exp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11229, 11247 | review required |
 | `v_floor_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11399, 11423 | review required |
 | `v_floor_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11468, 11482 | review required |
-| `v_floor_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 11512, 11526 | review required |
+| `v_floor_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 11512, 11526 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_fma_dx9_zero_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11563 | review required |
 | `v_fma_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11625 | review required |
 | `v_fma_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11650 | review required |
@@ -489,13 +489,13 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_fmamk_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 12194 | review required |
 | `v_fract_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12217, 12247 | review required |
 | `v_fract_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12295, 12311 | review required |
-| `v_fract_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 12345, 12360 | review required |
+| `v_fract_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 12345, 12360 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_frexp_exp_i16_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12400, 12435 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-exponent-architecture-review) |
 | `v_frexp_exp_i32_f32` | SIMD macro, output helper | yes | 12489, 12514 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32fp64-frexp-exponent-architecture-review) |
 | `v_frexp_exp_i32_f64` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12546, 12566 | [loose contract reviewed; see limitations](COVERAGE.md#fp32fp64-frexp-exponent-architecture-review) |
 | `v_frexp_mant_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12613, 12643 | review required |
 | `v_frexp_mant_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12693, 12715 | review required |
-| `v_frexp_mant_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 12753, 12770 | review required |
+| `v_frexp_mant_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 12753, 12770 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_interp_p10_f16_f32` | no direct policy detected | no | not found | review required |
 | `v_interp_p10_f32` | no direct policy detected | no | not found | review required |
 | `v_interp_p10_rtz_f16_f32` | no direct policy detected | no | not found | review required |
@@ -601,16 +601,16 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_qsad_pk_u16_u8` | no direct policy detected | no | not found | review required |
 | `v_rcp_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18222, 18256 | review required |
 | `v_rcp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18302, 18320 | review required |
-| `v_rcp_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 18358, 18372 | review required |
+| `v_rcp_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 18358, 18372 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_rcp_iflag_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18409, 18429 | review required |
 | `v_readfirstlane_b32` | no direct policy detected | no | not found | review required |
 | `v_readlane_b32` | no direct policy detected | no | not found | review required |
 | `v_rndne_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18465, 18489 | review required |
 | `v_rndne_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18534, 18548 | review required |
-| `v_rndne_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 18578, 18592 | review required |
+| `v_rndne_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 18578, 18592 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_rsq_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18629, 18663 | review required |
 | `v_rsq_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18709, 18727 | review required |
-| `v_rsq_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 18765, 18780 | review required |
+| `v_rsq_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 18765, 18780 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_sad_hi_u8` | SIMD macro, output helper | no | 18868 | review required |
 | `v_sad_u16` | SIMD macro, output helper | no | 18885 | review required |
 | `v_sad_u32` | SIMD macro, output helper | no | 18910 | review required |
@@ -620,7 +620,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_sin_f32` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | no | 19037, 19051 | review required |
 | `v_sqrt_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 19083, 19117 | review required |
 | `v_sqrt_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 19163, 19185 | review required |
-| `v_sqrt_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 19228, 19242 | review required |
+| `v_sqrt_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 19228, 19242 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_sub_co_ci_u32` | SIMD macro, output helper | no | 19279, 19309 | review required |
 | `v_sub_co_u32` | SIMD macro, output helper | no | 19340, 19363 | review required |
 | `v_sub_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 19386, 19418 | review required |
@@ -640,7 +640,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_trig_preop_f64` | IEEE mode, OMOD, architecture query | no | 20185 | review required |
 | `v_trunc_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20238, 20262 | review required |
 | `v_trunc_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20307, 20321 | review required |
-| `v_trunc_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 20351, 20365 | review required |
+| `v_trunc_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 20351, 20365 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_wmma_bf16_16x16x16_bf16` | no direct policy detected | yes | not found | review required |
 | `v_wmma_f16_16x16x16_f16` | no direct policy detected | yes | not found | review required |
 | `v_wmma_f32_16x16x16_bf16` | no direct policy detected | yes | not found | review required |

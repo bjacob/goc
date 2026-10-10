@@ -869,7 +869,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_bfrev_b32` | yes | yes | in | `goc_v_bfrev_b32`<br>`goc_v_bfrev_b32_wave64` | — | API present; semantic audit pending |
 | `v_ceil_f16` | yes | yes | in | `goc_v_ceil_f16`<br>`goc_v_ceil_f16_wave64`<br>`goc_v_ceil_f16_rdna4`<br>`goc_v_ceil_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_ceil_f32` | yes | yes | in | `goc_v_ceil_f32`<br>`goc_v_ceil_f32_wave64`<br>`goc_v_ceil_f32_rdna4`<br>`goc_v_ceil_f32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_ceil_f64` | yes | yes | in | `goc_v_ceil_f64`<br>`goc_v_ceil_f64_wave64` | — | API present; semantic audit pending |
+| `v_ceil_f64` | yes | yes | in | `goc_v_ceil_f64`<br>`goc_v_ceil_f64_wave64`<br>`goc_v_ceil_f64_rdna4`<br>`goc_v_ceil_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_cls_i32` | yes | yes | in | `goc_v_cls_i32`<br>`goc_v_cls_i32_wave64` | `v_ffbh_i32` | API present; semantic audit pending |
 | `v_clz_i32_u32` | yes | yes | in | `goc_v_clz_i32_u32`<br>`goc_v_clz_i32_u32_wave64` | `v_ffbh_u32` | API present; semantic audit pending |
 | `v_cmp_class_f16` | yes | yes | in | `goc_v_cmp_class_f16`<br>`goc_v_cmp_class_f16_wave64` | — | API present; semantic audit pending |
@@ -1159,7 +1159,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_exp_f32` | yes | yes | in | `goc_v_exp_f32`<br>`goc_v_exp_f32_wave64`<br>`goc_v_exp_f32_rdna4`<br>`goc_v_exp_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_floor_f16` | yes | yes | in | `goc_v_floor_f16`<br>`goc_v_floor_f16_wave64`<br>`goc_v_floor_f16_rdna4`<br>`goc_v_floor_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_floor_f32` | yes | yes | in | `goc_v_floor_f32`<br>`goc_v_floor_f32_wave64`<br>`goc_v_floor_f32_rdna4`<br>`goc_v_floor_f32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_floor_f64` | yes | yes | in | `goc_v_floor_f64`<br>`goc_v_floor_f64_wave64` | — | API present; semantic audit pending |
+| `v_floor_f64` | yes | yes | in | `goc_v_floor_f64`<br>`goc_v_floor_f64_wave64`<br>`goc_v_floor_f64_rdna4`<br>`goc_v_floor_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_fma_dx9_zero_f32` | yes | yes | in | `goc_v_fma_dx9_zero_f32`<br>`goc_v_fma_dx9_zero_f32_wave64`<br>`goc_v_fma_dx9_zero_f32_rdna4`<br>`goc_v_fma_dx9_zero_f32_rdna4_wave64` | `v_fma_legacy_f32` | API present; semantic audit pending |
 | `v_fma_f16` | yes | yes | in | `goc_v_fma_f16`<br>`goc_v_fma_f16_wave64`<br>`goc_v_fma_f16_rdna4`<br>`goc_v_fma_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_fma_f32` | yes | yes | in | `goc_v_fma_f32`<br>`goc_v_fma_f32_wave64`<br>`goc_v_fma_f32_rdna4`<br>`goc_v_fma_f32_rdna4_wave64` | — | API present; semantic audit pending |
@@ -1176,13 +1176,13 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_fmamk_f32` | yes | yes | in | `goc_v_fmamk_f32`<br>`goc_v_fmamk_f32_wave64`<br>`goc_v_fmamk_f32_rdna4`<br>`goc_v_fmamk_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_fract_f16` | yes | yes | in | `goc_v_fract_f16`<br>`goc_v_fract_f16_wave64`<br>`goc_v_fract_f16_rdna4`<br>`goc_v_fract_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_fract_f32` | yes | yes | in | `goc_v_fract_f32`<br>`goc_v_fract_f32_wave64`<br>`goc_v_fract_f32_rdna4`<br>`goc_v_fract_f32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_fract_f64` | yes | yes | in | `goc_v_fract_f64`<br>`goc_v_fract_f64_wave64` | — | API present; semantic audit pending |
+| `v_fract_f64` | yes | yes | in | `goc_v_fract_f64`<br>`goc_v_fract_f64_wave64`<br>`goc_v_fract_f64_rdna4`<br>`goc_v_fract_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_frexp_exp_i16_f16` | yes | yes | in | `goc_v_frexp_exp_i16_f16`<br>`goc_v_frexp_exp_i16_f16_wave64`<br>`goc_v_frexp_exp_i16_f16_rdna4`<br>`goc_v_frexp_exp_i16_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-exponent-architecture-review) |
 | `v_frexp_exp_i32_f32` | yes | yes | in | `goc_v_frexp_exp_i32_f32`<br>`goc_v_frexp_exp_i32_f32_wave64`<br>`goc_v_frexp_exp_i32_f32_rdna4`<br>`goc_v_frexp_exp_i32_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32fp64-frexp-exponent-architecture-review) |
 | `v_frexp_exp_i32_f64` | yes | yes | in | `goc_v_frexp_exp_i32_f64`<br>`goc_v_frexp_exp_i32_f64_wave64`<br>`goc_v_frexp_exp_i32_f64_rdna4`<br>`goc_v_frexp_exp_i32_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32fp64-frexp-exponent-architecture-review) |
 | `v_frexp_mant_f16` | yes | yes | in | `goc_v_frexp_mant_f16`<br>`goc_v_frexp_mant_f16_wave64`<br>`goc_v_frexp_mant_f16_rdna4`<br>`goc_v_frexp_mant_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_frexp_mant_f32` | yes | yes | in | `goc_v_frexp_mant_f32`<br>`goc_v_frexp_mant_f32_wave64`<br>`goc_v_frexp_mant_f32_rdna4`<br>`goc_v_frexp_mant_f32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_frexp_mant_f64` | yes | yes | in | `goc_v_frexp_mant_f64`<br>`goc_v_frexp_mant_f64_wave64` | — | API present; semantic audit pending |
+| `v_frexp_mant_f64` | yes | yes | in | `goc_v_frexp_mant_f64`<br>`goc_v_frexp_mant_f64_wave64`<br>`goc_v_frexp_mant_f64_rdna4`<br>`goc_v_frexp_mant_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_interp_p10_f16_f32` | yes | yes | in | `goc_v_interp_p10_f16_f32`<br>`goc_v_interp_p10_f16_f32_wave64` | — | API present; semantic audit pending |
 | `v_interp_p10_f32` | yes | yes | in | `goc_v_interp_p10_f32`<br>`goc_v_interp_p10_f32_wave64` | — | API present; semantic audit pending |
 | `v_interp_p10_rtz_f16_f32` | yes | yes | in | `goc_v_interp_p10_rtz_f16_f32`<br>`goc_v_interp_p10_rtz_f16_f32_wave64` | — | API present; semantic audit pending |
@@ -1348,16 +1348,16 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_qsad_pk_u16_u8` | yes | yes | in | `goc_v_qsad_pk_u16_u8`<br>`goc_v_qsad_pk_u16_u8_wave64` | — | API present; semantic audit pending |
 | `v_rcp_f16` | yes | yes | in | `goc_v_rcp_f16`<br>`goc_v_rcp_f16_wave64`<br>`goc_v_rcp_f16_rdna4`<br>`goc_v_rcp_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_rcp_f32` | yes | yes | in | `goc_v_rcp_f32`<br>`goc_v_rcp_f32_wave64`<br>`goc_v_rcp_f32_rdna4`<br>`goc_v_rcp_f32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_rcp_f64` | yes | yes | in | `goc_v_rcp_f64`<br>`goc_v_rcp_f64_wave64` | — | API present; semantic audit pending |
+| `v_rcp_f64` | yes | yes | in | `goc_v_rcp_f64`<br>`goc_v_rcp_f64_wave64`<br>`goc_v_rcp_f64_rdna4`<br>`goc_v_rcp_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_rcp_iflag_f32` | yes | yes | in | `goc_v_rcp_iflag_f32`<br>`goc_v_rcp_iflag_f32_wave64`<br>`goc_v_rcp_iflag_f32_rdna4`<br>`goc_v_rcp_iflag_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_readfirstlane_b32` | yes | yes | in | `goc_v_readfirstlane_b32`<br>`goc_v_readfirstlane_b32_wave64` | — | API present; semantic audit pending |
 | `v_readlane_b32` | yes | yes | in | `goc_v_readlane_b32`<br>`goc_v_readlane_b32_wave64` | — | API present; semantic audit pending |
 | `v_rndne_f16` | yes | yes | in | `goc_v_rndne_f16`<br>`goc_v_rndne_f16_wave64`<br>`goc_v_rndne_f16_rdna4`<br>`goc_v_rndne_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_rndne_f32` | yes | yes | in | `goc_v_rndne_f32`<br>`goc_v_rndne_f32_wave64`<br>`goc_v_rndne_f32_rdna4`<br>`goc_v_rndne_f32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_rndne_f64` | yes | yes | in | `goc_v_rndne_f64`<br>`goc_v_rndne_f64_wave64` | — | API present; semantic audit pending |
+| `v_rndne_f64` | yes | yes | in | `goc_v_rndne_f64`<br>`goc_v_rndne_f64_wave64`<br>`goc_v_rndne_f64_rdna4`<br>`goc_v_rndne_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_rsq_f16` | yes | yes | in | `goc_v_rsq_f16`<br>`goc_v_rsq_f16_wave64`<br>`goc_v_rsq_f16_rdna4`<br>`goc_v_rsq_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_rsq_f32` | yes | yes | in | `goc_v_rsq_f32`<br>`goc_v_rsq_f32_wave64`<br>`goc_v_rsq_f32_rdna4`<br>`goc_v_rsq_f32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_rsq_f64` | yes | yes | in | `goc_v_rsq_f64`<br>`goc_v_rsq_f64_wave64` | — | API present; semantic audit pending |
+| `v_rsq_f64` | yes | yes | in | `goc_v_rsq_f64`<br>`goc_v_rsq_f64_wave64`<br>`goc_v_rsq_f64_rdna4`<br>`goc_v_rsq_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_s_exp_f16` | — | yes | in | `goc_v_s_exp_f16` | — | API present; semantic audit pending |
 | `v_s_exp_f32` | — | yes | in | `goc_v_s_exp_f32` | — | API present; semantic audit pending |
 | `v_s_log_f16` | — | yes | in | `goc_v_s_log_f16` | — | API present; semantic audit pending |
@@ -1377,7 +1377,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_sin_f32` | yes | yes | in | `goc_v_sin_f32`<br>`goc_v_sin_f32_wave64` | — | API present; semantic audit pending |
 | `v_sqrt_f16` | yes | yes | in | `goc_v_sqrt_f16`<br>`goc_v_sqrt_f16_wave64`<br>`goc_v_sqrt_f16_rdna4`<br>`goc_v_sqrt_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_sqrt_f32` | yes | yes | in | `goc_v_sqrt_f32`<br>`goc_v_sqrt_f32_wave64`<br>`goc_v_sqrt_f32_rdna4`<br>`goc_v_sqrt_f32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_sqrt_f64` | yes | yes | in | `goc_v_sqrt_f64`<br>`goc_v_sqrt_f64_wave64` | — | API present; semantic audit pending |
+| `v_sqrt_f64` | yes | yes | in | `goc_v_sqrt_f64`<br>`goc_v_sqrt_f64_wave64`<br>`goc_v_sqrt_f64_rdna4`<br>`goc_v_sqrt_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_sub_co_ci_u32` | yes | yes | in | `goc_v_sub_co_ci_u32`<br>`goc_v_sub_co_ci_u32_wave64` | — | API present; semantic audit pending |
 | `v_sub_co_u32` | yes | yes | in | `goc_v_sub_co_u32`<br>`goc_v_sub_co_u32_wave64` | — | API present; semantic audit pending |
 | `v_sub_f16` | yes | yes | in | `goc_v_sub_f16`<br>`goc_v_sub_f16_wave64`<br>`goc_v_sub_f16_rdna4`<br>`goc_v_sub_f16_rdna4_wave64` | — | API present; semantic audit pending |
@@ -1408,7 +1408,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_trig_preop_f64` | yes | yes | in | `goc_v_trig_preop_f64`<br>`goc_v_trig_preop_f64_wave64` | — | API present; semantic audit pending |
 | `v_trunc_f16` | yes | yes | in | `goc_v_trunc_f16`<br>`goc_v_trunc_f16_wave64`<br>`goc_v_trunc_f16_rdna4`<br>`goc_v_trunc_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_trunc_f32` | yes | yes | in | `goc_v_trunc_f32`<br>`goc_v_trunc_f32_wave64`<br>`goc_v_trunc_f32_rdna4`<br>`goc_v_trunc_f32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_trunc_f64` | yes | yes | in | `goc_v_trunc_f64`<br>`goc_v_trunc_f64_wave64` | — | API present; semantic audit pending |
+| `v_trunc_f64` | yes | yes | in | `goc_v_trunc_f64`<br>`goc_v_trunc_f64_wave64`<br>`goc_v_trunc_f64_rdna4`<br>`goc_v_trunc_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_wmma_bf16_16x16x16_bf16` | yes | yes | in | `goc_v_wmma_bf16_16x16x16_bf16`<br>`goc_v_wmma_bf16_16x16x16_bf16_wave64`<br>`goc_v_wmma_bf16_16x16x16_bf16_rdna4`<br>`goc_v_wmma_bf16_16x16x16_bf16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_wmma_f16_16x16x16_f16` | yes | yes | in | `goc_v_wmma_f16_16x16x16_f16`<br>`goc_v_wmma_f16_16x16x16_f16_wave64`<br>`goc_v_wmma_f16_16x16x16_f16_rdna4`<br>`goc_v_wmma_f16_16x16x16_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_wmma_f32_16x16x16_bf16` | yes | yes | in | `goc_v_wmma_f32_16x16x16_bf16`<br>`goc_v_wmma_f32_16x16x16_bf16_wave64`<br>`goc_v_wmma_f32_16x16x16_bf16_rdna4`<br>`goc_v_wmma_f32_16x16x16_bf16_rdna4_wave64` | — | API present; semantic audit pending |
