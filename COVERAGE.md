@@ -8275,3 +8275,55 @@ Artifacts, the baseline archive, reproducer and raw timings are in
 object text grows from 16,781 to 17,300 bytes and packed FMA from 11,811 to
 12,346 bytes (+1,054 bytes combined), placing the guard before each wrapper's
 routing/validation work without adding numerical kernels.
+
+
+## Mixed FMA architecture contract review
+
+Reviewed MIX_F32/MIXLO_F16/MIXHI_F16 against both XML inventories, the manuals'
+VOP3P mixed-source selector rules, and rocjitsu revision `ffc144c564c`'s shared
+mixed handlers and `fma_f32_to_f16_nearest_environment`. All three have VOP3P,
+literal-source and DPP8/DPP16 encodings on both architectures. Each source
+independently selects FP32 or the low/high FP16 component of one VGPR. ABS
+precedes NEG; CLAMP is supported, but OMOD is not. DPP routes A before source
+format selection. MIX_F32 writes a full FP32 register; MIXLO/MIXHI write only
+the named destination half. Wave32/Wave64 EXEC masks preserve inactive lanes.
+
+The existing exact implementation shares integer fused arithmetic: FP32 output
+uses the architecture-aware FP32 helper, while half output rounds directly to
+FP16 without an intervening FP32 rounding. This follows the borrowed upstream
+round-to-odd intermediate and direct-to-half rounding approach. Existing midpoint,
+fused-cancellation, NaN, tininess and historical hardware-capture tests remain.
+The historical guest-denormal correction is retained: selected FP16 subnormals
+are flushed before widening, and the chosen result format controls output
+flushing. The earlier ledger entry describing widening before flushing and
+ignored half-output controls is superseded by those existing regression fixtures.
+No new native observations or empirical model were introduced in this review.
+
+The current API exposes one input-flush flag and one output-flush flag, not
+independent per-format MODE fields. Guest directed rounding and RDNA3
+DX10-clamp-off remain unsupported. FP16 overflow saturation affects half results.
+RDNA3/RDNA4 names remain split: FP32 result NaN quieting depends on architecture
+and IEEE, and native optional state differs (`trapsts` versus `excp_flag_user`).
+Faithful optional reporting is unsupported for RDNA3 and for RDNA4 MIX_F32.
+RDNA4 MIXLO/MIXHI retain their existing capture-backed no-update reporting
+contract across guest denormal policies. Reserved non-loose semantics still
+reject non-null reporting. Loose calls skip updates; null opts out of reporting.
+
+These wrappers already enforce unsupported-state rejection at the public API
+boundary, so no implementation fix was necessary. The new test spans all twelve
+architecture/width/result APIs, CPU tiers, eight IEEE/denormal settings, exact
+and reserved semantics, STRICT, empty/full EXEC and invalid low/high modifiers.
+It uses null operands to establish error precedence, preserves destination/state
+sentinels, and separately verifies successful loose and supported exact reporting
+with partial EXEC and untouched destination halves. Existing tests retain all
+8,192 modifier combinations, format permutations, aliases and DPP routing.
+
+The SIMD paths are unchanged: eight FP32-output lanes or four FP16-output lanes
+per AVX2 iteration, with separate default/guest-policy dispatch before the loop.
+No code-size or performance change is introduced. The ledger now records **798**
+reviewed mnemonic contracts and **11** pending, independently of the documented
+unsupported modes and reporting policies.
+
+Validation: all **22** MixedFma tests pass with Clang 21 Release, GCC 15 Release
+and Clang ASan/UBSan. All nine tooling tests pass. Logs use
+`coverage-work/mixed-fma-contract-{build,tests}.log` in each build directory.

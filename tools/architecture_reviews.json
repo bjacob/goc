@@ -1556,5 +1556,15 @@
       "v_pk_fma_f16",
       "v_pk_fmac_f16"
     ]
+  },
+  {
+    "heading": "Mixed FMA architecture contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/mixed_fma_test.cpp",
+    "mnemonics": [
+      "v_fma_mix_f32",
+      "v_fma_mixlo_f16",
+      "v_fma_mixhi_f16"
+    ]
   }
 ]

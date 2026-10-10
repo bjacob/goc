@@ -810,3 +810,62 @@ TEST(MixedFma, CapturedFp32TininessBeforeExponentPacking) {
                                : expected[flush][lane % 4] | (lane & 4 ? 0x80000000 : 0));
     }
 }
+
+TEST(MixedFma, OptionalStateContractAcrossArchitecturesAndGuestPolicies) {
+  const Fn rdna3_functions[] = {goc_v_fma_mix_f32, goc_v_fma_mixlo_f16, goc_v_fma_mixhi_f16};
+  const decltype(&goc_v_fma_mix_f32_wave64) rdna3_wide[] = {
+      goc_v_fma_mix_f32_wave64, goc_v_fma_mixlo_f16_wave64, goc_v_fma_mixhi_f16_wave64};
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (unsigned op = 0; op < 3; ++op)
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned policy = 0; policy < 8; ++policy) {
+            uint32_t words[4][64];
+            const uint32_t initial[] = {0x3f800000, 0x40000000, 0x40400000, 0xdeadbeef};
+            for (unsigned reg = 0; reg < 4; ++reg)
+              std::fill_n(words[reg], 64, initial[reg]);
+            const uint32_t *a = words[0], *b = words[1], *c = words[2];
+            uint32_t *d = words[3], state = 0xa5000040;
+            uint64_t flags = cpu | (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                             (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                             (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+            auto call = [&](uint64_t semantics, uint64_t exec_mask, uint64_t mode, bool operands) {
+              auto narrow = rdna3 ? rdna3_functions[op] : functions[op];
+              auto full = rdna3 ? rdna3_wide[op] : wave64[op];
+              return wide ? full(flags | semantics, exec_mask, mode, operands ? &d : nullptr,
+                                 operands ? &a : nullptr, operands ? &b : nullptr,
+                                 operands ? &c : nullptr, &state)
+                          : narrow(flags | semantics, uint32_t(exec_mask), mode,
+                                   operands ? &d : nullptr, operands ? &a : nullptr,
+                                   operands ? &b : nullptr, operands ? &c : nullptr, &state);
+            };
+            for (uint64_t semantics : {GOC_SEMANTICS_EXACT_EMPIRICAL,
+                                       GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                       uint64_t(2) << 16, uint64_t(3) << 16})
+              for (uint64_t exec_mask : {0ULL, ~0ULL})
+                for (uint64_t mode : {uint64_t(1) << 31, uint64_t(1) << 63}) {
+                  bool supported =
+                      !rdna3 && op &&
+                      (semantics & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
+                  EXPECT_EQ(call(semantics, exec_mask, mode, false),
+                            supported ? GOC_ERROR_INVALID_FLAGS
+                                      : GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+                  EXPECT_EQ(state, 0xa5000040U);
+                }
+            for (uint32_t value : words[3])
+              EXPECT_EQ(value, 0xdeadbeefU);
+            for (uint64_t semantics :
+                 {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
+              if (semantics && (rdna3 || !op))
+                continue;
+              const uint64_t exec_mask = 0xa55aa55a5aa55aa5ULL;
+              ASSERT_EQ(call(semantics, exec_mask, 0, true), GOC_SUCCESS);
+              EXPECT_EQ(state, 0xa5000040U);
+              const uint32_t result[] = {0x40a00000, 0xdead4500, 0x4500beef}; // 1*2+3.
+              for (unsigned lane = 0; lane < 64; ++lane)
+                EXPECT_EQ(words[3][lane], lane < (wide ? 64U : 32U) && ((exec_mask >> lane) & 1)
+                                              ? result[op]
+                                              : 0xdeadbeefU);
+            }
+          }
+}
