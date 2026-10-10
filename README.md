@@ -2568,7 +2568,8 @@ from the opposite 32-lane half into the active destination lane, even if the
 source lane is inactive. It supports in-place operation. The unsuffixed Wave32
 `v_permlane64_b32` is a no-op and therefore has no EXEC parameter. These APIs
 are shared by RDNA3/RDNA4, operate on raw bits, and support exact semantics;
-they accept no instruction modifiers. Implementations currently use scalar loops.
+they accept no instruction modifiers. SWAP32 uses a scalar loop; Wave64
+PERMLANE64 uses AVX2 masked stores at CPU v3 and above, including in-place calls.
 
 `ds_permute_b32` (scatter) and `ds_bpermute_b32` (gather) route register data
 without accessing LDS storage. Their Wave32 APIs are shared. RDNA3 `_wave64`
@@ -2598,8 +2599,10 @@ routing. It preserves the other destination half and raw NaN/subnormal bits;
 OMOD and CLAMP are accepted but ignored, as confirmed by RX 9070 captures of
 all encoded modifier combinations. `v_swap_b16` and `_wave64` exchange selected
 halves while preserving the others, including swaps within one VGPR. These are
-exact scalar bit operations shared by RDNA3/RDNA4. MOV also has Wave64 entry
-points; dedicated SIMD copy/swap paths remain open.
+exact bit operations shared by RDNA3/RDNA4. MOV also has Wave64 entry
+points. Half-word MOV and SWAP use AVX2 masked stores at CPU v3 and above;
+half selections and aliases retain those paths, as do MOV's sign modifiers and
+DPP routing.
 
 `s_round_mode` and `s_denorm_mode` update guest MODE[3:0] and MODE[7:4]
 respectively from the immediate's low four bits, preserving every other bit.

@@ -19,7 +19,7 @@ timings later in this document describe the initial audit pass.
 - [ ] Review incomplete exact-state families against rocjitsu and the ISA;
   implement available borrowed/simple rules, retaining explicit unsupported
   results where completion would require forbidden reverse-engineering.
-- [ ] Assess scalar routing/copy opportunities and justify any retained scalar
+- [x] Assess scalar routing/copy opportunities and justify any retained scalar
   paths by their operation, rather than merely their current implementation.
 - [ ] Final modifier/mask/global-state regression validation and updated results.
 
@@ -281,7 +281,7 @@ in favor of the highest active source. Force-inactive backward permute also
 remains scalar: a tested AVX2 gather candidate made its full-mask Wave32 case
 about 30% slower and Wave64 about 12% slower. Unlike ordinary backward permute,
 this operation has no source-EXEC filtering work to amortize gather overhead.
-That rejected dispatch is not retained. Copy/swap assessment remains open.
+That rejected dispatch is not retained. Copy/swap assessment follows below.
 
 All 11 existing DS tests now execute at every available CPU level. They cover
 all 65,536 swizzle offsets in both wave widths, captured swizzle corpora,
@@ -301,3 +301,69 @@ Full-mask swizzle improves 1.18–1.93×; ordinary backward permute improves
 force-inactive full-mask controls are unchanged within 0.3%; its alternating
 controls vary from 8.6% faster to 10.5% slower. These are targeted microbenchmarks,
 not a whole-library speedup or a promise of mask-independent cycle counts.
+
+
+## Follow-up: move and swap assessment
+
+The remaining routing/copy families were inspected individually:
+
+- MOV16's half extraction, sign change and destination merge are parallel lane
+  operations. The AVX2 implementation retains every supported modifier and consumes
+  the existing DPP staging output; OMOD/CLAMP stay ignored as specified.
+- SWAP16 must preserve the first write when A and D name different halves of
+  one VGPR. Its vector implementation retains this ordering, with two masked stores.
+- Wave64 PERMLANE64 reads paired lower/upper chunks before either write, allowing
+  in-place operation without a separate whole-wave staging array.
+- MOV32 is a short masked copy, with optional sign-bit manipulation. A measured
+  explicit AVX2 candidate was approximately tied for the default full mask and
+  slower for a partial mask; it does not warrant another dispatch/kernel merely
+  to label the operation SIMD. SWAP32's two-sided vector-store candidate was
+  also slower in representative default and partial-mask cases. Retain their
+  simple loops. These measurements do not prove that no faster implementation
+  could exist.
+- Relative MOV/SWAP select a register uniformly for the wave and delegate to
+  ordinary MOV32/SWAP32. Duplicating those kernels would add no benefit.
+- READLANE/WRITELANE perform a single scalar access, and READFIRSTLANE performs
+  a bit scan followed by a single access; no multi-lane SIMD work is present.
+- Scalar-register operations similarly execute once per wave. Wave32
+  PERMLANE64 is a specified no-op. Constant comparisons construct an output
+  mask directly. Dual issue already delegates to the ordinary operation kernels.
+
+The scratch candidate and API benchmark sources are saved under
+`../goc-build/coverage-work/audit-copy-performance/`. These tests include full
+and alternating masks to assess dispatch choices, without adding masked cases
+to the public benchmark or adding mask-density dispatch.
+
+
+The kept implementations are three direct intrinsic loops in one small source
+file, with no policy/template framework. MOV and SWAP each retain their own
+half-selection logic because their read/write ordering differs. The first
+SWAP16 candidate reloaded A after the masked D store; same-register partial
+masks made that substantially slower. The final version selects the preserved
+value from vector registers using a uniform whole-VGPR alias comparison. This
+avoids store-forwarding costs without adding EXEC-dependent work or dispatch.
+
+All MOV/SWAP tests now run at every available CPU level, including the existing
+all-half-encoding test, captured modifier corpus, DPP references, Wave64 row
+controls, guard words, masks, aliases, relative indexing, and validation. Clang
+and GCC each pass all 1,189 tests. ASan/UBSan and no-SIMD builds pass all 29
+selected move/swap/relative-move tests. The new Clang vector object contains
+1,016 text bytes. Test logs use the `audit-copy-*` prefix in each build tree.
+
+Final timing pairs compare `dcea424` with this change using identical API-call
+benchmarks, CPU 2 affinity on the Ryzen 9 7950X3D, thread CPU time, a 50 ms
+minimum sample, and five alternating before/after pairs. The 36 cases include
+both wave widths where applicable, default/selected-half modifiers, full and
+alternating EXEC, and separate/same-register operands:
+
+| Operation | Full EXEC | Alternating EXEC |
+| --- | --- | --- |
+| MOV16 | 1.74–1.81× faster | 1.30–1.40× faster |
+| SWAP16 | 1.48–1.62× faster | Wave32 6.7–7.7% slower; Wave64 −2.9% to +2.2% time change |
+| Wave64 PERMLANE64 | 1.50× faster | 1.69–1.70× faster |
+
+The SWAP16 partial-mask trade-off is explicit: retain the simple SIMD path for
+its substantial full-wave improvement and roughly constant work across masks,
+rather than adding the expressly unwanted mask-density specialization. The
+same-register reload regression is eliminated. These measurements describe
+these cases, not a workload-weighted performance estimate.

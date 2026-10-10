@@ -7,6 +7,13 @@
 namespace goc {
 
 #if defined(GOC_HAVE_X86_64_V3)
+void permlane64_x86_64_v3(uint64_t exec_mask, uint32_t *d, const uint32_t *a);
+
+void move_half_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a);
+
+void swap_half_x86_64_v3(unsigned lanes, uint64_t exec_mask, uint32_t mode, uint32_t *d,
+                         uint32_t *a);
+
 void ds_bpermute_x86_64_v3(unsigned lanes, unsigned group, uint64_t exec_mask, uint32_t *d,
                            const uint32_t *addr, const uint32_t *data, uint16_t offset);
 

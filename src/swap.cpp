@@ -2,6 +2,7 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "simd.h"
 
 #include <stdint.h>
 
@@ -54,6 +55,12 @@ int swap_half(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
+#if defined(GOC_HAVE_X86_64_V3)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::swap_half_x86_64_v3(Lanes, exec_mask, mode, d[0], a[0]);
+    return GOC_SUCCESS;
+  }
+#endif
   unsigned sa = mode & GOC_ALU_HIGH_A ? 16 : 0;
   unsigned sd = mode & GOC_ALU_HIGH_D ? 16 : 0;
   for (unsigned lane = 0; lane < Lanes; ++lane) {
@@ -95,6 +102,12 @@ int goc_v_permlane64_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t ins
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
+#if defined(GOC_HAVE_X86_64_V3)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::permlane64_x86_64_v3(exec_mask, d[0], a[0]);
+    return GOC_SUCCESS;
+  }
+#endif
   // Snapshot both halves before stores so D can alias A.
   uint32_t result[64];
   for (unsigned lane = 0; lane < 64; ++lane)

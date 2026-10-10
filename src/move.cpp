@@ -3,6 +3,7 @@
 #include "dpp.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "simd.h"
 
 #include <stdint.h>
 
@@ -48,6 +49,12 @@ int goc_v_mov_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
+#if defined(GOC_HAVE_X86_64_V3)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::move_half_x86_64_v3(exec_mask, instruction_flags, d[0], a[0]);
+    return GOC_SUCCESS;
+  }
+#endif
   unsigned sa = instruction_flags & GOC_ALU_HIGH_A ? 16 : 0;
   unsigned sd = instruction_flags & GOC_ALU_HIGH_D ? 16 : 0;
   for (unsigned lane = 0; lane < 32; ++lane) {
