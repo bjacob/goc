@@ -1174,5 +1174,22 @@
       "v_rndne_f32",
       "v_floor_f32"
     ]
+  },
+  {
+    "heading": "Integer WMMA architecture contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/wmma_replicated_exact_test.cpp",
+    "mnemonics": [
+      "v_wmma_i32_16x16x16_iu8",
+      "v_wmma_i32_16x16x16_iu4"
+    ]
+  },
+  {
+    "heading": "Integer WMMA architecture contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/subbyte_wmma_test.cpp",
+    "mnemonics": [
+      "v_wmma_i32_16x16x32_iu4"
+    ]
   }
 ]

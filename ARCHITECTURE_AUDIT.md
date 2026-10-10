@@ -46,12 +46,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-651 in-scope mnemonics have explicit contract-review records in
+654 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 158 in-scope mnemonics need a recorded review.
+The remaining 155 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -646,8 +646,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_wmma_f16_16x16x16_f16` | no direct policy detected | yes | not found | review required |
 | `v_wmma_f32_16x16x16_bf16` | no direct policy detected | yes | not found | review required |
 | `v_wmma_f32_16x16x16_f16` | no direct policy detected | yes | not found | review required |
-| `v_wmma_i32_16x16x16_iu4` | no direct policy detected | yes | not found | review required |
-| `v_wmma_i32_16x16x16_iu8` | no direct policy detected | yes | not found | review required |
+| `v_wmma_i32_16x16x16_iu4` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-wmma-architecture-contract-review) |
+| `v_wmma_i32_16x16x16_iu8` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-wmma-architecture-contract-review) |
 | `v_writelane_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
 | `v_xad_u32` | SIMD macro, output helper | no | 20402 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_xnor_b32` | SIMD macro, output helper | no | 20417, 20431 | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |

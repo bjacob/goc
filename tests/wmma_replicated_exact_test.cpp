@@ -320,3 +320,68 @@ TEST(WmmaReplicatedExact, IntegerClampIsFinalNotStaged) {
         }
     }
 }
+
+TEST(WmmaReplicatedExact, IntegerArchitectureSaturationBoundaries) {
+  struct Case {
+    Wmma fn;
+    int bits;
+    int lanes;
+    bool rdna4;
+  };
+
+  const Case cases[] = {
+      {goc_v_wmma_i32_16x16x16_iu4, 4, 32, false},
+      {goc_v_wmma_i32_16x16x16_iu8, 8, 32, false},
+      {goc_v_wmma_i32_16x16x16_iu4_wave64, 4, 64, false},
+      {goc_v_wmma_i32_16x16x16_iu8_wave64, 8, 64, false},
+      {goc_v_wmma_i32_16x16x16_iu4_rdna4, 4, 32, true},
+      {goc_v_wmma_i32_16x16x16_iu8_rdna4, 8, 32, true},
+      {goc_v_wmma_i32_16x16x16_iu4_rdna4_wave64, 4, 64, true},
+      {goc_v_wmma_i32_16x16x16_iu8_rdna4_wave64, 8, 64, true},
+  };
+  for (const auto &test : cases)
+    for (uint64_t cpu = GOC_CPU_BASELINE; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (bool clamp : {false, true})
+          for (bool negative_first : {false, true})
+            for (bool signed_b : {false, true})
+              for (int dst : {0, 8, 16, 24}) {
+                SCOPED_TRACE(::testing::Message()
+                             << test.bits << "/" << test.lanes << "/" << test.rdna4 << "/" << cpu
+                             << "/" << semantics << "/" << clamp << "/" << negative_first << "/"
+                             << signed_b << "/" << dst);
+                Registers r;
+                // Eight +1 products and eight -1 products cancel. On RDNA4
+                // put them in the two physical saturation stages (groups 0+2,
+                // then 1+3 in Wave64). RDNA3 reduces all products before clamp.
+                uint32_t ones = 0;
+                for (int shift = 0; shift < 32; shift += test.bits)
+                  ones |= 1U << shift;
+                const int source_regs =
+                    test.rdna4 ? (test.lanes == 64 ? 1 : test.bits / 4) : test.bits / 2;
+                for (int reg = 0; reg < source_regs; ++reg)
+                  for (int lane = 0; lane < test.lanes; ++lane) {
+                    const bool second = test.rdna4 ? (lane / 16) % 2 : reg >= source_regs / 2;
+                    const uint32_t factor = (second != negative_first) ? 0xffffffffU : ones;
+                    r.v[reg][lane] = signed_b ? ones : factor;
+                    r.v[8 + reg][lane] = signed_b ? factor : ones;
+                  }
+                const uint32_t acc = negative_first ? 0x80000000U : 0x7fffffffU;
+                const int output_regs = 256 / test.lanes;
+                for (int reg = 0; reg < output_regs; ++reg)
+                  std::fill(r.v[16 + reg], r.v[16 + reg] + test.lanes, acc);
+                uint32_t expected[32][66];
+                std::memcpy(expected, r.data, sizeof(expected));
+                const uint32_t result =
+                    test.rdna4 && clamp ? (negative_first ? 0x80000008U : 0x7ffffff7U) : acc;
+                for (int reg = 0; reg < output_regs; ++reg)
+                  std::fill(expected[31 - dst - reg] + 1, expected[31 - dst - reg] + 1 + test.lanes,
+                            result);
+                const uint64_t mode = (signed_b ? GOC_WMMA_SIGNED_B : GOC_WMMA_SIGNED_A) |
+                                      (clamp ? GOC_WMMA_CLAMP : 0);
+                ASSERT_EQ(test.fn(cpu | semantics | GOC_SEMANTICS_STRICT, mode, r.v + dst, r.v,
+                                  r.v + 8, r.v + 16),
+                          GOC_SUCCESS);
+                EXPECT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0);
+              }
+}

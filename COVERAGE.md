@@ -6890,3 +6890,44 @@ That cost keeps the default integer/float loops separate from the new policy;
 no extra SIMD kernel family was added. Artifacts are in
 `../goc-build/coverage-work/half-unary-dx10-performance/`; `initial-*` measurements
 refer to the superseded runtime-policy version, not these final results.
+
+## Integer WMMA architecture contract review
+
+Reviewed the two shared `v_wmma_i32_16x16x16_iu8` / `_iu4` mnemonics and
+RDNA4-only `v_wmma_i32_16x16x32_iu4` against the manuals and rocjitsu
+`ffc144c564c` (`generated/rdna3/vop3p_exec.cpp`,
+`generated/rdna4/vop3p_exec.cpp`, and `shared/mma_exec.h`). Both wave widths
+are implemented. The shared names require the existing `_rdna4` split:
+
+- RDNA3 replicates the complete A/B tile in each 16-lane group and interleaves
+  output rows between groups. Its `exec_gfx11_wmma_i32` accumulates the full
+  reduction in a signed wide integer before optional signed saturation.
+- RDNA4 distributes A/B across lane groups and uses blocked output rows.
+  GoC retains its existing two-stage saturation model, backed by the recorded
+  Wave32 and Wave64 gfx1201 corpora. Rocjitsu's `exec_wmma_i32` currently uses
+  one final saturation; it is **not** the source of GoC's staged-clamp model.
+  Replacing the existing implementation with that upstream helper would regress
+  those fixtures. No new hardware probes or empirical models were added here.
+- Both interpret A/B signedness independently using NEG[1:0], treat C/D as
+  signed 32-bit integers, and wrap modulo 2^32 without CLAMP. Other NEG bits,
+  packed half selection, OMOD and DPP are not supported instruction modifiers.
+  Inline C values are supplied as ordinary caller-materialized VGPR inputs.
+- All lanes participate regardless of EXEC, so these APIs have no EXEC input.
+  The instruction descriptions specify no persistent implicit register result;
+  their temporary all-ones EXEC is restored. RDNA3 section 7.9 also explicitly
+  rules out WMMA ALU exceptions. These integer APIs need no exception output.
+
+The new `WmmaReplicatedExact.IntegerArchitectureSaturationBoundaries` test
+contrasts all eight shared APIs directly at both signed accumulator limits:
+eight positive and eight negative products cancel with a final clamp, but not
+with an intermediate clamp. It covers either signed operand, CLAMP on/off,
+both semantics, every available CPU level, overlapping A/B/C destinations,
+all output words and surrounding guards. Existing tests separately cover
+matrix layout, all signedness combinations, unsupported modifier errors,
+K=32, and the recorded native saturation corpora.
+
+Validation: all 15 selected `WmmaReplicatedExact` and integer `SubbyteWmma`
+tests pass with Clang 21 and GCC 15 Release and ASan/UBSan. No production code
+changed, so scalar/SIMD dispatch and runtime performance are unchanged.
+RDNA3 remains scalar; RDNA4 retains AVX2 and Zen4 VNNI in both semantics and
+both wave widths. This review does not establish the floating WMMA contracts.
