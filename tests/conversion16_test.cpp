@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cfenv>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <random>
 #include <stdint.h>
@@ -20,6 +21,10 @@ namespace {
 using Fn = decltype(&goc_v_cvt_f16_i16);
 const Fn functions[] = {goc_v_cvt_f16_i16, goc_v_cvt_f16_u16, goc_v_cvt_i16_f16,
                         goc_v_cvt_u16_f16, goc_v_cvt_f16_f32, goc_v_cvt_f32_f16};
+
+const decltype(&goc_v_cvt_f16_i16_wave64) wave64[] = {
+    goc_v_cvt_f16_i16_wave64, goc_v_cvt_f16_u16_wave64, goc_v_cvt_i16_f16_wave64,
+    goc_v_cvt_u16_f16_wave64, goc_v_cvt_f16_f32_wave64, goc_v_cvt_f32_f16_wave64};
 
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t mode, const uint32_t input[32]) {
   uint32_t output[32];
@@ -327,4 +332,83 @@ TEST(Conversion16, DppValidation) {
                               descriptor, nullptr, nullptr, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
+}
+
+TEST(Conversion16, Wave64HardwareCapturedRoundingOverflowAndModifiers) {
+  const uint32_t modes[] = {0,
+                            GOC_ALU_OMOD_2,
+                            GOC_ALU_OMOD_4,
+                            GOC_ALU_OMOD_HALF,
+                            GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_2 | GOC_ALU_CLAMP,
+                            GOC_ALU_CLAMP,
+                            GOC_ALU_OMOD_HALF,
+                            GOC_ALU_OMOD_2};
+  for (const auto &capture : goc_test::half_conversion_captures)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (int sat = 0; sat < 2; ++sat)
+        for (int column = 0; column < 8; ++column) {
+          uint32_t input[64], output[64];
+          std::fill_n(input, 64, capture.source);
+          std::fill_n(output, 64, 0xa5a5a5a5);
+          const uint32_t *a[] = {input};
+          uint32_t *d[] = {output};
+          int op = column < 6 ? 4 : column == 6 ? 1 : 0;
+          ASSERT_EQ(
+              wave64[op](cpu | (sat ? GOC_FP16_OVFL : 0), UINT64_MAX, modes[column], d, a, nullptr),
+              GOC_SUCCESS);
+          for (auto actual : output)
+            ASSERT_EQ(actual, 0xa5a50000u | capture.expected[sat][column])
+                << column << "/" << cpu << "/" << sat << "/" << std::hex << capture.source;
+        }
+}
+
+TEST(Conversion16, Wave64HalfSelectorsOverflowDppAndAliases) {
+  std::mt19937 random(918123);
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (bool saturate : {false, true})
+        for (unsigned variant = 0; variant < goc_test::conversion16_modes(op); ++variant)
+          for (auto route : goc_test::dpp_modes)
+            for (unsigned rows = 0; rows < 16; ++rows)
+              for (unsigned target = 0; target < 2; ++target) {
+                uint32_t initial[2][66], words[2][66];
+                for (auto &reg : initial)
+                  for (auto &word : reg)
+                    word = random();
+                std::memcpy(words, initial, sizeof words);
+                const uint32_t *a = words[0] + 1;
+                uint32_t *d = words[target] + 1;
+                uint64_t descriptor = route;
+                if (route & GOC_DPP16)
+                  descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+                uint64_t exec_mask = 0x87654321fedcba98ULL;
+                uint32_t mode = goc_test::conversion16_mode(op, variant);
+                uint32_t excp_flag_user = 0x12345678;
+                ASSERT_EQ(wave64[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask,
+                                     mode | descriptor, &d, &a, &excp_flag_user),
+                          GOC_SUCCESS);
+                EXPECT_EQ(excp_flag_user, 0x12345678U);
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  int source = 0;
+                  bool enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+                  uint32_t expected = initial[target][lane + 1];
+                  if (enabled) {
+                    expected = goc_test::conversion16_reference(
+                        op, source < 0 ? 0 : initial[0][source + 1], expected, mode, saturate);
+                    ASSERT_TRUE(goc_test::conversion16_equal(op, d[lane], expected, mode));
+                  } else {
+                    ASSERT_EQ(d[lane], expected);
+                  }
+                }
+                EXPECT_EQ(words[target][0], initial[target][0]);
+                EXPECT_EQ(words[target][65], initial[target][65]);
+              }
+  for (auto fn : wave64) {
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << 63, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    uint32_t excp_flag_user = 0x12345678;
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, &excp_flag_user),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(excp_flag_user, 0x12345678U);
+  }
 }

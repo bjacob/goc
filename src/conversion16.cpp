@@ -110,6 +110,28 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   return GOC_SUCCESS;
 }
 
+template <goc::Conversion16 Op>
+int convert_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a) {
+  if (int error = convert<Op>(flags, 0, mode, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source = a[0] + half * 32;
+    if (int error =
+            convert<Op>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest, &source))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_cvt_f16_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -152,4 +174,54 @@ int goc_v_cvt_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return convert<goc::Conversion16::HalfToFloat>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_cvt_f16_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return convert_wave64<goc::Conversion16::SignedToHalf>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_cvt_f16_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return convert_wave64<goc::Conversion16::UnsignedToHalf>(flags, exec_mask, instruction_flags, d,
+                                                           a);
+}
+
+int goc_v_cvt_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return convert_wave64<goc::Conversion16::HalfToSigned>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_cvt_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return convert_wave64<goc::Conversion16::HalfToUnsigned>(flags, exec_mask, instruction_flags, d,
+                                                           a);
+}
+
+int goc_v_cvt_f16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return convert_wave64<goc::Conversion16::FloatToHalf>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_cvt_f32_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return convert_wave64<goc::Conversion16::HalfToFloat>(flags, exec_mask, instruction_flags, d, a);
 }

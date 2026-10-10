@@ -1154,7 +1154,8 @@ OMOD/CLAMP. Integer outputs truncate with saturation and NaN-to-zero, accepting
 CLAMP/OMOD without numeric effect. FP16 narrowing uses nearest-even with
 `GOC_FP16_OVFL` saturation before OMOD and again after scaling. Active OMOD
 flushes initially tiny values to positive zero, while division underflow from
-normal values preserves the sign of zero. All six expose loose semantics only.
+normal values preserves the sign of zero. All six expose loose semantics at
+both wave sizes with shared kernels; exact optional reporting remains unsupported.
 
 Scalar, eight-lane x86-64-v3 and sixteen-lane x86-64-v4 paths support every valid
 modifier, full EXEC masking and in-place operation. Tests exhaust all 65,536

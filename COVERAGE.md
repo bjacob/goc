@@ -1170,3 +1170,24 @@ Validation: all 792 tests pass on Clang 21 and GCC 15 Release. All ten FP64
 conversion and instruction-flag tests pass under ASan/UBSan, including the
 existing exhaustive alias suite. The new references explicitly discard unused
 upper storage words for 32-bit source operands.
+
+## Wave64 FP16 conversions
+
+Added all six FP16/integer16/FP32 conversion Wave64 APIs, preserving the
+one-VGPR operand layout, source/destination half selectors, untouched destination
+half and existing overflow/output-scaling rules. DPP routes A before selection
+and modifiers. Existing scalar/v3/v4 kernels and loose semantics are unchanged.
+All optional exception pointers retain loose opt-out behavior and exact
+non-null rejection before operand access.
+
+The tests repeat captured FP16 rounding/overflow witnesses across both wave
+halves and compare random input words against independent references for every
+modifier, half selector, CPU level and overflow mode. DPP row enables, masks
+with upper EXEC bits, aliases, guard words and unselected destination halves
+are checked. NaN comparisons retain the loose payload policy. Existing
+exhaustive Wave32 encoding and DPP hardware tests remain in place; this is not
+a new native Wave64 capture or an exactness claim. The width-review queue is
+167 APIs.
+
+Validation: all 794 tests pass on Clang 21 and GCC 15 Release. All fourteen
+FP16 conversion and instruction-flag tests pass under ASan/UBSan.

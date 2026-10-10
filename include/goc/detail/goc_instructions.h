@@ -2604,6 +2604,27 @@ int goc_v_cvt_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
 int goc_v_cvt_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
+// Wave64 FP16 conversions use the same half selectors, destination preservation,
+// overflow behavior and loose semantics. Optional-state restrictions are unchanged.
+int goc_v_cvt_f16_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+int goc_v_cvt_f16_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+int goc_v_cvt_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+int goc_v_cvt_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+int goc_v_cvt_f16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+int goc_v_cvt_f32_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+
 // FP64 conversions: FP64 operands use two VGPRs, low word first; FP32 and
 // integer operands use one. Loose semantics only. Integer inputs reject ABS/NEG;
 // floating inputs support ABS/NEG. Floating outputs round to the destination
