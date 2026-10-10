@@ -2286,6 +2286,16 @@ int goc_v_div_scale_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction
                         uint32_t *const *d, uint32_t *condition, const uint32_t *const *a,
                         const uint32_t *const *b, const uint32_t *const *c);
 
+// Wave64 retains the same contract with a 64-bit condition result. Inactive
+// condition bits are zero; empty EXEC writes zero. Condition is committed after
+// all VGPR writes and may share their storage, including unaligned storage.
+int goc_v_div_scale_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, uint64_t *condition, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_div_scale_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, uint64_t *condition, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c);
+
 // Division fixup: A is a provisional quotient, B the original denominator,
 // C the original numerator. Repairs sign, propagates C/B NaNs in that order,
 // and handles zero/infinity cases and extreme FP32/FP64 exponent underflow.

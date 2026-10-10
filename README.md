@@ -865,7 +865,10 @@ scalar, including modified forms (seven samples, each at least 10 ms).
 Division pre-scaling covers `v_div_scale_f32` and `v_div_scale_f64`, with loose
 and empirical exact semantics adapted from rocjitsu. B is the denominator, C the
 numerator, and A must equal B or C after source NEG modifiers. The result includes
-a `uint32_t` scalar condition mask in addition to the scaled VGPR value. Inactive
+a scalar condition mask in addition to the scaled VGPR value: `uint32_t` for
+Wave32 and `uint64_t` for Wave64. Both widths use the same scalar/v3/v4 kernels.
+The condition output is written after all source reads and VGPR writes, including
+when it aliases unaligned VGPR storage in Wave64. Inactive
 condition bits are cleared, even for zero EXEC, while inactive VGPR lanes remain
 unchanged. NEG, OMOD and CLAMP stay on SIMD paths; ABS is not supported by this
 instruction encoding. FP64 supports cross-half aliases. Host FP rounding and

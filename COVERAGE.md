@@ -1519,3 +1519,24 @@ The vector width queue is 26 APIs.
 Validation: all 859 tests pass on Clang 21 and GCC 15 Release. All ten
 Wave64 DIV_FIXUP and instruction-flag tests pass under ASan/UBSan, including
 the exhaustive modifier/FP16 DPP sweeps and result/exception corpora.
+
+
+## Wave64 DIV_SCALE and scalar condition output
+
+Added FP32/FP64 DIV_SCALE Wave64 APIs using the existing exact scalar/v3/v4
+kernels. Their mandatory condition output is 64 bits, with inactive bits
+cleared and zero written for empty EXEC. Both halves are staged before the
+condition store, which follows all source reads and VGPR writes and supports
+unaligned aliases. Errors leave both vector and condition outputs unchanged.
+
+Tests replay the existing captured value/condition digests across 64 lanes,
+check all modifiers and host rounding modes, full/upper-only/sparse EXEC,
+FP64 cross-word destination aliases and zero-EXEC/error behavior. Dedicated
+byte-offset aliases place the condition output in each source or destination
+register, in either wave half, with guard words checked. This reuses existing
+hardware observations; no native Wave64 capture or new throughput is claimed.
+The vector width queue is 24 APIs.
+
+Validation: all 864 tests pass on Clang 21 and GCC 15 Release. All six
+Wave64 DIV_SCALE and instruction-flag tests pass under ASan/UBSan, including
+unaligned scalar-output aliases and captured value/condition digests.
