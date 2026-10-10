@@ -1672,3 +1672,33 @@ legality review, architecture semantics audit or three hardware-register APIs.
 
 Validation: all 914 tests pass with Clang 21 and GCC 15 Release. All eleven
 Wave64 DOT2 and instruction-flag tests pass under ASan/UBSan.
+
+## Matrix width audit and Wave64 FP8/BF8 WMMA
+
+Extended the generated inventory to cover matrix APIs, which omit EXEC and
+therefore escaped the ordinary vector-width screen. RDNA4 manual sections
+7.12.2/7.12.3 specify Wave64 layouts for these operations. After adding all four
+FP8/BF8 dense WMMA combinations, fourteen matrix width gaps remain: three integer
+WMMA and eleven SWMMAC APIs. Their arithmetic stage order and sparse selectors
+need separate review; a dense layout conversion alone does not prove correctness.
+
+FP8/BF8 Wave64 uses pointer views of 32-lane register sections to reuse the
+existing scalar/AVX2 algorithms, with no matrix copies or new dispatch machinery.
+A/B each use one VGPR, C/D four. All inputs precede destination writes. C modifiers,
+loose fallback and strict-exact rejection are unchanged. Tests cover dense
+mathematical goldens, every byte encoding, all four format pairs, modifiers, CPU
+levels, aliases, guards and validation.
+
+A new native RX 9070 gfx1201 Wave64 capture,
+`tests/capture_fp8_wmma_wave64.cpp`, produces the word-FNV digest
+`cebccc43bff33725` for each of the four formats (256 output words each). Its
+exactly representable finite sums are replayed on every CPU path and with aliases.
+This confirms register use and results for that corpus, not general bit-exactness.
+Rocjitsu's `gfx12_wmma_input_loc` orders FP8 lane groups differently from the
+manual. Our source mapping follows the manual; a common permutation of A/B's K
+axis leaves these exact finite sums invariant, so the capture does not resolve
+that discrepancy or establish the GPU's floating accumulation order.
+
+Capture source SHA-256: `e25e3e098a27660b344f341e1cb242dc772cffb0af23cf1ac7678758b6ba6967`.
+Validation: all 918 tests pass with Clang 21 and GCC 15 Release. All five
+Wave64 FP8 WMMA and instruction-flag tests pass under ASan/UBSan.

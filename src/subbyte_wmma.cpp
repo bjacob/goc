@@ -58,6 +58,25 @@ int floating(uint64_t flags, uint32_t modifiers, uint32_t *const *d, const uint3
   return GOC_SUCCESS;
 }
 
+// RDNA4 7.12.2: Wave64 moves the second packed source VGPR into lanes
+// 32..63 of the first. C/D rows 4..7 similarly move into upper lanes of
+// registers 0..3. Pointer views retain the existing scalar/AVX2 algorithms;
+// those kernels snapshot every result before any destination writes.
+template <bool Bf8A, bool Bf8B>
+int floating_wave64(uint64_t flags, uint32_t modifiers, uint32_t *const *d,
+                    const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (int error = goc::validate(flags, modifiers & ~(GOC_WMMA_NEG_C | GOC_WMMA_ABS_C)))
+    return error;
+  const uint32_t *av[] = {a[0], a[0] + 32}, *bv[] = {b[0], b[0] + 32};
+  const uint32_t *cv[8];
+  uint32_t *dv[8];
+  for (unsigned reg = 0; reg < 8; ++reg) {
+    cv[reg] = c[reg % 4] + 32 * (reg / 4);
+    dv[reg] = d[reg % 4] + 32 * (reg / 4);
+  }
+  return floating<Bf8A, Bf8B>(flags, modifiers, dv, av, bv, cv);
+}
+
 template <int Bits, int K>
 int integer(uint64_t flags, uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
             const uint32_t *const *b, const uint32_t *const *c) {
@@ -159,4 +178,36 @@ int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return integer<4, 32>(flags, instruction_flags, d, a, b, c);
+}
+
+int goc_v_wmma_f32_16x16x16_fp8_fp8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                           uint32_t *const *d, const uint32_t *const *a,
+                                           const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return floating_wave64<false, false>(flags, instruction_flags, d, a, b, c);
+}
+
+int goc_v_wmma_f32_16x16x16_fp8_bf8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                           uint32_t *const *d, const uint32_t *const *a,
+                                           const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return floating_wave64<false, true>(flags, instruction_flags, d, a, b, c);
+}
+
+int goc_v_wmma_f32_16x16x16_bf8_fp8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                           uint32_t *const *d, const uint32_t *const *a,
+                                           const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return floating_wave64<true, false>(flags, instruction_flags, d, a, b, c);
+}
+
+int goc_v_wmma_f32_16x16x16_bf8_bf8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                           uint32_t *const *d, const uint32_t *const *a,
+                                           const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return floating_wave64<true, true>(flags, instruction_flags, d, a, b, c);
 }

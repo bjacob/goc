@@ -128,5 +128,24 @@ SAVEEXEC/WREXEC consume EXEC as data and already have distinct `_b32` and
 """
 for source, names in sorted(by_source.items()):
     width_text += f"| [`{source}`](src/{source}) | " + ", ".join(f"`goc_{n}`" for n in names) + " |\n"
+# Matrix operations omit EXEC but have distinct operand layouts at each width.
+# RDNA4 manual 7.12.2/7.12.3 specifies Wave64 WMMA and SWMMAC layouts.
+matrix_gaps = {name for name in apis
+               if name.startswith(("v_wmma_", "v_swmmac_"))
+               and not name.endswith("_wave64") and name + "_wave64" not in apis}
+width_text += f"\n## Matrix wave-width API audit\n\nThere are {len(matrix_gaps)} matrix APIs lacking a Wave64 counterpart.\n"
+width_text += "RDNA4 ISA sections 7.12.2 and 7.12.3 specify both widths, including\n"
+width_text += "different operand VGPR counts and sparse-index selection. Matching layouts\n"
+width_text += "alone does not prove matching accumulation order or saturation stages.\n\n"
+width_text += "| Implementation | APIs lacking a Wave64 counterpart |\n|---|---|\n"
+located_matrix = set()
+for path in sorted((root / "src").glob("*.cpp")):
+    definitions = set(re.findall(r"int goc_(\w+)\(", path.read_text()))
+    missing = sorted(definitions & matrix_gaps)
+    if missing:
+        located_matrix.update(missing)
+        width_text += f"| [`{path.name}`](src/{path.name}) | " + ", ".join(
+            f"`goc_{name}`" for name in missing) + " |\n"
+assert located_matrix == matrix_gaps, "Unlocated matrix APIs"
 (root / "ISA_INVENTORY.md").write_text(text + "\n".join(rows) + "\n" + width_text)
 print('\n'.join(text.splitlines()[16:28]))

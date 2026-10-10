@@ -271,7 +271,9 @@ C absolute value. FP8/BF8 WMMA supports C negation and absolute value; A/B
 negation bits are rejected. Integer WMMA supports independent signed/unsigned
 A/B inputs and signed output saturation (`GOC_WMMA_CLAMP`); without CLAMP,
 results wrap modulo 2^32.
-The FP8/BF8 and integer entry points currently support wave32 only. FP16 and
+FP8/BF8 WMMA supports Wave32 and Wave64, sharing its scalar and AVX2
+kernels. Wave64 uses one VGPR each for A/B and four each for C/D. Integer
+RDNA4 WMMA currently supports Wave32 only. FP16 and
 BF16 SIMD WMMA paths handle loose wave32 calls with FP32 outputs and all 64
 combinations of `NEG_LO`/`NEG_HI` on A/B and `NEG`/`ABS` on C. `ABS_C` is applied before
 `NEG_C`. These sign-bit transformations preserve the magnitude-only Zen4 BF16

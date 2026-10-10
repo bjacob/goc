@@ -4716,6 +4716,26 @@ int goc_v_wmma_f32_16x16x16_bf8_bf8(uint64_t flags, uint64_t instruction_flags, 
                                     const uint32_t *const *a, const uint32_t *const *b,
                                     const uint32_t *const *c);
 
+// Wave64 FP8/BF8 WMMA: A/B each hold one 64-lane VGPR, C/D four.
+// K groups 0, 8, 4, 12 occupy successive groups of 16 source lanes.
+// C/D rows 0..3, 8..11, 4..7, 12..15 occupy those lane groups.
+// Modifiers and loose-only semantics match the Wave32 forms above.
+int goc_v_wmma_f32_16x16x16_fp8_fp8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                           uint32_t *const *d, const uint32_t *const *a,
+                                           const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_wmma_f32_16x16x16_fp8_bf8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                           uint32_t *const *d, const uint32_t *const *a,
+                                           const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_wmma_f32_16x16x16_bf8_fp8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                           uint32_t *const *d, const uint32_t *const *a,
+                                           const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_wmma_f32_16x16x16_bf8_bf8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                           uint32_t *const *d, const uint32_t *const *a,
+                                           const uint32_t *const *b, const uint32_t *const *c);
+
 // Integer WMMA modifiers: NEG[0:1] select signed interpretation of A/B;
 // CLAMP saturates signed accumulation at instruction-specific stage boundaries;
 // without CLAMP, results wrap modulo 2^32.
