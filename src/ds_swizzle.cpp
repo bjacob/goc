@@ -6,6 +6,7 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "simd.h"
 
 #include <stdint.h>
 
@@ -20,6 +21,12 @@ int swizzle(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags, uint
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
+#if defined(GOC_HAVE_X86_64_V3)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::ds_swizzle_x86_64_v3(Lanes, exec_mask, d[0], a[0], offset);
+    return GOC_SUCCESS;
+  }
+#endif
   unsigned mask = offset & 31, mask_bits = 0;
   for (unsigned bit = 0; bit < 5; ++bit)
     mask_bits += (mask >> bit) & 1;

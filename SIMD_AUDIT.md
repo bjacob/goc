@@ -47,9 +47,10 @@ independently; the implementation does not assume their contents are identical.
 All results are staged before destination writes, preserving whole-VGPR aliases.
 There is no EXEC parameter or masked output store for these instructions.
 
-## Dispatch review and remaining scalar cases
+## Initial dispatch review and scalar cases
 
-The top-level scan covers 91 production `.cpp` files; CPU kernels live in 101
+This section records the initial pass; completed follow-ups below supersede its
+WMMA, arithmetic, and DS routing gaps. The top-level scan covers 91 production `.cpp` files; CPU kernels live in 101
 `src/x86_64/*.cpp` files. Checking dispatch does not mean every kernel was newly
 proved correct. The following groups describe the paths and their exceptions.
 
@@ -263,3 +264,40 @@ microbenchmark regression is explicitly retained in the results; it must not be
 misrepresented as every case getting faster. Modified CNDMASK16 and the existing
 packing/saturation controls remain near their previous times. Static consumers
 will have their own code layout.
+
+## Follow-up: DS routing
+
+`ds_swizzle_b32` and ordinary `ds_bpermute_b32` now use AVX2 for both wave
+widths and both semantics. Swizzle retains SIMD for all four offset classes.
+Backward permute retains the RDNA3 half-wave/RDNA4 full-wave distinction.
+Both compute bounded source indices in vectors, filter source participation,
+snapshot results before any destination writes, and use masked stores. There
+is no mask-density dispatch. A single non-template kernel per operation takes
+wave/group sizes; two local helpers centralize source-EXEC filtering and staged
+masked writes without introducing a generic routing framework.
+
+Forward permute remains scalar because its ordered scatter resolves collisions
+in favor of the highest active source. Force-inactive backward permute also
+remains scalar: a tested AVX2 gather candidate made its full-mask Wave32 case
+about 30% slower and Wave64 about 12% slower. Unlike ordinary backward permute,
+this operation has no source-EXEC filtering work to amortize gather overhead.
+That rejected dispatch is not retained. Copy/swap assessment remains open.
+
+All 11 existing DS tests now execute at every available CPU level. They cover
+all 65,536 swizzle offsets in both wave widths, captured swizzle corpora,
+independent routing references, inactive sources, every gather source/destination
+pair, address overflow, aliases, guards, zero EXEC, and error preservation.
+Clang and GCC each pass all 1,189 tests; ASan/UBSan and no-SIMD builds each pass
+the 11 DS tests. The added vector object contains 1,821 text bytes in the Clang
+build. Source, timing samples, and validation logs are saved under local
+`../goc-build/coverage-work/audit-routing-*` paths and corresponding build trees.
+
+Final before/after timings compare `b3c65a7` against this change on CPU 2 of the
+Ryzen 9 7950X3D, using thread CPU time, at least 50 ms per sample, and five
+alternating pairs. Representative controls cover all four swizzle classes,
+both wave widths, both backward-permute groupings, and full/alternating EXEC.
+Full-mask swizzle improves 1.18–1.93×; ordinary backward permute improves
+1.13–1.26×. Alternating-mask cases improve 1.10–1.83×. The retained scalar
+force-inactive full-mask controls are unchanged within 0.3%; its alternating
+controls vary from 8.6% faster to 10.5% slower. These are targeted microbenchmarks,
+not a whole-library speedup or a promise of mask-independent cycle counts.

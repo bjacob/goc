@@ -5,6 +5,7 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "simd.h"
 
 #include <stdint.h>
 
@@ -19,6 +20,14 @@ int permute(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags, uint
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
+#if defined(GOC_HAVE_X86_64_V3)
+  if constexpr (Backward && !ReadInactive) {
+    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+      goc::ds_bpermute_x86_64_v3(Lanes, Group, exec_mask, d[0], addr[0], data[0], offset);
+      return GOC_SUCCESS;
+    }
+  }
+#endif
   uint32_t result[Lanes] = {};
   for (unsigned lane = 0; lane < Lanes; ++lane) {
     uint32_t address = addr[0][lane] + offset;

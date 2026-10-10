@@ -2576,7 +2576,10 @@ forms route independently within each half-wave; RDNA4 `_rdna4_wave64` forms
 route across all 64 lanes. Both apply EXEC to sources and destinations; empty
 active destinations receive zero. RDNA4 `ds_bpermute_fi_b32` and its `_wave64`
 form read inactive sources too. All accept a 16-bit byte offset, preserve original
-inputs when operands alias, and support exact bit operations using scalar loops.
+inputs when operands alias, and support exact bit operations. Ordinary backward
+permute uses AVX2 gathers and masked stores at CPU v3 and above. Force-inactive
+gather retains scalar code: the measured AVX2 candidate was slower. Forward
+permute retains its scalar ordered scatter to resolve collisions.
 For scatter collisions GoC chooses the highest active source lane, as in the ISA
 pseudocode and rocjitsu; the hardware prose leaves the winner unspecified.
 
@@ -2584,7 +2587,8 @@ pseudocode and rocjitsu; the hardware prose leaves the winner unspecified.
 `ds_swizzle_b32` and `_wave64` implement bit-mask, quad, masked-rotate and FFT
 routing within 32-lane rows. Inactive sources read as zero, inactive destinations
 are preserved, and in-place operation is supported. Shared RDNA3/RDNA4 scalar
-implementations follow the common ISA pseudocode; RX 9070 captures validate both
+and AVX2 implementations follow the common ISA pseudocode; all four control
+classes retain AVX2 dispatch, with masked destination stores. RX 9070 captures validate both
 wave sizes. RDNA3's inconsistent masked-rotate examples remain an explicit
 hardware-validation gap. Tests cover every 16-bit offset and replay 1,818,624
 hardware-captured output words without requiring a GPU.
@@ -2594,8 +2598,8 @@ routing. It preserves the other destination half and raw NaN/subnormal bits;
 OMOD and CLAMP are accepted but ignored, as confirmed by RX 9070 captures of
 all encoded modifier combinations. `v_swap_b16` and `_wave64` exchange selected
 halves while preserving the others, including swaps within one VGPR. These are
-exact scalar bit operations shared by RDNA3/RDNA4. Wave64 MOV and dedicated
-SIMD paths remain open.
+exact scalar bit operations shared by RDNA3/RDNA4. MOV also has Wave64 entry
+points; dedicated SIMD copy/swap paths remain open.
 
 `s_round_mode` and `s_denorm_mode` update guest MODE[3:0] and MODE[7:4]
 respectively from the immediate's low four bits, preserving every other bit.
