@@ -115,6 +115,19 @@ int goc_ds_bpermute_fi_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t i
                                   uint32_t *const *d, const uint32_t *const *addr,
                                   const uint32_t *const *data, uint16_t offset);
 
+// DS_SWIZZLE routes raw bits within each 32-lane row without LDS storage.
+// offset selects bit-mask (<0x8000), quad (<0xc000), masked rotate (<0xe000),
+// or FFT routing. Rotations wrap within the row. Shared RDNA3/RDNA4 ISA
+// pseudocode semantics; rotate/FFT empirical validation is RDNA4-only.
+// Inactive sources supply zero; inactive destinations are preserved. All source
+// values precede output writes, permitting aliases. Both semantics are exact;
+// no instruction flags are supported. Zero EXEC permits null VGPR pointers.
+int goc_ds_swizzle_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, uint16_t offset);
+
+int goc_ds_swizzle_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a, uint16_t offset);
+
 // DPP8 permutes source A within each group of eight lanes before arithmetic
 // modifiers. Pack eight 3-bit lane indices into bits 40..63, index 0 first, and
 // set GOC_DPP8. Without FI, an inactive source supplies positive zero; FI reads

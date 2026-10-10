@@ -20,7 +20,7 @@ paths must retain their existing performance and may skip optional state outputs
 - ISA and rocjitsu source: local TheRock `rocm-systems` revision `ffc144c564c`.
   XML content fingerprints are recorded in the inventory.
 - Borrowed hardware captures establish only the targets and cases they capture.
-  No new GPU captures have been made for this goal.
+  New RX 9070 Wave32/Wave64 DS_SWIZZLE captures are recorded below.
 - Inventory initially finds 804 in-scope canonical mnemonics in the union:
   664 have matching API names; 140 lack them. Another 14 control/register
   boundaries require explicit review. 578 memory/control/scheduling mnemonics
@@ -239,9 +239,8 @@ Inputs and addresses are consumed before output stores for alias safety.
 The scope audit also corrected `ds_bpermute_fi_b32`: despite its XML VMEM label,
 it only routes registers and belongs in scope. Its new Wave32/Wave64 APIs read
 inactive source lanes. Total in-scope canonical names are now 809, with 64 missing.
-DS_SWIZZLE remains open: rocjitsu's simple quad/bit implementation does not cover
-all rotate/FFT modes described in the RDNA4 manual, so copying it alone would
-not establish complete coverage.
+The DS_SWIZZLE follow-up below addresses rotate/FFT modes missing from
+rocjitsu's simple quad/bit implementation.
 
 The previously open signed MAD question is resolved by RDNA3 section 16.12's
 explicit 65-bit concatenation: the scalar output is bit 64 of the full signed
@@ -260,3 +259,33 @@ and all six wide-MAD tests pass under ASan/UBSan. The DS tests use an independen
 destination-centric reference, explicit cross-half witnesses, byte-offset overflow,
 collisions, masks, inactive reads, aliases and guard words. Dedicated DS SIMD
 paths are not yet implemented; existing MAD SIMD implementations are unchanged.
+
+
+## DS swizzle: all four encoding classes
+
+Added shared Wave32/Wave64 DS_SWIZZLE_B32, including bit-mask, quad, masked
+rotate and FFT modes. Basic selection follows rocjitsu; unlike its current
+handler, inactive source lanes supply zero. Rotate and FFT follow the matching
+pseudocode in both ISA manuals, with rotate arithmetic confined to each 32-lane
+row. Source snapshots preserve in-place operations. No dedicated SIMD path yet.
+
+The RDNA3 manual's masked-rotate examples disagree with its own pseudocode;
+RDNA4's examples and pseudocode agree. This was checked on the local RX 9070
+(gfx1201): all 2,048 rotate encodings, 32 FFT masks, 256 quad selectors and 32
+bit-mode examples, each under eight EXEC masks in both wave sizes. All
+1,818,624 output words match. This validates RDNA4, **not** RDNA3 hardware;
+RDNA3 uses its explicit pseudocode pending hardware confirmation of the
+inconsistent examples. No architectural difference was established that would
+justify separate entry points.
+
+`tests/capture_ds_swizzle.py` reproduces the captures, and
+`tests/ds_swizzle_hardware.h` records word-wise hashes and raw capture SHA-256s.
+Capture compiler: ROCm clang 23; Wave64 explicitly uses `-mwavefrontsize64`.
+Additional tests cover all 65,536 offset encodings for both wave sizes against
+an independent bit-by-bit/table reference, in-place routing, partial masks,
+guard words, invalid modifiers and empty EXEC. Missing canonical API names: 63.
+
+Validation: all 708 tests pass with Clang and GCC; all three DS_SWIZZLE tests
+pass under ASan/UBSan. The final capture generator reproduces the Wave64 binary
+capture byte-for-byte; regenerated Wave32 instruction bodies match the original
+probe. Existing arithmetic/SIMD implementations were not changed.

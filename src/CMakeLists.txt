@@ -6,6 +6,7 @@ add_library(goc STATIC
   move.cpp
   swap.cpp
   ds_permute.cpp
+  ds_swizzle.cpp
   wmma_replicated.cpp
   dpp.cpp
   permlane.cpp

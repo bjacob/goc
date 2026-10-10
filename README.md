@@ -2320,3 +2320,12 @@ form read inactive sources too. All accept a 16-bit byte offset, preserve origin
 inputs when operands alias, and support exact bit operations using scalar loops.
 For scatter collisions GoC chooses the highest active source lane, as in the ISA
 pseudocode and rocjitsu; the hardware prose leaves the winner unspecified.
+
+
+`ds_swizzle_b32` and `_wave64` implement bit-mask, quad, masked-rotate and FFT
+routing within 32-lane rows. Inactive sources read as zero, inactive destinations
+are preserved, and in-place operation is supported. Shared RDNA3/RDNA4 scalar
+implementations follow the common ISA pseudocode; RX 9070 captures validate both
+wave sizes. RDNA3's inconsistent masked-rotate examples remain an explicit
+hardware-validation gap. Tests cover every 16-bit offset and replay 1,818,624
+hardware-captured output words without requiring a GPU.

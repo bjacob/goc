@@ -20,8 +20,8 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 64
-- in, API present: 745
+- in, API absent: 63
+- in, API present: 746
 - out, API absent: 587
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
@@ -247,7 +247,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `ds_sub_rtn_u64` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_sub_u32` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_sub_u64` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
-| `ds_swizzle_b32` | yes | yes | in: register routing | — | — | missing API |
+| `ds_swizzle_b32` | yes | yes | in: register routing | `goc_ds_swizzle_b32`<br>`goc_ds_swizzle_b32_wave64` | — | API present; semantic audit pending |
 | `ds_wrap_rtn_b32` | yes | — | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_xor_b32` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_xor_b64` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
