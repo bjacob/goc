@@ -16,6 +16,10 @@ using Fn = decltype(&goc_v_sqrt_f64);
 const Fn functions[] = {goc_v_trunc_f64, goc_v_ceil_f64,  goc_v_rndne_f64,
                         goc_v_floor_f64, goc_v_fract_f64, goc_v_sqrt_f64,
                         goc_v_rcp_f64,   goc_v_rsq_f64,   goc_v_frexp_mant_f64};
+const decltype(&goc_v_sqrt_f64_wave64) wave64[] = {
+    goc_v_trunc_f64_wave64, goc_v_ceil_f64_wave64,  goc_v_rndne_f64_wave64,
+    goc_v_floor_f64_wave64, goc_v_fract_f64_wave64, goc_v_sqrt_f64_wave64,
+    goc_v_rcp_f64_wave64,   goc_v_rsq_f64_wave64,   goc_v_frexp_mant_f64_wave64};
 
 uint64_t bits(double value) {
   uint64_t result;
@@ -259,4 +263,110 @@ TEST(Fp64Unary, MantissaLiteralSubnormalsAndPassthrough) {
       for (int lane = 0; lane < 32; ++lane)
         EXPECT_EQ(d[0][lane] | (uint64_t(d[1][lane]) << 32), test[1]);
     }
+}
+
+TEST(Fp64Unary, Wave64AllModifiersMasksAndCrossWordAliases) {
+  const uint64_t inputs[] = {0,
+                             0x8000000000000000,
+                             1,
+                             0x8000000000000001,
+                             0x0010000000000000,
+                             0x8010000000000000,
+                             0x3fe0000000000000,
+                             0xbfe0000000000000,
+                             0x3ff8000000000000,
+                             0xbff8000000000000,
+                             0x4004000000000000,
+                             0xc004000000000000,
+                             0x400c000000000000,
+                             0xc00c000000000000,
+                             0x3fefffffffffffff,
+                             0x3ff0000000000001,
+                             0x7fefffffffffffff,
+                             0xffefffffffffffff,
+                             0x7ff0000000000000,
+                             0xfff0000000000000,
+                             0x7ff8000000001234,
+                             0xfff8000000001234,
+                             0x7ff0000000001234,
+                             0xfff0000000001234,
+                             0x4330000000000001,
+                             0xc330000000000001,
+                             0x3fe0000000000001,
+                             0x3fdfffffffffffff,
+                             0x4010000000000000,
+                             0x3fd0000000000000,
+                             0x000fffffffffffff,
+                             0x800fffffffffffff};
+  const int aliases[][2] = {{2, 3}, {0, 1}, {1, 0}, {1, 2}, {2, 0}, {2, 2}};
+  for (int op = 0; op < 9; ++op)
+    for (uint32_t variant = 0; variant < 32; ++variant) {
+      uint32_t mode = (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
+                      ((variant >> 2 & 3) << 6) | (variant & 16 ? GOC_ALU_CLAMP : 0);
+      double expected[64];
+      for (int lane = 0; lane < 64; ++lane)
+        expected[lane] = reference(op, inputs[(lane + (lane / 32) * 7) % 32], mode);
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+        // Identical output buffers retain only the high word, so compare that
+        // alias case to a disjoint execution. A few allowed numeric ULPs can
+        // straddle a high-word boundary in the higher-precision reference.
+        uint32_t source[2][64], separate[2][64];
+        uint32_t *pa[] = {source[0], source[1]}, *pd[] = {separate[0], separate[1]};
+        for (int lane = 0; lane < 64; ++lane) {
+          source[0][lane] = uint32_t(inputs[(lane + (lane / 32) * 7) % 32]);
+          source[1][lane] = uint32_t(inputs[(lane + (lane / 32) * 7) % 32] >> 32);
+        }
+        ASSERT_EQ(wave64[op](cpu, UINT64_MAX, mode, pd, pa, nullptr), GOC_SUCCESS);
+        for (uint64_t exec_mask :
+             {UINT64_MAX, uint64_t(0xffffffff00000000ULL), uint64_t(0x87654321fedcba98ULL)})
+          for (const auto &alias : aliases) {
+            SCOPED_TRACE(::testing::Message() << op << "/" << mode << "/" << cpu << "/" << exec_mask
+                                              << "/" << alias[0] << "/" << alias[1]);
+            uint32_t storage[4][66], before[2][64], *v[4];
+            for (int reg = 0; reg < 4; ++reg) {
+              std::fill(storage[reg], storage[reg] + 66, 0xdeadbeef);
+              v[reg] = storage[reg] + 1;
+              if (reg < 2)
+                for (int lane = 0; lane < 64; ++lane)
+                  v[reg][lane] = uint32_t(inputs[(lane + (lane / 32) * 7) % 32] >> (32 * reg));
+            }
+            uint32_t *d[] = {v[alias[0]], v[alias[1]]};
+            for (int reg = 0; reg < 2; ++reg)
+              std::copy(d[reg], d[reg] + 64, before[reg]);
+            ASSERT_EQ(wave64[op](cpu, exec_mask, mode, d, v, nullptr), GOC_SUCCESS);
+            for (int lane = 0; lane < 64; ++lane) {
+              if (!((exec_mask >> lane) & 1)) {
+                EXPECT_EQ(d[0][lane], before[0][lane]);
+                EXPECT_EQ(d[1][lane], before[1][lane]);
+                continue;
+              }
+              uint64_t got = d[0][lane] | (uint64_t(d[1][lane]) << 32);
+              if (std::isnan(expected[lane])) {
+                EXPECT_TRUE(std::isnan(number(got)));
+              } else if (alias[0] == alias[1]) {
+                EXPECT_EQ(d[0][lane], separate[1][lane]);
+              } else if (op < 5 || expected[lane] == 0 || std::isinf(expected[lane])) {
+                EXPECT_EQ(got, bits(expected[lane]));
+              } else {
+                EXPECT_DOUBLE_EQ(number(got), expected[lane]);
+              }
+            }
+            for (const auto &reg : storage) {
+              EXPECT_EQ(reg[0], 0xdeadbeef);
+              EXPECT_EQ(reg[65], 0xdeadbeef);
+            }
+          }
+      }
+    }
+}
+
+TEST(Fp64Unary, Wave64ReportingAndValidation) {
+  for (auto fn : wave64) {
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, GOC_ALU_NEG_B, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    uint32_t exceptions = 0x80000055;
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, &exceptions),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(exceptions, 0x80000055U);
+  }
 }

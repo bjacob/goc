@@ -1388,3 +1388,25 @@ exactness, hardware capture or throughput claim. The width queue is 77 APIs.
 
 Validation: all 822 tests pass on Clang 21 and GCC 15 Release. The five
 new Wave64 min/max and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 FP64 arithmetic and unary operations
+
+Added eighteen FP64 Wave64 APIs: ADD/MUL/FMA, min/max and aliases, rounding,
+FRACT, FREXP mantissa, SQRT/RCP/RSQ. Each operand retains its two-VGPR low/high
+layout. The family wrapper respects unary/binary/ternary arity and reuses
+existing scalar/AVX2 kernels, loose semantics, modifier rules and exact-reporting
+rejection. DPP remains unsupported.
+
+Tests compare independent finite arithmetic and higher-precision unary
+references across every modifier, full/upper-only/sparse EXEC, crossed source
+and destination words, shared destination words and guards. The high result
+word wins when output VGPRs share storage. Upper unary inputs differ from
+lower inputs, and unused ternary operands are null for binary operations.
+Literal rounding/exceptional witnesses are repeated across all 64 lanes;
+reciprocal/square-root comparisons retain existing loose ULP tolerances.
+Validation rejects before operand access, and loose exception state remains
+unchanged. No new exactness or native hardware claim is made. The width queue
+is 59 APIs.
+
+Validation: all 827 tests pass on Clang 21 and GCC 15 Release. All six new
+Wave64 FP64 arithmetic/unary and instruction-flag tests pass under ASan/UBSan.

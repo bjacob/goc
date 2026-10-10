@@ -394,7 +394,9 @@ factors avoids the unwanted intermediate saturation of x86 byte-pair dot
 instructions. Tests cover all signedness/CLAMP modes, overflow boundaries,
 84 masks, source/destination aliases and unchanged host FP state.
 
-FP64 ADD, MUL and FMA use two VGPRs per operand: element zero of each pointer
+FP64 arithmetic, min/max, rounding, FREXP mantissa and SQRT/RCP/RSQ have
+Wave32 and `_wave64` APIs with the same loose semantics and scalar/AVX2
+kernels. FP64 ADD, MUL and FMA use two VGPRs per operand: element zero of each pointer
 array names the low-word buffer and element one names the high-word buffer.
 Each buffer still contains 32 lane words; their addresses need not be adjacent.
 Scalar and x86-64-v3 paths support all applicable ALU source/output modifiers
