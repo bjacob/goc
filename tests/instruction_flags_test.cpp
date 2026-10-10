@@ -375,7 +375,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         std::strcmp(name + sizeof("goc_") - 1, goc_test::integer_compare_names[op]) == 0;
   for (unsigned op = 0; op < 56; ++op)
     dpp_scalar_output |=
-        std::strcmp(name + sizeof("goc_") - 1, goc_test::float_compare_names[op]) == 0;
+        (std::strcmp(name + sizeof("goc_") - 1, goc_test::float_compare_names[op]) == 0 ||
+         std::string(name + sizeof("goc_") - 1) ==
+             std::string(goc_test::float_compare_names[op]) + "_rdna4");
   for (auto mnemonic :
        {"v_cmp_class_f16", "v_cmpx_class_f16", "v_cmp_class_f32", "v_cmpx_class_f32"})
     dpp_scalar_output |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;

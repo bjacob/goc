@@ -3876,3 +3876,58 @@ under `../goc-build/coverage-work/`, `../goc-build-gcc/`, and
 `../goc-build-sanitize/`. All nine audit-tool tests pass. The naming audit
 resolves 550 of 756 reporting signatures with zero mismatches and 206 remaining
 unresolved; this remains separate from numerical and reporting fidelity.
+
+## Floating relational comparison architecture review
+
+Reviewed the 84 nonconstant floating CMP/CMPX mnemonics (14 predicates for each
+of FP16/FP32/FP64 and CMP/CMPX), in both wave sizes. At rocjitsu revision
+`ffc144c564c`, all 336 corresponding RDNA3/RDNA4 VOPC/VOP3 execution bodies
+use `shared/comparison.h`, directly or through generated shared helpers. The
+format-specific input-denormal policy, raw integer ordering, signed-zero
+normalization, predicate inversion, and ABS-before-NEG rules agree. CMP writes
+a predicate mask and CMPX writes replacement EXEC; GoC returns either ordinary
+result through the required `d` pointer, including zero for empty EXEC.
+
+The architectures share numerical kernels but require distinct native exception
+register contracts. Unsuffixed APIs now take RDNA3 `trapsts`; `_rdna4` APIs take
+`excp_flag_user`, with `_wave64` last. Exact predicate results remain supported
+for both architectures with null optional state. Existing RDNA4 exact reporting
+and its previously captured fixtures are retained. No faithful RDNA3 comparison
+exception model was found upstream: non-null `trapsts` with non-loose semantics
+returns `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE` before touching any output, even
+with empty EXEC or without strict semantics. No hardware reverse-engineering or
+new exception model is part of this change.
+
+Both architectures accept guest IEEE and input/output-denormal flags. Only input
+flushing changes predicate results. Loose mode ignores either optional state
+pointer and keeps the scalar/AVX2/AVX512 comparison dispatch. RDNA3 wrappers add
+one instruction-level reporting-contract check and delegate to the same kernels;
+there is no new per-lane branch, state work, or numerical abstraction.
+
+`float_compare_architecture_test.cpp` checks all 84 mnemonics, both targets and
+wave sizes, all eight guest policies, all source modifiers, all available CPU
+selections, loose and strict exact results against the existing independent
+reference, and non-null loose state preservation. It also covers empty EXEC,
+unsupported reporting atomicity, DPP8/DPP16, aliased predicate destinations,
+and host rounding/FTZ/DAZ/sticky-flag preservation. Existing RDNA4 hardware,
+exhaustive FP16, Wave64, and exception tests now call explicit RDNA4 entry points.
+Constant F/T and CLASS instructions are separate families, outside this review.
+
+Performance: seven alternating before/after runs on CPU 2, thread CPU time,
+minimum 20 ms per case, nine representative ordered/unordered/inverted
+comparisons across all three formats, plain and modified/non-null loose-state
+forms. Median changes are -0.01% scalar, +0.04% AVX2 and -0.12% AVX512;
+the largest slowdown is scalar FP32 unordered, 23.156 ns to 23.924 ns (+3.31%).
+Both SIMD object files are byte-identical. Raw results are in
+`../goc-build/coverage-work/compare-architecture-performance.json`; the upstream
+body/delegation review list is `compare-upstream-review.json` in that directory.
+
+Validation: all 1,061 CTests pass with Clang 21 Release and GCC 15 Release;
+26 distinct targeted ASan/UBSan tests pass, including comparison corpora,
+optional-register rejection/loose contracts and instruction-flag validation.
+Logs are `compare-tests.log` under `../goc-build/coverage-work/`,
+`../goc-build-gcc/`, and `../goc-build-sanitize/`; the latter also has
+`compare-contract-tests.log`. All nine audit-tool tests pass. The review ledger
+now records 135 mnemonic contracts. The naming audit resolves 886 of 924
+reporting signatures, with zero mismatches and 38 unresolved. Neither count is
+a whole-project numerical-completeness claim.

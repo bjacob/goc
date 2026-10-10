@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-51 in-scope mnemonics have explicit contract-review records in
+135 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 758 in-scope mnemonics need a recorded review.
+The remaining 674 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -234,48 +234,48 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cmp_class_f16` | SIMD macro | no | 4036, 4113 | review required |
 | `v_cmp_class_f32` | SIMD macro | no | 4183, 4251 | review required |
 | `v_cmp_class_f64` | SIMD macro | no | 4314, 4386 | review required |
-| `v_cmp_eq_f16` | SIMD macro | no | 4453, 4478 | review required |
-| `v_cmp_eq_f32` | SIMD macro | no | 4500, 4525 | review required |
-| `v_cmp_eq_f64` | SIMD macro | no | 4547, 4572 | review required |
+| `v_cmp_eq_f16` | SIMD macro | yes | 4453, 4478 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_eq_f32` | SIMD macro | yes | 4500, 4525 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_eq_f64` | SIMD macro | yes | 4547, 4572 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_eq_i16` | SIMD macro | no | 4594, 4609 | review required |
 | `v_cmp_eq_i32` | SIMD macro | no | 4627, 4644 | review required |
 | `v_cmp_eq_i64` | SIMD macro | no | 4659, 4676 | review required |
 | `v_cmp_eq_u16` | SIMD macro | no | 4691, 4706 | review required |
 | `v_cmp_eq_u32` | SIMD macro | no | 4721, 4738 | review required |
 | `v_cmp_eq_u64` | SIMD macro | no | 4753, 4770 | review required |
-| `v_cmp_ge_f16` | SIMD macro | no | 5029, 5054 | review required |
-| `v_cmp_ge_f32` | SIMD macro | no | 5076, 5101 | review required |
-| `v_cmp_ge_f64` | SIMD macro | no | 5123, 5148 | review required |
+| `v_cmp_ge_f16` | SIMD macro | yes | 5029, 5054 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_ge_f32` | SIMD macro | yes | 5076, 5101 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_ge_f64` | SIMD macro | yes | 5123, 5148 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_ge_i16` | SIMD macro | no | 5170, 5185 | review required |
 | `v_cmp_ge_i32` | SIMD macro | no | 5203, 5220 | review required |
 | `v_cmp_ge_i64` | SIMD macro | no | 5235, 5252 | review required |
 | `v_cmp_ge_u16` | SIMD macro | no | 5267, 5282 | review required |
 | `v_cmp_ge_u32` | SIMD macro | no | 5297, 5314 | review required |
 | `v_cmp_ge_u64` | SIMD macro | no | 5329, 5346 | review required |
-| `v_cmp_gt_f16` | SIMD macro | no | 5361, 5386 | review required |
-| `v_cmp_gt_f32` | SIMD macro | no | 5408, 5433 | review required |
-| `v_cmp_gt_f64` | SIMD macro | no | 5455, 5480 | review required |
+| `v_cmp_gt_f16` | SIMD macro | yes | 5361, 5386 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_gt_f32` | SIMD macro | yes | 5408, 5433 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_gt_f64` | SIMD macro | yes | 5455, 5480 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_gt_i16` | SIMD macro | no | 5502, 5517 | review required |
 | `v_cmp_gt_i32` | SIMD macro | no | 5535, 5552 | review required |
 | `v_cmp_gt_i64` | SIMD macro | no | 5567, 5584 | review required |
 | `v_cmp_gt_u16` | SIMD macro | no | 5599, 5614 | review required |
 | `v_cmp_gt_u32` | SIMD macro | no | 5629, 5646 | review required |
 | `v_cmp_gt_u64` | SIMD macro | no | 5661, 5678 | review required |
-| `v_cmp_le_f16` | SIMD macro | no | 5693, 5718 | review required |
-| `v_cmp_le_f32` | SIMD macro | no | 5740, 5765 | review required |
-| `v_cmp_le_f64` | SIMD macro | no | 5787, 5812 | review required |
+| `v_cmp_le_f16` | SIMD macro | yes | 5693, 5718 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_le_f32` | SIMD macro | yes | 5740, 5765 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_le_f64` | SIMD macro | yes | 5787, 5812 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_le_i16` | SIMD macro | no | 5834, 5849 | review required |
 | `v_cmp_le_i32` | SIMD macro | no | 5867, 5884 | review required |
 | `v_cmp_le_i64` | SIMD macro | no | 5899, 5916 | review required |
 | `v_cmp_le_u16` | SIMD macro | no | 5931, 5946 | review required |
 | `v_cmp_le_u32` | SIMD macro | no | 5961, 5978 | review required |
 | `v_cmp_le_u64` | SIMD macro | no | 5993, 6010 | review required |
-| `v_cmp_lg_f16` | SIMD macro | no | 6025, 6050 | review required |
-| `v_cmp_lg_f32` | SIMD macro | no | 6072, 6097 | review required |
-| `v_cmp_lg_f64` | SIMD macro | no | 6119, 6144 | review required |
-| `v_cmp_lt_f16` | SIMD macro | no | 6166, 6191 | review required |
-| `v_cmp_lt_f32` | SIMD macro | no | 6213, 6238 | review required |
-| `v_cmp_lt_f64` | SIMD macro | no | 6260, 6285 | review required |
+| `v_cmp_lg_f16` | SIMD macro | yes | 6025, 6050 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_lg_f32` | SIMD macro | yes | 6072, 6097 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_lg_f64` | SIMD macro | yes | 6119, 6144 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_lt_f16` | SIMD macro | yes | 6166, 6191 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_lt_f32` | SIMD macro | yes | 6213, 6238 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_lt_f64` | SIMD macro | yes | 6260, 6285 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_lt_i16` | SIMD macro | no | 6307, 6322 | review required |
 | `v_cmp_lt_i32` | SIMD macro | no | 6340, 6357 | review required |
 | `v_cmp_lt_i64` | SIMD macro | no | 6372, 6389 | review required |
@@ -288,75 +288,75 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cmp_ne_u16` | SIMD macro | no | 6595, 6610 | review required |
 | `v_cmp_ne_u32` | SIMD macro | no | 6625, 6642 | review required |
 | `v_cmp_ne_u64` | SIMD macro | no | 6657, 6674 | review required |
-| `v_cmp_neq_f16` | SIMD macro | no | 6689, 6714 | review required |
-| `v_cmp_neq_f32` | SIMD macro | no | 6737, 6762 | review required |
-| `v_cmp_neq_f64` | SIMD macro | no | 6785, 6810 | review required |
-| `v_cmp_nge_f16` | SIMD macro | no | 6833, 6858 | review required |
-| `v_cmp_nge_f32` | SIMD macro | no | 6881, 6906 | review required |
-| `v_cmp_nge_f64` | SIMD macro | no | 6929, 6954 | review required |
-| `v_cmp_ngt_f16` | SIMD macro | no | 6977, 7002 | review required |
-| `v_cmp_ngt_f32` | SIMD macro | no | 7025, 7050 | review required |
-| `v_cmp_ngt_f64` | SIMD macro | no | 7073, 7098 | review required |
-| `v_cmp_nle_f16` | SIMD macro | no | 7121, 7146 | review required |
-| `v_cmp_nle_f32` | SIMD macro | no | 7169, 7194 | review required |
-| `v_cmp_nle_f64` | SIMD macro | no | 7217, 7242 | review required |
-| `v_cmp_nlg_f16` | SIMD macro | no | 7265, 7290 | review required |
-| `v_cmp_nlg_f32` | SIMD macro | no | 7313, 7338 | review required |
-| `v_cmp_nlg_f64` | SIMD macro | no | 7361, 7386 | review required |
-| `v_cmp_nlt_f16` | SIMD macro | no | 7409, 7434 | review required |
-| `v_cmp_nlt_f32` | SIMD macro | no | 7457, 7482 | review required |
-| `v_cmp_nlt_f64` | SIMD macro | no | 7505, 7530 | review required |
-| `v_cmp_o_f16` | SIMD macro | no | 7553, 7578 | review required |
-| `v_cmp_o_f32` | SIMD macro | no | 7600, 7625 | review required |
-| `v_cmp_o_f64` | SIMD macro | no | 7647, 7672 | review required |
-| `v_cmp_u_f16` | SIMD macro | no | 8012, 8037 | review required |
-| `v_cmp_u_f32` | SIMD macro | no | 8059, 8084 | review required |
-| `v_cmp_u_f64` | SIMD macro | no | 8106, 8131 | review required |
+| `v_cmp_neq_f16` | SIMD macro | yes | 6689, 6714 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_neq_f32` | SIMD macro | yes | 6737, 6762 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_neq_f64` | SIMD macro | yes | 6785, 6810 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nge_f16` | SIMD macro | yes | 6833, 6858 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nge_f32` | SIMD macro | yes | 6881, 6906 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nge_f64` | SIMD macro | yes | 6929, 6954 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_ngt_f16` | SIMD macro | yes | 6977, 7002 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_ngt_f32` | SIMD macro | yes | 7025, 7050 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_ngt_f64` | SIMD macro | yes | 7073, 7098 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nle_f16` | SIMD macro | yes | 7121, 7146 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nle_f32` | SIMD macro | yes | 7169, 7194 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nle_f64` | SIMD macro | yes | 7217, 7242 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nlg_f16` | SIMD macro | yes | 7265, 7290 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nlg_f32` | SIMD macro | yes | 7313, 7338 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nlg_f64` | SIMD macro | yes | 7361, 7386 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nlt_f16` | SIMD macro | yes | 7409, 7434 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nlt_f32` | SIMD macro | yes | 7457, 7482 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_nlt_f64` | SIMD macro | yes | 7505, 7530 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_o_f16` | SIMD macro | yes | 7553, 7578 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_o_f32` | SIMD macro | yes | 7600, 7625 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_o_f64` | SIMD macro | yes | 7647, 7672 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_u_f16` | SIMD macro | yes | 8012, 8037 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_u_f32` | SIMD macro | yes | 8059, 8084 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmp_u_f64` | SIMD macro | yes | 8106, 8131 | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_class_f16` | no direct policy detected | no | not found | review required |
 | `v_cmpx_class_f32` | no direct policy detected | no | not found | review required |
 | `v_cmpx_class_f64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_eq_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_eq_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_eq_f64` | no direct policy detected | no | not found | review required |
+| `v_cmpx_eq_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_eq_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_eq_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_eq_i16` | no direct policy detected | no | not found | review required |
 | `v_cmpx_eq_i32` | no direct policy detected | no | not found | review required |
 | `v_cmpx_eq_i64` | no direct policy detected | no | not found | review required |
 | `v_cmpx_eq_u16` | no direct policy detected | no | not found | review required |
 | `v_cmpx_eq_u32` | no direct policy detected | no | not found | review required |
 | `v_cmpx_eq_u64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_ge_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_ge_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_ge_f64` | no direct policy detected | no | not found | review required |
+| `v_cmpx_ge_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_ge_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_ge_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_ge_i16` | no direct policy detected | no | not found | review required |
 | `v_cmpx_ge_i32` | no direct policy detected | no | not found | review required |
 | `v_cmpx_ge_i64` | no direct policy detected | no | not found | review required |
 | `v_cmpx_ge_u16` | no direct policy detected | no | not found | review required |
 | `v_cmpx_ge_u32` | no direct policy detected | no | not found | review required |
 | `v_cmpx_ge_u64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_gt_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_gt_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_gt_f64` | no direct policy detected | no | not found | review required |
+| `v_cmpx_gt_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_gt_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_gt_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_gt_i16` | no direct policy detected | no | not found | review required |
 | `v_cmpx_gt_i32` | no direct policy detected | no | not found | review required |
 | `v_cmpx_gt_i64` | no direct policy detected | no | not found | review required |
 | `v_cmpx_gt_u16` | no direct policy detected | no | not found | review required |
 | `v_cmpx_gt_u32` | no direct policy detected | no | not found | review required |
 | `v_cmpx_gt_u64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_le_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_le_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_le_f64` | no direct policy detected | no | not found | review required |
+| `v_cmpx_le_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_le_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_le_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_le_i16` | no direct policy detected | no | not found | review required |
 | `v_cmpx_le_i32` | no direct policy detected | no | not found | review required |
 | `v_cmpx_le_i64` | no direct policy detected | no | not found | review required |
 | `v_cmpx_le_u16` | no direct policy detected | no | not found | review required |
 | `v_cmpx_le_u32` | no direct policy detected | no | not found | review required |
 | `v_cmpx_le_u64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_lg_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_lg_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_lg_f64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_lt_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_lt_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_lt_f64` | no direct policy detected | no | not found | review required |
+| `v_cmpx_lg_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_lg_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_lg_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_lt_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_lt_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_lt_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_lt_i16` | no direct policy detected | no | not found | review required |
 | `v_cmpx_lt_i32` | no direct policy detected | no | not found | review required |
 | `v_cmpx_lt_i64` | no direct policy detected | no | not found | review required |
@@ -369,30 +369,30 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cmpx_ne_u16` | no direct policy detected | no | not found | review required |
 | `v_cmpx_ne_u32` | no direct policy detected | no | not found | review required |
 | `v_cmpx_ne_u64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_neq_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_neq_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_neq_f64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nge_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nge_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nge_f64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_ngt_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_ngt_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_ngt_f64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nle_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nle_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nle_f64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nlg_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nlg_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nlg_f64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nlt_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nlt_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_nlt_f64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_o_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_o_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_o_f64` | no direct policy detected | no | not found | review required |
-| `v_cmpx_u_f16` | no direct policy detected | no | not found | review required |
-| `v_cmpx_u_f32` | no direct policy detected | no | not found | review required |
-| `v_cmpx_u_f64` | no direct policy detected | no | not found | review required |
+| `v_cmpx_neq_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_neq_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_neq_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nge_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nge_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nge_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_ngt_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_ngt_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_ngt_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nle_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nle_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nle_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nlg_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nlg_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nlg_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nlt_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nlt_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_nlt_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_o_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_o_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_o_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_u_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_u_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
+| `v_cmpx_u_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cndmask_b16` | no direct policy detected | no | not found | review required |
 | `v_cndmask_b32` | SIMD macro, output helper | no | 8153, 8169 | review required |
 | `v_cos_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | no | 8187, 8206 | review required |

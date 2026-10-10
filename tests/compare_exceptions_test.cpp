@@ -124,11 +124,11 @@ TEST(CompareExceptions, LooseSkipsReportingAndErrorsPreserveOutputs) {
   const uint32_t *ap[] = {a}, *bp[] = {b};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint32_t exceptions = 0x80000040;
-    EXPECT_EQ(goc_v_cmp_eq_f32(cpu, 1, 0, &result, ap, bp, &exceptions), GOC_SUCCESS);
+    EXPECT_EQ(goc_v_cmp_eq_f32_rdna4(cpu, 1, 0, &result, ap, bp, &exceptions), GOC_SUCCESS);
     EXPECT_EQ(exceptions, 0x80000040U);
     result = 0xdeadbeef;
-    EXPECT_EQ(goc_v_cmp_eq_f32(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, 1, 1ULL << 63, &result, ap, bp,
-                               &exceptions),
+    EXPECT_EQ(goc_v_cmp_eq_f32_rdna4(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, 1, 1ULL << 63, &result,
+                                     ap, bp, &exceptions),
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(result, 0xdeadbeefU);
     EXPECT_EQ(exceptions, 0x80000040U);
@@ -140,8 +140,9 @@ TEST(CompareExceptions, LooseSkipsReportingAndErrorsPreserveOutputs) {
     std::feraiseexcept(FE_INEXACT);
     int host_exceptions = std::fetestexcept(FE_ALL_EXCEPT);
     uint32_t exceptions = 0;
-    ASSERT_EQ(goc_v_cmp_eq_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 1, 0, &result, ap, bp, &exceptions),
-              GOC_SUCCESS);
+    ASSERT_EQ(
+        goc_v_cmp_eq_f32_rdna4(GOC_SEMANTICS_EXACT_EMPIRICAL, 1, 0, &result, ap, bp, &exceptions),
+        GOC_SUCCESS);
     EXPECT_EQ(exceptions, GOC_EXCEPTION_INVALID);
     EXPECT_EQ(std::fegetround(), rounding);
     EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), host_exceptions);
