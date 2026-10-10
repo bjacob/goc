@@ -140,3 +140,20 @@ TEST(ScalarPack, ErrorsAndHostFpState) {
     }
   }
 }
+
+TEST(ScalarPack, ConditionalSelectionUsesOnlySccBitZero) {
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (unsigned bit = 0; bit < 32; ++bit)
+      for (uint32_t low : {0U, 1U}) {
+        uint32_t input_scc = (1U << bit) | low;
+        uint32_t a = 0x7f800001, b = 0xff800001;
+        uint64_t a64 = 0x0123456789abcdefULL, b64 = ~a64;
+        uint32_t expected = (input_scc & 1) ? a : b;
+        uint64_t expected64 = (input_scc & 1) ? a64 : b64;
+        uint64_t flags = semantics | GOC_SEMANTICS_STRICT;
+        ASSERT_EQ(goc_s_cselect_b32(flags, 0, &a, a, b, input_scc), GOC_SUCCESS);
+        ASSERT_EQ(goc_s_cselect_b64(flags, 0, &b64, a64, b64, input_scc), GOC_SUCCESS);
+        EXPECT_EQ(a, expected);
+        EXPECT_EQ(b64, expected64);
+      }
+}

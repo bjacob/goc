@@ -5016,3 +5016,50 @@ tests pass. Production scalar Boolean/shift objects are byte-identical to the
 pre-change audit builds under both compilers (`scalar-bits-production-objects.json`).
 Logs use `scalar-bits-review-` in each build directory. The ledger records 327
 contracts; 482 in-scope mnemonics still need recorded reviews.
+
+
+## Scalar move and packing architecture contracts
+
+Reviewed eighteen instructions in [`scalar_move.cpp`](src/scalar_move.cpp) and
+[`scalar_pack.cpp`](src/scalar_pack.cpp): MOV/CMOV at both widths, MOVK/CMOVK,
+GETPC, four halfword packs, BITREPLICATE, CSELECT at both widths, and
+QUADMASK/WQM at both widths. Both ISA XML sets and per-architecture handlers
+were checked at rocjitsu revision `ffc144c564c`. All seventeen non-GETPC handlers
+delegate to the corresponding shared bodies. GETPC's architecture-specific
+handlers both add instruction size to PC; the ordinary four-byte form has no
+literal operand, consistent with GoC's PC+4 result. The review also inspected
+SCC reads and quad/bit spreading. Bodies, hashes, handler lines and XML
+descriptions are in `scalar-transfer-upstream-review.json` in
+`../goc-build/coverage-work/`.
+
+Conditional moves leave D untouched when SCC bit zero is clear; CSELECT chooses
+A when set, B otherwise. Higher caller-supplied SCC bits are ignored. MOVK and
+CMOVK sign-extend a sixteen-bit immediate. GETPC reads the supplied address by
+value and returns the next address with unsigned wrap, without writing PC.
+Packs place the selected A half low and B half high. BITREPLICATE duplicates
+each input bit into adjacent pairs. QUADMASK compresses each nonempty four-bit
+group into one low result bit; WQM fills that group. Only QUADMASK/WQM update
+SCC, based on nonzero results. Other instructions have no SCC output.
+
+These are exact integer/register operations in both semantics, with no EXEC
+predicate or host FP changes. Shared canonical names suffice. Inputs passed by
+value permit destination/source overlap; required D/SCC aliasing uses the public
+last-write order. All instruction flags are invalid, including when a conditional
+move would not write. The packing-family common validator permits guest denormal
+flags, which have no effect on these bit operations. These value APIs do not
+implement emulator register decoding or control flow.
+
+Existing tests cover raw basis bits, all immediate encodings, every quad-presence
+pattern, captured packed results/SCC, aliases, invalid flags, PC carry/wrap and
+host-state preservation. Immediate conditional moves now test high SCC bits
+set with both values of bit zero for every immediate. A new CSELECT test checks
+each SCC bit with both low-bit states, raw signaling-NaN-shaped words, and
+32-/64-bit destination/source aliases in both strict semantics. No production
+changes were needed.
+
+Validation: all 1,111 CTests pass in Clang and GCC Release builds, and all twelve
+scalar move, packing and guest-mode tests pass under ASan/UBSan. All nine
+audit-tool tests pass. Production move/packing objects are byte-identical to the
+pre-change builds under both compilers (`scalar-transfer-production-objects.json`).
+Logs use `scalar-transfer-review-` in each build directory. The ledger records
+345 contracts; 464 in-scope mnemonics still need recorded reviews.

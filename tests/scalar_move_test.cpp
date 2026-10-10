@@ -38,12 +38,12 @@ TEST(ScalarMove, RawBitsConditionsAndAliases) {
 
 TEST(ScalarMove, EveryImmediate) {
   for (uint32_t imm = 0; imm < 65536; ++imm)
-    for (uint32_t scc : {0U, 1U}) {
+    for (uint32_t scc : {0U, 1U, 0xfffffffeU, 0xffffffffU}) {
       uint32_t words[] = {0xaabbccdd, 0xdeadbeef, 0x12345678};
       uint32_t value = uint32_t(imm < 32768 ? int64_t(imm) : int64_t(imm) - 65536);
       ASSERT_EQ(goc_s_cmovk_i32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, words + 1, imm, scc),
                 GOC_SUCCESS);
-      ASSERT_EQ(words[1], scc ? value : 0xdeadbeefU);
+      ASSERT_EQ(words[1], (scc & 1) ? value : 0xdeadbeefU);
       ASSERT_EQ(goc_s_movk_i32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, words + 1, imm), GOC_SUCCESS);
       ASSERT_EQ(words[1], value);
       ASSERT_EQ(words[0], 0xaabbccddU);

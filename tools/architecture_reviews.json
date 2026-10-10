@@ -556,5 +556,44 @@
       "s_xor_b32",
       "s_xor_b64"
     ]
+  },
+  {
+    "heading": "Scalar move and packing architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/scalar_move_test.cpp",
+    "mnemonics": [
+      "s_cmov_b32",
+      "s_cmov_b64",
+      "s_cmovk_i32",
+      "s_mov_b32",
+      "s_mov_b64",
+      "s_movk_i32"
+    ]
+  },
+  {
+    "heading": "Scalar move and packing architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/scalar_pack_test.cpp",
+    "mnemonics": [
+      "s_bitreplicate_b64_b32",
+      "s_cselect_b32",
+      "s_cselect_b64",
+      "s_pack_hh_b32_b16",
+      "s_pack_hl_b32_b16",
+      "s_pack_lh_b32_b16",
+      "s_pack_ll_b32_b16",
+      "s_quadmask_b32",
+      "s_quadmask_b64",
+      "s_wqm_b32",
+      "s_wqm_b64"
+    ]
+  },
+  {
+    "heading": "Scalar move and packing architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/guest_mode_test.cpp",
+    "mnemonics": [
+      "s_getpc_b64"
+    ]
   }
 ]

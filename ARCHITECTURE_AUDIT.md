@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-327 in-scope mnemonics have explicit contract-review records in
+345 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 482 in-scope mnemonics need a recorded review.
+The remaining 464 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -101,7 +101,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_bitcmp0_b64` | no direct policy detected | no | 846 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_bitcmp1_b32` | no direct policy detected | no | 854 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_bitcmp1_b64` | no direct policy detected | no | 862 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
-| `s_bitreplicate_b64_b32` | no direct policy detected | no | 870 | review required |
+| `s_bitreplicate_b64_b32` | no direct policy detected | no | 870 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_bitset0_b32` | no direct policy detected | no | 883 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_bitset0_b64` | no direct policy detected | no | 891 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_bitset1_b32` | no direct policy detected | no | 899 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
@@ -112,9 +112,9 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_cls_i32_i64` | no direct policy detected | no | 988 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_clz_i32_u32` | no direct policy detected | no | 1001 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_clz_i32_u64` | no direct policy detected | no | 1011 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
-| `s_cmov_b32` | no direct policy detected | no | 1022 | review required |
-| `s_cmov_b64` | no direct policy detected | no | 1029 | review required |
-| `s_cmovk_i32` | no direct policy detected | no | 1036 | review required |
+| `s_cmov_b32` | no direct policy detected | no | 1022 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
+| `s_cmov_b64` | no direct policy detected | no | 1029 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
+| `s_cmovk_i32` | no direct policy detected | no | 1036 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_cmp_eq_i32` | no direct policy detected | no | 1057 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_eq_u32` | no direct policy detected | no | 1063 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_eq_u64` | no direct policy detected | no | 1069 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
@@ -129,12 +129,12 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_cmp_lg_u64` | no direct policy detected | no | 1188 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_lt_i32` | no direct policy detected | no | 1210 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_lt_u32` | no direct policy detected | no | 1216 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
-| `s_cselect_b32` | no direct policy detected | no | 1452 | review required |
-| `s_cselect_b64` | no direct policy detected | no | 1460 | review required |
+| `s_cselect_b32` | no direct policy detected | no | 1452 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
+| `s_cselect_b64` | no direct policy detected | no | 1460 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_ctz_i32_b32` | no direct policy detected | no | 1468 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_ctz_i32_b64` | no direct policy detected | no | 1478 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_denorm_mode` | no direct policy detected | no | 1586 | review required |
-| `s_getpc_b64` | no direct policy detected | no | not found | review required |
+| `s_getpc_b64` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_getreg_b32` | no direct policy detected | yes | not found | review required |
 | `s_lshl1_add_u32` | no direct policy detected | no | 1748 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-boolean-and-shift-architecture-contracts) |
 | `s_lshl2_add_u32` | no direct policy detected | no | 1760 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-boolean-and-shift-architecture-contracts) |
@@ -148,9 +148,9 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_max_u32` | no direct policy detected | no | 1857 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_min_i32` | no direct policy detected | no | 1917 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_min_u32` | no direct policy detected | no | 1944 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
-| `s_mov_b32` | no direct policy detected | no | 1985 | review required |
-| `s_mov_b64` | no direct policy detected | no | 1991 | review required |
-| `s_movk_i32` | no direct policy detected | no | 1997 | review required |
+| `s_mov_b32` | no direct policy detected | no | 1985 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
+| `s_mov_b64` | no direct policy detected | no | 1991 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
+| `s_movk_i32` | no direct policy detected | no | 1997 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_movreld_b32` | no direct policy detected | no | not found | review required |
 | `s_movreld_b64` | no direct policy detected | no | not found | review required |
 | `s_movrels_b32` | no direct policy detected | no | not found | review required |
@@ -180,19 +180,19 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_or_not1_saveexec_b64` | no direct policy detected | no | 2221 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_or_saveexec_b32` | no direct policy detected | no | 2231 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_or_saveexec_b64` | no direct policy detected | no | 2241 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
-| `s_pack_hh_b32_b16` | no direct policy detected | no | 2308 | review required |
-| `s_pack_hl_b32_b16` | no direct policy detected | no | 2316 | review required |
-| `s_pack_lh_b32_b16` | no direct policy detected | no | 2324 | review required |
-| `s_pack_ll_b32_b16` | no direct policy detected | no | 2332 | review required |
-| `s_quadmask_b32` | no direct policy detected | no | 2340 | review required |
-| `s_quadmask_b64` | no direct policy detected | no | 2355 | review required |
+| `s_pack_hh_b32_b16` | no direct policy detected | no | 2308 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
+| `s_pack_hl_b32_b16` | no direct policy detected | no | 2316 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
+| `s_pack_lh_b32_b16` | no direct policy detected | no | 2324 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
+| `s_pack_ll_b32_b16` | no direct policy detected | no | 2332 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
+| `s_quadmask_b32` | no direct policy detected | no | 2340 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
+| `s_quadmask_b64` | no direct policy detected | no | 2355 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_round_mode` | no direct policy detected | no | 2426 | review required |
 | `s_setreg_b32` | no direct policy detected | yes | not found | review required |
 | `s_setreg_imm32_b32` | no direct policy detected | yes | not found | review required |
 | `s_sext_i32_i16` | no direct policy detected | no | 2571 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_sext_i32_i8` | no direct policy detected | no | 2581 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
-| `s_wqm_b32` | no direct policy detected | no | 2739 | review required |
-| `s_wqm_b64` | no direct policy detected | no | 2753 | review required |
+| `s_wqm_b32` | no direct policy detected | no | 2739 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
+| `s_wqm_b64` | no direct policy detected | no | 2753 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_xnor_b32` | no direct policy detected | no | 2767 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-boolean-and-shift-architecture-contracts) |
 | `s_xnor_b64` | no direct policy detected | no | 2775 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-boolean-and-shift-architecture-contracts) |
 | `s_xnor_saveexec_b32` | no direct policy detected | no | 2784 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
