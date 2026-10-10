@@ -9,7 +9,7 @@ operand, encoding, or guest mode.
 
 ## Follow-up completion checklist
 
-The active follow-up covers the actionable gaps below. Historical findings and
+The completed follow-up covers the actionable gaps below. Historical findings and
 timings later in this document describe the initial audit pass.
 
 - [x] SIMD RDNA3 IU4/IU8 WMMA in both widths, all signs and final CLAMP.
@@ -21,7 +21,7 @@ timings later in this document describe the initial audit pass.
   results where completion would require forbidden reverse-engineering.
 - [x] Assess scalar routing/copy opportunities and justify any retained scalar
   paths by their operation, rather than merely their current implementation.
-- [ ] Final modifier/mask/global-state regression validation and updated results.
+- [x] Final modifier/mask/global-state regression validation and updated results.
 
 ## Findings and changes
 
@@ -426,5 +426,21 @@ Validation of the final DIV_FIXUP change: **1,190 tests pass** in each of Clang,
 GCC, and the no-SIMD build. **32 DIV_FIXUP/global-state tests pass under
 ASan/UBSan**, and all ten audit-tooling tests pass. Regenerated architecture and
 state-naming reports are unchanged (587 shared-mnemonic reviews, 962 resolved
-state-output signatures). A full ASan/UBSan run is still in progress; the final
-checklist item remains open until its result is inspected.
+state-output signatures). The full ASan/UBSan run also passed **all 1,190 tests**
+in 279 seconds, including the exhaustive DPP cases and benchmark smoke tests.
+
+
+**Disposition: all actionable audit items are complete within the agreed scope.**
+The final production implementation is `127ecf1`; the closing documentation
+commit changes no production code. Final full-suite results are 1,190/1,190 in
+Clang, GCC, Clang without specialized SIMD, and ASan/UBSan. The corresponding
+logs are `coverage-work/audit-state-tests.log` in each out-of-tree build directory;
+tooling results are in `goc-build/coverage-work/audit-final-tooling-tests.log`.
+Local implementation commits are `3d50b6d`, `85c45ad`, `b3c65a7`, `dcea424`,
+`df562cb`, and `127ecf1`, following the initial audit/fixes at `1d0b6b6`.
+
+Completion includes the documented measured scalar exceptions and explicit
+unsupported exact-state policies; it does not turn those limitations into a claim
+of universal SIMD or complete exception emulation. No new empirical numerical
+model was reverse-engineered, no host FP-environment setter was introduced, and
+no sparse-mask specialization was added.
