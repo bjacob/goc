@@ -18,6 +18,7 @@ add_library(goc STATIC
   rcp_iflag.cpp
   pseudo_scalar.cpp
   float_compare.cpp
+  constant_compare.cpp
   integer_compare.cpp
   class.cpp
   interp16.cpp

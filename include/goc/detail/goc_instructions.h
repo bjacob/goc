@@ -1284,6 +1284,59 @@ int goc_v_cmpx_nlt_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
                        const uint32_t *const *a, const uint32_t *const *b,
                        uint32_t *excp_flag_user);
 
+// RDNA3 constant integer comparisons. F writes zero; T writes participating
+// EXEC after DPP filtering. CMP produces the condition mask; CMPX produces
+// replacement EXEC in d. A/B values are ignored and their pointers may be null.
+// Both semantics are exact. I32/U32 support DPP8/DPP16; I64/U64 reject DPP.
+// All other instruction_flags are rejected. d is required even for zero EXEC.
+int goc_v_cmp_f_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmp_t_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmpx_f_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmpx_t_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmp_f_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmp_t_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmpx_f_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmpx_t_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmp_f_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmp_t_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmpx_f_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmpx_t_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmp_f_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmp_t_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmpx_f_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cmpx_t_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b);
+
 // Integer comparisons write a scalar condition mask (CMP) or replacement EXEC
 // mask (CMPX) to d. Inactive bits are zero, including for empty EXEC. d is always
 // required and may alias any input word. Zero EXEC permits null VGPR pointers.

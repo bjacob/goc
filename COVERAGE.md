@@ -54,7 +54,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV B32/B64 and MOVK/CMOVK implemented for both architectures; exhaustive immediate/condition tests | Relative addressing and hardware-register access; SAVEEXEC/WREXEC implemented at both register widths |
 | Vector/register routing | READLANE/WRITELANE/READFIRSTLANE now shared for Wave32/64, including lane-index wrapping and zero EXEC; existing DPP/permlane/move coverage | Swaps, relative moves, permlane64, broader cross-width behavior |
-| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests | RDNA3 always-true/false forms; Wave64; architecture-specific floating policies |
+| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests | RDNA3 integer true/false forms now implemented; floating constant forms, Wave64, and architecture-specific floating policies remain |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
@@ -100,3 +100,9 @@ a green test suite that exercises only the current implementation.
   old/new destination distinction, zero EXEC, optional EXEC reporting and output
   alias priority. All 688 tests pass on Clang/GCC; both new tests pass under
   ASan/UBSan. Missing in-scope API names: 88.
+- Constant integer comparisons: sixteen RDNA3 CMP/CMPX F/T forms added for
+  I32/U32/I64/U64 operands in Wave32. Predicate evaluation does not read operands;
+  true results still apply DPP output filtering. Independent DPP references check
+  all new forms, CPU selections, semantics, masks and validation. All 689 tests
+  pass on Clang/GCC; the new test passes under ASan/UBSan. Missing API names: 72.
+  Floating F/T exception behavior and Wave64 comparison APIs remain open.

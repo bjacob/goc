@@ -18,8 +18,8 @@ are included. SALU/VALU register/control boundaries are not silently excluded.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 88
-- in, API present: 716
+- in, API absent: 72
+- in, API present: 732
 - out, API absent: 578
 - review, API absent: 14
 
@@ -882,10 +882,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cmp_f_f16` | yes | — | in | — | — | missing API |
 | `v_cmp_f_f32` | yes | — | in | — | — | missing API |
 | `v_cmp_f_f64` | yes | — | in | — | — | missing API |
-| `v_cmp_f_i32` | yes | — | in | — | — | missing API |
-| `v_cmp_f_i64` | yes | — | in | — | — | missing API |
-| `v_cmp_f_u32` | yes | — | in | — | — | missing API |
-| `v_cmp_f_u64` | yes | — | in | — | — | missing API |
+| `v_cmp_f_i32` | yes | — | in | `goc_v_cmp_f_i32` | — | API present; semantic audit pending |
+| `v_cmp_f_i64` | yes | — | in | `goc_v_cmp_f_i64` | — | API present; semantic audit pending |
+| `v_cmp_f_u32` | yes | — | in | `goc_v_cmp_f_u32` | — | API present; semantic audit pending |
+| `v_cmp_f_u64` | yes | — | in | `goc_v_cmp_f_u64` | — | API present; semantic audit pending |
 | `v_cmp_ge_f16` | yes | yes | in | `goc_v_cmp_ge_f16` | — | API present; semantic audit pending |
 | `v_cmp_ge_f32` | yes | yes | in | `goc_v_cmp_ge_f32` | — | API present; semantic audit pending |
 | `v_cmp_ge_f64` | yes | yes | in | `goc_v_cmp_ge_f64` | — | API present; semantic audit pending |
@@ -955,10 +955,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cmp_t_f16` | yes | — | in | — | `v_cmp_tru_f16` | missing API |
 | `v_cmp_t_f32` | yes | — | in | — | `v_cmp_tru_f32` | missing API |
 | `v_cmp_t_f64` | yes | — | in | — | `v_cmp_tru_f64` | missing API |
-| `v_cmp_t_i32` | yes | — | in | — | `v_cmp_tru_i32` | missing API |
-| `v_cmp_t_i64` | yes | — | in | — | `v_cmp_tru_i64` | missing API |
-| `v_cmp_t_u32` | yes | — | in | — | `v_cmp_tru_u32` | missing API |
-| `v_cmp_t_u64` | yes | — | in | — | `v_cmp_tru_u64` | missing API |
+| `v_cmp_t_i32` | yes | — | in | `goc_v_cmp_t_i32` | `v_cmp_tru_i32` | API present; semantic audit pending |
+| `v_cmp_t_i64` | yes | — | in | `goc_v_cmp_t_i64` | `v_cmp_tru_i64` | API present; semantic audit pending |
+| `v_cmp_t_u32` | yes | — | in | `goc_v_cmp_t_u32` | `v_cmp_tru_u32` | API present; semantic audit pending |
+| `v_cmp_t_u64` | yes | — | in | `goc_v_cmp_t_u64` | `v_cmp_tru_u64` | API present; semantic audit pending |
 | `v_cmp_u_f16` | yes | yes | in | `goc_v_cmp_u_f16` | — | API present; semantic audit pending |
 | `v_cmp_u_f32` | yes | yes | in | `goc_v_cmp_u_f32` | — | API present; semantic audit pending |
 | `v_cmp_u_f64` | yes | yes | in | `goc_v_cmp_u_f64` | — | API present; semantic audit pending |
@@ -977,10 +977,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cmpx_f_f16` | yes | — | in | — | — | missing API |
 | `v_cmpx_f_f32` | yes | — | in | — | — | missing API |
 | `v_cmpx_f_f64` | yes | — | in | — | — | missing API |
-| `v_cmpx_f_i32` | yes | — | in | — | — | missing API |
-| `v_cmpx_f_i64` | yes | — | in | — | — | missing API |
-| `v_cmpx_f_u32` | yes | — | in | — | — | missing API |
-| `v_cmpx_f_u64` | yes | — | in | — | — | missing API |
+| `v_cmpx_f_i32` | yes | — | in | `goc_v_cmpx_f_i32` | — | API present; semantic audit pending |
+| `v_cmpx_f_i64` | yes | — | in | `goc_v_cmpx_f_i64` | — | API present; semantic audit pending |
+| `v_cmpx_f_u32` | yes | — | in | `goc_v_cmpx_f_u32` | — | API present; semantic audit pending |
+| `v_cmpx_f_u64` | yes | — | in | `goc_v_cmpx_f_u64` | — | API present; semantic audit pending |
 | `v_cmpx_ge_f16` | yes | yes | in | `goc_v_cmpx_ge_f16` | — | API present; semantic audit pending |
 | `v_cmpx_ge_f32` | yes | yes | in | `goc_v_cmpx_ge_f32` | — | API present; semantic audit pending |
 | `v_cmpx_ge_f64` | yes | yes | in | `goc_v_cmpx_ge_f64` | — | API present; semantic audit pending |
@@ -1050,10 +1050,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cmpx_t_f16` | yes | — | in | — | `v_cmpx_tru_f16` | missing API |
 | `v_cmpx_t_f32` | yes | — | in | — | `v_cmpx_tru_f32` | missing API |
 | `v_cmpx_t_f64` | yes | — | in | — | `v_cmpx_tru_f64` | missing API |
-| `v_cmpx_t_i32` | yes | — | in | — | `v_cmpx_tru_i32` | missing API |
-| `v_cmpx_t_i64` | yes | — | in | — | `v_cmpx_tru_i64` | missing API |
-| `v_cmpx_t_u32` | yes | — | in | — | `v_cmpx_tru_u32` | missing API |
-| `v_cmpx_t_u64` | yes | — | in | — | `v_cmpx_tru_u64` | missing API |
+| `v_cmpx_t_i32` | yes | — | in | `goc_v_cmpx_t_i32` | `v_cmpx_tru_i32` | API present; semantic audit pending |
+| `v_cmpx_t_i64` | yes | — | in | `goc_v_cmpx_t_i64` | `v_cmpx_tru_i64` | API present; semantic audit pending |
+| `v_cmpx_t_u32` | yes | — | in | `goc_v_cmpx_t_u32` | `v_cmpx_tru_u32` | API present; semantic audit pending |
+| `v_cmpx_t_u64` | yes | — | in | `goc_v_cmpx_t_u64` | `v_cmpx_tru_u64` | API present; semantic audit pending |
 | `v_cmpx_u_f16` | yes | yes | in | `goc_v_cmpx_u_f16` | — | API present; semantic audit pending |
 | `v_cmpx_u_f32` | yes | yes | in | `goc_v_cmpx_u_f32` | — | API present; semantic audit pending |
 | `v_cmpx_u_f64` | yes | yes | in | `goc_v_cmpx_u_f64` | — | API present; semantic audit pending |

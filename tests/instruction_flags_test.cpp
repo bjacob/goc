@@ -134,6 +134,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
   for (auto mnemonic :
        {"v_cmp_class_f16", "v_cmpx_class_f16", "v_cmp_class_f32", "v_cmpx_class_f32"})
     dpp_scalar_output |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
+  for (auto mnemonic : {"v_cmp_f_i32", "v_cmp_t_i32", "v_cmp_f_u32", "v_cmp_t_u32", "v_cmpx_f_i32",
+                        "v_cmpx_t_i32", "v_cmpx_f_u32", "v_cmpx_t_u32"})
+    dpp_scalar_output |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   supports_dpp |= dpp_scalar_output;
   for (unsigned bit = 32; bit < 64; ++bit)
     for (Mask exec_mask : {Mask(0), Mask(~Mask(0))}) {
