@@ -307,3 +307,53 @@ TEST(HalfUnaryExact, FrexpEveryEncodingAndDenormalPolicy) {
                 }
               }
 }
+
+TEST(HalfUnaryExact, SfuLiteralDenormalOverflowAndSpecialValues) {
+  // Finite expectations use powers of four, so the borrowed approximation has
+  // an exactly representable result (apart from reciprocal overflow).
+  const uint16_t inputs[] = {0,      1,      0x0400, 0x3c00, 0x4400, 0x7c00,
+                             0x8000, 0x8001, 0xbc00, 0xfc00, 0x7c01, 0xfe23};
+  const uint16_t results[3][12] = {
+      {0x7c00, 0x7c00, 0x7400, 0x3c00, 0x3400, 0, 0xfc00, 0xfc00, 0xbc00, 0x8000, 0x7e01, 0xfe23},
+      {0x7c00, 0x6c00, 0x5800, 0x3c00, 0x3800, 0, 0xfc00, 0xfe00, 0xfe00, 0xfe00, 0x7e01, 0xfe23},
+      {0, 0x0c00, 0x2000, 0x3c00, 0x4000, 0x7c00, 0x8000, 0xfe00, 0xfe00, 0xfe00, 0x7e01, 0xfe23}};
+  for (unsigned op = 0; op < 3; ++op)
+    for (bool rdna3 : {false, true})
+      for (bool wide : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned policy = 0; policy < 8; ++policy)
+            for (bool saturate : {false, true}) {
+              const uint64_t flags =
+                  cpu | exact | policy_flags(policy) | (saturate ? GOC_FP16_OVFL : 0);
+              const uint64_t exec_mask = wide ? 0x9192a5a571abcdefULL : 0x71abcdef;
+              uint32_t words[64], expected[64];
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                unsigned i = lane % 12;
+                expected[lane] = words[lane] = (uint32_t(inputs[i]) << 16) | 0x1234U;
+                if (!((exec_mask >> lane) & 1))
+                  continue;
+                unsigned source = (policy & 1) && (i == 1 || i == 7) ? i - 1 : i;
+                uint16_t result = results[op][source];
+                if (rdna3 && !(policy & 4) && i == 10)
+                  result = 0x7c01;
+                if (saturate && (inputs[i] & 0x7fff) < 0x7c00 && (result & 0x7fff) == 0x7c00)
+                  result = (result & 0x8000) | 0x7bff;
+                expected[lane] = (uint32_t(result) << 16) | 0x1234U;
+              }
+              ASSERT_EQ(invoke(op + 6, rdna3, wide, flags, exec_mask,
+                               GOC_ALU_HIGH_A | GOC_ALU_HIGH_D, words, words, nullptr),
+                        GOC_SUCCESS);
+              EXPECT_TRUE(std::equal(words, words + 64, expected))
+                  << op << '/' << rdna3 << '/' << wide << '/' << policy << '/' << saturate;
+
+              if (op == 0) {
+                // 1 / 32768 is a half subnormal: output policy, not input
+                // policy, decides whether that exactly representable result survives.
+                std::fill(words, words + 64, 0x12347800U);
+                ASSERT_EQ(invoke(6, rdna3, wide, flags, 1, 0, words, words, nullptr), GOC_SUCCESS);
+                EXPECT_EQ(words[0], policy & 2 ? 0x12340000U : 0x12340200U);
+                EXPECT_TRUE(std::all_of(words + 1, words + 64,
+                                        [](uint32_t value) { return value == 0x12347800U; }));
+              }
+            }
+}

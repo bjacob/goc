@@ -1311,5 +1311,25 @@
       "v_fract_f16",
       "v_fract_f32"
     ]
+  },
+  {
+    "heading": "Reciprocal and square-root architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/unary_exact_test.cpp",
+    "mnemonics": [
+      "v_rcp_f32",
+      "v_rsq_f32",
+      "v_sqrt_f32"
+    ]
+  },
+  {
+    "heading": "Reciprocal and square-root architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/half_unary_exact_test.cpp",
+    "mnemonics": [
+      "v_rcp_f16",
+      "v_rsq_f16",
+      "v_sqrt_f16"
+    ]
   }
 ]
