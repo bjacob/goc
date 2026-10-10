@@ -7192,7 +7192,8 @@ model, not a newly inferred hardware model.
 
 No production code changed, so this review has no runtime performance impact.
 
-The adjacent FP16 mantissa review remains open: upstream scalar handlers widen
+At this stage the adjacent FP16 mantissa review remained open (resolved in the
+FP16 review below): upstream scalar handlers widen
 FP16 before calling `frexp_f32` with the FP32 denormal policy, while GoC's exact
 half-width normalization applies its guest input-flush flag directly to FP16
 subnormals. This difference needs reconciliation before recording FP16 as
@@ -7203,3 +7204,65 @@ Release, and Clang ASan/UBSan; all nine inventory/audit tooling tests pass.
 Test logs are `coverage-work/frexp-mant-contract-tests.log` in each build
 directory. The ledger now records 682 of 809 in-scope mnemonic contracts;
 this is a review count, not an overall completion percentage.
+
+## FP16 FREXP mantissa contract review
+
+Reviewed `v_frexp_mant_f16` against rocjitsu revision `ffc144c564c`'s shared and
+architecture-specific VOP1/VOP3 handlers, including true16 and DPP wrappers,
+`try_execute_unary_vop3_fp16_simd`, `util::frexp_mant_f32_simd`,
+`amdgpu::frexp_f32`, and the FP16 widening/narrowing helpers. Both architectures
+use the same numerical model. The RDNA3/RDNA4 VOP3 instruction descriptions
+specify a half-precision significand; architecture differences in output
+modifiers still require separate API names.
+
+The previous review's denormal discrepancy is resolved by following the actual
+borrowed model: rocjitsu's scalar **and** SIMD paths widen FP16 to FP32 before
+extracting its mantissa. All nonzero finite half inputs, including subnormals,
+become normal FP32 values. Neither path flushes the half input first; the
+FP32 denormal policy cannot change those widened values. Removed GoC's added
+half-input flushing from this operation in both scalar and AVX2 paths. This is
+an upstream-model compatibility correction, not new hardware characterization.
+It does not establish independent hardware evidence for every denormal mode.
+
+- All guest input/output-denormal policies preserve the normalized significand.
+  Output-denormal mode still controls whether RDNA3 OMOD is enabled. IEEE mode
+  also disables RDNA3 OMOD; RDNA4 OMOD is independent of these settings.
+- Both semantics preserve signed zero and infinity before modifiers. Exact
+  NaNs retain sign/payload and set the quiet bit, independent of IEEE mode.
+  Finite nonzero results have magnitude in `[0.5, 1)`. ABS precedes NEG; OMOD
+  and CLAMP follow normalization. RDNA3 DX10-clamp-off preserves NaNs through
+  CLAMP; RDNA4 rejects that guest flag. No finite normalized result can
+  overflow FP16 under the supported power-of-two OMODs, so FP16_OVFL adds no
+  finite-result behavior here.
+- Both wave widths support A/D half selectors, preservation of the other D
+  half and inactive lanes, whole-register aliases, and DPP8/DPP16 routing.
+  Loose AVX2 remains eight lanes wide; exact uses integer normalization.
+  Guest directed rounding is unsupported. Non-null exact optional reporting
+  remains unsupported, including empty EXEC; loose paths leave state alone.
+- Added exhaustive testing of all 65,536 half encodings, every input/output
+  denormal policy, both architectures, wave widths and semantics, every
+  available CPU level, all four source/destination-half selections, and
+  in-place output. Finite results use an independent double-precision FREXP
+  oracle; exact NaN payloads are checked without canonicalization. Updated
+  the existing DPP/modifier/alias test to preserve FREXP subnormals while
+  retaining input flushing for the other unary operations.
+
+Performance versus `9bb5e60`: 16 loose cases (RDNA3/RDNA4, Wave32/Wave64,
+scalar/AVX2, default or HIGH_A/HIGH_D/NEG_A), seven alternating paired runs
+pinned to CPU 2, with at least 50 ms of thread CPU time per sample. Median
+change is **1.32% faster**, ranging from **13.20% faster to 0.68% slower**.
+AVX2 cases range from 1.34% faster to 0.15% slower. An initial removal of the
+flushing condition changed scalar code generation unfavorably; explicitly
+separating normal, subnormal, zero and special-value cases recovered that
+performance and avoids a conditional shift in the normal case. No new helper
+or dispatch specialization was needed. These are isolated instruction timings,
+not a whole-program claim. Artifacts are under
+`../goc-build/coverage-work/half-frexp-contract-performance/`; `summary.txt`
+and `timings.json` describe the final source.
+
+Final validation: Clang 21 Release and GCC 15 Release each pass all **1,158**
+tests; Clang ASan/UBSan passes all **21** targeted half-unary, DPP and
+instruction-flag tests. All nine inventory/audit tooling tests pass. Final
+logs are `coverage-work/half-frexp-contract-final-{build,tests}.log` in each
+build directory. The review ledger now records 683 in-scope mnemonics, with
+126 remaining; this is not a completeness percentage.

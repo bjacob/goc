@@ -1275,5 +1275,13 @@
     "mnemonics": [
       "v_frexp_mant_f32"
     ]
+  },
+  {
+    "heading": "FP16 FREXP mantissa contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/half_unary_exact_test.cpp",
+    "mnemonics": [
+      "v_frexp_mant_f16"
+    ]
   }
 ]

@@ -76,15 +76,17 @@ template <goc::Unary Op, bool Rdna3 = false, bool PreserveClampNan = false>
       if ((flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && (value & 0x7fff) < 0x400)
         value &= 0x8000;
     } else if constexpr (Op == goc::Unary::FrexpMant) {
-      // Same integer normalization as rocjitsu's FREXP, with half-width fields.
+      // rocjitsu widens half inputs before FREXP, so half subnormals survive
+      // every guest denormal policy. Normalize directly in half-width fields.
       if (magnitude >= 0x7c00)
         value = input | (magnitude > 0x7c00 ? 0x200 : 0);
-      else if (!magnitude || (magnitude < 0x400 && (flags & GOC_FP_FLUSH_INPUT_DENORMALS)))
-        value = input & 0x8000;
-      else {
-        unsigned shift = magnitude < 0x400 ? goc::bit_count_zero<false>(magnitude) - 21 : 0;
+      else if (magnitude >= 0x400)
+        value = (input & 0x83ff) | 0x3800;
+      else if (magnitude) {
+        unsigned shift = goc::bit_count_zero<false>(magnitude) - 21;
         value = (input & 0x8000) | 0x3800 | ((magnitude << shift) & 0x3ff);
-      }
+      } else
+        value = input;
     } else {
       constexpr auto rounding = Op == goc::Unary::Trunc   ? goc::IntegralRound::Trunc
                                 : Op == goc::Unary::Ceil  ? goc::IntegralRound::Ceil

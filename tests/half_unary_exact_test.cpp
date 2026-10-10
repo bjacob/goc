@@ -3,6 +3,7 @@
 #include "dpp_reference.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
+#include "half_reference.h"
 #include "half_unary_reference.h"
 
 #include <algorithm>
@@ -91,7 +92,7 @@ TEST(HalfUnaryExact, ArchitecturePoliciesDppSelectorsAndAliases) {
                       continue;
                     uint32_t word = source < 0 ? 0 : input[source];
                     uint16_t half = uint16_t(word >> a_shift);
-                    if ((policy & 1) && (half & 0x7fff) < 0x400) {
+                    if (op != 4 && (policy & 1) && (half & 0x7fff) < 0x400) {
                       word &= ~(65535U << a_shift);
                       word |= uint32_t(half & 0x8000) << a_shift;
                     }
@@ -265,4 +266,44 @@ TEST(HalfUnaryExact, RoundingNanPayloadsIgnoreIeeeMode) {
                   << op << '/' << rdna3 << '/' << wide << '/' << policy << '/' << lane;
             }
           }
+}
+
+TEST(HalfUnaryExact, FrexpEveryEncodingAndDenormalPolicy) {
+  // rocjitsu widens to FP32 before FREXP: even the smallest half subnormal
+  // is normal at that width. Neither input nor output flushing affects it.
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (bool precise : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned policy = 0; policy < 4; ++policy)
+            for (unsigned halves = 0; halves < 4; ++halves)
+              for (unsigned base = 0; base < 65536; base += wide ? 64 : 32) {
+                const unsigned lanes = wide ? 64 : 32;
+                const unsigned a_shift = halves & 1 ? 16 : 0, d_shift = halves & 2 ? 16 : 0;
+                uint32_t input[64], expected[64];
+                for (unsigned lane = 0; lane < lanes; ++lane) {
+                  const uint16_t half = uint16_t(base + lane);
+                  input[lane] = (uint32_t(half) << a_shift) | (0x1234U << (16 - a_shift));
+                  uint16_t result;
+                  if ((half & 0x7fff) >= 0x7c00)
+                    result = half | ((half & 0x7fff) > 0x7c00 ? 0x200 : 0);
+                  else {
+                    int exponent;
+                    result = goc_test::half_bits(std::frexp(goc_test::half_value(half), &exponent));
+                  }
+                  expected[lane] =
+                      (input[lane] & ~(65535U << d_shift)) | (uint32_t(result) << d_shift);
+                }
+                const uint64_t flags = cpu | policy_flags(policy) | (precise ? exact : 0);
+                const uint64_t mode =
+                    (a_shift ? GOC_ALU_HIGH_A : 0) | (d_shift ? GOC_ALU_HIGH_D : 0);
+                ASSERT_EQ(invoke(4, rdna3, wide, flags, UINT64_MAX, mode, input, input, nullptr),
+                          GOC_SUCCESS);
+                for (unsigned lane = 0; lane < lanes; ++lane) {
+                  if (precise)
+                    ASSERT_EQ(input[lane], expected[lane]) << base + lane << '/' << policy;
+                  else
+                    compare_half(input[lane], expected[lane], d_shift);
+                }
+              }
 }

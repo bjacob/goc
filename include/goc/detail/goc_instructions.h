@@ -5749,6 +5749,9 @@ int goc_v_fract_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fla
 int goc_v_fract_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
+// FREXP preserves half subnormals independently of guest denormal flags,
+// following the borrowed widen-to-FP32 model. Exact NaNs retain their sign
+// and payload with the quiet bit set. Output modifiers apply afterward.
 int goc_v_frexp_mant_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
 
