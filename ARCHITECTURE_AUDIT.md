@@ -400,8 +400,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cvt_f16_u16` | SIMD macro, output helper | no | 8649, 8676 | review required |
 | `v_cvt_f32_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 8703, 8722 | review required |
 | `v_cvt_f32_f64` | SIMD macro, output helper | no | 8755, 8771 | review required |
-| `v_cvt_f32_i32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 8787, 8804 | review required |
-| `v_cvt_f32_u32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 8832, 8849 | review required |
+| `v_cvt_f32_i32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8787, 8804 | review required |
+| `v_cvt_f32_u32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8832, 8849 | review required |
 | `v_cvt_f32_ubyte0` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 8877, 8894 | review required |
 | `v_cvt_f32_ubyte1` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 8922, 8939 | review required |
 | `v_cvt_f32_ubyte2` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 8967, 8984 | review required |
@@ -411,7 +411,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cvt_f64_u32` | SIMD macro | no | 9121, 9137 | review required |
 | `v_cvt_floor_i32_f32` | SIMD macro, output helper | no | 9153, 9180 | review required |
 | `v_cvt_i16_f16` | SIMD macro, output helper | no | 9277, 9303 | review required |
-| `v_cvt_i32_f32` | SIMD macro, output helper | no | 9342, 9366 | review required |
+| `v_cvt_i32_f32` | SIMD macro, output helper | yes | 9342, 9366 | review required |
 | `v_cvt_i32_f64` | SIMD macro, output helper | no | 9398, 9424 | review required |
 | `v_cvt_i32_i16` | SIMD macro, output helper | no | 9450 | review required |
 | `v_cvt_nearest_i32_f32` | SIMD macro, output helper | no | 9468, 9498 | review required |
@@ -429,7 +429,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cvt_pk_u16_u32` | SIMD macro, output helper | no | 9860 | review required |
 | `v_cvt_pk_u8_f32` | output helper | no | 9885 | review required |
 | `v_cvt_u16_f16` | SIMD macro, output helper | no | 10141, 10165 | review required |
-| `v_cvt_u32_f32` | SIMD macro, output helper | no | 10202, 10224 | review required |
+| `v_cvt_u32_f32` | SIMD macro, output helper | yes | 10202, 10224 | review required |
 | `v_cvt_u32_f64` | SIMD macro, output helper | no | 10254, 10278 | review required |
 | `v_cvt_u32_u16` | SIMD macro, output helper | no | 10302 | review required |
 | `v_div_fixup_f16` | IEEE mode, OMOD, SIMD macro, architecture query | no | 10316 | review required |

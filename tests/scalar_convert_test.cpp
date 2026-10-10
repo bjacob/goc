@@ -126,12 +126,12 @@ TEST(ScalarConvert, TruncationBoundariesAcrossScalarAndVector) {
       uint32_t *d = output;
       ASSERT_EQ(goc_s_cvt_i32_f32(cpu, 0, &scalar, sample[0], nullptr), GOC_SUCCESS);
       EXPECT_EQ(scalar, sample[1]);
-      ASSERT_EQ(goc_v_cvt_i32_f32(cpu, UINT32_MAX, 0, &d, &a, nullptr), GOC_SUCCESS);
+      ASSERT_EQ(goc_v_cvt_i32_f32_rdna4(cpu, UINT32_MAX, 0, &d, &a, nullptr), GOC_SUCCESS);
       for (uint32_t word : output)
         EXPECT_EQ(word, sample[1]);
       ASSERT_EQ(goc_s_cvt_u32_f32(cpu, 0, &scalar, sample[0], nullptr), GOC_SUCCESS);
       EXPECT_EQ(scalar, sample[2]);
-      ASSERT_EQ(goc_v_cvt_u32_f32(cpu, UINT32_MAX, 0, &d, &a, nullptr), GOC_SUCCESS);
+      ASSERT_EQ(goc_v_cvt_u32_f32_rdna4(cpu, UINT32_MAX, 0, &d, &a, nullptr), GOC_SUCCESS);
       for (uint32_t word : output)
         EXPECT_EQ(word, sample[2]);
     }

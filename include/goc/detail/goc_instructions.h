@@ -2936,21 +2936,40 @@ int goc_v_cvt_f32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instru
 // zero; nearest/floor forms map them to the signed limit selected by the NaN sign
 // after source modifiers. CLAMP is accepted but does not affect integer results.
 // Truncating forms also accept OMOD without numeric scaling. GPU exceptions are
-// not modeled.
+// not modeled. Non-null exact reporting is unsupported on both architectures;
+// loose calls leave optional state untouched. Unsuffixed truncating forms use
+// RDNA3 TRAPSTS, while _rdna4 forms use EXCP_FLAG_USER.
+// Integer-to-FP32 unsuffixed forms select RDNA3: OMOD is ignored with IEEE mode
+// or preserved output denormals. _rdna4 forms apply it independently. Guest IEEE
+// and input/output-denormal flags are accepted; the integer-result conversions
+// ignore them, following rocjitsu's conversion models. Host nearest-even rounding
+// and enabled denormals remain required for loose floating arithmetic.
 // All six forms support DPP8/DPP16 on A.
 
 int goc_v_cvt_f32_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a);
 
+int goc_v_cvt_f32_i32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a);
+
 int goc_v_cvt_f32_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a);
 
+int goc_v_cvt_f32_u32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a);
+
 // Convert toward zero.
 int goc_v_cvt_i32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                      uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                      uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_cvt_i32_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_cvt_u32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                      uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                      uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_cvt_u32_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 // Round to nearest integer, breaking ties toward positive infinity.
 int goc_v_cvt_nearest_i32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -2964,14 +2983,26 @@ int goc_v_cvt_floor_i32_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruc
 // and loose semantics. Optional-state restrictions remain unchanged.
 int goc_v_cvt_f32_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_f32_i32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a);
 int goc_v_cvt_f32_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_f32_u32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a);
 int goc_v_cvt_i32_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                             uint32_t *const *d, const uint32_t *const *a,
-                             uint32_t *excp_flag_user);
+                             uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_cvt_i32_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user);
 int goc_v_cvt_u32_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                             uint32_t *const *d, const uint32_t *const *a,
-                             uint32_t *excp_flag_user);
+                             uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_cvt_u32_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user);
 int goc_v_cvt_nearest_i32_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                      uint32_t *const *d, const uint32_t *const *a);
 int goc_v_cvt_floor_i32_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,

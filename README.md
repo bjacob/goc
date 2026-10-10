@@ -1288,6 +1288,15 @@ four AVX2 arithmetic paths (1.9–5.1× scalar speed) and 8.3–12.5 ns for all 
 AVX-512 paths (3.5–10.4×), including combined modifiers. Measurements use seven
 pinned-core samples of at least 10 ms each.
 
+FP32/integer conversion APIs distinguish architecture policy where needed.
+`v_cvt_f32_i32` and `v_cvt_f32_u32` select RDNA3: output scaling is disabled
+when output denormals are preserved or IEEE mode is set. Their `_rdna4`
+variants scale independently. Truncating `v_cvt_i32_f32`/`v_cvt_u32_f32`
+use native `trapsts` versus `excp_flag_user` outputs, with optional exact
+reporting unsupported. NEAREST/FLOOR remain shared. All six retain loose
+scalar/SIMD paths, DPP, and Wave64 forms; guest IEEE and denormal flags are
+accepted without changing the host FP environment.
+
 FP32 `FRACT` computes `x - floor(x)` and caps it at `0x3f7fffff` before
 output modifiers, so tiny negative inputs stay strictly below one. Scalar/v3
 paths support all 32 modifiers, with literal boundary and signed-zero tests.

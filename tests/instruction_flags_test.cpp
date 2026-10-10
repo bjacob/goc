@@ -187,40 +187,43 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_mad_i64_i32" || base_name == "goc_v_cvt_f16_i16" ||
         base_name == "goc_v_cvt_f16_u16" || base_name == "goc_v_cvt_i16_f16" ||
         base_name == "goc_v_cvt_u16_f16" || base_name == "goc_v_cvt_f16_f32" ||
-        base_name == "goc_v_cvt_f32_f16" || base_name == "goc_v_cvt_f32_i32" ||
-        base_name == "goc_v_cvt_f32_u32" || base_name == "goc_v_cvt_i32_f32" ||
-        base_name == "goc_v_cvt_u32_f32" || base_name == "goc_v_cvt_nearest_i32_f32" ||
-        base_name == "goc_v_cvt_floor_i32_f32" || base_name == "goc_v_cvt_pk_rtz_f16_f32" ||
-        base_name == "goc_v_cvt_pk_i16_f32" || base_name == "goc_v_cvt_pk_u16_f32" ||
-        base_name == "goc_v_cvt_pk_norm_i16_f32" || base_name == "goc_v_cvt_pk_norm_u16_f32" ||
-        base_name == "goc_v_cvt_pk_norm_i16_f16" || base_name == "goc_v_cvt_pk_norm_u16_f16" ||
-        base_name == "goc_v_cvt_norm_i16_f16" || base_name == "goc_v_cvt_norm_u16_f16" ||
-        base_name == "goc_v_cvt_pk_fp8_f32" || base_name == "goc_v_cvt_pk_bf8_f32" ||
-        base_name == "goc_v_cvt_sr_fp8_f32" || base_name == "goc_v_cvt_sr_bf8_f32" ||
-        base_name == "goc_v_cvt_f32_fp8" || base_name == "goc_v_cvt_f32_bf8" ||
-        base_name == "goc_v_cvt_pk_f32_fp8" || base_name == "goc_v_cvt_pk_f32_bf8" ||
-        base_name == "goc_v_cvt_f32_ubyte0" || base_name == "goc_v_cvt_f32_ubyte1" ||
-        base_name == "goc_v_cvt_f32_ubyte2" || base_name == "goc_v_cvt_f32_ubyte3" ||
-        base_name == "goc_v_cvt_off_f32_i4" || base_name == "goc_v_cvt_pk_u8_f32" ||
-        base_name == "goc_v_frexp_exp_i32_f32" || base_name == "goc_v_frexp_exp_i32_f64" ||
-        base_name == "goc_v_cvt_i32_i16" || base_name == "goc_v_cvt_u32_u16" ||
-        base_name == "goc_v_cvt_pk_i16_i32" || base_name == "goc_v_cvt_pk_u16_u32" ||
-        base_name == "goc_v_sat_pk_u8_i16" || base_name == "goc_v_pack_b32_f16" ||
-        base_name == "goc_v_sad_u8" || base_name == "goc_v_sad_hi_u8" ||
-        base_name == "goc_v_sad_u16" || base_name == "goc_v_sad_u32" ||
-        base_name == "goc_v_msad_u8" || base_name == "goc_v_qsad_pk_u16_u8" ||
-        base_name == "goc_v_mqsad_pk_u16_u8" || base_name == "goc_v_mqsad_u32_u8" ||
-        base_name == "goc_v_rcp_iflag_f32_rdna4" || base_name == "goc_v_trunc_f32_rdna4" ||
-        base_name == "goc_v_ceil_f32_rdna4" || base_name == "goc_v_rndne_f32_rdna4" ||
-        base_name == "goc_v_frexp_mant_f32_rdna4" || base_name == "goc_v_floor_f32_rdna4" ||
-        base_name == "goc_v_sqrt_f32_rdna4" || base_name == "goc_v_rcp_f32_rdna4" ||
-        base_name == "goc_v_rsq_f32_rdna4" || base_name == "goc_v_exp_f32_rdna4" ||
-        base_name == "goc_v_fract_f32_rdna4" || base_name == "goc_v_log_f32_rdna4" ||
-        base_name == "goc_v_frexp_exp_i32_f32_rdna4" || base_name == "goc_v_trunc_f16_rdna4" ||
-        base_name == "goc_v_ceil_f16_rdna4" || base_name == "goc_v_rndne_f16_rdna4" ||
-        base_name == "goc_v_floor_f16_rdna4" || base_name == "goc_v_fract_f16_rdna4" ||
-        base_name == "goc_v_rcp_f16_rdna4" || base_name == "goc_v_rsq_f16_rdna4" ||
-        base_name == "goc_v_sqrt_f16_rdna4" || base_name == "goc_v_frexp_mant_f16_rdna4")
+        base_name == "goc_v_cvt_f32_f16" ||
+        (base_name == "goc_v_cvt_f32_i32" || base_name == "goc_v_cvt_f32_i32_rdna4") ||
+        (base_name == "goc_v_cvt_f32_u32" || base_name == "goc_v_cvt_f32_u32_rdna4") ||
+        (base_name == "goc_v_cvt_i32_f32" || base_name == "goc_v_cvt_i32_f32_rdna4") ||
+        (base_name == "goc_v_cvt_u32_f32" || base_name == "goc_v_cvt_u32_f32_rdna4") ||
+        base_name == "goc_v_cvt_nearest_i32_f32" || base_name == "goc_v_cvt_floor_i32_f32" ||
+        base_name == "goc_v_cvt_pk_rtz_f16_f32" || base_name == "goc_v_cvt_pk_i16_f32" ||
+        base_name == "goc_v_cvt_pk_u16_f32" || base_name == "goc_v_cvt_pk_norm_i16_f32" ||
+        base_name == "goc_v_cvt_pk_norm_u16_f32" || base_name == "goc_v_cvt_pk_norm_i16_f16" ||
+        base_name == "goc_v_cvt_pk_norm_u16_f16" || base_name == "goc_v_cvt_norm_i16_f16" ||
+        base_name == "goc_v_cvt_norm_u16_f16" || base_name == "goc_v_cvt_pk_fp8_f32" ||
+        base_name == "goc_v_cvt_pk_bf8_f32" || base_name == "goc_v_cvt_sr_fp8_f32" ||
+        base_name == "goc_v_cvt_sr_bf8_f32" || base_name == "goc_v_cvt_f32_fp8" ||
+        base_name == "goc_v_cvt_f32_bf8" || base_name == "goc_v_cvt_pk_f32_fp8" ||
+        base_name == "goc_v_cvt_pk_f32_bf8" || base_name == "goc_v_cvt_f32_ubyte0" ||
+        base_name == "goc_v_cvt_f32_ubyte1" || base_name == "goc_v_cvt_f32_ubyte2" ||
+        base_name == "goc_v_cvt_f32_ubyte3" || base_name == "goc_v_cvt_off_f32_i4" ||
+        base_name == "goc_v_cvt_pk_u8_f32" || base_name == "goc_v_frexp_exp_i32_f32" ||
+        base_name == "goc_v_frexp_exp_i32_f64" || base_name == "goc_v_cvt_i32_i16" ||
+        base_name == "goc_v_cvt_u32_u16" || base_name == "goc_v_cvt_pk_i16_i32" ||
+        base_name == "goc_v_cvt_pk_u16_u32" || base_name == "goc_v_sat_pk_u8_i16" ||
+        base_name == "goc_v_pack_b32_f16" || base_name == "goc_v_sad_u8" ||
+        base_name == "goc_v_sad_hi_u8" || base_name == "goc_v_sad_u16" ||
+        base_name == "goc_v_sad_u32" || base_name == "goc_v_msad_u8" ||
+        base_name == "goc_v_qsad_pk_u16_u8" || base_name == "goc_v_mqsad_pk_u16_u8" ||
+        base_name == "goc_v_mqsad_u32_u8" || base_name == "goc_v_rcp_iflag_f32_rdna4" ||
+        base_name == "goc_v_trunc_f32_rdna4" || base_name == "goc_v_ceil_f32_rdna4" ||
+        base_name == "goc_v_rndne_f32_rdna4" || base_name == "goc_v_frexp_mant_f32_rdna4" ||
+        base_name == "goc_v_floor_f32_rdna4" || base_name == "goc_v_sqrt_f32_rdna4" ||
+        base_name == "goc_v_rcp_f32_rdna4" || base_name == "goc_v_rsq_f32_rdna4" ||
+        base_name == "goc_v_exp_f32_rdna4" || base_name == "goc_v_fract_f32_rdna4" ||
+        base_name == "goc_v_log_f32_rdna4" || base_name == "goc_v_frexp_exp_i32_f32_rdna4" ||
+        base_name == "goc_v_trunc_f16_rdna4" || base_name == "goc_v_ceil_f16_rdna4" ||
+        base_name == "goc_v_rndne_f16_rdna4" || base_name == "goc_v_floor_f16_rdna4" ||
+        base_name == "goc_v_fract_f16_rdna4" || base_name == "goc_v_rcp_f16_rdna4" ||
+        base_name == "goc_v_rsq_f16_rdna4" || base_name == "goc_v_sqrt_f16_rdna4" ||
+        base_name == "goc_v_frexp_mant_f16_rdna4")
       name = base_name.c_str();
   } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));
@@ -279,6 +282,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
                         "v_rcp_f16_rdna4", "v_rsq_f16_rdna4", "v_sqrt_f16_rdna4"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : goc_test::half_unary_names)
+    supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
+  for (auto mnemonic :
+       {"v_cvt_f32_i32_rdna4", "v_cvt_f32_u32_rdna4", "v_cvt_i32_f32_rdna4", "v_cvt_u32_f32_rdna4"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : goc_test::conversion32_names)
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;

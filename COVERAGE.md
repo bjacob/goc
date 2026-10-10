@@ -10,8 +10,9 @@ An API declaration is not a completed audit. Existing RDNA4 tests do not prove
 RDNA3 compatibility. Equal XML descriptions do not prove identical arithmetic.
 A family is complete only after reviewing its instruction results, modifiers,
 wave widths, aliasing, implicit register outputs, and numerical semantics against
-both targets. Exact support follows empirical evidence; unsupported exact/global
-state requests must fail honestly under the documented contracts. Loose SIMD
+both targets. Exact support is limited to ports of existing rocjitsu implementations; new hardware
+reverse-engineering is out of scope. Unsupported exact/global-state requests must
+fail honestly under the documented contracts. Loose SIMD
 paths must retain their existing performance and may skip optional state outputs.
 
 The [cross-architecture review queue](ARCHITECTURE_AUDIT.md) now identifies a
@@ -55,7 +56,7 @@ be treated as verified shared semantics. Width completeness does not close this 
 | RDNA3 WMMA | All six mnemonics, both widths, exact rocjitsu GFX11 model; `wmma_replicated_exact_test.cpp`; 103 DOT2 captures and 28 packed matrices | Scalar implementations; verify inventory integration as other APIs evolve |
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting remains unsupported; ordinary forms support both wave widths |
-| FP32 unary | All eleven floating-result operations plus FREXP_EXP have exact RDNA3/RDNA4 results and captured RDNA4 reporting, with separate architecture policies and SIMD | Native RDNA3 reporting; FP16/FP64 counterparts |
+| FP32 unary | Ten floating-result operations plus FREXP_EXP retain rocjitsu-derived numerical models; FRACT is loose-only. Architecture policies are split; new inferred reporting was removed | Finish modifier review and upstream-port availability review for FP16/FP64; unavailable exact reporting is an explicit limitation, not a reverse-engineering task |
 | Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms, Wave64 and SIMD dispatch | Exact IEEE-mode NaN policies and exception reporting |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
@@ -3375,3 +3376,51 @@ unary/FRACT/FMA/FREXP/rounding/global-state tests. `clang-format` and
 `git diff --check` pass. Logs are in `../goc-build/coverage-work/`
 (`remove-models-final-*`), `../goc-build-gcc/` and
 `../goc-build-sanitize/` (`remove-models-*`). The autonomous goal remains paused.
+
+## FP32/integer conversion architecture review
+
+- Reviewed all six `conversion32.cpp` operations against rocjitsu revision
+  `ffc144c564c`, `generated/shared/execute_shared.h` (`execute_v_cvt_f32_i32`,
+  `execute_v_cvt_f32_u32`, `execute_v_cvt_i32_f32`, `execute_v_cvt_u32_f32`,
+  `execute_v_cvt_nearest_i32_f32`, `execute_v_cvt_floor_i32_f32`) and
+  `shared/fp_mode.h::effective_omod`. No hardware characterization was performed.
+- Split integer-to-FP32 APIs: unsuffixed RDNA3 disables OMOD when IEEE is set or
+  output denormals are preserved; `_rdna4` retains unconditional OMOD. IEEE and
+  input/output-denormal guest flags are now accepted. Host nearest-even arithmetic
+  remains required; guest rounding modes are not newly implemented.
+- Truncating float-to-integer results share the existing saturation implementation,
+  with RDNA3 `trapsts` and RDNA4 `excp_flag_user` APIs at both wave widths. Exact
+  reporting remains unsupported. NEAREST/FLOOR retain shared names and no optional
+  state output. Integer results ignore the accepted guest denormal/IEEE flags;
+  the upstream bodies do not flush inputs or apply OMOD to integer results.
+- Existing RDNA4 scalar/SIMD kernels and captured regression tests are preserved.
+  Rocjitsu's generated NEAREST/FLOOR NaN-to-zero behavior differs from the existing
+  RDNA4 signed-limit fixture. This change does not port that discrepancy or claim
+  exact support: all six instructions remain loose-only. No new exact model or
+  exception classifier was added.
+- New tests cover all low modifiers and eight guest policies, Wave32/Wave64,
+  scalar/v3/v4/Zen4 selections, DPP8/DPP16, sparse masks, unaligned buffers,
+  in-place aliases, destination guards, error atomicity, optional-state opt-out,
+  and unchanged host FP controls. Literal `3` with `mul:2` distinguishes RDNA3's
+  result `3` from RDNA4's `6` when output denormals are preserved.
+
+Validation: all 1,030 CTests pass with Clang 21 Release and GCC 15 Release;
+20 targeted ASan/UBSan tests pass. Logs are `conversion32-tests4.log` under
+`../goc-build/coverage-work/`, and `conversion32-tests2.log` under the GCC and
+sanitizer build directories.
+
+Performance: seven alternating before/after samples per case, pinned to CPU 2,
+using thread CPU time and at least 20 ms per sample. Across six operations and
+plain/modified forms, median time changes are -0.08% scalar, +0.02% AVX2 and
++0.26% AVX-512. The worst case, modified unsigned-to-FP32 AVX-512, changes from
+3.654 ns to 3.861 ns (+5.7%). Both SIMD object files are byte-identical before
+and after; disassembly of the corresponding dispatcher differs only in the
+accepted-flags immediate. The small absolute change may reflect binary layout,
+but it is measured and not dismissed as noise. Raw samples and medians are in
+`../goc-build/coverage-work/conversion32-performance.json`. No arithmetic kernel
+or per-lane reporting work was added.
+
+Next architecture review: FP16 conversions. Rocjitsu's `cvt_f32_f16` helper
+applies guest input flushing and architecture-dependent signaling-NaN quieting;
+its `effective_f16_omod` gates RDNA3 scaling. The existing GoC conversion family
+still needs that review and implementation; this slice does not close it.

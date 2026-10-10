@@ -18,11 +18,12 @@
 namespace {
 
 using Fn = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
-const Fn functions[] = {goc_v_cvt_f32_i32, goc_v_cvt_f32_u32,         goc_v_cvt_i32_f32,
-                        goc_v_cvt_u32_f32, goc_v_cvt_nearest_i32_f32, goc_v_cvt_floor_i32_f32};
+const Fn functions[] = {goc_v_cvt_f32_i32_rdna4,   goc_v_cvt_f32_u32_rdna4,
+                        goc_v_cvt_i32_f32_rdna4,   goc_v_cvt_u32_f32_rdna4,
+                        goc_v_cvt_nearest_i32_f32, goc_v_cvt_floor_i32_f32};
 
-const Fn wave64[] = {goc_v_cvt_f32_i32_wave64,         goc_v_cvt_f32_u32_wave64,
-                     goc_v_cvt_i32_f32_wave64,         goc_v_cvt_u32_f32_wave64,
+const Fn wave64[] = {goc_v_cvt_f32_i32_rdna4_wave64,   goc_v_cvt_f32_u32_rdna4_wave64,
+                     goc_v_cvt_i32_f32_rdna4_wave64,   goc_v_cvt_u32_f32_rdna4_wave64,
                      goc_v_cvt_nearest_i32_f32_wave64, goc_v_cvt_floor_i32_f32_wave64};
 
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t mode, const uint32_t *input) {
