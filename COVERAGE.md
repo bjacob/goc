@@ -1474,3 +1474,25 @@ native Wave64 capture or performance claim is made. The width queue is 31 APIs.
 
 Validation: all 843 tests pass on Clang 21 and GCC 15 Release. All five
 Wave64 LDEXP and instruction-flag tests pass under ASan/UBSan.
+
+
+## Wave64 exact DIV_FMAS and condition masks
+
+Added FP32 and FP64 DIV_FMAS Wave64 APIs. Their condition input is a 64-bit
+per-lane mask, split together with EXEC when reusing the existing exact
+scalar/v3/v4 kernels. Optional exception flags accumulate only after both
+halves consume all operands. Loose mode skips reporting; exact null reporting
+retains SIMD dispatch. FP64 operands retain two-VGPR low/high layouts.
+
+Tests replay existing Cartesian/random result digests across 64 lanes and
+exception digests with only lane 63 active. Captured rounding-boundary results
+check mixed lower/upper condition bits independently. Other tests cover crossed
+and shared destination words, guards, upper-only/sparse EXEC, shared inputs,
+all modifiers under host rounding modes, loose opt-out and a reporting pointer
+aliased with an upper input. This reuses existing hardware evidence rather
+than claiming native Wave64 captures or new throughput. The width queue is
+29 APIs.
+
+Validation: all 850 tests pass on Clang 21 and GCC 15 Release. All eight
+Wave64 DIV_FMAS and instruction-flag tests pass under ASan/UBSan, including
+the complete result/exception corpora and reporting-alias witness.

@@ -839,7 +839,10 @@ Pinned DPP measurements take 18.2–23.9 ns on v3 (2.08–2.76× scalar) and
 
 Division fused post-scaling covers `v_div_fmas_f32` and `v_div_fmas_f64`, with
 loose and empirical exact semantics borrowed from rocjitsu. The API takes the
-implicit wave32 VCC condition mask by value after A/B/C. Set lane bits select
+implicit VCC condition mask by value after A/B/C: `uint32_t` for Wave32 and
+`uint64_t` for Wave64. Both widths share scalar/v3/v4 numerical kernels;
+Wave64 defers optional exception accumulation until all input reads finish.
+Set lane bits select
 post-scaling by 2^64 or 2^128 when C's modified encoded exponent exceeds its bias,
 or by the reciprocal power otherwise. Scaling happens before the final rounding,
 avoiding intermediate overflow and double rounding at subnormal boundaries.

@@ -53,6 +53,35 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+template <unsigned Width>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+               uint64_t condition, uint32_t *excp_flag_user) {
+  if (int error = run<Width>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr, 0, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  bool report = excp_flag_user && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
+  // Consume both halves before updating a potentially aliased global register.
+  uint32_t exceptions = 0;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint32_t *dest[Width / 32];
+    const uint32_t *av[Width / 32], *bv[Width / 32], *cv[Width / 32];
+    for (unsigned reg = 0; reg < Width / 32; ++reg) {
+      dest[reg] = d[reg] + half * 32;
+      av[reg] = a[reg] + half * 32;
+      bv[reg] = b[reg] + half * 32;
+      cv[reg] = c[reg] + half * 32;
+    }
+    if (int error = run<Width>(flags, uint32_t(exec_mask >> (half * 32)), mode, dest, av, bv, cv,
+                               uint32_t(condition >> (half * 32)), report ? &exceptions : nullptr))
+      return error;
+  }
+  if (report)
+    *excp_flag_user |= exceptions;
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_div_fmas_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -73,4 +102,26 @@ int goc_v_div_fmas_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run<64>(flags, exec_mask, instruction_flags, d, a, b, c, condition, excp_flag_user);
+}
+
+int goc_v_div_fmas_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint64_t condition, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run_wave64<32>(flags, exec_mask, instruction_flags, d, a, b, c, condition, excp_flag_user);
+}
+
+int goc_v_div_fmas_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint64_t condition, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run_wave64<64>(flags, exec_mask, instruction_flags, d, a, b, c, condition, excp_flag_user);
 }

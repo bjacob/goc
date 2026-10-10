@@ -2256,6 +2256,17 @@ int goc_v_div_fmas_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c, uint32_t condition, uint32_t *excp_flag_user);
 
+// Wave64 uses one condition bit per lane and retains the same numerical,
+// modifier and optional exception-accumulation contracts.
+int goc_v_div_fmas_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint64_t condition, uint32_t *excp_flag_user);
+int goc_v_div_fmas_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint64_t condition, uint32_t *excp_flag_user);
+
 // Division pre-scaling. A must equal B (denominator) or C (numerator) after
 // source NEG modifiers. Writes the pre-scaled value to D and the per-lane
 // post-scaling condition to condition (the wave32 SDST operand).
