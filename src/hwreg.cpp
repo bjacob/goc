@@ -192,6 +192,87 @@ int goc_s_getreg_b32_rdna4(uint64_t flags, uint64_t instruction_flags, uint32_t 
   return GOC_SUCCESS;
 }
 
+int goc_s_setreg_b32(uint64_t flags, uint64_t instruction_flags, uint16_t hwreg, uint32_t a,
+                     uint32_t status_in, uint32_t *mode, uint32_t *status, uint32_t *trapsts,
+                     uint32_t *flush_ib, uint64_t *flat_scratch) {
+  unsigned id = hwreg & 63;
+  bool privileged = status_in & (1U << 5);
+  if ((flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE &&
+      ((id == 14 && flush_ib) ||
+       ((id == 20 || id == 21) && privileged && (flat_scratch || status))))
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  if (int error = goc::validate(flags, uint32_t(instruction_flags), true))
+    return error;
+
+  unsigned offset = (hwreg >> 6) & 31;
+  unsigned width = (hwreg >> 11) + 1;
+  uint32_t field_mask = uint32_t(((1ULL << width) - 1) << offset);
+  uint32_t *destination = nullptr;
+  uint32_t writable = 0;
+  switch (id) {
+  case 1:
+    destination = mode;
+    // FP/DX10/IEEE/LOD/trap controls [11:0], EXCP_EN [19:12,21], FP16_OVFL
+    // [23], DISABLE_PERF [27]. Exception-enable index 8 (MODE bit 20) is reserved.
+    writable = 0x08afffff;
+    break;
+  case 2:
+    destination = status;
+    // Table 5's privileged-writable SCC/priorities, EXPORT_RDY, HALT,
+    // SKIP_EXPORT, CDBG, LDS_PARAM_RDY, MUST_EXPORT and SCRATCH_EN fields.
+    writable = privileged ? 0x2a34211f : 0;
+    break;
+  case 3:
+    destination = trapsts;
+    // EXCP [8:0], SAVECTX/ILLEGAL/ADDR_WATCH/BUFFER_OOB/HOST_TRAP/
+    // WAVE_START/WAVE_END [18:10], TRAP_AFTER_INST [20].
+    writable = 0x0017fdff;
+    break;
+  case 14:
+  case 20:
+  case 21:
+    // FLUSH_IB and scratch effects are not guessed; null opts out and loose
+    // semantics skip unavailable reporting. Unprivileged scratch writes are no-ops.
+    return GOC_SUCCESS;
+  // Allocation/status, PC, SH_MEM_BASES, TBA, snapshots, IDs and the clock.
+  // TBA is read-only in the ISA manual; rocjitsu's privileged descriptor differs.
+  case 5:
+  case 6:
+  case 7:
+  case 8:
+  case 9:
+  case 13:
+  case 15:
+  case 16:
+  case 17:
+  case 18:
+  case 19:
+  case 23:
+  case 24:
+  case 25:
+  case 26:
+  case 27:
+  case 28:
+  case 29:
+    return GOC_SUCCESS;
+  default:
+    return GOC_ERROR_INVALID_FLAGS;
+  }
+  uint32_t mask = field_mask & writable;
+  if (mask && destination)
+    *destination = (*destination & ~mask) | ((a << offset) & mask);
+  return GOC_SUCCESS;
+}
+
+int goc_s_setreg_imm32_b32(uint64_t flags, uint64_t instruction_flags, uint16_t hwreg,
+                           uint32_t immediate, uint32_t status_in, uint32_t *mode, uint32_t *status,
+                           uint32_t *trapsts, uint32_t *flush_ib, uint64_t *flat_scratch) {
+  return goc_s_setreg_b32(flags, instruction_flags, hwreg, immediate, status_in, mode, status,
+                          trapsts, flush_ib, flat_scratch);
+}
+
 int goc_s_setreg_b32_rdna4(uint64_t flags, uint64_t instruction_flags, uint16_t hwreg, uint32_t a,
                            uint32_t status, uint32_t *mode, uint32_t *state_priv,
                            uint32_t *excp_flag_priv, uint32_t *excp_flag_user, uint32_t *trap_ctrl,

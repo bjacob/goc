@@ -1,10 +1,10 @@
 # Hardware-register implementation audit
 
 This is an implementation checklist, not a coverage-completion claim.
-`S_SETREG_B32` and `S_SETREG_IMM32_B32` have RDNA4 APIs. Both architectures now
-have `S_GETREG_B32` APIs for extraction from supplied wave-visible register
-values. RDNA3 writes, exact scratch writes, and snapshot reset/unlock reporting
-remain unimplemented.
+Both architectures have `S_GETREG_B32`, `S_SETREG_B32`, and
+`S_SETREG_IMM32_B32` APIs. Reads extract fields from supplied wave-visible
+register values. Exact scratch writes, RDNA3 `FLUSH_IB` reporting, and RDNA4
+snapshot reset/unlock reporting remain unimplemented.
 
 Evidence inspected: AMD RDNA3 and RDNA4 ISA manuals, sections 3.4 and 16.2;
 `amdgpu_isa_rdna3.xml` and `amdgpu_isa_rdna4.xml`, `OPR_HWREG`; and rocjitsu
@@ -171,8 +171,10 @@ after both initializations and every update in this capture.
 These results do **not** establish RDNA3 masks, privilege filtering, read-only
 register writes, snapshot ownership/unlock, or instruction-buffer flush effects.
 RDNA3 `MODE.EXCP_EN` also needs care: its field spans bits 12–21, but the
-manual's individual enable list omits bit 20. A union of named field widths is
-not sufficient evidence that every bit in that union is writable.
+individual enable list omits bit 20. Section 3.4.9 explicitly calls exception-
+enable index 8 reserved, resolving the ambiguity: physical MODE bit 20 is
+excluded from the implemented writable mask. A union of broad field widths
+alone would incorrectly include it. This is manual evidence, not an RDNA3 capture.
 
 Local capture: `../goc-build/coverage-work/hwreg-report-captures/capture.bin`.
 SHA256: `399b3ca4c4f9eacfe1bc7b94c6d3ff6c575f2ec8855566dae46d972019b0e1a8`.
@@ -255,6 +257,43 @@ not a claim about how hardware executes an invalid selector. Tests cover all
 unselected/reserved-bit preservation, null outputs, validation and unchanged
 host FP controls. The two user-register paths also match captured hardware
 hashes. GETREG snapshot side effects remain outside this implemented write path.
+
+### Implemented RDNA3 writes
+
+`goc_s_setreg_b32` and `goc_s_setreg_imm32_b32` are the unsuffixed RDNA3 APIs.
+They expose by-value `status_in` for privilege and separate trailing native
+outputs `mode`, `status`, `trapsts`, `flush_ib`, and 64-bit `flat_scratch`.
+The literal form delegates to the same decoder. All 24 RDNA3 XML IDs are
+recognized; unknown IDs return an API validation error.
+
+Implemented masks come from RDNA3 manual sections 3.4.1, 3.4.2 and 3.4.9:
+
+| Register | Writable mask | Permission |
+|---|---|---|
+| `MODE` | `0x08afffff` | User or trap handler; bit 20 reserved |
+| `STATUS` | `0x2a34211f` | Only with incoming `STATUS.PRIV` set |
+| `TRAPSTS` | `0x0017fdff` | User or trap handler |
+
+STATUS follows Table 5's explicit per-field write permissions, including a
+read-only PRIV bit. TRAPSTS writes replace selected exception/status bits,
+allowing clears; arithmetic's sticky-OR operation is not reused. These masks
+have manual and independent field-reference tests, **not native RDNA3 hardware
+capture verification**. RDNA3 TBA is treated as read-only because section 3.4.9
+says TMA/TBA are read-only; rocjitsu's privileged-write descriptor is not copied.
+
+`FLUSH_IB` is a named write-only target, so its API has a nullable output, but
+no persistent value or instruction-buffer effect is guessed. Requested
+non-loose reporting returns `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`; loose mode
+skips it. Privileged scratch writes similarly reject non-loose requests when
+either `flat_scratch` or `status` is non-null, since the possible SCRATCH_EN
+update is also unresolved. Null opts out; unprivileged scratch writes are no-ops.
+These errors precede other validation and leave all outputs untouched.
+
+Tests cover all IDs, offsets, widths, both privilege levels and semantics,
+SGPR/literal equivalence, per-field write permissions, reserved-bit preservation,
+exception clearing, native-register opt-outs, validation ordering and host FP
+control preservation. Scheduling and trap-delivery effects of updated register
+bits remain the emulator's responsibility.
 
 ### Remaining gates
 

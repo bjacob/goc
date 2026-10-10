@@ -746,8 +746,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_setkill` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
 | `s_setpc_b64` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_setprio` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
-| `s_setreg_b32` | yes | yes | in: register access | `goc_s_setreg_b32_rdna4` | — | API present; semantic audit pending |
-| `s_setreg_imm32_b32` | yes | yes | in: register access | `goc_s_setreg_imm32_b32_rdna4` | — | API present; semantic audit pending |
+| `s_setreg_b32` | yes | yes | in: register access | `goc_s_setreg_b32`<br>`goc_s_setreg_b32_rdna4` | — | API present; semantic audit pending |
+| `s_setreg_imm32_b32` | yes | yes | in: register access | `goc_s_setreg_imm32_b32`<br>`goc_s_setreg_imm32_b32_rdna4` | — | API present; semantic audit pending |
 | `s_sext_i32_i16` | yes | yes | in | `goc_s_sext_i32_i16` | — | API present; semantic audit pending |
 | `s_sext_i32_i8` | yes | yes | in | `goc_s_sext_i32_i8` | — | API present; semantic audit pending |
 | `s_sleep` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |

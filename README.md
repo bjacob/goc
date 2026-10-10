@@ -14,15 +14,14 @@ OMOD and IEEE-mode policies differ from RDNA4 and are not yet separated in all
 APIs. See [the architecture review queue](ARCHITECTURE_AUDIT.md) and
 [coverage worklist](COVERAGE.md) before relying on a shared mnemonic.
 
-RDNA4 `goc_s_setreg_b32_rdna4` and `goc_s_setreg_imm32_b32_rdna4` update guest
-hardware-register fields through separate optional native-register pointers.
-They preserve unselected bits, filter writes by guest privilege, and never change
-the host FP environment. User MODE/exception-register writes have gfx1201
-capture coverage; implemented privileged masks follow the ISA manual. GETREG
-has separate RDNA3/RDNA4 APIs that extract fields from caller-supplied,
-wave-visible register values, including guest clocks and snapshot data. Exact
-scratch-write and snapshot reset/unlock reporting remain unsupported, as do
-RDNA3 SETREG APIs; see [the register-access audit](HWREG_AUDIT.md).
+HWREG APIs use unsuffixed names for RDNA3 and `_rdna4` for RDNA4. SETREG
+updates guest register fields through separate optional native-register pointers,
+filtering writes by guest privilege and preserving unselected bits. RDNA4 user
+MODE/exception-register writes have gfx1201 capture coverage; other implemented
+masks follow the ISA manuals. GETREG extracts fields from caller-supplied,
+wave-visible values, including guest clocks and snapshot data. Exact scratch
+writes, RDNA3 instruction-buffer flush reporting, and RDNA4 snapshot reset/unlock
+reporting remain unsupported; see [the register-access audit](HWREG_AUDIT.md).
 
 ## Build and test
 

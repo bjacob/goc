@@ -332,6 +332,26 @@ int goc_s_getreg_b32_rdna4(uint64_t flags, uint64_t instruction_flags, uint32_t 
                            uint32_t *perf_snapshot_pc_lo, uint32_t *perf_snapshot_pc_hi,
                            uint32_t *perf_snapshot_data1, uint32_t *perf_snapshot_data2);
 
+// RDNA3 S_SETREG: the encoded selector and scalar/literal source precede the
+// implicit STATUS input. status_in supplies PRIV (bit 5), independently of the
+// nullable STATUS output. Other outputs are also nullable native registers.
+// Both semantics update documented MODE/STATUS/TRAPSTS fields, preserving
+// unselected/reserved bits. Exception fields are replaced, not accumulated.
+// STATUS writes require privilege; MODE and TRAPSTS do not. MODE bit 20 is
+// reserved. Read-only writes are no-ops; unknown IDs return INVALID_FLAGS.
+// Exact reporting of FLUSH_IB is unavailable. Non-loose semantics with flush_ib
+// non-NULL and ID 14 return UNSUPPORTED_GLOBAL_STATE. Privileged scratch writes
+// likewise return that error if flat_scratch or status is non-NULL. These errors
+// precede other validation. Loose mode skips these unavailable updates; null
+// opts out. Outputs must not overlap. No EXEC, instruction flags or host FP-state
+// changes; scheduling, trap delivery and instruction-buffer management are external.
+int goc_s_setreg_b32(uint64_t flags, uint64_t instruction_flags, uint16_t hwreg, uint32_t a,
+                     uint32_t status_in, uint32_t *mode, uint32_t *status, uint32_t *trapsts,
+                     uint32_t *flush_ib, uint64_t *flat_scratch);
+int goc_s_setreg_imm32_b32(uint64_t flags, uint64_t instruction_flags, uint16_t hwreg,
+                           uint32_t immediate, uint32_t status_in, uint32_t *mode, uint32_t *status,
+                           uint32_t *trapsts, uint32_t *flush_ib, uint64_t *flat_scratch);
+
 // RDNA4 S_SETREG: hwreg encodes ID[5:0], offset[10:6], width-minus-one[15:11].
 // Supports loose and exact semantics. instruction_flags must be zero. STATUS.PRIV
 // (bit 5) controls privileged writes. Each nullable output holds the old native

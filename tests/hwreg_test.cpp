@@ -196,6 +196,9 @@ TEST(Hwreg, GuestModeDoesNotChangeHostEnvironment) {
       ASSERT_EQ(goc_s_setreg_b32_rdna4(exact, 0, descriptor(1, 0, 32), value, 0, &mode, nullptr,
                                        nullptr, nullptr, nullptr, nullptr),
                 GOC_SUCCESS);
+      ASSERT_EQ(goc_s_setreg_b32(exact, 0, descriptor(1, 0, 32), value, 0, &mode, nullptr, nullptr,
+                                 nullptr, nullptr),
+                GOC_SUCCESS);
       EXPECT_EQ(mode, value);
       std::array<uint32_t, 64> registers{};
       registers[1] = mode;
@@ -325,4 +328,146 @@ TEST(Hwreg, GetregClockHalvesAliasesAndErrors) {
     EXPECT_EQ(read(rdna4, exact, 0, 0, nullptr, values), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(values[1], 0x67U);
   }
+}
+
+TEST(Hwreg, Rdna3WritesEveryIdFieldAndPrivilege) {
+  // Build the reference masks from the manual's fields, independently of the
+  // implementation's hexadecimal constants. MODE.EXCP_EN[8] is reserved.
+  const uint32_t mode_writable = ((1U << 20) - 1) | (1U << 21) | (1U << 23) | (1U << 27);
+  const uint32_t status_writable = 31U | (1U << 8) | (1U << 13) | (1U << 18) | (1U << 20) |
+                                   (1U << 21) | (1U << 25) | (1U << 27) | (1U << 29);
+  const uint32_t trapsts_writable = 511U | (511U << 10) | (1U << 20);
+  for (auto fn : {goc_s_setreg_b32, goc_s_setreg_imm32_b32})
+    for (uint64_t flags : std::initializer_list<uint64_t>{0, exact})
+      for (bool privileged : {false, true})
+        for (unsigned id = 0; id < 64; ++id)
+          for (unsigned offset = 0; offset < 32; ++offset)
+            for (unsigned width = 1; width <= 32; ++width) {
+              std::array<uint32_t, 4> state = {0x12345678, 0x89abcdc0U | (privileged ? 32U : 0U),
+                                               0x55555555, 0xaaaaaaaa};
+              auto expected = state;
+              uint64_t scratch = 0x123456789abcde00ULL;
+              uint32_t source = (id * 0x1234567U + offset * 0x7654321U) ^ (width * 0xdeadbeefU);
+              bool known = true, unsupported = false;
+              switch (id) {
+              case 1:
+                expected[0] = insert(state[0], source, offset, width, mode_writable);
+                break;
+              case 2:
+                expected[1] =
+                    insert(state[1], source, offset, width, privileged ? status_writable : 0);
+                break;
+              case 3:
+                expected[2] = insert(state[2], source, offset, width, trapsts_writable);
+                break;
+              case 14:
+                unsupported = flags;
+                break;
+              case 20:
+              case 21:
+                unsupported = flags && privileged;
+                break;
+              case 5:
+              case 6:
+              case 7:
+              case 8:
+              case 9:
+              case 13:
+              case 15:
+              case 16:
+              case 17:
+              case 18:
+              case 19:
+              case 23:
+              case 24:
+              case 25:
+              case 26:
+              case 27:
+              case 28:
+              case 29:
+                break;
+              default:
+                known = false;
+                break;
+              }
+              ASSERT_EQ(fn(flags, 0, descriptor(id, offset, width), source, state[1], &state[0],
+                           &state[1], &state[2], &state[3], &scratch),
+                        unsupported ? GOC_ERROR_UNSUPPORTED_GLOBAL_STATE
+                        : known     ? GOC_SUCCESS
+                                    : GOC_ERROR_INVALID_FLAGS)
+                  << id << '/' << offset << '/' << width;
+              EXPECT_EQ(state, expected);
+              EXPECT_EQ(scratch, 0x123456789abcde00ULL);
+            }
+}
+
+TEST(Hwreg, Rdna3NullOutputsAndUnimplementedState) {
+  const unsigned known[] = {1,  2,  3,  5,  6,  7,  8,  9,  13, 14, 15, 16,
+                            17, 18, 19, 20, 21, 23, 24, 25, 26, 27, 28, 29};
+  for (auto fn : {goc_s_setreg_b32, goc_s_setreg_imm32_b32}) {
+    for (unsigned id : known)
+      EXPECT_EQ(fn(exact, 0, descriptor(id, 0, 32), UINT32_MAX, 32, nullptr, nullptr, nullptr,
+                   nullptr, nullptr),
+                GOC_SUCCESS);
+    for (uint64_t flags : std::initializer_list<uint64_t>{0, exact, GOC_SEMANTICS_EXACT_EMPIRICAL})
+      for (unsigned id : {14, 20, 21})
+        for (uint32_t privilege : {0U, 32U})
+          for (unsigned pointers = 0; pointers < 8; ++pointers) {
+            uint32_t status = privilege, flush = 0xdeadbeef;
+            uint64_t scratch = 0x123456789abcde00ULL;
+            bool requested = id == 14 ? (pointers & 1) : privilege && (pointers & 6);
+            EXPECT_EQ(fn(flags, 0, descriptor(id, 0, 32), 0, privilege, nullptr,
+                         pointers & 2 ? &status : nullptr, nullptr, pointers & 1 ? &flush : nullptr,
+                         pointers & 4 ? &scratch : nullptr),
+                      flags && requested ? GOC_ERROR_UNSUPPORTED_GLOBAL_STATE : GOC_SUCCESS);
+            EXPECT_EQ(status, privilege);
+            EXPECT_EQ(flush, 0xdeadbeefU);
+            EXPECT_EQ(scratch, 0x123456789abcde00ULL);
+          }
+    uint32_t mode = 0xdeadbeef;
+    for (unsigned bit = 0; bit < 64; ++bit)
+      EXPECT_EQ(fn(exact, 1ULL << bit, 1, 0, 0, &mode, nullptr, nullptr, nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(1ULL << 63, 0, 1, 0, 0, &mode, nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(2 * GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 1, 0, 0, &mode,
+                 nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(mode, 0xdeadbeefU);
+    uint32_t flush = 0x12345678;
+    EXPECT_EQ(fn(exact, UINT64_MAX, 14, 0, 0, nullptr, nullptr, nullptr, &flush, nullptr),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(flush, 0x12345678U);
+  }
+}
+
+TEST(Hwreg, ArchitectureSpecificWritableFieldsAndExceptionClearing) {
+  for (uint32_t source : {0U, UINT32_MAX}) {
+    uint32_t mode3 = ~source, mode4 = ~source;
+    ASSERT_EQ(goc_s_setreg_b32(exact, 0, descriptor(1, 0, 32), source, 0, &mode3, nullptr, nullptr,
+                               nullptr, nullptr),
+              GOC_SUCCESS);
+    ASSERT_EQ(goc_s_setreg_b32_rdna4(exact, 0, descriptor(1, 0, 32), source, 0, &mode4, nullptr,
+                                     nullptr, nullptr, nullptr, nullptr),
+              GOC_SUCCESS);
+    EXPECT_EQ(mode3, (~source & ~0x08afffffU) | (source & 0x08afffffU));
+    EXPECT_EQ(mode4, (~source & ~0x098000ffU) | (source & 0x098000ffU));
+    EXPECT_EQ((mode3 >> 20) & 1, (~source >> 20) & 1); // RDNA3 reserved EXCP_EN bit.
+    EXPECT_NE(mode3, mode4);
+  }
+  uint32_t trapsts = UINT32_MAX;
+  ASSERT_EQ(goc_s_setreg_b32(exact, 0, descriptor(3, 0, 9), 0, 0, nullptr, nullptr, &trapsts,
+                             nullptr, nullptr),
+            GOC_SUCCESS);
+  EXPECT_EQ(trapsts, 0xfffffe00U);
+  uint32_t status = 32;
+  ASSERT_EQ(goc_s_setreg_b32(exact, 0, descriptor(2, 0, 32), UINT32_MAX, status, nullptr, &status,
+                             nullptr, nullptr, nullptr),
+            GOC_SUCCESS);
+  EXPECT_EQ(status, 32U | 0x2a34211fU);
+  // Guest privilege is not writable through STATUS, even from the trap handler.
+  ASSERT_EQ(goc_s_setreg_b32(exact, 0, descriptor(2, 0, 32), 0, status, nullptr, &status, nullptr,
+                             nullptr, nullptr),
+            GOC_SUCCESS);
+  EXPECT_EQ(status, 32U);
 }

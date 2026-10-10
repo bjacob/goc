@@ -3285,3 +3285,35 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   remain open, as do the previously recorded arithmetic/architecture gaps.
   The inventory and architecture queue are regenerated; native exception-output
   naming counts remain 674 signatures, 388 matching, zero mismatches, 286 pending.
+
+### RDNA3 SETREG register fields and architecture split
+
+- Added unsuffixed `goc_s_setreg_b32` and `goc_s_setreg_imm32_b32` for RDNA3.
+  Each literal form delegates to its architecture's concrete write decoder;
+  architecture-specific masks and permissions remain visible in explicit
+  switches. The shared instruction-flag test accepts either native-output list.
+- MODE uses mask `0x08afffff`: section 3.4.9 explicitly marks exception-enable
+  index 8 (MODE bit 20) reserved, resolving the earlier ambiguity in the broader
+  EXCP_EN field. STATUS uses Table 5's privileged-write mask `0x2a34211f`;
+  PRIV itself is not writable. TRAPSTS uses named-field mask `0x0017fdff` and
+  replacement semantics, including clearing selected exception flags. These
+  rules have manual/reference-test evidence, not native RDNA3 captures.
+- STATUS privilege is supplied by value even if its native output is null.
+  Five optional outputs cover MODE, STATUS, TRAPSTS, FLUSH_IB and 64-bit
+  FLAT_SCRATCH. FLUSH_IB reporting and privileged scratch/possible SCRATCH_EN
+  updates remain unsupported for non-loose non-null requests. Loose mode skips
+  these unavailable effects; null opts out. No flush command or persistent
+  write-only register value is invented. TBA follows the manual's read-only
+  rule rather than rocjitsu's conflicting privileged descriptor.
+- Tests cover both spellings, every selector/offset/width, both semantics and
+  privilege states, field masks reconstructed independently from manual ranges,
+  exception clearing, reserved-bit and PRIV preservation, output opt-outs,
+  unchanged outputs on errors, validation ordering and host FP controls.
+- Clang 21 and GCC 15 Release each pass **1,044/1,044** tests; targeted Clang
+  ASan/UBSan passes **26/26** tests. Logs use
+  `/tmp/goc-setreg3-{clang,gcc,san}-tests.log`. Arithmetic and SIMD paths remain
+  unchanged.
+- All three HWREG mnemonics now have separate RDNA3/RDNA4 APIs, but unresolved
+  native-state effects still prevent a completeness claim. Canonical API
+  presence remains **809/809**. The refreshed naming audit has 676 signatures,
+  390 matching resolved names, zero mismatches, and 286 pending reviews.
