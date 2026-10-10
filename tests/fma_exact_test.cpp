@@ -262,13 +262,14 @@ TEST(FmaExact, ReportingRemainsExplicitlyUnsupported) {
     for (bool wide : {false, true})
       for (bool accumulate : {false, true})
         for (uint64_t exec_mask : {uint64_t(0), UINT64_MAX})
-          for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT}) {
-            uint32_t state = 0x12345678;
-            EXPECT_EQ(invoke(rdna3, wide, accumulate, GOC_SEMANTICS_EXACT_EMPIRICAL | strict,
-                             exec_mask, 0, nullptr, nullptr, nullptr, nullptr, &state),
-                      GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
-            EXPECT_EQ(state, 0x12345678U);
-          }
+          for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT})
+            for (uint64_t mode : {uint64_t(0), uint64_t(1) << 31, uint64_t(1) << 63}) {
+              uint32_t state = 0x12345678;
+              EXPECT_EQ(invoke(rdna3, wide, accumulate, GOC_SEMANTICS_EXACT_EMPIRICAL | strict,
+                               exec_mask, mode, nullptr, nullptr, nullptr, nullptr, &state),
+                        GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+              EXPECT_EQ(state, 0x12345678U);
+            }
 }
 
 TEST(FmaExact, Dx9ZeroProductNaNPriorityAndTininess) {

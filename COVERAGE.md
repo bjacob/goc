@@ -8125,3 +8125,67 @@ All nine tooling tests pass. Final logs are
 and `coverage-work/fp8-dot-contract-tests.log` in the sanitizer build. The logs
 without `-final` record the rejected ordering experiment and its failing stored
 hardware hash; they do not describe the committed implementation.
+
+
+## Ordinary FP32 FMA architecture contracts
+
+Reviewed `v_fma_f32` and `v_fmac_f32` against both ISA XML inventories,
+manual FMA/FMAC and output-modifier descriptions, and rocjitsu revision
+`ffc144c564c`'s architecture-aware `fp_mode::arithmetic<FMA>`/`fma_f32`.
+FMA has three register operands; FMAC uses old D as its addend. Both support
+DPP8/DPP16 on A, source ABS/NEG, OMOD and CLAMP. FMAC has no separate C
+modifier. EXEC controls destination stores, with Wave32 and Wave64 APIs.
+
+The existing split names are necessary: RDNA3 gates OMOD on IEEE and output
+flush policy and preserves a selected signaling NaN when IEEE is disabled;
+RDNA4 applies OMOD independently and quiets the selected NaN. Both reuse the
+same kernels and integer exact calculation. Input flushing precedes arithmetic,
+NaN selection follows A/B/C except that zero-times-infinity has priority, and
+the result is fused with nearest-even rounding. The borrowed tininess policy
+also handles values that would otherwise round from tiny to minimum normal.
+OMOD applies the existing intermediate flushing and scaling rules. The historical
+hardware hashes and independent integer-oracle tests exercise these rules;
+this review adds no new empirical model or hardware observation.
+
+Both retain optional trailing global state: RDNA3 `trapsts`, RDNA4
+`excp_flag_user`. Faithful FP32 FMA reporting remains unsupported; non-null
+non-loose calls reject before flags, EXEC or operand reads. Loose calls skip
+reporting. Expanded tests now combine reporting rejection with invalid low and
+high modifier bits, zero/full EXEC, both architectures, both widths and STRICT.
+Guest directed rounding and RDNA3 DX10-clamp-off remain explicitly unsupported.
+The accepted FP16 overflow flag has no FP32 effect. Loose paths retain their
+host nearest-even/denormal preconditions and eight-lane AVX2 or sixteen-lane
+AVX-512 implementation, including modifiers. No production code changed.
+
+## Literal FP32 FMA architecture contracts
+
+Reviewed `v_fmaak_f32` and `v_fmamk_f32` against the same sources. Both are
+VOP2 mandatory-literal forms in both architectures, with no DPP or arithmetic
+modifiers. FMAAK computes A*B+literal; FMAMK computes A*literal+B. The literal
+is raw FP32 bits, and participates in guest input flushing and NaN priority in
+its actual arithmetic position. Their `_rdna4` names remain necessary for the
+architecture/IEEE-dependent NaN quieting rule, even though they have no OMOD.
+
+These forms already use the same borrowed exact FP32 calculation as ordinary
+FMA. This supersedes the earlier historical entry describing literal exact mode
+as unimplemented. Loose scalar/AVX2/AVX-512 paths remain shared. Optional state
+and unsupported guest modes follow the ordinary FP32 FMA contract above.
+
+The new test covers all eight architecture/width/literal-placement entry points,
+all CPU tiers and both IEEE settings. Every one of the 64 modifier bits is
+rejected in loose mode; exact and reserved non-loose reporting takes priority,
+with null operand storage and zero/full EXEC. It checks untouched destination
+storage and state, raw signaling-NaN literal selection/quieting in exact mode,
+partial EXEC, and successful loose finite arithmetic with non-null state.
+Existing literal hardware hashes, fused-rounding cases, aliases and guest-policy
+matrices remain in the test suite.
+
+The ledger now records **789** reviewed mnemonic contracts, with **20** pending.
+This is not a completion percentage or an assertion that unsupported guest
+modes or faithful FP32 exception reporting have been implemented.
+
+Validation: all **38** selected Arithmetic/Fmac/FmaExact/LiteralFma tests pass
+with Clang 21 Release, GCC 15 Release and Clang ASan/UBSan. All nine tooling
+tests pass. Logs use `coverage-work/fp32-fma-contract-{build,tests}.log` in each
+build directory. This slice changes only tests and review documentation; library
+code size and performance are unchanged.

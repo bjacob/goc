@@ -413,3 +413,72 @@ TEST(LiteralFma, ExactFp32HostEnvironment) {
 #endif
           }
 }
+
+TEST(LiteralFma, Fp32ReportingPrecedenceAndLiteralNanPlacement) {
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (bool multiply : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (bool ieee : {false, true}) {
+            uint32_t words[3][64];
+            std::fill(words[0], words[0] + 64, 0x3f800000U);
+            std::fill(words[1], words[1] + 64, 0x40000000U);
+            std::fill(words[2], words[2] + 64, 0xdeadbeefU);
+            uint32_t state = 0xa5000040;
+            const uint64_t flags = cpu | (ieee ? GOC_FP_IEEE_MODE : 0);
+            auto invoke = [&](uint64_t semantics, uint64_t exec_mask, uint64_t mode,
+                              uint32_t literal, uint32_t *output, bool operands) {
+              const uint32_t *a = words[0], *b = words[1];
+              uint32_t *d = words[2];
+              if (multiply) {
+                auto narrow = rdna3 ? goc_v_fmamk_f32 : goc_v_fmamk_f32_rdna4;
+                auto full = rdna3 ? goc_v_fmamk_f32_wave64 : goc_v_fmamk_f32_rdna4_wave64;
+                return wide
+                           ? full(flags | semantics, exec_mask, mode, operands ? &d : nullptr,
+                                  operands ? &a : nullptr, literal, operands ? &b : nullptr, output)
+                           : narrow(flags | semantics, uint32_t(exec_mask), mode,
+                                    operands ? &d : nullptr, operands ? &a : nullptr, literal,
+                                    operands ? &b : nullptr, output);
+              }
+              auto narrow = rdna3 ? goc_v_fmaak_f32 : goc_v_fmaak_f32_rdna4;
+              auto full = rdna3 ? goc_v_fmaak_f32_wave64 : goc_v_fmaak_f32_rdna4_wave64;
+              return wide ? full(flags | semantics, exec_mask, mode, operands ? &d : nullptr,
+                                 operands ? &a : nullptr, operands ? &b : nullptr, literal, output)
+                          : narrow(flags | semantics, uint32_t(exec_mask), mode,
+                                   operands ? &d : nullptr, operands ? &a : nullptr,
+                                   operands ? &b : nullptr, literal, output);
+            };
+            for (uint64_t exec_mask : {0ULL, ~0ULL})
+              for (unsigned bit = 0; bit < 64; ++bit) {
+                uint64_t mode = 1ULL << bit;
+                for (uint64_t semantics :
+                     {GOC_SEMANTICS_EXACT_EMPIRICAL,
+                      GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, uint64_t(2) << 16}) {
+                  EXPECT_EQ(invoke(semantics, exec_mask, mode, 0, &state, false),
+                            GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+                  EXPECT_EQ(state, 0xa5000040U);
+                }
+                EXPECT_EQ(invoke(GOC_SEMANTICS_LOOSE, exec_mask, mode, 0, &state, false),
+                          GOC_ERROR_INVALID_FLAGS);
+              }
+            for (uint32_t value : words[2])
+              EXPECT_EQ(value, 0xdeadbeefU);
+            // A signaling-NaN literal is B for FMAMK and C for FMAAK.
+            const uint64_t exec_mask = 0xa55aa55a5aa55aa5ULL;
+            ASSERT_EQ(invoke(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0,
+                             0xff800123, nullptr, true),
+                      GOC_SUCCESS);
+            uint32_t expected = rdna3 && !ieee ? 0xff800123 : 0xffc00123;
+            for (unsigned lane = 0; lane < 64; ++lane)
+              EXPECT_EQ(words[2][lane], lane < (wide ? 64U : 32U) && ((exec_mask >> lane) & 1)
+                                            ? expected
+                                            : 0xdeadbeefU);
+            ASSERT_EQ(invoke(GOC_SEMANTICS_LOOSE, exec_mask, 0, 0x40400000, &state, true),
+                      GOC_SUCCESS);
+            EXPECT_EQ(state, 0xa5000040U);
+            for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane)
+              if ((exec_mask >> lane) & 1) {
+                EXPECT_EQ(words[2][lane], 0x40a00000U); // 1*3+2 or 1*2+3.
+              }
+          }
+}

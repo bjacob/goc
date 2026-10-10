@@ -1518,5 +1518,23 @@
       "v_dot4_f32_bf8_fp8",
       "v_dot4_f32_bf8_bf8"
     ]
+  },
+  {
+    "heading": "Ordinary FP32 FMA architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/fma_exact_test.cpp",
+    "mnemonics": [
+      "v_fma_f32",
+      "v_fmac_f32"
+    ]
+  },
+  {
+    "heading": "Literal FP32 FMA architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/literal_fma_test.cpp",
+    "mnemonics": [
+      "v_fmaak_f32",
+      "v_fmamk_f32"
+    ]
   }
 ]
