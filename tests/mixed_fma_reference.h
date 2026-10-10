@@ -88,7 +88,8 @@ struct Number {
   uint32_t nan;
 };
 
-inline Number decode(uint32_t raw, uint32_t mode, int operand, bool flush_input = false) {
+inline Number decode(uint32_t raw, uint32_t mode, int operand, bool flush_input = false,
+                     bool quiet_nan = true) {
   bool half = mode & (GOC_MIX_F16_A << operand);
   if (half)
     raw = uint16_t(raw >> (mode & (GOC_ALU_HIGH_A << operand) ? 16 : 0));
@@ -106,15 +107,19 @@ inline Number decode(uint32_t raw, uint32_t mode, int operand, bool flush_input 
   return {fraction + (exponent && !special ? 1ULL << fraction_bits : 0),
           int(exponent ? exponent : 1) - (half ? 25 : 150), negative, special && !fraction,
           special && fraction
-              ? (uint32_t(negative) << 31) | 0x7fc00000 | (half ? fraction << 13 : fraction)
+              ? (uint32_t(negative) << 31) | 0x7f800000 | (quiet_nan ? 0x00400000 : 0) |
+                    (half ? fraction << 13 : fraction)
               : 0};
 }
 
 inline uint32_t evaluate(int output, uint32_t a, uint32_t b, uint32_t c, uint32_t before,
-                         uint32_t mode, bool saturate, bool rtz = false, uint64_t fp_flags = 0) {
+                         uint32_t mode, bool saturate, bool rtz = false, uint64_t fp_flags = 0,
+                         bool rdna3 = false) {
   bool flush_input = fp_flags & GOC_FP_FLUSH_INPUT_DENORMALS;
-  auto x = decode(a, mode, 0, flush_input), y = decode(b, mode, 1, flush_input),
-       z = decode(c, mode, 2, flush_input);
+  bool quiet_nan = output || !rdna3 || (fp_flags & GOC_FP_IEEE_MODE);
+  auto x = decode(a, mode, 0, flush_input, quiet_nan),
+       y = decode(b, mode, 1, flush_input, quiet_nan),
+       z = decode(c, mode, 2, flush_input, quiet_nan);
   uint32_t special = 0;
   if ((!x.significand && !x.infinity && !x.nan && y.infinity) ||
       (!y.significand && !y.infinity && !y.nan && x.infinity))

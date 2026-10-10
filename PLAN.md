@@ -431,8 +431,9 @@ post-scaling; hardware suppresses invalid/input-denormal flags. Integer guard an
 sticky bits supply reporting, with additional FMA16/DIV_FMAS hardware captures
 around underflow and overflow rounding boundaries.
 
-RDNA4 FP16 `FMA_MIXLO`/`FMA_MIXHI` accept reporting and leave the register
-unchanged: 16,777,216 hardware flag reads are zero across every FP32/FP16
+RDNA4 `FMA_MIX_F32`, `FMA_MIXLO_F16`, and `FMA_MIXHI_F16` support exact
+RNE scalar results and accept reporting while leaving the register unchanged:
+25,165,824 hardware flag reads are zero across every FP32/FP16
 input/output-denormal setting, including invalid arithmetic, overflow,
 source-format/half selection, modifiers, and saturation. RDNA3 reporting still
 requires verification and rejects non-null exact requests; null-output requests

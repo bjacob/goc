@@ -2391,3 +2391,42 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   MixedFma/Interp16/ExceptionRegisters tests pass under ASan/UBSan, including
   the shared interpolation users of the modified rounding helper. Capture
   generator syntax and generated GPU probes were also exercised successfully.
+
+## Exact MIX_F32 results and RDNA4 reporting
+
+- Added scalar nearest-even exact MIX_F32 results using the existing integer
+  fused intermediate and an integer FP64-to-FP32 rounding helper. Rounding
+  handles gradual underflow, signed zeros, overflow and tininess before exponent
+  packing without reading or changing host FP controls. NaN ordering follows
+  rocjitsu `fp_mode::fma_f32`: invalid zero-times-infinity wins, otherwise the
+  first NaN wins and architecture/IEEE controls quieting.
+- Both RDNA3 and RDNA4 numeric APIs expose the model. RDNA3 is model-derived,
+  not newly hardware-captured; its non-null exact global-state reporting remains
+  unsupported. RDNA3 mixed CLAMP explicitly models DX10_CLAMP=1; the alternative
+  NaN-preserving setting is not yet exposed. Loose paths retain SIMD dispatch.
+- RDNA4 MIX_F32 exact reporting now leaves EXCP_FLAG_USER unchanged, backed by
+  the preceding 8,388,608 zero flag captures across all sixteen denormal settings.
+  Its 2,097,152 raw-result records for the four exposed coupled policies are
+  stored as compact digests alongside the existing FP16-output fixtures. Exact
+  CPU results match those digests including NaN payloads, both source-half
+  selections, modifiers, formats, saturation settings and random/edge inputs.
+- Expanded integer-oracle tests to exact FP32 results, RDNA3 IEEE NaN policies,
+  all 8,192 modifiers and both wave sizes. Host-control tests now exercise exact
+  FP32 results under every host rounding mode and FTZ/DAZ setting. Updated the
+  former unsupported-reporting test to retain that assertion for RDNA3, and
+  test successful no-op RDNA4 reporting with empty EXEC.
+- A targeted RX 9070 capture checks FP32 tininess where ordinary subnormal
+  rounding produces minimum normal but exponent-unbounded rounding remains
+  tiny. Literal regression cases cover both signs and wave widths. Artifacts:
+  `../goc-build/coverage-work/mixed-fma-guest-captures/float-boundaries/` and
+  `float-diagonal-hashes.json` in its parent directory.
+- Default loose-path timing against `dcfba15`: eleven alternating CPU-2-pinned
+  samples, minimum 50 ms thread CPU time. MIX_F32 medians changed
+  18.708 -> 18.808 ns and 21.779 -> 21.751 ns; MIXLO changed
+  70.811 -> 71.554 ns and 80.312 -> 80.415 ns. Differences are within about
+  1.1%; these existing-path checks are not an exact-path speed claim or a
+  whole-library benchmark. Artifacts use
+  `../goc-build/coverage-work/mixed-float-exact-*`.
+- Validation: all 962 tests pass under Clang 21 and GCC 15 Release; all 42
+  MixedFma/HalfFma/ExceptionRegisters tests pass under ASan/UBSan, covering the
+  existing integer-FMA users as well as the new exact FP32 path.

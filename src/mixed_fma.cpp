@@ -17,25 +17,24 @@ namespace {
 static const uint64_t fp_flags =
     GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
 
-template <goc::MixedFma Dst>
+template <goc::MixedFma Dst, bool Rdna3 = false>
 int mixed_fma(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (mode >> 32)
     return goc::execute_dpp(
         flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
-          return mixed_fma<Dst>(flags, exec_mask, uint32_t(mode), d, source, b, c);
+          return mixed_fma<Dst, Rdna3>(flags, exec_mask, uint32_t(mode), d, source, b, c);
         });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C | GOC_ALU_ABS_A |
                          GOC_ALU_ABS_B | GOC_ALU_ABS_C | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
                          GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_MIX_F16_A | GOC_MIX_F16_B |
                          GOC_MIX_F16_C;
-  if (int error = goc::validate(flags, mode & ~known, Dst != goc::MixedFma::Float, fp_flags))
+  if (int error = goc::validate(flags, mode & ~known, true, fp_flags))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
+  bool exact = (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
 #if defined(GOC_HAVE_X86_64_V3)
-  bool exact =
-      Dst != goc::MixedFma::Float && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
   if (!exact && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
     if constexpr (Dst == goc::MixedFma::Float) {
       if (flags & (GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
@@ -57,6 +56,10 @@ int mixed_fma(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const
              y = goc::mixed_fma_input(b[0][lane], mode >> 1, flags & GOC_FP_FLUSH_INPUT_DENORMALS),
              z = goc::mixed_fma_input(c[0][lane], mode >> 2, flags & GOC_FP_FLUSH_INPUT_DENORMALS);
     if constexpr (Dst == goc::MixedFma::Float) {
+      if (exact) {
+        result[lane] = goc::mixed_fma_float_value(x, y, z, mode & GOC_ALU_CLAMP, flags, Rdna3);
+        continue;
+      }
       if (flags & GOC_FP_FLUSH_INPUT_DENORMALS) {
         x = goc::as_bits(goc::flush_denorm_f32(goc::as_float(x)));
         y = goc::as_bits(goc::flush_denorm_f32(goc::as_float(y)));
@@ -80,10 +83,10 @@ int mixed_fma(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const
   return GOC_SUCCESS;
 }
 
-template <goc::MixedFma Dst>
+template <goc::MixedFma Dst, bool Rdna3 = false>
 int mixed_fma_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  if (int error = mixed_fma<Dst>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
+  if (int error = mixed_fma<Dst, Rdna3>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -95,8 +98,8 @@ int mixed_fma_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t
     }
     uint32_t *dest = d[0] + half * 32;
     const uint32_t *x = a[0] + half * 32, *y = b[0] + half * 32, *z = c[0] + half * 32;
-    if (int error =
-            mixed_fma<Dst>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest, &x, &y, &z))
+    if (int error = mixed_fma<Dst, Rdna3>(flags, uint32_t(exec_mask >> (half * 32)), half_mode,
+                                          &dest, &x, &y, &z))
       return error;
   }
   return GOC_SUCCESS;
@@ -107,7 +110,7 @@ int mixed_fma_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t
 int goc_v_fma_mix_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return mixed_fma<goc::MixedFma::Float>(flags, exec_mask, mode, d, a, b, c);
 }
@@ -135,7 +138,7 @@ int goc_v_fma_mix_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t 
                                    uint32_t *const *d, const uint32_t *const *a,
                                    const uint32_t *const *b, const uint32_t *const *c,
                                    uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return mixed_fma_wave64<goc::MixedFma::Float>(flags, exec_mask, mode, d, a, b, c);
 }
@@ -166,7 +169,7 @@ int goc_v_fma_mix_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_
                       uint32_t *trapsts) {
   if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return mixed_fma<goc::MixedFma::Float>(flags, exec_mask, mode, d, a, b, c);
+  return mixed_fma<goc::MixedFma::Float, true>(flags, exec_mask, mode, d, a, b, c);
 }
 
 int goc_v_fma_mixlo_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -174,7 +177,7 @@ int goc_v_fma_mixlo_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint3
                         const uint32_t *const *c, uint32_t *trapsts) {
   if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return mixed_fma<goc::MixedFma::Low>(flags, exec_mask, mode, d, a, b, c);
+  return mixed_fma<goc::MixedFma::Low, true>(flags, exec_mask, mode, d, a, b, c);
 }
 
 int goc_v_fma_mixhi_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -182,7 +185,7 @@ int goc_v_fma_mixhi_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint3
                         const uint32_t *const *c, uint32_t *trapsts) {
   if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return mixed_fma<goc::MixedFma::High>(flags, exec_mask, mode, d, a, b, c);
+  return mixed_fma<goc::MixedFma::High, true>(flags, exec_mask, mode, d, a, b, c);
 }
 
 int goc_v_fma_mix_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -190,7 +193,7 @@ int goc_v_fma_mix_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, 
                              const uint32_t *const *c, uint32_t *trapsts) {
   if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return mixed_fma_wave64<goc::MixedFma::Float>(flags, exec_mask, mode, d, a, b, c);
+  return mixed_fma_wave64<goc::MixedFma::Float, true>(flags, exec_mask, mode, d, a, b, c);
 }
 
 int goc_v_fma_mixlo_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
@@ -199,7 +202,7 @@ int goc_v_fma_mixlo_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode
                                uint32_t *trapsts) {
   if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return mixed_fma_wave64<goc::MixedFma::Low>(flags, exec_mask, mode, d, a, b, c);
+  return mixed_fma_wave64<goc::MixedFma::Low, true>(flags, exec_mask, mode, d, a, b, c);
 }
 
 int goc_v_fma_mixhi_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
@@ -208,5 +211,5 @@ int goc_v_fma_mixhi_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode
                                uint32_t *trapsts) {
   if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return mixed_fma_wave64<goc::MixedFma::High>(flags, exec_mask, mode, d, a, b, c);
+  return mixed_fma_wave64<goc::MixedFma::High, true>(flags, exec_mask, mode, d, a, b, c);
 }

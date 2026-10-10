@@ -34,6 +34,34 @@ inline uint32_t mixed_fma_input(uint32_t raw, uint32_t mode, bool flush_input = 
   return raw;
 }
 
+// Architectural FMA NaN ordering followed by integer nearest-even rounding.
+// Inputs have already been decoded, modified and flushed by their source type.
+inline uint32_t mixed_fma_float_value(uint32_t a, uint32_t b, uint32_t c, bool clamp,
+                                      uint64_t flags, bool rdna3) {
+  uint32_t ma = a & 0x7fffffff, mb = b & 0x7fffffff, mc = c & 0x7fffffff;
+  uint32_t result;
+  if ((ma == 0 && mb == 0x7f800000) || (mb == 0 && ma == 0x7f800000))
+    result = 0xffc00000;
+  else if (ma > 0x7f800000 || mb > 0x7f800000 || mc > 0x7f800000)
+    result = (ma > 0x7f800000   ? a
+              : mb > 0x7f800000 ? b
+                                : c) |
+             (!rdna3 || (flags & GOC_FP_IEEE_MODE) ? 0x00400000 : 0);
+  else if (ma == 0x7f800000 || mb == 0x7f800000) {
+    result = ((a ^ b) & 0x80000000) | 0x7f800000;
+    if (mc == 0x7f800000 && ((result ^ c) & 0x80000000))
+      result = 0xffc00000;
+  } else if (mc == 0x7f800000)
+    result = c;
+  else
+    result = fma_narrow_f32(fma_finite_round_odd(a, b, c), flags & GOC_FP_FLUSH_OUTPUT_DENORMALS);
+  if (clamp)
+    result = (result & 0x80000000) || (result & 0x7fffffff) > 0x7f800000 ? 0
+             : result > 0x3f800000                                       ? 0x3f800000
+                                                                         : result;
+  return result;
+}
+
 // Return the FP16 FMA result when at least one FP32 input is nonfinite.
 inline uint16_t mixed_fma_special(uint32_t a, uint32_t b, uint32_t c) {
   uint32_t ma = a & 0x7fffffff, mb = b & 0x7fffffff, mc = c & 0x7fffffff;

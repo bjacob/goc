@@ -4422,15 +4422,17 @@ static const uint32_t GOC_MIX_F16_C = 1U << 15;
 // produces FP32; MIXLO/MIXHI round directly to FP16 and preserve the other
 // destination half. GOC_FP16_OVFL saturates finite FP16 overflow only.
 // Loose semantics require host nearest-even arithmetic with denormals enabled.
-// FP16-output forms also support empirical-exact scalar semantics and preserve
-// host FP state in that mode. EXEC masks and whole-register aliases are supported.
+// All result types support empirical-exact scalar RNE semantics and preserve
+// host FP state in that mode. RDNA3 CLAMP models DX10_CLAMP=1; its NaN-preserving
+// DX10_CLAMP=0 alternative is not exposed. EXEC masks and whole-register aliases
+// are supported.
 // Unsuffixed forms select RDNA3; suffixed forms select RDNA4. MIX_F32 applies
 // guest flushing using each source's selected FP16/FP32 type and its FP32 result.
 // MIXLO/MIXHI also flush by source type, then round directly to FP16 with guest
 // output flushing. The flush flags jointly select the FP16 and FP32 MODE fields;
 // independent settings for those two types are not exposed. IEEE-dependent NaN
 // handling in loose MIX_F32 remains approximate. Exact RDNA3 global-state
-// reporting is unsupported; RDNA4 MIXLO/MIXHI leave EXCP_FLAG_USER unchanged,
+// reporting is unsupported; all RDNA4 mixed forms leave EXCP_FLAG_USER unchanged,
 // including all denormal modes, as observed in hardware captures.
 int goc_v_fma_mix_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,

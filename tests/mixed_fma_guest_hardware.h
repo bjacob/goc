@@ -24,4 +24,10 @@ static const uint64_t mixed_guest_hashes[2][2][4] = {
     },
 };
 
+// MIX_F32, generated with family fma_mix and width 32; same record layout.
+static const uint64_t mixed_float_guest_hashes[2][4] = {
+    {0x26ab74b826376b29ULL, 0x5056ff74b10a2661ULL, 0x6cac82756180b871ULL, 0xb353dd59bc7e5f0dULL},
+    {0x1585b554f35594c5ULL, 0x1dc8b4a594e34665ULL, 0x988fdf70a6a80525ULL, 0x2481051c1e6600a1ULL},
+};
+
 } // namespace goc_test
