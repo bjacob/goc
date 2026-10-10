@@ -522,8 +522,10 @@ and the per-call accumulator reset (seven samples, each at least 10 ms).
 Sparse integer WMMA covers `v_swmmac_i32_16x16x32_iu8`,
 `v_swmmac_i32_16x16x32_iu4`, and `v_swmmac_i32_16x16x64_iu4`, with signed or
 unsigned factors, CLAMP, loose and empirical exact semantics, and scalar/v3/v4
-paths. K=32 supports both index keys; K=64 consumes all metadata bits and rejects
-index-key selection. The in/out accumulator uses eight VGPRs. Inputs are read
+paths at both widths. Wave32 K=32 supports two index keys; K=64 consumes all
+metadata bits and rejects index-key selection. Wave64 IU8 supports four 8-bit
+index sets; both IU4 shapes support two 16-bit sets. The in/out accumulator
+uses eight VGPRs for Wave32 and four for Wave64. Inputs are read
 before stores, and host FP state is preserved.
 
 GPU captures establish two-stage CLAMP behavior: K=32 saturates after compressed

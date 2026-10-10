@@ -1754,3 +1754,28 @@ in the suite. Seven matrix width gaps remain: FP16/BF16 and integer SWMMAC.
 
 Validation: all 925 tests pass with Clang 21 and GCC 15 Release. All ten
 SWMMAC8 and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 integer SWMMAC with shape-specific index selection
+
+Added all three integer SWMMAC Wave64 forms, sharing decoded matrices and
+existing scalar, AVX2 and AVX-512 accumulation kernels. IU8 accepts four 8-bit
+index sets; both IU4 shapes accept two 16-bit sets. Wave64 K=64 therefore permits
+KEY_1, unlike Wave32 K=64. A uses one VGPR, D four, and B two (one for K=32 IU4).
+K=32 IU4 ignores upper A/index lanes. Inputs remain snapshotted before stores.
+
+Wave64 K=64 saturation groups are consecutive halves of compressed K, unlike
+Wave32's interleaved halves. The decoder places these products in the existing
+kernels' two-stage order. Native RX 9070 gfx1201 captures cover 1,024 combinations
+of shape, randomized near-limit inputs, sign flags, CLAMP and every legal key:
+262,144 result words. All recorded digests match every CPU path. Capture source:
+`tests/capture_swmmac_integer_wave64.cpp`, SHA-256
+`cb3a44d8c2831748ba6373d03806e72acffa2750d08a012da8fb1e13abc87208`.
+Fixtures live in `tests/swmmac_integer_wave64_hardware.h`.
+
+Additional tests cover literal overflow/cancellation that distinguishes staged
+saturation from final saturation, aliases with sources and metadata, duplicate
+destinations, and invalid flag output preservation. Wave32 hardware fixtures
+remain unchanged. Four matrix width gaps remain, all FP16/BF16 SWMMAC.
+
+Validation: all 929 tests pass with Clang 21 and GCC 15 Release. All eleven
+integer SWMMAC and instruction-flag tests pass under ASan/UBSan.

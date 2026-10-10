@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: MIT
 
-// Layouts adapted from rocjitsu shared/mma_exec.h. Intermediate CLAMP stages
-// follow gfx1201 captures, including the interleaved K=64 product groups.
+// Layouts adapted from rocjitsu shared/mma_exec.h. CLAMP stage ordering and
+// width-specific sparse-index selection follow gfx1201 Wave32/Wave64 captures.
 
 #pragma once
 
@@ -20,24 +20,44 @@ struct SwmmacIntegerInputs {
 };
 
 // Snapshot all input and accumulator registers into logical matrix order.
-template <unsigned Bits, unsigned K>
+template <unsigned Bits, unsigned K, bool Wave64 = false>
 inline void swmmac_integer_prepare(SwmmacIntegerInputs &input, uint32_t mode, uint32_t *const *d,
                                    const uint32_t *const *a, const uint32_t *const *b,
                                    const uint32_t *const *index) {
   auto extend = [](uint32_t x, bool sign) {
     return int32_t(x) - (sign && (x & (1u << (Bits - 1))) ? int32_t(1u << Bits) : 0);
   };
-  unsigned key = mode & GOC_SWMMAC_INDEX_KEY_1 ? 16 : 0;
+  unsigned key =
+      Wave64 && Bits == 8 ? 8 * ((mode >> 7) & 3) : (mode & GOC_SWMMAC_INDEX_KEY_1 ? 16 : 0);
   for (unsigned row = 0; row < 16; ++row)
     for (unsigned ck = 0; ck < K / 2; ++ck) {
+      // Keep the accumulator kernels' stage ordering. Wave64 K=64 places
+      // consecutive compressed halves in stages 0 and 1, unlike Wave32.
+      unsigned position = Wave64 && K == 64 ? 16 * ((ck / 8) & 1) + 8 * (ck / 16) + ck % 8 : ck;
       unsigned lane = row + 16 * ((ck / 8) & 1), local = 8 * (ck / 16) + ck % 8;
+      if constexpr (Wave64) {
+        if constexpr (Bits == 8) {
+          lane = row + 16 * (position / 8) + 32 * ((position / 4) & 1);
+          local = position % 4;
+        } else {
+          unsigned block = position / 8;
+          lane = row + 16 * (K == 32 ? block : 2 * (block & 1) + block / 2);
+          local = position % 8;
+        }
+      }
       uint32_t raw = (a[local * Bits / 32][lane] >> (local * Bits % 32)) & ((1u << Bits) - 1);
       input.a[row][ck] = extend(raw, mode & GOC_WMMA_SIGNED_A);
-      input.selected[row][ck] = uint8_t(4 * (ck / 2) + ((index[0][lane] >> (key + 2 * local)) & 3));
+      input.selected[row][ck] =
+          uint8_t(4 * (position / 2) + ((index[0][lane] >> (key + 2 * local)) & 3));
     }
   for (unsigned k = 0; k < K; ++k)
     for (unsigned col = 0; col < 16; ++col) {
       unsigned lane = col + 16 * ((k / 16) & 1), local = 16 * (k / 32) + k % 16;
+      if constexpr (Wave64) {
+        unsigned block = k / (K / 4);
+        lane = col + 32 * (block & 1) + 16 * (block / 2);
+        local = k % (K / 4);
+      }
       uint32_t raw = (b[local * Bits / 32][lane] >> (local * Bits % 32)) & ((1u << Bits) - 1);
       input.b[k][col] = extend(raw, mode & GOC_WMMA_SIGNED_B);
     }

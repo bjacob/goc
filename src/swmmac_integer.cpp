@@ -9,25 +9,29 @@
 
 namespace {
 
-template <unsigned Bits, unsigned K>
+template <unsigned Bits, unsigned K, bool Wave64 = false>
 int run(uint64_t flags, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *index) {
   const uint32_t known = GOC_WMMA_SIGNED_A | GOC_WMMA_SIGNED_B | GOC_WMMA_CLAMP |
-                         (K == 32 ? GOC_SWMMAC_INDEX_KEY_1 : 0);
+                         (K == 32 || Wave64 ? GOC_SWMMAC_INDEX_KEY_1 : 0) |
+                         (Wave64 && Bits == 8 ? GOC_SWMMAC_INDEX_KEY_2 : 0);
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;
+  uint32_t *dest[8];
+  for (unsigned reg = 0; reg < 8; ++reg)
+    dest[reg] = Wave64 ? d[reg % 4] + 32 * (reg / 4) : d[reg];
   goc::SwmmacIntegerInputs input;
-  goc::swmmac_integer_prepare<Bits, K>(input, mode, d, a, b, index);
+  goc::swmmac_integer_prepare<Bits, K, Wave64>(input, mode, dest, a, b, index);
   bool clamp = mode & GOC_WMMA_CLAMP;
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::swmmac_integer_x86_64_v4(K, clamp, d, input);
+    goc::swmmac_integer_x86_64_v4(K, clamp, dest, input);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::swmmac_integer_x86_64_v3(K, clamp, d, input);
+    goc::swmmac_integer_x86_64_v3(K, clamp, dest, input);
     return GOC_SUCCESS;
   }
 #endif
@@ -47,7 +51,7 @@ int run(uint64_t flags, uint32_t mode, uint32_t *const *d, const uint32_t *const
     }
   for (unsigned reg = 0; reg < 8; ++reg)
     for (unsigned lane = 0; lane < 32; ++lane)
-      d[reg][lane] = result[reg][lane];
+      dest[reg][lane] = result[reg][lane];
   return GOC_SUCCESS;
 }
 
@@ -75,4 +79,28 @@ int goc_v_swmmac_i32_16x16x64_iu4(uint64_t flags, uint64_t instruction_flags, ui
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run<4, 64>(flags, instruction_flags, d, a, b, index);
+}
+
+int goc_v_swmmac_i32_16x16x32_iu8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *index) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run<8, 32, true>(flags, instruction_flags, d, a, b, index);
+}
+
+int goc_v_swmmac_i32_16x16x32_iu4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *index) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run<4, 32, true>(flags, instruction_flags, d, a, b, index);
+}
+
+int goc_v_swmmac_i32_16x16x64_iu4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *index) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run<4, 64, true>(flags, instruction_flags, d, a, b, index);
 }

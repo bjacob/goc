@@ -2156,6 +2156,23 @@ int goc_v_swmmac_i32_16x16x64_iu4(uint64_t flags, uint64_t instruction_flags, ui
                                   const uint32_t *const *a, const uint32_t *const *b,
                                   const uint32_t *const *index);
 
+// Wave64 integer SWMMAC: A one VGPR, B two (one for K=32 IU4), D four,
+// index one. IU8 selects four metadata bytes with KEY_1/KEY_2; IU4 selects
+// two metadata halfwords with KEY_1. K=32 IU4 uses only A/index lanes 0..31.
+// Saturation applies after the first and second halves of compressed K.
+// Both semantics and the Wave32 alias/error guarantees are preserved.
+int goc_v_swmmac_i32_16x16x32_iu8_wave64(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *index);
+
+int goc_v_swmmac_i32_16x16x32_iu4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *index);
+
+int goc_v_swmmac_i32_16x16x64_iu4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *index);
+
 // Sparse FP8/BF8 2:4 matrix multiply-accumulate into FP32 D. A uses two
 // VGPRs, B four, index one, and in/out D eight. FP8 is E4M3FN; BF8 is E5M2.
 // Metadata pairs must contain strictly increasing positions in each group of
