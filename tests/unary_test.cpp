@@ -456,3 +456,75 @@ TEST(Unary, Rdna3Dx10ClampPolicies) {
     EXPECT_EQ(state, 0x12345678U);
   }
 }
+
+TEST(Unary, ExpLogFullRangeModifiersMasksAndAliases) {
+  const decltype(&goc_v_exp_f32) narrow[2][2] = {{goc_v_exp_f32, goc_v_log_f32},
+                                                 {goc_v_exp_f32_rdna4, goc_v_log_f32_rdna4}};
+  const decltype(&goc_v_exp_f32_wave64) wide[2][2] = {
+      {goc_v_exp_f32_wave64, goc_v_log_f32_wave64},
+      {goc_v_exp_f32_rdna4_wave64, goc_v_log_f32_rdna4_wave64}};
+  const uint32_t boundaries[] = {0,           0x80000000U, 1,           0x807fffffU, 0x00800000U,
+                                 0x7f7fffffU, 0x7f800000U, 0xff800000U, 0x7fc12345U, 0x7f812345U,
+                                 0x3f7fffffU, 0x3f800000U, 0x3f800001U, 0xc2fc0001U, 0xc2fc0000U,
+                                 0xc2fbffffU, 0x42ffffffU, 0x43000000U, 0x43000001U};
+  for (unsigned arch = 0; arch < 2; ++arch)
+    for (unsigned op = 0; op < 2; ++op)
+      for (unsigned lanes : {32U, 64U})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned mode = 0; mode < 32; ++mode)
+            for (unsigned batch = 0; batch < 64; ++batch) {
+              const uint64_t flags = cpu | (batch & 1 ? GOC_FP_IEEE_MODE : 0) |
+                                     (batch & 2 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                     (batch & 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+              const uint32_t modifiers = (mode & 1 ? GOC_ALU_NEG_A : 0) |
+                                         (mode & 2 ? GOC_ALU_ABS_A : 0) | ((mode >> 2 & 3) << 6) |
+                                         (mode & 16 ? GOC_ALU_CLAMP : 0);
+              uint32_t effective = modifiers;
+              // These SFUs force flushing; RDNA3 IEEE alone disables OMOD.
+              if (!arch && (flags & GOC_FP_IEEE_MODE))
+                effective &= ~uint32_t(GOC_ALU_OMOD_HALF);
+              uint32_t input[66], output[66], original[64];
+              std::fill(input, input + 66, 0xdeadbeefU);
+              std::fill(output, output + 66, 0xdeadbeefU);
+              for (unsigned lane = 0; lane < lanes; ++lane) {
+                const uint32_t index = batch * lanes + lane;
+                uint32_t bits = op ? index * 2654435761U
+                                   : goc::as_bits(float(int(index) - 2048) * (130.0f / 2048));
+                if (batch == 0 && lane < sizeof(boundaries) / sizeof(boundaries[0]))
+                  bits = boundaries[lane];
+                original[lane] = input[lane + 1] = bits;
+              }
+              const bool alias = batch & 8;
+              uint32_t *d = (alias ? input : output) + 1;
+              const uint32_t *a = input + 1;
+              const uint64_t exec_mask = batch & 16 ? 0xa55ac33cf00f5aa5ULL : ~0ULL;
+              uint32_t state = 0x12345678U;
+              ASSERT_EQ(lanes == 32 ? narrow[arch][op](flags, uint32_t(exec_mask), modifiers, &d,
+                                                       &a, &state)
+                                    : wide[arch][op](flags, exec_mask, modifiers, &d, &a, &state),
+                        GOC_SUCCESS);
+              EXPECT_EQ(state, 0x12345678U);
+              for (unsigned lane = 0; lane < lanes; ++lane) {
+                SCOPED_TRACE(::testing::Message() << arch << '/' << op << '/' << lanes << '/' << cpu
+                                                  << '/' << mode << '/' << batch << '/' << lane);
+                if (!((exec_mask >> lane) & 1)) {
+                  EXPECT_EQ(d[lane], alias ? original[lane] : 0xdeadbeefU);
+                  continue;
+                }
+                const float want =
+                    goc_test::unary_reference(op + 7, goc::as_float(original[lane]), effective);
+                const float got = goc::as_float(d[lane]);
+                if (std::isnan(want)) {
+                  EXPECT_TRUE(std::isnan(got));
+                } else if (want == 0 || std::isinf(want)) {
+                  EXPECT_EQ(d[lane], goc::as_bits(want));
+                } else {
+                  EXPECT_FLOAT_EQ(got, want);
+                }
+              }
+              EXPECT_EQ(input[0], 0xdeadbeefU);
+              EXPECT_EQ(input[lanes + 1], 0xdeadbeefU);
+              EXPECT_EQ(output[0], 0xdeadbeefU);
+              EXPECT_EQ(output[lanes + 1], 0xdeadbeefU);
+            }
+}

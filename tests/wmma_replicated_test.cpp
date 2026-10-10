@@ -41,8 +41,7 @@ TEST(WmmaReplicated, DenseMatricesModifiersAliasesAndGuards) {
   for (int lanes : {32, 64})
     for (bool bf16 : {false, true})
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (uint64_t mode : {uint64_t(0), uint64_t(GOC_WMMA_NEG_C), uint64_t(GOC_WMMA_ABS_C),
-                              uint64_t(GOC_WMMA_NEG_C | GOC_WMMA_ABS_C)})
+        for (uint64_t mode = 0; mode < 64; ++mode)
           for (int dst : {0, 4, 8, 16, 24}) {
             SCOPED_TRACE(::testing::Message()
                          << lanes << "/" << bf16 << "/" << cpu << "/" << mode << "/" << dst);
@@ -54,10 +53,12 @@ TEST(WmmaReplicated, DenseMatricesModifiersAliasesAndGuards) {
             }
             for (int lane = 0; lane < lanes; ++lane) {
               for (int k = 0; k < 16; k += 2) {
-                v[k / 2][lane] = encode(a_value(lane % 16, k), bf16) |
-                                 (uint32_t(encode(a_value(lane % 16, k + 1), bf16)) << 16);
-                v[8 + k / 2][lane] = encode(b_value(k, lane % 16), bf16) |
-                                     (uint32_t(encode(b_value(k + 1, lane % 16), bf16)) << 16);
+                v[k / 2][lane] =
+                    encode(a_value(lane % 16 + lane / 16, k), bf16) |
+                    (uint32_t(encode(a_value(lane % 16 + lane / 16, k + 1), bf16)) << 16);
+                v[8 + k / 2][lane] =
+                    encode(b_value(k, lane % 16 + lane / 16), bf16) |
+                    (uint32_t(encode(b_value(k + 1, lane % 16 + lane / 16), bf16)) << 16);
               }
               for (int reg = 0; reg < 256 / lanes; ++reg)
                 v[16 + reg][lane] = goc::as_bits(float(reg * 3 - lane));
@@ -71,8 +72,14 @@ TEST(WmmaReplicated, DenseMatricesModifiersAliasesAndGuards) {
                   sum = -sum;
                 if (mode & GOC_WMMA_NEG_C)
                   sum = -sum;
-                for (int k = 0; k < 16; ++k)
-                  sum += a_value(row, k) * b_value(k, col);
+                for (int k = 0; k < 16; ++k) {
+                  int av = a_value(row + lane / 16, k), bv = b_value(k, col + lane / 16);
+                  if (mode & (k % 2 ? GOC_WMMA_NEG_HI_A : GOC_WMMA_NEG_LO_A))
+                    av = -av;
+                  if (mode & (k % 2 ? GOC_WMMA_NEG_HI_B : GOC_WMMA_NEG_LO_B))
+                    bv = -bv;
+                  sum += av * bv;
+                }
                 expected[31 - dst - reg][lane + 1] = goc::as_bits(float(sum));
               }
             ASSERT_EQ(instruction(bf16, lanes)(cpu, mode, v + dst, v, v + 8, v + 16), GOC_SUCCESS);

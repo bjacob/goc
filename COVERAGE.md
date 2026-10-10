@@ -10,8 +10,9 @@ An API declaration is not a completed audit. Existing RDNA4 tests do not prove
 RDNA3 compatibility. Equal XML descriptions do not prove identical arithmetic.
 A family is complete only after reviewing its instruction results, modifiers,
 wave widths, aliasing, implicit register outputs, and numerical semantics against
-both targets. Exact support is limited to ports of existing rocjitsu implementations; new hardware
-reverse-engineering is out of scope. Unsupported exact/global-state requests must
+both targets. Exact support uses ports of existing rocjitsu implementations or simple
+specification-derived algorithms; nontrivial new hardware reverse-engineering is
+out of scope. Unsupported exact/global-state requests must
 fail honestly under the documented contracts. Loose SIMD
 paths must retain their existing performance and may skip optional state outputs.
 
@@ -8755,3 +8756,10 @@ and performance checks through `266fa94`. No production code changed after
 persisted through the final independent checks. Resolving it requires additional
 authoritative evidence or the user's decision about the explicit limitation;
 repeating existing tests or adding speculative exception behavior cannot close it.
+
+## Cross-cutting SIMD and state audit
+
+See [SIMD_AUDIT.md](SIMD_AUDIT.md) for the current modifier/EXEC dispatch review,
+host FP control audit, exact-state limitations, and validation. This pass adds
+loose AVX2 FP32 EXP/LOG and FP32-result RDNA3/RDNA4 Wave32/Wave64 WMMA
+coverage without introducing new bit-exact models.

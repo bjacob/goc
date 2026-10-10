@@ -178,9 +178,9 @@ All six floating NEG/NEG_HI bits are supported. Integer arithmetic follows
 rocjitsu's `exec_gfx11_wmma_i32`: signed/unsigned A/B, signed C, wrapping or
 final CLAMP. RDNA4 instead clamps at two stage boundaries.
 
-Implementations are scalar. Loose FP32 output uses host FMA; exact floating,
-packed-output, and integer paths use integer arithmetic and preserve host FP
-state. All results are staged before stores so whole-VGPR aliases are supported.
+Loose FP32 output uses scalar or eight-lane AVX2 FMA in both wave sizes,
+including all six sign modifiers. Exact floating, packed-output, and integer
+paths use scalar integer arithmetic and preserve host FP state. All results are staged before stores so whole-VGPR aliases are supported.
 EXEC is ignored. No new GPU captures were made: tests reuse rocjitsu's GFX1100
 captures (103 DOT2 cases, a 256-element FP32 matrix, and 28 packed matrices),
 plus independent integer references, all modifiers, half selectors, aliasing,
@@ -198,7 +198,7 @@ share one API across architectures. For reviewed conflicts, unsuffixed names
 select RDNA3 and `_rdna4` selects RDNA4, before a possible `_wave64` suffix.
 The ongoing cross-architecture review is tracked in [COVERAGE.md](COVERAGE.md).
 RDNA3 WMMA support is described above.
-The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
+The FP16/BF16 WMMA forms additionally have Wave64 variants named
 `goc_<mnemonic>_wave64`, supporting loose and empirical exact modes.
 
 Exact support in this summary is subject to each API's guest-mode and modifier
@@ -304,15 +304,16 @@ kernels. Wave64 uses one VGPR each for A/B and four each for C/D. Integer
 RDNA4 WMMA also supports both widths, retaining scalar, AVX2 and Zen4 VNNI
 paths. Wave64 uses one VGPR per input and four per accumulator/result;
 IU4 K=16 reads only the lower 32 source lanes. FP16 and
-BF16 SIMD WMMA paths handle loose wave32 calls with FP32 outputs and all 64
+BF16 SIMD WMMA paths handle loose Wave32 and Wave64 calls with FP32 outputs and all 64
 combinations of `NEG_LO`/`NEG_HI` on A/B and `NEG`/`ABS` on C. `ABS_C` is applied before
 `NEG_C`. These sign-bit transformations preserve the magnitude-only Zen4 BF16
 eligibility checks; rejected inputs still fall back to v3 when available.
 The v3 paths handle subnormals, infinities and NaNs through widening and CPU FMA;
 NaN payloads are unspecified in loose mode. Zen4 first tries the AVX-512 BF16
 path, falling back to v3 for exceptional values and extreme product exponents,
-or to scalar if v3 was not compiled. Packed outputs, wave64 and floating-point
-empirical exact modes use scalar arithmetic.
+or to scalar if v3 was not compiled. The Zen4 BF16 path applies to RDNA4
+Wave32; both architectures and wave sizes have an AVX2 path. Packed outputs
+and floating-point empirical exact modes use scalar arithmetic.
 Integer WMMA uses SIMD in both semantics, for every signedness and CLAMP
 combination.
 Its v3 path uses signed 16-bit pairwise multiply-adds; Zen4 uses AVX-512 VNNI
@@ -2716,3 +2717,12 @@ Architectural exception outputs use `trapsts` for explicitly RDNA3 APIs and
 matching arithmetic bits 0–6, not the complete register layouts. The
 [register-output audit](GLOBAL_STATE_AUDIT.md) lists unresolved shared APIs;
 matching register names alone does not certify reporting or numerical behavior.
+
+## Cross-cutting SIMD and state audit
+
+[SIMD_AUDIT.md](SIMD_AUDIT.md) records the dispatch, modifier, EXEC, host FP
+control, and optional-state audit, including the remaining scalar cases.
+FP32 EXP/LOG now share the existing FP16 polynomial helpers and use eight-lane
+AVX2 arithmetic in loose mode on both architectures and wave sizes, with all
+supported source/output modifiers, DPP, and masked stores. These approximations
+do not add new empirical-exact models.

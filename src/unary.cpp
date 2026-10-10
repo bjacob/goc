@@ -64,11 +64,9 @@ int unary_loose(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t
   if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
-  if constexpr (Op != goc::Unary::Exp && Op != goc::Unary::Log) {
-    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::unary_x86_64_v3(Op, exec_mask, modifiers, d[0], a[0], flags);
-      return GOC_SUCCESS;
-    }
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::unary_x86_64_v3(Op, exec_mask, modifiers, d[0], a[0], flags);
+    return GOC_SUCCESS;
   }
 #endif
   uint32_t result[32];

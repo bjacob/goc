@@ -38,13 +38,10 @@ int wmma(uint64_t flags, uint32_t instruction_flags, uint32_t *const *d, const u
 #endif
 
 #if defined(GOC_HAVE_X86_64_V3)
-  if constexpr (WaveSize == 32 && !Packed) {
+  if constexpr (!Packed) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
         (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL) {
-      if constexpr (Bf16)
-        goc::wmma_bf16_x86_64_v3(instruction_flags, d, a, b, c);
-      else
-        goc::wmma_f16_x86_64_v3(instruction_flags, d, a, b, c);
+      goc::wmma_f32_x86_64_v3<Bf16, WaveSize, false>(instruction_flags, d, a, b, c);
       return GOC_SUCCESS;
     }
   }

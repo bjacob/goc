@@ -5,6 +5,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "packed16.h"
+#include "simd.h"
 
 #include <algorithm>
 #include <cmath>
@@ -23,6 +24,15 @@ int wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32_t *cons
     return GOC_ERROR_INVALID_FLAGS;
   if (int error = goc::validate(flags, 0, true))
     return error;
+#if defined(GOC_HAVE_X86_64_V3)
+  if constexpr (!Packed) {
+    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
+        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL) {
+      goc::wmma_f32_x86_64_v3<Bf16, Lanes, true>(uint32_t(mode), d, a, b, c);
+      return GOC_SUCCESS;
+    }
+  }
+#endif
   constexpr int Groups = Lanes / 16, Registers = 256 / Lanes;
   const unsigned shift = (mode & GOC_WMMA_HIGH_C_D) ? 16 : 0;
   uint32_t result[Registers][Lanes];

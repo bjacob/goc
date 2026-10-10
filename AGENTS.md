@@ -111,8 +111,17 @@ but loose-mode callers cannot rely on its completeness or accuracy. Never return
 GOC_ERROR_UNSUPPORTED_GLOBAL_STATE in loose mode. For bit-exact semantics with a
 non-null pointer, return that error if faithful updates are unavailable.
 
+Supported instruction modifiers and EXEC masks should retain SIMD dispatch in
+loose semantics unless their behavior is specifically unsuitable for SIMD.
+Use masked stores for vector destinations where applicable; document scalar
+exceptions and architecture-specific restrictions instead of silently treating
+nondefault flags as a reason to fall back. Scalar-register operations naturally
+need no multi-lane SIMD implementation.
+
 Implement loose semantics and port existing bit-exact implementations from rocjitsu.
+Simple bit-exact implementations directly justified by the ISA are also allowed.
 Do not reverse-engineer hardware to develop new bit-exact numerical or exception
 models. Hardware validation of a borrowed model does not authorize inventing a
-new model. If a faithful implementation is unavailable upstream, leave strict
-exact semantics or optional exact global-state reporting explicitly unsupported.
+new model. If no faithful borrowed or simple specification-derived implementation
+is available, leave strict exact semantics or optional exact global-state reporting
+explicitly unsupported.

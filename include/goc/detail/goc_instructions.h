@@ -6216,7 +6216,7 @@ int goc_v_wmma_f32_16x16x16_bf16_rdna4(uint64_t flags, uint64_t instruction_flag
                                        const uint32_t *const *b, const uint32_t *const *c);
 
 // Wave64 variants: 64 words per VGPR; 2 VGPRs for A/B, 4 for C/D.
-// Both semantics and all WMMA modifiers are supported through scalar paths.
+// Both semantics and all WMMA modifiers are supported. Loose uses scalar or AVX2.
 int goc_v_wmma_f32_16x16x16_f16_rdna4_wave64(uint64_t flags, uint64_t instruction_flags,
                                              uint32_t *const *d, const uint32_t *const *a,
                                              const uint32_t *const *b, const uint32_t *const *c);

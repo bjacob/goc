@@ -9,10 +9,11 @@
 
 namespace goc {
 
-// Approximates exp2 for widened FP16 inputs. Finite clamping preserves every
-// final FP16 overflow/underflow outcome, including OMOD and saturation.
-inline __m256 half_exp2(__m256 input) {
-  auto x = _mm256_min_ps(_mm256_max_ps(input, _mm256_set1_ps(-64)), _mm256_set1_ps(64));
+// Approximate exp2 with a reduced polynomial. Half inputs need only [-64, 64];
+// FP32 outputs outside [-126, 128) flush to zero or overflow to infinity.
+template <bool Half> inline __m256 exp2_loose(__m256 input) {
+  auto x = _mm256_min_ps(_mm256_max_ps(input, _mm256_set1_ps(Half ? -64 : -126)),
+                         _mm256_set1_ps(Half ? 64 : 128));
   auto exponent = _mm256_round_ps(x, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
   auto r = _mm256_sub_ps(x, exponent);
   // Taylor coefficients (ln(2)^n / n!) on the reduced interval [-0.5, 0.5].
@@ -24,9 +25,22 @@ inline __m256 half_exp2(__m256 input) {
   p = _mm256_fmadd_ps(p, r, _mm256_set1_ps(0.2402265069591007f));
   p = _mm256_fmadd_ps(p, r, _mm256_set1_ps(0.6931471805599453f));
   p = _mm256_fmadd_ps(p, r, _mm256_set1_ps(1));
+  // Keep the scale normal when rounding the exponent produces 128. Apply the
+  // remaining factor to p before scaling so finite values below overflow survive.
+  if constexpr (!Half) {
+    auto high = _mm256_cmp_ps(exponent, _mm256_set1_ps(127), _CMP_GT_OQ);
+    exponent = _mm256_min_ps(exponent, _mm256_set1_ps(127));
+    p = _mm256_blendv_ps(p, _mm256_add_ps(p, p), high);
+  }
   auto scale = _mm256_castsi256_ps(_mm256_slli_epi32(
       _mm256_add_epi32(_mm256_cvttps_epi32(exponent), _mm256_set1_epi32(127)), 23));
   auto result = _mm256_mul_ps(p, scale);
+  if constexpr (!Half) {
+    result = _mm256_blendv_ps(result, _mm256_setzero_ps(),
+                              _mm256_cmp_ps(input, _mm256_set1_ps(-126), _CMP_LT_OQ));
+    result = _mm256_blendv_ps(result, _mm256_castsi256_ps(_mm256_set1_epi32(0x7f800000)),
+                              _mm256_cmp_ps(input, _mm256_set1_ps(128), _CMP_GE_OQ));
+  }
   auto infinity = _mm256_castsi256_ps(_mm256_set1_epi32(0x7f800000));
   auto negative_infinity = _mm256_castsi256_ps(_mm256_set1_epi32(int(0xff800000u)));
   result = _mm256_blendv_ps(result, _mm256_setzero_ps(),
@@ -36,9 +50,9 @@ inline __m256 half_exp2(__m256 input) {
   return _mm256_blendv_ps(result, input, positive_inf_or_nan);
 }
 
-// Approximates log2 for widened FP16 inputs, including their subnormals (which
-// are normal FP32 values). Zero returns -infinity; negative inputs return NaN.
-inline __m256 half_log2(__m256 input) {
+// Approximate log2 for normal FP32 inputs, including widened FP16 subnormals.
+// The FP32 caller flushes input subnormals first. Zero returns -infinity.
+inline __m256 log2_loose(__m256 input) {
   auto bits = _mm256_castps_si256(input);
   auto magnitude = _mm256_and_si256(bits, _mm256_set1_epi32(0x7fffffff));
   auto exponent = _mm256_sub_epi32(_mm256_srli_epi32(magnitude, 23), _mm256_set1_epi32(127));
@@ -71,11 +85,10 @@ inline __m256 half_log2(__m256 input) {
 
 // Half inputs have already widened exactly to normal FP32 values (or zero).
 template <Unary Op, bool Half = false> __m256 unary_value(__m256 value) {
-  static_assert(Half || (Op != Unary::Exp && Op != Unary::Log));
   if constexpr (Op == Unary::Exp)
-    return half_exp2(value);
+    return exp2_loose<Half>(value);
   if constexpr (Op == Unary::Log)
-    return half_log2(value);
+    return log2_loose(value);
   if constexpr (Op == Unary::Fract) {
     value = _mm256_sub_ps(value, _mm256_floor_ps(value));
     auto limit = _mm256_castsi256_ps(_mm256_set1_epi32(Half ? 0x3f7fe000 : 0x3f7fffff));

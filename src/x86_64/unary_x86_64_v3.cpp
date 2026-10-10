@@ -71,8 +71,9 @@ void unary_x86_64_v3(Unary op, uint32_t exec_mask, uint32_t modifiers, uint32_t 
   case Unary::Rsq:
     return run<Unary::Rsq>(exec_mask, modifiers, d, a, flags);
   case Unary::Exp:
+    return run<Unary::Exp>(exec_mask, modifiers, d, a, flags);
   case Unary::Log:
-    return;
+    return run<Unary::Log>(exec_mask, modifiers, d, a, flags);
   }
 }
 
