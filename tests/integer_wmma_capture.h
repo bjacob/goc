@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstring>
 #include <stdint.h>
 
@@ -10,7 +11,8 @@ namespace goc_test {
 // Recreate the shared gfx1201 dense/sparse integer WMMA capture inputs.
 // Registers 0..5 hold operand words, 6..13 near-limit accumulators, and 14
 // sparse metadata (unused by dense WMMA). Seed and draw order define the corpus.
-inline void integer_wmma_capture_inputs(unsigned sample, uint32_t (&data)[15][32]) {
+template <size_t Lanes>
+inline void integer_wmma_capture_inputs(unsigned sample, uint32_t (&data)[15][Lanes]) {
   std::memset(data, 0, sizeof(data));
   uint32_t state = 0xa3987412u + sample;
   auto next = [&]() {

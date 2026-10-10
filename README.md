@@ -273,7 +273,9 @@ A/B inputs and signed output saturation (`GOC_WMMA_CLAMP`); without CLAMP,
 results wrap modulo 2^32.
 FP8/BF8 WMMA supports Wave32 and Wave64, sharing its scalar and AVX2
 kernels. Wave64 uses one VGPR each for A/B and four each for C/D. Integer
-RDNA4 WMMA currently supports Wave32 only. FP16 and
+RDNA4 WMMA also supports both widths, retaining scalar, AVX2 and Zen4 VNNI
+paths. Wave64 uses one VGPR per input and four per accumulator/result;
+IU4 K=16 reads only the lower 32 source lanes. FP16 and
 BF16 SIMD WMMA paths handle loose wave32 calls with FP32 outputs and all 64
 combinations of `NEG_LO`/`NEG_HI` on A/B and `NEG`/`ABS` on C. `ABS_C` is applied before
 `NEG_C`. These sign-bit transformations preserve the magnitude-only Zen4 BF16

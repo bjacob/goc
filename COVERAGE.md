@@ -1702,3 +1702,30 @@ that discrepancy or establish the GPU's floating accumulation order.
 Capture source SHA-256: `e25e3e098a27660b344f341e1cb242dc772cffb0af23cf1ac7678758b6ba6967`.
 Validation: all 918 tests pass with Clang 21 and GCC 15 Release. All five
 Wave64 FP8 WMMA and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 integer WMMA with native saturation evidence
+
+Added IU8 K=16, IU4 K=16 and IU4 K=32 Wave64 APIs, preserving architectural
+`_rdna4_wave64` suffixes for the two shared RDNA3/RDNA4 mnemonics. Pointer views
+of 32-lane register sections reuse existing scalar, AVX2 and Zen4 VNNI kernels.
+A/B each use one VGPR, C/D four; IU4 K=16 ignores upper source lanes. Validation
+precedes operand access, and the existing result snapshot preserves aliases.
+
+A native RX 9070 gfx1201 capture covers 16 randomized near-limit input sets,
+all eight signedness/CLAMP modes and all three shapes: 384 digests, 98,304
+output words. `capture_integer_wmma_wave64.cpp` generates the recorded
+`integer_wmma_wave64_hardware.h` fixtures. Source SHA-256:
+`62052c723576344a55c7c20d936fb02c8bc2e1ef1c8e7cae743fd4878911f387`.
+
+The captures distinguish the two saturation stages (source lane groups 0+2,
+then 1+3) from one final clamp and, for IU8/K=32 IU4, four clamps. All captures
+match the reused kernels. Independent logical-matrix tests cover extreme
+factors, cancellation and overflowing accumulators using the manual's Wave64
+layout. Native digests are replayed across CPU levels and destination aliases.
+Invalid flags preserve outputs. The matrix width backlog is now eleven SWMMAC
+APIs; existing dense WMMA APIs all have both widths, with numerical and
+architecture audits still tracked separately.
+
+Validation: all 921 tests pass on Clang 21 and GCC 15 Release. Five targeted
+integer WMMA and instruction-flag tests pass under ASan/UBSan, including the
+existing Wave32 capture corpus after making its input generator width-aware.

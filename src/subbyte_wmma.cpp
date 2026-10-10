@@ -122,6 +122,25 @@ int integer(uint64_t flags, uint32_t modifiers, uint32_t *const *d, const uint32
   return GOC_SUCCESS;
 }
 
+// Wave64 keeps the same two saturation stages. Each stage consumes source
+// lane groups 0+2, then 1+3 (IU4 K=16 only uses groups 0 and 1). Native
+// near-limit captures distinguish this from one final clamp or four clamps.
+template <int Bits, int K>
+int integer_wave64(uint64_t flags, uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
+                   const uint32_t *const *b, const uint32_t *const *c) {
+  if (int error = goc::validate(
+          flags, modifiers & ~(GOC_WMMA_SIGNED_A | GOC_WMMA_SIGNED_B | GOC_WMMA_CLAMP), true))
+    return error;
+  const uint32_t *av[] = {a[0], a[0] + 32}, *bv[] = {b[0], b[0] + 32};
+  const uint32_t *cv[8];
+  uint32_t *dv[8];
+  for (unsigned reg = 0; reg < 8; ++reg) {
+    cv[reg] = c[reg % 4] + 32 * (reg / 4);
+    dv[reg] = d[reg % 4] + 32 * (reg / 4);
+  }
+  return integer<Bits, K>(flags, modifiers, dv, av, bv, cv);
+}
+
 } // namespace
 
 int goc_v_wmma_f32_16x16x16_fp8_fp8(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
@@ -210,4 +229,28 @@ int goc_v_wmma_f32_16x16x16_bf8_bf8_wave64(uint64_t flags, uint64_t instruction_
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return floating_wave64<true, true>(flags, instruction_flags, d, a, b, c);
+}
+
+int goc_v_wmma_i32_16x16x16_iu8_rdna4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                             uint32_t *const *d, const uint32_t *const *a,
+                                             const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return integer_wave64<8, 16>(flags, instruction_flags, d, a, b, c);
+}
+
+int goc_v_wmma_i32_16x16x16_iu4_rdna4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                             uint32_t *const *d, const uint32_t *const *a,
+                                             const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return integer_wave64<4, 16>(flags, instruction_flags, d, a, b, c);
+}
+
+int goc_v_wmma_i32_16x16x32_iu4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                       uint32_t *const *d, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return integer_wave64<4, 32>(flags, instruction_flags, d, a, b, c);
 }

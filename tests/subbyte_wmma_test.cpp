@@ -4,6 +4,7 @@
 #include "goc/goc.h"
 #include "integer_wmma_capture.h"
 #include "integer_wmma_hardware.h"
+#include "integer_wmma_wave64_hardware.h"
 #include "internal.h"
 #include "subbyte_golden.h"
 
@@ -514,5 +515,153 @@ TEST(SubbyteWmma, Wave64Fp8HardwareCorpus) {
           for (unsigned lane = 0; lane < 64; ++lane)
             hash = goc_test::capture_hash_word(hash, r.v[dst + reg][lane]);
         EXPECT_EQ(hash, 0xcebccc43bff33725ULL) << cpu << "/" << format << "/" << dst;
+      }
+}
+
+namespace {
+
+const Wmma integer_wave64[] = {goc_v_wmma_i32_16x16x16_iu8_rdna4_wave64,
+                               goc_v_wmma_i32_16x16x16_iu4_rdna4_wave64,
+                               goc_v_wmma_i32_16x16x32_iu4_wave64};
+
+} // namespace
+
+TEST(SubbyteWmma, Wave64IntegerNativeStagedClampCorpusAndAliases) {
+  for (unsigned shape = 0; shape < 3; ++shape)
+    for (uint64_t cpu : cpu_levels())
+      for (unsigned sample = 0; sample < 16; ++sample)
+        for (unsigned mode = 0; mode < 8; ++mode)
+          for (unsigned dst : {0U, 2U, 6U, 10U}) {
+            uint32_t data[15][64];
+            goc_test::integer_wmma_capture_inputs(sample, data);
+            const uint32_t *a[] = {data[0]}, *b[] = {data[2]}, *c[4];
+            uint32_t *d[4];
+            for (unsigned reg = 0; reg < 4; ++reg) {
+              c[reg] = data[6 + reg];
+              d[reg] = data[dst + reg];
+            }
+            uint32_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
+            ASSERT_EQ(
+                integer_wave64[shape](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                      modifiers, d, a, b, c),
+                GOC_SUCCESS);
+            uint64_t hash = goc_test::capture_hash_seed;
+            for (unsigned reg = 0; reg < 4; ++reg)
+              for (unsigned lane = 0; lane < 64; ++lane)
+                hash = goc_test::capture_hash_word(hash, d[reg][lane]);
+            EXPECT_EQ(hash, goc_test::integer_wmma_wave64_digests[shape][sample][mode])
+                << shape << "/" << cpu << "/" << sample << "/" << mode << "/" << dst;
+          }
+}
+
+TEST(SubbyteWmma, Wave64IntegerValidationPreservesOutputs) {
+  for (auto fn : integer_wave64) {
+    WideRegisters r;
+    uint32_t before[4][64];
+    save_wave64(r, 16, before);
+    for (uint64_t invalid : {uint64_t(4), uint64_t(1ULL << 32), uint64_t(1ULL << 63)})
+      EXPECT_EQ(fn(0, invalid, r.v + 16, r.v, r.v + 4, r.v + 8), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(1ULL << 63, 0, r.v + 16, r.v, r.v + 4, r.v + 8), GOC_ERROR_INVALID_FLAGS);
+    check_wave64(r, 16, nullptr, before);
+  }
+}
+
+namespace {
+
+// Direct encoding of RDNA4 table 42's Wave64 input bit fields.
+void set_integer_wave64(uint32_t *const *v, int index, int k, int bits, int k_size,
+                        uint32_t value) {
+  int lane = index;
+  if (bits == 8)
+    lane |= ((k & 4) << 3) | ((k & 8) << 1);
+  else if (k_size == 32)
+    lane |= ((k & 8) << 2) | (k & 16);
+  else
+    lane |= (k & 8) << 1;
+  int shift = (k % (32 / bits)) * bits;
+  uint32_t mask = ((1U << bits) - 1) << shift;
+  v[0][lane] = (v[0][lane] & ~mask) | (value << shift);
+}
+
+} // namespace
+
+TEST(SubbyteWmma, Wave64IntegerExtremesAndCancellationAcrossCpuLevels) {
+  for (int shape = 0; shape < 3; ++shape)
+    for (int mode = 0; mode < 8; ++mode)
+      for (int pattern = 0; pattern < 7; ++pattern) {
+        const int bits = shape == 0 ? 8 : 4, k_size = shape == 2 ? 32 : 16;
+        const int range = 1 << bits;
+        uint32_t codes[2][16][32] = {};
+        int64_t values[2][16][32] = {};
+        std::minstd_rand random(991 + pattern);
+        for (int operand = 0; operand < 2; ++operand)
+          for (int index = 0; index < 16; ++index)
+            for (int k = 0; k < k_size; ++k) {
+              int code = 0;
+              switch (pattern) {
+              case 0:
+                code = range - 1;
+                break; // unsigned-byte pair sums exceed int16
+              case 1:
+                code = range / 2;
+                break; // most-negative signed factors
+              case 2:
+                code = range / 2 - 1;
+                break;
+              case 3: // Products cancel after potentially overflowing in either direction.
+              case 6:
+                code = operand == 0
+                           ? 1
+                           : ((k < k_size / 2) != (pattern == 6) ? range / 2 - 1 : range / 2);
+                break;
+              case 4:
+                code = (index * k_size + k) % range;
+                break;
+              default:
+                code = random() % range;
+                break;
+              }
+              codes[operand][index][k] = uint32_t(code);
+              values[operand][index][k] = code;
+              if ((mode & (1 << operand)) && code >= range / 2)
+                values[operand][index][k] -= range;
+            }
+        const int64_t accumulators[] = {INT32_MAX, INT32_MIN, INT32_MAX - 100, INT32_MIN + 100,
+                                        0,         -1,        123456,          -123456};
+        uint32_t golden[256];
+        for (int row = 0; row < 16; ++row)
+          for (int col = 0; col < 16; ++col) {
+            int64_t acc = accumulators[(row + col) % 8];
+            for (int half = 0; half < 2; ++half) {
+              for (int k = 0; k < k_size; ++k)
+                if (k / (k_size / 2) == half)
+                  acc += values[0][row][k] * values[1][col][k];
+              if (mode & 4)
+                acc = std::clamp(acc, int64_t(INT32_MIN), int64_t(INT32_MAX));
+            }
+            golden[row * 16 + col] = uint32_t(acc);
+          }
+        for (uint64_t cpu : cpu_levels()) {
+          SCOPED_TRACE(::testing::Message() << "shape=" << shape << " mode=" << mode
+                                            << " pattern=" << pattern << " cpu=" << cpu);
+          WideRegisters r;
+          for (int operand = 0; operand < 2; ++operand)
+            for (int index = 0; index < 16; ++index)
+              for (int k = 0; k < k_size; ++k)
+                set_integer_wave64(r.v + 4 * operand, index, k, bits, k_size,
+                                   codes[operand][index][k]);
+          for (int row = 0; row < 16; ++row)
+            for (int col = 0; col < 16; ++col)
+              r.v[8 + row % 4][col + 16 * (row / 8) + 32 * ((row / 4) % 2)] =
+                  uint32_t(accumulators[(row + col) % 8]);
+          uint32_t before[4][64];
+          save_wave64(r, 16, before);
+          const uint32_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
+          ASSERT_EQ(
+              integer_wave64[shape](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                    modifiers, r.v + 16, r.v, r.v + 4, r.v + 8),
+              0);
+          check_wave64(r, 16, golden, before);
+        }
       }
 }

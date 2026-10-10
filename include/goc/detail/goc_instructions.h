@@ -4761,6 +4761,23 @@ int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c);
 
+// Wave64 integer WMMA: A/B each hold one VGPR, C/D four. IU4 K=16
+// reads only source lanes 0..31; other shapes read all 64 source lanes.
+// Source groups 0+2 accumulate before the first CLAMP, then groups 1+3
+// before the second. C/D layout matches the Wave64 FP8 forms. Both semantics,
+// signedness flags and whole-VGPR aliases are supported.
+int goc_v_wmma_i32_16x16x16_iu8_rdna4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                             uint32_t *const *d, const uint32_t *const *a,
+                                             const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_wmma_i32_16x16x16_iu4_rdna4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                             uint32_t *const *d, const uint32_t *const *a,
+                                             const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_wmma_i32_16x16x32_iu4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                       uint32_t *const *d, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *c);
+
 // Wave64 integer MAD. EXEC has 64 bits; 16/24-bit factors produce one VGPR
 // using a one-VGPR addend. The 64-bit-result forms take one VGPR per factor and
 // two each for addend/destination, low word first. Their required scalar carry
