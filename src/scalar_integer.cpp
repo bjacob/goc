@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 // Integer models adapted from rocjitsu generated/shared/execute_shared.h.
-// GFX1201 captures correct its ABSDIFF model: subtract wraps before ABS.
+// RDNA3 ISA 16.1 and GFX1201 captures correct its ABSDIFF model: subtraction
+// wraps before ABS. Both architectures have the same result and SCC rules.
 
 #include "bits.h"
 #include "goc/goc.h"

@@ -58,7 +58,7 @@ be treated as verified shared semantics. Width completeness does not close this 
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting remains unsupported; ordinary forms support both wave widths |
 | FP32 unary | Ten floating-result operations plus FREXP_EXP retain rocjitsu-derived numerical models; FRACT is loose-only. Architecture policies are split; new inferred reporting was removed | Finish modifier review and upstream-port availability review for FP16/FP64; unavailable exact reporting is an explicit limitation, not a reverse-engineering task |
 | Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms, Wave64 and SIMD dispatch | Exact IEEE-mode NaN policies and exception reporting |
-| Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
+| Scalar integer arithmetic | All 29 canonical names in `scalar_integer.cpp` reviewed across ISA descriptions, rocjitsu handlers and existing fixtures; shared results/SCC, seven renamed aliases, RDNA4-only 64-bit forms; carry/borrow-chain and immediate tests | Scalar bitwise/field, comparisons and register/control families have separate review records or remain pending |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
 | Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented at both wave widths | RDNA3 floating constant exception reporting and architecture-specific floating-policy audit |
@@ -4597,3 +4597,67 @@ covered by the unsupported-reporting tests. The review ledger records 154
 contracts; native-state naming resolves all 962 signatures with zero mismatches
 or unresolved names. This closes that naming queue, not the broader semantic
 review: 655 in-scope mnemonics still lack a recorded contract review.
+
+## Scalar integer arithmetic architecture contracts
+
+Reviewed all 29 canonical mnemonics implemented in
+[`scalar_integer.cpp`](src/scalar_integer.cpp): 12 names common to both targets,
+seven RDNA3 names renamed in RDNA4, and three RDNA4-only 64-bit operations.
+The seven renamed pairs are ADD/SUB U32/I32, ADDC/SUBB U32, and ADDK I32 versus
+RDNA4's explicit CO/CI spellings. RDNA4 XML lists the older spellings as aliases;
+GoC's existing forwarding entry points are sufficient. Shared names need no
+architecture suffix. This review does not cover scalar FP, comparisons, bitwise,
+bitfield, pack or register-control families.
+
+Evidence includes both XML instruction descriptions, operand widths and implicit
+SCC reads/writes; RDNA3 ISA sections 16.1–16.3; rocjitsu revision `ffc144c564c`
+per-architecture SOP1/SOP2/SOPK handlers and their shared implementations; and
+`simd_glue.h` signed-overflow helpers. Both architecture handlers delegate the
+12 common names to the same scalar helpers, with no SIMD macro or FP-policy
+indirection. The seven renamed helper bodies are identical. The three 64-bit
+NC/multiply forms exist only on RDNA4 and neither read nor write SCC.
+Extracted upstream bodies, hashes and delegation locations are recorded in
+`scalar-integer-upstream-review.json` in `../goc-build/coverage-work/`.
+
+The semantic review confirms:
+
+- Unsigned add/subtract report carry/borrow; signed forms report signed overflow.
+  ADDC/SUBB read the old SCC bit and write the new carry/borrow. The subtrahend
+  plus borrow is widened before comparison, including `0xffffffff + 1`.
+- ABS and ABSDIFF report nonzero. The RDNA3 manual explicitly wraps subtraction
+  before ABS, including `0x80000000 - 1 -> 0x7fffffff`. Rocjitsu's widened
+  absolute-difference helper is incorrect at this boundary; GoC already follows
+  the manual and its retained GFX1201 fixtures. No new hardware model is inferred.
+- MIN/MAX SCC uses a strict comparison, so ties clear SCC. Low/high products and
+  sign extension do not write SCC. Signed high multiplication uses signed
+  32-bit inputs and extracts the high half of their 64-bit product.
+- ADDK/MULK sign-extend all 16 immediate bits. ADDK reports signed overflow;
+  MULK wraps its 32-bit product without changing SCC. SEXT ignores higher input
+  bits. All result widths, including the three 64-bit forms, wrap as specified.
+- These are scalar operations independent of EXEC and wave width. Source values
+  are passed by value; read/modify/write immediate destinations are read before
+  stores. The documented GoC overlap rule writes SCC last when D and SCC share
+  storage. There are no instruction modifier bits or optional exception outputs.
+  Existing flag validation rejects unsupported flags before operand access.
+- Loose and empirical-exact results agree. The implementation is integer-only,
+  has no host-FP environment access, and intentionally uses scalar code for the
+  single result per call. There is no vector dispatch to preserve here.
+
+Existing tests independently check 983,040 GFX1201 result/SCC triples, every
+signed immediate, sign-extension captures, output aliases, errors and host FP
+state. RDNA3 spelling tests compare arithmetic/overflow and all immediates with
+wider arithmetic. Added tests compose low/high operations into 64-bit carry and
+borrow chains over 32,768 boundary/random input pairs per architecture, CPU
+selector and semantics, including input/output SCC reuse and ignored upper SCC
+bits. Manual ABS/ABSDIFF witnesses and MIN/MAX tie SCC are now explicit tests.
+No production arithmetic changes were needed; the scalar integer object remains
+byte-identical with Clang Release. These tests supplement existing captures;
+they do not claim new RDNA3 hardware measurements.
+
+Validation: all 1,103 CTests pass with Clang 21 Release and GCC 15 Release;
+all 14 scalar integer/spelling tests pass under ASan/UBSan. The scalar integer
+production object is byte-identical before/after under both release compilers,
+so this review adds no runtime or binary-code cost. All nine audit-tool tests
+pass. Logs use `scalar-integer-review-` in the Clang coverage work folder and
+GCC/sanitizer build folders. The ledger now records 183 contracts; 626 in-scope
+mnemonics remain without recorded reviews. Native-state naming is unchanged.

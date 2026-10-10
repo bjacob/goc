@@ -487,19 +487,19 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `image_store_pck` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `lds_direct_load` | yes | — | out: LDS memory access | — | — | excluded: memory/control/scheduling |
 | `lds_param_load` | yes | — | out: LDS memory access | — | — | excluded: memory/control/scheduling |
-| `s_abs_i32` | yes | yes | in | `goc_s_abs_i32` | — | API present; semantic audit pending |
-| `s_absdiff_i32` | yes | yes | in | `goc_s_absdiff_i32` | — | API present; semantic audit pending |
-| `s_add_co_ci_u32` | — | yes | in | `goc_s_add_co_ci_u32` | `s_addc_u32` | API present; semantic audit pending |
-| `s_add_co_i32` | — | yes | in | `goc_s_add_co_i32` | `s_add_i32` | API present; semantic audit pending |
-| `s_add_co_u32` | — | yes | in | `goc_s_add_co_u32` | `s_add_u32` | API present; semantic audit pending |
+| `s_abs_i32` | yes | yes | in | `goc_s_abs_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_absdiff_i32` | yes | yes | in | `goc_s_absdiff_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_add_co_ci_u32` | — | yes | in | `goc_s_add_co_ci_u32` | `s_addc_u32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_add_co_i32` | — | yes | in | `goc_s_add_co_i32` | `s_add_i32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_add_co_u32` | — | yes | in | `goc_s_add_co_u32` | `s_add_u32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_add_f16` | — | yes | in | `goc_s_add_f16` | — | API present; semantic audit pending |
 | `s_add_f32` | — | yes | in | `goc_s_add_f32` | — | API present; semantic audit pending |
-| `s_add_i32` | yes | — | in | `goc_s_add_i32` | — | API present; semantic audit pending |
-| `s_add_nc_u64` | — | yes | in | `goc_s_add_nc_u64` | `s_add_u64` | API present; semantic audit pending |
-| `s_add_u32` | yes | — | in | `goc_s_add_u32` | — | API present; semantic audit pending |
-| `s_addc_u32` | yes | — | in | `goc_s_addc_u32` | — | API present; semantic audit pending |
-| `s_addk_co_i32` | — | yes | in | `goc_s_addk_co_i32` | `s_addk_i32` | API present; semantic audit pending |
-| `s_addk_i32` | yes | — | in | `goc_s_addk_i32` | — | API present; semantic audit pending |
+| `s_add_i32` | yes | — | in | `goc_s_add_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_add_nc_u64` | — | yes | in | `goc_s_add_nc_u64` | `s_add_u64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_add_u32` | yes | — | in | `goc_s_add_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_addc_u32` | yes | — | in | `goc_s_addc_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_addk_co_i32` | — | yes | in | `goc_s_addk_co_i32` | `s_addk_i32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_addk_i32` | yes | — | in | `goc_s_addk_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_alloc_vgpr` | — | yes | out: resource allocation/scheduling | — | — | excluded: memory/control/scheduling |
 | `s_and_b32` | yes | yes | in | `goc_s_and_b32` | — | API present; semantic audit pending |
 | `s_and_b64` | yes | yes | in | `goc_s_and_b64` | — | API present; semantic audit pending |
@@ -680,16 +680,16 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_lshl_b64` | yes | yes | in | `goc_s_lshl_b64` | — | API present; semantic audit pending |
 | `s_lshr_b32` | yes | yes | in | `goc_s_lshr_b32` | — | API present; semantic audit pending |
 | `s_lshr_b64` | yes | yes | in | `goc_s_lshr_b64` | — | API present; semantic audit pending |
-| `s_max_i32` | yes | yes | in | `goc_s_max_i32` | — | API present; semantic audit pending |
+| `s_max_i32` | yes | yes | in | `goc_s_max_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_max_num_f16` | — | yes | in | `goc_s_max_num_f16` | `s_max_f16` | API present; semantic audit pending |
 | `s_max_num_f32` | — | yes | in | `goc_s_max_num_f32` | `s_max_f32` | API present; semantic audit pending |
-| `s_max_u32` | yes | yes | in | `goc_s_max_u32` | — | API present; semantic audit pending |
+| `s_max_u32` | yes | yes | in | `goc_s_max_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_maximum_f16` | — | yes | in | `goc_s_maximum_f16` | — | API present; semantic audit pending |
 | `s_maximum_f32` | — | yes | in | `goc_s_maximum_f32` | — | API present; semantic audit pending |
-| `s_min_i32` | yes | yes | in | `goc_s_min_i32` | — | API present; semantic audit pending |
+| `s_min_i32` | yes | yes | in | `goc_s_min_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_min_num_f16` | — | yes | in | `goc_s_min_num_f16` | `s_min_f16` | API present; semantic audit pending |
 | `s_min_num_f32` | — | yes | in | `goc_s_min_num_f32` | `s_min_f32` | API present; semantic audit pending |
-| `s_min_u32` | yes | yes | in | `goc_s_min_u32` | — | API present; semantic audit pending |
+| `s_min_u32` | yes | yes | in | `goc_s_min_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_minimum_f16` | — | yes | in | `goc_s_minimum_f16` | — | API present; semantic audit pending |
 | `s_minimum_f32` | — | yes | in | `goc_s_minimum_f32` | — | API present; semantic audit pending |
 | `s_mov_b32` | yes | yes | in | `goc_s_mov_b32` | — | API present; semantic audit pending |
@@ -702,11 +702,11 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_movrelsd_2_b32` | yes | yes | in: register access | `goc_s_movrelsd_2_b32` | — | API present; semantic audit pending |
 | `s_mul_f16` | — | yes | in | `goc_s_mul_f16` | — | API present; semantic audit pending |
 | `s_mul_f32` | — | yes | in | `goc_s_mul_f32` | — | API present; semantic audit pending |
-| `s_mul_hi_i32` | yes | yes | in | `goc_s_mul_hi_i32` | — | API present; semantic audit pending |
-| `s_mul_hi_u32` | yes | yes | in | `goc_s_mul_hi_u32` | — | API present; semantic audit pending |
-| `s_mul_i32` | yes | yes | in | `goc_s_mul_i32` | — | API present; semantic audit pending |
-| `s_mul_u64` | — | yes | in | `goc_s_mul_u64` | — | API present; semantic audit pending |
-| `s_mulk_i32` | yes | yes | in | `goc_s_mulk_i32` | — | API present; semantic audit pending |
+| `s_mul_hi_i32` | yes | yes | in | `goc_s_mul_hi_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_mul_hi_u32` | yes | yes | in | `goc_s_mul_hi_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_mul_i32` | yes | yes | in | `goc_s_mul_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_mul_u64` | — | yes | in | `goc_s_mul_u64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_mulk_i32` | yes | yes | in | `goc_s_mulk_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_nand_b32` | yes | yes | in | `goc_s_nand_b32` | — | API present; semantic audit pending |
 | `s_nand_b64` | yes | yes | in | `goc_s_nand_b64` | — | API present; semantic audit pending |
 | `s_nand_saveexec_b32` | yes | yes | in | `goc_s_nand_saveexec_b32` | — | API present; semantic audit pending |
@@ -753,19 +753,19 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_setprio` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
 | `s_setreg_b32` | yes | yes | in: register access | `goc_s_setreg_b32`<br>`goc_s_setreg_b32_rdna4` | — | API present; semantic audit pending |
 | `s_setreg_imm32_b32` | yes | yes | in: register access | `goc_s_setreg_imm32_b32`<br>`goc_s_setreg_imm32_b32_rdna4` | — | API present; semantic audit pending |
-| `s_sext_i32_i16` | yes | yes | in | `goc_s_sext_i32_i16` | — | API present; semantic audit pending |
-| `s_sext_i32_i8` | yes | yes | in | `goc_s_sext_i32_i8` | — | API present; semantic audit pending |
+| `s_sext_i32_i16` | yes | yes | in | `goc_s_sext_i32_i16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_sext_i32_i8` | yes | yes | in | `goc_s_sext_i32_i8` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_sleep` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
 | `s_sleep_var` | — | yes | out: resource allocation/scheduling | — | — | excluded: memory/control/scheduling |
-| `s_sub_co_ci_u32` | — | yes | in | `goc_s_sub_co_ci_u32` | `s_subb_u32` | API present; semantic audit pending |
-| `s_sub_co_i32` | — | yes | in | `goc_s_sub_co_i32` | `s_sub_i32` | API present; semantic audit pending |
-| `s_sub_co_u32` | — | yes | in | `goc_s_sub_co_u32` | `s_sub_u32` | API present; semantic audit pending |
+| `s_sub_co_ci_u32` | — | yes | in | `goc_s_sub_co_ci_u32` | `s_subb_u32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_sub_co_i32` | — | yes | in | `goc_s_sub_co_i32` | `s_sub_i32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_sub_co_u32` | — | yes | in | `goc_s_sub_co_u32` | `s_sub_u32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_sub_f16` | — | yes | in | `goc_s_sub_f16` | — | API present; semantic audit pending |
 | `s_sub_f32` | — | yes | in | `goc_s_sub_f32` | — | API present; semantic audit pending |
-| `s_sub_i32` | yes | — | in | `goc_s_sub_i32` | — | API present; semantic audit pending |
-| `s_sub_nc_u64` | — | yes | in | `goc_s_sub_nc_u64` | `s_sub_u64` | API present; semantic audit pending |
-| `s_sub_u32` | yes | — | in | `goc_s_sub_u32` | — | API present; semantic audit pending |
-| `s_subb_u32` | yes | — | in | `goc_s_subb_u32` | — | API present; semantic audit pending |
+| `s_sub_i32` | yes | — | in | `goc_s_sub_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_sub_nc_u64` | — | yes | in | `goc_s_sub_nc_u64` | `s_sub_u64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_sub_u32` | yes | — | in | `goc_s_sub_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_subb_u32` | yes | — | in | `goc_s_subb_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_swappc_b64` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_trap` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_trunc_f16` | — | yes | in | `goc_s_trunc_f16` | — | API present; semantic audit pending |

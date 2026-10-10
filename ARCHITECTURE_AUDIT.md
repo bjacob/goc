@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-154 in-scope mnemonics have explicit contract-review records in
+183 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 655 in-scope mnemonics need a recorded review.
+The remaining 626 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -69,8 +69,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `ds_bpermute_b32` | architecture query | no | 68, 97 | review required |
 | `ds_permute_b32` | architecture query | no | 160, 189 | review required |
 | `ds_swizzle_b32` | no direct policy detected | no | 219, 248 | review required |
-| `s_abs_i32` | no direct policy detected | no | 286 | review required |
-| `s_absdiff_i32` | no direct policy detected | no | 298 | review required |
+| `s_abs_i32` | no direct policy detected | no | 286 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_absdiff_i32` | no direct policy detected | no | 298 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_and_b32` | no direct policy detected | no | 429 | review required |
 | `s_and_b64` | no direct policy detected | no | 437 | review required |
 | `s_and_not0_saveexec_b32` | no direct policy detected | no | 445 | review required |
@@ -144,10 +144,10 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_lshl_b64` | no direct policy detected | no | 1804 | review required |
 | `s_lshr_b32` | no direct policy detected | no | 1813 | review required |
 | `s_lshr_b64` | no direct policy detected | no | 1821 | review required |
-| `s_max_i32` | no direct policy detected | no | 1830 | review required |
-| `s_max_u32` | no direct policy detected | no | 1857 | review required |
-| `s_min_i32` | no direct policy detected | no | 1917 | review required |
-| `s_min_u32` | no direct policy detected | no | 1944 | review required |
+| `s_max_i32` | no direct policy detected | no | 1830 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_max_u32` | no direct policy detected | no | 1857 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_min_i32` | no direct policy detected | no | 1917 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_min_u32` | no direct policy detected | no | 1944 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_mov_b32` | no direct policy detected | no | 1985 | review required |
 | `s_mov_b64` | no direct policy detected | no | 1991 | review required |
 | `s_movk_i32` | no direct policy detected | no | 1997 | review required |
@@ -156,10 +156,10 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_movrels_b32` | no direct policy detected | no | not found | review required |
 | `s_movrels_b64` | no direct policy detected | no | not found | review required |
 | `s_movrelsd_2_b32` | no direct policy detected | no | not found | review required |
-| `s_mul_hi_i32` | no direct policy detected | no | 2019 | review required |
-| `s_mul_hi_u32` | no direct policy detected | no | 2031 | review required |
-| `s_mul_i32` | no direct policy detected | no | 2041 | review required |
-| `s_mulk_i32` | no direct policy detected | no | 2057 | review required |
+| `s_mul_hi_i32` | no direct policy detected | no | 2019 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_mul_hi_u32` | no direct policy detected | no | 2031 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_mul_i32` | no direct policy detected | no | 2041 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_mulk_i32` | no direct policy detected | no | 2057 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_nand_b32` | no direct policy detected | no | 2065 | review required |
 | `s_nand_b64` | no direct policy detected | no | 2073 | review required |
 | `s_nand_saveexec_b32` | no direct policy detected | no | 2082 | review required |
@@ -189,8 +189,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_round_mode` | no direct policy detected | no | 2426 | review required |
 | `s_setreg_b32` | no direct policy detected | yes | not found | review required |
 | `s_setreg_imm32_b32` | no direct policy detected | yes | not found | review required |
-| `s_sext_i32_i16` | no direct policy detected | no | 2571 | review required |
-| `s_sext_i32_i8` | no direct policy detected | no | 2581 | review required |
+| `s_sext_i32_i16` | no direct policy detected | no | 2571 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
+| `s_sext_i32_i8` | no direct policy detected | no | 2581 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_wqm_b32` | no direct policy detected | no | 2739 | review required |
 | `s_wqm_b64` | no direct policy detected | no | 2753 | review required |
 | `s_xnor_b32` | no direct policy detected | no | 2767 | review required |

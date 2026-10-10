@@ -1970,9 +1970,13 @@ signed-overflow SCC; ABS/ABSDIFF; signed/unsigned MIN/MAX; low/high multiply;
 These scalar-register instructions execute once per wave regardless of EXEC,
 including empty EXEC. They use a scalar path on every CPU level because they
 produce only one result per call. Exact models follow rocjitsu with a
-hardware-verified correction: `s_absdiff_i32` wraps subtraction before ABS.
+correction confirmed by the RDNA3 manual and existing RDNA4 captures:
+`s_absdiff_i32` wraps subtraction before ABS. The shared names have matching
+RDNA3/RDNA4 contracts; seven renamed carry/overflow spellings share implementations,
+and the three 64-bit forms are RDNA4-only. MIN/MAX ties clear SCC.
 Tests cover 983,040 GFX1201 result/SCC triples, every signed immediate, aliasing,
-and host FP-state preservation. Benchmarks include all 20 instructions.
+host FP-state preservation, and 64-bit carry/borrow chains composed from the
+32-bit instructions on both architectures. Benchmarks include all 20 instructions.
 
 Scalar bitwise arithmetic also includes AND/OR/XOR and complemented forms,
 NOT, bit reversal, logical/arithmetic shifts in 32 and 64 bits, and four fused

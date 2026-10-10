@@ -3,6 +3,7 @@
 #include "goc/goc.h"
 
 #include <gtest/gtest.h>
+#include <random>
 #include <stdint.h>
 
 TEST(ScalarSpellings, ArithmeticResultsAndScc) {
@@ -93,4 +94,91 @@ TEST(ScalarSpellings, ErrorsPreserveOutputs) {
     EXPECT_EQ(d, 123U);
     EXPECT_EQ(cc, 456U);
   }
+}
+
+TEST(ScalarSpellings, CarryAndBorrowChainsAcrossArchitectures) {
+  // Compose two 32-bit ISA operations and compare the 64-bit result and final
+  // carry/borrow with native unsigned arithmetic. In particular, the high
+  // subtrahend plus incoming borrow must not wrap before SCC is computed.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+      for (bool rdna4 : {false, true}) {
+        std::mt19937_64 random(0x51cca77);
+        const uint64_t edges[] = {0,
+                                  1,
+                                  0xffffffffULL,
+                                  0x100000000ULL,
+                                  0x7fffffffffffffffULL,
+                                  0x8000000000000000ULL,
+                                  0xffffffff00000000ULL,
+                                  UINT64_MAX};
+        for (unsigned sample = 0; sample < 32768; ++sample) {
+          uint64_t a = sample < 64 ? edges[sample % 8] : random();
+          uint64_t b = sample < 64 ? edges[sample / 8] : random();
+          uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+          for (bool subtract : {false, true}) {
+            uint32_t low = uint32_t(a), high = uint32_t(a >> 32), scc = 0xaaaaaaaa;
+            auto first = rdna4 ? (subtract ? goc_s_sub_co_u32 : goc_s_add_co_u32)
+                               : (subtract ? goc_s_sub_u32 : goc_s_add_u32);
+            ASSERT_EQ(first(flags, 0, &low, low, uint32_t(b), &scc), GOC_SUCCESS);
+            ASSERT_LE(scc, 1U);
+            // GoC takes the low SCC bit; upper caller bits have no meaning.
+            uint32_t input_scc = scc | 0xaaaa0000U;
+            if (rdna4) {
+              auto second = subtract ? goc_s_sub_co_ci_u32 : goc_s_add_co_ci_u32;
+              ASSERT_EQ(second(flags, 0, &high, high, uint32_t(b >> 32), &scc, input_scc),
+                        GOC_SUCCESS);
+            } else {
+              auto second = subtract ? goc_s_subb_u32 : goc_s_addc_u32;
+              ASSERT_EQ(second(flags, 0, &high, high, uint32_t(b >> 32), input_scc, &scc),
+                        GOC_SUCCESS);
+            }
+            ASSERT_EQ((uint64_t(high) << 32) | low, subtract ? a - b : a + b);
+            ASSERT_EQ(scc, uint32_t(subtract ? a < b : b > UINT64_MAX - a));
+          }
+        }
+      }
+}
+
+TEST(ScalarSpellings, ManualAbsoluteValueAndSccWitnesses) {
+  // RDNA3 ISA 16.1 / 16.3 explicitly gives these wrapping ABS/ABSDIFF results.
+  // In particular, taking abs of a widened difference is incorrect for the
+  // fourth row. The existing RDNA4 hardware corpus establishes the same rule.
+  const uint32_t differences[][3] = {{2, 5, 3},
+                                     {0xffffffff, 0, 1},
+                                     {0x80000000, 0, 0x80000000},
+                                     {0x80000000, 1, 0x7fffffff},
+                                     {0x80000000, 0xffffffff, 0x7fffffff},
+                                     {0x80000000, 0xfffffffe, 0x7ffffffe},
+                                     {0xffffffff, 0xffffffff, 0}};
+  const uint32_t absolutes[][2] = {{1, 1},
+                                   {0x7fffffff, 0x7fffffff},
+                                   {0x80000000, 0x80000000},
+                                   {0x80000001, 0x7fffffff},
+                                   {0x80000002, 0x7ffffffe},
+                                   {0xffffffff, 1},
+                                   {0, 0}};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+      uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+      for (const auto &row : differences) {
+        uint32_t d = row[0], scc = 0xdeadbeef;
+        ASSERT_EQ(goc_s_absdiff_i32(flags, 0, &d, d, row[1], &scc), GOC_SUCCESS);
+        EXPECT_EQ(d, row[2]);
+        EXPECT_EQ(scc, uint32_t(row[2] != 0));
+      }
+      for (const auto &row : absolutes) {
+        uint32_t d = row[0], scc = 0xdeadbeef;
+        ASSERT_EQ(goc_s_abs_i32(flags, 0, &d, d, &scc), GOC_SUCCESS);
+        EXPECT_EQ(d, row[1]);
+        EXPECT_EQ(scc, uint32_t(row[1] != 0));
+      }
+      for (auto fn : {goc_s_min_i32, goc_s_min_u32, goc_s_max_i32, goc_s_max_u32})
+        for (uint32_t a : {0U, 0x80000000U, UINT32_MAX}) {
+          uint32_t d = 0, scc = 1;
+          ASSERT_EQ(fn(flags, 0, &d, a, a, &scc), GOC_SUCCESS);
+          EXPECT_EQ(d, a);
+          EXPECT_EQ(scc, 0U); // Ties do not satisfy the strict comparison.
+        }
+    }
 }
