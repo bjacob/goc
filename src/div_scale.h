@@ -23,7 +23,7 @@ template <unsigned Width> struct DivisionScaleResult {
 template <unsigned Width>
 inline DivisionScaleResult<Width>
 division_scale(typename DivisionFormat<Width>::Bits a, typename DivisionFormat<Width>::Bits b,
-               typename DivisionFormat<Width>::Bits c, uint32_t mode) {
+               typename DivisionFormat<Width>::Bits c, uint32_t mode, bool quiet_nan) {
   using F = DivisionFormat<Width>;
   using T = typename F::Bits;
   constexpr int threshold = Width == 32 ? 96 : 768, scale = Width == 32 ? 64 : 128;
@@ -54,6 +54,8 @@ division_scale(typename DivisionFormat<Width>::Bits a, typename DivisionFormat<W
   T value;
   if (!bm || !cm)
     value = F::sign | F::infinity | F::quiet;
+  else if (!quiet_nan && (a & (F::sign - 1)) > F::infinity)
+    value = a;
   else
     value = division_scale_bits<Width>(a, adjustment);
   return {division_output<Width>(value, mode), post_scale};
@@ -62,11 +64,11 @@ division_scale(typename DivisionFormat<Width>::Bits a, typename DivisionFormat<W
 template <unsigned Width>
 uint32_t div_scale_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
-                             const uint32_t *const *c);
+                             const uint32_t *const *c, bool quiet_nan);
 
 template <unsigned Width>
 uint32_t div_scale_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
-                             const uint32_t *const *c);
+                             const uint32_t *const *c, bool quiet_nan);
 
 } // namespace goc

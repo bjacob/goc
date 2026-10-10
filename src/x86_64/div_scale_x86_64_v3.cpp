@@ -75,7 +75,7 @@ template <bool Wide> struct Ops {
 };
 
 template <unsigned Width>
-__m256i scale_value(__m256i a, __m256i b, __m256i c, uint32_t mode,
+__m256i scale_value(__m256i a, __m256i b, __m256i c, uint32_t mode, bool quiet_nan,
                     typename Ops<Width == 64>::Mask &post) {
   using F = goc::DivisionFormat<Width>;
   using O = Ops<Width == 64>;
@@ -141,7 +141,7 @@ __m256i scale_value(__m256i a, __m256i b, __m256i c, uint32_t mode,
   }
   result = O::select(O::gt(one, exponent), _mm256_or_si256(sign, rounded), result);
   result = O::select(O::gt(exponent, O::set(2 * F::bias)), _mm256_or_si256(sign, inf), result);
-  auto quiet = O::select(O::gt(mag, inf), O::set(F::quiet), zero);
+  auto quiet = O::select(O::gt(mag, inf), O::set(quiet_nan ? F::quiet : 0), zero);
   result = O::select(O::either(O::eq(mag, zero), O::inverse(O::gt(inf, mag))),
                      _mm256_or_si256(a, quiet), result);
   result = O::select(O::either(O::eq(bm, zero), O::eq(cm, zero)),
@@ -196,13 +196,13 @@ namespace goc {
 template <unsigned Width>
 uint32_t div_scale_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
-                             const uint32_t *const *c) {
+                             const uint32_t *const *c, bool quiet_nan) {
   constexpr unsigned lanes = Width == 64 ? 4 : 8;
   uint32_t staged[2][32], conditions = 0;
   for (unsigned lane = 0; lane < 32; lane += lanes) {
     typename Ops<Width == 64>::Mask post;
     auto result = scale_value<Width>(load<Width>(a, lane, mode, 0), load<Width>(b, lane, mode, 1),
-                                     load<Width>(c, lane, mode, 2), mode, post);
+                                     load<Width>(c, lane, mode, 2), mode, quiet_nan, post);
     if constexpr (Width == 64)
       conditions |= uint32_t(_mm256_movemask_pd(_mm256_castsi256_pd(post))) << lane;
     else
@@ -233,9 +233,9 @@ uint32_t div_scale_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const 
 
 template uint32_t div_scale_x86_64_v3<32>(uint32_t, uint32_t, uint32_t *const *,
                                           const uint32_t *const *, const uint32_t *const *,
-                                          const uint32_t *const *);
+                                          const uint32_t *const *, bool);
 template uint32_t div_scale_x86_64_v3<64>(uint32_t, uint32_t, uint32_t *const *,
                                           const uint32_t *const *, const uint32_t *const *,
-                                          const uint32_t *const *);
+                                          const uint32_t *const *, bool);
 
 } // namespace goc

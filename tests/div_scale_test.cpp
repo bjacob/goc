@@ -17,9 +17,9 @@
 namespace {
 
 using Fn = decltype(&goc_v_div_scale_f32);
-const Fn functions[] = {goc_v_div_scale_f32, goc_v_div_scale_f64};
+const Fn functions[] = {goc_v_div_scale_f32, goc_v_div_scale_f64_rdna4};
 const decltype(&goc_v_div_scale_f32_wave64) wave64_functions[] = {goc_v_div_scale_f32_wave64,
-                                                                  goc_v_div_scale_f64_wave64};
+                                                                  goc_v_div_scale_f64_rdna4_wave64};
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 
 uint32_t mode_for(unsigned variant) {
@@ -393,4 +393,79 @@ TEST(DivScale, Wave64UnalignedConditionAliases) {
             EXPECT_EQ(std::memcmp(data, expected, sizeof(data)), 0)
                 << op << "/" << target << "/" << byte_offset;
           }
+}
+
+TEST(DivScale, ArchitectureNanPayloadsAndAliases) {
+  // rocjitsu shared/division.h, called with quiet_nan=false by RDNA3's
+  // execute_v_div_scale_f64_vop3 and true by RDNA4. No new hardware model.
+  const decltype(&goc_v_div_scale_f64) narrow[] = {goc_v_div_scale_f64, goc_v_div_scale_f64_rdna4};
+  const decltype(&goc_v_div_scale_f64_wave64) wide[] = {goc_v_div_scale_f64_wave64,
+                                                        goc_v_div_scale_f64_rdna4_wave64};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {uint64_t(0), exact})
+      for (unsigned arch = 0; arch < 2; ++arch)
+        for (unsigned width : {32U, 64U})
+          for (unsigned role = 0; role < 2; ++role)
+            for (unsigned alias = 0; alias < 4; ++alias)
+              for (bool zero_other : {false, true})
+                for (uint64_t exec_mask : {0ULL, 0xa55aa55a5aa55aa5ULL, ~0ULL})
+                  for (unsigned variant = 0; variant < 16; ++variant) {
+                    SCOPED_TRACE(::testing::Message()
+                                 << cpu << '/' << semantics << '/' << arch << '/' << width << '/'
+                                 << role << '/' << alias << '/' << zero_other << '/' << exec_mask
+                                 << '/' << variant);
+                    uint32_t words[8][64], before[8][64];
+                    uint32_t mode = ((variant >> 1) & 3) << 6;
+                    if (variant & 1)
+                      mode |= GOC_ALU_NEG_A | (role ? GOC_ALU_NEG_C : GOC_ALU_NEG_B);
+                    if (variant & 8)
+                      mode |= GOC_ALU_CLAMP;
+                    for (unsigned lane = 0; lane < 64; ++lane) {
+                      uint64_t nan = 0x7ff0000000000001ULL | (uint64_t(lane) << 32);
+                      if (lane & 1)
+                        nan |= 1ULL << 63;
+                      if (lane & 2)
+                        nan |= 1ULL << 51;
+                      uint64_t other = zero_other ? 0 : 0x3ff0000000000000ULL;
+                      uint64_t values[] = {nan, role ? other : nan, role ? nan : other,
+                                           0xdeadbeef01234567ULL};
+                      for (unsigned reg = 0; reg < 4; ++reg) {
+                        words[2 * reg][lane] = uint32_t(values[reg]);
+                        words[2 * reg + 1][lane] = uint32_t(values[reg] >> 32);
+                      }
+                    }
+                    std::memcpy(before, words, sizeof(words));
+                    const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]},
+                                   *c[] = {words[4], words[5]};
+                    uint32_t *d[] = {words[2 * alias], words[2 * alias + 1]};
+                    uint32_t condition32 = 0xdeadbeef;
+                    uint64_t condition64 = 0xdeadbeefdeadbeefULL;
+                    int status = width == 32 ? narrow[arch](cpu | semantics, uint32_t(exec_mask),
+                                                            mode, d, &condition32, a, b, c)
+                                             : wide[arch](cpu | semantics, exec_mask, mode, d,
+                                                          &condition64, a, b, c);
+                    ASSERT_EQ(status, GOC_SUCCESS);
+                    if (width == 32) {
+                      EXPECT_EQ(condition32, uint32_t(exec_mask));
+                    } else {
+                      EXPECT_EQ(condition64, exec_mask);
+                    }
+                    for (unsigned lane = 0; lane < 64; ++lane) {
+                      uint64_t want =
+                          before[2 * alias][lane] | (uint64_t(before[2 * alias + 1][lane]) << 32);
+                      if (lane < width && ((exec_mask >> lane) & 1)) {
+                        want = before[0][lane] | (uint64_t(before[1][lane]) << 32);
+                        if (variant & 1)
+                          want ^= 1ULL << 63;
+                        if (arch)
+                          want |= 1ULL << 51;
+                        if (zero_other)
+                          want = 0xfff8000000000000ULL;
+                        if (mode & GOC_ALU_CLAMP)
+                          want = 0;
+                      }
+                      EXPECT_EQ(d[0][lane], uint32_t(want));
+                      EXPECT_EQ(d[1][lane], uint32_t(want >> 32));
+                    }
+                  }
 }

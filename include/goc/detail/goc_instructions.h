@@ -2859,6 +2859,7 @@ int goc_v_div_fmas_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t
 // D0/D1 alias. Supports all whole-register aliases, loose and empirical exact
 // semantics, nearest-even rounding and denormals. Results preserve host FP state
 // and do not depend on it. GOC_FP16_OVFL has no effect.
+// FP64 preserves source signaling NaNs on RDNA3; the _rdna4 variants quiet them.
 int goc_v_div_scale_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, uint32_t *condition, const uint32_t *const *a,
                         const uint32_t *const *b, const uint32_t *const *c);
@@ -2866,6 +2867,10 @@ int goc_v_div_scale_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 int goc_v_div_scale_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, uint32_t *condition, const uint32_t *const *a,
                         const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_div_scale_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, uint32_t *condition, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c);
 
 // Wave64 retains the same contract with a 64-bit condition result. Inactive
 // condition bits are zero; empty EXEC writes zero. Condition is committed after
@@ -2876,6 +2881,11 @@ int goc_v_div_scale_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
 int goc_v_div_scale_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, uint64_t *condition, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_div_scale_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, uint64_t *condition,
+                                     const uint32_t *const *a, const uint32_t *const *b,
+                                     const uint32_t *const *c);
 
 // Division fixup: A is a provisional quotient, B the original denominator,
 // C the original numerator. Repairs sign, propagates C/B NaNs in that order,

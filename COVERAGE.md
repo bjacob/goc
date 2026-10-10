@@ -6353,3 +6353,48 @@ output-denormal flushing and negative-zero behavior, but do not explicitly settl
 the intermediate rounding/flushing order in this example. Validation for this
 contract-only change: all 13 HalfBinary tests pass with Clang 21 Release, GCC 15
 Release and ASan/UBSan. No production kernel or performance path changed.
+
+## FP64 DIV_SCALE architecture NaN distinction
+
+`goc_v_div_scale_f64` and its `_wave64` form now implement RDNA3's preservation
+of source signaling-NaN bits. The previous quieting behavior is retained by
+`goc_v_div_scale_f64_rdna4` and `goc_v_div_scale_f64_rdna4_wave64`; the existing
+RDNA4 capture tests and benchmark use those names. FP32 remains shared.
+
+This is borrowed from rocjitsu revision `ffc144c564c`: RDNA3's generated VOP3
+handler delegates to `execute_v_div_scale_f64_vop3`, while RDNA4's generated
+handler contains the equivalent call to `div_scale` directly. Both pass
+`wf.cu().arch() != ROCJITSU_CODE_ARCH_RDNA3` as `quiet_nan`. The shared division
+model preserves the source payload/sign, conditionally sets the quiet bit, and
+still produces a negative quiet NaN when the numerator or denominator is zero.
+GoC applies that distinction before its existing output modifiers.
+
+The scalar implementation bypasses quieting for the preserved source NaN.
+AVX2 and AVX-512 retain their shared kernels, selecting the quiet-bit constant
+once per call rather than adding a NaN-dependent scalar fallback or duplicating
+the kernels by architecture. Existing finite scaling, staging, masked stores and
+condition output are unchanged. The added tests cover both semantics, both wave
+sizes, all CPU paths, both source roles, signs/payloads/signaling bits, NEG,
+OMOD, CLAMP, source/destination aliases, zero operands and empty/partial/full
+EXEC. Existing captured RDNA4 digests remain unchanged.
+
+This closes a specific naming/NaN-policy gap, not the whole DIV_SCALE review.
+Guest rounding/denormal modes and output-modifier architecture policies still
+need reconciliation; the current API supports nearest-even with denormals
+preserved, and rejects additional guest-mode flags. The two mnemonics remain
+unrecorded in the completed review ledger until those remaining contracts have
+been examined. No new hardware characterization was performed.
+
+Validation: all 1,139 tests pass with Clang 21 and GCC 15 Release; all 11
+DIV_SCALE tests pass with ASan/UBSan, and all nine audit-tool tests pass.
+Logs are `../goc-build/coverage-work/div-scale-split-*`.
+A limited RDNA4 FP64 timing comparison with parent `790d49f` used seven
+alternating samples pinned to CPU 2, each at least 50 ms thread CPU time.
+Median AVX2 times changed 76.198 -> 75.634 ns unmodified and 82.773 -> 82.066 ns
+with NEG/OMOD; AVX-512 changed 42.680 -> 42.734 ns and 48.632 -> 48.759 ns.
+This shows no material regression in these four cases, not a whole-library
+performance result. Driver, parent objects and samples are under
+`../goc-build/coverage-work/div-scale-performance/`.
+The same check for the shared FP32 path measured AVX2 at 33.035 -> 32.575 ns
+unmodified and 35.649 -> 34.661 ns with NEG/OMOD; AVX-512 measured
+17.800 -> 18.040 ns and 20.267 -> 20.478 ns (largest increase about 1.35%).
