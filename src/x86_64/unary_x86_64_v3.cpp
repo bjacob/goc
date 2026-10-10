@@ -38,8 +38,17 @@ void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
       if (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)
         value = flush_denorm_f32(value);
     }
-    if (modifiers & GOC_ALU_CLAMP)
-      value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
+    if (modifiers & GOC_ALU_CLAMP) {
+      if (flags & GOC_FP_DX10_CLAMP_OFF) {
+        // MIN/MAX return their second operand for unordered inputs. Keep the
+        // arithmetic NaN, then map both signs of zero to +0.
+        value = _mm256_min_ps(_mm256_set1_ps(1), _mm256_max_ps(_mm256_setzero_ps(), value));
+        auto zero = _mm256_cmp_ps(value, _mm256_setzero_ps(), _CMP_EQ_OQ);
+        value = _mm256_andnot_ps(zero, value);
+      } else {
+        value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
+      }
+    }
     __m256i lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
                                                _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
     _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask,

@@ -5885,8 +5885,11 @@ int goc_v_dot2_bf16_bf16_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
                                       const uint32_t *const *c, uint32_t *excp_flag_user);
 
 // Unary FP32: one VGPR each for A/D. Supports NEG_A, ABS_A, OMOD and CLAMP;
-// modifiers for absent operands are invalid. CLAMP maps NaNs to +0 and clamps
-// to [0, 1]. EXP and LOG use base 2; RSQ computes reciprocal square root.
+// modifiers for absent operands are invalid. CLAMP maps NaNs to +0 by default
+// and clamps to [0, 1]. Unsuffixed RDNA3 unary FP32 operations accept
+// GOC_FP_DX10_CLAMP_OFF to preserve arithmetic NaNs through CLAMP; RDNA4
+// rejects that flag. The operation's NaN quieting policy still applies.
+// EXP and LOG use base 2; RSQ computes reciprocal square root.
 // RNDNE rounds ties to even. SQRT/RCP/RSQ/EXP/LOG also implement exact results.
 // TRUNC/CEIL/RNDNE/FLOOR accept guest IEEE and denormal flags. Their RDNA3
 // forms suppress OMOD when IEEE mode is enabled or output denormals are

@@ -28,9 +28,10 @@ template <goc::Unary Op>
           return unary_exact<Op>(flags, exec_mask, uint32_t(mode), d, source, rdna3);
         });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  if (int error = goc::validate(flags, mode & ~known, true,
-                                GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
-                                    GOC_FP_FLUSH_OUTPUT_DENORMALS))
+  if (int error =
+          goc::validate(flags, mode & ~known, true,
+                        GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                            GOC_FP_FLUSH_OUTPUT_DENORMALS | (rdna3 ? GOC_FP_DX10_CLAMP_OFF : 0)))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -80,7 +81,8 @@ template <goc::Unary Op>
       } else
         value = omod == 3 ? value - 0x800000 : value + (omod << 23);
     }
-    if (mode & GOC_ALU_CLAMP)
+    if ((mode & GOC_ALU_CLAMP) &&
+        (!(flags & GOC_FP_DX10_CLAMP_OFF) || (value & 0x7fffffff) <= 0x7f800000))
       value = (value & 0x80000000) || (value & 0x7fffffff) > 0x7f800000 ? 0
               : value > 0x3f800000                                      ? 0x3f800000
                                                                         : value;
@@ -92,33 +94,22 @@ template <goc::Unary Op>
   return GOC_SUCCESS;
 }
 
-template <goc::Unary Op, bool Rdna3 = false>
-int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
-          const uint32_t *const *a, uint32_t *excp_flag_user = nullptr) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  if constexpr (Op != goc::Unary::Fract)
-    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
-      return unary_exact<Op>(flags, exec_mask, modifiers, d, a, Rdna3);
-  if constexpr (Rdna3) {
-    // Transcendentals use forced-flush OMOD policy. Other unary operations
-    // use the guest output-denormal policy, even where their result cannot
-    // be subnormal. Both policies also honor RDNA3 IEEE mode.
-    if ((flags & GOC_FP_IEEE_MODE) ||
-        (!goc::unary_flushes_f32<Op> && !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)))
-      modifiers &= ~uint64_t(GOC_ALU_OMOD_HALF);
-    return unary<Op>(flags, exec_mask, modifiers, d, a);
-  }
+// Separate the two scalar clamp policies at compile time so the default loop
+// retains its existing vectorization. Both architectures share these kernels.
+template <goc::Unary Op, bool PreserveClampNan = false>
+int unary_loose(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
+                const uint32_t *const *a) {
   if (modifiers >> 32) {
-    return goc::execute_dpp(
-        flags, exec_mask, modifiers, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
-          return unary<Op, Rdna3>(flags, exec_mask, uint32_t(modifiers), d, source);
-        });
+    return goc::execute_dpp(flags, exec_mask, modifiers, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return unary_loose<Op, PreserveClampNan>(
+                                  flags, exec_mask, uint32_t(modifiers), d, source);
+                            });
   }
 
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  constexpr uint64_t fp_flags =
-      GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
+  constexpr uint64_t fp_flags = GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS |
+                                GOC_FP_IEEE_MODE | (PreserveClampNan ? GOC_FP_DX10_CLAMP_OFF : 0);
   if (int error = goc::validate(flags, modifiers & ~known, false, fp_flags))
     return error;
   if (exec_mask == 0)
@@ -147,12 +138,37 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
       if ((flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && !(modifiers & GOC_ALU_OMOD_HALF))
         value = goc::flush_denorm_f32(value);
     }
-    result[lane] = goc::as_bits(goc::alu_output_f32(value, modifiers));
+    uint32_t output_mode = modifiers;
+    if constexpr (PreserveClampNan)
+      if ((goc::as_bits(value) & 0x7fffffff) > 0x7f800000)
+        output_mode &= ~GOC_ALU_CLAMP;
+    result[lane] = goc::as_bits(goc::alu_output_f32(value, output_mode));
   }
   for (int lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
+}
+
+template <goc::Unary Op, bool Rdna3 = false>
+int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
+          const uint32_t *const *a, uint32_t *excp_flag_user = nullptr) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if constexpr (Op != goc::Unary::Fract)
+    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
+      return unary_exact<Op>(flags, exec_mask, modifiers, d, a, Rdna3);
+  if constexpr (Rdna3) {
+    // Transcendentals use forced-flush OMOD policy. Other unary operations
+    // use the guest output-denormal policy, even where their result cannot
+    // be subnormal. Both policies also honor RDNA3 IEEE mode.
+    if ((flags & GOC_FP_IEEE_MODE) ||
+        (!goc::unary_flushes_f32<Op> && !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)))
+      modifiers &= ~uint64_t(GOC_ALU_OMOD_HALF);
+    if (flags & GOC_FP_DX10_CLAMP_OFF)
+      return unary_loose<Op, true>(flags, exec_mask, modifiers, d, a);
+  }
+  return unary_loose<Op>(flags, exec_mask, modifiers, d, a);
 }
 
 template <goc::Unary Op, bool Rdna3 = false>

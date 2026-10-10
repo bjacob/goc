@@ -6727,7 +6727,7 @@ MODE.DX10_CLAMP setting. Its zero/default value preserves existing behavior.
 The four unsuffixed cube instructions accept it in both wave sizes and
 semantics; RDNA4 variants reject it before operand access because that
 architecture has no configurable DX10_CLAMP mode. Other instruction families
-still reject this flag until their specific implementations support it.
+accept this flag only where their individual contracts explicitly support it.
 
 The implementation ports rocjitsu `ffc144c564c` shared `simd_glue.h`:
 `floating_clamp_nan_to_zero` and `clamp_floating_result`. With DX10_CLAMP off,
@@ -6760,3 +6760,68 @@ These 16 RDNA4 cases check existing-path overhead, not performance of all
 architectures or the new NaN-preserving mode. Samples, binaries and the driver
 are in `../goc-build/coverage-work/cube-dx10-performance/` (driver source in
 `../goc-build/coverage-work/cube-architecture-performance/bench.cpp`).
+
+
+## FP32 unary DX10 CLAMP mode
+
+The eleven unsuffixed RDNA3 FP32 unary APIs (TRUNC, CEIL, RNDNE, FLOOR, SQRT,
+RCP, RSQ, EXP, LOG, FRACT and FREXP_MANT), in both wave sizes, now accept
+`GOC_FP_DX10_CLAMP_OFF`. As in the cube implementation, this ports rocjitsu
+`ffc144c564c` shared `simd_glue.h`'s `clamp_floating_result` policy. It preserves
+arithmetic NaNs through CLAMP while finite values and infinities still clamp
+to [0,1], and negative zero becomes positive zero. NaN quieting remains the
+individual operation's policy. RDNA4 rejects the flag; defaults are unchanged.
+This supersedes the fixed-DX10_CLAMP limitation for FP32 rounding recorded above.
+FP16 and other instruction families retain their separately documented limits.
+
+Exact integer result paths support the setting without host arithmetic.
+Loose scalar paths retain NaNs through the existing output modifier helper;
+the shared AVX2 kernel uses NaN-preserving MIN/MAX operand order for the
+new mode and explicitly maps signed zero to +0. Its default clamp sequence
+remains unchanged. Existing SIMD eligibility
+is unchanged: EXP/LOG remain scalar; the other nine keep eight-lane AVX2 on
+all higher CPU selectors. Architecture dispatch gates OMOD and selects the shared loose helper. That
+helper specializes only the scalar NaN-clamp policy at compile time, keeping
+per-lane preservation checks out of the default scalar loop. The added local
+helper and boolean template parameter avoid the measured scalar regressions
+from a runtime check; both architectures still share each policy and the SIMD
+kernel. No new helper file or general policy framework is introduced. Source
+and output policies remain visible in the existing implementation.
+
+`Unary.Rdna3Dx10ClampPolicies` covers all eleven operations, both wave sizes,
+all CPU selectors, both semantics where available, IEEE/denormal policies,
+NEG/ABS/OMOD, DPP8, masked writes and in-place aliases. Its oracle applies the
+borrowed clamp policy to the existing unclamped arithmetic result: exact NaN
+payload/sign bits must survive, while loose NaNs need only remain NaNs.
+It also checks RDNA4 rejection before operand reads and exact optional-state
+rejection priority. FRACT remains loose-only; no new numerical or exception
+model is inferred, and exact optional exception reporting remains unsupported.
+
+
+Validation: all 1,149 tests pass with Clang 21 and GCC 15. All 51 targeted
+unary, rounding, DPP and FREXP tests pass under ASan/UBSan. All nine
+inventory-tool tests pass. The public C/C++ standalone header checks are
+included in the full builds.
+
+
+Final performance comparison: seven alternating before/after runs pinned to
+CPU 2, at least 50 ms thread-CPU time per case, after all builds/tests finished.
+Each architecture has 44 cases: eleven operations, baseline/AVX2 CPU selectors,
+and default/ABS+OMOD+CLAMP modifiers. EXP/LOG remain scalar with either selector.
+
+| Architecture | Median relative time | Range across cases |
+|---|---:|---:|
+| RDNA3 | -1.26% | -12.79% to +5.51% |
+| RDNA4 | -0.62% | -13.07% to +6.48% |
+
+Worst measured RDNA3 case: modified AVX2 SQRT, 19.180 to 20.237 ns/wave.
+Worst RDNA4 case: modified baseline TRUNC, 85.028 to 90.535 ns/wave.
+These results measure existing/default-mode overhead, not performance with
+DX10_CLAMP disabled, and do not claim a whole-library speedup. The separate
+scalar clamp specialization adds code: the isolated unary benchmark executable's
+`size` text total rises from 93,433 to 109,889 bytes, including linked code and
+read-only data. This is the cost of preserving optimization of the default
+scalar loop while adding the alternative policy, not a source-size reduction.
+The final samples and before/after drivers are in
+`../goc-build/coverage-work/unary-dx10-performance/`; `initial-*` files describe
+an earlier implementation and are not the reported final measurements.
