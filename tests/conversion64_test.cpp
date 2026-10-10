@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <cfenv>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <random>
 #include <stdint.h>
@@ -18,6 +19,9 @@ namespace {
 using Fn = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
 const Fn functions[] = {goc_v_cvt_f64_i32, goc_v_cvt_f64_u32, goc_v_cvt_i32_f64,
                         goc_v_cvt_u32_f64, goc_v_cvt_f64_f32, goc_v_cvt_f32_f64};
+
+const Fn wave64[] = {goc_v_cvt_f64_i32_wave64, goc_v_cvt_f64_u32_wave64, goc_v_cvt_i32_f64_wave64,
+                     goc_v_cvt_u32_f64_wave64, goc_v_cvt_f64_f32_wave64, goc_v_cvt_f32_f64_wave64};
 
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t mode, const uint64_t input[32]) {
   uint32_t source[2][32], output[2][32];
@@ -252,5 +256,118 @@ TEST(Conversion64, IntegerOutputsIgnoreHostRounding) {
         EXPECT_TRUE(check(op, cpu, 0, input));
         EXPECT_EQ(std::fegetround(), rounding);
       }
+  }
+}
+
+TEST(Conversion64, Wave64BoundariesAndSpecialValues) {
+  const uint64_t inputs[] = {0,
+                             1,
+                             0xffffffffULL,
+                             0x80000000ULL,
+                             0x7f800001ULL,
+                             0xff800000ULL,
+                             0x3ff0000010000000ULL,
+                             0x3ff0000010000001ULL,
+                             0x3690000000000000ULL,
+                             0x3690000000000001ULL,
+                             0x000fffffffffffffULL,
+                             0x0010000000000000ULL,
+                             0x7ff0000000000000ULL,
+                             0xfff0000000000000ULL,
+                             0x7ff0000000000001ULL,
+                             0xfff8123456789abcULL,
+                             0x41dfffffffffffffULL,
+                             0xc1e0000000200000ULL,
+                             0x41efffffffffffffULL,
+                             0x41f0000000000000ULL,
+                             0x47effffff0000000ULL,
+                             0x7fefffffffffffffULL};
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < goc_test::conversion64_modes(op); ++variant) {
+        uint32_t a[2][64], d[2][64];
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          uint64_t bits = inputs[lane % (sizeof inputs / sizeof inputs[0])];
+          a[0][lane] = uint32_t(bits);
+          a[1][lane] = uint32_t(bits >> 32);
+        }
+        const uint32_t *pa[] = {a[0], a[1]};
+        uint32_t *pd[] = {d[0], d[1]};
+        uint32_t mode = goc_test::conversion64_mode(op, variant);
+        uint32_t excp_flag_user = 0x12345678;
+        ASSERT_EQ(wave64[op](cpu, UINT64_MAX, mode, pd, pa, op >= 2 ? &excp_flag_user : nullptr),
+                  GOC_SUCCESS);
+        EXPECT_EQ(excp_flag_user, 0x12345678U);
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          uint64_t actual = d[0][lane];
+          if (goc_test::conversion64_wide_output(op))
+            actual |= uint64_t(d[1][lane]) << 32;
+          uint64_t input = inputs[lane % (sizeof inputs / sizeof inputs[0])];
+          if (goc_test::conversion64_wide_output(op))
+            input = uint32_t(input);
+          uint64_t expected = goc_test::conversion64_reference(op, input, mode);
+          ASSERT_TRUE(goc_test::conversion64_equal(op, actual, expected))
+              << op << "/" << cpu << "/" << variant << "/" << lane;
+        }
+      }
+}
+
+TEST(Conversion64, Wave64WordLayoutsMasksAndAliases) {
+  std::mt19937 random(871203);
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < goc_test::conversion64_modes(op); ++variant)
+        for (unsigned low = 0; low < 4; ++low)
+          for (unsigned high = 0; high < 4; ++high)
+            for (uint64_t exec_mask :
+                 {uint64_t(UINT64_MAX), uint64_t(1ULL << 63), uint64_t(0xffffffff00000000ULL),
+                  uint64_t(0x87654321fedcba98ULL)}) {
+              uint32_t initial[4][66], words[4][66];
+              for (auto &reg : initial)
+                for (auto &word : reg)
+                  word = random();
+              // Use finite sources here so split-word alias checks need no NaN
+              // normalization. The separate boundary test includes NaNs.
+              for (unsigned lane = 0; lane < 66; ++lane) {
+                if (op == 4 && (initial[0][lane] & 0x7f800000) == 0x7f800000)
+                  initial[0][lane] ^= 0x00800000;
+                if ((initial[1][lane] & 0x7ff00000) == 0x7ff00000)
+                  initial[1][lane] ^= 0x00100000;
+              }
+              std::memcpy(words, initial, sizeof words);
+              bool wide = goc_test::conversion64_wide_output(op);
+              const uint32_t *a[] = {words[0] + 1, wide ? nullptr : words[1] + 1};
+              uint32_t *d[] = {words[low] + 1, wide ? words[high] + 1 : nullptr};
+              uint32_t mode = goc_test::conversion64_mode(op, variant);
+              ASSERT_EQ(wave64[op](cpu, exec_mask, mode, d, a), GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                uint64_t input =
+                    uint64_t(initial[0][lane + 1]) | (uint64_t(initial[1][lane + 1]) << 32);
+                if (wide)
+                  input = uint32_t(input);
+                uint64_t expected = goc_test::conversion64_reference(op, input, mode);
+                uint32_t low_expected = uint32_t(wide && low == high ? expected >> 32 : expected);
+                ASSERT_EQ(d[0][lane],
+                          (exec_mask >> lane & 1) ? low_expected : initial[low][lane + 1]);
+                if (wide) {
+                  ASSERT_EQ(d[1][lane], (exec_mask >> lane & 1) ? uint32_t(expected >> 32)
+                                                                : initial[high][lane + 1]);
+                }
+              }
+              for (unsigned reg = 0; reg < 4; ++reg) {
+                EXPECT_EQ(words[reg][0], initial[reg][0]);
+                EXPECT_EQ(words[reg][65], initial[reg][65]);
+              }
+            }
+  for (unsigned op = 0; op < 6; ++op) {
+    EXPECT_EQ(wave64[op](0, 0, 0, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(wave64[op](0, UINT64_MAX, GOC_DPP8, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    if (op >= 2) {
+      uint32_t excp_flag_user = 0x12345678;
+      EXPECT_EQ(wave64[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr,
+                           &excp_flag_user),
+                GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+      EXPECT_EQ(excp_flag_user, 0x12345678U);
+    }
   }
 }

@@ -1191,7 +1191,8 @@ FP64-to-integer truncates with saturation and NaN-to-zero, accepting source
 ABS/NEG and numerically ignoring CLAMP/OMOD. FP32/FP64 conversions support all
 32 ABS/NEG/OMOD/CLAMP combinations. Narrowing rounds to FP32 before applying
 OMOD, including cases where scaling first would avoid overflow or underflow.
-All six currently expose loose semantics only.
+All six expose loose semantics at both wave sizes using shared kernels;
+exact optional exception reporting remains unsupported.
 
 Eight-lane x86-64-v4 paths cover all six; four-lane v3 paths cover all except
 signed FP64-to-integer, whose candidate was roughly tied with baseline.

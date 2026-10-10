@@ -1149,3 +1149,24 @@ kernel change is claimed. The width-review queue is 179 APIs.
 
 Validation: all 790 tests pass on Clang 21 and GCC 15 Release. All twelve
 FP32/integer-conversion and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 FP64 conversions
+
+Added all six FP64/integer/FP32 conversion Wave64 APIs. FP64 operands retain
+their low/high VGPR layout; integer and FP32 operands use one VGPR. The wrapper
+uses the correct source/destination arity for each direction, rejects DPP and
+retains existing scalar/v3/v4 dispatch, loose semantics and optional-state rules.
+
+Independent integer-bit references check rounding and saturation witnesses,
+NaNs/infinities and subnormal boundaries across every modifier and CPU path.
+A separate finite-input test crosses all sixteen destination-word layouts,
+source aliases, full/upper-only/sparse EXEC masks and guards, including the
+high-word-wins rule when output halves alias. Unused pointer slots are null.
+Loose optional state remains unchanged; exact reporting and invalid flags
+reject before operand access. No new exactness, capture or throughput claim
+is made. The width-review queue is 173 APIs.
+
+Validation: all 792 tests pass on Clang 21 and GCC 15 Release. All ten FP64
+conversion and instruction-flag tests pass under ASan/UBSan, including the
+existing exhaustive alias suite. The new references explicitly discard unused
+upper storage words for 32-bit source operands.

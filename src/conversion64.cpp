@@ -83,6 +83,30 @@ int convert(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *
   return GOC_SUCCESS;
 }
 
+template <goc::Conversion64 Op>
+int convert_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
+                   const uint32_t *const *a) {
+  if (int error = convert<Op>(flags, 0, mode, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  constexpr bool to_double = Op == goc::Conversion64::SignedToDouble ||
+                             Op == goc::Conversion64::UnsignedToDouble ||
+                             Op == goc::Conversion64::FloatToDouble;
+  constexpr unsigned inputs = to_double ? 1 : 2, outputs = to_double ? 2 : 1;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint32_t *dest[outputs];
+    const uint32_t *source[inputs];
+    for (unsigned reg = 0; reg < outputs; ++reg)
+      dest[reg] = d[reg] + half * 32;
+    for (unsigned reg = 0; reg < inputs; ++reg)
+      source[reg] = a[reg] + half * 32;
+    if (int error = convert<Op>(flags, uint32_t(exec_mask >> (half * 32)), mode, dest, source))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_cvt_f64_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -133,4 +157,64 @@ int goc_v_cvt_f32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return convert<goc::Conversion64::DoubleToFloat>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_cvt_f64_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return convert_wave64<goc::Conversion64::SignedToDouble>(flags, exec_mask, instruction_flags, d,
+                                                           a);
+}
+
+int goc_v_cvt_f64_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return convert_wave64<goc::Conversion64::UnsignedToDouble>(flags, exec_mask, instruction_flags, d,
+                                                             a);
+}
+
+int goc_v_cvt_i32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return convert_wave64<goc::Conversion64::DoubleToSigned>(flags, exec_mask, instruction_flags, d,
+                                                           a);
+}
+
+int goc_v_cvt_u32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return convert_wave64<goc::Conversion64::DoubleToUnsigned>(flags, exec_mask, instruction_flags, d,
+                                                             a);
+}
+
+int goc_v_cvt_f64_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return convert_wave64<goc::Conversion64::FloatToDouble>(flags, exec_mask, instruction_flags, d,
+                                                          a);
+}
+
+int goc_v_cvt_f32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return convert_wave64<goc::Conversion64::DoubleToFloat>(flags, exec_mask, instruction_flags, d,
+                                                          a);
 }

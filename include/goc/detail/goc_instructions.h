@@ -2630,6 +2630,25 @@ int goc_v_cvt_f64_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
 int goc_v_cvt_f32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
+// Wave64 FP64 conversions use the same one/two-VGPR layouts, loose semantics
+// and optional-state restrictions. DPP is unsupported at both widths.
+int goc_v_cvt_f64_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a);
+int goc_v_cvt_f64_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a);
+int goc_v_cvt_i32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+int goc_v_cvt_u32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+int goc_v_cvt_f64_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+int goc_v_cvt_f32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             uint32_t *excp_flag_user);
+
 // FP32/integer conversions, one VGPR per operand. Loose semantics only.
 // Integer-to-FP32 conversion uses host nearest-even rounding, followed by OMOD
 // and CLAMP; source ABS/NEG are invalid. Float-to-integer conversion saturates
