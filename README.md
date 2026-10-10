@@ -976,8 +976,9 @@ FP32 divided by 16, then applies OMOD/CLAMP. Higher source bits are ignored.
 NaNs to zero, and replaces byte `(B & 3)` of C. Its ABS/NEG modifiers apply only
 to A; CLAMP is accepted without numeric effect. Per-lane byte selection uses
 SIMD variable shifts and stays vectorized with every supported modifier.
-Both expose loose semantics with scalar, eight-lane v3 and sixteen-lane v4
-paths, full EXEC masking and all source/destination aliases.
+Both support Wave32 and Wave64 with shared scalar, eight-lane v3 and
+sixteen-lane v4 paths, full EXEC masking and all source/destination aliases.
+Nibble conversion accepts exact semantics; byte packing remains loose-only.
 
 RX 9070 (`gfx1201`) captures of 36 inputs across eight instruction/modifier
 combinations establish these rules. In particular, byte packing rounds 1.5 to
@@ -1110,8 +1111,8 @@ one unsigned byte from a VGPR and convert it to FP32, following rocjitsu's
 byte-conversion handlers. All eight OMOD/CLAMP combinations stay on the
 available SIMD paths; source ABS/NEG and half selectors are invalid. Results
 are exact for all byte values and output modifiers, so all host rounding modes
-produce the same bits and preserve existing FP exception flags. The API exposes
-loose semantics. Tests exhaust byte values, byte positions, unselected source
+produce the same bits and preserve existing FP exception flags. Both wave sizes
+accept loose and exact semantics. Tests exhaust byte values, byte positions, unselected source
 bits and modifiers, and cross 84 EXEC masks with aliases and unaligned storage.
 Eight-lane v3 and sixteen-lane v4 paths support all modifiers. Benchmarks cover
 full-EXEC default and combined OMOD/CLAMP workloads. On the development Ryzen 9

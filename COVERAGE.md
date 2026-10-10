@@ -1021,3 +1021,24 @@ floating-point denormal cost. Logs and harness are in the build directory's
 
 Validation: all 778 tests pass on Clang 21 and GCC 15 Release. All nine
 exponent-extraction tests pass under ASan/UBSan.
+
+## Wave64 byte/nibble conversion and byte packing
+
+Added six Wave64 APIs covering four unsigned-byte-to-FP32 selections,
+signed-nibble offsets, and nearest-even FP32-to-byte packing. The five
+integer-to-float forms now accept strict exact semantics at both widths: their
+finite values and OMOD scaling are exactly representable. Byte packing retains
+loose semantics and rejects exact non-null optional exception reporting.
+All forms reuse their existing scalar/v3/v4 kernels and DPP routing. Packing
+routes A only, keeping byte selector B and preserved word C in their own lanes.
+
+Independent references test all byte/nibble values and output modifiers,
+rounding ties, saturation, signed infinities/NaNs, byte selections, all DPP row
+masks, upper/lower EXEC, every source alias and guard words on all CPU levels.
+Loose optional state remains unchanged, and exact reporting rejects before
+operand access. Existing hardware captures and exhaustive Wave32 tests remain
+in place; no new Wave64 capture or throughput measurement is claimed.
+The width-review queue is now 202 APIs.
+
+Validation: all 780 tests pass on Clang 21 and GCC 15 Release. All twenty
+byte conversion, byte packing and instruction-flag tests pass under ASan/UBSan.

@@ -19,7 +19,7 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
                             [&](uint32_t exec_mask, const uint32_t *const *source) {
                               return convert<Byte>(flags, exec_mask, uint32_t(mode), d, source);
                             });
-  if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP)))
+  if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP), true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -77,7 +77,7 @@ int goc_v_cvt_off_f32_i4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
         flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
           return goc_v_cvt_off_f32_i4(flags, exec_mask, uint32_t(mode), d, source);
         });
-  if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP)))
+  if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP), true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -146,5 +146,83 @@ int goc_v_cvt_pk_u8_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint3
   for (unsigned lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
+  return GOC_SUCCESS;
+}
+
+namespace {
+
+// Byte 4 denotes the signed-nibble offset conversion.
+template <unsigned Byte>
+int convert_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a) {
+  const auto instruction = Byte == 4 ? goc_v_cvt_off_f32_i4 : convert<Byte % 4>;
+  if (int error = instruction(flags, 0, mode, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source = a[0] + half * 32;
+    if (int error =
+            instruction(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest, &source))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
+} // namespace
+
+int goc_v_cvt_f32_ubyte0_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a) {
+  return convert_wave64<0>(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_f32_ubyte1_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a) {
+  return convert_wave64<1>(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_f32_ubyte2_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a) {
+  return convert_wave64<2>(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_f32_ubyte3_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a) {
+  return convert_wave64<3>(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_off_f32_i4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a) {
+  return convert_wave64<4>(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_pk_u8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user) {
+  if (int error =
+          goc_v_cvt_pk_u8_f32(flags, 0, mode, nullptr, nullptr, nullptr, nullptr, excp_flag_user))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32,
+                   *source_c = c[0] + half * 32;
+    if (int error = goc_v_cvt_pk_u8_f32(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                                        &source_a, &source_b, &source_c, excp_flag_user))
+      return error;
+  }
   return GOC_SUCCESS;
 }

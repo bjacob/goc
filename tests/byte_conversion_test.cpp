@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cfenv>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <random>
@@ -135,7 +136,7 @@ TEST(ByteConversion, ValidationAndSemanticFallback) {
           EXPECT_EQ(fn(cpu, 0, uint32_t(1) << bit, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         }
       EXPECT_EQ(fn(cpu | (1ULL << 63), UINT32_MAX, 0, d, a), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(fn(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, d, a),
+      EXPECT_EQ(fn(cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, d, a),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeef);
@@ -218,4 +219,99 @@ TEST(ByteConversion, DppHardwareCorpus) {
           }
     EXPECT_EQ(hash, 0x5aa55d075a279fa5ULL) << cpu;
   }
+}
+
+TEST(ByteConversion, Wave64ExactValuesDppAndAliases) {
+  const decltype(&goc_v_cvt_f32_ubyte0_wave64) wave64[] = {
+      goc_v_cvt_f32_ubyte0_wave64, goc_v_cvt_f32_ubyte1_wave64, goc_v_cvt_f32_ubyte2_wave64,
+      goc_v_cvt_f32_ubyte3_wave64, goc_v_cvt_off_f32_i4_wave64};
+  for (unsigned op = 0; op < 5; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < 8; ++variant)
+        for (unsigned batch = 0; batch < 4; ++batch)
+          for (auto route : goc_test::dpp_modes)
+            for (unsigned rows = 0; rows < 16; ++rows)
+              for (unsigned alias = 0; alias < 2; ++alias) {
+                uint32_t initial[2][66], words[2][66];
+                for (unsigned lane = 0; lane < 66; ++lane) {
+                  uint32_t value = (batch * 64 + lane) & 255;
+                  initial[0][lane] = value * 0x01010101;
+                  initial[1][lane] = 0xdeadbeef;
+                }
+                std::memcpy(words, initial, sizeof words);
+                const uint32_t *a = words[0] + 1;
+                unsigned dest = alias ? 0 : 1;
+                uint32_t *d = words[dest] + 1;
+                uint64_t descriptor = route;
+                if (route & GOC_DPP16)
+                  descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+                uint64_t exec_mask = alias ? 0x87654321fedcba98ULL : UINT64_MAX;
+                uint64_t mode = goc_test::byte_conversion_mode(variant);
+                ASSERT_EQ(wave64[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                     exec_mask, mode | descriptor, &d, &a),
+                          GOC_SUCCESS);
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  int source = 0;
+                  bool enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+                  uint32_t raw = source < 0 ? 0 : initial[0][source + 1];
+                  uint32_t expected = op < 4 ? goc_test::byte_conversion_reference(op, raw, mode)
+                                             : goc_test::nibble_offset_reference(raw, mode);
+                  ASSERT_EQ(d[lane], enabled ? expected : initial[dest][lane + 1]);
+                }
+                EXPECT_EQ(words[dest][0], initial[dest][0]);
+                EXPECT_EQ(words[dest][65], initial[dest][65]);
+              }
+  for (auto fn : wave64) {
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr),
+              GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << 63, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+  }
+}
+
+TEST(ByteConversion, Wave64BytePackingRoundingDppAliasesAndOptionalState) {
+  const uint32_t values[] = {0,          0x3f000000, 0x3fc00000, 0x40200000,
+                             0x437effff, 0x437f8000, 0x7f800001, 0x7f800000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned variant = 0; variant < 8; ++variant)
+      for (auto route : goc_test::dpp_modes)
+        for (unsigned rows = 0; rows < 16; ++rows)
+          for (unsigned dest = 0; dest < 4; ++dest) {
+            uint32_t initial[4][66], words[4][66];
+            for (unsigned lane = 0; lane < 66; ++lane) {
+              initial[0][lane] = values[lane % 8] | (lane & 8 ? 0x80000000U : 0);
+              initial[1][lane] = lane;
+              initial[2][lane] = 0x12345678;
+              initial[3][lane] = 0xdeadbeef;
+            }
+            std::memcpy(words, initial, sizeof words);
+            const uint32_t *a = words[0] + 1, *b = words[1] + 1, *c = words[2] + 1;
+            uint32_t *d = words[dest] + 1;
+            uint64_t descriptor = route;
+            if (route & GOC_DPP16)
+              descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+            uint64_t exec_mask = 0x87654321fedcba98ULL;
+            uint64_t mode = goc_test::byte_pack_mode(variant);
+            uint32_t excp_flag_user = 0x12345678;
+            ASSERT_EQ(goc_v_cvt_pk_u8_f32_wave64(cpu, exec_mask, mode | descriptor, &d, &a, &b, &c,
+                                                 &excp_flag_user),
+                      GOC_SUCCESS);
+            EXPECT_EQ(excp_flag_user, 0x12345678U);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              int source = 0;
+              bool enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+              uint32_t expected =
+                  goc_test::byte_pack_reference(source < 0 ? 0 : initial[0][source + 1],
+                                                initial[1][lane + 1], initial[2][lane + 1], mode);
+              ASSERT_EQ(d[lane], enabled ? expected : initial[dest][lane + 1]);
+            }
+            EXPECT_EQ(words[dest][0], initial[dest][0]);
+            EXPECT_EQ(words[dest][65], initial[dest][65]);
+          }
+  uint32_t excp_flag_user = 0x12345678;
+  EXPECT_EQ(goc_v_cvt_pk_u8_f32_wave64(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr,
+                                       nullptr, nullptr, nullptr, &excp_flag_user),
+            GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+  EXPECT_EQ(excp_flag_user, 0x12345678U);
+  EXPECT_EQ(goc_v_cvt_pk_u8_f32_wave64(0, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr),
+            GOC_SUCCESS);
 }

@@ -2337,7 +2337,7 @@ int goc_v_cvt_sr_bf8_f32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 
 // DPP8/DPP16 permute A before nibble selection.
 // Convert A's signed low nibble to FP32 divided by 16, then apply OMOD/CLAMP.
-// Each operand holds one VGPR; higher source bits are ignored. Supports loose
+// Each operand holds one VGPR; higher source bits are ignored. Supports both
 // semantics, full EXEC masking and whole-register aliasing. Results are exact
 // under all host rounding modes, preserving host FP state.
 int goc_v_cvt_off_f32_i4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -2480,7 +2480,7 @@ int goc_v_cvt_pk_f32_bf8(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 // byte index selects bits [8*index, 8*index+7] of A. Supports OMOD and CLAMP;
 // source ABS/NEG and half selectors are invalid. All results are exactly
 // representable, independent of host rounding, and preserve host FP state.
-// Supports loose semantics, full EXEC masking and whole-register A/D aliasing.
+// Supports both semantics, full EXEC masking and whole-register A/D aliasing.
 
 int goc_v_cvt_f32_ubyte0(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a);
@@ -2493,6 +2493,24 @@ int goc_v_cvt_f32_ubyte2(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 
 int goc_v_cvt_f32_ubyte3(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a);
+
+// Wave64 byte/nibble conversions use the same operand layouts and modifiers.
+// Integer-to-float results support exact semantics at both widths. Byte packing
+// retains loose semantics and rejects exact non-null exception reporting.
+int goc_v_cvt_f32_ubyte0_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+int goc_v_cvt_f32_ubyte1_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+int goc_v_cvt_f32_ubyte2_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+int goc_v_cvt_f32_ubyte3_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+int goc_v_cvt_off_f32_i4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+int goc_v_cvt_pk_u8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user);
 
 // FP16 conversions, one VGPR per operand; loose semantics only. HIGH_A selects
 // a 16-bit source half, HIGH_D selects a 16-bit destination half, preserving the

@@ -179,8 +179,8 @@ TEST(BytePack, ValidationAndSemanticFallback) {
         }
       EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a, a, a, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                              UINT32_MAX, 0, d, a, a, a, nullptr),
+      EXPECT_EQ(functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, d, a, a, a,
+                              nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeefu);
