@@ -270,5 +270,13 @@
     "mnemonics": [
       "v_div_fixup_f16"
     ]
+  },
+  {
+    "heading": "TRIG_PREOP architecture policies",
+    "semantics": "loose and exact",
+    "tests": "tests/trig_preop_architecture_test.cpp",
+    "mnemonics": [
+      "v_trig_preop_f64"
+    ]
   }
 ]

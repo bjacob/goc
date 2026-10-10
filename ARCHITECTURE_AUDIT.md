@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-146 in-scope mnemonics have explicit contract-review records in
+147 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 663 in-scope mnemonics need a recorded review.
+The remaining 662 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -637,7 +637,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_swap_b16` | no direct policy detected | no | not found | review required |
 | `v_swap_b32` | no direct policy detected | no | not found | review required |
 | `v_swaprel_b32` | no direct policy detected | no | not found | review required |
-| `v_trig_preop_f64` | IEEE mode, OMOD, architecture query | no | 20185 | review required |
+| `v_trig_preop_f64` | IEEE mode, OMOD, architecture query | yes | 20185 | [loose and exact contract reviewed; see limitations](COVERAGE.md#trig_preop-architecture-policies) |
 | `v_trunc_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20238, 20262 | review required |
 | `v_trunc_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20307, 20321 | review required |
 | `v_trunc_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 20351, 20365 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |

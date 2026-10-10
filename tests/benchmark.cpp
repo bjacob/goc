@@ -3459,8 +3459,9 @@ bool benchmark_trig_preop(uint64_t cpu, int iterations, int min_ms) {
     }
     auto fn = [](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                  const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
-      return goc_v_trig_preop_f64(flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                  exec_mask, mode, d, a, b, nullptr);
+      return goc_v_trig_preop_f64_rdna4(flags | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                            GOC_SEMANTICS_STRICT,
+                                        exec_mask, mode, d, a, b, nullptr);
     };
     const char *label = modified ? "ABS/NEG/half/clamp" : "none";
     double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);

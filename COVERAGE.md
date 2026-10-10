@@ -4294,3 +4294,57 @@ build finds no explicit FP-control writes or environment-mutator references
 The ledger records 146 contracts; native-state naming resolves 930 of 946
 signatures, with zero mismatches and 16 unresolved. Whole-project completion
 remains unproven.
+
+## TRIG_PREOP architecture policies
+
+`v_trig_preop_f64` now distinguishes rocjitsu's RDNA3 1201-bit 2/pi
+lookup from the retained RDNA4 1184-bit capture-backed table. The unsuffixed
+Wave32/Wave64 APIs use RDNA3 `trapsts`; `_rdna4` precedes `_wave64` and uses
+`excp_flag_user`. Both support loose and empirical-exact numerical results;
+non-null exact global-state reporting remains explicitly unsupported. Loose
+calls skip reporting.
+
+The borrowed model is `execute_v_trig_preop_f64_vop3` in rocjitsu revision
+`ffc144c564c`, including `scale_u53_f64_rtz`, `effective_omod` and `finish_f64`.
+The upstream implementation temporarily sets host rounding modes. GoC does not
+copy those guards: constexpr integer table construction implements RTZ lookup,
+and integer power-of-two scaling implements nearest-even output modification.
+RDNA3 scales before flushing the rounded tiny result; the existing RDNA4 path
+retains pre-scaling flushing as well. RDNA3 ignores OMOD when output denormals
+are preserved or IEEE mode is enabled. Input/output-denormal and IEEE flags
+are accepted, but otherwise do not alter the lookup. Arbitrary guest output
+rounding modes remain outside the exposed API. A's fraction/sign do not affect
+lookup, including special encodings, and A's unused low-word pointer may be null.
+
+A compile-time architecture choice shares lookup indexing, validation, wave
+splitting, alias staging and stores. There are two constexpr lookup arrays;
+AVX2 still gathers four FP64 lanes and AVX512 gathers eight. The small output
+scaling branches show the architecture distinction directly, without a new
+policy framework or host-state helper. No sparse-mask specialization is added.
+
+Four architecture tests cover every exponent/selector with all OMOD/CLAMP
+settings, both wave sizes and all available CPU selections; all eight guest
+policies; source and destination aliases, inactive lanes and storage guards;
+literal table-tail and normal/subnormal witnesses; errors, nullable reporting,
+and host rounding/FTZ/DAZ controls. The independent test reference uses wider
+floating arithmetic and explicit RTZ correction instead of production integer
+helpers. Existing RDNA4 exhaustive hardware fixtures retain their expectations
+and now call the explicit RDNA4 names. No new hardware model was inferred.
+
+Seven alternating before/after timing samples use CPU 2 affinity, thread CPU
+time and at least 20 ms per case. Plain/OMOD+CLAMP RDNA4 loose calls change by
++1.17%/+1.67% for scalar, +0.36%/-1.53% for AVX2, and -2.09%/-0.90% for AVX512.
+Modified cases pass a non-null optional state pointer. Raw samples and harness
+are `trig-preop-performance.json` and `trig-preop-timing.cpp` under
+`../goc-build/coverage-work/`.
+
+Validation: all 1,086 CTests pass with Clang 21 Release and GCC 15 Release;
+17 targeted ASan/UBSan tests pass, covering both TRIG_PREOP suites, instruction
+flags and architectural-state contracts. All nine audit-tool tests pass.
+Disassembly and undefined-symbol scans of all 192 library objects for each
+compiler find no explicit FP-control writes or environment-setter references.
+Logs and `trig-preop-fp-environment-audit.json` are under the coverage work folder;
+GCC and sanitizer logs use the `trig-preop-` prefix in their build directories.
+The review ledger now records 147 contracts; native-state naming resolves 934
+of 948 signatures, with zero mismatches and 14 unresolved. These counts are
+review progress, not proof of complete architecture coverage.

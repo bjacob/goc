@@ -2463,17 +2463,32 @@ int goc_v_perm_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flag
 // one integer VGPR (only its low five bits select the segment), and D is an
 // FP64 VGPR pair. Only A's encoded exponent affects the lookup, including
 // for infinities and NaNs. ABS_A/NEG_A are accepted and have no effect.
-// Supports OMOD and CLAMP; OMOD flushes tiny results before and after scaling.
+// Supports OMOD and CLAMP. RDNA3 uses rocjitsu's 1201-bit table; RDNA4 uses
+// the captured 1184-bit table. RDNA3 scales before flushing the rounded result;
+// RDNA4 OMOD flushes tiny results before and after scaling. RDNA3 disables OMOD
+// when output denormals are preserved or IEEE mode is set. All three guest FP
+// flags are accepted; input/output flushing otherwise does not affect lookup.
+// Unsuffixed APIs use TRAPSTS; _rdna4 uses EXCP_FLAG_USER. Exact non-null
+// reporting is unsupported; loose calls leave optional state unchanged.
 // Supports loose and empirical-exact semantics. Preserves all host FP state.
 // If destination VGPRs alias, the high word is written last.
 int goc_v_trig_preop_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                         uint32_t *excp_flag_user);
+                         uint32_t *trapsts);
+
+int goc_v_trig_preop_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, uint32_t *excp_flag_user);
 
 // Wave64 retains the same operand layout, modifiers and numerical contract.
 int goc_v_trig_preop_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
-                                const uint32_t *const *b, uint32_t *excp_flag_user);
+                                const uint32_t *const *b, uint32_t *trapsts);
+
+int goc_v_trig_preop_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      uint32_t *excp_flag_user);
 
 // Lighting multiply. After ABS/NEG source modifiers, return -FLT_MAX if B is
 // -FLT_MAX, -infinity or NaN, or C is nonpositive or NaN. Otherwise return +0
