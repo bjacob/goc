@@ -2466,3 +2466,42 @@ for RDNA4 MIXLO/MIXHI following the new captures.
 - Validation: all 964 tests pass with Clang 21 and GCC 15 Release. All 49
   LiteralFma/MixedFma/Arithmetic/ExecMask tests pass under ASan/UBSan. Native
   capture generation, compilation and execution also succeeded.
+
+## RDNA4 FP32 literal FMA exception reporting
+
+- RDNA4 FMAMK/FMAAK now accumulate exact EXCP_FLAG_USER updates in both wave
+  sizes for all four exposed guest denormal policies. Classification uses input
+  bits and the same integer round-to-odd intermediate as exact results. It
+  reports invalid, input-denormal, overflow, underflow and inexact; NaN/invalid
+  priority and tininess before exponent packing follow native captures. No host
+  FP control writes, exception reads or exception-clearing operations are used.
+- Only active lanes contribute, and updates OR into existing state. Empty EXEC
+  leaves state untouched after validation. Invalid calls preserve VGPRs and
+  state. Loose semantics bypass reporting even with a non-null pointer. RDNA3
+  TRAPSTS reporting remains explicitly unsupported and is not inferred from
+  RDNA4 measurements.
+- The ordinary edge/random corpus supplies 65,536 captured exception records.
+  Another 131,072 result/flag pairs cover underflow and overflow boundaries,
+  with literals immediately below and above one and all four denormal policies.
+  CPU Wave32/Wave64 calls match every digest. The generator supports explicit
+  literal bits and literal-FMA rounding-boundary inputs. Fixtures and generator
+  are checked in; raw captures and manifests remain under
+  `../goc-build/coverage-work/literal-fma32-exact-captures/`.
+- Tests exercise lane-by-lane flags, accumulation across both Wave64 halves,
+  inactive signaling NaNs, source/destination aliases, every CPU level, both
+  exact strictness settings, error preservation, and all host rounding/FTZ/DAZ
+  settings. Loose calls explicitly preserve sentinel global state. Existing
+  mixed FMA callers omit reporting and retain their no-op exception contract.
+- VOPD literal wrappers continue to reject non-null exact reporting explicitly;
+  they delegate numerical results but their architecture/state audit is still
+  pending. Ordinary-VOP2 captures do not establish VOPD exception behavior.
+- Validation: all 966 tests pass under Clang 21 and GCC 15 Release; all 60
+  LiteralFma/MixedFma/Arithmetic/ExecMask/ExceptionRegisters/Dual tests pass under
+  ASan/UBSan. The native capture generator compiled and ran successfully.
+- Eleven alternating CPU-2-pinned samples, at least 50 ms thread CPU time,
+  compare default loose calls against `deaa3cc`, with both null and non-null
+  state pointers. FMAMK AVX2 medians were 13.261 -> 13.515 ns (null) and
+  13.024 -> 13.262 ns (non-null); FMAAK AVX2 stayed within 0.1%. AVX512 changes
+  ranged from -0.1% to -8.0%, all below 0.4 ns absolute. The largest slowdown
+  was 1.9%; these measurements support preserving the loose path, not a general
+  speedup claim. Artifacts use `../goc-build/coverage-work/literal-fma32-reporting-*`.

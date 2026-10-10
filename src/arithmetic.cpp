@@ -109,9 +109,10 @@ int fma_with_dpp(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *co
 template <bool Multiply, bool Rdna3>
 [[gnu::noinline]] int literal_fma_scalar(uint64_t flags, uint32_t exec_mask, uint32_t *const *d,
                                          const uint32_t *const *a, const uint32_t *const *b,
-                                         uint32_t literal) {
+                                         uint32_t literal, uint32_t *exceptions = nullptr) {
   bool exact = (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
   uint32_t result[32];
+  uint32_t produced = 0;
   float k = goc::as_float(literal);
   if (flags & GOC_FP_FLUSH_INPUT_DENORMALS)
     k = goc::flush_denorm_f32(k);
@@ -122,10 +123,14 @@ template <bool Multiply, bool Rdna3>
       y = goc::flush_denorm_f32(y);
     }
     if (exact) {
-      result[lane] = Multiply ? goc::fma_value_f32(goc::as_bits(x), goc::as_bits(k),
-                                                   goc::as_bits(y), false, flags, Rdna3)
-                              : goc::fma_value_f32(goc::as_bits(x), goc::as_bits(y),
-                                                   goc::as_bits(k), false, flags, Rdna3);
+      result[lane] =
+          Multiply
+              ? goc::fma_value_f32(goc::as_bits(x), goc::as_bits(k), goc::as_bits(y), false, flags,
+                                   Rdna3,
+                                   exceptions && ((exec_mask >> lane) & 1) ? &produced : nullptr)
+              : goc::fma_value_f32(goc::as_bits(x), goc::as_bits(y), goc::as_bits(k), false, flags,
+                                   Rdna3,
+                                   exceptions && ((exec_mask >> lane) & 1) ? &produced : nullptr);
       continue;
     }
     float value = Multiply ? std::fma(x, k, y) : std::fma(x, y, k);
@@ -136,12 +141,15 @@ template <bool Multiply, bool Rdna3>
   for (int lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
+  if (exceptions)
+    *exceptions |= produced;
   return GOC_SUCCESS;
 }
 
 template <bool Multiply, bool Rdna3 = false>
 int literal_fma(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
-                const uint32_t *const *a, const uint32_t *const *b, uint32_t literal) {
+                const uint32_t *const *a, const uint32_t *const *b, uint32_t literal,
+                uint32_t *exceptions = nullptr) {
   if (int error = goc::validate(flags, mode, true,
                                 GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS |
                                     GOC_FP_IEEE_MODE))
@@ -161,7 +169,8 @@ int literal_fma(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *con
     return GOC_SUCCESS;
   }
 #endif
-  return literal_fma_scalar<Multiply, Rdna3>(flags, exec_mask, d, a, b, literal);
+  return literal_fma_scalar<Multiply, Rdna3>(flags, exec_mask, d, a, b, literal,
+                                             exact ? exceptions : nullptr);
 }
 
 template <bool Dx9Zero, bool Rdna3 = false>
@@ -190,8 +199,10 @@ int fma_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *cons
 
 template <bool Multiply, bool Rdna3 = false>
 int literal_fma_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
-                       const uint32_t *const *a, const uint32_t *const *b, uint32_t literal) {
-  if (int error = literal_fma<Multiply, Rdna3>(flags, 0, mode, nullptr, nullptr, nullptr, literal))
+                       const uint32_t *const *a, const uint32_t *const *b, uint32_t literal,
+                       uint32_t *exceptions = nullptr) {
+  if (int error = literal_fma<Multiply, Rdna3>(flags, 0, mode, nullptr, nullptr, nullptr, literal,
+                                               exceptions))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -199,7 +210,7 @@ int literal_fma_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32
     uint32_t *dest = d[0] + half * 32;
     const uint32_t *x = a[0] + half * 32, *y = b[0] + half * 32;
     if (int error = literal_fma<Multiply, Rdna3>(flags, uint32_t(exec_mask >> (half * 32)), mode,
-                                                 &dest, &x, &y, literal))
+                                                 &dest, &x, &y, literal, exceptions))
       return error;
   }
   return GOC_SUCCESS;
@@ -234,21 +245,21 @@ int goc_v_fmac_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
 int goc_v_fmamk_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, uint32_t literal, const uint32_t *const *b,
                           uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return literal_fma<true>(flags, exec_mask, mode, d, a, b, literal);
+  return literal_fma<true>(flags, exec_mask, mode, d, a, b, literal, excp_flag_user);
 }
 
 int goc_v_fmaak_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b, uint32_t literal,
                           uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return literal_fma<false>(flags, exec_mask, mode, d, a, b, literal);
+  return literal_fma<false>(flags, exec_mask, mode, d, a, b, literal, excp_flag_user);
 }
 
 int goc_v_fma_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
@@ -282,22 +293,22 @@ int goc_v_fmac_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mod
 int goc_v_fmamk_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
                                  uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
                                  const uint32_t *const *b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return literal_fma_wave64<true>(flags, exec_mask, mode, d, a, b, literal);
+  return literal_fma_wave64<true>(flags, exec_mask, mode, d, a, b, literal, excp_flag_user);
 }
 
 int goc_v_fmaak_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
                                  uint32_t *const *d, const uint32_t *const *a,
                                  const uint32_t *const *b, uint32_t literal,
                                  uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
-  return literal_fma_wave64<false>(flags, exec_mask, mode, d, a, b, literal);
+  return literal_fma_wave64<false>(flags, exec_mask, mode, d, a, b, literal, excp_flag_user);
 }
 
 int goc_v_fma_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,

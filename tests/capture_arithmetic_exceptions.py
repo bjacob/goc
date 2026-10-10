@@ -23,6 +23,7 @@ Packed FMA: bit 0 neg_lo=[1,0,1], bit 1 neg_hi=[0,1,1], bit 2 CLAMP,
 bit 3 swaps low/high source selections. Packed FMAC repeats its unmodified form.
 FMAC uses ordinary modifiers without negating C. Literal FMA repeats its
 unmodified form with literal 0x3c01 (FP16) or 0x3f800001 (FP32).
+--literal overrides those bits; --rounding-boundaries selects exponent boundaries.
 Mixed FMA: bits 0:2 select FP16 sources,
 bit 3 enables CLAMP; --mix-high selects high halves and -A/abs(B)/-abs(C).
 DOT2 uses packed modifiers, but neg_hi affects only B and op_sel affects A/B.
@@ -43,6 +44,7 @@ parser.add_argument("width", type=int, choices=(16, 32, 64))
 parser.add_argument("--boundaries", action="store_true", help="FP32 SIN/COS boundary corpus")
 parser.add_argument("--rounding-boundaries", action="store_true", help="FMA underflow/overflow corpus")
 parser.add_argument("--mix-high", action="store_true", help="mixed FMA high halves and source modifiers")
+parser.add_argument("--literal", type=lambda value: int(value, 0), help="raw FMAMK/FMAAK literal bits")
 args = parser.parse_args()
 out, family, width = args.output, args.family, args.width
 allowed_widths = {"div_fixup": (16, 32, 64), "div_fmas": (32, 64),
@@ -52,11 +54,13 @@ if width not in allowed_widths.get(family, (16,)):
     parser.error("unsupported family/width combination")
 if args.boundaries and (family not in ("sin", "cos") or width != 32):
     parser.error("--boundaries requires FP32 SIN/COS")
-if args.rounding_boundaries and family not in ("fma", "div_fmas"):
-    parser.error("--rounding-boundaries requires FMA or DIV_FMAS")
+if args.rounding_boundaries and family not in ("fma", "div_fmas", "fmamk", "fmaak"):
+    parser.error("--rounding-boundaries requires FMA, literal FMA or DIV_FMAS")
 if args.mix_high and not family.startswith("fma_mix"):
     parser.error("--mix-high requires mixed FMA")
-literal = 0x3c01 if width == 16 else 0x3f800001
+if args.literal is not None and (family not in ("fmamk", "fmaak") or not 0 <= args.literal < 1 << width):
+    parser.error("--literal requires FMAMK/FMAAK and a value fitting WIDTH")
+literal = args.literal if args.literal is not None else (0x3c01 if width == 16 else 0x3f800001)
 out.mkdir(parents=True, exist_ok=True)
 n = 65536 if family in ("sin", "cos") else 8192
 input_width = 32 if family.startswith("fma_mix") else width

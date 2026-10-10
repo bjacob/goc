@@ -3224,7 +3224,8 @@ int goc_v_fmaak_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t in
 // denormal flushing and IEEE mode are accepted. Loose semantics permit approximate
 // NaN payload/quieting and require host nearest-even rounding and denormals enabled.
 // Exact nearest-even results use integer arithmetic and do not depend on host
-// FP controls. Exact non-null global-state reporting remains unsupported.
+// FP controls. RDNA4 exact calls accumulate EXCP_FLAG_USER; RDNA3 non-null
+// exact TRAPSTS reporting remains unsupported. Loose calls skip state updates.
 int goc_v_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
                     const uint32_t *const *b, uint32_t *trapsts);

@@ -424,8 +424,10 @@ paths skip all of this work.
 
 FP32 literal `FMAMK`/`FMAAK` implement exact nearest-even results, including
 guest denormal policies and architecture-specific NaN quieting, using the shared
-integer FMA model. Both architectures still reject non-null exact global-state
-reporting requests. Loose calls retain their SIMD paths.
+integer FMA model. RDNA4 reports exceptions across all four exposed denormal
+policies, checked against 196,608 RX 9070 captures. RDNA3 still rejects non-null
+exact global-state reporting requests. Loose calls retain their SIMD paths and
+skip optional state updates.
 
 FP16/32 `SIN`/`COS` report invalid, input-denormal, underflow, and inexact flags.
 Their hardware corpora cover every FP16 encoding, FP32 exponent/mantissa patterns,
