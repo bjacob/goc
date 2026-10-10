@@ -19,7 +19,8 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
         flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
           return run<Half>(flags, exec_mask, uint32_t(mode), d, source, b, condition);
         });
-  const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_ABS_B | GOC_ALU_NEG_A | GOC_ALU_NEG_B |
+  const uint32_t known = GOC_ALU_CLAMP | GOC_ALU_ABS_A | GOC_ALU_ABS_B | GOC_ALU_NEG_A |
+                         GOC_ALU_NEG_B |
                          (Half ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D : 0);
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;

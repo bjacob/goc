@@ -63,7 +63,7 @@ TEST(BooleanWave64, ModifiersRoutingAliasingAndExactSemantics) {
               const uint32_t *a = words[0] + 1, *b = words[1] + 1;
               uint64_t mode =
                   route | (op < 9 ? goc_test::boolean_mode(op, m & 7) | (m & 8 ? GOC_ALU_CLAMP : 0)
-                                  : goc_test::cndmask_mode(m));
+                                  : goc_test::cndmask_mode(m) | GOC_ALU_CLAMP);
               const uint64_t exec_mask = alias ? UINT64_MAX : 0x87654321fedcba98ULL;
               const uint64_t condition = 0x5a5a5a5aa5a5a5a5ULL;
               ASSERT_EQ(execute(op, cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode, &d, &a,

@@ -2440,7 +2440,8 @@ int goc_v_interp_p2_rtz_f16_f32_wave64(uint64_t flags, uint64_t exec_mask,
 // operand uses one VGPR. ABS_A/B clear source sign bits, then NEG_A/B toggle
 // them; all other payload bits, including signaling NaNs, are preserved.
 // The B16 form also supports HIGH_A/B/D: selected source halves are written to
-// the selected destination half, preserving the other half. No OMOD or CLAMP.
+// the selected destination half, preserving the other half. CLAMP is accepted
+// and ignored; OMOD is unsupported.
 // DPP8/DPP16 permutes A before source modifiers and half selection; B and
 // the condition mask remain in their original lanes.
 // Both semantics are bit-exact; all host FP state is preserved.

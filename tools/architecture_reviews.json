@@ -1033,5 +1033,14 @@
       "v_dot8_i32_iu4",
       "v_dot8_u32_u4"
     ]
+  },
+  {
+    "heading": "Conditional-selection architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/cndmask_test.cpp",
+    "mnemonics": [
+      "v_cndmask_b16",
+      "v_cndmask_b32"
+    ]
   }
 ]

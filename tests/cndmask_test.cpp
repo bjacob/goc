@@ -51,31 +51,32 @@ TEST(Cndmask, HardwareAllEncodingsAndModifiers) {
 TEST(Cndmask, EveryModifierMaskAliasAndUnalignedStorage) {
   for (unsigned half = 0; half < 2; ++half)
     for (unsigned m = 0; m < (half ? 128u : 16u); ++m)
-      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-        for (unsigned alias = 0; alias < 2; ++alias)
-          for (unsigned target = 0; target < 3; ++target)
-            for (uint32_t exec_mask : exec_masks()) {
-              uint32_t words[3][35], expected[3][35];
-              for (unsigned reg = 0; reg < 3; ++reg)
-                for (unsigned lane = 0; lane < 35; ++lane)
-                  words[reg][lane] = expected[reg][lane] =
-                      (lane * 0x7395a831u) ^ (reg * 0xa7925163u);
-              uint32_t condition = (m * 0x9e3779b9u) ^ 0x96969696u;
-              unsigned source_b = alias ? 0 : 1;
-              for (unsigned lane = 0; lane < 32; ++lane)
-                if ((exec_mask >> lane) & 1)
-                  expected[target][lane + 1] = goc_test::cndmask_reference(
-                      half, words[0][lane + 1], words[source_b][lane + 1], words[target][lane + 1],
-                      m, (condition >> lane) & 1);
-              const uint32_t *a[] = {words[0] + 1}, *b[] = {words[source_b] + 1};
-              uint32_t *d[] = {words[target] + 1};
-              ASSERT_EQ(
-                  functions[half](cpu, exec_mask, goc_test::cndmask_mode(m), d, a, b, condition),
-                  GOC_SUCCESS);
-              for (unsigned reg = 0; reg < 3; ++reg)
-                ASSERT_TRUE(std::equal(words[reg], words[reg] + 35, expected[reg]))
-                    << half << "/" << m << "/" << cpu << "/" << target;
-            }
+      for (uint32_t clamp : {0U, GOC_ALU_CLAMP})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned alias = 0; alias < 2; ++alias)
+            for (unsigned target = 0; target < 3; ++target)
+              for (uint32_t exec_mask : exec_masks()) {
+                uint32_t words[3][35], expected[3][35];
+                for (unsigned reg = 0; reg < 3; ++reg)
+                  for (unsigned lane = 0; lane < 35; ++lane)
+                    words[reg][lane] = expected[reg][lane] =
+                        (lane * 0x7395a831u) ^ (reg * 0xa7925163u);
+                uint32_t condition = (m * 0x9e3779b9u) ^ 0x96969696u;
+                unsigned source_b = alias ? 0 : 1;
+                for (unsigned lane = 0; lane < 32; ++lane)
+                  if ((exec_mask >> lane) & 1)
+                    expected[target][lane + 1] = goc_test::cndmask_reference(
+                        half, words[0][lane + 1], words[source_b][lane + 1],
+                        words[target][lane + 1], m, (condition >> lane) & 1);
+                const uint32_t *a[] = {words[0] + 1}, *b[] = {words[source_b] + 1};
+                uint32_t *d[] = {words[target] + 1};
+                ASSERT_EQ(functions[half](cpu, exec_mask, goc_test::cndmask_mode(m) | clamp, d, a,
+                                          b, condition),
+                          GOC_SUCCESS);
+                for (unsigned reg = 0; reg < 3; ++reg)
+                  ASSERT_TRUE(std::equal(words[reg], words[reg] + 35, expected[reg]))
+                      << half << "/" << m << "/" << cpu << "/" << target;
+              }
 }
 
 TEST(Cndmask, EveryConditionBitIndependentOfExec) {
@@ -110,7 +111,7 @@ TEST(Cndmask, InvalidFlagsAndHostFpState) {
   goc_test::ScopedFpEnvironment saved;
   ASSERT_TRUE(saved.saved());
   for (unsigned half = 0; half < 2; ++half) {
-    uint32_t known = goc_test::cndmask_mode(half ? 127 : 15);
+    uint32_t known = GOC_ALU_CLAMP | goc_test::cndmask_mode(half ? 127 : 15);
     EXPECT_EQ(functions[half](0, 0U, known, nullptr, nullptr, nullptr, 0), GOC_SUCCESS);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!(known & (1u << bit))) {

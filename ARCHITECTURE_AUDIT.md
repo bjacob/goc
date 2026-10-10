@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-601 in-scope mnemonics have explicit contract-review records in
+603 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 208 in-scope mnemonics need a recorded review.
+The remaining 206 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -393,8 +393,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cmpx_u_f16` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_u_f32` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_u_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cndmask_b16` | no direct policy detected | no | not found | review required |
-| `v_cndmask_b32` | SIMD macro, output helper | no | 8153, 8169 | review required |
+| `v_cndmask_b16` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#conditional-selection-architecture-contracts) |
+| `v_cndmask_b32` | SIMD macro, output helper | no | 8153, 8169 | [loose and exact contract reviewed; see limitations](COVERAGE.md#conditional-selection-architecture-contracts) |
 | `v_cos_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 8187, 8206 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-sincos-architecture-policies) |
 | `v_cos_f32` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 8245, 8260 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-sincos-architecture-policies) |
 | `v_ctz_i32_b32` | SIMD macro, output helper | no | 8293, 8312 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |

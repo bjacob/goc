@@ -6036,3 +6036,42 @@ Validation: all 1,131 CTests pass under Clang and GCC Release; all six integer-D
 tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `integer-dot-review-` in each build directory. The ledger records 601 contracts;
 208 in-scope mnemonics remain without recorded reviews.
+
+## Conditional-selection architecture contracts
+
+Reviewed CNDMASK_B16/B32 at rocjitsu `ffc144c564c`: twelve architecture handler
+bodies, with four identical B32 pairs and two B16 pairs whose differences are
+RDNA4 SIMD shortcuts. The B16 scalar tails agree. Two shared B32 helpers and
+source-modifier/true16 helpers complete the data-flow review. Locations, bodies,
+hashes and limitations are recorded in
+`../goc-build/coverage-work/cndmask-upstream-review.json`.
+
+Selection uses the condition bit of the physical destination lane independently
+of EXEC. ABS clears the sign bit before NEG toggles it; payload bits otherwise
+remain unchanged. B16 selects source halves and preserves the unused destination
+half. DPP routes A before half selection and modifiers, while B and the condition
+mask remain local. Wave64 splits the condition mask alongside its two lane groups.
+Neither instruction requires an optional global-state output.
+
+Upstream's B16 handlers omit ABS/NEG. GoC retains its existing implementation:
+the RDNA3 manual explicitly permits these modifiers, and existing gfx1201
+fixtures verify them for RDNA4. This is an upstream omission, not evidence of an
+architecture difference. There is no RDNA3 hardware capture in this review and
+no new hardware characterization or numerical model was introduced.
+
+Fixed validation to accept ignored CLAMP, consistent with the bit-selection
+operation and upstream handlers. OMOD remains unsupported. Scalar and SIMD
+arithmetic are unchanged: the v4 path selects sixteen lanes with bitwise source
+modifiers and masked destination stores; earlier CPU levels use the baseline
+path. CLAMP adds no dispatch fallback. All sources are staged before stores,
+including when a destination aliases a source.
+
+Wave32 modifier/mask/alias tests now exercise both CLAMP settings, including
+unaligned storage. Wave64 routing, alias and exact-semantics tests exercise
+CLAMP with every source modifier and half selector. Existing exhaustive gfx1201
+encoding fixtures and DPP fixtures remain unchanged.
+
+Validation: all 1,131 CTests pass under Clang and GCC Release; all eleven
+CNDMASK/BooleanWave64 tests pass under ASan/UBSan. Logs use `cndmask-review-`
+in each build directory. The ledger records 603 contracts; 206 in-scope
+mnemonics remain without recorded reviews.
