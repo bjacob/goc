@@ -2575,9 +2575,12 @@ bytes in a scalar pair. All three instructions ignore EXEC and are shared by
 RDNA3/RDNA4. MODE is guest state; these calls do not alter flags supplied to
 subsequent GoC arithmetic calls.
 
-RDNA3 floating min/max/median spellings share the corresponding RDNA4 `*_num_*`
-loose implementations and SIMD dispatch. IEEE-mode bit-exact NaN behavior and
-exception reporting for these operations remain unsupported.
+RDNA3 floating min/max/median APIs share scalar/SIMD selection machinery with
+RDNA4, with distinct IEEE-mode NaN and OMOD policies. RDNA4 assembly aliases
+using older names do not make those policies equivalent: select the canonical
+RDNA4 `*_num_*` APIs for RDNA4 number selection. FP32 ternary tests cross all
+512 modifiers with every guest policy, both wave widths, DPP, masks and aliases.
+Strict bit-exact semantics and optional exception reporting remain unsupported.
 
 Scalar relative-register moves support DWORD indexing, B64 register pairs and
 separate source/destination offsets, with SGPR/TTMP region bounds. Their shared

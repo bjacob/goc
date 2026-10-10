@@ -35,13 +35,18 @@ inline uint32_t select(uint32_t a, uint32_t b, bool maximum, bool propagate) {
 }
 
 inline uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t c, uint32_t mode,
-                          bool rdna3 = false) {
-  auto selection = [rdna3](uint32_t x, uint32_t y, bool maximum, bool propagate) {
-    if (rdna3 && nan(x) && nan(y))
+                          bool rdna3 = false, uint64_t flags = 0) {
+  auto selection = [rdna3, flags](uint32_t x, uint32_t y, bool maximum, bool propagate) {
+    if (rdna3 && (flags & GOC_FP_IEEE_MODE)) {
+      for (uint32_t bits : {x, y})
+        if (nan(bits) && !(bits & 0x00400000))
+          return bits | 0x00400000;
+    } else if (rdna3 && nan(x) && nan(y)) {
       return x;
+    }
     return select(x, y, maximum, propagate);
   };
-  if (rdna3)
+  if (rdna3 && (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE)))
     mode &= ~GOC_ALU_OMOD_HALF;
   uint32_t inputs[] = {a, b, c};
   for (int i = 0; i < 3; ++i) {
@@ -49,6 +54,8 @@ inline uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t c, uint32_t m
       inputs[i] &= 0x7fffffff;
     if (mode & (GOC_ALU_NEG_A << i))
       inputs[i] ^= 0x80000000;
+    if ((flags & GOC_FP_FLUSH_INPUT_DENORMALS) && (inputs[i] & 0x7fffffff) < 0x800000)
+      inputs[i] &= 0x80000000;
   }
   bool first_max = op % 4 == 1 || op % 4 == 3;
   bool second_max = op % 4 == 1 || op % 4 == 2;

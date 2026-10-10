@@ -57,7 +57,7 @@ be treated as verified shared semantics. Width completeness does not close this 
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting remains unsupported; ordinary forms support both wave widths |
 | FP32 unary | Ten floating-result operations plus FREXP_EXP retain rocjitsu-derived numerical models; FRACT is loose-only. Architecture policies are split; new inferred reporting was removed | Finish modifier review and upstream-port availability review for FP16/FP64; unavailable exact reporting is an explicit limitation, not a reverse-engineering task |
-| Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms, Wave64 and SIMD dispatch | Exact IEEE-mode NaN policies and exception reporting |
+| Floating min/max/median | FP32 ternary family reviewed: separate RDNA3 IEEE/OMOD rules and RDNA4 NUM/propagating forms, all guest policies/modifiers and both widths on scalar/AVX2 | Review remaining binary, FP16/FP64 and packed contracts; strict exact and optional reporting remain unsupported |
 | Scalar integer arithmetic | All 29 canonical names in `scalar_integer.cpp` reviewed across ISA descriptions, rocjitsu handlers and existing fixtures; shared results/SCC, seven renamed aliases, RDNA4-only 64-bit forms; carry/borrow-chain and immediate tests | Scalar bitwise/field, comparisons and register/control families have separate review records or remain pending |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
 | Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
@@ -4661,3 +4661,71 @@ so this review adds no runtime or binary-code cost. All nine audit-tool tests
 pass. Logs use `scalar-integer-review-` in the Clang coverage work folder and
 GCC/sanitizer build folders. The ledger now records 183 contracts; 626 in-scope
 mnemonics remain without recorded reviews. Native-state naming is unchanged.
+
+## FP32 ternary minmax architecture contracts
+
+Reviewed the fourteen canonical FP32 three-input selection mnemonics implemented
+in [`minmax.cpp`](src/minmax.cpp): five RDNA3 MIN3/MAX3/MINMAX/MAXMIN/MED3
+names and nine RDNA4 NUM/propagating names. RDNA4 lists the older five names as
+assembly aliases for its NUM instructions, but callers must select the canonical
+RDNA4 GoC APIs: RDNA3 IEEE/OMOD policies differ. These already-distinct canonical
+names need no new `_rdna4` suffix. Binary, FP16/FP64 and packed forms are outside
+this review increment.
+
+The review checked both XML sets, per-architecture VOP3 ordinary and DPP
+handlers, shared execution bodies, `try_execute_ternary_vop3_fp_simd`,
+`apply_vop3_dst_mod_f32`, `fp_mode::effective_omod` / `apply_omod_f32`,
+`util::ieee_minimum_simd` / `ieee_maximum_simd`, and RDNA3 manual sections
+7.2.3.1, 16.7 and 16.12. Upstream revision is `ffc144c564c`; per-mnemonic
+architecture/alias/helper hashes are retained in `minmax3-upstream-review.json`
+in `../goc-build/coverage-work/`. Shared helper names alone were not treated as
+proof of compatible behavior.
+
+RDNA3 MIN/MAX selection follows the manual: IEEE mode gives signaling NaNs
+priority and quiets them; otherwise a lone NaN loses to a number and two NaNs
+select A unchanged. Each step of a ternary operation applies that rule.
+MIN3/MAX3 repeat the selection; MINMAX/MAXMIN reverse it at the second step.
+MED3 uses MIN3 when any input is NaN, otherwise removes the first input
+numerically equal to the maximum and selects the maximum of the other two.
+The latter distinction matters for signed-zero ties. RDNA4 NUM variants prefer
+numbers; propagating variants retain GoC's existing signaling-NaN priority.
+All selection comparisons order -0 below +0.
+
+Input flushing precedes selection, and selected output denormals are retained
+without OMOD: the output-denormal mode controls RDNA3 OMOD eligibility, not a
+separate post-selection flush. This is the VALU rule in RDNA3 section 16.7;
+the memory-atomic comparison-only flushing rule in chapter 13 does not apply.
+RDNA3 enables OMOD only when output flushing is enabled and IEEE is clear.
+RDNA4 enables it independently. OMOD and DX10-style CLAMP apply after the final
+selection. DPP routes A before source modifiers, with four independent Wave64
+rows. Full-register aliases and inactive lanes retain the existing contract.
+The scalar and eight-lane AVX2 kernels implement all policies without changing
+host FP controls or attempting sparse-mask optimization.
+
+These APIs remain loose-only. Upstream ordinary MIN/MAX use host `fmin`/`fmax`,
+its MED3 expression is not a captured NaN/zero-tie model, and its propagating
+helpers return a canonical quiet NaN rather than GoC's retained payload policy.
+This does not supply an empirical bit-exact port for the complete instructions.
+No strict-exact support or new hardware-derived model was introduced. Strict
+exact requests fail explicitly; non-null non-loose optional `trapsts` or
+`excp_flag_user` reporting fails before operand access. Loose SIMD calls leave
+optional state unchanged.
+
+The existing tests cover all 512 modifiers, special/random values, literal
+NaN/zero/order witnesses, masks, destination aliases and Wave64 DPP. The new
+combined test crosses every operation, all eight guest policies, all modifiers,
+both wave widths and every CPU selector, varying DPP8/DPP16 routes, row masks,
+full/partial EXEC and whole-register destination aliases. It compares against
+the independent ordered-integer selection/sorting reference and verifies all
+source words, inactive lanes, guards and unchanged optional state. No production
+code changes were necessary.
+
+Validation: all 1,104 CTests pass with Clang 21 Release and GCC 15 Release;
+all 19 targeted minmax/spelling/DPP arithmetic tests pass under ASan/UBSan.
+All nine audit-tool tests pass. Scalar and AVX2 minmax production objects are
+byte-identical to baseline under both release compilers, so no throughput or
+binary-code regression is introduced (`minmax3-production-objects.json`).
+Logs use `minmax3-review-` in the Clang coverage work folder and GCC/sanitizer
+build folders. The ledger records 197 contracts; 612 in-scope mnemonics still
+lack recorded reviews. Exact selection and reporting are documented limitations,
+not counted as newly implemented behavior.

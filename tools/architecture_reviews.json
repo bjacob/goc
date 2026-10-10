@@ -349,5 +349,26 @@
       "s_sub_u32",
       "s_subb_u32"
     ]
+  },
+  {
+    "heading": "FP32 ternary minmax architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/minmax_test.cpp",
+    "mnemonics": [
+      "v_max3_f32",
+      "v_max3_num_f32",
+      "v_maximum3_f32",
+      "v_maximumminimum_f32",
+      "v_maxmin_f32",
+      "v_maxmin_num_f32",
+      "v_med3_f32",
+      "v_med3_num_f32",
+      "v_min3_f32",
+      "v_min3_num_f32",
+      "v_minimum3_f32",
+      "v_minimummaximum_f32",
+      "v_minmax_f32",
+      "v_minmax_num_f32"
+    ]
   }
 ]
