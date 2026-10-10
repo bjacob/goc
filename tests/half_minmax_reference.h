@@ -25,8 +25,14 @@ inline uint16_t half_minmax_ordered(uint16_t bits) {
 
 inline uint16_t half_minmax_select(uint16_t a, uint16_t b, bool maximum, bool propagate) {
   if (half_minmax_nan(a) || half_minmax_nan(b)) {
-    if (propagate || (half_minmax_nan(a) && half_minmax_nan(b)))
-      return 0x7e00;
+    if (propagate) {
+      for (uint16_t bits : {a, b})
+        if (half_minmax_nan(bits) && !(bits & 0x200))
+          return bits | 0x200;
+      return half_minmax_nan(a) ? a : b;
+    }
+    if (half_minmax_nan(a) && half_minmax_nan(b))
+      return a | 0x200;
     return half_minmax_nan(a) ? b : a;
   }
   return (maximum ? half_minmax_ordered(a) > half_minmax_ordered(b)
@@ -36,13 +42,18 @@ inline uint16_t half_minmax_select(uint16_t a, uint16_t b, bool maximum, bool pr
 }
 
 inline uint16_t half_minmax_reference(int op, uint32_t a, uint32_t b, uint32_t c, uint32_t mode,
-                                      bool saturate, bool rdna3 = false) {
-  auto select = [rdna3](uint16_t x, uint16_t y, bool maximum, bool propagate) {
-    if (rdna3 && half_minmax_nan(x) && half_minmax_nan(y))
+                                      bool saturate, bool rdna3 = false, uint64_t flags = 0) {
+  auto select = [rdna3, flags](uint16_t x, uint16_t y, bool maximum, bool propagate) {
+    if (rdna3 && (flags & GOC_FP_IEEE_MODE)) {
+      for (uint16_t bits : {x, y})
+        if (half_minmax_nan(bits) && !(bits & 0x200))
+          return uint16_t(bits | 0x200);
+    } else if (rdna3 && half_minmax_nan(x) && half_minmax_nan(y)) {
       return x;
+    }
     return half_minmax_select(x, y, maximum, propagate);
   };
-  if (rdna3)
+  if (rdna3 && (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE)))
     mode &= ~GOC_ALU_OMOD_HALF;
   const uint32_t words[] = {a, b, c};
   uint16_t input[3];
@@ -52,6 +63,8 @@ inline uint16_t half_minmax_reference(int op, uint32_t a, uint32_t b, uint32_t c
       input[i] &= 0x7fff;
     if (mode & (GOC_ALU_NEG_A << i))
       input[i] ^= 0x8000;
+    if ((flags & GOC_FP_FLUSH_INPUT_DENORMALS) && (input[i] & 0x7fff) < 0x400)
+      input[i] &= 0x8000;
   }
   bool first_maximum = op % 4 == 1 || op % 4 == 3;
   bool second_maximum = op % 4 == 1 || op % 4 == 2;
@@ -74,6 +87,13 @@ inline uint16_t half_minmax_reference(int op, uint32_t a, uint32_t b, uint32_t c
         result = select(input[(drop + 1) % 3], input[(drop + 2) % 3], true, false);
       }
     }
+  }
+  // Preserve payloads without converting through the numeric double reference.
+  // Active host-arithmetic OMOD quiets a surviving signaling NaN in loose mode.
+  if (half_minmax_nan(result)) {
+    if (mode & GOC_ALU_CLAMP)
+      return 0;
+    return mode & GOC_ALU_OMOD_HALF ? uint16_t(result | 0x200) : result;
   }
   const double scales[] = {1, 2, 4, 0.5};
   double value = goc_test::half_value(result);

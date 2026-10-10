@@ -4729,3 +4729,57 @@ Logs use `minmax3-review-` in the Clang coverage work folder and GCC/sanitizer
 build folders. The ledger records 197 contracts; 612 in-scope mnemonics still
 lack recorded reviews. Exact selection and reporting are documented limitations,
 not counted as newly implemented behavior.
+
+
+## FP16 ternary minmax architecture contracts
+
+Reviewed the fourteen canonical ternary FP16 selection instructions in
+[`half_minmax.cpp`](src/half_minmax.cpp), the FP16 counterparts of the preceding
+FP32 review. Five RDNA3 canonical names and nine RDNA4 NUM/propagating names
+already distinguish the architecture policies; RDNA4 assembly aliases must not
+be mistaken for identical semantics of the RDNA3 APIs.
+
+The review examined per-architecture ordinary/DPP bodies at rocjitsu revision
+`ffc144c564c`, true16 operand selection, effective OMOD helpers, scalar and AVX2
+GoC selection/conversion paths, and RDNA3 manual MIN/MAX and MED3 rules.
+The upstream generated bodies use host min/max and a floating median network;
+propagating forms canonicalize NaNs. They do not supply a complete empirical
+bit-exact model to port. These APIs remain loose-only, with strict exact and
+non-null exact global-state requests explicitly unsupported. Loose paths leave
+optional state unchanged. No host-environment guard was borrowed.
+
+RDNA3 IEEE mode prioritizes and quiets signaling NaNs. Otherwise its all-NaN
+selection retains A. RDNA4 NUM selection prefers numbers; GoC's propagating
+selection retains its existing signaling-NaN priority. Input flushing precedes
+selection. Output-denormal mode only gates RDNA3 OMOD here, not a separate
+post-selection flush. RDNA3 OMOD requires output flushing with IEEE clear;
+RDNA4 OMOD is independent. RDNA3 median removes the first numerically maximal
+operand, whereas the retained GFX1201 FP16 fixture uses ordered signed-zero
+median selection. Half conversion preserves signaling bits where needed by
+these policies, including in the F16C-based AVX2 path.
+
+The reference now retains NaN payloads and models guest IEEE/input flushing/
+OMOD eligibility. The new combined test crosses all fourteen operations, eight
+guest policies, 512 low modifier combinations, both wave widths and available
+CPU selectors. It varies half selectors, overflow saturation, DPP8/DPP16,
+Wave64 row masks, EXEC and destination aliases, checking every source/destination
+word and guard bitwise, including the untouched destination half. Existing
+all-8,192-modifier and exhaustive-half tests remain. Payload comparisons test
+consistency of the existing loose implementation; they do not establish new
+hardware bit-exact support.
+
+Binary and packed selection reviews remain open. In particular, upstream
+`fp_mode::packed_binary_f16` flushes selected output subnormals through its
+generic finalization, whereas RDNA3 section 16.10 specifies per-half ordinary
+MIN/MAX and section 16.7 makes their output-denormal mode irrelevant. GoC
+retains the selected subnormal. This discrepancy needs separate review and is
+not hidden by marking packed contracts reviewed here.
+
+Validation: all 1,105 CTests pass under Clang 21 Release and GCC 15 Release;
+all 18 targeted FP16 ternary/DPP tests pass under ASan/UBSan. All nine audit-tool
+tests pass. Scalar and AVX2 production objects are byte-identical to the
+pre-change audit builds under both compilers (`half-minmax-production-objects.json`
+in `../goc-build/coverage-work/`). Logs are `half-minmax-review-{build,tests}.log`
+in each build directory. The ledger now records 211 contracts, with 598 in-scope
+mnemonics still requiring recorded reviews; these counts are not a completion
+percentage or a claim of complete bit-exact support.

@@ -445,3 +445,69 @@ TEST(HalfMinmax3, GuestDenormalsAndArchitectureScaling) {
           }
       }
 }
+
+TEST(HalfMinmax3, GuestPoliciesAllModifiersDppMasksAndAliases) {
+  const goc_test::HalfMinmaxFn rdna3[] = {goc_v_min3_f16, goc_v_max3_f16, goc_v_minmax_f16,
+                                          goc_v_maxmin_f16, goc_v_med3_f16};
+  const uint16_t samples[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x8401,
+                              0x3800, 0xb800, 0x3c00, 0xbc00, 0x7bff, 0xfbff, 0x7c00,
+                              0xfc00, 0x7e15, 0xfe26, 0x7c37, 0xfc48};
+  const unsigned reference_ops[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 8};
+  for (unsigned op = 0; op < 14; ++op)
+    for (unsigned guest = 0; guest < 8; ++guest)
+      for (bool wide : {false, true})
+        for (uint32_t low_mode = 0; low_mode < 512; ++low_mode) {
+          uint32_t mode = low_mode | (((low_mode + guest * 3) & 15) * GOC_ALU_HIGH_A);
+          bool saturate = (low_mode ^ guest) & 1;
+          uint64_t flags = (guest & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                           (guest & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                           (guest & 4 ? GOC_FP_IEEE_MODE : 0) | (saturate ? GOC_FP16_OVFL : 0);
+          unsigned route_index = mode % 8;
+          uint64_t descriptor = route_index ? goc_test::dpp_modes[route_index - 1] : 0;
+          if (wide && (descriptor & GOC_DPP16))
+            descriptor = (descriptor & ~GOC_DPP_ROW_MASK) |
+                         (uint64_t((mode >> 3) & 15) << GOC_DPP_ROW_SHIFT);
+          uint64_t exec_mask = mode & 1 ? 0x87654321fedcba98ULL : UINT64_MAX;
+          if (!wide)
+            exec_mask = uint32_t(exec_mask);
+          unsigned dest = (mode >> 2) % 4;
+          uint32_t original[4][66], expected[4][66];
+          for (unsigned reg = 0; reg < 4; ++reg)
+            for (unsigned lane = 0; lane < 66; ++lane)
+              original[reg][lane] =
+                  samples[(lane * (2 * reg + 1) + reg * 3 + mode) % 19] |
+                  (uint32_t(samples[(lane * (reg + 2) + reg + mode + 7) % 19]) << 16);
+          std::memcpy(expected, original, sizeof(expected));
+          for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane) {
+            int source = int(lane);
+            bool active = descriptor ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                                     : ((exec_mask >> lane) & 1);
+            if (active) {
+              uint16_t half = goc_test::half_minmax_reference(
+                  reference_ops[op], source < 0 ? 0 : original[0][source + 1],
+                  original[1][lane + 1], original[2][lane + 1], mode, saturate, op >= 9, flags);
+              unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
+              expected[dest][lane + 1] =
+                  (expected[dest][lane + 1] & ~(0xffffU << shift)) | (uint32_t(half) << shift);
+            }
+          }
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            uint32_t words[4][66], state = 0x80000055;
+            std::memcpy(words, original, sizeof(words));
+            uint32_t *d = words[dest] + 1;
+            const uint32_t *a = words[0] + 1, *b = words[1] + 1, *c = words[2] + 1;
+            int status =
+                wide ? wave64[op](cpu | flags, exec_mask, descriptor | mode, &d, &a, &b, &c, &state)
+                     : (op < 9 ? goc_test::half_minmax_functions[op]
+                               : rdna3[op - 9])(cpu | flags, uint32_t(exec_mask), descriptor | mode,
+                                                &d, &a, &b, &c, &state);
+            ASSERT_EQ(status, GOC_SUCCESS);
+            ASSERT_EQ(state, 0x80000055U);
+            for (unsigned reg = 0; reg < 4; ++reg)
+              for (unsigned lane = 0; lane < 66; ++lane)
+                ASSERT_EQ(words[reg][lane], expected[reg][lane])
+                    << op << "/" << guest << "/" << wide << "/" << mode << "/" << cpu << "/" << reg
+                    << "/" << lane;
+          }
+        }
+}

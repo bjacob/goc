@@ -370,5 +370,26 @@
       "v_minmax_f32",
       "v_minmax_num_f32"
     ]
+  },
+  {
+    "heading": "FP16 ternary minmax architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/half_minmax_test.cpp",
+    "mnemonics": [
+      "v_max3_f16",
+      "v_max3_num_f16",
+      "v_maximum3_f16",
+      "v_maximumminimum_f16",
+      "v_maxmin_f16",
+      "v_maxmin_num_f16",
+      "v_med3_f16",
+      "v_med3_num_f16",
+      "v_min3_f16",
+      "v_min3_num_f16",
+      "v_minimum3_f16",
+      "v_minimummaximum_f16",
+      "v_minmax_f16",
+      "v_minmax_num_f16"
+    ]
   }
 ]

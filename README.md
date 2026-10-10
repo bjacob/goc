@@ -1777,11 +1777,17 @@ four host rounding modes. Benchmarks compare full-EXEC scalar/SIMD loose paths
 and report exact scalar separately, with default and modified inputs.
 
 Three-input FP16 and FP32 min/max/median families have Wave32 and `_wave64`
-APIs, including legacy aliases, with the same loose semantics and scalar/AVX2
-paths. Three-input FP16 mixed min/max forms select A/B first and then C. Median uses
-the minimumNumber result if any input is NaN; otherwise it orders negative zero
-below positive zero. A GFX1201 capture checks all 512 triples drawn from signed
-zeros, ones, minimum subnormals, and infinities. Another 512-case capture checks
+APIs with scalar/AVX2 loose paths. RDNA3 legacy names and RDNA4 canonical
+NUM/propagating names retain their architecture policies. RDNA3 IEEE mode
+gives signaling NaNs priority; OMOD requires output flushing and IEEE clear.
+RDNA4 OMOD is independent of those settings. Input denormal flushing precedes
+selection; output flushing alone does not flush selected subnormals.
+Three-input FP16 mixed min/max forms select A/B first and then C. FP16 RDNA4
+median uses the minimumNumber result if any input is NaN; otherwise it orders
+negative zero below positive zero. RDNA3 median instead removes the first
+numerically maximal input, which differs for signed-zero ties. A GFX1201 capture
+checks all 512 triples drawn from signed zeros, ones, minimum subnormals, and
+infinities. Another 512-case capture checks
 signed quiet/signaling NaNs mixed with zeros and ones, allowing any NaN payload. Scalar and eight-lane SIMD paths support all 8,192 combinations of A/B/C
 ABS/NEG, output scaling/clamp, and independent A/B/C/D half selectors, plus
 `GOC_FP16_OVFL`. Output modifiers apply after the final selection. Tests cover
