@@ -1121,9 +1121,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_div_scale_f64` | yes | yes | in | `goc_v_div_scale_f64`<br>`goc_v_div_scale_f64_wave64` | — | API present; semantic audit pending |
 | `v_dot2_bf16_bf16` | yes | yes | in | `goc_v_dot2_bf16_bf16`<br>`goc_v_dot2_bf16_bf16_wave64` | — | API present; semantic audit pending |
 | `v_dot2_f16_f16` | yes | yes | in | `goc_v_dot2_f16_f16`<br>`goc_v_dot2_f16_f16_wave64` | — | API present; semantic audit pending |
-| `v_dot2_f32_bf16` | yes | yes | in | `goc_v_dot2_f32_bf16`<br>`goc_v_dot2_f32_bf16_rdna4` | — | API present; semantic audit pending |
-| `v_dot2_f32_f16` | yes | yes | in | `goc_v_dot2_f32_f16`<br>`goc_v_dot2_f32_f16_rdna4` | — | API present; semantic audit pending |
-| `v_dot2acc_f32_f16` | yes | — | in | `goc_v_dot2acc_f32_f16` | `v_dot2c_f32_f16` | API present; semantic audit pending |
+| `v_dot2_f32_bf16` | yes | yes | in | `goc_v_dot2_f32_bf16`<br>`goc_v_dot2_f32_bf16_wave64`<br>`goc_v_dot2_f32_bf16_rdna4`<br>`goc_v_dot2_f32_bf16_rdna4_wave64` | — | API present; semantic audit pending |
+| `v_dot2_f32_f16` | yes | yes | in | `goc_v_dot2_f32_f16`<br>`goc_v_dot2_f32_f16_wave64`<br>`goc_v_dot2_f32_f16_rdna4`<br>`goc_v_dot2_f32_f16_rdna4_wave64` | — | API present; semantic audit pending |
+| `v_dot2acc_f32_f16` | yes | — | in | `goc_v_dot2acc_f32_f16`<br>`goc_v_dot2acc_f32_f16_wave64` | `v_dot2c_f32_f16` | API present; semantic audit pending |
 | `v_dot4_f32_bf8_bf8` | — | yes | in | `goc_v_dot4_f32_bf8_bf8`<br>`goc_v_dot4_f32_bf8_bf8_wave64` | — | API present; semantic audit pending |
 | `v_dot4_f32_bf8_fp8` | — | yes | in | `goc_v_dot4_f32_bf8_fp8`<br>`goc_v_dot4_f32_bf8_fp8_wave64` | — | API present; semantic audit pending |
 | `v_dot4_f32_fp8_bf8` | — | yes | in | `goc_v_dot4_f32_fp8_bf8`<br>`goc_v_dot4_f32_fp8_bf8_wave64` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 5 Wave32 EXEC-taking APIs without a corresponding
+There are 0 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1436,4 +1436,3 @@ SAVEEXEC/WREXEC consume EXEC as data and already have distinct `_b32` and
 
 | Implementation | APIs lacking a Wave64 counterpart |
 |---|---|
-| [`dot.cpp`](src/dot.cpp) | `goc_v_dot2_f32_bf16`, `goc_v_dot2_f32_bf16_rdna4`, `goc_v_dot2_f32_f16`, `goc_v_dot2_f32_f16_rdna4`, `goc_v_dot2acc_f32_f16` |

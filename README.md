@@ -340,7 +340,9 @@ loose SIMD execution is shared as well. Exact RDNA3 results are tested against
 103 GFX1100 captures. RDNA3 exception reporting is not yet characterized:
 non-null `excp_flag_user` is rejected in exact mode, while loose mode leaves it
 unchanged. RDNA4 APIs now carry `_rdna4`, because equal operands can produce
-different result bits even for small finite values.
+different result bits even for small finite values. Both architectural variants
+and RDNA3 DOT2ACC support Wave32 and Wave64; the Wave64 forms retain the same
+scalar/exact and loose SIMD kernels, with four independent DPP16 row enables.
 
 The FP32-result `v_dot2_f32_f16_rdna4` and `v_dot2_f32_bf16_rdna4` forms also support
 DPP8/DPP16 in loose and borrowed exact semantics. A's packed word is permuted

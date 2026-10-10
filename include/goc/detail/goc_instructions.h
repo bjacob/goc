@@ -4467,6 +4467,32 @@ int goc_v_dot2acc_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instructi
                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           uint32_t *excp_flag_user);
 
+// Wave64 DOT2/DOT2ACC: same layouts, modifiers and architectural semantics
+// as above, with 64 lanes and four independent DPP16 row enables.
+int goc_v_dot2_f32_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c,
+                                    uint32_t *excp_flag_user);
+
+int goc_v_dot2_f32_bf16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c,
+                                     uint32_t *excp_flag_user);
+
+int goc_v_dot2_f32_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint32_t *excp_flag_user);
+
+int goc_v_dot2_f32_bf16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user);
+
+int goc_v_dot2acc_f32_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, uint32_t *excp_flag_user);
+
 // FP8/BF8 DOT4 accepts NEG_C and ABS_C; ABS precedes NEG. A/B modifiers,
 // half selection, output scaling and CLAMP are not supported.
 static const uint32_t GOC_DOT_ABS_C = 1U << 5;

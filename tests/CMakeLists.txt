@@ -56,7 +56,7 @@ foreach(declaration IN LISTS goc_reporting_declarations)
      symbol MATCHES "^goc_v_(fma|fmac|fmamk|fmaak|pk_fma|pk_fmac)_f16$" OR
      symbol MATCHES "^goc_v_(fma|fmac|fmamk|fmaak|pk_fma|pk_fmac)_f16_wave64$" OR
      symbol MATCHES "^goc_v_(sin|cos)_f(16|32)(_wave64)?$" OR
-     symbol MATCHES "^goc_v_(dot2|dual_dot2acc)_f32_(f16|bf16)_rdna4$" OR
+     symbol MATCHES "^goc_v_(dot2|dual_dot2acc)_f32_(f16|bf16)_rdna4(_wave64)?$" OR
      symbol MATCHES "^goc_v_fma_mix(lo|hi)_f16(_wave64)?$" OR
      symbol MATCHES "^goc_v_div_fmas_f(32|64)(_wave64)?$" OR
      symbol MATCHES "^goc_v_div_fixup_f(16|32|64)(_wave64)?$" OR

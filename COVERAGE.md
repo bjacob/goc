@@ -49,7 +49,7 @@ paths must retain their existing performance and may skip optional state outputs
 |---|---|---|
 | RDNA3 WMMA | All six mnemonics, both widths, exact rocjitsu GFX11 model; `wmma_replicated_exact_test.cpp`; 103 DOT2 captures and 28 packed matrices | Scalar implementations; verify inventory integration as other APIs evolve |
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
-| DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting and ordinary Wave64 forms remain |
+| DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting remains unsupported; ordinary forms support both wave widths |
 | Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms, Wave64 and SIMD dispatch | Exact IEEE-mode NaN policies and exception reporting |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
@@ -1650,3 +1650,25 @@ queue is five FP32-result DOT2 APIs, including architectural variants.
 
 Validation: all 904 tests pass on Clang 21 and GCC 15 Release. All ten
 Wave64 narrow-dot and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 architecture-specific FP32-result DOT2
+
+Added the five remaining ordinary vector width variants: FP16/BF16 DOT2 for
+RDNA3 and RDNA4, plus RDNA3 DOT2ACC. A family-local two-half executor preserves
+the existing GFX11/GFX12 exact models, loose AVX2 kernels, DPP row enables and
+whole-VGPR aliasing. RDNA4 reporting leaves EXCP_FLAG_USER unchanged, as in the
+existing capture-backed Wave32 implementation; RDNA3 exact reporting remains
+explicitly unsupported. No new numerical or native Wave64 hardware claim is made.
+
+Tests replay both GPUs' raw result fixtures, including a small finite example
+that distinguishes their result bits; verify modifiers, half selectors, DPP,
+upper-only/sparse EXEC, old-D accumulation and aliases; and preserve host rounding
+and sticky flags. RDNA4 no-exception corpora are replayed at lane 63. Independent
+integer references check the shared loose/scalar/SIMD paths and four-row routing.
+
+The vector-EXEC signature screen now has zero missing Wave64 counterparts. This
+does not close the separate scalar/pseudo-scalar/matrix width audit, encoding
+legality review, architecture semantics audit or three hardware-register APIs.
+
+Validation: all 914 tests pass with Clang 21 and GCC 15 Release. All eleven
+Wave64 DOT2 and instruction-flag tests pass under ASan/UBSan.

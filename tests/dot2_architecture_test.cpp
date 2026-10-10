@@ -16,17 +16,20 @@ namespace {
 
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 
-struct Registers {
-  uint32_t data[4][34];
+template <unsigned Lanes> struct LaneRegisters {
+  uint32_t data[4][Lanes + 2];
   uint32_t *v[4];
 
-  Registers() {
+  LaneRegisters() {
     for (int i = 0; i < 4; ++i) {
-      std::fill(data[i], data[i] + 34, 0xdeadbeefU);
+      std::fill(data[i], data[i] + Lanes + 2, 0xdeadbeefU);
       v[i] = data[i] + 1;
     }
   }
 };
+
+using Registers = LaneRegisters<32>;
+using WideRegisters = LaneRegisters<64>;
 
 uint32_t expected(bool bf16, uint64_t mode, uint32_t a, uint32_t b, uint32_t c) {
   uint16_t a0 = a >> ((mode & GOC_DOT_LO_A_HIGH) ? 16 : 0);
@@ -204,6 +207,173 @@ TEST(Dot2Architecture, AccumulateLooseSimdAndReportingOptOut) {
     EXPECT_EQ(state, 0x80000055U);
     EXPECT_EQ(goc_v_dot2acc_f32_f16(cpu | exact, UINT32_MAX, 0, nullptr, nullptr, nullptr, &state),
               GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(state, 0x80000055U);
+  }
+}
+
+TEST(Dot2Architecture, Wave64Gfx11HardwareCapturesMasksAliasesAndHostState) {
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
+    ASSERT_EQ(std::fesetround(rounding), 0);
+    ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
+    ASSERT_EQ(std::feraiseexcept(FE_INEXACT), 0);
+    for (bool bf16 : {false, true}) {
+      auto fn = bf16 ? goc_v_dot2_f32_bf16_wave64 : goc_v_dot2_f32_f16_wave64;
+      const auto *cases = bf16 ? kDot2BF16Cases.data() : kDot2F16Cases.data();
+      size_t count = bf16 ? kDot2BF16Cases.size() : kDot2F16Cases.size();
+      for (size_t base = 0; base < count; base += 64)
+        for (uint64_t exec_mask :
+             {uint64_t(0), UINT64_MAX, uint64_t(0x8001800180018001ULL),
+              uint64_t(0xffffffff00000000ULL), uint64_t(0xaaaaaaaaaaaaaaaaULL)})
+          for (int dst = 0; dst < 4; ++dst) {
+            WideRegisters r;
+            for (int lane = 0; lane < 64; ++lane) {
+              auto f = cases[(base + lane) % count];
+              r.v[0][lane] = f.a;
+              r.v[1][lane] = f.b;
+              r.v[2][lane] = f.c;
+            }
+            uint32_t wanted[4][66];
+            std::memcpy(wanted, r.data, sizeof wanted);
+            for (int lane = 0; lane < 64; ++lane)
+              if ((exec_mask >> lane) & 1)
+                wanted[dst][lane + 1] = cases[(base + lane) % count].expected;
+            ASSERT_EQ(fn(exact, exec_mask, 0, r.v + dst, r.v, r.v + 1, r.v + 2, nullptr),
+                      GOC_SUCCESS);
+            EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0);
+          }
+    }
+    EXPECT_EQ(std::fegetround(), rounding);
+    EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
+  }
+}
+
+TEST(Dot2Architecture, Wave64Gfx11ModifiersDppMasksAndAliases) {
+  for (bool bf16 : {false, true}) {
+    auto fn = bf16 ? goc_v_dot2_f32_bf16_wave64 : goc_v_dot2_f32_f16_wave64;
+    const auto *cases = bf16 ? kDot2BF16Cases.data() : kDot2F16Cases.data();
+    for (unsigned selections = 0; selections < 16; ++selections)
+      for (unsigned signs = 0; signs < 32; ++signs)
+        for (uint64_t routing : goc_test::dpp_modes)
+          for (int dst = 0; dst < 4; ++dst) {
+            uint64_t mode = routing | (selections << 7) | signs | GOC_DOT_CLAMP;
+            uint64_t exec_mask = 0x97efd7efd7efb579ULL;
+            WideRegisters r;
+            for (int lane = 0; lane < 64; ++lane) {
+              r.v[0][lane] = cases[lane % 32].a;
+              r.v[1][lane] = cases[lane % 32].b;
+              r.v[2][lane] = cases[lane % 32].c;
+            }
+            uint32_t wanted[4][66];
+            std::memcpy(wanted, r.data, sizeof wanted);
+            for (int lane = 0; lane < 64; ++lane) {
+              int source;
+              if (goc_test::dpp_source(routing, exec_mask, lane, source))
+                wanted[dst][lane + 1] = expected(bf16, mode, source < 0 ? 0 : r.v[0][source],
+                                                 r.v[1][lane], r.v[2][lane]);
+            }
+            ASSERT_EQ(fn(exact, exec_mask, mode, r.v + dst, r.v, r.v + 1, r.v + 2, nullptr),
+                      GOC_SUCCESS);
+            EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0);
+          }
+  }
+}
+
+TEST(Dot2Architecture, Wave64DifferentExactResultsAndOptionalReporting) {
+  WideRegisters r;
+  for (int lane = 0; lane < 64; ++lane) {
+    r.v[0][lane] = kDot2F16Cases[0].a;
+    r.v[1][lane] = kDot2F16Cases[0].b;
+    r.v[2][lane] = kDot2F16Cases[0].c;
+  }
+  ASSERT_EQ(
+      goc_v_dot2_f32_f16_wave64(exact, UINT64_MAX, 0, r.v + 3, r.v, r.v + 1, r.v + 2, nullptr),
+      GOC_SUCCESS);
+  uint32_t rdna3 = r.v[3][0];
+  ASSERT_EQ(goc_v_dot2_f32_f16_rdna4_wave64(exact, UINT64_MAX, 0, r.v + 3, r.v, r.v + 1, r.v + 2,
+                                            nullptr),
+            GOC_SUCCESS);
+  EXPECT_EQ(rdna3, 0x425c0001U);
+  EXPECT_NE(rdna3, r.v[3][0]);
+  for (auto fn : {goc_v_dot2_f32_f16_wave64, goc_v_dot2_f32_bf16_wave64}) {
+    uint32_t state = 0x80000055;
+    EXPECT_EQ(fn(exact, UINT64_MAX, 0, nullptr, nullptr, nullptr, nullptr, &state),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(state, 0x80000055U);
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      EXPECT_EQ(fn(cpu, UINT64_MAX, 0, r.v + 3, r.v, r.v + 1, r.v + 2, &state), GOC_SUCCESS);
+      EXPECT_EQ(state, 0x80000055U);
+    }
+    for (unsigned bit : {5U, 11U, 31U, 63U})
+      EXPECT_EQ(fn(exact, UINT64_MAX, 1ULL << bit, nullptr, nullptr, nullptr, nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+  }
+}
+
+TEST(Dot2Architecture, Wave64AccumulateHardwareAndDppAliases) {
+  for (size_t base = 0; base < kDot2F16Cases.size(); base += 64)
+    for (uint64_t exec_mask : {uint64_t(0), UINT64_MAX, uint64_t(0x8001800180018001ULL),
+                               uint64_t(0xffffffff00000000ULL), uint64_t(0xaaaaaaaaaaaaaaaaULL)}) {
+      WideRegisters r;
+      for (int lane = 0; lane < 64; ++lane) {
+        const auto &f = kDot2F16Cases[(base + lane) % kDot2F16Cases.size()];
+        r.v[0][lane] = f.a;
+        r.v[1][lane] = f.b;
+        r.v[2][lane] = f.c;
+      }
+      ASSERT_EQ(goc_v_dot2acc_f32_f16_wave64(exact, exec_mask, 0, r.v + 2, r.v, r.v + 1, nullptr),
+                GOC_SUCCESS);
+      for (int lane = 0; lane < 64; ++lane) {
+        const auto &f = kDot2F16Cases[(base + lane) % kDot2F16Cases.size()];
+        EXPECT_EQ(r.v[2][lane], ((exec_mask >> lane) & 1) ? f.expected : f.c);
+      }
+    }
+  for (auto mode : goc_test::dpp_modes)
+    for (int dst : {0, 1, 2}) {
+      WideRegisters r;
+      uint32_t wanted[4][66];
+      for (int lane = 0; lane < 64; ++lane) {
+        r.v[0][lane] = kDot2F16Cases[lane % kDot2F16Cases.size()].a;
+        r.v[1][lane] = kDot2F16Cases[lane % kDot2F16Cases.size()].b;
+        r.v[2][lane] = kDot2F16Cases[lane % kDot2F16Cases.size()].c;
+      }
+      std::memcpy(wanted, r.data, sizeof wanted);
+      uint64_t exec_mask = 0x97efd7efd7efb579ULL;
+      for (int lane = 0; lane < 64; ++lane) {
+        int source;
+        if (goc_test::dpp_source(mode, exec_mask, lane, source))
+          wanted[dst][lane + 1] =
+              expected(false, 0, source < 0 ? 0 : r.v[0][source], r.v[1][lane], r.v[dst][lane]);
+      }
+      ASSERT_EQ(
+          goc_v_dot2acc_f32_f16_wave64(exact, exec_mask, mode, r.v + dst, r.v, r.v + 1, nullptr),
+          GOC_SUCCESS);
+      EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0);
+    }
+  for (unsigned bit = 0; bit < 32; ++bit)
+    EXPECT_EQ(goc_v_dot2acc_f32_f16_wave64(exact, UINT64_MAX, 1ULL << bit, nullptr, nullptr,
+                                           nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+}
+
+TEST(Dot2Architecture, Wave64AccumulateLooseSimdAndReportingOptOut) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    WideRegisters r;
+    for (int lane = 0; lane < 64; ++lane) {
+      r.v[0][lane] = r.v[1][lane] = 0x3c003c00;
+      r.v[2][lane] = 0x3f800000;
+    }
+    uint32_t state = 0x80000055;
+    ASSERT_EQ(
+        goc_v_dot2acc_f32_f16_wave64(cpu, 0xaaaaaaaaaaaaaaaaULL, 0, r.v + 2, r.v, r.v + 1, &state),
+        GOC_SUCCESS);
+    for (int lane = 0; lane < 64; ++lane)
+      EXPECT_EQ(r.v[2][lane], (lane & 1) ? 0x40400000U : 0x3f800000U);
+    EXPECT_EQ(state, 0x80000055U);
+    EXPECT_EQ(
+        goc_v_dot2acc_f32_f16_wave64(cpu | exact, UINT64_MAX, 0, nullptr, nullptr, nullptr, &state),
+        GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
     EXPECT_EQ(state, 0x80000055U);
   }
 }
