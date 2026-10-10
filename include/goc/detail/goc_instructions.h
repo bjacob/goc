@@ -3734,6 +3734,23 @@ int goc_v_fma_mixhi_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c, uint32_t *excp_flag_user);
 
+// Wave64 mixed FMA retains the Wave32 source formats, modifiers and DPP.
+// MIXLO/MIXHI support exact results and leave exception state unchanged, as in
+// the empirical model. MIX_F32 retains loose semantics and rejects exact reporting.
+int goc_v_fma_mix_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_fma_mixlo_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user);
+
+int goc_v_fma_mixhi_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user);
+
 // Binary FP16 arithmetic: one VGPR per operand, with independently selected
 // source and destination halves. Preserves the other destination half and all
 // inactive lanes; D may alias a whole source VGPR. Supports source ABS/NEG,

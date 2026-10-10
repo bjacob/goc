@@ -25,6 +25,8 @@ namespace {
 
 using Fn = decltype(&goc_v_fma_mix_f32);
 const Fn functions[] = {goc_v_fma_mix_f32, goc_v_fma_mixlo_f16, goc_v_fma_mixhi_f16};
+const decltype(&goc_v_fma_mix_f32_wave64) wave64[] = {
+    goc_v_fma_mix_f32_wave64, goc_v_fma_mixlo_f16_wave64, goc_v_fma_mixhi_f16_wave64};
 const uint32_t values[] = {0,          0x80000000, 1,          0x80000001, 0x007fffff, 0x00800000,
                            0x3f000000, 0x3f800000, 0xbf800000, 0x3f800001, 0x3f7fffff, 0x33800000,
                            0x477fe000, 0x477ff000, 0x47800000, 0x7f7fffff, 0xff7fffff, 0x7f800000,
@@ -487,4 +489,142 @@ TEST(MixedFma, NoExceptionHardwareCorpora) {
         EXPECT_EQ(exceptions, 0x80000055);
       }
     }
+}
+
+TEST(MixedFma, Wave64DppMasksAliasesAndGuards) {
+  for (int op = 0; op < 3; ++op)
+    for (unsigned index : {0u, 1u, 85u, 1023u, 4096u, 8191u})
+      for (uint64_t route : goc_test::dpp_modes)
+        for (unsigned rows = 0; rows < 16; ++rows)
+          for (uint64_t exec_mask :
+               {UINT64_MAX, uint64_t(0xffffffff00000000ULL), uint64_t(0x87654321fedcba98ULL)})
+            for (bool shared : {false, true})
+              for (unsigned target = 0; target < 4; ++target) {
+                uint32_t initial[4][66], want[64];
+                for (unsigned reg = 0; reg < 4; ++reg)
+                  for (unsigned lane = 0; lane < 66; ++lane)
+                    initial[reg][lane] = values[(lane * 7 + reg * 5) % 24];
+                uint64_t descriptor = route;
+                if (route & GOC_DPP16)
+                  descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+                uint32_t mode = goc_test::mixed_fma_reference::mode(index);
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  int source;
+                  want[lane] = initial[target][lane + 1];
+                  if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
+                    want[lane] = goc_test::mixed_fma_reference::evaluate(
+                        op, source < 0 ? 0 : initial[0][source + 1],
+                        initial[shared ? 0 : 1][lane + 1], initial[shared ? 0 : 2][lane + 1],
+                        want[lane], mode, true);
+                }
+                for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+                  uint32_t words[4][66];
+                  std::memcpy(words, initial, sizeof(words));
+                  uint32_t *d[] = {words[target] + 1};
+                  const uint32_t *a[] = {words[0] + 1}, *b[] = {words[shared ? 0 : 1] + 1},
+                                 *c[] = {words[shared ? 0 : 2] + 1};
+                  uint64_t flags = cpu | GOC_FP16_OVFL;
+                  if (op && shared)
+                    flags |= GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+                  uint32_t exceptions = 0x80000055;
+                  ASSERT_EQ(
+                      wave64[op](flags, exec_mask, descriptor | mode, d, a, b, c, &exceptions),
+                      GOC_SUCCESS);
+                  EXPECT_EQ(exceptions, 0x80000055U);
+                  for (unsigned reg = 0; reg < 4; ++reg)
+                    for (unsigned lane = 0; lane < 66; ++lane) {
+                      uint32_t expected = reg == target && lane > 0 && lane < 65
+                                              ? want[lane - 1]
+                                              : initial[reg][lane];
+                      ASSERT_TRUE(equal(op, words[reg][lane], expected, op && shared));
+                    }
+                }
+              }
+}
+
+TEST(MixedFma, Wave64UpperLaneNoExceptionHardwareCorpora) {
+  // RX 9070 gfx1201, capture_arithmetic_exceptions.py fma_mixlo/fma_mixhi 16,
+  // with and without --mix-high: all 1,048,576 flag reads are zero. This includes
+  // all eight source-format combinations, both output halves, FP16_OVFL, CLAMP,
+  // source modifiers, 4,096 edge triples and 4,096 pseudorandom triples.
+  const uint32_t inputs[] = {0,          0x80000000, 1,          0x80000001, 0x007fffff, 0x00800000,
+                             0x3f800000, 0xbf800000, 0x40000000, 0x7f7fffff, 0x7effffff, 0x7f800000,
+                             0xff800000, 0x7f800001, 0xffc00003, 0x01000000};
+  for (unsigned op = 1; op < 3; ++op)
+    for (unsigned variant = 0; variant < 64; ++variant) {
+      uint32_t mode =
+          ((variant & 7) << 13) | (variant & 8 ? GOC_ALU_CLAMP : 0) |
+          (variant & 16 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_NEG_A |
+                              GOC_ALU_NEG_C | GOC_ALU_ABS_B | GOC_ALU_ABS_C
+                        : 0);
+      uint64_t flags =
+          GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT | (variant & 32 ? GOC_FP16_OVFL : 0);
+      for (unsigned i = 0; i < 8192; ++i) {
+        uint32_t words[4][64] = {};
+        uint64_t state = uint64_t(i) * 0x9e3779b97f4a7c15ULL;
+        for (unsigned operand = 0; operand < 3; ++operand) {
+          state ^= state >> 12;
+          state ^= state << 25;
+          state ^= state >> 27;
+          words[operand][63] = i < 4096 ? inputs[(i >> (8 - operand * 4)) & 15]
+                                        : uint32_t(state * 0x2545f4914f6cdd1dULL);
+        }
+        const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+        uint32_t *d[] = {words[3]}, exceptions = 0x80000055;
+        ASSERT_EQ(wave64[op](flags | (i % (goc_init_cpu_flags() + 1)), 1ULL << 63, mode, d, a, b, c,
+                             &exceptions),
+                  GOC_SUCCESS);
+        EXPECT_EQ(exceptions, 0x80000055);
+      }
+    }
+}
+
+TEST(MixedFma, Wave64ExactHostStateAndValidation) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO})
+    for (bool flush : {false, true}) {
+      ASSERT_EQ(std::fesetround(rounding), 0);
+      std::feclearexcept(FE_ALL_EXCEPT);
+      std::feraiseexcept(FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+      _mm_setcsr((_mm_getcsr() & ~0x8040U) | (flush ? 0x8040U : 0));
+      unsigned before = _mm_getcsr();
+#endif
+      for (unsigned op = 1; op < 3; ++op)
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          uint32_t words[4][64];
+          for (unsigned reg = 0; reg < 4; ++reg)
+            for (unsigned lane = 0; lane < 64; ++lane)
+              words[reg][lane] = values[(lane * 7 + reg * 5) % 24];
+          uint32_t *d = words[3];
+          const uint32_t *a = words[0], *b = words[1], *c = words[2];
+          uint32_t expected[64];
+          for (unsigned lane = 0; lane < 64; ++lane)
+            expected[lane] = goc_test::mixed_fma_reference::evaluate(op, a[lane], b[lane], c[lane],
+                                                                     d[lane], 0, false);
+          uint32_t exceptions = 0x80000055;
+          ASSERT_EQ(wave64[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                               UINT64_MAX, 0, &d, &a, &b, &c, &exceptions),
+                    GOC_SUCCESS);
+          EXPECT_EQ(exceptions, 0x80000055U);
+          for (unsigned lane = 0; lane < 64; ++lane)
+            EXPECT_EQ(d[lane], expected[lane]);
+        }
+      EXPECT_EQ(std::fegetround(), rounding);
+      EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+      EXPECT_EQ(_mm_getcsr(), before);
+#endif
+    }
+  for (auto fn : wave64) {
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, GOC_ALU_OMOD_HALF, nullptr, nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+  }
+  uint32_t exceptions = 0x80000055;
+  EXPECT_EQ(wave64[0](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, nullptr,
+                      nullptr, &exceptions),
+            GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+  EXPECT_EQ(exceptions, 0x80000055U);
 }

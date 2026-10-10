@@ -1327,3 +1327,23 @@ the obsolete RTZ throughput claim that described the earlier implementation.
 
 Validation: all 811 tests pass on Clang 21 and GCC 15 Release. All seventeen
 packed FMA, instruction-flag and exception-register tests pass under ASan/UBSan.
+
+## Wave64 mixed-precision FMA
+
+Added MIX_F32, MIXLO_F16 and MIXHI_F16 Wave64 APIs using the existing kernels.
+The FP32 result remains loose-only; FP16 results retain empirical exact
+semantics and the measured no-exception behavior. Optional state is untouched
+for supported reporting, while FP32 exact reporting remains explicitly rejected.
+Source formats, half selectors, modifiers, DPP row enables, preserved destination
+halves and scalar/AVX2 dispatch remain unchanged.
+
+Independent integer references cover DPP forms, all row-enable patterns,
+upper-only/sparse EXEC, shared source registers, destination aliases and guards.
+The no-exception hardware corpus also runs in lane 63 across all eight source
+format combinations. Exact FP16-result tests check every host rounding mode
+and DAZ/FTZ setting without changing host controls or sticky exceptions.
+No new native Wave64 capture is claimed. The vector width queue is 123 APIs.
+
+Validation: all 814 tests pass on Clang 21 and GCC 15 Release. Twelve targeted
+mixed-FMA hardware/host-state/Wave64, instruction-flag and exception-register
+tests pass under ASan/UBSan.

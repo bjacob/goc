@@ -1583,8 +1583,10 @@ masks, all whole-register aliases, explicit cross-half alias witnesses, packed
 rocjitsu hardware cases and exact host-environment preservation. Packed FMAC
 benchmarks include the same fixed-accumulator reset as ordinary FMAC.
 
-Mixed FMA supports FP32 output (`FMA_MIX_F32`) or one selected FP16 output
-half (`FMA_MIXLO_F16` / `FMA_MIXHI_F16`), preserving the other half.
+Mixed FMA has Wave32 and `_wave64` APIs for FP32 output (`FMA_MIX_F32`)
+or one selected FP16 output half (`FMA_MIXLO_F16` / `FMA_MIXHI_F16`), preserving
+the other half. Both widths retain the same exact/loose and optional-state
+contracts.
 Each source independently selects FP32 or FP16 using `GOC_MIX_F16_A/B/C`;
 FP16 sources use `GOC_ALU_HIGH_A/B/C` to select their half, while FP32
 sources ignore those selectors. ABS/NEG and CLAMP complete the 8,192 modifier

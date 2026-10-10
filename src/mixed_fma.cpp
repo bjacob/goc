@@ -18,8 +18,8 @@ int mixed_fma(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const
               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (mode >> 32)
     return goc::execute_dpp(
-        flags, exec_mask, mode, a, [&](uint32_t filtered, const uint32_t *const *source) {
-          return mixed_fma<Dst>(flags, filtered, uint32_t(mode), d, source, b, c);
+        flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+          return mixed_fma<Dst>(flags, exec_mask, uint32_t(mode), d, source, b, c);
         });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C | GOC_ALU_ABS_A |
                          GOC_ALU_ABS_B | GOC_ALU_ABS_C | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
@@ -64,6 +64,28 @@ int mixed_fma(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const
   return GOC_SUCCESS;
 }
 
+template <goc::MixedFma Dst>
+int mixed_fma_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (int error = mixed_fma<Dst>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *x = a[0] + half * 32, *y = b[0] + half * 32, *z = c[0] + half * 32;
+    if (int error =
+            mixed_fma<Dst>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest, &x, &y, &z))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_fma_mix_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -91,4 +113,33 @@ int goc_v_fma_mixhi_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint3
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return mixed_fma<goc::MixedFma::High>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_fma_mix_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return mixed_fma_wave64<goc::MixedFma::Float>(flags, exec_mask, mode, d, a, b, c);
+}
+
+// RX 9070 MIXLO/MIXHI do not generate exception flags, including invalid
+// arithmetic and overflow. A requested update therefore leaves the register
+// unchanged; the numerical path and its validation are unchanged.
+int goc_v_fma_mixlo_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return mixed_fma_wave64<goc::MixedFma::Low>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_fma_mixhi_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return mixed_fma_wave64<goc::MixedFma::High>(flags, exec_mask, mode, d, a, b, c);
 }
