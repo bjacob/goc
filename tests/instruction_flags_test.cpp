@@ -114,7 +114,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_mad_i32_i16" || base_name == "goc_v_mad_u32_u24" ||
         base_name == "goc_v_mad_i32_i24" || base_name == "goc_v_mad_co_u64_u32" ||
         base_name == "goc_v_mad_co_i64_i32" || base_name == "goc_v_mad_u64_u32" ||
-        base_name == "goc_v_mad_i64_i32" || base_name == "goc_v_sat_pk_u8_i16" ||
+        base_name == "goc_v_mad_i64_i32" || base_name == "goc_v_cvt_i32_i16" ||
+        base_name == "goc_v_cvt_u32_u16" || base_name == "goc_v_cvt_pk_i16_i32" ||
+        base_name == "goc_v_cvt_pk_u16_u32" || base_name == "goc_v_sat_pk_u8_i16" ||
         base_name == "goc_v_pack_b32_f16" || base_name == "goc_v_sad_u8" ||
         base_name == "goc_v_sad_hi_u8" || base_name == "goc_v_sad_u16" ||
         base_name == "goc_v_sad_u32" || base_name == "goc_v_msad_u8" ||

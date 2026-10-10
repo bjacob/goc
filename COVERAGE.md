@@ -948,3 +948,21 @@ state opt-out/rejection are covered. The width-review queue is now 214 APIs.
 
 Validation: all 775 tests pass on Clang 21 and GCC 15 Release. All ten packing
 and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 integer widening and saturating conversion
+
+Added all four signed/unsigned integer widening and packed narrowing Wave64
+APIs, using the existing scalar/v4 kernels and v3 packed conversion paths.
+Both widths now support strict exact integer semantics. The unary widening
+forms read only A; packed forms read A/B. DPP routes A before half selection
+or saturation and remaps all four row-enable bits across the two halves.
+
+Independent tests exhaust all 65536 source halves and signed/unsigned
+saturation boundaries, then test whole-word operands with DPP, every row mask,
+upper/lower EXEC bits, source/destination aliases and guard words on every CPU
+path. Empty and invalid calls are checked before operand access. Existing
+Wave32 hardware/DPP and host-FP-state tests remain in place. No new native
+Wave64 capture or performance claim is made. The width-review queue is 210 APIs.
+
+Validation: all 776 tests pass on Clang 21 and GCC 15 Release. All ten integer
+conversion and instruction-flag tests pass under ASan/UBSan.

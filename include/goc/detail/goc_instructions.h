@@ -2360,7 +2360,7 @@ int goc_v_cvt_pk_u8_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 // Packing saturates each 32-bit source to the signed/unsigned 16-bit range,
 // placing A in D's low half and B in its high half; no numeric modifiers
 // are accepted.
-// Supports loose semantics, full EXEC masking and whole-register aliases.
+// Both semantics are exact, with full EXEC masking and whole-register aliases.
 // Preserves all host FP state. GOC_FP16_OVFL has no effect.
 
 int goc_v_cvt_i32_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -2374,6 +2374,22 @@ int goc_v_cvt_pk_i16_i32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 
 int goc_v_cvt_pk_u16_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+// Wave64 integer conversions use the same layouts and modifiers, with 64
+// lanes per VGPR and DPP row enables spanning the whole wave.
+int goc_v_cvt_i32_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_u32_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_pk_i16_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+int goc_v_cvt_pk_u16_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
 
 // DPP8/DPP16 permute A before modifiers and half selection; B stays in its
 // original lane. Normalized conversions scale by 32767 (signed) or 65535 (unsigned), round

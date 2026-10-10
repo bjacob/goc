@@ -995,8 +995,9 @@ Integer conversions cover `v_cvt_i32_i16`, `v_cvt_u32_u16`,
 `v_cvt_pk_i16_i32`, and `v_cvt_pk_u16_u32`. Widening selects either source
 half with `GOC_ALU_HIGH_A` and sign- or zero-extends it. Packing follows
 rocjitsu's saturating conversion handlers, placing A/B into the low/high
-result halves; it accepts no numeric modifiers. All four support loose
-semantics, EXEC masking, aliases, and preservation of the host FP environment.
+result halves; it accepts no numeric modifiers. All four support Wave32 and
+Wave64 with exact integer results in both semantics, EXEC masking, aliases,
+and preservation of the host FP environment.
 
 Sixteen-lane v4 paths cover all four operations. Eight-lane v3 paths cover
 packing; widening candidates were slightly slower than baseline and were

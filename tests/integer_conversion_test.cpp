@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cfenv>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <random>
@@ -137,8 +138,7 @@ TEST(IntegerConversion, ValidationAndSemanticFallback) {
                     GOC_ERROR_INVALID_FLAGS);
         }
       EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a, a), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                              UINT32_MAX, 0, d, a, a),
+      EXPECT_EQ(functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, d, a, a),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto word : output)
         EXPECT_EQ(word, 0xdeadbeefu);
@@ -220,4 +220,69 @@ TEST(IntegerConversion, DppValidation) {
         EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
     }
+}
+
+TEST(IntegerConversion, Wave64ExactHalvesAndBoundaries) {
+  const decltype(&goc_v_cvt_pk_i16_i32_wave64) wave64[] = {
+      [](uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+         const uint32_t *const *a, const uint32_t *const *) {
+        return goc_v_cvt_i32_i16_wave64(flags, exec_mask, mode, d, a);
+      },
+      [](uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+         const uint32_t *const *a, const uint32_t *const *) {
+        return goc_v_cvt_u32_u16_wave64(flags, exec_mask, mode, d, a);
+      },
+      goc_v_cvt_pk_i16_i32_wave64, goc_v_cvt_pk_u16_u32_wave64};
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned select = 0; select < (op < 2 ? 2U : 1U); ++select) {
+        uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+        uint64_t mode = select ? GOC_ALU_HIGH_A : 0;
+        EXPECT_EQ(wave64[op](flags, 0, mode, nullptr, nullptr, nullptr), GOC_SUCCESS);
+        EXPECT_EQ(wave64[op](flags, UINT64_MAX, 1ULL << 63, nullptr, nullptr, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+        for (unsigned start = 0; start < 65536; start += 64) {
+          uint32_t av[64], bv[64], output[64];
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            unsigned i = start + lane;
+            av[lane] = op < 2 ? i | ((65535 - i) << 16) : i;
+            bv[lane] = 0U - i;
+          }
+          const uint32_t *a = av, *b = bv;
+          uint32_t *d = output;
+          ASSERT_EQ(wave64[op](flags, UINT64_MAX, mode, &d, &a, &b), GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 64; ++lane)
+            ASSERT_EQ(output[lane],
+                      goc_test::integer_conversion_reference(op, av[lane], bv[lane], mode));
+        }
+        for (auto route : goc_test::dpp_modes)
+          for (unsigned rows = 0; rows < 16; ++rows)
+            for (unsigned target = 0; target < 3; ++target) {
+              uint32_t initial[3][66], words[3][66];
+              for (unsigned lane = 0; lane < 66; ++lane) {
+                initial[0][lane] = 0x7395a831U * lane;
+                initial[1][lane] = 0x87654321U * lane;
+                initial[2][lane] = 0xdeadbeef;
+              }
+              std::memcpy(words, initial, sizeof words);
+              const uint32_t *a = words[0] + 1, *b = words[1] + 1;
+              uint32_t *d = words[target] + 1;
+              uint64_t descriptor = route;
+              if (route & GOC_DPP16)
+                descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+              uint64_t exec_mask = 0x87654321fedcba98ULL;
+              ASSERT_EQ(wave64[op](flags, exec_mask, mode | descriptor, &d, &a, &b), GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                int source = 0;
+                bool enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+                uint32_t expected = initial[target][lane + 1];
+                if (enabled)
+                  expected = goc_test::integer_conversion_reference(
+                      op, source < 0 ? 0 : initial[0][source + 1], initial[1][lane + 1], mode);
+                ASSERT_EQ(d[lane], expected);
+              }
+              EXPECT_EQ(words[target][0], initial[target][0]);
+              EXPECT_EQ(words[target][65], initial[target][65]);
+            }
+      }
 }
