@@ -31,10 +31,7 @@ extern "C" {
 // Any loose reporting is not guaranteed complete or accurate; loose arithmetic
 // need not match hardware, so its exception flags need not match hardware either.
 // Loose mode never returns GOC_ERROR_UNSUPPORTED_GLOBAL_STATE.
-// Reporting is implemented for floating comparisons, scalar rounding,
-// FP16 FMA/FMAC/literal/packed forms, V_DIV_FIXUP_F16/F32/F64, and
-// V_DIV_FMAS_F32/F64, FP16/32 SIN/COS, and V_RCP_IFLAG_F32. MIXLO/MIXHI_F16
-// and DOT2_F32_F16/BF16 generate no flags and leave the register unchanged. Other
+// Reporting availability is documented with each instruction family. Unsupported
 // non-loose requests with a non-NULL pointer return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE
 // before operand access, even for empty EXEC, before other validation. NULL opts
 // out of reporting in every mode and preserves numerical paths and validation.
@@ -4762,7 +4759,9 @@ int goc_v_floor_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fla
 
 // SQRT/RCP/RSQ/EXP/LOG force input/output flushing regardless of guest flush
 // flags. Unsuffixed RDNA3 forms disable OMOD when GOC_FP_IEEE_MODE is set;
-// _rdna4 forms apply OMOD independently. Non-null exact state reporting remains
+// _rdna4 forms apply OMOD independently and implement exact EXCP_FLAG_USER
+// accumulation from participating lanes. CLAMP suppresses all new exceptions;
+// OMOD suppresses underflow/inexact. RDNA3 exact TRAPSTS reporting remains
 // unsupported. Loose calls leave state untouched. All five have exact results.
 // Exact SQRT/RCP/RSQ/EXP/LOG use captured gfx1100/gfx1201 mappings. RDNA3 preserves
 // signaling NaNs with IEEE mode off; RDNA4 always quiets them. Exact arithmetic,

@@ -2,19 +2,28 @@
 # SPDX-License-Identifier: MIT
 """Generate a gfx1201 HIP raw unary-result probe.
 
-Arguments: OUTPUT_DIR [rcp|sqrt|rsq|exp|log], default rcp.
+Arguments: OUTPUT_DIR [rcp|sqrt|rsq|exp|log] [--exceptions], default rcp.
 Compile probe.cpp with hipcc. `probe normalized` covers every FP32 value in
 [1,2) for RCP, [1,4) for SQRT/RSQ, [0.5,2) for LOG, and both signs of [0.5,2)
 for EXP. `probe` covers [4 denormal policies][32 modifiers][8192 inputs].
 Writes little-endian uint32 results to capture.bin. Modifiers: NEG bit0, ABS
 bit1, OMOD bits2:3, CLAMP bit4. Guest rounding is nearest-even.
+--exceptions uses one identical-input Wave32 per case, clears EXCP_FLAG_USER,
+and writes (result, flags) pairs. It supports only the modifier corpus.
+Add --exactness for concentrated exact/inexact and range-boundary operands.
 """
 import json
+import re
+import struct
 from pathlib import Path
 import sys
 op = sys.argv[2] if len(sys.argv) > 2 else "rcp"
 if op not in ("rcp", "sqrt", "rsq", "exp", "log"):
     raise SystemExit("expected rcp, sqrt, rsq, exp or log")
+report = "--exceptions" in sys.argv[3:]
+exactness = "--exactness" in sys.argv[3:]
+if exactness and not report:
+    raise SystemExit("--exactness requires --exceptions")
 out = Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
 s = r'''#include <hip/hip_runtime.h>
 #include <cstdio>
@@ -63,5 +72,38 @@ if op == "exp":
 if op == "log":
     # Both sides of one, including every cancellation-path input.
     s = s.replace("0x3f800000+i", "0x3f000000+i")
+if exactness:
+    # Exact squares and their successors, powers of two and adjacent values,
+    # and EXP integer/fractional boundaries. Build operands on the host so the
+    # GPU input arithmetic cannot itself influence the instruction under test.
+    words = []
+    for i in range(8192):
+        if op == "sqrt":
+            n = (i >> 1) + 1
+            word = struct.unpack("<I", struct.pack("<f", n * n))[0] + (i & 1)
+        elif op == "exp":
+            word = struct.unpack("<I", struct.pack("<f", (i - 4096) / 16))[0]
+        else:
+            word = ((i // 32 % 254 + 1) << 23) + [0, 1, -1, 0x400000][i % 4]
+            word |= (i % 32 // 4 % 2) << 31
+        words.append(word)
+    start = s.index("__device__ uint32_t input_word")
+    end = s.index("__global__ void probe", start)
+    table = ",".join(hex(word) for word in words)
+    s = s[:start] + "__device__ __constant__ uint32_t inputs[]={" + table + "};\n" + \
+        "__device__ uint32_t input_word(unsigned i){return inputs[i];}\n" + s[end:]
 count_bits = 23 if op == "rcp" else 25 if op == "exp" else 24
+if report:
+    s = s.replace("unsigned i=blockIdx.x*blockDim.x+threadIdx.x;", "unsigned i=blockIdx.x;")
+    s = s.replace(",result;", ",result,status;")
+    # Renumber source operands after adding the scalar status output.
+    s = re.sub(r"%([23])(?![0-9])", lambda m: "%" + str(int(m[1]) + 1), s)
+    s = s.replace('hwreg(HW_REG_MODE), %4\\n', 'hwreg(HW_REG_MODE), %4\\ns_setreg_imm32_b32 hwreg(18), 0\\n')
+    s = s.replace('\\ns_setreg_b32 hwreg(HW_REG_MODE), %1', '\\ns_waitcnt_depctr 0\\ns_nop 7\\ns_getreg_b32 %2, hwreg(18)\\ns_setreg_b32 hwreg(HW_REG_MODE), %1')
+    s = s.replace('"=&s"(saved):', '"=&s"(saved),"=&s"(status):')
+    s = s.replace('}out[i]=result;', '}if(threadIdx.x==0){out[2*i]=result;out[2*i+1]=status;}')
+    s = s.replace('if(argc>2||(argc==2&&!normalized))', 'if(argc!=1)')
+    s = s.replace('new uint32_t[n]', 'new uint32_t[n*2]').replace('n*4', 'n*8')
+    s = s.replace('dim3((n+255)/256),dim3(256)', 'dim3(n),dim3(32)')
+    s = s.replace('fwrite(host,4,n,f)!=n', 'fwrite(host,8,n,f)!=n')
 (out/'probe.cpp').write_text(s.replace('1U<<23:8192', '1U<<'+str(count_bits)+':8192'))

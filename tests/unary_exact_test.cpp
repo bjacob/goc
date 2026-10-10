@@ -36,6 +36,18 @@ uint32_t input_word(unsigned op, unsigned i) {
          ((i * 0x7395a831U) & 0x7fffff);
 }
 
+uint32_t exactness_input(unsigned op, unsigned i) {
+  if (op == 1 || op == 3) {
+    unsigned n = (i >> 1) + 1;
+    float value = op == 1 ? float(n * n) : float(int(i) - 4096) / 16;
+    uint32_t word;
+    std::memcpy(&word, &value, sizeof(word));
+    return word + (op == 1 ? i & 1 : 0);
+  }
+  const int offset[] = {0, 1, -1, 0x400000};
+  return (((i / 32 % 254 + 1) << 23) + offset[i % 4]) | ((i % 32 / 4 % 2) << 31);
+}
+
 uint32_t modifiers(unsigned m) {
   return (m & 1 ? GOC_ALU_NEG_A : 0) | (m & 2 ? GOC_ALU_ABS_A : 0) | ((m >> 2 & 3) << 6) |
          (m & 16 ? GOC_ALU_CLAMP : 0);
@@ -150,13 +162,15 @@ TEST_P(UnaryExact, DppAliasesMasksAndHostEnvironment) {
             uint64_t exec_mask = wide ? 0x9192a5a571abcdefULL : 0x71abcdef;
             uint64_t flags = (m % (goc_init_cpu_flags() + 1)) | GOC_SEMANTICS_EXACT_EMPIRICAL |
                              GOC_SEMANTICS_STRICT | (m & 1 ? GOC_FP_IEEE_MODE : 0);
+            uint32_t expected_state = 0x80000040;
             for (unsigned lane = 0; lane < lanes; ++lane) {
               expected[lane] = alias ? original[lane] : 0xdeadbeef;
               int source;
               if (goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
                 uint32_t input[32] = {}, output[32];
                 input[0] = source < 0 ? 0 : original[source];
-                ASSERT_EQ(invoke(op, rdna3, false, flags, 1, modifiers(m), output, input),
+                ASSERT_EQ(invoke(op, rdna3, false, flags, 1, modifiers(m), output, input,
+                                 rdna3 ? nullptr : &expected_state),
                           GOC_SUCCESS);
                 expected[lane] = output[0];
               }
@@ -174,10 +188,14 @@ TEST_P(UnaryExact, DppAliasesMasksAndHostEnvironment) {
                 std::memcpy(input, original, sizeof(input));
                 std::fill(output, output + 64, 0xdeadbeef);
                 uint32_t *d = alias ? input : output;
-                ASSERT_EQ(
-                    invoke(op, rdna3, wide, flags, exec_mask, modifiers(m) | descriptor, d, input),
-                    GOC_SUCCESS);
+                uint32_t state = 0x80000040;
+                ASSERT_EQ(invoke(op, rdna3, wide, flags, exec_mask, modifiers(m) | descriptor, d,
+                                 input, rdna3 ? nullptr : &state),
+                          GOC_SUCCESS);
                 EXPECT_EQ(std::memcmp(d, expected, lanes * sizeof(uint32_t)), 0);
+                if (!rdna3) {
+                  EXPECT_EQ(state, expected_state);
+                }
                 EXPECT_EQ(std::fegetround(), rounding);
                 EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
 #if defined(__x86_64__) || defined(_M_X64)
@@ -187,9 +205,9 @@ TEST_P(UnaryExact, DppAliasesMasksAndHostEnvironment) {
           }
 }
 
-TEST_P(UnaryExact, ReportingRemainsExplicitlyUnsupported) {
+TEST_P(UnaryExact, Rdna3ReportingRemainsExplicitlyUnsupported) {
   const unsigned op = GetParam();
-  for (bool rdna3 : {false, true})
+  for (bool rdna3 : {true})
     for (bool wide : {false, true}) {
       uint32_t state = 0x80000001;
       for (uint64_t strict : {uint64_t(0), uint64_t(GOC_SEMANTICS_STRICT)}) {
@@ -199,6 +217,77 @@ TEST_P(UnaryExact, ReportingRemainsExplicitlyUnsupported) {
         EXPECT_EQ(state, 0x80000001U);
       }
     }
+}
+
+TEST_P(UnaryExact, ExceptionHardwareCapture) {
+  unsigned op = GetParam();
+  for (unsigned corpus = 0; corpus < 2; ++corpus)
+    for (unsigned policy = 0; policy < 4; ++policy)
+      for (unsigned m = 0; m < 32; ++m) {
+        uint64_t hash = goc_test::capture_hash_seed;
+        for (unsigned i = 0; i < 8192; ++i) {
+          bool wide = i & 1;
+          unsigned lane = (i >> 1) % (wide ? 64 : 32);
+          uint32_t input[64] = {}, output[64] = {};
+          input[lane] = corpus ? exactness_input(op, i) : input_word(op, i);
+          uint32_t state = 0x80000000;
+          uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                           (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                           (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+          ASSERT_EQ(
+              invoke(op, false, wide, flags, 1ULL << lane, modifiers(m), output, input, &state),
+              GOC_SUCCESS);
+          ASSERT_NE(state & 0x80000000, 0U);
+          hash = goc_test::capture_hash_word(hash, output[lane]);
+          hash = goc_test::capture_hash_word(hash, state & ~0x80000000U);
+        }
+        EXPECT_EQ(hash, goc_test::unary_exception_hashes[corpus][op][m]) << policy << '/' << m;
+      }
+}
+
+TEST_P(UnaryExact, ReportingAccumulationDppAndErrors) {
+  unsigned op = GetParam();
+  for (bool wide : {false, true}) {
+    unsigned lanes = wide ? 64 : 32;
+    uint32_t input[64] = {}, output[64];
+    uint32_t expected = 0x80000040;
+    for (unsigned lane = 0; lane < lanes; ++lane) {
+      input[lane] = input_word(op, lane % 32);
+      ASSERT_EQ(invoke(op, false, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, 1ULL << lane, 0, output,
+                       input, &expected),
+                GOC_SUCCESS);
+    }
+    uint32_t state = 0x80000040;
+    ASSERT_EQ(invoke(op, false, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, output, input,
+                     &state),
+              GOC_SUCCESS);
+    EXPECT_EQ(state, expected);
+    // Reversing each octet preserves the participating operand multiset.
+    uint64_t descriptor = GOC_DPP8;
+    for (unsigned lane = 0; lane < 8; ++lane)
+      descriptor |= uint64_t(7 - lane) << (GOC_DPP8_SELECT_SHIFT + 3 * lane);
+    state = 0x80000040;
+    ASSERT_EQ(invoke(op, false, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, descriptor, output,
+                     input, &state),
+              GOC_SUCCESS);
+    EXPECT_EQ(state, expected);
+    state = 0x80000040;
+    std::fill(output, output + 64, 0xdeadbeef);
+    EXPECT_EQ(invoke(op, false, wide, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 1ULL << 31, output,
+                     input, &state),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(state, 0x80000040U);
+    for (auto value : output)
+      EXPECT_EQ(value, 0xdeadbeefU);
+    for (uint64_t flags : {uint64_t(GOC_SEMANTICS_EXACT_EMPIRICAL), uint64_t(0)}) {
+      state = 0x80000040;
+      ASSERT_EQ(invoke(op, false, wide, flags, 0, 0, nullptr, nullptr, &state), GOC_SUCCESS);
+      EXPECT_EQ(state, 0x80000040U);
+    }
+    state = 0x80000040;
+    ASSERT_EQ(invoke(op, false, wide, 0, UINT64_MAX, 0, output, input, &state), GOC_SUCCESS);
+    EXPECT_EQ(state, 0x80000040U);
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(Captured, UnaryExact, ::testing::Values(0U, 1U, 2U, 3U, 4U));

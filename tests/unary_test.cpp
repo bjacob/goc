@@ -250,8 +250,11 @@ TEST(Unary, Wave64ValidationAndOptionalState) {
             ? GOC_SUCCESS
             : GOC_ERROR_UNSUPPORTED_SEMANTICS);
     uint32_t exceptions = 0x80000055;
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, &exceptions),
-              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    bool reporting = fn == goc_v_rcp_f32_rdna4_wave64 || fn == goc_v_sqrt_f32_rdna4_wave64 ||
+                     fn == goc_v_rsq_f32_rdna4_wave64 || fn == goc_v_exp_f32_rdna4_wave64 ||
+                     fn == goc_v_log_f32_rdna4_wave64;
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, &exceptions),
+              reporting ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
     EXPECT_EQ(exceptions, 0x80000055U);
   }
 }

@@ -2835,3 +2835,44 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   The loose arithmetic bodies are unchanged; exact evaluation stays out of line.
   Artifacts use `../goc-build/coverage-work/exp-log-exact-*`; these measurements
   do not characterize exact throughput or whole-library performance.
+
+### Exact RDNA4 unary exception reporting
+
+- Implemented optional `EXCP_FLAG_USER` accumulation for exact FP32 RCP,
+  SQRT, RSQ, EXP and LOG, in both wave sizes. The classifier uses integer bits;
+  loose calls still bypass it and leave optional state untouched. RDNA3 exact
+  `TRAPSTS` reporting remains explicitly unsupported pending matching evidence.
+- Fresh gfx1201 captures cover 10,485,760 `(result, flags)` pairs: five operations,
+  two 8192-input corpora, 32 source/output modifier combinations, and four guest
+  denormal policies. The ordinary corpus matches every previously captured
+  numerical result. The second corpus concentrates on perfect squares and their
+  successors, powers of two and adjacent inputs, and integer/fractional EXP
+  boundaries. All four denormal policies produce identical pairs; fixture hashes
+  share those identical expectations while tests exercise every policy.
+- CLAMP suppresses new flags; OMOD suppresses underflow/inexact but retains
+  applicable invalid/divide-by-zero/overflow flags. Approximation status cannot
+  be inferred solely from mathematical exactness: hardware sets INEXACT for
+  `sqrt(9) == 3`, whereas powers of four avoid it. Targeted captures exposed this
+  distinction before the classifier was accepted.
+- The shared exact execution loop accumulates only participating lanes, including
+  DPP zero-fill/routing and Wave64 halves. Tests cover preserved preexisting bits,
+  masks, aliases, DPP8/DPP16, host rounding/FTZ/DAZ and sticky-flag preservation,
+  empty EXEC, loose opt-out and validation before writes. Existing unsupported
+  reporting tests retain the RDNA3 contract.
+- `tests/capture_unary_exact.py --exceptions` generates the ordinary status probe;
+  adding `--exactness` selects the concentrated corpus. One identical-input Wave32
+  executes per operand, with status cleared/read around the tested instruction.
+  Fixed the new probe's initial textual operand renumbering so it cannot rewrite
+  a C modulo expression such as `%254`. Discarded those erroneous captures and
+  regenerated both corpora before forming any fixture.
+- Clang 21 and GCC 15 Release each pass **1,015/1,015** tests. Targeted Clang
+  ASan/UBSan passes **48/48** unary and DPP tests. Logs are
+  `/tmp/goc-unary-report-{clang,gcc,san}-tests.log`.
+- Eleven alternating before/after samples, pinned to CPU 2 with at least 50 ms
+  thread CPU time per case, compare against `584382d`. Twelve loose AVX2
+  SQRT/RSQ/RCP cases (default/combined modifiers, null/non-null state) range
+  from -0.85% to +0.10%. Eight scalar EXP/LOG cases range from -4.62% to +5.13%;
+  the largest regression is LOG with combined modifiers and non-null state,
+  112.565 -> 118.335 ns. Reporting work remains exclusively in the exact helper;
+  these measurements do not establish a whole-library or exact-path speedup.
+  Raw samples and binaries use `../goc-build/coverage-work/unary-report-*`.
