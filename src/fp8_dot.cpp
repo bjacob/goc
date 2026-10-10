@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "dpp.h"
 #include "float_formats.h"
 #include "goc/goc.h"
 #include "internal.h"
@@ -11,8 +12,13 @@
 namespace {
 
 template <bool Bf8A, bool Bf8B>
-int dot(uint64_t flags, uint32_t exec_mask, uint32_t modifiers, uint32_t *const *d,
+int dot(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (modifiers >> 32)
+    return goc::execute_dpp(
+        flags, exec_mask, modifiers, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+          return dot<Bf8A, Bf8B>(flags, exec_mask, uint32_t(modifiers), d, source, b, c);
+        });
   const uint32_t known = GOC_DOT_NEG_C | GOC_DOT_ABS_C;
   if (int error = goc::validate(flags, modifiers & ~known))
     return error;
@@ -44,14 +50,18 @@ int dot(uint64_t flags, uint32_t exec_mask, uint32_t modifiers, uint32_t *const 
 }
 
 template <bool Bf8A, bool Bf8B>
-int dot_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
+int dot_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if (int error = dot<Bf8A, Bf8B>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
   for (unsigned half = 0; half < 2; ++half) {
-    uint32_t half_mode = mode;
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
     uint32_t *dest = d[0] + half * 32;
     const uint32_t *av = a[0] + half * 32, *bv = b[0] + half * 32, *cv = c[0] + half * 32;
     if (int error = dot<Bf8A, Bf8B>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
@@ -66,63 +76,47 @@ int dot_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *cons
 int goc_v_dot4_f32_fp8_fp8(uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
-  if (modifiers >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot<false, false>(flags, exec_mask, modifiers, d, a, b, c);
 }
 
 int goc_v_dot4_f32_fp8_bf8(uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
-  if (modifiers >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot<false, true>(flags, exec_mask, modifiers, d, a, b, c);
 }
 
 int goc_v_dot4_f32_bf8_fp8(uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
-  if (modifiers >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot<true, false>(flags, exec_mask, modifiers, d, a, b, c);
 }
 
 int goc_v_dot4_f32_bf8_bf8(uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c) {
-  if (modifiers >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot<true, true>(flags, exec_mask, modifiers, d, a, b, c);
 }
 
 int goc_v_dot4_f32_fp8_fp8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t modifiers,
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b, const uint32_t *const *c) {
-  if (modifiers >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot_wave64<false, false>(flags, exec_mask, modifiers, d, a, b, c);
 }
 
 int goc_v_dot4_f32_fp8_bf8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t modifiers,
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b, const uint32_t *const *c) {
-  if (modifiers >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot_wave64<false, true>(flags, exec_mask, modifiers, d, a, b, c);
 }
 
 int goc_v_dot4_f32_bf8_fp8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t modifiers,
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b, const uint32_t *const *c) {
-  if (modifiers >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot_wave64<true, false>(flags, exec_mask, modifiers, d, a, b, c);
 }
 
 int goc_v_dot4_f32_bf8_bf8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t modifiers,
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b, const uint32_t *const *c) {
-  if (modifiers >> 32)
-    return GOC_ERROR_INVALID_FLAGS;
   return dot_wave64<true, true>(flags, exec_mask, modifiers, d, a, b, c);
 }

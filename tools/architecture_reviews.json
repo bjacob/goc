@@ -1245,5 +1245,27 @@
       "v_swmmac_i32_16x16x32_iu4",
       "v_swmmac_i32_16x16x64_iu4"
     ]
+  },
+  {
+    "heading": "FP8 and BF8 conversion contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/fp8_conversion_test.cpp",
+    "mnemonics": [
+      "v_cvt_f32_fp8",
+      "v_cvt_f32_bf8",
+      "v_cvt_pk_f32_fp8",
+      "v_cvt_pk_f32_bf8"
+    ]
+  },
+  {
+    "heading": "FP8 and BF8 conversion contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/fp8_narrow_test.cpp",
+    "mnemonics": [
+      "v_cvt_pk_fp8_f32",
+      "v_cvt_pk_bf8_f32",
+      "v_cvt_sr_fp8_f32",
+      "v_cvt_sr_bf8_f32"
+    ]
   }
 ]

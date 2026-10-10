@@ -6034,6 +6034,7 @@ static const uint32_t GOC_DOT_ABS_C = 1U << 5;
 
 // Wave32 DOT4: one VGPR each for A/B/C/D, four packed bytes per A/B lane;
 // C/D are FP32. FP8 is OCP E4M3FN, BF8 is OCP E5M2. Loose semantics only.
+// Both wave widths support DPP8/DPP16 on A; B and C remain in their own lanes.
 int goc_v_dot4_f32_fp8_fp8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c);

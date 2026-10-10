@@ -67,7 +67,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     EXPECT_TRUE((std::is_same_v<Mask, uint64_t>));
     base_name.resize(base_name.size() - 7);
     // Only these audited families currently share DPP support across widths.
-    if (base_name == "goc_v_dot2_f32_f16_rdna4" || base_name == "goc_v_dot2_f32_bf16_rdna4" ||
+    if (base_name == "goc_v_dot4_f32_fp8_fp8" || base_name == "goc_v_dot4_f32_fp8_bf8" ||
+        base_name == "goc_v_dot4_f32_bf8_fp8" || base_name == "goc_v_dot4_f32_bf8_bf8" ||
+        base_name == "goc_v_dot2_f32_f16_rdna4" || base_name == "goc_v_dot2_f32_bf16_rdna4" ||
         base_name == "goc_v_dot2_f32_f16" || base_name == "goc_v_dot2_f32_bf16" ||
         base_name == "goc_v_dot2acc_f32_f16" || base_name == "goc_v_dot2_f16_f16_rdna4" ||
         base_name == "goc_v_dot2_bf16_bf16_rdna4" || base_name == "goc_v_dot2_f16_f16" ||
@@ -349,6 +351,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic :
        {"v_dot2_f32_f16", "v_dot2_f32_bf16", "v_dot2_f32_f16_rdna4", "v_dot2_f32_bf16_rdna4"})
+    supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
+  for (auto mnemonic :
+       {"v_dot4_f32_fp8_fp8", "v_dot4_f32_fp8_bf8", "v_dot4_f32_bf8_fp8", "v_dot4_f32_bf8_bf8"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : {"v_sat_pk_u8_i16", "v_pack_b32_f16", "v_pack_b32_f16_rdna4"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;

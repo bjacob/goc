@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 
+#include "dpp_reference.h"
 #include "exec_masks.h"
 #include "goc/goc.h"
 #include "internal.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <limits>
@@ -257,4 +259,112 @@ TEST(Fp8Dot, Wave64ValidationAndLooseFallback) {
     for (auto word : d)
       EXPECT_EQ(word, 0u);
   }
+}
+
+namespace {
+
+template <unsigned Lanes> void dpp_routes_masks_and_aliases() {
+  // Integer-valued factors make the arithmetic oracle exact; lane-dependent
+  // A/B/C distinguish routing A from accidentally routing the other operands.
+  const uint8_t codes[2][5] = {{0xc0, 0xb8, 0, 0x38, 0x40}, {0xc0, 0xbc, 0, 0x3c, 0x40}};
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = GOC_CPU_BASELINE; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (auto route : goc_test::dpp_modes)
+        for (unsigned rows = 0; rows < (route & GOC_DPP16 ? 16U : 1U); ++rows)
+          for (uint64_t modifiers : {uint64_t(0), uint64_t(GOC_DOT_NEG_C), uint64_t(GOC_DOT_ABS_C),
+                                     uint64_t(GOC_DOT_NEG_C | GOC_DOT_ABS_C)})
+            for (uint64_t active : {uint64_t(UINT64_MAX), uint64_t(0x81234567fedcba99ULL)})
+              for (unsigned dst = 0; dst < 4; ++dst) {
+                uint64_t descriptor = route;
+                if (route & GOC_DPP16)
+                  descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+                const uint64_t exec_mask = Lanes == 32 ? uint32_t(active) : active;
+                SCOPED_TRACE(::testing::Message()
+                             << Lanes << "/" << op << "/" << cpu << "/" << descriptor << "/"
+                             << modifiers << "/" << exec_mask << "/" << dst);
+                uint32_t initial[4][Lanes + 2], words[4][Lanes + 2], expected_words[4][Lanes + 2];
+                for (auto &reg : initial)
+                  std::fill(reg, reg + Lanes + 2, 0xdeadbeefU);
+                for (unsigned lane = 0; lane < Lanes; ++lane) {
+                  initial[0][lane + 1] = initial[1][lane + 1] = 0;
+                  for (unsigned byte = 0; byte < 4; ++byte) {
+                    initial[0][lane + 1] |= uint32_t(codes[op / 2][(lane + byte) % 5])
+                                            << (8 * byte);
+                    initial[1][lane + 1] |= uint32_t(codes[op % 2][(3 * lane + byte + 1) % 5])
+                                            << (8 * byte);
+                  }
+                  initial[2][lane + 1] = goc::as_bits(float(int(lane) - 37));
+                }
+                std::memcpy(words, initial, sizeof(words));
+                std::memcpy(expected_words, initial, sizeof(expected_words));
+                const uint32_t *a = words[0] + 1, *b = words[1] + 1, *c = words[2] + 1;
+                uint32_t *d = words[dst] + 1;
+                if constexpr (Lanes == 32)
+                  ASSERT_EQ(functions[op](cpu, uint32_t(exec_mask), modifiers | descriptor, &d, &a,
+                                          &b, &c),
+                            GOC_SUCCESS);
+                else
+                  ASSERT_EQ(
+                      wave64_functions[op](cpu, exec_mask, modifiers | descriptor, &d, &a, &b, &c),
+                      GOC_SUCCESS);
+                for (unsigned lane = 0; lane < Lanes; ++lane) {
+                  int source;
+                  if (!goc_test::dpp_source(descriptor, exec_mask, lane, source))
+                    continue;
+                  const uint32_t av = source < 0 ? 0 : initial[0][source + 1];
+                  double expected = int(lane) - 37;
+                  if (modifiers & GOC_DOT_ABS_C)
+                    expected = std::abs(expected);
+                  if (modifiers & GOC_DOT_NEG_C)
+                    expected = -expected;
+                  for (unsigned byte = 0; byte < 4; ++byte)
+                    expected += decode(uint8_t(av >> (8 * byte)), op / 2) *
+                                decode(uint8_t(initial[1][lane + 1] >> (8 * byte)), op % 2);
+                  expected_words[dst][lane + 1] = goc::as_bits(float(expected));
+                }
+                EXPECT_EQ(std::memcmp(words, expected_words, sizeof(words)), 0);
+              }
+}
+
+} // namespace
+
+TEST(Fp8Dot, DppRoutesMasksAndAliases) { dpp_routes_masks_and_aliases<32>(); }
+
+TEST(Fp8Dot, Wave64DppRoutesMasksAndAliases) { dpp_routes_masks_and_aliases<64>(); }
+
+TEST(Fp8Dot, DppValidationAndLooseFallback) {
+  for (unsigned op = 0; op < 4; ++op)
+    for (auto mode : goc_test::dpp_modes) {
+      uint32_t a[64] = {}, d[64];
+      const uint32_t *pa = a;
+      uint32_t *pd = d;
+      std::fill(d, d + 64, 0xdeadbeefU);
+      for (uint64_t exec_mask : {uint64_t(0), uint64_t(UINT64_MAX)}) {
+        EXPECT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                uint32_t(exec_mask), mode, &pd, &pa, &pa, &pa),
+                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(wave64_functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                       exec_mask, mode, &pd, &pa, &pa, &pa),
+                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        EXPECT_EQ(
+            functions[op](0, uint32_t(exec_mask), mode | GOC_DOT_NEG_LO_A, &pd, &pa, &pa, &pa),
+            GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(wave64_functions[op](0, exec_mask, mode | GOC_DOT_NEG_LO_A, &pd, &pa, &pa, &pa),
+                  GOC_ERROR_INVALID_FLAGS);
+      }
+      for (auto word : d)
+        EXPECT_EQ(word, 0xdeadbeefU);
+      EXPECT_EQ(functions[op](0, 0, mode, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(wave64_functions[op](0, 0, mode, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      ASSERT_EQ(functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, mode, &pd, &pa, &pa, &pa),
+                GOC_SUCCESS);
+      ASSERT_EQ(
+          wave64_functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, mode, &pd, &pa, &pa, &pa),
+          GOC_SUCCESS);
+      for (unsigned lane = 0; lane < 64; ++lane) {
+        int source;
+        const bool enabled = goc_test::dpp_source(mode, UINT64_MAX, lane, source);
+        EXPECT_EQ(d[lane], enabled ? 0U : 0xdeadbeefU);
+      }
+    }
 }

@@ -7065,3 +7065,96 @@ also pass. No production implementation changed in this review.
 Together with the dense reviews above, all 22 in-scope canonical WMMA/SWMMAC
 mnemonics now have recorded contracts. This closes the matrix review queue,
 not the remaining scalar/vector reviews or the documented numerical limitations.
+
+## FP8 and BF8 conversion contract review
+
+Reviewed the eight RDNA4-only widening, packed narrowing and stochastic
+narrowing mnemonics at both wave widths against manual sections 7.6.2 and
+16.9/16.12, and rocjitsu `ffc144c564c`'s generated RDNA4 VOP1/VOP3 handlers
+and `util/data_types.h`. All have scalar, AVX2 and AVX-512 implementations;
+loose and exact modes use the same integer conversion algorithms.
+
+- Single widening selects any one input byte; packed widening selects one
+  halfword and writes two FP32 VGPRs. Public byte selectors denote the actual
+  byte number, abstracting the ISA's reversed OPSEL bit order. Only single
+  widening supports DPP. Input/output floating modifiers are not exposed.
+- Packed narrowing rounds two FP32 values to nearest-even into the selected
+  destination halfword. Stochastic narrowing consumes A plus the unchanged
+  per-lane seed in B and replaces one selected destination byte. ABS/NEG apply
+  to floating inputs, not the seed; DPP routes A only. Unselected destination
+  bits and inactive lanes are preserved. Whole-VGPR overlaps are supported;
+  overlapping packed-widening destinations retain the second-store-wins rule.
+- These are OCP E4M3FN/E5M2 conversions, not FNUZ or gfx1250's scale format.
+  `GOC_FP16_OVFL` saturates finite narrowing overflow; it does not saturate
+  input infinities. Other guest FP flags remain unsupported. The manual's
+  temporary fixed rounding mode is restored and produces no persistent MODE
+  output. LLVM `cba25ae10871` explicitly marks both widening and narrowing
+  instruction groups `mayRaiseFPException = 0`; no exception output is exposed.
+
+GoC's pre-existing gfx1201 fixtures remain authoritative where the generic
+rocjitsu helpers differ: widening canonicalizes either NaN sign to
+`0xffc00000`; narrowing produces `0xff`/`0xfe`; infinity saturation and
+subnormal stochastic seed alignment also differ. Replacing these paths with
+upstream's sign-preserving NaNs or its infinity-saturating wrappers would
+regress those fixtures. No new empirical model or capture was added here.
+The existing Wave64 raw fixtures regroup per-lane Wave32 captures, rather
+than constituting independent native Wave64 measurements.
+
+Current tests cover every widening byte and packed pair, raw NaN words,
+narrowing boundaries/seeds, every selector, source modifiers, finite/infinite
+overflow, DPP, both mask widths, aliases, guards and invalid requests. The full
+Clang/GCC suites and targeted sanitizer run recorded in the DOT4 DPP section
+below include these unchanged conversion tests.
+
+## FP8 and BF8 DOT4 DPP support
+
+Added DPP8/DPP16 to all four RDNA4 FP8/BF8 DOT4 format pairs at both wave
+widths. The existing DPP helper routes the complete packed A word before the
+existing scalar/AVX2 arithmetic; B and C stay in their destination lanes.
+Wave64 remaps DPP16 row enables for each 32-lane section. No SIMD arithmetic,
+format decoding or sparse-mask specialization was added. Validation and strict
+exact rejection precede operand reads, including for zero EXEC. Non-strict exact
+requests still fall back to loose semantics.
+
+The machine-readable XML omits these DPP variants, but LLVM
+`cba25ae10871` explicitly instantiates `VOP3P_Realtriple<GFX12Gen>` for all four
+mnemonics. LLVM 21.1.8 `llvm-mc -triple=amdgcn-amd-amdhsa -mcpu=gfx1201
+-show-encoding` accepts both forms. For example:
+
+```asm
+v_dot4_f32_fp8_fp8 v0, v1, v2, v3 row_shl:1 row_mask:0xf bank_mask:0xf
+// 00 40 26 cc fa 04 0e 1c 01 01 01 ff
+v_dot4_f32_fp8_bf8 v0, v1, v2, v3 dpp8:[7,6,5,4,3,2,1,0]
+// 00 40 24 cc e9 04 0e 1c 01 77 39 05
+```
+
+New routing tests cover four format pairs, every CPU level, DPP8 FI, all four
+DPP16 FI/BOUND combinations, restricted banks, all sixteen row-enable masks,
+full/partial EXEC, every C modifier and aliases with A/B/C. An independent
+integer-valued arithmetic oracle reads an immutable input snapshot and checks
+all registers and guards. Additional tests cover empty calls, invalid arithmetic
+flags, strict rejection and non-strict fallback. The generic high-flag test now
+recognizes these DPP-capable APIs at both widths.
+
+Rocjitsu's current generated DOT4 handlers decode *both* sources as E4M3 even
+for BF8 forms, omit C modifiers and use a generic reduction. GoC retains its
+existing mixed-format scalar/AVX2 implementation and exhaustive byte-pair tests;
+there is no borrowed general exact DOT4 model to enable. Optional exception
+output applicability still needs resolution: unlike FP8 conversions and WMMA,
+LLVM's DOT4 profile inherits the generic FP exception flag, and the reviewed
+manual instruction entries do not explicitly settle reporting. The four DOT4
+mnemonics therefore remain outside the completed contract-review ledger.
+
+Validation: all 1,155 tests pass on Clang 21 and GCC 15 Release. All 32 targeted
+FP8 conversion/narrowing/DOT4 and instruction-flag tests pass under ASan/UBSan.
+
+Ordinary-path performance: seven alternating before/after runs pinned to CPU 2,
+using at least 50 ms of thread CPU time per case, with no concurrent builds/tests.
+The 32 cases cover all four format pairs, both widths, scalar/AVX2 and default
+or ABS_C+NEG_C. Median change is +0.722%; range -5.152% to +5.364% (positive is
+slower). The largest slowdown is AVX2 Wave64 FP8/FP8, 71.326 to 75.152 ns/call;
+Wave32 AVX2 ranges from -3.155% to +0.811%. SIMD arithmetic is unchanged, but
+routing-capable dispatch has measurable overhead on these short Wave64 calls.
+The isolated driver's `size` text grows from 16,311 to 21,809 bytes, including
+newly linked DPP helpers; this is not a whole-library size measurement. Raw
+samples and drivers are in `goc-build/coverage-work/fp8-dot-dpp-performance/`.
