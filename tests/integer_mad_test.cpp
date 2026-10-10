@@ -201,3 +201,57 @@ TEST(IntegerMad, ValidationAndFloatingEnvironment) {
     }
   }
 }
+
+TEST(IntegerMad, SaturationBoundariesAfterWideCancellation) {
+  // Each row chooses factors and an addend giving exactly the indicated limit.
+  // The 24-bit signed products already exceed that limit before cancellation.
+  struct Case {
+    unsigned op;
+    uint32_t a, b, c, limit;
+    bool lower;
+  };
+
+  const Case cases[] = {
+      {0, 65535, 65535, 131070, UINT32_MAX, false},
+      {1, 0x8000, 0x8000, 0x3fffffff, 0x7fffffff, false},
+      {1, 0x8000, 0x7fff, 0xbfff8000, 0x80000000, true},
+      {2, 0xffffff, 256, 255, UINT32_MAX, false},
+      {3, 0x7fffff, 257, 0xff800100, 0x7fffffff, false},
+      {3, 0x800000, 257, 0x800000, 0x80000000, true},
+  };
+  for (const auto &test : cases)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (unsigned selectors = 0; selectors < (test.op < 2 ? 4U : 1U); ++selectors)
+          for (bool clamp : {false, true}) {
+            uint32_t a[64], b[64], c[64], initial_c[64], expected[64];
+            const uint64_t exec_mask = 0xfedcba9887654321ULL;
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              a[lane] = selectors & 1 ? (test.a << 16) | 0x1234 : test.a;
+              b[lane] = selectors & 2 ? (test.b << 16) | 0x5678 : test.b;
+              int offset = int(lane % 9) - 4;
+              initial_c[lane] = test.c + uint32_t(offset);
+              uint32_t result = test.limit + uint32_t(offset);
+              if (clamp && (test.lower ? offset < 0 : offset > 0))
+                result = test.limit;
+              expected[lane] = (exec_mask >> lane) & 1 ? result : initial_c[lane];
+            }
+            uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+            uint64_t mode = (clamp ? GOC_ALU_CLAMP : 0) | (selectors & 1 ? GOC_ALU_HIGH_A : 0) |
+                            (selectors & 2 ? GOC_ALU_HIGH_B : 0);
+            const uint32_t *pa = a, *pb = b, *pc = c;
+            uint32_t *d = c;
+            std::memcpy(c, initial_c, sizeof c);
+            ASSERT_EQ(goc_test::integer_mad_functions[test.op](flags, uint32_t(exec_mask), mode, &d,
+                                                               &pa, &pb, &pc),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 32; ++lane)
+              EXPECT_EQ(c[lane], expected[lane]) << test.op << '/' << lane;
+            std::memcpy(c, initial_c, sizeof c);
+            ASSERT_EQ(goc_test::integer_mad_wave64_functions[test.op](flags, exec_mask, mode, &d,
+                                                                      &pa, &pb, &pc),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 64; ++lane)
+              EXPECT_EQ(c[lane], expected[lane]) << test.op << '/' << lane;
+          }
+}

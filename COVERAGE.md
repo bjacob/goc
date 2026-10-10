@@ -5539,3 +5539,41 @@ Validation: all 1,125 CTests pass under Clang and GCC Release; all thirteen
 integer-selection/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool
 tests pass. Logs use `integer-minmax-review-` in each build directory. The ledger
 records 504 contracts; 305 in-scope mnemonics remain without recorded reviews.
+
+## Narrow-factor integer MAD architecture contracts
+
+Reviewed signed/unsigned MAD with 16/24-bit factors and a 32-bit addend/result
+at rocjitsu `ffc144c564c`. All eight RDNA3/RDNA4 execution/modifier body pairs
+are identical (16 bodies). Locations, hashes and delegates are recorded in
+`../goc-build/coverage-work/integer-mad-upstream-review.json`. Shared execution
+helpers, true16 selection and `vop3_integer_mad` agree with GoC: select/truncate
+factors before signed interpretation, retain the full-width addend, and saturate
+only after the wide product-plus-addend. No architecture suffix or floating
+exception output is needed.
+
+Both semantics produce the same exact integer result. CLAMP selects signed or
+unsigned 32-bit saturation; otherwise the sum wraps. The 16-bit forms allow
+HIGH_A/HIGH_B; the 24-bit forms discard the upper byte and reject those selectors.
+C has no half selector. DPP8/DPP16 route A before half selection, and Wave64
+remaps row masks for each half. Validation precedes operand access, including
+empty EXEC; whole-VGPR aliases and inactive destination lanes are preserved.
+
+The existing eight-lane v3 kernel remains selected on v3/v4 hosts. Wrapping
+uses low-word multiply/add. Saturating execution widens even and odd products,
+adds a sign- or zero-extended C, clamps the full sum, then interleaves low words.
+No production changes were required. This review does not claim a separate
+sixteen-lane v4 kernel.
+
+Added literal saturation-boundary tests for all four instructions, with addends
+within four units on each side of the limit. Signed 24-bit witnesses require
+cancellation of a product already outside the destination range, detecting
+premature product saturation. Signed 16-bit cases exercise both limits;
+unsigned cases cross UINT32_MAX. Tests use mixed lanes, all half selectors,
+CLAMP on/off, both semantics/wave sizes, all available CPU levels, and D aliasing
+C. Existing exhaustive 16-bit-factor, discarded-byte, DPP hardware-corpus,
+random, alias and Wave64-routing tests remain in place.
+
+Validation: all 1,126 CTests pass under Clang and GCC Release; all thirteen
+integer-MAD/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests pass.
+Logs use `integer-mad-review-` in each build directory. The ledger records
+508 contracts; 301 in-scope mnemonics remain without recorded reviews.

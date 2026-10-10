@@ -852,5 +852,16 @@
       "v_minmax_i32",
       "v_minmax_u32"
     ]
+  },
+  {
+    "heading": "Narrow-factor integer MAD architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/integer_mad_test.cpp",
+    "mnemonics": [
+      "v_mad_i32_i16",
+      "v_mad_i32_i24",
+      "v_mad_u32_u16",
+      "v_mad_u32_u24"
+    ]
   }
 ]

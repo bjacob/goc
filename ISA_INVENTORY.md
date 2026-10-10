@@ -1206,12 +1206,12 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_mad_co_i64_i32` | — | yes | in | `goc_v_mad_co_i64_i32`<br>`goc_v_mad_co_i64_i32_wave64` | `v_mad_i64_i32` | API present; semantic audit pending |
 | `v_mad_co_u64_u32` | — | yes | in | `goc_v_mad_co_u64_u32`<br>`goc_v_mad_co_u64_u32_wave64` | `v_mad_u64_u32` | API present; semantic audit pending |
 | `v_mad_i16` | yes | yes | in | `goc_v_mad_i16`<br>`goc_v_mad_i16_wave64` | — | API present; semantic audit pending |
-| `v_mad_i32_i16` | yes | yes | in | `goc_v_mad_i32_i16`<br>`goc_v_mad_i32_i16_wave64` | — | API present; semantic audit pending |
-| `v_mad_i32_i24` | yes | yes | in | `goc_v_mad_i32_i24`<br>`goc_v_mad_i32_i24_wave64` | — | API present; semantic audit pending |
+| `v_mad_i32_i16` | yes | yes | in | `goc_v_mad_i32_i16`<br>`goc_v_mad_i32_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#narrow-factor-integer-mad-architecture-contracts) |
+| `v_mad_i32_i24` | yes | yes | in | `goc_v_mad_i32_i24`<br>`goc_v_mad_i32_i24_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#narrow-factor-integer-mad-architecture-contracts) |
 | `v_mad_i64_i32` | yes | — | in | `goc_v_mad_i64_i32`<br>`goc_v_mad_i64_i32_wave64` | — | API present; semantic audit pending |
 | `v_mad_u16` | yes | yes | in | `goc_v_mad_u16`<br>`goc_v_mad_u16_wave64` | — | API present; semantic audit pending |
-| `v_mad_u32_u16` | yes | yes | in | `goc_v_mad_u32_u16`<br>`goc_v_mad_u32_u16_wave64` | — | API present; semantic audit pending |
-| `v_mad_u32_u24` | yes | yes | in | `goc_v_mad_u32_u24`<br>`goc_v_mad_u32_u24_wave64` | — | API present; semantic audit pending |
+| `v_mad_u32_u16` | yes | yes | in | `goc_v_mad_u32_u16`<br>`goc_v_mad_u32_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#narrow-factor-integer-mad-architecture-contracts) |
+| `v_mad_u32_u24` | yes | yes | in | `goc_v_mad_u32_u24`<br>`goc_v_mad_u32_u24_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#narrow-factor-integer-mad-architecture-contracts) |
 | `v_mad_u64_u32` | yes | — | in | `goc_v_mad_u64_u32`<br>`goc_v_mad_u64_u32_wave64` | — | API present; semantic audit pending |
 | `v_max3_f16` | yes | — | in | `goc_v_max3_f16`<br>`goc_v_max3_f16_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-ternary-minmax-architecture-contracts) |
 | `v_max3_f32` | yes | — | in | `goc_v_max3_f32`<br>`goc_v_max3_f32_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp32-ternary-minmax-architecture-contracts) |
