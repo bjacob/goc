@@ -1358,15 +1358,15 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_rsq_f16` | yes | yes | in | `goc_v_rsq_f16`<br>`goc_v_rsq_f16_wave64`<br>`goc_v_rsq_f16_rdna4`<br>`goc_v_rsq_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#reciprocal-and-square-root-architecture-contracts) |
 | `v_rsq_f32` | yes | yes | in | `goc_v_rsq_f32`<br>`goc_v_rsq_f32_wave64`<br>`goc_v_rsq_f32_rdna4`<br>`goc_v_rsq_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#reciprocal-and-square-root-architecture-contracts) |
 | `v_rsq_f64` | yes | yes | in | `goc_v_rsq_f64`<br>`goc_v_rsq_f64_wave64`<br>`goc_v_rsq_f64_rdna4`<br>`goc_v_rsq_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
-| `v_s_exp_f16` | — | yes | in | `goc_v_s_exp_f16` | — | API present; semantic audit pending |
+| `v_s_exp_f16` | — | yes | in | `goc_v_s_exp_f16` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-pseudo-scalar-exp-and-log-contract) |
 | `v_s_exp_f32` | — | yes | in | `goc_v_s_exp_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-pseudo-scalar-exact-port-and-architecture-contract) |
-| `v_s_log_f16` | — | yes | in | `goc_v_s_log_f16` | — | API present; semantic audit pending |
+| `v_s_log_f16` | — | yes | in | `goc_v_s_log_f16` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-pseudo-scalar-exp-and-log-contract) |
 | `v_s_log_f32` | — | yes | in | `goc_v_s_log_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-pseudo-scalar-exact-port-and-architecture-contract) |
-| `v_s_rcp_f16` | — | yes | in | `goc_v_s_rcp_f16` | — | API present; semantic audit pending |
+| `v_s_rcp_f16` | — | yes | in | `goc_v_s_rcp_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-pseudo-scalar-rcp-rsq-and-sqrt-exact-port) |
 | `v_s_rcp_f32` | — | yes | in | `goc_v_s_rcp_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-pseudo-scalar-exact-port-and-architecture-contract) |
-| `v_s_rsq_f16` | — | yes | in | `goc_v_s_rsq_f16` | — | API present; semantic audit pending |
+| `v_s_rsq_f16` | — | yes | in | `goc_v_s_rsq_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-pseudo-scalar-rcp-rsq-and-sqrt-exact-port) |
 | `v_s_rsq_f32` | — | yes | in | `goc_v_s_rsq_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-pseudo-scalar-exact-port-and-architecture-contract) |
-| `v_s_sqrt_f16` | — | yes | in | `goc_v_s_sqrt_f16` | — | API present; semantic audit pending |
+| `v_s_sqrt_f16` | — | yes | in | `goc_v_s_sqrt_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-pseudo-scalar-rcp-rsq-and-sqrt-exact-port) |
 | `v_s_sqrt_f32` | — | yes | in | `goc_v_s_sqrt_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-pseudo-scalar-exact-port-and-architecture-contract) |
 | `v_sad_hi_u8` | yes | yes | in | `goc_v_sad_hi_u8`<br>`goc_v_sad_hi_u8_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
 | `v_sad_u16` | yes | yes | in | `goc_v_sad_u16`<br>`goc_v_sad_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |

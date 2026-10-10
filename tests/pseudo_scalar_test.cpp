@@ -3,11 +3,13 @@
 #include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
+#include "half_unary_reference.h"
 #include "pseudo_scalar_hardware.h"
 #include "pseudo_scalar_reference.h"
 #include "unary_exact_hardware.h"
 
 #include <cfenv>
+#include <cmath>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <iomanip>
@@ -64,29 +66,32 @@ TEST(PseudoScalar, ScalarStorageMayAlias) {
 
 TEST(PseudoScalar, DenormalStagesZerosAndOverflow) {
   uint32_t d;
-  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    ASSERT_EQ(goc_v_s_sqrt_f16(cpu, 0, &d, 0xabcd0001, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(d, 0x0c00u);
-    ASSERT_EQ(goc_v_s_sqrt_f16(cpu | GOC_FP_FLUSH_INPUT_DENORMALS, 0, &d, 1, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(d, 0u);
-    ASSERT_EQ(goc_v_s_rcp_f16(cpu, 0, &d, 0x7bff, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(d, 0x0100u);
-    ASSERT_EQ(goc_v_s_rcp_f16(cpu | GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, &d, 0x7bff, nullptr),
-              GOC_SUCCESS);
-    EXPECT_EQ(d, 0u);
-    ASSERT_EQ(goc_v_s_rcp_f16(cpu, GOC_ALU_OMOD_HALF, &d, 0xf00f, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(d, 0x8000u);
-    ASSERT_EQ(goc_v_s_sqrt_f16(cpu, GOC_ALU_OMOD_HALF, &d, 0x8000, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(d, 0u);
-    ASSERT_EQ(goc_v_s_rcp_f16(cpu | GOC_FP16_OVFL, 0, &d, 0x8000, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(d, 0xfbffu);
-    ASSERT_EQ(goc_v_s_exp_f16(cpu | GOC_FP16_OVFL, 0, &d, 0x7c00, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(d, 0x7c00u);
-    ASSERT_EQ(goc_v_s_rcp_f32(cpu, 0, &d, 1, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(d, 0x7f800000u);
-    ASSERT_EQ(goc_v_s_rcp_f32(cpu, 0, &d, 0x7f7fffff, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(d, 0u);
-  }
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {uint64_t(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
+      const uint64_t flags = cpu | semantics;
+      ASSERT_EQ(goc_v_s_sqrt_f16(flags, 0, &d, 0xabcd0001, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(d, 0x0c00u);
+      ASSERT_EQ(goc_v_s_sqrt_f16(flags | GOC_FP_FLUSH_INPUT_DENORMALS, 0, &d, 1, nullptr),
+                GOC_SUCCESS);
+      EXPECT_EQ(d, 0u);
+      ASSERT_EQ(goc_v_s_rcp_f16(flags, 0, &d, 0x7bff, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(d, 0x0100u);
+      ASSERT_EQ(goc_v_s_rcp_f16(flags | GOC_FP_FLUSH_OUTPUT_DENORMALS, 0, &d, 0x7bff, nullptr),
+                GOC_SUCCESS);
+      EXPECT_EQ(d, 0u);
+      ASSERT_EQ(goc_v_s_rcp_f16(flags, GOC_ALU_OMOD_HALF, &d, 0xf00f, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(d, 0x8000u);
+      ASSERT_EQ(goc_v_s_sqrt_f16(flags, GOC_ALU_OMOD_HALF, &d, 0x8000, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(d, 0u);
+      ASSERT_EQ(goc_v_s_rcp_f16(flags | GOC_FP16_OVFL, 0, &d, 0x8000, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(d, 0xfbffu);
+      ASSERT_EQ(goc_v_s_exp_f16(cpu | GOC_FP16_OVFL, 0, &d, 0x7c00, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(d, 0x7c00u);
+      ASSERT_EQ(goc_v_s_rcp_f32(flags, 0, &d, 1, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(d, 0x7f800000u);
+      ASSERT_EQ(goc_v_s_rcp_f32(flags, 0, &d, 0x7f7fffff, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(d, 0u);
+    }
 }
 
 TEST(PseudoScalar, ValidationSemanticsAndHostRounding) {
@@ -102,7 +107,7 @@ TEST(PseudoScalar, ValidationSemanticsAndHostRounding) {
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(d, 0xdeadbeef);
       }
-    if (op & 1) {
+    if (op == 1 || op == 3) {
       EXPECT_EQ(goc_test::pseudo_scalar_functions[op](
                     GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, known, &d, 0, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
@@ -119,10 +124,10 @@ TEST(PseudoScalar, ValidationSemanticsAndHostRounding) {
   }
 }
 
-TEST(PseudoScalar, ExactFp32HardwareEveryModifierAndFpState) {
+TEST(PseudoScalar, ExactHardwareEveryModifierAndFpState) {
   const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
   for (unsigned state = 0; state < 8; ++state)
-    for (unsigned op = 0; op < 10; op += 2)
+    for (unsigned op : {0U, 2U, 4U, 5U, 6U, 7U, 8U, 9U})
       for (unsigned m = 0; m < 32; ++m) {
         const auto &gold =
             goc_test::pseudo_scalar_outputs[goc_test::pseudo_scalar_blocks[(state * 10 + op) * 32 +
@@ -131,7 +136,7 @@ TEST(PseudoScalar, ExactFp32HardwareEveryModifierAndFpState) {
           for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
             uint32_t words[] = {
                 0x12345678,
-                goc_test::pseudo_scalar_input(0, goc_test::pseudo_scalar_samples[sample]),
+                goc_test::pseudo_scalar_input(op & 1, goc_test::pseudo_scalar_samples[sample]),
                 0x87654321};
             ASSERT_EQ(goc_test::pseudo_scalar_functions[op](
                           exact | cpu | goc_test::pseudo_scalar_flags(state),
@@ -172,4 +177,37 @@ TEST(PseudoScalar, ExactFp32BorrowedDenseDomains) {
     }
     EXPECT_EQ(hash, goc_test::unary_normalized_hashes[op]) << op;
   }
+}
+
+TEST(PseudoScalar, ExactHalfEveryEncodingAndGuestPolicy) {
+  const goc_test::PseudoScalarFn functions[] = {goc_v_s_rcp_f16, goc_v_s_rsq_f16, goc_v_s_sqrt_f16};
+  const unsigned reference_ops[] = {5, 6, 4};
+  const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+  const unsigned cpu_count = unsigned(goc_init_cpu_flags() + 1);
+  for (unsigned op = 0; op < 3; ++op)
+    for (unsigned state = 0; state < 8; ++state)
+      for (unsigned raw = 0; raw < 65536; ++raw) {
+        uint64_t flags = exact | goc_test::pseudo_scalar_flags(state) | (raw % cpu_count);
+        uint32_t result;
+        ASSERT_EQ(functions[op](flags, 0, &result, 0xabcd0000U | raw, nullptr), GOC_SUCCESS);
+        ASSERT_EQ(result >> 16, 0U);
+        if ((raw & 0x7fff) > 0x7c00) {
+          ASSERT_EQ(result, raw | 0x200U);
+          continue;
+        }
+        uint16_t input = uint16_t(raw);
+        if ((flags & GOC_FP_FLUSH_INPUT_DENORMALS) && (input & 0x7fff) < 0x400)
+          input &= 0x8000;
+        uint16_t expected =
+            goc_test::half_unary_reference(reference_ops[op], input, 0, flags & GOC_FP16_OVFL);
+        if ((flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && (expected & 0x7fff) < 0x400)
+          expected &= 0x8000;
+        if ((expected & 0x7fff) > 0x7c00)
+          ASSERT_EQ(result, 0xfe00U);
+        else if ((expected & 0x7fff) && (expected & 0x7fff) < 0x7c00) {
+          ASSERT_EQ(result & 0x8000, expected & 0x8000);
+          ASSERT_LE(std::abs(int(result) - int(expected)), 1);
+        } else
+          ASSERT_EQ(result, expected) << op << "/" << state << "/" << raw;
+      }
 }

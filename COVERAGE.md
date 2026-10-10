@@ -7628,3 +7628,90 @@ now contains the five exact paths. Object sizes include model data and do not
 represent the linked-library increase after COMDAT deduplication. The added
 header centralizes existing scalar numerical behavior for two actual callers;
 validation, wave routing and stores stay visible in their implementation files.
+
+
+## FP16 pseudo-scalar RCP, RSQ and SQRT exact port
+
+Reviewed `v_s_rcp_f16`, `v_s_rsq_f16` and `v_s_sqrt_f16` against the
+RDNA3/RDNA4 XML inventories, RDNA4 ISA sections 7.10/16.12 and rocjitsu revision
+`ffc144c564c`'s RDNA4 VOP3 handlers, `transcendental::execute_pseudo_f16`,
+`map_f16` and the existing half output-modifier stages. All three are RDNA4-only
+VOP3 operations, optionally with literal source, on one raw SGPR value. They
+ignore EXEC, read the low input half and clear the upper destination half.
+No DPP or half selectors apply. Decoder register-number restrictions remain
+with the consuming emulator.
+
+The existing borrowed vector RCP/RSQ/SQRT scalar calculation moved into
+`half_unary_exact.h`, along with its exact rounding/FREXP cases, so vector and
+pseudo-scalar entry points use one copy of the numerical rules. The helper is
+always-inline to retain the vector lane loop's optimization opportunities.
+Vector half selection, DPP, architecture OMOD adjustment and masked stores
+remain in `half_unary.cpp`; pseudo-scalar execution calls the helper once and
+zero-extends its result. Loose algorithms and SIMD kernels are unchanged.
+
+- ABS precedes NEG. Half input flushing precedes widening into the borrowed
+  FP32 model, then nearest half narrowing and guest output flushing occur
+  before OMOD. FP16_OVFL saturates finite overflow, including reciprocal/RSQ
+  infinity from zero or flushed tiny input, while preserving input infinity.
+  SNaNs always quiet with payload/sign preserved. OMOD flushes existing tiny
+  values to positive zero; newly tiny negative results retain their sign,
+  preserving the previously implemented capture-backed half underflow rule.
+  CLAMP maps negative values and NaNs to zero and caps at one.
+- Guest directed rounding, IEEE and DX10-clamp-off remain unsupported.
+  Optional exact `excp_flag_user` output remains explicitly unsupported before
+  validation; loose calls leave it unchanged. The manual requires exception
+  capability, so the trailing pointer remains part of each API.
+- Exact raw-word checks now include these three operations in the retained
+  pseudo-scalar fixture: 48 inputs, all 32 modifiers, eight guest
+  denormal/overflow settings, all CPU tiers and aliased scalar storage with
+  adjacent guards. Literal underflow, zero, saturation and tiny-input tests run
+  in both semantics. An additional exhaustive 65,536-encoding test covers all
+  eight guest policies: raw NaN quieting, invalid-domain NaNs, signed zero,
+  infinities and zeroed upper half are exact; finite numerical sanity is checked
+  against an independent double reference within the ISA's one-half-ULP bound.
+  The latter is not claimed as empirical bit-exact proof; the retained captures
+  and borrowed model provide that evidence.
+
+## FP16 pseudo-scalar EXP and LOG contract
+
+Reviewed `v_s_exp_f16` and `v_s_log_f16` against the same ISA inventories and
+sections and rocjitsu's RDNA4 VOP3 handlers and
+`transcendental::log_exp_f16_nearest`. Their scalar storage, modifier, EXEC,
+exception-register and guest denormal/overflow contracts match the other half
+pseudo-scalar operations. Existing loose implementations and tests cover them.
+
+Upstream evaluates double `exp2`/`log2` and rounds directly to half, rather than
+using an empirical integer approximation. Its wrapper changes host FP controls;
+GoC does not copy that wrapper or claim an exact port. Strict exact arithmetic
+and exact non-null state reporting remain unsupported; non-strict exact with
+null state may fall back to loose. Existing loose hardware comparisons cover
+all modifier/policy combinations, saturation, special values and scalar storage
+aliases, with one-half-ULP finite tolerance and exact zeros/infinities.
+
+All ten pseudo-scalar mnemonic contracts are now reviewed. The ledger records
+709 contracts overall, with 100 remaining; this is not a completion percentage.
+
+
+Validation for the FP16 pseudo-scalar slice: Clang 21 and GCC 15 Release each
+pass all **1,168** tests. Clang ASan/UBSan passes all **23** selected
+pseudo-scalar, half-unary, half-DPP and half-EXP/LOG tests. All nine tooling
+tests pass. Logs use `coverage-work/pseudo-half-exact-{build,tests}.log` in each
+build directory.
+
+Final object text sizes: `half_unary.cpp.o` decreases from 108,774 to 108,422
+bytes; `pseudo_scalar.cpp.o` increases from 31,835 to 34,690 bytes for the three
+new exact paths. These are object sizes, including model data, not a measurement
+of linked text after deduplication. The new header shares an existing calculation
+between two current callers, keeping SGPR versus VGPR storage and architecture
+policies in their respective wrappers.
+
+
+Performance versus `beb4781`: 24 cases covering three operations, loose
+pseudo-scalar and exact vector paths, default versus NEG/OMOD, and both guest
+denormal policies; seven alternating paired repetitions pinned to CPU 2,
+at least 50 ms thread CPU time per sample. Median change is **0.43% slower**,
+range **3.18% faster to 7.46% slower**. Exact vector cases range from 3.18%
+faster to 0.89% slower. The worst loose case is scalar reciprocal with guest
+flushing, 7.37 to 7.91 ns/call: approximately 0.55 ns added for the new dispatch.
+This scalar cost is retained and reported; no SIMD kernel changed. Samples and
+summary are in `../goc-build/coverage-work/pseudo-half-exact-performance/`.

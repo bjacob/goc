@@ -651,9 +651,10 @@ including empty EXEC. FP16 reads the low input half and clears the destination's
 upper half. ABS/NEG, OMOD, CLAMP and FP16 overflow saturation are supported;
 source/destination half selectors are not part of these instructions.
 
-FP32 supports both loose and empirical-exact semantics, sharing rocjitsu's
-existing vector approximation models. FP16 currently supports loose semantics,
-borrowing stage ordering and narrowing machinery from rocjitsu.
+All FP32 operations and FP16 RCP/RSQ/SQRT support loose and empirical-exact semantics,
+sharing rocjitsu's existing vector approximation models. FP16 EXP/LOG currently
+support loose semantics, borrowing stage ordering and narrowing machinery from
+rocjitsu.
 FP32 always flushes input/output subnormals. FP16 obeys
 `GOC_FP_FLUSH_INPUT_DENORMALS` and `GOC_FP_FLUSH_OUTPUT_DENORMALS`, with both
 clear by default. Rounding to the result format happens before OMOD. Nonzero
@@ -661,8 +662,8 @@ OMOD flushes tiny values before and after scaling; a pre-existing zero becomes
 positive, while newly created negative underflow retains its sign. The latter
 behavior corrects rocjitsu's half finalization based on GFX1201 captures.
 Loose semantics require host nearest-even rounding and enabled denormals;
-rounding is preserved, but arithmetic exception flags may change. Exact FP32
-uses integer arithmetic. Strict empirical-exact FP16 and non-null exact global
+rounding is preserved, but arithmetic exception flags may change. Exact paths
+use integer arithmetic. Strict empirical-exact FP16 EXP/LOG and non-null exact global
 state reporting remain explicitly unsupported. Loose calls skip state reporting.
 
 The compiled API matches 10,485,760 distinct GPU outputs within one FP16 or two

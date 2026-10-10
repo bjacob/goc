@@ -1360,5 +1360,24 @@
       "v_s_rsq_f32",
       "v_s_sqrt_f32"
     ]
+  },
+  {
+    "heading": "FP16 pseudo-scalar RCP, RSQ and SQRT exact port",
+    "semantics": "loose and exact",
+    "tests": "tests/pseudo_scalar_test.cpp",
+    "mnemonics": [
+      "v_s_rcp_f16",
+      "v_s_rsq_f16",
+      "v_s_sqrt_f16"
+    ]
+  },
+  {
+    "heading": "FP16 pseudo-scalar EXP and LOG contract",
+    "semantics": "loose",
+    "tests": "tests/pseudo_scalar_test.cpp",
+    "mnemonics": [
+      "v_s_exp_f16",
+      "v_s_log_f16"
+    ]
   }
 ]
