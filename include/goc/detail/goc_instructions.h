@@ -2782,6 +2782,85 @@ int goc_v_maximum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       uint32_t *excp_flag_user);
 
+// RDNA3 floating min/max/median spellings. Share the corresponding *_num_*
+// loose implementations, operand widths, modifiers, alias rules and SIMD paths.
+// Number selection ignores a lone NaN and orders -0 below +0; exact IEEE-mode
+// signaling-NaN behavior is not implemented. Strict exact requests fail; non-null
+// exception reporting in non-loose semantics fails with UNSUPPORTED_GLOBAL_STATE.
+// Loose semantics leave excp_flag_user unchanged. Binary F64 and packed forms
+// reject DPP; the other forms route A with DPP8/DPP16.
+int goc_v_min_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                  uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                  uint32_t *excp_flag_user);
+
+int goc_v_max_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                  uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                  uint32_t *excp_flag_user);
+
+int goc_v_min_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                  uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                  uint32_t *excp_flag_user);
+
+int goc_v_max_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                  uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                  uint32_t *excp_flag_user);
+
+int goc_v_min_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                  uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                  uint32_t *excp_flag_user);
+
+int goc_v_max_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                  uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                  uint32_t *excp_flag_user);
+
+int goc_v_min3_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                   const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_max3_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                   const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_minmax_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                     const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_maxmin_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                     const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_med3_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                   const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_min3_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                   const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_max3_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                   const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_minmax_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                     const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_maxmin_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                     const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_med3_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                   const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_pk_min_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                     uint32_t *excp_flag_user);
+
+int goc_v_pk_max_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                     uint32_t *excp_flag_user);
+
 // Three-input FP32 min/max: one VGPR per operand; supports all A/B/C ABS/NEG,
 // OMOD and CLAMP, with loose semantics. First select between A/B, then between
 // that result and C; output modifiers apply only after both selections.

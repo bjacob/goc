@@ -132,6 +132,11 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
   supports_dpp |= std::strcmp(name, "goc_v_div_fixup_f16") == 0;
   supports_dpp |= std::strcmp(name, "goc_v_fma_dx9_zero_f32") == 0;
   supports_dpp |= std::strcmp(name, "goc_v_fmac_dx9_zero_f32") == 0;
+  for (auto mnemonic : {"goc_v_min_f16", "goc_v_max_f16", "goc_v_min_f32", "goc_v_max_f32",
+                        "goc_v_min3_f16", "goc_v_max3_f16", "goc_v_minmax_f16", "goc_v_maxmin_f16",
+                        "goc_v_med3_f16", "goc_v_min3_f32", "goc_v_max3_f32", "goc_v_minmax_f32",
+                        "goc_v_maxmin_f32", "goc_v_med3_f32"})
+    supports_dpp |= std::strcmp(name, mnemonic) == 0;
   bool dpp_scalar_output = std::strcmp(name, "goc_v_rcp_iflag_f32") == 0;
   for (auto mnemonic : {"v_add_co_u32", "v_sub_co_u32", "v_subrev_co_u32", "v_add_co_ci_u32",
                         "v_sub_co_ci_u32", "v_subrev_co_ci_u32"})

@@ -209,3 +209,23 @@ int goc_v_pk_maximum_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
     return GOC_ERROR_INVALID_FLAGS;
   return binary<goc::Binary::Maximum, true>(flags, exec_mask, mode, d, a, b);
 }
+
+int goc_v_min_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
+  return goc_v_min_num_f16(flags, exec_mask, mode, d, a, b, excp_flag_user);
+}
+
+int goc_v_max_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
+  return goc_v_max_num_f16(flags, exec_mask, mode, d, a, b, excp_flag_user);
+}
+
+int goc_v_pk_min_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                     const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
+  return goc_v_pk_min_num_f16(flags, exec_mask, mode, d, a, b, excp_flag_user);
+}
+
+int goc_v_pk_max_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                     const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
+  return goc_v_pk_max_num_f16(flags, exec_mask, mode, d, a, b, excp_flag_user);
+}

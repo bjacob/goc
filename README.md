@@ -2346,3 +2346,7 @@ environment. `s_getpc_b64` returns the supplied instruction address plus four
 bytes in a scalar pair. All three instructions ignore EXEC and are shared by
 RDNA3/RDNA4. MODE is guest state; these calls do not alter flags supplied to
 subsequent GoC arithmetic calls.
+
+RDNA3 floating min/max/median spellings share the corresponding RDNA4 `*_num_*`
+loose implementations and SIMD dispatch. IEEE-mode bit-exact NaN behavior and
+exception reporting for these operations remain unsupported.

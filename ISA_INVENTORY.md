@@ -20,8 +20,8 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 58
-- in, API present: 751
+- in, API absent: 40
+- in, API present: 769
 - out, API absent: 587
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
@@ -1209,17 +1209,17 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_mad_u32_u16` | yes | yes | in | `goc_v_mad_u32_u16` | — | API present; semantic audit pending |
 | `v_mad_u32_u24` | yes | yes | in | `goc_v_mad_u32_u24` | — | API present; semantic audit pending |
 | `v_mad_u64_u32` | yes | — | in | `goc_v_mad_u64_u32` | — | API present; semantic audit pending |
-| `v_max3_f16` | yes | — | in | — | — | missing API |
-| `v_max3_f32` | yes | — | in | — | — | missing API |
+| `v_max3_f16` | yes | — | in | `goc_v_max3_f16` | — | API present; semantic audit pending |
+| `v_max3_f32` | yes | — | in | `goc_v_max3_f32` | — | API present; semantic audit pending |
 | `v_max3_i16` | yes | yes | in | `goc_v_max3_i16` | — | API present; semantic audit pending |
 | `v_max3_i32` | yes | yes | in | `goc_v_max3_i32` | — | API present; semantic audit pending |
 | `v_max3_num_f16` | — | yes | in | `goc_v_max3_num_f16` | `v_max3_f16` | API present; semantic audit pending |
 | `v_max3_num_f32` | — | yes | in | `goc_v_max3_num_f32` | `v_max3_f32` | API present; semantic audit pending |
 | `v_max3_u16` | yes | yes | in | `goc_v_max3_u16` | — | API present; semantic audit pending |
 | `v_max3_u32` | yes | yes | in | `goc_v_max3_u32` | — | API present; semantic audit pending |
-| `v_max_f16` | yes | — | in | — | — | missing API |
-| `v_max_f32` | yes | — | in | — | — | missing API |
-| `v_max_f64` | yes | — | in | — | — | missing API |
+| `v_max_f16` | yes | — | in | `goc_v_max_f16` | — | API present; semantic audit pending |
+| `v_max_f32` | yes | — | in | `goc_v_max_f32` | — | API present; semantic audit pending |
+| `v_max_f64` | yes | — | in | `goc_v_max_f64` | — | API present; semantic audit pending |
 | `v_max_i16` | yes | yes | in | `goc_v_max_i16` | — | API present; semantic audit pending |
 | `v_max_i32` | yes | yes | in | `goc_v_max_i32` | — | API present; semantic audit pending |
 | `v_max_num_f16` | — | yes | in | `goc_v_max_num_f16` | `v_max_f16` | API present; semantic audit pending |
@@ -1234,33 +1234,33 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_maximum_f64` | — | yes | in | `goc_v_maximum_f64` | — | API present; semantic audit pending |
 | `v_maximumminimum_f16` | — | yes | in | `goc_v_maximumminimum_f16` | — | API present; semantic audit pending |
 | `v_maximumminimum_f32` | — | yes | in | `goc_v_maximumminimum_f32` | — | API present; semantic audit pending |
-| `v_maxmin_f16` | yes | — | in | — | — | missing API |
-| `v_maxmin_f32` | yes | — | in | — | — | missing API |
+| `v_maxmin_f16` | yes | — | in | `goc_v_maxmin_f16` | — | API present; semantic audit pending |
+| `v_maxmin_f32` | yes | — | in | `goc_v_maxmin_f32` | — | API present; semantic audit pending |
 | `v_maxmin_i32` | yes | yes | in | `goc_v_maxmin_i32` | — | API present; semantic audit pending |
 | `v_maxmin_num_f16` | — | yes | in | `goc_v_maxmin_num_f16` | `v_maxmin_f16` | API present; semantic audit pending |
 | `v_maxmin_num_f32` | — | yes | in | `goc_v_maxmin_num_f32` | `v_maxmin_f32` | API present; semantic audit pending |
 | `v_maxmin_u32` | yes | yes | in | `goc_v_maxmin_u32` | — | API present; semantic audit pending |
 | `v_mbcnt_hi_u32_b32` | yes | yes | in | `goc_v_mbcnt_hi_u32_b32`<br>`goc_v_mbcnt_hi_u32_b32_wave64` | — | API present; semantic audit pending |
 | `v_mbcnt_lo_u32_b32` | yes | yes | in | `goc_v_mbcnt_lo_u32_b32`<br>`goc_v_mbcnt_lo_u32_b32_wave64` | — | API present; semantic audit pending |
-| `v_med3_f16` | yes | — | in | — | — | missing API |
-| `v_med3_f32` | yes | — | in | — | — | missing API |
+| `v_med3_f16` | yes | — | in | `goc_v_med3_f16` | — | API present; semantic audit pending |
+| `v_med3_f32` | yes | — | in | `goc_v_med3_f32` | — | API present; semantic audit pending |
 | `v_med3_i16` | yes | yes | in | `goc_v_med3_i16` | — | API present; semantic audit pending |
 | `v_med3_i32` | yes | yes | in | `goc_v_med3_i32` | — | API present; semantic audit pending |
 | `v_med3_num_f16` | — | yes | in | `goc_v_med3_num_f16` | `v_med3_f16` | API present; semantic audit pending |
 | `v_med3_num_f32` | — | yes | in | `goc_v_med3_num_f32` | `v_med3_f32` | API present; semantic audit pending |
 | `v_med3_u16` | yes | yes | in | `goc_v_med3_u16` | — | API present; semantic audit pending |
 | `v_med3_u32` | yes | yes | in | `goc_v_med3_u32` | — | API present; semantic audit pending |
-| `v_min3_f16` | yes | — | in | — | — | missing API |
-| `v_min3_f32` | yes | — | in | — | — | missing API |
+| `v_min3_f16` | yes | — | in | `goc_v_min3_f16` | — | API present; semantic audit pending |
+| `v_min3_f32` | yes | — | in | `goc_v_min3_f32` | — | API present; semantic audit pending |
 | `v_min3_i16` | yes | yes | in | `goc_v_min3_i16` | — | API present; semantic audit pending |
 | `v_min3_i32` | yes | yes | in | `goc_v_min3_i32` | — | API present; semantic audit pending |
 | `v_min3_num_f16` | — | yes | in | `goc_v_min3_num_f16` | `v_min3_f16` | API present; semantic audit pending |
 | `v_min3_num_f32` | — | yes | in | `goc_v_min3_num_f32` | `v_min3_f32` | API present; semantic audit pending |
 | `v_min3_u16` | yes | yes | in | `goc_v_min3_u16` | — | API present; semantic audit pending |
 | `v_min3_u32` | yes | yes | in | `goc_v_min3_u32` | — | API present; semantic audit pending |
-| `v_min_f16` | yes | — | in | — | — | missing API |
-| `v_min_f32` | yes | — | in | — | — | missing API |
-| `v_min_f64` | yes | — | in | — | — | missing API |
+| `v_min_f16` | yes | — | in | `goc_v_min_f16` | — | API present; semantic audit pending |
+| `v_min_f32` | yes | — | in | `goc_v_min_f32` | — | API present; semantic audit pending |
+| `v_min_f64` | yes | — | in | `goc_v_min_f64` | — | API present; semantic audit pending |
 | `v_min_i16` | yes | yes | in | `goc_v_min_i16` | — | API present; semantic audit pending |
 | `v_min_i32` | yes | yes | in | `goc_v_min_i32` | — | API present; semantic audit pending |
 | `v_min_num_f16` | — | yes | in | `goc_v_min_num_f16` | `v_min_f16` | API present; semantic audit pending |
@@ -1275,8 +1275,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_minimum_f64` | — | yes | in | `goc_v_minimum_f64` | — | API present; semantic audit pending |
 | `v_minimummaximum_f16` | — | yes | in | `goc_v_minimummaximum_f16` | — | API present; semantic audit pending |
 | `v_minimummaximum_f32` | — | yes | in | `goc_v_minimummaximum_f32` | — | API present; semantic audit pending |
-| `v_minmax_f16` | yes | — | in | — | — | missing API |
-| `v_minmax_f32` | yes | — | in | — | — | missing API |
+| `v_minmax_f16` | yes | — | in | `goc_v_minmax_f16` | — | API present; semantic audit pending |
+| `v_minmax_f32` | yes | — | in | `goc_v_minmax_f32` | — | API present; semantic audit pending |
 | `v_minmax_i32` | yes | yes | in | `goc_v_minmax_i32` | — | API present; semantic audit pending |
 | `v_minmax_num_f16` | — | yes | in | `goc_v_minmax_num_f16` | `v_minmax_f16` | API present; semantic audit pending |
 | `v_minmax_num_f32` | — | yes | in | `goc_v_minmax_num_f32` | `v_minmax_f32` | API present; semantic audit pending |
@@ -1327,12 +1327,12 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_pk_lshrrev_b16` | yes | yes | in | `goc_v_pk_lshrrev_b16` | — | API present; semantic audit pending |
 | `v_pk_mad_i16` | yes | yes | in | `goc_v_pk_mad_i16` | — | API present; semantic audit pending |
 | `v_pk_mad_u16` | yes | yes | in | `goc_v_pk_mad_u16` | — | API present; semantic audit pending |
-| `v_pk_max_f16` | yes | — | in | — | — | missing API |
+| `v_pk_max_f16` | yes | — | in | `goc_v_pk_max_f16` | — | API present; semantic audit pending |
 | `v_pk_max_i16` | yes | yes | in | `goc_v_pk_max_i16` | — | API present; semantic audit pending |
 | `v_pk_max_num_f16` | — | yes | in | `goc_v_pk_max_num_f16` | `v_pk_max_f16` | API present; semantic audit pending |
 | `v_pk_max_u16` | yes | yes | in | `goc_v_pk_max_u16` | — | API present; semantic audit pending |
 | `v_pk_maximum_f16` | — | yes | in | `goc_v_pk_maximum_f16` | — | API present; semantic audit pending |
-| `v_pk_min_f16` | yes | — | in | — | — | missing API |
+| `v_pk_min_f16` | yes | — | in | `goc_v_pk_min_f16` | — | API present; semantic audit pending |
 | `v_pk_min_i16` | yes | yes | in | `goc_v_pk_min_i16` | — | API present; semantic audit pending |
 | `v_pk_min_num_f16` | — | yes | in | `goc_v_pk_min_num_f16` | `v_pk_min_f16` | API present; semantic audit pending |
 | `v_pk_min_u16` | yes | yes | in | `goc_v_pk_min_u16` | — | API present; semantic audit pending |

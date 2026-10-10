@@ -344,3 +344,30 @@ register transformations. Missing canonical API names: 58.
 Validation: all 716 tests pass with Clang/GCC; all four guest-state tests pass
 under ASan/UBSan. Public standalone-header and exhaustive instruction-flag checks
 include the new signatures. Existing numerical/SIMD implementations are unchanged.
+
+## RDNA3 floating min/max spellings
+
+Added the 18 RDNA3 binary, ternary and packed floating min/max/median names
+listed as aliases of the RDNA4 `*_num_*` names in the machine-readable ISA.
+Thin entry points forward to the existing implementations, including their
+CPU dispatch, modifiers, DPP support, masked stores and operand alias handling.
+No numerical algorithm or SIMD loop was duplicated or changed.
+
+These paths remain loose-only. The RDNA3 manual distinguishes IEEE-mode
+signaling-NaN propagation from default number selection; the new names do not
+claim to implement that exact behavior. Strict exact requests fail, and exact
+requests for exception reporting return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`.
+Loose calls leave the optional exception register untouched. No new RDNA3
+hardware observations are claimed. Wave64 and exact variants remain open.
+
+New tests exercise independently specified finite results, signed zeros,
+NaNs, infinities and subnormals, all available CPU dispatch levels, masks,
+binary destination aliasing, ternary operand order and modifiers, and unchanged
+outputs on exact/reporting errors. Existing numerical and instruction-flag
+suites continue to exercise the shared implementations. The inventory now has
+769 canonical in-scope names with APIs and 40 absent; names alone do not establish
+complete architectural coverage.
+
+Validation: all 720 tests pass with Clang and GCC; all four new tests pass under
+ASan/UBSan. Public standalone-header checks and exhaustive instruction-flag
+checks include the new entry points.

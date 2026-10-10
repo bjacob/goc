@@ -235,3 +235,13 @@ int goc_v_frexp_mant_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
     return GOC_ERROR_INVALID_FLAGS;
   return arithmetic<goc::Fp64::FrexpMant>(flags, exec_mask, mode, d, a, nullptr, nullptr);
 }
+
+int goc_v_min_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
+  return goc_v_min_num_f64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+}
+
+int goc_v_max_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
+  return goc_v_max_num_f64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+}

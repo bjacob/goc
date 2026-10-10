@@ -130,3 +130,33 @@ int goc_v_med3_num_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return minmax3<goc::Minmax3::MedianNum, false, false, false>(flags, exec_mask, mode, d, a, b, c);
 }
+
+int goc_v_min3_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+                   uint32_t *excp_flag_user) {
+  return goc_v_min3_num_f16(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_max3_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+                   uint32_t *excp_flag_user) {
+  return goc_v_max3_num_f16(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_minmax_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+                     uint32_t *excp_flag_user) {
+  return goc_v_minmax_num_f16(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_maxmin_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+                     uint32_t *excp_flag_user) {
+  return goc_v_maxmin_num_f16(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_med3_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+                   uint32_t *excp_flag_user) {
+  return goc_v_med3_num_f16(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
