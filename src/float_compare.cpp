@@ -8,6 +8,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 
+#include <cstring>
 #include <stdint.h>
 
 namespace {
@@ -104,6 +105,42 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *d, const ui
     ordered |= uint32_t(ord) << lane;
   }
   *d = goc::float_compare_result<Predicate>(less, equal, ordered) & exec_mask;
+  if (report)
+    *excp_flag_user |= exceptions;
+  return GOC_SUCCESS;
+}
+
+template <unsigned Bits, unsigned Predicate>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint64_t *d,
+               const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
+  uint32_t masks[2] = {}, exceptions = 0;
+  // Validate before source accesses or writes. Stage both halves so result or
+  // exception storage may overlap sources without changing the second half.
+  if (int error = run<Bits, Predicate>(flags, 0, mode, masks, nullptr, nullptr, nullptr))
+    return error;
+  const bool report =
+      excp_flag_user && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
+  if (exec_mask) {
+    for (unsigned half = 0; half < 2; ++half) {
+      uint64_t half_mode = mode;
+      if (mode & GOC_DPP16) {
+        uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+        half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+      }
+      constexpr unsigned words = Bits == 64 ? 2 : 1;
+      const uint32_t *source_a[words], *source_b[words];
+      for (unsigned word = 0; word < words; ++word) {
+        source_a[word] = a[word] + half * 32;
+        source_b[word] = b[word] + half * 32;
+      }
+      if (int error = run<Bits, Predicate>(flags, uint32_t(exec_mask >> (half * 32)), half_mode,
+                                           masks + half, source_a, source_b,
+                                           report ? &exceptions : nullptr))
+        return error;
+    }
+  }
+  uint64_t result = masks[0] | (uint64_t(masks[1]) << 32);
+  std::memcpy(d, &result, sizeof result);
   if (report)
     *excp_flag_user |= exceptions;
   return GOC_SUCCESS;
@@ -751,4 +788,676 @@ int goc_v_cmpx_nlt_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return run<64, 14>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_lt_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 1>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_eq_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 2>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_le_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 3>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_gt_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 4>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_lg_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 5>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_ge_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 6>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_o_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 7>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_u_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 8>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nge_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 9>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nlg_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 10>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_ngt_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 11>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nle_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 12>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_neq_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 13>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nlt_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 14>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_lt_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 1>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_eq_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 2>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_le_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 3>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_gt_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 4>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_lg_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 5>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_ge_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 6>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_o_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 7>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_u_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 8>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nge_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 9>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nlg_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 10>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_ngt_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 11>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nle_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 12>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_neq_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 13>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nlt_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<16, 14>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_lt_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 1>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_eq_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 2>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_le_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 3>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_gt_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 4>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_lg_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 5>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_ge_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 6>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_o_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 7>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_u_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 8>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nge_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 9>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nlg_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 10>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_ngt_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 11>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nle_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 12>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_neq_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 13>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nlt_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 14>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_lt_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 1>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_eq_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 2>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_le_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 3>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_gt_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 4>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_lg_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 5>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_ge_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 6>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_o_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 7>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_u_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 8>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nge_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 9>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nlg_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 10>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_ngt_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 11>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nle_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 12>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_neq_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 13>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nlt_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<32, 14>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_lt_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 1>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_eq_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 2>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_le_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 3>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_gt_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 4>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_lg_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 5>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_ge_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 6>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_o_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 7>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_u_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 8>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nge_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 9>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nlg_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 10>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_ngt_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 11>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nle_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 12>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_neq_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 13>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmp_nlt_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 14>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_lt_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 1>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_eq_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 2>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_le_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 3>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_gt_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 4>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_lg_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 5>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_ge_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 6>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_o_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 7>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_u_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 8>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nge_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 9>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nlg_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 10>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_ngt_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 11>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nle_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 12>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_neq_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 13>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+int goc_v_cmpx_nlt_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint64_t *d, const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<64, 14>(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
 }

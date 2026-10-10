@@ -2400,3 +2400,10 @@ The constant F/T CMP/CMPX predicates also have `_wave64` forms with 64-bit EXEC
 and result masks. They use the same validation, DPP filtering and optional-state
 contract as Wave32. Floating exact non-null exception reporting remains
 unsupported; null reporting permits exact constant result masks.
+
+
+Floating relational CMP/CMPX also provide `_wave64` forms for FP16, FP32 and FP64.
+Their result and EXEC parameters are 64-bit masks. They retain the Wave32
+numerical, modifier and optional exception semantics and reuse its scalar and
+x86-64-v3/v4 kernels. Exact exception reporting combines active lanes from both
+halves; loose SIMD execution leaves the optional exception register unchanged.

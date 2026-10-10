@@ -54,7 +54,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
 | Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
-| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented at both wave widths | RDNA3 floating constant exception reporting, Wave64 relational floating comparisons, and architecture-specific floating-policy audit |
+| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented at both wave widths | RDNA3 floating constant exception reporting, Wave64 CLASS comparisons and architecture-specific floating-policy audit |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
@@ -679,3 +679,26 @@ Canonical-name counts remain 806 present and three absent.
 Validation: all 747 tests pass with Clang 21 and GCC 15 Release. All twelve
 constant-comparison, exception-register and instruction-flag tests pass under
 ASan/UBSan. No existing arithmetic or SIMD kernel changed.
+
+
+## Wave64 floating relational comparisons
+
+Added all 84 relational FP16/FP32/FP64 CMP/CMPX Wave64 APIs. The existing
+32-lane numerical and x86-64-v3/v4 kernels remain unchanged. A Wave64 executor
+validates once before reading operands, remaps DPP row enables for each half,
+and stages both comparison masks and accumulated exceptions before writing
+outputs. Exact non-null reporting selects the existing integer classifier;
+loose reporting stays off the SIMD path's arithmetic and leaves state unchanged.
+
+Independent tests cover predicates, signed zeros/NaNs/denormals and other edge
+inputs, all sign/half selectors, flushing, every DPP row-enable mask, lane 63,
+and a result overlapping the upper source half. Exception tests place the
+existing RX 9070 captured operand pairs in lanes 0, 31, 32 and 63 and check masked
+accumulation, signaling comparisons, input flushing and loose opt-out behavior.
+These reuse the Wave32 numerical observations; no new Wave64 GPU capture or
+RDNA3 floating exception validation is claimed. CLASS predicates and the
+cross-architecture floating-policy audit remain open.
+
+Validation: all 750 tests pass with Clang 21 and GCC 15 Release builds. All nine
+Wave64 floating-comparison, exception-register and instruction-flag tests pass
+under ASan/UBSan. Canonical counts remain 806 present and three absent.
