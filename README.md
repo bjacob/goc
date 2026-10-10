@@ -9,6 +9,11 @@ RDNA4 implementation and RDNA3 WMMA support; `PLAN.md` describes the broader int
 Shared implementation and test filenames are architecture-neutral; hardware-specific
 arithmetic models and capture fixtures retain their architecture names.
 
+RDNA3 coverage is still being audited. In particular, ordinary floating-point
+OMOD and IEEE-mode policies differ from RDNA4 and are not yet separated in all
+APIs. See [the architecture review queue](ARCHITECTURE_AUDIT.md) and
+[coverage worklist](COVERAGE.md) before relying on a shared mnemonic.
+
 ## Build and test
 
 ```sh

@@ -14,6 +14,11 @@ both targets. Exact support follows empirical evidence; unsupported exact/global
 state requests must fail honestly under the documented contracts. Loose SIMD
 paths must retain their existing performance and may skip optional state outputs.
 
+The [cross-architecture review queue](ARCHITECTURE_AUDIT.md) now identifies a
+confirmed broad gap: ordinary RDNA3 OMOD/IEEE policies differ from the RDNA4
+policies currently used by many unsuffixed floating APIs. Those names must not
+be treated as verified shared semantics. Width completeness does not close this gap.
+
 ## Evidence and starting point
 
 - Start: `80470bd`, 682 instruction APIs, 674 tests passing with Clang and GCC.
@@ -55,7 +60,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
 | Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented at both wave widths | RDNA3 floating constant exception reporting and architecture-specific floating-policy audit |
-| Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
+| Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures; confirmed OMOD/IEEE architecture differences | Split differing APIs and implement RDNA3 guest-mode policies; see ARCHITECTURE_AUDIT.md |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
 | Interpolation | All six APIs at both wave widths; shared quad routing checked against both manuals; RDNA4 captures and independent arithmetic tests | Compare remaining RDNA3 numerical contracts and empirical behavior |
@@ -1804,3 +1809,34 @@ gaps are separate gates and are not closed by this milestone.
 
 Validation: all 935 tests pass with Clang 21 and GCC 15 Release. All fourteen
 FP16/BF16 SWMMAC and instruction-flag tests pass under ASan/UBSan.
+
+## Cross-architecture policy audit after width completion
+
+Added `tools/architecture_audit.py` and the generated `ARCHITECTURE_AUDIT.md`
+review queue. Every one of the 587 common in-scope canonical mnemonics is listed;
+89 have direct architecture/IEEE/OMOD/NaN policy references in rocjitsu's shared
+execution helpers. The report explicitly leaves transitive helpers, SIMD macros,
+architecture-specific overrides and all semantic proof open. The other 222
+architecture-exclusive canonical mnemonics remain covered by the ISA inventory.
+
+A concrete finite-result incompatibility is confirmed by both manuals and
+rocjitsu's `fp_mode::effective_omod`: RDNA3 ignores OMOD with output denormals
+enabled or IEEE mode set, while RDNA4 applies it. At `227ced2`, a GoC scalar
+probe of `goc_v_add_f32(0, 1, GOC_ALU_OMOD_2, ...)` on 1 and 2 returns success
+and `0x40c00000` (6). RDNA3 with output denormals enabled requires 3. This is
+a specification/model comparison, not native RDNA3 evidence. Existing RDNA4
+behavior must acquire the suffix as each affected family gains RDNA3 policy;
+adding a guest IEEE-mode flag is also required. Packed results and instructions
+that force flushing require individual review rather than bulk renaming.
+
+Revisited HWREG prose: RDNA4 explicitly includes the shifted SETREG mask,
+whereas RDNA3's printed pseudocode omits the shift. That discrepancy must not
+be mistaken for hardware semantics. Register IDs, privilege masks and side
+effects still require architecture-specific API/state contracts; the three
+missing HWREG APIs remain open.
+
+Validation: four Python extraction tests cover nested scopes, comments and
+strings, missing/truncated input, and architecture-exclusive inventory rows.
+The report regenerates deterministically from the recorded source fingerprint.
+The unchanged 935-test suites also pass on Clang 21 and GCC 15 Release;
+those passing tests do not cover or resolve the newly identified RDNA3 gap.
