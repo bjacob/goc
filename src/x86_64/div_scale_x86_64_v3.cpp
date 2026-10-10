@@ -75,13 +75,18 @@ template <bool Wide> struct Ops {
 };
 
 template <unsigned Width>
-__m256i scale_value(__m256i a, __m256i b, __m256i c, uint32_t mode, bool quiet_nan,
+__m256i scale_value(__m256i a, __m256i b, __m256i c, uint32_t mode, bool quiet_nan, uint64_t flags,
                     typename Ops<Width == 64>::Mask &post) {
   using F = goc::DivisionFormat<Width>;
   using O = Ops<Width == 64>;
   constexpr int threshold = Width == 32 ? 96 : 768, scale = Width == 32 ? 64 : 128;
   auto zero = O::set(0), one = O::set(1), inf = O::set(F::infinity), signbit = O::set(F::sign),
        magmask = O::set(F::sign - 1);
+  if (flags & GOC_FP_FLUSH_INPUT_DENORMALS) {
+    a = O::select(O::eq(_mm256_and_si256(a, inf), zero), _mm256_and_si256(a, signbit), a);
+    b = O::select(O::eq(_mm256_and_si256(b, inf), zero), _mm256_and_si256(b, signbit), b);
+    c = O::select(O::eq(_mm256_and_si256(c, inf), zero), _mm256_and_si256(c, signbit), c);
+  }
   auto mag = _mm256_and_si256(a, magmask), bm = _mm256_and_si256(b, magmask),
        cm = _mm256_and_si256(c, magmask);
   auto de = O::shr(_mm256_and_si256(b, inf), F::fraction),
@@ -146,6 +151,9 @@ __m256i scale_value(__m256i a, __m256i b, __m256i c, uint32_t mode, bool quiet_n
                      _mm256_or_si256(a, quiet), result);
   result = O::select(O::either(O::eq(bm, zero), O::eq(cm, zero)),
                      O::set(F::sign | F::infinity | F::quiet), result);
+  if (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)
+    result = O::select(O::eq(_mm256_and_si256(result, inf), zero),
+                       _mm256_and_si256(result, signbit), result);
   auto overflow = inf;
   unsigned omod = (mode >> 6) & 3;
   if (omod) {
@@ -196,13 +204,13 @@ namespace goc {
 template <unsigned Width>
 uint32_t div_scale_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
-                             const uint32_t *const *c, bool quiet_nan) {
+                             const uint32_t *const *c, bool quiet_nan, uint64_t flags) {
   constexpr unsigned lanes = Width == 64 ? 4 : 8;
   uint32_t staged[2][32], conditions = 0;
   for (unsigned lane = 0; lane < 32; lane += lanes) {
     typename Ops<Width == 64>::Mask post;
     auto result = scale_value<Width>(load<Width>(a, lane, mode, 0), load<Width>(b, lane, mode, 1),
-                                     load<Width>(c, lane, mode, 2), mode, quiet_nan, post);
+                                     load<Width>(c, lane, mode, 2), mode, quiet_nan, flags, post);
     if constexpr (Width == 64)
       conditions |= uint32_t(_mm256_movemask_pd(_mm256_castsi256_pd(post))) << lane;
     else
@@ -233,9 +241,9 @@ uint32_t div_scale_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const 
 
 template uint32_t div_scale_x86_64_v3<32>(uint32_t, uint32_t, uint32_t *const *,
                                           const uint32_t *const *, const uint32_t *const *,
-                                          const uint32_t *const *, bool);
+                                          const uint32_t *const *, bool, uint64_t);
 template uint32_t div_scale_x86_64_v3<64>(uint32_t, uint32_t, uint32_t *const *,
                                           const uint32_t *const *, const uint32_t *const *,
-                                          const uint32_t *const *, bool);
+                                          const uint32_t *const *, bool, uint64_t);
 
 } // namespace goc

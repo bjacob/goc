@@ -15,7 +15,8 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   const uint32_t known =
       GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_NEG_C | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  if (int error = goc::validate(flags, mode & ~known, true))
+  if (int error = goc::validate(flags, mode & ~known, true,
+                                GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   if (!exec_mask) {
     *condition = 0;
@@ -23,13 +24,13 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
   }
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    *condition = goc::div_scale_x86_64_v4<Width>(exec_mask, mode, d, a, b, c, !Rdna3);
+    *condition = goc::div_scale_x86_64_v4<Width>(exec_mask, mode, d, a, b, c, !Rdna3, flags);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    *condition = goc::div_scale_x86_64_v3<Width>(exec_mask, mode, d, a, b, c, !Rdna3);
+    *condition = goc::div_scale_x86_64_v3<Width>(exec_mask, mode, d, a, b, c, !Rdna3, flags);
     return GOC_SUCCESS;
   }
 #endif
@@ -43,7 +44,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d, u
       bv |= T(b[1][lane]) << 32;
       cv |= T(c[1][lane]) << 32;
     }
-    auto scaled = goc::division_scale<Width>(av, bv, cv, mode, !Rdna3);
+    auto scaled = goc::division_scale<Width>(av, bv, cv, mode, !Rdna3, flags);
     result[lane] = scaled.value;
     output_mask |= uint32_t(scaled.post_scale) << lane;
   }

@@ -19,11 +19,12 @@ template <unsigned Width> struct DivisionScaleResult {
 
 // Pre-scale A (equal to B or C after NEG modifiers), with B the denominator
 // and C the numerator. Returns the scaled value and post-scaling condition.
-// Uses nearest-even rounding with denormals enabled and preserves host FP state.
+// Uses nearest-even rounding with guest denormal controls and preserves host FP state.
 template <unsigned Width>
-inline DivisionScaleResult<Width>
-division_scale(typename DivisionFormat<Width>::Bits a, typename DivisionFormat<Width>::Bits b,
-               typename DivisionFormat<Width>::Bits c, uint32_t mode, bool quiet_nan) {
+inline DivisionScaleResult<Width> division_scale(typename DivisionFormat<Width>::Bits a,
+                                                 typename DivisionFormat<Width>::Bits b,
+                                                 typename DivisionFormat<Width>::Bits c,
+                                                 uint32_t mode, bool quiet_nan, uint64_t flags) {
   using F = DivisionFormat<Width>;
   using T = typename F::Bits;
   constexpr int threshold = Width == 32 ? 96 : 768, scale = Width == 32 ? 64 : 128;
@@ -33,6 +34,14 @@ division_scale(typename DivisionFormat<Width>::Bits a, typename DivisionFormat<W
     b ^= F::sign;
   if (mode & GOC_ALU_NEG_C)
     c ^= F::sign;
+  if (flags & GOC_FP_FLUSH_INPUT_DENORMALS) {
+    if ((a & F::infinity) == 0)
+      a &= F::sign;
+    if ((b & F::infinity) == 0)
+      b &= F::sign;
+    if ((c & F::infinity) == 0)
+      c &= F::sign;
+  }
   T bm = b & (F::sign - 1), cm = c & (F::sign - 1);
   int de = int((b & F::infinity) >> F::fraction), ne = int((c & F::infinity) >> F::fraction),
       delta = ne - de;
@@ -58,17 +67,19 @@ division_scale(typename DivisionFormat<Width>::Bits a, typename DivisionFormat<W
     value = a;
   else
     value = division_scale_bits<Width>(a, adjustment);
+  if ((flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && (value & F::infinity) == 0)
+    value &= F::sign;
   return {division_output<Width>(value, mode), post_scale};
 }
 
 template <unsigned Width>
 uint32_t div_scale_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
-                             const uint32_t *const *c, bool quiet_nan);
+                             const uint32_t *const *c, bool quiet_nan, uint64_t flags);
 
 template <unsigned Width>
 uint32_t div_scale_x86_64_v4(uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
-                             const uint32_t *const *c, bool quiet_nan);
+                             const uint32_t *const *c, bool quiet_nan, uint64_t flags);
 
 } // namespace goc

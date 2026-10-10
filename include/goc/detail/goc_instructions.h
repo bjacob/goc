@@ -2857,7 +2857,8 @@ int goc_v_div_fmas_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t
 // null. The condition is written after VGPR outputs. Errors leave both unchanged.
 // FP32 uses one VGPR per operand; FP64 uses low/high pairs, with D1 winning if
 // D0/D1 alias. Supports all whole-register aliases, loose and empirical exact
-// semantics, nearest-even rounding and denormals. Results preserve host FP state
+// semantics, nearest-even rounding and guest input/output denormal controls.
+// Results preserve host FP state
 // and do not depend on it. GOC_FP16_OVFL has no effect.
 // FP64 preserves source signaling NaNs on RDNA3; the _rdna4 variants quiet them.
 int goc_v_div_scale_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,

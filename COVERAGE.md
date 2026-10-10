@@ -6398,3 +6398,55 @@ performance result. Driver, parent objects and samples are under
 The same check for the shared FP32 path measured AVX2 at 33.035 -> 32.575 ns
 unmodified and 35.649 -> 34.661 ns with NEG/OMOD; AVX-512 measured
 17.800 -> 18.040 ns and 20.267 -> 20.478 ns (largest increase about 1.35%).
+
+## DIV_SCALE guest denormal controls
+
+All FP32/FP64 DIV_SCALE APIs, including both FP64 architectures and both wave
+sizes, now accept `GOC_FP_FLUSH_INPUT_DENORMALS` and
+`GOC_FP_FLUSH_OUTPUT_DENORMALS`. The implementation ports the ordering from
+rocjitsu `shared/division.h::div_scale`/`div_round`: flush each input while
+preserving its sign before exponent comparisons and numerator/denominator
+selection, then flush a rounded subnormal result before output modifiers.
+Flushing a tiny denominator or numerator to zero therefore produces the
+specified negative quiet NaN; it does not skip computing the post-scale bit.
+
+Scalar, AVX2 and AVX-512 all implement these controls directly. The SIMD kernels
+retain full-lane evaluation and masked stores for every setting; no scalar
+fallback or sparse-mask path is added. Default settings keep denormals enabled.
+The nearest-even rounding contract and architecture-specific FP64 NaN behavior
+remain unchanged. Guest rounding-mode support, IEEE/OMOD architecture policy and
+the complete instruction-contract review remain separate unfinished work; this
+resolves the denormal-control limitation noted in the preceding section.
+
+`DivScale.GuestDenormalPolicies` uses literal min-subnormal and min-normal
+scaling results, both numerator/denominator roles and both signs, all four guest
+settings, both semantics and wave widths, every CPU path, masks and aliases.
+The input-flush/NaN case is also exercised in upstream `DivisionTest`'s guest
+mode tests. Existing randomized modifier tests now compare scalar/SIMD results
+with all guest denormal settings under every host rounding mode. Existing RDNA4
+hardware-capture digests continue to test the unchanged default policy.
+
+Validation: all 1,140 tests pass with Clang 21 and GCC 15 Release, all 12
+DIV_SCALE tests pass with ASan/UBSan, and all nine audit-tool tests pass.
+Logs are `../goc-build/coverage-work/div-scale-denorm-*`.
+
+The SIMD denormal controls use uniform branches within the existing kernels;
+there are no additional architecture/mode template instantiations. Keeping the
+new internal flags argument after the operand pointers preserves their previous
+calling-convention positions. A limited default-mode comparison against parent
+`df2260b` used seven alternating samples pinned to CPU 2, each at least 50 ms
+thread CPU time, after the other builds/tests finished:
+
+| Type/path | Unmodified before → after (ns) | NEG/OMOD before → after (ns) |
+| --- | --- | --- |
+| FP32 AVX2 | 32.462 → 33.768 | 34.840 → 36.054 |
+| FP32 AVX-512 | 18.367 → 18.901 | 20.962 → 21.671 |
+| FP64 AVX2 | 76.156 → 75.322 | 81.923 → 81.103 |
+| FP64 AVX-512 | 42.776 → 44.101 | 48.730 → 50.204 |
+
+The measured change spans -1.10% to +4.02%; this is a limited check, not a
+whole-library result or a claim that the new controls have no overhead. The
+implementation retains shared kernels and avoids duplicating them just to remove
+that cost. Artifacts are under
+`../goc-build/coverage-work/div-scale-denorm-performance/`; the final samples
+are `timings-argument-order.json` (earlier samples include concurrent test load).
