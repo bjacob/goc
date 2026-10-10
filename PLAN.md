@@ -429,7 +429,7 @@ architectures reject non-null exact reporting; loose paths skip state updates.
 DX9 forms retain their numerical model and have no optional state output.
 
 Existing RDNA4 FP16/32 `SIN`/`COS` report invalid, input-denormal, underflow,
-and inexact flags with denormals preserved. FP32 unsuffixed RDNA3 APIs and FP32
+and inexact flags with denormals preserved. Unsuffixed RDNA3 APIs and
 RDNA4 guest-flushing modes reject non-null exact reporting; loose calls skip
 reporting. Their hardware corpora cover every FP16 encoding, FP32 exponent/mantissa patterns,
 and FP32 neighborhoods around underflow, quarter turns, zeros, and NaNs.

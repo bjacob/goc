@@ -304,5 +304,14 @@
       "v_sin_f32",
       "v_cos_f32"
     ]
+  },
+  {
+    "heading": "FP16 SIN/COS architecture policies",
+    "semantics": "loose and exact",
+    "tests": "tests/half_trig_architecture_test.cpp",
+    "mnemonics": [
+      "v_sin_f16",
+      "v_cos_f16"
+    ]
   }
 ]

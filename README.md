@@ -1359,12 +1359,19 @@ tolerance instead of bitwise output comparisons.
 FP16 `SIN` and `COS` share that model and the eight-lane SIMD evaluation,
 with `HIGH_A/D` selectors and all 128 modifier combinations. They round the
 trig result to FP16 before OMOD; active OMOD flushes tiny values before scaling
-and tiny rounded outputs afterward. The other destination half is preserved.
+and tiny rounded outputs afterward, mapping signed zero to +0. Unsuffixed APIs
+use RDNA3 `trapsts`; `_rdna4` variants use `excp_flag_user`. RDNA3 ignores OMOD
+when output denormals are preserved or IEEE mode is set, and quiets signaling
+NaNs only in IEEE mode. RDNA4 always quiets signaling NaNs and honors OMOD.
+Guest input flushing precedes evaluation; output flushing follows FP16 rounding
+and precedes OMOD. Loose guest-policy calls retain SIMD evaluation. RDNA3 exact
+reporting and RDNA4 exact reporting with guest flushing are unsupported.
+The other destination half is preserved.
 Exact semantics preserve all host FP state. Exhaustive tests cover every half
 encoding against digests generated directly from rocjitsu, and verify loose
 SIMD outputs within one half-precision ULP of the model. Further tests cover
-all modifiers, half selectors, aliases, masks, host FP settings, and literal
-OMOD underflow boundaries. `GOC_FP16_OVFL` is accepted but has no effect because
+all guest policies, modifiers, half selectors, aliases, masks, host FP settings,
+and literal NaN/IEEE and OMOD underflow boundaries. `GOC_FP16_OVFL` is accepted but has no effect because
 finite trig outputs and their permitted scaling cannot overflow FP16.
 
 Both widths support DPP8/DPP16 before source modifiers and half selection,
@@ -2444,7 +2451,7 @@ masks, aliases, and host FP controls. `CLAMP` suppresses all flags; output scali
 Loose SIMD paths retain their existing dispatch and skip reporting.
 
 Existing RDNA4 FP16/32 `SIN`/`COS` reporting is implemented with preserved
-denormals. The explicit FP32 RDNA3 variants and FP32 RDNA4 guest-flushing modes
+denormals. The explicit RDNA3 variants and RDNA4 guest-flushing modes
 reject non-null exact reporting. Tests cover exhaustive FP16 inputs, a broad
 FP32 corpus, and FP32 boundary neighborhoods (12,582,912 captured flag reads).
 Quarter turns are exact; other finite inputs report inexact. FP32 cosine treats

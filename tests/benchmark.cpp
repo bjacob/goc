@@ -1431,7 +1431,7 @@ bool benchmark_shift(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_half_trig(uint64_t cpu, int iterations, int min_ms) {
   using Unary = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
-  const Unary functions[] = {goc_v_sin_f16, goc_v_cos_f16};
+  const Unary functions[] = {goc_v_sin_f16_rdna4, goc_v_cos_f16_rdna4};
   const char *names[] = {"v_sin_f16", "v_cos_f16"};
   for (int op = 0; op < 2; ++op)
     for (uint32_t modifiers :

@@ -78,7 +78,8 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_div_fixup_f16_rdna4" || base_name == "goc_v_div_fixup_f16" ||
         base_name == "goc_v_sin_f32_rdna4" || base_name == "goc_v_sin_f32" ||
         base_name == "goc_v_cos_f32_rdna4" || base_name == "goc_v_cos_f32" ||
-        base_name == "goc_v_sin_f16" || base_name == "goc_v_cos_f16" ||
+        base_name == "goc_v_sin_f16_rdna4" || base_name == "goc_v_sin_f16" ||
+        base_name == "goc_v_cos_f16_rdna4" || base_name == "goc_v_cos_f16" ||
         base_name == "goc_v_trunc_f32" || base_name == "goc_v_ceil_f32" ||
         base_name == "goc_v_rndne_f32" || base_name == "goc_v_floor_f32" ||
         base_name == "goc_v_sqrt_f32" || base_name == "goc_v_rcp_f32" ||
@@ -350,8 +351,8 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : {"v_cndmask_b32", "v_cndmask_b16"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
-  for (auto mnemonic :
-       {"v_sin_f32", "v_sin_f32_rdna4", "v_cos_f32", "v_cos_f32_rdna4", "v_sin_f16", "v_cos_f16"})
+  for (auto mnemonic : {"v_sin_f32", "v_sin_f32_rdna4", "v_cos_f32", "v_cos_f32_rdna4", "v_sin_f16",
+                        "v_sin_f16_rdna4", "v_cos_f16", "v_cos_f16_rdna4"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : {"v_cubeid_f32", "v_cubesc_f32", "v_cubetc_f32", "v_cubema_f32"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;

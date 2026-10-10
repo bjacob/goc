@@ -4540,3 +4540,60 @@ state the architecture-specific reporting limits. The review ledger records
 152 contracts; native-state naming resolves 954 of 958 signatures, with zero
 mismatches and four unresolved FP16 SIN/COS signatures. Whole-project completion
 remains unproven.
+
+## FP16 SIN/COS architecture policies
+
+`v_sin_f16` and `v_cos_f16` now distinguish unsuffixed RDNA3 `trapsts` from
+`_rdna4` `excp_flag_user`, for both wave sizes. The integer numerical model and
+half-result rounding/output stage remain shared. Policies are ported from
+rocjitsu revision `ffc144c564c`, generated shared VOP3 handlers,
+`transcendental::map_f16`, `effective_f16_omod`, `apply_omod_f16` and
+`finalize_omod_f16`. RDNA3 quiets signaling NaNs only in IEEE mode and enables
+OMOD only when output denormals are flushed and IEEE is clear. RDNA4 always
+quiets signaling NaNs and honors OMOD. Guest input flushing precedes the model;
+guest output flushing follows half rounding and precedes output scaling.
+Active OMOD flushes tiny results and maps signed zero to +0. CLAMP retains
+DX10_CLAMP=1 behavior. FP16_OVFL is accepted but cannot affect the bounded results.
+
+Exact numerical semantics support all three guest FP flags. Non-null exact
+reporting is unsupported on RDNA3 and with guest input/output flushing on RDNA4,
+including zero EXEC and non-strict calls; existing preserved-denormal RDNA4
+reporting is unchanged. Loose calls skip reporting. No host-environment guards
+are copied or called. The existing eight-lane AVX2 kernel remains unchanged;
+guest policies are staged around it when needed, and default RDNA4 calls retain
+direct dispatch. Half selection, masks, DPP and alias staging remain shared.
+
+Four architecture tests cover every half encoding with every guest policy and
+OMOD, all 128 modifiers with DPP/half selectors/masks/aliases/guards in both wave
+sizes, literal NaN/IEEE and denormal witnesses, unsupported reporting, and host
+rounding/FTZ/DAZ controls. All CPU selectors are exercised. Loose tolerances
+apply only to written finite numerical halves; the other half, inactive lanes,
+guards and NaNs are compared bitwise. Existing RDNA4 fixtures retain their
+expected results and use the explicit architecture names.
+
+A separate C++20 harness invokes the actual upstream FP16 model and output
+helpers, without environment guards, over both architectures, all half encodings,
+eight guest policies, four OMOD settings, varied ABS/NEG/CLAMP/FP16_OVFL, both
+operations and every available CPU selector. All 33,554,432 lane comparisons
+match. The harness and log are `trig16-upstream.cpp` and `.log` in
+`../goc-build/coverage-work/`. Production code and committed tests remain C++17.
+
+Seven alternating before/after samples pinned to CPU 2, using thread CPU time
+and at least 100 ms per case, put existing RDNA4 loose SIMD calls between
+-0.51% and +1.04% of baseline. Scalar calls are 3.21–5.24% slower with guest-policy
+handling. The scalar loop remains shared rather than duplicating it for default
+flags. The AVX2 object is byte-identical. Raw data and harness are
+`trig16-performance.json` and `trig16-timing.cpp` in the coverage work folder.
+Modified benchmark cases pass a non-null state pointer, checking the loose opt-out.
+
+Validation: all 1,101 CTests pass with Clang 21 Release and GCC 15 Release;
+27 targeted ASan/UBSan tests pass, covering the new architecture suite, existing
+half-trig numerical and exception fixtures, instruction flags and native-state
+contracts. All nine audit-tool tests pass. Scanning all 192 objects in each
+compiler's rebuilt library finds no explicit FP-control writes or environment
+setter references (`trig16-fp-environment-audit.json`). The reporting-test
+exclusion now names only explicit RDNA4 FP16/FP32 variants, leaving RDNA3 APIs
+covered by the unsupported-reporting tests. The review ledger records 154
+contracts; native-state naming resolves all 962 signatures with zero mismatches
+or unresolved names. This closes that naming queue, not the broader semantic
+review: 655 in-scope mnemonics still lack a recorded contract review.

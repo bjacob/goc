@@ -22,8 +22,8 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_sin_f16);
-const Fn functions[] = {goc_v_sin_f16, goc_v_cos_f16};
+using Fn = decltype(&goc_v_sin_f16_rdna4);
+const Fn functions[] = {goc_v_sin_f16_rdna4, goc_v_cos_f16_rdna4};
 const Fn wide_functions[] = {goc_v_sin_f32_rdna4, goc_v_cos_f32_rdna4};
 
 uint32_t modifiers(int mode) {
@@ -195,8 +195,8 @@ TEST(HalfTrig, OutputScalingFlushBoundaries) {
           uint32_t mode = uint32_t(scale) << 6;
           if (negative)
             mode |= GOC_ALU_NEG_A;
-          ASSERT_EQ(goc_v_sin_f16(cpu | (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL : 0), UINT32_MAX,
-                                  mode, dp, ap, nullptr),
+          ASSERT_EQ(goc_v_sin_f16_rdna4(cpu | (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL : 0),
+                                        UINT32_MAX, mode, dp, ap, nullptr),
                     GOC_SUCCESS);
           for (int lane = 0; lane < 32; ++lane) {
             uint32_t expected = cases[lane % 4][scale + 1];
@@ -385,8 +385,8 @@ TEST(HalfTrig, DppHardwareCorpus) {
 }
 
 TEST(HalfTrig, Wave64EveryEncodingMatchesRocjitsuDigestAndLoosePaths) {
-  const decltype(&goc_v_sin_f16_wave64) wave64_functions[] = {goc_v_sin_f16_wave64,
-                                                              goc_v_cos_f16_wave64};
+  const decltype(&goc_v_sin_f16_rdna4_wave64) wave64_functions[] = {goc_v_sin_f16_rdna4_wave64,
+                                                                    goc_v_cos_f16_rdna4_wave64};
   // FNV-1a over uint16_t results in ascending input-encoding order. Generated
   // directly from rocjitsu util/amdgpu_trig.h with compiler _Float16 conversion,
   // independently of GoC's C++17 adaptation and half conversion implementation.

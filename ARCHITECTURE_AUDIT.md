@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-152 in-scope mnemonics have explicit contract-review records in
+154 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 657 in-scope mnemonics need a recorded review.
+The remaining 655 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -395,7 +395,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cmpx_u_f64` | no direct policy detected | yes | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cndmask_b16` | no direct policy detected | no | not found | review required |
 | `v_cndmask_b32` | SIMD macro, output helper | no | 8153, 8169 | review required |
-| `v_cos_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | no | 8187, 8206 | review required |
+| `v_cos_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 8187, 8206 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-sincos-architecture-policies) |
 | `v_cos_f32` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 8245, 8260 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-sincos-architecture-policies) |
 | `v_ctz_i32_b32` | SIMD macro, output helper | no | 8293, 8312 | review required |
 | `v_cubeid_f32` | IEEE mode, SIMD macro, architecture query, output helper | no | 8331 | review required |
@@ -616,7 +616,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_sad_u32` | SIMD macro, output helper | no | 18910 | review required |
 | `v_sad_u8` | SIMD macro, output helper | no | 18930 | review required |
 | `v_sat_pk_u8_i16` | output helper | no | 18947, 18963 | review required |
-| `v_sin_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | no | 18979, 18998 | review required |
+| `v_sin_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 18979, 18998 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-sincos-architecture-policies) |
 | `v_sin_f32` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 19037, 19051 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-sincos-architecture-policies) |
 | `v_sqrt_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 19083, 19117 | review required |
 | `v_sqrt_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 19163, 19185 | review required |
