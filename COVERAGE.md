@@ -1630,3 +1630,23 @@ width queue is 11 APIs, all dot products.
 Validation: all 895 tests pass on Clang 21 and GCC 15 Release. All eleven
 Wave64 interpolation and instruction-flag tests pass under ASan/UBSan,
 including captured digests, RTZ rounding and inactive-source reads.
+
+
+## Wave64 true16 DOT2 and FP8/BF8 DOT4
+
+Added both FP16/BF16-result DOT2 APIs and all four FP8/BF8 DOT4 combinations
+at Wave64. Family-local wrappers reuse existing scalar/AVX2 numerical kernels.
+True16 DOT2 retains C/D half selectors, destination-half preservation and four
+independent DPP rows; DOT4 retains its C modifiers and rejects DPP. Both families
+remain loose-only, and true16 exact exception reporting remains unsupported.
+
+Independent references check all 65,536 byte pairs for each DOT4 format and
+modifier, every true16 accumulator encoding, literal rounding/denormal/overflow
+boundaries, mixed packed elements, all modifiers/selectors, upper-only/sparse
+EXEC, destination aliases and guards. DPP tests cover every row-enable pattern
+and true16 modifier combination. Validation preserves rejected outputs. No new
+exactness, native Wave64 capture or throughput is claimed. The vector width
+queue is five FP32-result DOT2 APIs, including architectural variants.
+
+Validation: all 904 tests pass on Clang 21 and GCC 15 Release. All ten
+Wave64 narrow-dot and instruction-flag tests pass under ASan/UBSan.

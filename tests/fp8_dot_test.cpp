@@ -43,6 +43,10 @@ void compare(uint32_t word, double expected) {
   }
 }
 
+const decltype(&goc_v_dot4_f32_fp8_fp8_wave64) wave64_functions[] = {
+    goc_v_dot4_f32_fp8_fp8_wave64, goc_v_dot4_f32_fp8_bf8_wave64, goc_v_dot4_f32_bf8_fp8_wave64,
+    goc_v_dot4_f32_bf8_bf8_wave64};
+
 } // namespace
 
 TEST(Fp8Dot, ExhaustiveBytePairsAllFormatsAndModifiers) {
@@ -144,6 +148,112 @@ TEST(Fp8Dot, ValidationAndLooseFallback) {
     for (auto word : d)
       EXPECT_EQ(word, 0xdeadbeef);
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, &pd, &pa, &pa, &pa), GOC_SUCCESS);
+    for (auto word : d)
+      EXPECT_EQ(word, 0u);
+  }
+}
+
+TEST(Fp8Dot, Wave64ExhaustiveBytePairsAllFormatsAndModifiers) {
+  for (int op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint32_t modifiers : {0U, GOC_DOT_NEG_C, GOC_DOT_ABS_C, GOC_DOT_ABS_C | GOC_DOT_NEG_C})
+        for (unsigned base = 0; base < 65536; base += 64) {
+          SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << modifiers << "/" << base);
+          uint32_t a[64], b[64], c[64], d[64];
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            a[lane] = ((base + lane) / 256) * 0x01010101u;
+            b[lane] = ((base + lane) % 256) * 0x01010101u;
+            c[lane] = goc::as_bits(-1.25f);
+          }
+          auto pa = a, pb = b, pc = c, pd = d;
+          ASSERT_EQ(wave64_functions[op](cpu, UINT64_MAX, modifiers, &pd, &pa, &pb, &pc),
+                    GOC_SUCCESS);
+          double acc = modifiers & GOC_DOT_ABS_C ? 1.25 : -1.25;
+          if (modifiers & GOC_DOT_NEG_C)
+            acc = -acc;
+          for (unsigned lane = 0; lane < 64; ++lane)
+            compare(d[lane], 4 * decode(uint8_t((base + lane) / 256), op >= 2) *
+                                     decode(uint8_t((base + lane) % 256), op & 1) +
+                                 acc);
+        }
+}
+
+TEST(Fp8Dot, Wave64MixedBytesMasksAndAliases) {
+  std::mt19937 rng(54321);
+  uint32_t inputs[3][64];
+  for (auto &reg : inputs)
+    for (auto &word : reg)
+      word = rng();
+  // Every finite integer factor in [-2,2] is exactly encoded in both formats.
+  const uint8_t fp8[] = {0xc0, 0xb8, 0, 0x38, 0x40};
+  const uint8_t bf8[] = {0xc0, 0xbc, 0, 0x3c, 0x40};
+  for (int op = 0; op < 4; ++op) {
+    int factors[2][64][4];
+    for (int lane = 0; lane < 64; ++lane) {
+      for (int operand = 0; operand < 2; ++operand) {
+        inputs[operand][lane] = 0;
+        const auto *codes = (operand ? op & 1 : op >= 2) ? bf8 : fp8;
+        for (int byte = 0; byte < 4; ++byte) {
+          int index = rng() % 5;
+          factors[operand][lane][byte] = index - 2;
+          inputs[operand][lane] |= uint32_t(codes[index]) << (8 * byte);
+        }
+      }
+      inputs[2][lane] = goc::as_bits(float(lane - 16));
+    }
+    for (uint32_t mode : {0U, GOC_DOT_NEG_C, GOC_DOT_ABS_C, GOC_DOT_NEG_C | GOC_DOT_ABS_C})
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (uint64_t exec_mask : {uint64_t(UINT64_MAX), uint64_t(0xffffffff00000000ULL),
+                                   uint64_t(0x87654321fedcba98ULL)})
+          for (int alias = 0; alias < 4; ++alias) {
+            uint32_t storage[4][66], before[64];
+            uint32_t *v[4];
+            for (int reg = 0; reg < 4; ++reg) {
+              std::fill(storage[reg], storage[reg] + 66, 0xdeadbeef);
+              v[reg] = storage[reg] + 1;
+              if (reg < 3)
+                std::copy(inputs[reg], inputs[reg] + 64, v[reg]);
+            }
+            std::copy(v[alias], v[alias] + 64, before);
+            ASSERT_EQ(wave64_functions[op](cpu, exec_mask, mode, &v[alias], &v[0], &v[1], &v[2]),
+                      GOC_SUCCESS);
+            for (int lane = 0; lane < 64; ++lane) {
+              int expected = lane - 16;
+              if (mode & GOC_DOT_ABS_C)
+                expected = std::abs(expected);
+              if (mode & GOC_DOT_NEG_C)
+                expected = -expected;
+              for (int byte = 0; byte < 4; ++byte)
+                expected += factors[0][lane][byte] * factors[1][lane][byte];
+              if ((exec_mask >> lane) & 1) {
+                EXPECT_FLOAT_EQ(goc::as_float(v[alias][lane]), float(expected));
+              } else {
+                EXPECT_EQ(v[alias][lane], before[lane]);
+              }
+            }
+            for (const auto &reg : storage) {
+              EXPECT_EQ(reg[0], 0xdeadbeef);
+              EXPECT_EQ(reg[65], 0xdeadbeef);
+            }
+          }
+  }
+}
+
+TEST(Fp8Dot, Wave64ValidationAndLooseFallback) {
+  for (auto fn : wave64_functions) {
+    uint32_t a[64] = {}, d[64];
+    std::fill(d, d + 64, 0xdeadbeef);
+    auto pa = a, pd = d;
+    for (uint64_t exec_mask : {uint64_t(0), uint64_t(UINT64_MAX)}) {
+      for (uint32_t invalid : {GOC_DOT_NEG_LO_A, GOC_DOT_CLAMP, GOC_DOT_LO_A_HIGH, 1U << 31})
+        EXPECT_EQ(fn(0, exec_mask, invalid, &pd, &pa, &pa, &pa), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &pd, &pa,
+                   &pa, &pa),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    }
+    for (auto word : d)
+      EXPECT_EQ(word, 0xdeadbeef);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, &pd, &pa, &pa, &pa), GOC_SUCCESS);
     for (auto word : d)
       EXPECT_EQ(word, 0u);
   }

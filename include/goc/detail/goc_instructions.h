@@ -4377,6 +4377,16 @@ int goc_v_dot2_bf16_bf16(uint64_t flags, uint32_t exec_mask, uint64_t instructio
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c, uint32_t *excp_flag_user);
 
+// Wave64 retains the same packed inputs, modifiers and loose numerical contract.
+int goc_v_dot2_f16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint32_t *excp_flag_user);
+int goc_v_dot2_bf16_bf16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c,
+                                uint32_t *excp_flag_user);
+
 // Unary FP32: one VGPR each for A/D. Supports NEG_A, ABS_A, OMOD and CLAMP;
 // modifiers for absent operands are invalid. CLAMP maps NaNs to +0 and clamps
 // to [0, 1]. EXP and LOG use base 2; RSQ computes reciprocal square root.
@@ -4478,6 +4488,20 @@ int goc_v_dot4_f32_bf8_fp8(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 int goc_v_dot4_f32_bf8_bf8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c);
+
+// Wave64 retains the same packed inputs, modifiers and loose numerical contract.
+int goc_v_dot4_f32_fp8_fp8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_dot4_f32_fp8_bf8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_dot4_f32_bf8_fp8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_dot4_f32_bf8_bf8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c);
 
 // Integer DOT modifiers: SIGNED selects signed factors for I32_IU forms.
 // U32_U forms accept only CLAMP. CLAMP saturates the final accumulator to its

@@ -325,7 +325,7 @@ and aliases, and check every input byte encoding through each operand.
 Benchmark rows for all four `v_wmma_f32_16x16x16_*` mnemonics
 compare scalar and SIMD with default flags and ABS_C/NEG_C.
 
-FP8/BF8 DOT4 supports all four E4M3FN/E5M2 input combinations with FP32
+FP8/BF8 DOT4 supports Wave32 and Wave64 for all four E4M3FN/E5M2 input combinations with FP32
 accumulation and `GOC_DOT_ABS_C` / `GOC_DOT_NEG_C`, applied in that order.
 Both scalar and v3 paths handle all encodings, including subnormals and special
 values; no input-dependent fallback is needed. Tests exhaust all 65,536 input
@@ -365,7 +365,8 @@ all 256 modifier/half-selector combinations with 84 masks and aliases, literal
 rounding/overflow cases, and random scalar/SIMD comparisons. Benchmark rows
 use the full mnemonics to distinguish these 16-bit-output instructions.
 
-Both true16 DOT2 forms support DPP8/DPP16: the complete packed A word is
+Both true16 DOT2 forms support Wave32 and Wave64 with shared scalar/AVX2
+kernels and loose semantics. They support DPP8/DPP16: the complete packed A word is
 permuted before ABS/NEG, while B and C stay in their original lanes. C/D half
 selection and the untouched destination half remain supported on the v3 path.
 Tests exercise every modifier combination, cross representative combinations
