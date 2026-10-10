@@ -616,10 +616,10 @@ int integer_binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *
 
 bool benchmark_half_binary(uint64_t cpu, int iterations, int min_ms) {
   const Ternary functions[] = {
-      integer_binary<goc_v_add_f16>,     integer_binary<goc_v_sub_f16>,
-      integer_binary<goc_v_subrev_f16>,  integer_binary<goc_v_mul_f16>,
-      integer_binary<goc_v_min_num_f16>, integer_binary<goc_v_max_num_f16>,
-      integer_binary<goc_v_minimum_f16>, integer_binary<goc_v_maximum_f16>};
+      integer_binary<goc_v_add_f16_rdna4>,    integer_binary<goc_v_sub_f16_rdna4>,
+      integer_binary<goc_v_subrev_f16_rdna4>, integer_binary<goc_v_mul_f16_rdna4>,
+      integer_binary<goc_v_min_num_f16>,      integer_binary<goc_v_max_num_f16>,
+      integer_binary<goc_v_minimum_f16>,      integer_binary<goc_v_maximum_f16>};
   const char *names[] = {"v_add_f16",     "v_sub_f16",     "v_subrev_f16",  "v_mul_f16",
                          "v_min_num_f16", "v_max_num_f16", "v_minimum_f16", "v_maximum_f16"};
   const uint32_t modified = GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D | GOC_ALU_ABS_A |

@@ -2024,6 +2024,12 @@ RDNA3 ignores OMOD unless `GOC_FP_FLUSH_OUTPUT_DENORMALS` is set and
 path with these flags, DPP, and masked stores. Arithmetic remains loose-only;
 IEEE-mode support here does not promise exact signaling-NaN behavior.
 
+Ordinary FP16 `v_add_f16`, `v_sub_f16`, `v_subrev_f16`, and `v_mul_f16` also
+use unsuffixed RDNA3 and `_rdna4` APIs, with the same OMOD gating and guest
+IEEE/denormal controls. Both widths retain AVX2, half selectors, DPP, and FP16
+overflow saturation. Packed FP16 and FP16 min/max have separate flag contracts;
+these ordinary arithmetic changes do not imply support there.
+
 FP32 `v_mul_dx9_zero_f32` likewise has RDNA3 and `_rdna4` variants in both wave
 sizes. RDNA3 `v_min_f32`/`v_max_f32` use guest IEEE mode for signaling-NaN
 selection and obey RDNA3 OMOD gating; RDNA4 `v_min_num_f32`/`v_max_num_f32`

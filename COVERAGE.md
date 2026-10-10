@@ -1879,3 +1879,23 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
 - Validation: all 939 tests pass under Clang 21 and GCC 15 Release, and all 16
   Binary/MinmaxSpellings/InstructionFlags tests pass under ASan/UBSan. Four audit
   tool tests pass. Logs: `../goc-build/coverage-work/binary-selection-*-tests.log`.
+
+## Ordinary FP16 binary architecture policies
+
+- ADD/SUB/SUBREV/MUL now have unsuffixed RDNA3 and `_rdna4` entry points in
+  Wave32 and Wave64. RDNA3 disables OMOD with preserved output denormals or IEEE;
+  RDNA4 applies OMOD regardless, matching the manuals and rocjitsu's
+  `fp_mode::effective_f16_omod` policy.
+- Both variants accept guest input/output denormal controls. Scalar and AVX2
+  kernels flush selected input halves before arithmetic and encoded subnormal
+  results after narrowing, retaining signed zero and the unselected destination
+  half. Existing FP16 overflow saturation and DPP remain supported.
+- Existing RDNA4 tests and benchmarks now call suffixed APIs. The new policy
+  matrix spans both architectures/widths, all guest flag combinations, selectors,
+  scaling factors, overflow saturation, DPP, masks and destination/source aliases.
+- Packed FP16 and FP16 min/max retain their previous flags/contracts pending their
+  own architecture audit; packed arithmetic does not inherit ordinary OMOD rules.
+  These changes do not add exact arithmetic or faithful exception reporting.
+- Validation: all 941 tests pass with Clang 21 and GCC 15 Release; all 11
+  HalfBinary/InstructionFlags tests pass with ASan/UBSan. Four audit-tool tests
+  pass. Logs: `../goc-build/coverage-work/half-policy-*-tests.log`.

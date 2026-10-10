@@ -100,7 +100,7 @@ Source SHA-256 (`execute_shared.h`): `{hashlib.sha256(source.encode()).hexdigest
   pseudocode omits that shift. The general field-write description and rocjitsu
   support shifted insertion, so the omission is not evidence of a GPU difference.
 
-GoC now separates FP32 ADD/SUB/SUBREV/MUL into unsuffixed RDNA3 and `_rdna4`
+GoC now separates ordinary FP16/FP32 ADD/SUB/SUBREV/MUL into unsuffixed RDNA3 and `_rdna4`
 APIs, with guest IEEE/denormal flags and scalar/SIMD OMOD-policy tests in both
 wave sizes. They remain loose-only: this does not establish exact NaN behavior,
 rounding modes or exception reporting. Other RDNA4-based floating APIs must not

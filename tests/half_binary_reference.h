@@ -11,10 +11,10 @@
 
 namespace goc_test {
 
-using HalfBinaryFn = decltype(&goc_v_add_f16);
+using HalfBinaryFn = decltype(&goc_v_add_f16_rdna4);
 const HalfBinaryFn half_binary_functions[] = {
-    goc_v_add_f16,     goc_v_sub_f16,     goc_v_subrev_f16,  goc_v_mul_f16,
-    goc_v_min_num_f16, goc_v_max_num_f16, goc_v_minimum_f16, goc_v_maximum_f16};
+    goc_v_add_f16_rdna4, goc_v_sub_f16_rdna4, goc_v_subrev_f16_rdna4, goc_v_mul_f16_rdna4,
+    goc_v_min_num_f16,   goc_v_max_num_f16,   goc_v_minimum_f16,      goc_v_maximum_f16};
 
 const uint32_t half_binary_known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
                                    GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |

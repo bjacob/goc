@@ -90,8 +90,10 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_med3_num_f16" || base_name == "goc_v_min3_f16" ||
         base_name == "goc_v_max3_f16" || base_name == "goc_v_minmax_f16" ||
         base_name == "goc_v_maxmin_f16" || base_name == "goc_v_med3_f16" ||
-        base_name == "goc_v_add_f16" || base_name == "goc_v_sub_f16" ||
-        base_name == "goc_v_subrev_f16" || base_name == "goc_v_mul_f16" ||
+        base_name == "goc_v_add_f16" || base_name == "goc_v_add_f16_rdna4" ||
+        base_name == "goc_v_sub_f16" || base_name == "goc_v_sub_f16_rdna4" ||
+        base_name == "goc_v_subrev_f16" || base_name == "goc_v_subrev_f16_rdna4" ||
+        base_name == "goc_v_mul_f16" || base_name == "goc_v_mul_f16_rdna4" ||
         base_name == "goc_v_min_num_f16" || base_name == "goc_v_max_num_f16" ||
         base_name == "goc_v_minimum_f16" || base_name == "goc_v_maximum_f16" ||
         base_name == "goc_v_min_f16" || base_name == "goc_v_max_f16" ||
@@ -198,6 +200,10 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));
   }
   bool supports_dpp =
+      std::strcmp(name, "goc_v_add_f16_rdna4") == 0 ||
+      std::strcmp(name, "goc_v_sub_f16_rdna4") == 0 ||
+      std::strcmp(name, "goc_v_subrev_f16_rdna4") == 0 ||
+      std::strcmp(name, "goc_v_mul_f16_rdna4") == 0 ||
       std::strcmp(name, "goc_v_mul_dx9_zero_f32_rdna4") == 0 ||
       std::strcmp(name, "goc_v_add_f32_rdna4") == 0 ||
       std::strcmp(name, "goc_v_sub_f32_rdna4") == 0 ||

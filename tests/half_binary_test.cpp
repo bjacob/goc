@@ -16,10 +16,10 @@
 
 namespace {
 
-const decltype(&goc_v_add_f16_wave64) wave64[] = {
-    goc_v_add_f16_wave64,     goc_v_sub_f16_wave64,     goc_v_subrev_f16_wave64,
-    goc_v_mul_f16_wave64,     goc_v_min_num_f16_wave64, goc_v_max_num_f16_wave64,
-    goc_v_minimum_f16_wave64, goc_v_maximum_f16_wave64, goc_v_min_f16_wave64,
+const decltype(&goc_v_add_f16_rdna4_wave64) wave64[] = {
+    goc_v_add_f16_rdna4_wave64, goc_v_sub_f16_rdna4_wave64, goc_v_subrev_f16_rdna4_wave64,
+    goc_v_mul_f16_rdna4_wave64, goc_v_min_num_f16_wave64,   goc_v_max_num_f16_wave64,
+    goc_v_minimum_f16_wave64,   goc_v_maximum_f16_wave64,   goc_v_min_f16_wave64,
     goc_v_max_f16_wave64};
 
 void check(uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
@@ -272,5 +272,103 @@ TEST(HalfBinary, Wave64ValidationAndOptionalState) {
         fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, nullptr, &exceptions),
         GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
     EXPECT_EQ(exceptions, 0x80000055U);
+  }
+}
+
+TEST(HalfBinary, ArchitectureScalingDenormalsSelectorsDppAndAliases) {
+  const goc_test::HalfBinaryFn rdna3[] = {goc_v_add_f16, goc_v_sub_f16, goc_v_subrev_f16,
+                                          goc_v_mul_f16};
+  const decltype(&goc_v_add_f16_wave64) rdna3_wide[] = {
+      goc_v_add_f16_wave64, goc_v_sub_f16_wave64, goc_v_subrev_f16_wave64, goc_v_mul_f16_wave64};
+  const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x03ff, 0x83ff, 0x0400,
+                             0x8400, 0x3800, 0x3c00, 0xc000, 0x7bff, 0x7c00, 0x7e01};
+  const uint64_t routes[] = {0, goc_test::dpp_modes[0], goc_test::dpp_modes[6]};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned arch = 0; arch < 2; ++arch)
+      for (unsigned op = 0; op < 4; ++op)
+        for (unsigned settings = 0; settings < 16; ++settings)
+          for (unsigned selector = 0; selector < 8; ++selector)
+            for (unsigned scale = 0; scale < 4; ++scale)
+              for (uint64_t route : routes)
+                for (unsigned width : {32U, 64U})
+                  for (unsigned alias = 0; alias < 3; ++alias) {
+                    uint64_t flags = cpu | (settings & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                     (settings & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                     (settings & 4 ? GOC_FP_IEEE_MODE : 0) |
+                                     (settings & 8 ? GOC_FP16_OVFL : 0);
+                    uint32_t mode = (scale << 6) | GOC_ALU_ABS_A | GOC_ALU_NEG_B |
+                                    (selector & 1 ? GOC_ALU_HIGH_A : 0) |
+                                    (selector & 2 ? GOC_ALU_HIGH_B : 0) |
+                                    (selector & 4 ? GOC_ALU_HIGH_D : 0);
+                    uint32_t words[3][66], before[3][66];
+                    for (unsigned reg = 0; reg < 3; ++reg)
+                      for (unsigned lane = 0; lane < 66; ++lane)
+                        words[reg][lane] = uint32_t(values[(lane + 3 * reg) % 14]) |
+                                           (uint32_t(values[(lane * 3 + 5 * reg + 1) % 14]) << 16);
+                    std::memcpy(before, words, sizeof words);
+                    uint32_t *d = words[alias] + 1;
+                    const uint32_t *a = words[0] + 1, *b = words[1] + 1;
+                    uint64_t exec_mask = width == 32 ? 0xfedcba98ULL : 0x87654321fedcba98ULL;
+                    uint32_t state = 0x12345678;
+                    int status =
+                        width == 32
+                            ? (arch ? goc_test::half_binary_functions[op] : rdna3[op])(
+                                  flags, uint32_t(exec_mask), mode | route, &d, &a, &b, &state)
+                            : (arch ? wave64[op] : rdna3_wide[op])(flags, exec_mask, mode | route,
+                                                                   &d, &a, &b, &state);
+                    ASSERT_EQ(status, GOC_SUCCESS);
+                    EXPECT_EQ(state, 0x12345678U);
+                    uint32_t effective_mode = mode;
+                    if (!arch && (!(settings & 2) || (settings & 4)))
+                      effective_mode &= ~GOC_ALU_OMOD_HALF;
+                    for (unsigned lane = 0; lane < width; ++lane) {
+                      int source = int(lane);
+                      bool enabled = route ? goc_test::dpp_source(route, exec_mask, lane, source)
+                                           : ((exec_mask >> lane) & 1);
+                      if (!enabled) {
+                        EXPECT_EQ(d[lane], before[alias][lane + 1]);
+                        continue;
+                      }
+                      uint32_t x = source < 0 ? 0 : before[0][source + 1];
+                      uint32_t y = before[1][lane + 1];
+                      if (settings & 1) {
+                        // Flush each raw half before the independent reference chooses one.
+                        auto flush = [](uint32_t word) {
+                          uint32_t lo = word & 0xffff, hi = word >> 16;
+                          if ((lo & 0x7fff) < 0x400)
+                            lo &= 0x8000;
+                          if ((hi & 0x7fff) < 0x400)
+                            hi &= 0x8000;
+                          return lo | (hi << 16);
+                        };
+                        x = flush(x);
+                        y = flush(y);
+                      }
+                      uint16_t expected =
+                          goc_test::half_binary_reference(op, x, y, effective_mode, settings & 8);
+                      if ((settings & 2) && (expected & 0x7fff) < 0x400)
+                        expected &= 0x8000;
+                      check(d[lane], before[alias][lane + 1], expected, mode);
+                    }
+                    for (unsigned reg = 0; reg < 3; ++reg) {
+                      EXPECT_EQ(words[reg][0], before[reg][0]);
+                      EXPECT_EQ(words[reg][width + 1], before[reg][width + 1]);
+                    }
+                  }
+}
+
+TEST(HalfBinary, Rdna3GuestFlagsDoNotEnableExactReporting) {
+  const goc_test::HalfBinaryFn functions[] = {goc_v_add_f16, goc_v_sub_f16, goc_v_subrev_f16,
+                                              goc_v_mul_f16};
+  uint64_t flags = GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS |
+                   GOC_SEMANTICS_EXACT_EMPIRICAL;
+  for (auto fn : functions) {
+    uint32_t state = 0x12345678;
+    EXPECT_EQ(fn(flags, UINT32_MAX, 0, nullptr, nullptr, nullptr, &state),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(state, 0x12345678U);
+    EXPECT_EQ(fn(flags | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(fn(flags, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
   }
 }

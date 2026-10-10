@@ -117,16 +117,16 @@ const Case cases[] = {
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_D},
 
-    {binary<goc_v_add_f16>, false,
+    {binary<goc_v_add_f16_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
-    {binary<goc_v_sub_f16>, false,
+    {binary<goc_v_sub_f16_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
-    {binary<goc_v_subrev_f16>, false,
+    {binary<goc_v_subrev_f16_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
-    {binary<goc_v_mul_f16>, false,
+    {binary<goc_v_mul_f16_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A |
          GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
     {binary<goc_v_min_num_f16>, false,
