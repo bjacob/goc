@@ -38,7 +38,7 @@ namespace goc {
 
 template <Cube Op>
 void cube_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
-                    const uint32_t *b, const uint32_t *c) {
+                    const uint32_t *b, const uint32_t *c, bool quiet_nan) {
   auto keep_a = _mm256_set1_epi32(mode & GOC_ALU_ABS_A ? INT32_MAX : -1);
   auto keep_b = _mm256_set1_epi32(mode & GOC_ALU_ABS_B ? INT32_MAX : -1);
   auto keep_c = _mm256_set1_epi32(mode & GOC_ALU_ABS_C ? INT32_MAX : -1);
@@ -84,7 +84,8 @@ void cube_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32
       result = select(equal(mag, zero), zero, result);
     }
     auto nan = greater(_mm256_and_si256(result, _mm256_set1_epi32(INT32_MAX)), infinity);
-    result = select(nan, _mm256_or_si256(result, _mm256_set1_epi32(0x00400000)), result);
+    result =
+        select(nan, _mm256_or_si256(result, _mm256_set1_epi32(quiet_nan ? 0x00400000 : 0)), result);
     if (omod) {
       auto exponent = _mm256_and_si256(result, infinity);
       auto output_sign = _mm256_and_si256(result, sign_bit);
@@ -111,12 +112,12 @@ void cube_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32
 }
 
 template void cube_x86_64_v3<Cube::Id>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
-                                       const uint32_t *, const uint32_t *);
+                                       const uint32_t *, const uint32_t *, bool);
 template void cube_x86_64_v3<Cube::Sc>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
-                                       const uint32_t *, const uint32_t *);
+                                       const uint32_t *, const uint32_t *, bool);
 template void cube_x86_64_v3<Cube::Tc>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
-                                       const uint32_t *, const uint32_t *);
+                                       const uint32_t *, const uint32_t *, bool);
 template void cube_x86_64_v3<Cube::Ma>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
-                                       const uint32_t *, const uint32_t *);
+                                       const uint32_t *, const uint32_t *, bool);
 
 } // namespace goc

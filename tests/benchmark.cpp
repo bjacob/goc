@@ -4181,8 +4181,8 @@ bool benchmark_div_fixup(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_cube(uint64_t cpu, int iterations, int min_ms) {
-  const Ternary functions[] = {goc_v_cubeid_f32, goc_v_cubesc_f32, goc_v_cubetc_f32,
-                               goc_v_cubema_f32};
+  const Ternary functions[] = {goc_v_cubeid_f32_rdna4, goc_v_cubesc_f32_rdna4,
+                               goc_v_cubetc_f32_rdna4, goc_v_cubema_f32_rdna4};
   const char *names[] = {"v_cubeid_f32", "v_cubesc_f32", "v_cubetc_f32", "v_cubema_f32"};
   const uint32_t values[] = {0x3f800000, 0xc0000000, 0x40800000, 0x3f000000, 0xc0a00000, 0,
                              0x3e800000, 0xc0400000, 0x3f800001, 0xbf800000, 0x40400000, 0x40000000,

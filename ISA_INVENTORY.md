@@ -1067,10 +1067,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cos_f16` | yes | yes | in | `goc_v_cos_f16`<br>`goc_v_cos_f16_wave64`<br>`goc_v_cos_f16_rdna4`<br>`goc_v_cos_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-sincos-architecture-policies) |
 | `v_cos_f32` | yes | yes | in | `goc_v_cos_f32`<br>`goc_v_cos_f32_wave64`<br>`goc_v_cos_f32_rdna4`<br>`goc_v_cos_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-sincos-architecture-policies) |
 | `v_ctz_i32_b32` | yes | yes | in | `goc_v_ctz_i32_b32`<br>`goc_v_ctz_i32_b32_wave64` | `v_ffbl_b32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
-| `v_cubeid_f32` | yes | yes | in | `goc_v_cubeid_f32`<br>`goc_v_cubeid_f32_wave64` | — | API present; semantic audit pending |
-| `v_cubema_f32` | yes | yes | in | `goc_v_cubema_f32`<br>`goc_v_cubema_f32_wave64` | — | API present; semantic audit pending |
-| `v_cubesc_f32` | yes | yes | in | `goc_v_cubesc_f32`<br>`goc_v_cubesc_f32_wave64` | — | API present; semantic audit pending |
-| `v_cubetc_f32` | yes | yes | in | `goc_v_cubetc_f32`<br>`goc_v_cubetc_f32_wave64` | — | API present; semantic audit pending |
+| `v_cubeid_f32` | yes | yes | in | `goc_v_cubeid_f32`<br>`goc_v_cubeid_f32_wave64`<br>`goc_v_cubeid_f32_rdna4`<br>`goc_v_cubeid_f32_rdna4_wave64` | — | API present; semantic audit pending |
+| `v_cubema_f32` | yes | yes | in | `goc_v_cubema_f32`<br>`goc_v_cubema_f32_wave64`<br>`goc_v_cubema_f32_rdna4`<br>`goc_v_cubema_f32_rdna4_wave64` | — | API present; semantic audit pending |
+| `v_cubesc_f32` | yes | yes | in | `goc_v_cubesc_f32`<br>`goc_v_cubesc_f32_wave64`<br>`goc_v_cubesc_f32_rdna4`<br>`goc_v_cubesc_f32_rdna4_wave64` | — | API present; semantic audit pending |
+| `v_cubetc_f32` | yes | yes | in | `goc_v_cubetc_f32`<br>`goc_v_cubetc_f32_wave64`<br>`goc_v_cubetc_f32_rdna4`<br>`goc_v_cubetc_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_cvt_f16_f32` | yes | yes | in | `goc_v_cvt_f16_f32`<br>`goc_v_cvt_f16_f32_wave64`<br>`goc_v_cvt_f16_f32_rdna4`<br>`goc_v_cvt_f16_f32_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
 | `v_cvt_f16_i16` | yes | yes | in | `goc_v_cvt_f16_i16`<br>`goc_v_cvt_f16_i16_wave64`<br>`goc_v_cvt_f16_i16_rdna4`<br>`goc_v_cvt_f16_i16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
 | `v_cvt_f16_u16` | yes | yes | in | `goc_v_cvt_f16_u16`<br>`goc_v_cvt_f16_u16_wave64`<br>`goc_v_cvt_f16_u16_rdna4`<br>`goc_v_cvt_f16_u16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |

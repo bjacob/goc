@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cfenv>
+#include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
 #include <random>
@@ -18,11 +19,12 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_cubeid_f32);
-const Fn functions[] = {goc_v_cubeid_f32, goc_v_cubesc_f32, goc_v_cubetc_f32, goc_v_cubema_f32};
-const decltype(&goc_v_cubeid_f32_wave64) wave64_functions[] = {
-    goc_v_cubeid_f32_wave64, goc_v_cubesc_f32_wave64, goc_v_cubetc_f32_wave64,
-    goc_v_cubema_f32_wave64};
+using Fn = decltype(&goc_v_cubeid_f32_rdna4);
+const Fn functions[] = {goc_v_cubeid_f32_rdna4, goc_v_cubesc_f32_rdna4, goc_v_cubetc_f32_rdna4,
+                        goc_v_cubema_f32_rdna4};
+const decltype(&goc_v_cubeid_f32_rdna4_wave64) wave64_functions[] = {
+    goc_v_cubeid_f32_rdna4_wave64, goc_v_cubesc_f32_rdna4_wave64, goc_v_cubetc_f32_rdna4_wave64,
+    goc_v_cubema_f32_rdna4_wave64};
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 
 } // namespace
@@ -66,7 +68,7 @@ TEST(Cube, AxisTiesAtEveryMaskedLaneWithAlias) {
           words[reg][lane] = inputs[lane % 4][reg];
       const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
       uint32_t *d[] = {words[0]};
-      ASSERT_EQ(goc_v_cubeid_f32(cpu | exact, 1U << selected, 0, d, a, b, c), GOC_SUCCESS);
+      ASSERT_EQ(goc_v_cubeid_f32_rdna4(cpu | exact, 1U << selected, 0, d, a, b, c), GOC_SUCCESS);
       for (unsigned lane = 0; lane < 32; ++lane)
         EXPECT_EQ(words[0][lane], lane == selected ? faces[lane % 4] : inputs[lane % 4][0]);
     }
@@ -365,7 +367,8 @@ TEST(Cube, Wave64AxisTiesAtEveryMaskedLaneWithAlias) {
           words[reg][lane] = inputs[lane % 4][reg];
       const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
       uint32_t *d[] = {words[0]};
-      ASSERT_EQ(goc_v_cubeid_f32_wave64(cpu | exact, 1ULL << selected, 0, d, a, b, c), GOC_SUCCESS);
+      ASSERT_EQ(goc_v_cubeid_f32_rdna4_wave64(cpu | exact, 1ULL << selected, 0, d, a, b, c),
+                GOC_SUCCESS);
       for (unsigned lane = 0; lane < 64; ++lane)
         EXPECT_EQ(words[0][lane], lane == selected ? faces[lane % 4] : inputs[lane % 4][0]);
     }
@@ -536,4 +539,85 @@ TEST(Cube, Wave64DppModifiersMasksAliasesAndGuards) {
         }
     ++op;
   }
+}
+
+TEST(Cube, ArchitectureIeeeDenormalAndNanPolicies) {
+  // Literal unmodified results from rocjitsu shared/cube.h's selection rules.
+  // Columns are ID, SC, TC, MA, before NaN quieting, OMOD and CLAMP.
+  struct Case {
+    uint32_t a, b, c, result[4];
+  };
+
+  const Case cases[] = {
+      {0x7f800123, 0x3f800000, 0x40000000, {0, 0xc0000000, 0xbf800000, 0x7f800123}},
+      {0x3f800000, 0x7f800123, 0x40000000, {0, 0xc0000000, 0xff800123, 0x40000000}},
+      {0x3f800000, 0x40000000, 0x7f800123, {0x40000000, 0x3f800000, 0x7f800123, 0x40800000}},
+      {0, 1, 0, {0x40800000, 0, 0x80000001, 0}},
+      {0x3f800000, 0x40000000, 0xc0400000, {0x40a00000, 0xbf800000, 0xc0000000, 0xc0c00000}},
+      {0x7f7fffff, 0, 0, {0, 0x80000000, 0x80000000, 0x7f800000}},
+  };
+  const Fn narrow[][4] = {{goc_v_cubeid_f32, goc_v_cubesc_f32, goc_v_cubetc_f32, goc_v_cubema_f32},
+                          {goc_v_cubeid_f32_rdna4, goc_v_cubesc_f32_rdna4, goc_v_cubetc_f32_rdna4,
+                           goc_v_cubema_f32_rdna4}};
+  const decltype(&goc_v_cubeid_f32_wave64) wide[][4] = {
+      {goc_v_cubeid_f32_wave64, goc_v_cubesc_f32_wave64, goc_v_cubetc_f32_wave64,
+       goc_v_cubema_f32_wave64},
+      {goc_v_cubeid_f32_rdna4_wave64, goc_v_cubesc_f32_rdna4_wave64, goc_v_cubetc_f32_rdna4_wave64,
+       goc_v_cubema_f32_rdna4_wave64}};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {uint64_t(0), exact})
+      for (unsigned arch = 0; arch < 2; ++arch)
+        for (unsigned op = 0; op < 4; ++op)
+          for (unsigned width : {32U, 64U})
+            for (unsigned settings = 0; settings < 8; ++settings)
+              for (unsigned scale = 0; scale < 4; ++scale)
+                for (bool clamp : {false, true})
+                  for (unsigned alias : {0U, 3U})
+                    for (uint64_t route : {uint64_t(0), goc_test::dpp_modes[1]})
+                      for (const auto &test : cases) {
+                        SCOPED_TRACE(::testing::Message()
+                                     << cpu << '/' << semantics << '/' << arch << '/' << op << '/'
+                                     << width << '/' << settings << '/' << scale << '/' << clamp
+                                     << '/' << alias << '/' << route << '/' << test.a << '/'
+                                     << test.b << '/' << test.c);
+                        uint64_t flags = cpu | semantics | (settings & 1 ? GOC_FP_IEEE_MODE : 0) |
+                                         (settings & 2 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                         (settings & 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+                        uint64_t mode = route | (scale << 6) | (clamp ? GOC_ALU_CLAMP : 0);
+                        uint64_t exec_mask = 0xa55aa55a5aa55aa5ULL;
+                        uint32_t words[4][64];
+                        std::fill(words[0], words[0] + 64, test.a);
+                        std::fill(words[1], words[1] + 64, test.b);
+                        std::fill(words[2], words[2] + 64, test.c);
+                        std::fill(words[3], words[3] + 64, 0xdeadbeefU);
+                        const uint32_t *a = words[0], *b = words[1], *c = words[2];
+                        uint32_t *d = words[alias];
+                        ASSERT_EQ(
+                            width == 32
+                                ? narrow[arch][op](flags, uint32_t(exec_mask), mode, &d, &a, &b, &c)
+                                : wide[arch][op](flags, exec_mask, mode, &d, &a, &b, &c),
+                            GOC_SUCCESS);
+                        uint32_t want = test.result[op];
+                        if ((arch || (settings & 1)) && (want & 0x7fffffffU) > 0x7f800000U)
+                          want |= 0x00400000;
+                        unsigned effective_scale = !arch && (settings & 1) ? 0 : scale;
+                        if (effective_scale) {
+                          if ((want & 0x7fffffffU) < 0x00800000U)
+                            want = 0;
+                          else if ((want & 0x7fffffffU) < 0x7f800000U)
+                            want = goc_test::cube_bits(
+                                std::ldexp(goc_test::cube_float(want),
+                                           effective_scale == 3 ? -1 : int(effective_scale)));
+                        }
+                        if (clamp) {
+                          if ((want >> 31) || want > 0x7f800000U)
+                            want = 0;
+                          else if (want > 0x3f800000U)
+                            want = 0x3f800000U;
+                        }
+                        for (unsigned lane = 0; lane < 64; ++lane)
+                          EXPECT_EQ(d[lane], lane < width && ((exec_mask >> lane) & 1) ? want
+                                             : alias == 0                              ? test.a
+                                                          : 0xdeadbeefU);
+                      }
 }

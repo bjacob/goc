@@ -2988,44 +2988,80 @@ int goc_v_div_fixup_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_
 // Cube-map face ID, S/T coordinates and signed doubled major axis, respectively.
 // A/B/C contain X/Y/Z in one VGPR each; D holds one VGPR. Z wins magnitude ties,
 // then Y, then X. Comparisons flush subnormals; SC/TC copy selected source bits
-// and quiet NaNs. A zero or unordered major axis is treated as nonnegative.
+// and preserve selected NaN bits on RDNA3 unless IEEE mode is enabled; RDNA4
+// always quiets selected NaNs. A zero or unordered major axis is nonnegative.
 // MA doubles the signed major axis with nearest-even overflow and +0 for zeros.
 // DPP8/DPP16 permutes A before source modifiers; B/C retain their lanes.
 // Supports all source ABS/NEG, OMOD and CLAMP. Nonzero OMOD flushes subnormal
 // inputs/outputs, maps input zeros to +0 and preserves NaN sign/payload.
-// Supports loose and empirical exact semantics.
+// Guest input/output denormal settings do not change those fixed rules.
+// RDNA3 disables OMOD with IEEE enabled; RDNA4 applies OMOD independently.
+// CLAMP converts NaNs to +0 (fixed DX10_CLAMP-enabled policy on RDNA3).
+// Supports loose and empirical exact semantics with nearest-even rounding.
 // Full EXEC masking and all whole-register aliases are supported. Host FP state
 // is preserved and does not affect results; GOC_FP16_OVFL has no effect.
 int goc_v_cubeid_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                      const uint32_t *const *c);
 
+int goc_v_cubeid_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           const uint32_t *const *c);
+
 int goc_v_cubesc_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                      const uint32_t *const *c);
+
+int goc_v_cubesc_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           const uint32_t *const *c);
 
 int goc_v_cubetc_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                      const uint32_t *const *c);
 
+int goc_v_cubetc_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           const uint32_t *const *c);
+
 int goc_v_cubema_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                      const uint32_t *const *c);
+
+int goc_v_cubema_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           const uint32_t *const *c);
 
 // Wave64 retains the same exact selection/modifier rules and supports four
 // independent DPP rows. Y and Z retain their original lanes.
 int goc_v_cubeid_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c);
+
+int goc_v_cubeid_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c);
 int goc_v_cubesc_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c);
+
+int goc_v_cubesc_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c);
 int goc_v_cubetc_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c);
+
+int goc_v_cubetc_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c);
 int goc_v_cubema_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *c);
+
+int goc_v_cubema_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c);
 
 // DPP8/DPP16 permute A before modifiers; B remains in its original lane,
 // including when B is the stochastic seed.

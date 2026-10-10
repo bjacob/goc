@@ -6554,3 +6554,57 @@ stub bodies and matching handler names were checked directly; source hashes and
 names are recorded in `../goc-build/coverage-work/interpolation-upstream-review.json`.
 The review ledger now records 637 mnemonics, leaving 172 unrecorded; these counts
 are not completion percentages.
+
+## Cube-map architecture NaN and OMOD policies
+
+All four cube-map operations now have unsuffixed RDNA3 APIs and `_rdna4`
+variants, in both wave sizes. RDNA3 preserves selected signaling-NaN bits when
+IEEE is clear, quiets them when IEEE is set, and disables OMOD with IEEE set.
+RDNA4 always quiets selected NaNs and applies OMOD independently of IEEE.
+Guest input/output denormal settings are accepted but do not alter cube's fixed
+rules: magnitude comparisons flush tiny values, SC/TC copy selected source bits,
+and active OMOD flushes tiny inputs/results. This distinction matters: disabling
+OMOD on RDNA3 preserves a selected tiny SC/TC value rather than flushing it.
+
+These policies are ported directly from rocjitsu revision `ffc144c564c`,
+`shared/cube.h::execute`, `detail::execute_bits` and `apply_omod`; the latter
+calls `effective_omod` with forced output flushing, so guest output-denormal
+preservation does not disable cube OMOD. Both generated architectures call this
+shared model. The scalar implementation and AVX2/AVX-512 kernels take a quieting
+choice without architecture-specific kernel duplication or scalar fallback.
+DPP preprocessing forwards the architecture policy through both wave widths.
+Existing RDNA4 captures, benchmark and instruction-flag tests use suffixed APIs.
+
+The borrowed model supports exact results for the implemented nearest-even
+policy, including these NaN and OMOD differences. Directed guest rounding is not
+implemented. GoC keeps NaN CLAMP-to-zero on both architectures; on RDNA3 this
+corresponds to fixed DX10_CLAMP enabled, as established by rocjitsu
+`floating_clamp_nan_to_zero`. There is no flag to select DX10_CLAMP disabled.
+This limitation is now explicit in the public contract; the architecture split
+does not claim every MODE setting. Optional exception-state applicability still
+needs a separate per-instruction review, so the complete cube contract has not
+yet been added to the review ledger.
+
+`Cube.ArchitectureIeeeDenormalAndNanPolicies` checks literal selected-result bits
+for NaNs in each source, signed coordinates, overflow and copied subnormals,
+then independently applies finite power-of-two scaling. It spans both semantics,
+architectures, widths, every CPU path, all guest IEEE/denormal settings, all OMOD
+values, CLAMP, aliases, partial EXEC and DPP8 fetch-inactive routing. Existing
+all-modifier/DPP16/alias/capture tests remain on RDNA4. No new hardware model or
+capture was developed.
+
+Validation: all 1,143 tests pass with Clang 21 and GCC 15 Release; all 20
+Cube/InstructionFlags tests pass with ASan/UBSan; all nine audit-tool tests pass.
+The generic instruction-flags test now recognizes DPP on both architecture names
+at both widths. Logs are `../goc-build/coverage-work/cube-architecture-*`, with
+final suite results in the `*-tests-final.log` files.
+
+A limited comparison against parent `e648683` measured the four RDNA4 cube
+operations on AVX2 and AVX-512, with default modifiers and with ABS/NEG/OMOD/CLAMP.
+Seven alternating samples per case were pinned to CPU 2 and each ran at least
+50 ms thread CPU time, after other builds/tests finished. The median relative
+change across sixteen case medians was +0.51%, ranging from -1.74% to +4.05%.
+The largest increase was TC on AVX-512 without modifiers (11.522 -> 11.988 ns).
+These limited cases show no large regression; they do not establish whole-library
+performance or a new-architecture throughput claim. Driver, parent objects and
+raw samples are under `../goc-build/coverage-work/cube-architecture-performance/`.
