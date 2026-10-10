@@ -5127,3 +5127,33 @@ swizzle tests pass under ASan/UBSan, including the retained hardware corpus.
 All nine audit-tool tests pass. Logs use `ds-swizzle-review-` in each build
 directory. The ledger records 349 contracts; 460 remain unrecorded. The
 RDNA3 rotate-example ambiguity above remains explicit in that reviewed contract.
+
+## Scalar lane-transfer architecture contracts
+
+Reviewed READFIRSTLANE, READLANE and WRITELANE against rocjitsu `ffc144c564c`:
+both architectures' VOP1/VOP3 READFIRSTLANE bodies, VOP3 indexed transfers, and
+`RegisterAccess::read_scalar_selected_lane` / `write_scalar_selected_lane`.
+The RDNA3 manual sections 16.8 and 16.12 explicitly confirm the zero-EXEC
+fallback, ignored selector high bits, untyped data and EXEC-independent indexed
+transfers. The RDNA4 handlers use the same rules. These APIs remain shared.
+
+READFIRSTLANE selects the lowest active lane, falling back to lane zero when
+EXEC is empty; zero EXEC therefore does not allow null operands. READLANE and
+WRITELANE use the low five or six selector bits for the dispatched wave width,
+without EXEC inputs. WRITELANE preserves every other lane. Scalar outputs can
+alias input storage: the selected raw value is consumed before the store.
+All instruction modifiers are rejected before operand access. These are exact
+raw-bit transfers in both semantics with no implicit global-state outputs;
+SGPR/VGPR register decoding and allocation bounds remain the emulator's job.
+
+Existing tests cover selector wrapping, both semantics and wave widths, raw NaN
+words, guards, aliasing, empty EXEC and all invalid flag bits. Added a test for
+every pair of active lanes, including pairs across the Wave64 half boundary,
+with the scalar result aliased to the later lane. It verifies selection priority
+and preservation of all other words under both strict semantics. No production
+change was needed.
+
+Validation: all 1,115 CTests pass under Clang and GCC Release; all four
+lane-transfer tests pass under ASan/UBSan. All nine audit-tool tests pass.
+Logs use `lane-transfer-review-` in each build directory. The ledger records
+352 contracts; 457 in-scope mnemonics remain without a recorded review.

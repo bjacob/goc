@@ -1350,8 +1350,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_rcp_f32` | yes | yes | in | `goc_v_rcp_f32`<br>`goc_v_rcp_f32_wave64`<br>`goc_v_rcp_f32_rdna4`<br>`goc_v_rcp_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_rcp_f64` | yes | yes | in | `goc_v_rcp_f64`<br>`goc_v_rcp_f64_wave64`<br>`goc_v_rcp_f64_rdna4`<br>`goc_v_rcp_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_rcp_iflag_f32` | yes | yes | in | `goc_v_rcp_iflag_f32`<br>`goc_v_rcp_iflag_f32_wave64`<br>`goc_v_rcp_iflag_f32_rdna4`<br>`goc_v_rcp_iflag_f32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_readfirstlane_b32` | yes | yes | in | `goc_v_readfirstlane_b32`<br>`goc_v_readfirstlane_b32_wave64` | — | API present; semantic audit pending |
-| `v_readlane_b32` | yes | yes | in | `goc_v_readlane_b32`<br>`goc_v_readlane_b32_wave64` | — | API present; semantic audit pending |
+| `v_readfirstlane_b32` | yes | yes | in | `goc_v_readfirstlane_b32`<br>`goc_v_readfirstlane_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
+| `v_readlane_b32` | yes | yes | in | `goc_v_readlane_b32`<br>`goc_v_readlane_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
 | `v_rndne_f16` | yes | yes | in | `goc_v_rndne_f16`<br>`goc_v_rndne_f16_wave64`<br>`goc_v_rndne_f16_rdna4`<br>`goc_v_rndne_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_rndne_f32` | yes | yes | in | `goc_v_rndne_f32`<br>`goc_v_rndne_f32_wave64`<br>`goc_v_rndne_f32_rdna4`<br>`goc_v_rndne_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_rndne_f64` | yes | yes | in | `goc_v_rndne_f64`<br>`goc_v_rndne_f64_wave64`<br>`goc_v_rndne_f64_rdna4`<br>`goc_v_rndne_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
@@ -1420,7 +1420,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_wmma_i32_16x16x16_iu4` | yes | yes | in | `goc_v_wmma_i32_16x16x16_iu4`<br>`goc_v_wmma_i32_16x16x16_iu4_wave64`<br>`goc_v_wmma_i32_16x16x16_iu4_rdna4`<br>`goc_v_wmma_i32_16x16x16_iu4_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_wmma_i32_16x16x16_iu8` | yes | yes | in | `goc_v_wmma_i32_16x16x16_iu8`<br>`goc_v_wmma_i32_16x16x16_iu8_wave64`<br>`goc_v_wmma_i32_16x16x16_iu8_rdna4`<br>`goc_v_wmma_i32_16x16x16_iu8_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_wmma_i32_16x16x32_iu4` | — | yes | in | `goc_v_wmma_i32_16x16x32_iu4`<br>`goc_v_wmma_i32_16x16x32_iu4_wave64` | — | API present; semantic audit pending |
-| `v_writelane_b32` | yes | yes | in | `goc_v_writelane_b32`<br>`goc_v_writelane_b32_wave64` | — | API present; semantic audit pending |
+| `v_writelane_b32` | yes | yes | in | `goc_v_writelane_b32`<br>`goc_v_writelane_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
 | `v_xad_u32` | yes | yes | in | `goc_v_xad_u32`<br>`goc_v_xad_u32_wave64` | `v_xor_add_u32` | API present; semantic audit pending |
 | `v_xnor_b32` | yes | yes | in | `goc_v_xnor_b32`<br>`goc_v_xnor_b32_wave64` | — | API present; semantic audit pending |
 | `v_xor3_b32` | yes | yes | in | `goc_v_xor3_b32`<br>`goc_v_xor3_b32_wave64` | — | API present; semantic audit pending |

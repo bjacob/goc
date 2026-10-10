@@ -613,5 +613,15 @@
     "mnemonics": [
       "ds_swizzle_b32"
     ]
+  },
+  {
+    "heading": "Scalar lane-transfer architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/lane_transfer_test.cpp",
+    "mnemonics": [
+      "v_readfirstlane_b32",
+      "v_readlane_b32",
+      "v_writelane_b32"
+    ]
   }
 ]

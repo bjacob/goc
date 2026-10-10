@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-349 in-scope mnemonics have explicit contract-review records in
+352 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 460 in-scope mnemonics need a recorded review.
+The remaining 457 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -603,8 +603,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_rcp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18302, 18320 | review required |
 | `v_rcp_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 18358, 18372 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_rcp_iflag_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18409, 18429 | review required |
-| `v_readfirstlane_b32` | no direct policy detected | no | not found | review required |
-| `v_readlane_b32` | no direct policy detected | no | not found | review required |
+| `v_readfirstlane_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
+| `v_readlane_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
 | `v_rndne_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18465, 18489 | review required |
 | `v_rndne_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18534, 18548 | review required |
 | `v_rndne_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 18578, 18592 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
@@ -647,7 +647,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_wmma_f32_16x16x16_f16` | no direct policy detected | yes | not found | review required |
 | `v_wmma_i32_16x16x16_iu4` | no direct policy detected | yes | not found | review required |
 | `v_wmma_i32_16x16x16_iu8` | no direct policy detected | yes | not found | review required |
-| `v_writelane_b32` | no direct policy detected | no | not found | review required |
+| `v_writelane_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
 | `v_xad_u32` | SIMD macro, output helper | no | 20402 | review required |
 | `v_xnor_b32` | SIMD macro, output helper | no | 20417, 20431 | review required |
 | `v_xor3_b32` | SIMD macro, output helper | no | 20445 | review required |

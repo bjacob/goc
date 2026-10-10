@@ -67,3 +67,25 @@ TEST(LaneTransfer, InvalidFlagsBeforeOperandAccess) {
     EXPECT_EQ(goc_v_writelane_b32_wave64(0, mode, nullptr, 0, 0), GOC_ERROR_INVALID_FLAGS);
   }
 }
+
+TEST(LaneTransfer, FirstLaneSelectionWithDisjointActiveLanesAndAliasedOutput) {
+  for (unsigned width : {32U, 64U})
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+      for (unsigned first = 0; first < width; ++first)
+        for (unsigned last = first; last < width; ++last) {
+          uint32_t words[66];
+          for (unsigned i = 0; i < 66; ++i)
+            words[i] = 0x7f800001U + i;
+          const uint32_t *a = words + 1;
+          uint64_t exec_mask = (1ULL << first) | (1ULL << last);
+          uint64_t flags = semantics | GOC_SEMANTICS_STRICT;
+          // The scalar destination aliases the later active lane. Its original
+          // value must not influence the selected source or any other lane.
+          uint32_t *d = words + 1 + last;
+          ASSERT_EQ(width == 32 ? goc_v_readfirstlane_b32(flags, uint32_t(exec_mask), 0, d, &a)
+                                : goc_v_readfirstlane_b32_wave64(flags, exec_mask, 0, d, &a),
+                    GOC_SUCCESS);
+          for (unsigned i = 0; i < 66; ++i)
+            EXPECT_EQ(words[i], 0x7f800001U + (i == last + 1 ? first + 1 : i));
+        }
+}
