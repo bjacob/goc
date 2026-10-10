@@ -64,8 +64,8 @@ const Case cases[] = {
     {binary<goc_v_pk_fmac_f16_rdna4>, true, 0},
     {literal_fma<true, true>, true, GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
     {literal_fma<true, false>, true, GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
-    {literal_fma<false, true>, false, 0},
-    {literal_fma<false, false>, false, 0},
+    {literal_fma<false, true>, true, 0},
+    {literal_fma<false, false>, true, 0},
 
     {goc_v_min3_num_f16, false, 0x1fffU},
     {goc_v_max3_num_f16, false, 0x1fffU},

@@ -4,7 +4,8 @@
 
 Usage: capture_arithmetic_exceptions.py OUTPUT_DIR FAMILY WIDTH
 Families: div_fixup (16/32/64), div_fmas (32/64), sin/cos (16/32), fma_mix (32).
-All other families use WIDTH=16: fma/fmac/fmamk/fmaak, pk_fma/pk_fmac,
+Literal fmamk/fmaak accept 16/32.
+All other families use WIDTH=16: fma/fmac, pk_fma/pk_fmac,
 fma_mixlo/fma_mixhi, dot2_f32_f16/dot2_f32_bf16.
 Compile probe.cpp with hipcc for gfx1201 and run from OUTPUT_DIR. The probe
 accepts an optional FP_DENORM nibble (0..15, default 15), allowing independent
@@ -21,7 +22,8 @@ For DIV_FMAS the outer setting selects condition=false/true (FP16_OVFL is irrele
 Packed FMA: bit 0 neg_lo=[1,0,1], bit 1 neg_hi=[0,1,1], bit 2 CLAMP,
 bit 3 swaps low/high source selections. Packed FMAC repeats its unmodified form.
 FMAC uses ordinary modifiers without negating C. Literal FMA repeats its
-unmodified form with literal 0x3c01. Mixed FMA: bits 0:2 select FP16 sources,
+unmodified form with literal 0x3c01 (FP16) or 0x3f800001 (FP32).
+Mixed FMA: bits 0:2 select FP16 sources,
 bit 3 enables CLAMP; --mix-high selects high halves and -A/abs(B)/-abs(C).
 DOT2 uses packed modifiers, but neg_hi affects only B and op_sel affects A/B.
 """
@@ -44,7 +46,8 @@ parser.add_argument("--mix-high", action="store_true", help="mixed FMA high halv
 args = parser.parse_args()
 out, family, width = args.output, args.family, args.width
 allowed_widths = {"div_fixup": (16, 32, 64), "div_fmas": (32, 64),
-                  "sin": (16, 32), "cos": (16, 32), "fma_mix": (32,)}
+                  "sin": (16, 32), "cos": (16, 32), "fma_mix": (32,),
+                  "fmamk": (16, 32), "fmaak": (16, 32)}
 if width not in allowed_widths.get(family, (16,)):
     parser.error("unsupported family/width combination")
 if args.boundaries and (family not in ("sin", "cos") or width != 32):
@@ -53,6 +56,7 @@ if args.rounding_boundaries and family not in ("fma", "div_fmas"):
     parser.error("--rounding-boundaries requires FMA or DIV_FMAS")
 if args.mix_high and not family.startswith("fma_mix"):
     parser.error("--mix-high requires mixed FMA")
+literal = 0x3c01 if width == 16 else 0x3f800001
 out.mkdir(parents=True, exist_ok=True)
 n = 65536 if family in ("sin", "cos") else 8192
 input_width = 32 if family.startswith("fma_mix") else width
@@ -116,9 +120,9 @@ for i in range(n):
                        quarter_ulp + (1 << frac), sign | (quarter_ulp + (1 << frac))]
         row = [a, b, addends[index & 7]]
     if family == "fmamk":
-        row[1] = 0x3c01
+        row[1] = literal
     elif family == "fmaak":
-        row[2] = 0x3c01
+        row[2] = literal
     inputs += row
 (out / "inputs.bin").write_bytes(struct.pack("<" + "Q" * len(inputs), *inputs))
 source = r'''#include <hip/hip_runtime.h>
@@ -145,9 +149,9 @@ for m in range(16):
             instruction += " clamp" if m & 4 else ""
             instruction += ["", " mul:2", " mul:4", " div:2"][m & 3]
         elif family == "fmamk":
-            instruction = "v_fmamk_f16 v6, v0, 0x3c01, v4"
+            instruction = f"v_fmamk_f{width} v6, v0, {literal:#x}, v4"
         else:
-            instruction = "v_fmaak_f16 v6, v0, v2, 0x3c01"
+            instruction = f"v_fmaak_f{width} v6, v0, v2, {literal:#x}"
     elif family.startswith("dot2_"):
         instruction = f"v_{family} v6, v0, v2, v4"
         instruction += " op_sel:[1,1,0] op_sel_hi:[0,0,0]" if m & 8 else ""

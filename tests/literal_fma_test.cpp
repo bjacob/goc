@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "half_fma_reference.h"
+#include "literal_fma32_hardware.h"
+#include "mixed_fma_reference.h"
+
+#if defined(__x86_64__) || defined(_M_X64)
+#include <immintrin.h>
+#endif
 
 #include <algorithm>
 #include <cfenv>
@@ -55,8 +62,8 @@ uint32_t reference(bool half, bool multiply, uint32_t a, uint32_t b, uint32_t li
     return multiply ? goc_test::half_fma_reference::evaluate(a, literal, b, 0, saturate)
                     : goc_test::half_fma_reference::evaluate(a, b, literal, 0, saturate);
   }
-  return as_bits(multiply ? std::fma(as_float(a), as_float(literal), as_float(b))
-                          : std::fma(as_float(a), as_float(b), as_float(literal)));
+  return goc_test::mixed_fma_reference::evaluate(0, a, multiply ? literal : b,
+                                                 multiply ? b : literal, 0, 0, false);
 }
 
 void check(bool half, uint32_t actual, uint32_t before, uint32_t want, uint32_t mode, bool exact) {
@@ -87,7 +94,7 @@ void run(bool half, bool multiply, uint64_t flags, uint32_t exec_mask, uint64_t 
         check(half, words[reg][lane], before[reg][lane],
               reference(half, multiply, before[a][lane], before[b][lane], literal, mode,
                         flags & GOC_FP16_OVFL),
-              mode, half && (flags & GOC_SEMANTICS_MASK));
+              mode, (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL);
       } else {
         EXPECT_EQ(words[reg][lane], before[reg][lane]);
       }
@@ -152,7 +159,7 @@ TEST(LiteralFma, SpecialValuesSelectorsMasksAliasesAndOverflow) {
                     }
                     uint64_t flags = cpu | (saturate ? GOC_FP16_OVFL : 0) |
                                      (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL : 0) |
-                                     (exact && half ? GOC_SEMANTICS_STRICT : 0);
+                                     (exact ? GOC_SEMANTICS_STRICT : 0);
                     // Rotate literal categories across mask and alias cases.
                     unsigned index = unsigned(exec_mask + d + b + selection) % 20;
                     run(half, multiply, flags, exec_mask, mode, 0, b, d,
@@ -164,13 +171,16 @@ TEST(LiteralFma, Fp32RandomTriplesAndLiteralFusedRounding) {
   std::mt19937 random(9341);
   for (bool multiply : {false, true})
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (unsigned batch = 0; batch < 4096; ++batch) {
-        uint32_t words[3][34];
-        for (auto &reg : words)
-          for (auto &word : reg)
-            word = random();
-        run(false, multiply, cpu, UINT32_MAX, 0, 0, 1, batch % 3, random(), words);
-      }
+      for (bool exact : {false, true})
+        for (unsigned batch = 0; batch < 4096; ++batch) {
+          uint32_t words[3][34];
+          for (auto &reg : words)
+            for (auto &word : reg)
+              word = random();
+          run(false, multiply,
+              cpu | (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0), UINT32_MAX,
+              0, 0, 1, batch % 3, random(), words);
+        }
 
   struct Case {
     bool half, multiply;
@@ -254,11 +264,6 @@ TEST(LiteralFma, ValidationAndZeroMasks) {
         EXPECT_EQ(
             call(half, multiply, (2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p, 0),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
-        if (!half) {
-          EXPECT_EQ(call(half, multiply, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                         exec_mask, 0, &p, &p, &p, 0),
-                    GOC_ERROR_UNSUPPORTED_SEMANTICS);
-        }
       }
       for (auto word : words)
         EXPECT_EQ(word, 0xfacecafe);
@@ -270,57 +275,139 @@ TEST(LiteralFma, ValidationAndZeroMasks) {
 
 TEST(LiteralFma, Fp32ArchitectureGuestModes) {
   auto flush = [](uint32_t bits) { return (bits & 0x7f800000) ? bits : bits & 0x80000000; };
-  for (bool rdna3 : {false, true})
-    for (bool wide : {false, true})
-      for (bool multiply : {false, true})
-        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-          for (unsigned policy = 0; policy < 8; ++policy)
-            for (uint32_t literal : special32)
-              for (int alias = 0; alias < 3; ++alias) {
-                uint64_t flags = cpu | (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
-                                 (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
-                                 (policy & 4 ? GOC_FP_IEEE_MODE : 0);
-                uint32_t words[3][64], before[3][64];
-                for (int reg = 0; reg < 3; ++reg)
-                  for (int lane = 0; lane < 64; ++lane)
-                    words[reg][lane] = special32[(lane * (reg + 1) + 7 * reg) % 20];
-                std::memcpy(before, words, sizeof(words));
-                const uint32_t *a = words[0], *b = words[1];
-                uint32_t *d = words[alias], state = 0x12345678;
-                uint64_t exec_mask = 0xa7109efae12ce36dULL;
-                auto mk32 = rdna3 ? goc_v_fmamk_f32 : goc_v_fmamk_f32_rdna4;
-                auto ak32 = rdna3 ? goc_v_fmaak_f32 : goc_v_fmaak_f32_rdna4;
-                auto mk64 = rdna3 ? goc_v_fmamk_f32_wave64 : goc_v_fmamk_f32_rdna4_wave64;
-                auto ak64 = rdna3 ? goc_v_fmaak_f32_wave64 : goc_v_fmaak_f32_rdna4_wave64;
-                auto invoke = [&](uint64_t f) {
-                  if (multiply)
-                    return wide ? mk64(f, exec_mask, 0, &d, &a, literal, &b, &state)
-                                : mk32(f, uint32_t(exec_mask), 0, &d, &a, literal, &b, &state);
-                  return wide ? ak64(f, exec_mask, 0, &d, &a, &b, literal, &state)
-                              : ak32(f, uint32_t(exec_mask), 0, &d, &a, &b, literal, &state);
-                };
-                ASSERT_EQ(invoke(flags), GOC_SUCCESS);
-                EXPECT_EQ(state, 0x12345678U);
-                for (int lane = 0; lane < 64; ++lane) {
-                  if (lane >= (wide ? 64 : 32) || !((exec_mask >> lane) & 1)) {
-                    EXPECT_EQ(d[lane], before[alias][lane]);
-                    continue;
+  for (bool exact : {false, true})
+    for (bool rdna3 : {false, true})
+      for (bool wide : {false, true})
+        for (bool multiply : {false, true})
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+            for (unsigned policy = 0; policy < 8; ++policy)
+              for (uint32_t literal : special32)
+                for (int alias = 0; alias < 3; ++alias) {
+                  uint64_t flags =
+                      (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0) | cpu |
+                      (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                      (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                      (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+                  uint32_t words[3][64], before[3][64];
+                  for (int reg = 0; reg < 3; ++reg)
+                    for (int lane = 0; lane < 64; ++lane)
+                      words[reg][lane] = special32[(lane * (reg + 1) + 7 * reg) % 20];
+                  std::memcpy(before, words, sizeof(words));
+                  const uint32_t *a = words[0], *b = words[1];
+                  uint32_t *d = words[alias], state = 0x12345678;
+                  uint64_t exec_mask = 0xa7109efae12ce36dULL;
+                  auto mk32 = rdna3 ? goc_v_fmamk_f32 : goc_v_fmamk_f32_rdna4;
+                  auto ak32 = rdna3 ? goc_v_fmaak_f32 : goc_v_fmaak_f32_rdna4;
+                  auto mk64 = rdna3 ? goc_v_fmamk_f32_wave64 : goc_v_fmamk_f32_rdna4_wave64;
+                  auto ak64 = rdna3 ? goc_v_fmaak_f32_wave64 : goc_v_fmaak_f32_rdna4_wave64;
+                  auto invoke = [&](uint64_t f, bool report = true) {
+                    uint32_t *state_output = report ? &state : nullptr;
+                    if (multiply)
+                      return wide ? mk64(f, exec_mask, 0, &d, &a, literal, &b, state_output)
+                                  : mk32(f, uint32_t(exec_mask), 0, &d, &a, literal, &b,
+                                         state_output);
+                    return wide
+                               ? ak64(f, exec_mask, 0, &d, &a, &b, literal, state_output)
+                               : ak32(f, uint32_t(exec_mask), 0, &d, &a, &b, literal, state_output);
+                  };
+                  ASSERT_EQ(invoke(flags, !exact), GOC_SUCCESS);
+                  EXPECT_EQ(state, 0x12345678U);
+                  for (int lane = 0; lane < 64; ++lane) {
+                    if (lane >= (wide ? 64 : 32) || !((exec_mask >> lane) & 1)) {
+                      EXPECT_EQ(d[lane], before[alias][lane]);
+                      continue;
+                    }
+                    float x = as_float(policy & 1 ? flush(before[0][lane]) : before[0][lane]);
+                    float y = as_float(policy & 1 ? flush(before[1][lane]) : before[1][lane]);
+                    float k = as_float(policy & 1 ? flush(literal) : literal);
+                    uint32_t expected = as_bits(multiply ? std::fma(x, k, y) : std::fma(x, y, k));
+                    if (policy & 2)
+                      expected = flush(expected);
+                    if (exact)
+                      expected = goc_test::mixed_fma_reference::evaluate(
+                          0, before[0][lane], multiply ? literal : before[1][lane],
+                          multiply ? before[1][lane] : literal, 0, 0, false, false, flags, rdna3);
+                    if (!exact && (expected & 0x7fffffff) > 0x7f800000)
+                      EXPECT_GT(d[lane] & 0x7fffffff, 0x7f800000U);
+                    else
+                      EXPECT_EQ(d[lane], expected);
                   }
-                  float x = as_float(policy & 1 ? flush(before[0][lane]) : before[0][lane]);
-                  float y = as_float(policy & 1 ? flush(before[1][lane]) : before[1][lane]);
-                  float k = as_float(policy & 1 ? flush(literal) : literal);
-                  uint32_t expected = as_bits(multiply ? std::fma(x, k, y) : std::fma(x, y, k));
-                  if (policy & 2)
-                    expected = flush(expected);
-                  if ((expected & 0x7fffffff) > 0x7f800000)
-                    EXPECT_GT(d[lane] & 0x7fffffff, 0x7f800000U);
-                  else
-                    EXPECT_EQ(d[lane], expected);
+                  std::memcpy(before, words, sizeof(words));
+                  EXPECT_EQ(invoke(flags | GOC_SEMANTICS_EXACT_EMPIRICAL),
+                            GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+                  EXPECT_EQ(std::memcmp(before, words, sizeof(words)), 0);
+                  EXPECT_EQ(state, 0x12345678U);
                 }
-                std::memcpy(before, words, sizeof(words));
-                EXPECT_EQ(invoke(flags | GOC_SEMANTICS_EXACT_EMPIRICAL),
-                          GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
-                EXPECT_EQ(std::memcmp(before, words, sizeof(words)), 0);
-                EXPECT_EQ(state, 0x12345678U);
+}
+
+TEST(LiteralFma, Fp32HardwareCorpus) {
+  const uint32_t edge[] = {0,          0x80000000, 1,          0x80000001, 0x7fffff,   0x800000,
+                           0x3f800000, 0xbf800000, 0x40000000, 0x7f7fffff, 0x7effffff, 0x7f800000,
+                           0xff800000, 0x7f800001, 0xffc00003, 0x1000000};
+  for (bool multiply : {true, false})
+    for (bool wide : {false, true})
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned policy = 0; policy < 4; ++policy) {
+          uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                           (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                           (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+          uint64_t hash = goc_test::capture_hash_seed;
+          unsigned width = wide ? 64 : 32;
+          for (unsigned base = 0; base < 8192; base += width) {
+            uint32_t input[3][64], d[64];
+            for (unsigned lane = 0; lane < width; ++lane) {
+              unsigned i = base + lane;
+              uint64_t state = uint64_t(i) * 0x9e3779b97f4a7c15ULL;
+              for (unsigned operand = 0; operand < 3; ++operand) {
+                state ^= state >> 12;
+                state ^= state << 25;
+                state ^= state >> 27;
+                input[operand][lane] = i < 4096 ? edge[(i >> (8 - operand * 4)) & 15]
+                                                : uint32_t(state * 0x2545f4914f6cdd1dULL);
               }
+            }
+            const uint32_t *a = input[0], *b = input[multiply ? 2 : 1];
+            uint32_t *dest = d;
+            int result =
+                wide ? (multiply ? goc_v_fmamk_f32_rdna4_wave64(flags, UINT64_MAX, 0, &dest, &a,
+                                                                0x3f800001, &b, nullptr)
+                                 : goc_v_fmaak_f32_rdna4_wave64(flags, UINT64_MAX, 0, &dest, &a, &b,
+                                                                0x3f800001, nullptr))
+                     : call(false, multiply, flags, UINT32_MAX, 0, &dest, &a, &b, 0x3f800001);
+            ASSERT_EQ(result, GOC_SUCCESS);
+            for (unsigned lane = 0; lane < width; ++lane)
+              hash = goc_test::capture_hash_word(hash, d[lane]);
+          }
+          EXPECT_EQ(hash, goc_test::literal_fma32_hashes[multiply ? 0 : 1][policy])
+              << multiply << '/' << wide << '/' << cpu << '/' << policy;
+        }
+}
+
+TEST(LiteralFma, ExactFp32HostEnvironment) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO})
+    for (bool flush : {false, true})
+      for (bool multiply : {false, true})
+        for (uint32_t literal : special32)
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            ASSERT_EQ(std::fesetround(rounding), 0);
+            std::feclearexcept(FE_ALL_EXCEPT);
+            std::feraiseexcept(FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+            _mm_setcsr((_mm_getcsr() & ~0x8040U) | (flush ? 0x8040U : 0));
+            unsigned controls = _mm_getcsr();
+#endif
+            uint32_t words[3][34];
+            for (unsigned reg = 0; reg < 3; ++reg)
+              for (unsigned lane = 0; lane < 34; ++lane)
+                words[reg][lane] = special32[(lane + reg * 7) % 20];
+            run(false, multiply, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                UINT32_MAX, 0, 0, 1, 2, literal, words);
+            EXPECT_EQ(std::fegetround(), rounding);
+            EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+            EXPECT_EQ(_mm_getcsr(), controls);
+#endif
+          }
 }

@@ -422,6 +422,11 @@ Their integer FMA intermediate supplies inexact/underflow/overflow classificatio
 Packed results accumulate exceptions from both selected halves. Loose SIMD
 paths skip all of this work.
 
+FP32 literal `FMAMK`/`FMAAK` implement exact nearest-even results, including
+guest denormal policies and architecture-specific NaN quieting, using the shared
+integer FMA model. Both architectures still reject non-null exact global-state
+reporting requests. Loose calls retain their SIMD paths.
+
 FP16/32 `SIN`/`COS` report invalid, input-denormal, underflow, and inexact flags.
 Their hardware corpora cover every FP16 encoding, FP32 exponent/mantissa patterns,
 and FP32 neighborhoods around underflow, quarter turns, zeros, and NaNs.

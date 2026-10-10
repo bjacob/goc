@@ -601,9 +601,15 @@ TEST(Arithmetic, Wave64FmaValidation) {
     EXPECT_EQ(fma_wave64_call(op, 0, UINT64_MAX, 1ULL << 36, nullptr, nullptr, nullptr, nullptr, 0,
                               nullptr),
               GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX,
-                              0, nullptr, nullptr, nullptr, nullptr, 0, nullptr),
-              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    // Ordinary FMA/FMAC remain loose-only; literal forms support exact results.
+    if (op < 4)
+      EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                UINT64_MAX, 0, nullptr, nullptr, nullptr, nullptr, 0, nullptr),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    else
+      EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0,
+                                nullptr, nullptr, nullptr, nullptr, 0, nullptr),
+                GOC_SUCCESS);
     if (op != 2 && op != 3) {
       uint32_t excp_flag_user = 0x12345678;
       EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr,

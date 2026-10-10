@@ -4,6 +4,7 @@
 #include "alu.h"
 #include "dpp.h"
 #include "float_formats.h"
+#include "fma_scalar.h"
 #include "goc/goc.h"
 #include "half_fma_scalar.h"
 #include "internal.h"
@@ -57,7 +58,7 @@ int mixed_fma(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const
              z = goc::mixed_fma_input(c[0][lane], mode >> 2, flags & GOC_FP_FLUSH_INPUT_DENORMALS);
     if constexpr (Dst == goc::MixedFma::Float) {
       if (exact) {
-        result[lane] = goc::mixed_fma_float_value(x, y, z, mode & GOC_ALU_CLAMP, flags, Rdna3);
+        result[lane] = goc::fma_value_f32(x, y, z, mode & GOC_ALU_CLAMP, flags, Rdna3);
         continue;
       }
       if (flags & GOC_FP_FLUSH_INPUT_DENORMALS) {

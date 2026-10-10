@@ -2430,3 +2430,39 @@ for RDNA4 MIXLO/MIXHI following the new captures.
 - Validation: all 962 tests pass under Clang 21 and GCC 15 Release; all 42
   MixedFma/HalfFma/ExceptionRegisters tests pass under ASan/UBSan, covering the
   existing integer-FMA users as well as the new exact FP32 path.
+
+## Exact FP32 literal FMA results
+
+- FP32 FMAMK/FMAAK now implement exact nearest-even results in both wave sizes,
+  with guest input/output denormal policies and RDNA3 versus RDNA4 NaN quieting.
+  The implementation shares the integer FP32 FMA algorithm with MIX_F32:
+  `fma_scalar.h` owns NaN selection and special values, while `fma_integer.h`
+  owns finite fused evaluation and rounding. Instruction-specific operand
+  selection and dispatch remain in their existing implementation files.
+- Exact paths use scalar integer arithmetic at every CPU level; loose AVX2 and
+  AVX512 paths retain their existing kernels. Neither path explicitly changes
+  host FP controls. Both architectures still reject non-null exact global-state
+  reporting; native captures contain nonzero flags, so reporting cannot be a
+  no-op as it is for mixed FMA. No RDNA3 hardware validation is claimed.
+- RX 9070 gfx1201 fixtures cover 65,536 result records across the two literal
+  forms and four coupled denormal policies, with literal `0x3f800001`. Edge and
+  deterministic random input records are compared as raw result digests for
+  both CPU wave sizes and all available CPU levels. The checked-in capture
+  generator now supports FP32 literal forms; full capture artifacts are in
+  `../goc-build/coverage-work/literal-fma32-exact-captures/`.
+- Independent integer-oracle tests cover other literals, random triples, NaN
+  payload ordering, masks, aliases, architecture IEEE differences and guest
+  denormal policies. Host-environment tests cover all rounding modes and FTZ/DAZ,
+  preserving control bits and preexisting exception flags. Wave64 validation
+  tests now distinguish exact-capable literal forms from loose-only ordinary FMA.
+- Isolated the scalar loop in a non-inlined helper so its integer scratch frame
+  does not burden SIMD dispatch. Eleven alternating CPU-2-pinned samples of
+  at least 50 ms thread CPU time against `e6f0f17` gave FMAMK/FMAAK medians of
+  13.544 -> 13.172 ns / 13.202 -> 12.811 ns for AVX2 and
+  4.820 -> 4.672 ns / 3.920 -> 3.553 ns for AVX512. These four finite-input
+  loose-path measurements show no regression; they do not characterize exact
+  performance or the whole library. Artifacts use
+  `../goc-build/coverage-work/literal-fma32-exact-*`.
+- Validation: all 964 tests pass with Clang 21 and GCC 15 Release. All 49
+  LiteralFma/MixedFma/Arithmetic/ExecMask tests pass under ASan/UBSan. Native
+  capture generation, compilation and execution also succeeded.
