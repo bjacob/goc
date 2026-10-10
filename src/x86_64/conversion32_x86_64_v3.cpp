@@ -38,7 +38,16 @@ void conversion32_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, cons
     } else {
       raw = _mm256_xor_si256(_mm256_and_si256(raw, abs_mask), neg_mask);
       auto x = _mm256_castsi256_ps(raw);
-      {
+      if constexpr (Op == Conversion32::FloatToUnsigned) {
+        x = _mm256_min_ps(_mm256_max_ps(x, zero), _mm256_set1_ps(4294967296.0f));
+        auto high = _mm256_cmp_ps(x, _mm256_set1_ps(2147483648.0f), _CMP_GE_OQ);
+        auto adjusted = _mm256_sub_ps(x, _mm256_and_ps(high, _mm256_set1_ps(2147483648.0f)));
+        result = _mm256_or_si256(
+            _mm256_cvttps_epi32(adjusted),
+            _mm256_and_si256(_mm256_castps_si256(high), _mm256_set1_epi32(INT32_MIN)));
+        auto overflow = _mm256_cmp_ps(x, _mm256_set1_ps(4294967296.0f), _CMP_GE_OQ);
+        result = _mm256_or_si256(result, _mm256_castps_si256(overflow));
+      } else {
         auto nan = _mm256_cmp_ps(x, x, _CMP_UNORD_Q);
         auto overflow = _mm256_cmp_ps(x, _mm256_set1_ps(2147483648.0f), _CMP_GE_OQ);
         x = _mm256_min_ps(_mm256_max_ps(x, _mm256_set1_ps(-2147483648.0f)),
@@ -53,8 +62,9 @@ void conversion32_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, cons
         result = _mm256_cvttps_epi32(x);
         result =
             _mm256_blendv_epi8(result, _mm256_set1_epi32(INT32_MAX), _mm256_castps_si256(overflow));
-        auto nan_result =
-            _mm256_xor_si256(_mm256_srai_epi32(raw, 31), _mm256_set1_epi32(INT32_MAX));
+        auto nan_result = _mm256_setzero_si256();
+        if constexpr (Op != Conversion32::FloatToSigned)
+          nan_result = _mm256_xor_si256(_mm256_srai_epi32(raw, 31), _mm256_set1_epi32(INT32_MAX));
         result = _mm256_blendv_epi8(result, nan_result, _mm256_castps_si256(nan));
       }
     }
@@ -73,5 +83,10 @@ template void conversion32_x86_64_v3<Conversion32::Nearest>(uint32_t, uint32_t, 
                                                             const uint32_t *);
 template void conversion32_x86_64_v3<Conversion32::Floor>(uint32_t, uint32_t, uint32_t *,
                                                           const uint32_t *);
+
+template void conversion32_x86_64_v3<Conversion32::FloatToSigned>(uint32_t, uint32_t, uint32_t *,
+                                                                  const uint32_t *);
+template void conversion32_x86_64_v3<Conversion32::FloatToUnsigned>(uint32_t, uint32_t, uint32_t *,
+                                                                    const uint32_t *);
 
 } // namespace goc

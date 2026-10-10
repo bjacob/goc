@@ -56,12 +56,9 @@ int ternary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
-  // The simple Boolean/XOR-add variants show no AVX2 gain over baseline.
-  if constexpr (goc::integer_ternary_v3_supported(Op)) {
-    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::integer_ternary_x86_64_v3<Op>(exec_mask, d[0], a[0], b[0], c[0]);
-      return GOC_SUCCESS;
-    }
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::integer_ternary_x86_64_v3<Op>(exec_mask, d[0], a[0], b[0], c[0]);
+    return GOC_SUCCESS;
   }
 #endif
   uint32_t result[32];

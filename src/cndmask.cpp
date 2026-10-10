@@ -32,7 +32,16 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
     return GOC_SUCCESS;
   }
 #endif
-  // AVX2 candidates did not provide a substantial gain over the portable path.
+#if defined(GOC_HAVE_X86_64_V3)
+  // Half-word selection is faster in the portable path than AVX2's
+  // shift/merge/masked-word stores, including with nondefault selectors.
+  if constexpr (!Half) {
+    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+      goc::cndmask_x86_64_v3(exec_mask, mode, d[0], a[0], b[0], condition);
+      return GOC_SUCCESS;
+    }
+  }
+#endif
 
   const uint32_t sign = Half ? 0x8000 : 0x80000000;
   unsigned sa = Half && (mode & GOC_ALU_HIGH_A) ? 16 : 0;

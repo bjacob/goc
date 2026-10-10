@@ -10,7 +10,6 @@ namespace goc {
 template <IntegerTernary Op>
 void integer_ternary_x86_64_v3(uint32_t exec_mask, uint32_t *d, const uint32_t *a,
                                const uint32_t *b, const uint32_t *c) {
-  static_assert(integer_ternary_v3_supported(Op));
   for (int lane = 0; lane < 32; lane += 8) {
     auto x = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)),
          y = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(b + lane)),
@@ -24,6 +23,14 @@ void integer_ternary_x86_64_v3(uint32_t exec_mask, uint32_t *d, const uint32_t *
           _mm256_sllv_epi32(_mm256_add_epi32(x, y), _mm256_and_si256(z, _mm256_set1_epi32(31)));
     if constexpr (Op == IntegerTernary::ShiftOr)
       result = _mm256_or_si256(_mm256_sllv_epi32(x, _mm256_and_si256(y, _mm256_set1_epi32(31))), z);
+    if constexpr (Op == IntegerTernary::AndOr)
+      result = _mm256_or_si256(_mm256_and_si256(x, y), z);
+    if constexpr (Op == IntegerTernary::Or3)
+      result = _mm256_or_si256(_mm256_or_si256(x, y), z);
+    if constexpr (Op == IntegerTernary::Xor3)
+      result = _mm256_xor_si256(_mm256_xor_si256(x, y), z);
+    if constexpr (Op == IntegerTernary::XorAdd)
+      result = _mm256_add_epi32(_mm256_xor_si256(x, y), z);
     if constexpr (Op == IntegerTernary::Lerp) {
       // Native byte average rounds up. Subtract one only for an odd sum
       // whose C byte requests truncation; higher C bits are ignored.
@@ -51,5 +58,17 @@ template void integer_ternary_x86_64_v3<IntegerTernary::ShiftOr>(uint32_t, uint3
 template void integer_ternary_x86_64_v3<IntegerTernary::Lerp>(uint32_t, uint32_t *,
                                                               const uint32_t *, const uint32_t *,
                                                               const uint32_t *);
+
+template void integer_ternary_x86_64_v3<IntegerTernary::AndOr>(uint32_t, uint32_t *,
+                                                               const uint32_t *, const uint32_t *,
+                                                               const uint32_t *);
+template void integer_ternary_x86_64_v3<IntegerTernary::Or3>(uint32_t, uint32_t *, const uint32_t *,
+                                                             const uint32_t *, const uint32_t *);
+template void integer_ternary_x86_64_v3<IntegerTernary::Xor3>(uint32_t, uint32_t *,
+                                                              const uint32_t *, const uint32_t *,
+                                                              const uint32_t *);
+template void integer_ternary_x86_64_v3<IntegerTernary::XorAdd>(uint32_t, uint32_t *,
+                                                                const uint32_t *, const uint32_t *,
+                                                                const uint32_t *);
 
 } // namespace goc

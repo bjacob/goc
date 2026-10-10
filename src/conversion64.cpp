@@ -32,12 +32,9 @@ int convert(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
-  // The AVX2 signed truncating candidate was roughly tied with baseline.
-  if constexpr (Op != goc::Conversion64::DoubleToSigned) {
-    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::conversion64_x86_64_v3<Op>(exec_mask, mode, d, a);
-      return GOC_SUCCESS;
-    }
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::conversion64_x86_64_v3<Op>(exec_mask, mode, d, a);
+    return GOC_SUCCESS;
   }
 #endif
   uint32_t result[to_double ? 2 : 1][32];

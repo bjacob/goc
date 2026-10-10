@@ -40,11 +40,10 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
-  if constexpr (Packed) {
-    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::integer_conversion_x86_64_v3<Unsigned>(exec_mask, d[0], a[0], b[0]);
-      return GOC_SUCCESS;
-    }
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::integer_conversion_x86_64_v3<Unsigned, Packed>(exec_mask, mode, d[0], a[0],
+                                                        Packed ? b[0] : nullptr);
+    return GOC_SUCCESS;
   }
 #endif
   uint32_t result[32];

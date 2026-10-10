@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "goc/goc.h"
 #include "integer_conversion.h"
 
 #include <immintrin.h>
@@ -19,23 +20,35 @@ template <bool Unsigned> __m256i narrow(__m256i raw) {
 
 } // namespace
 
-template <bool Unsigned>
-void integer_conversion_x86_64_v3(uint32_t exec_mask, uint32_t *d, const uint32_t *a,
+template <bool Unsigned, bool Packed>
+void integer_conversion_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
                                   const uint32_t *b) {
   for (unsigned lane = 0; lane < 32; lane += 8) {
     auto va = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane));
-    auto vb = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(b + lane));
-    auto result =
-        _mm256_or_si256(narrow<Unsigned>(va), _mm256_slli_epi32(narrow<Unsigned>(vb), 16));
+    __m256i result;
+    if constexpr (Packed) {
+      auto vb = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(b + lane));
+      result = _mm256_or_si256(narrow<Unsigned>(va), _mm256_slli_epi32(narrow<Unsigned>(vb), 16));
+    } else {
+      va = _mm256_srl_epi32(va, _mm_cvtsi32_si128(mode & GOC_ALU_HIGH_A ? 16 : 0));
+      if constexpr (Unsigned)
+        result = _mm256_and_si256(va, _mm256_set1_epi32(65535));
+      else
+        result = _mm256_srai_epi32(_mm256_slli_epi32(va, 16), 16);
+    }
     auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
                                             _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
     _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
 }
 
-template void integer_conversion_x86_64_v3<false>(uint32_t, uint32_t *, const uint32_t *,
-                                                  const uint32_t *);
-template void integer_conversion_x86_64_v3<true>(uint32_t, uint32_t *, const uint32_t *,
-                                                 const uint32_t *);
+template void integer_conversion_x86_64_v3<false, false>(uint32_t, uint32_t, uint32_t *,
+                                                         const uint32_t *, const uint32_t *);
+template void integer_conversion_x86_64_v3<false, true>(uint32_t, uint32_t, uint32_t *,
+                                                        const uint32_t *, const uint32_t *);
+template void integer_conversion_x86_64_v3<true, false>(uint32_t, uint32_t, uint32_t *,
+                                                        const uint32_t *, const uint32_t *);
+template void integer_conversion_x86_64_v3<true, true>(uint32_t, uint32_t, uint32_t *,
+                                                       const uint32_t *, const uint32_t *);
 
 } // namespace goc

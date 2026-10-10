@@ -42,13 +42,15 @@ int arithmetic(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *cons
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
-  // AVX2 saturation beats the baseline path; for wrapping arithmetic, its
-  // masked-store overhead outweighs the cheaper vector add/subtract.
-  if constexpr (!three) {
-    if ((mode & GOC_ALU_CLAMP) && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::integer_add_sat_x86_64_v3<Op, Signed>(exec_mask, d[0], a[0], b[0]);
-      return GOC_SUCCESS;
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    if constexpr (!three) {
+      if (mode & GOC_ALU_CLAMP) {
+        goc::integer_add_sat_x86_64_v3<Op, Signed>(exec_mask, d[0], a[0], b[0]);
+        return GOC_SUCCESS;
+      }
     }
+    goc::integer_add_wrap_x86_64_v3<Op>(exec_mask, d[0], a[0], b[0], three ? c[0] : nullptr);
+    return GOC_SUCCESS;
   }
 #endif
   uint32_t result[32];

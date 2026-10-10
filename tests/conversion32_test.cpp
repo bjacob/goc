@@ -356,3 +356,31 @@ TEST(Conversion32, Wave64DppModifiersAliasesAndValidation) {
     }
   }
 }
+
+TEST(Conversion32, TruncatingOptionalStateAndOutputModifiers) {
+  const decltype(&goc_v_cvt_i32_f32_rdna4) functions[] = {goc_v_cvt_i32_f32_rdna4,
+                                                          goc_v_cvt_u32_f32_rdna4};
+  std::mt19937 random(0x735ba);
+  for (unsigned op = 0; op < 2; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < 32; ++variant)
+        for (unsigned batch = 0; batch < 32; ++batch) {
+          uint32_t storage[34], original[32];
+          storage[0] = storage[33] = 0xa55a1234;
+          for (unsigned lane = 0; lane < 32; ++lane)
+            original[lane] = storage[lane + 1] = random();
+          uint32_t *d = storage + 1;
+          const uint32_t *a = d;
+          uint32_t state = 0xdeadbeef;
+          uint32_t exec_mask = random();
+          uint32_t mode = goc_test::conversion32_mode(op + 2, variant);
+          ASSERT_EQ(functions[op](cpu, exec_mask, mode, &d, &a, &state), GOC_SUCCESS);
+          EXPECT_EQ(state, 0xdeadbeefU);
+          for (unsigned lane = 0; lane < 32; ++lane)
+            EXPECT_EQ(d[lane], (exec_mask >> lane) & 1
+                                   ? goc_test::conversion32_reference(op + 2, original[lane], mode)
+                                   : original[lane]);
+          EXPECT_EQ(storage[0], 0xa55a1234U);
+          EXPECT_EQ(storage[33], 0xa55a1234U);
+        }
+}

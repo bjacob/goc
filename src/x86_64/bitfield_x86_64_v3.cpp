@@ -10,7 +10,6 @@ namespace goc {
 template <Bitfield Op>
 void bitfield_x86_64_v3(uint32_t exec_mask, uint32_t *d, const uint32_t *a, const uint32_t *b,
                         const uint32_t *c) {
-  static_assert(Op != Bitfield::Insert);
   for (int lane = 0; lane < 32; lane += 8) {
     __m256i x;
     x = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane));
@@ -60,6 +59,8 @@ void bitfield_x86_64_v3(uint32_t exec_mask, uint32_t *d, const uint32_t *a, cons
       value = _mm256_andnot_si256(_mm256_cmpeq_epi8(selector, _mm256_set1_epi8(12)), value);
       result = _mm256_or_si256(value, _mm256_cmpeq_epi8(selector, _mm256_set1_epi8(13)));
     }
+    if constexpr (Op == Bitfield::Insert)
+      result = _mm256_or_si256(_mm256_and_si256(x, y), _mm256_andnot_si256(x, z));
     if constexpr (Op == Bitfield::Mask)
       result = _mm256_sllv_epi32(
           _mm256_sub_epi32(
@@ -102,5 +103,8 @@ template void bitfield_x86_64_v3<Bitfield::AlignByte>(uint32_t, uint32_t *, cons
 
 template void bitfield_x86_64_v3<Bitfield::Permute>(uint32_t, uint32_t *, const uint32_t *,
                                                     const uint32_t *, const uint32_t *);
+
+template void bitfield_x86_64_v3<Bitfield::Insert>(uint32_t, uint32_t *, const uint32_t *,
+                                                   const uint32_t *, const uint32_t *);
 
 } // namespace goc

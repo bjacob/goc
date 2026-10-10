@@ -76,6 +76,11 @@ void conversion64_x86_64_v3(uint32_t exec_mask, uint32_t mode, uint32_t *const *
         if (mode & GOC_ALU_CLAMP)
           x = _mm_min_ps(_mm_max_ps(x, _mm_setzero_ps()), _mm_set1_ps(1));
         output = _mm_castps_si128(x);
+      } else if constexpr (Op == Conversion64::DoubleToSigned) {
+        auto nan = _mm256_cmp_pd(value, value, _CMP_UNORD_Q);
+        value = _mm256_min_pd(_mm256_max_pd(value, _mm256_set1_pd(-2147483648.0)),
+                              _mm256_set1_pd(2147483647.0));
+        output = _mm_andnot_si128(low_words(_mm256_castpd_si256(nan)), _mm256_cvttpd_epi32(value));
       } else if constexpr (Op == Conversion64::DoubleToUnsigned) {
         value = _mm256_min_pd(_mm256_max_pd(value, zero), _mm256_set1_pd(4294967295.0));
         auto high = _mm256_cmp_pd(value, _mm256_set1_pd(2147483648.0), _CMP_GE_OQ);
@@ -114,5 +119,9 @@ template void conversion64_x86_64_v3<Conversion64::FloatToDouble>(uint32_t, uint
 template void conversion64_x86_64_v3<Conversion64::DoubleToFloat>(uint32_t, uint32_t,
                                                                   uint32_t *const *,
                                                                   const uint32_t *const *);
+
+template void conversion64_x86_64_v3<Conversion64::DoubleToSigned>(uint32_t, uint32_t,
+                                                                   uint32_t *const *,
+                                                                   const uint32_t *const *);
 
 } // namespace goc

@@ -14,7 +14,7 @@ timings later in this document describe the initial audit pass.
 
 - [x] SIMD RDNA3 IU4/IU8 WMMA in both widths, all signs and final CLAMP.
 - [x] SIMD loose packed-result FP16/BF16 WMMA with intermediate narrowing.
-- [ ] AVX2 coverage for Boolean/CNDMASK, bitfield insert, non-saturating
+- [x] AVX2 coverage for Boolean/CNDMASK, bitfield insert, non-saturating
   integer add, and the remaining ternary/count/conversion gaps listed below.
 - [ ] Review incomplete exact-state families against rocjitsu and the ISA;
   implement available borrowed/simple rules, retaining explicit unsupported
@@ -210,3 +210,56 @@ same pinned/thread-time protocol above. Artifacts live in
 The sixteen existing FP32-result WMMA control cases changed by −4.0% to +0.9%
 (median −1.1% time), with no material regression. Their paired samples are in
 `../goc-build/coverage-work/audit-packed-f32-control/`.
+
+## Follow-up: AVX2 arithmetic gaps
+
+New eight-lane paths cover 32-bit Boolean/CNDMASK, 16-bit AND, BFI, the four
+simple ternary operations, wrapping integer add/subtract/ADD3, signed/unsigned
+16-to-32 widening, FP32-to-I32/U32 truncation, and FP64-to-I32 truncation.
+DPP and Wave64 continue to use the same arithmetic kernels; accepted modifiers
+and optional loose-state pointers do not disable SIMD. Existing packing,
+saturation, and floating conversion kernels share their arithmetic rules where
+applicable, without adding a generic vector executor.
+
+Candidates were also implemented and tested for half-word OR/XOR/NOT and
+CNDMASK. They were removed after paired measurements showed slower performance
+for both full and alternating EXEC, with default and nondefault selectors.
+Those opcodes retain the portable half-word path below v4. This is an
+opcode-level choice, not a modifier- or mask-dependent fallback. Wave32
+MBCNT_HI is also deliberately retained: its mathematical result is simply B,
+so there is no population-count arithmetic to vectorize. Its Wave64 form
+already has AVX2 arithmetic.
+
+The existing tests exercise all half encodings, truth tables, modifier/mask
+combinations, DPP and Wave64, random raw words, host-rounding-independent
+integer conversions, and aliases. A new truncation test combines random masks,
+in-place output, every source/output modifier, and a non-null loose-state
+pointer against the independent integer-bit reference.
+
+Validation: Clang and GCC each pass all 1,189 tests; ASan/UBSan and no-SIMD
+builds each pass the 89 affected-family tests. Initial candidate measurements
+are preserved in `../goc-build/coverage-work/audit-avx2-performance/`, including
+the rejected half-word kernels. Final selected-kernel measurements and existing
+packing/saturation controls are in `audit-avx2-final-performance/`.
+
+The Clang archive's aggregate `size` text total increases from 2,135,862 to
+2,142,141 bytes (+6,279 bytes, 0.29%) for these AVX2 additions. The changes add
+ordinary intrinsic kernels and remove the obsolete ternary-support predicate;
+there is no new policy/adapter layer. The two retained half-word exceptions
+avoid adding kernels that regress their measured workloads.
+
+Final seven-pair Clang timings cover 80 cases (full and alternating EXEC,
+default and nondefault modifiers, including unchanged controls). The 28 newly
+covered full-wave cases improve by 2.6–27.1%, median 14.5%. Their alternating-
+mask cases range from 10.1% faster to 9.4% slower, median 2.4% faster: the old
+scalar stores sometimes did less work. No mask-density dispatch was added.
+
+Control cases have a median 0.5% time increase. One exception is default-modifier
+half-word CNDMASK, which measured 16–20% slower despite retaining byte-identical
+machine code for its 2,198-byte arithmetic function. Its address changed as the
+32-bit specialization grew. Separate alignment and direct-store experiments did
+not produce a clean improvement and were discarded. This code-placement-sensitive
+microbenchmark regression is explicitly retained in the results; it must not be
+misrepresented as every case getting faster. Modified CNDMASK16 and the existing
+packing/saturation controls remain near their previous times. Static consumers
+will have their own code layout.

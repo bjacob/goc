@@ -34,7 +34,16 @@ int boolean(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
     return GOC_SUCCESS;
   }
 #endif
-  // AVX2 candidates were slower than baseline for these Boolean operations.
+#if defined(GOC_HAVE_X86_64_V3)
+  // Half OR/XOR/NOT are faster as portable half-word operations. Keep the
+  // decision opcode-based: half selectors and EXEC do not alter dispatch.
+  if constexpr (!Half || Op == goc::Boolean::And) {
+    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+      goc::boolean_x86_64_v3<Op, Half>(exec_mask, mode, d[0], a[0], bp);
+      return GOC_SUCCESS;
+    }
+  }
+#endif
 
   unsigned sa = Half && (mode & GOC_ALU_HIGH_A) ? 16 : 0;
   unsigned sb = Half && (mode & GOC_ALU_HIGH_B) ? 16 : 0;

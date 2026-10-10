@@ -15,6 +15,8 @@ check_cxx_compiler_flag("${goc_avx512bf16_check_flags}" GOC_COMPILER_AVX512BF16)
 check_cxx_compiler_flag("${goc_avx512vnni_check_flags}" GOC_COMPILER_AVX512VNNI)
 
 set(goc_x86_64_v3_sources
+  ${CMAKE_CURRENT_SOURCE_DIR}/boolean_x86_64_v3.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/cndmask_x86_64_v3.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/dpp_x86_64_v3.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/permlane_x86_64_v3.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/rcp_iflag_x86_64_v3.cpp

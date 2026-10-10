@@ -66,4 +66,35 @@ template void integer_add_sat_x86_64_v3<IntegerAdd::Add, true>(uint32_t, uint32_
 template void integer_add_sat_x86_64_v3<IntegerAdd::Sub, true>(uint32_t, uint32_t *,
                                                                const uint32_t *, const uint32_t *);
 
+template <IntegerAdd Op>
+void integer_add_wrap_x86_64_v3(uint32_t exec_mask, uint32_t *d, const uint32_t *a,
+                                const uint32_t *b, const uint32_t *c) {
+  for (unsigned lane = 0; lane < 32; lane += 8) {
+    auto x = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane));
+    auto y = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(b + lane));
+    __m256i result;
+    if constexpr (Op == IntegerAdd::Sub)
+      result = _mm256_sub_epi32(x, y);
+    else if constexpr (Op == IntegerAdd::Subrev)
+      result = _mm256_sub_epi32(y, x);
+    else
+      result = _mm256_add_epi32(x, y);
+    if constexpr (Op == IntegerAdd::Add3)
+      result =
+          _mm256_add_epi32(result, _mm256_loadu_si256(reinterpret_cast<const __m256i *>(c + lane)));
+    auto active = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
+                                    _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
+    _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), active, result);
+  }
+}
+
+template void integer_add_wrap_x86_64_v3<IntegerAdd::Add>(uint32_t, uint32_t *, const uint32_t *,
+                                                          const uint32_t *, const uint32_t *);
+template void integer_add_wrap_x86_64_v3<IntegerAdd::Sub>(uint32_t, uint32_t *, const uint32_t *,
+                                                          const uint32_t *, const uint32_t *);
+template void integer_add_wrap_x86_64_v3<IntegerAdd::Subrev>(uint32_t, uint32_t *, const uint32_t *,
+                                                             const uint32_t *, const uint32_t *);
+template void integer_add_wrap_x86_64_v3<IntegerAdd::Add3>(uint32_t, uint32_t *, const uint32_t *,
+                                                           const uint32_t *, const uint32_t *);
+
 } // namespace goc

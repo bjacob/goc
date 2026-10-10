@@ -792,8 +792,8 @@ controls destination writes. ABS/NEG modify only source sign bits; all payload
 bits, including signaling NaNs, are preserved. The 16-bit form supports every
 source/destination half selector and preserves the unwritten destination half.
 Both forms preserve host FP state and have scalar and sixteen-lane v4 paths
-with all their modifiers. AVX2 candidates did not provide a substantial gain,
-so v3 CPUs use the portable path. OMOD and CLAMP are not supported by these
+with all their modifiers. The 32-bit form also uses eight-lane AVX2; the
+16-bit form retains the faster portable half-word path below v4. OMOD and CLAMP are not supported by these
 instructions. DPP8/DPP16 permutes A before source modifiers and half
 selection, while B and the condition mask retain their original lanes.
 An additional 774,144 GPU results cover DPP with every modifier, independent
@@ -1078,9 +1078,8 @@ result halves; it accepts no numeric modifiers. All four support Wave32 and
 Wave64 with exact integer results in both semantics, EXEC masking, aliases,
 and preservation of the host FP environment.
 
-Sixteen-lane v4 paths cover all four operations. Eight-lane v3 paths cover
-packing; widening candidates were slightly slower than baseline and were
-removed. The signed scalar packing path uses an unsigned interval test to
+Sixteen-lane v4 and eight-lane v3 paths cover all four operations, including
+both source-half selections. The signed scalar packing path uses an unsigned interval test to
 avoid expensive 64-bit comparisons. Tests cover every half encoding, saturation
 boundaries, full-word inputs, all source/destination alias layouts, 84 masks,
 unaligned storage, validation, and host FP-state preservation. Benchmarks use
@@ -1272,8 +1271,7 @@ OMOD, including cases where scaling first would avoid overflow or underflow.
 All six expose loose semantics at both wave sizes using shared kernels;
 exact optional exception reporting remains unsupported.
 
-Eight-lane x86-64-v4 paths cover all six; four-lane v3 paths cover all except
-signed FP64-to-integer, whose candidate was roughly tied with baseline.
+Eight-lane x86-64-v4 and four-lane v3 paths cover all six operations.
 No supported modifier forces an otherwise available SIMD path to scalar.
 Tests use an independent integer-bit reference, literal rounding/saturation
 witnesses, narrowing midpoints across the FP32 range, every source exponent,
@@ -1294,9 +1292,8 @@ forms reject OMOD. GPU exception reporting is not modeled. These entry points
 expose loose semantics at both wave sizes, with shared arithmetic kernels.
 
 All six have scalar and 16-lane x86-64-v4 implementations. Eight-lane v3
-implementations cover integer-to-float, NEAREST, and FLOOR, including every
-accepted modifier combination. The truncating v3 candidates gained only 7–10%
-over baseline and were removed. Tests use an independent integer-bit reference,
+implementations now cover all six, including truncation and every accepted
+modifier combination. Tests use an independent integer-bit reference,
 literal tie/overflow/NaN witnesses, precision boundaries, random words, all
 modifiers, all mask patterns, unaligned storage, and in-place aliases. They also
 check that float-to-integer rounding is independent of the host rounding mode.
@@ -1456,8 +1453,8 @@ select source and destination halves with `HIGH_A`, `HIGH_B` (binary forms),
 and `HIGH_D`, preserving the other destination half. The 32-bit forms have
 no arithmetic modifiers. Both widths support DPP8/DPP16 on A before any half
 selection. SIMD processes sixteen lanes on v4, including every
-half selector. AVX2 candidates were slower than baseline, so v3 CPUs use the
-portable path. Tests cover every half encoding,
+half selector. Eight-lane AVX2 covers the 32-bit forms and 16-bit AND. Half-word
+OR/XOR/NOT retain the faster portable implementation below v4. Tests cover every half encoding,
 per-bit truth tables, every selector combination, unaligned storage, EXEC
 masks, and source/destination aliases. Invalid flags leave all registers
 unchanged, and every path preserves host FP state.
@@ -1483,8 +1480,7 @@ These rules follow rocjitsu's integer helpers. All these forms support
 DPP8/DPP16 on A, with zero low instruction-flag bits;
 all host FP state is preserved. Eight-lane v3 and sixteen-lane v4 paths use
 variable shifts, Boolean operations, and byte lookup/shuffle reversal. `BFI`
-uses scalar on v3 because its AVX2 candidate showed little benefit; v4 uses
-native ternary logic. Independent per-bit tests cover every offset, width and
+uses AND/ANDNOT/OR on v3 and native ternary logic on v4. Independent per-bit tests cover every offset, width and
 source bit, signed boundary crossings, ignored high count bits, truth tables,
 EXEC masks, and whole-register aliases. Alignment tests exercise every bit of
 the 64-bit concatenation at every shift. Pinned-core Ryzen 9 7950X3D measurements
@@ -1498,8 +1494,7 @@ the low bit of each `C` byte selects whether an odd sum rounds up or down.
 Other `C` bits are ignored. These forms support DPP8/DPP16 on A, have no
 arithmetic modifiers, and preserve host FP state. All have scalar and sixteen-lane v4 paths; v4 uses
 native three-input Boolean operations. Eight-lane v3 paths accelerate the three
-shift combinations and byte interpolation. The simple Boolean/XOR-add forms
-remain on baseline for v3 CPUs because measurements showed no AVX2 gain.
+shift combinations, byte interpolation, and the simple Boolean/XOR-add forms.
 Tests cover truth tables
 at every bit position, wrapped counts and arithmetic, every byte pair and all
 sixteen rounding-control combinations, EXEC masks, and whole-register aliases.
@@ -1879,9 +1874,7 @@ Non-carry integer add/subtract covers unsigned addition, subtraction and reverse
 subtraction, signed addition/subtraction, and unsigned three-input addition.
 Two-input forms support `GOC_ALU_CLAMP`; `v_add3_u32` wraps modulo 2^32 and has no
 arithmetic modifiers. Every form has scalar and sixteen-lane v4 paths; eight-lane
-v3 is selected for saturation, where it beats the baseline implementation.
-Wrapping forms use the baseline path on v3 CPUs because AVX2 masked-store
-overhead outweighs their arithmetic savings. Saturation remains SIMD, using
+v3 covers both wrapping and saturating arithmetic. Saturation uses
 integer overflow/borrow detection. Tests cover signed limits, unsigned
 carry/borrow, operand order, three-input wrap, masks, all whole-register alias
 layouts and host FP-environment preservation.
@@ -2241,8 +2234,7 @@ DPP8/DPP16 also cover signed/unsigned BFE, BFI, BFM, BFREV, ALIGNBIT, ALIGNBYTE,
 and PERM. Source A is permuted before bitfield extraction, selection, or byte
 permutation; the other operands remain local to the destination lane. A GFX1201
 capture checks 14,336 results, supplemented by independent mask/alias/boundary
-and random-word tests. AVX2 and AVX-512 paths compose with DPP (BFI retains its
-baseline arithmetic at the v3 CPU level). Baseline BFE explicitly prevents
+and random-word tests. AVX2 and AVX-512 paths compose with DPP, including BFI. Baseline BFE explicitly prevents
 Clang's FP-based vector shift lowering from raising host `FE_INVALID` for width
 31; regression tests check every width/offset without DPP and the boundary with
 DPP. Benchmarks cover signed BFE, BFM, and PERM with full EXEC. On the Ryzen 9
@@ -2258,9 +2250,8 @@ other operations permute A.
 A GFX1201 capture checks 19,712 results,
 including saturation boundaries. Independent tests combine both modifier modes
 with all EXEC patterns and source/destination aliases, and check host FP-state
-preservation. AVX2 saturation and all existing AVX-512 arithmetic paths remain
-available; wrapping arithmetic at the v3 CPU level retains the baseline arithmetic
-with AVX2 permutation. Benchmarks cover signed/unsigned addition and unsigned
+preservation. Both wrapping and saturating arithmetic retain AVX2/AVX-512
+arithmetic after DPP permutation. Benchmarks cover signed/unsigned addition and unsigned
 reverse subtraction with and
 without CLAMP and both DPP kinds, using full EXEC. On the Ryzen 9 7950X3D,
 these cases measure 17.5–22.3 ns on x86-64-v3 (1.8–3.3× scalar speed) and
@@ -2296,8 +2287,9 @@ DPP8/DPP16 also support the 16-bit AND, OR, XOR, and NOT operations with all
 source and destination half selectors. A GFX1201 capture checks 50,176 results
 across all 28 operation/selector combinations. Tests verify the untouched
 destination half, all EXEC patterns, source/destination aliases, random words,
-and host FP-state preservation. The v3 path combines AVX2 permutation with
-baseline Boolean arithmetic; v4 uses AVX-512 arithmetic and permutation.
+and host FP-state preservation. The v3 path uses AVX2 permutation and AND
+arithmetic; half-word OR/XOR/NOT retain portable arithmetic. v4 uses AVX-512
+arithmetic and permutation.
 Benchmarks cover AND and NOT with low/high selections and full EXEC. On the
 Ryzen 9 7950X3D, these cases measure 12.8–24.2 ns on x86-64-v3 (1.7–2.6× scalar
 speed) and 8.9–12.2 ns on x86-64-v4 (3.0–4.6×), using seven pinned samples of at

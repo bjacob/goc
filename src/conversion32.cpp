@@ -38,14 +38,9 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
-  // AVX2 truncating conversions gained only 7-10% over baseline. Keep the
-  // smaller baseline path there; AVX-512 still accelerates every opcode.
-  if constexpr (Op != goc::Conversion32::FloatToSigned &&
-                Op != goc::Conversion32::FloatToUnsigned) {
-    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::conversion32_x86_64_v3<Op>(exec_mask, mode, d[0], a[0]);
-      return GOC_SUCCESS;
-    }
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::conversion32_x86_64_v3<Op>(exec_mask, mode, d[0], a[0]);
+    return GOC_SUCCESS;
   }
 #endif
   uint32_t result[32];
