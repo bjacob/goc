@@ -11,8 +11,9 @@
 
 namespace {
 
-int compare(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *d, bool value,
-            unsigned bits, bool floating = false, uint32_t *excp_flag_user = nullptr) {
+template <typename Mask>
+int compare(uint64_t flags, Mask exec_mask, uint64_t mode, Mask *d, bool value, unsigned bits,
+            bool floating = false, uint32_t *excp_flag_user = nullptr) {
   if (floating && excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32) {
@@ -29,7 +30,17 @@ int compare(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *d, bool
   if (value && exec_mask && (mode & GOC_DPP16)) {
     // Operand values are irrelevant, but DPP row/bank/boundary filtering is not.
     uint32_t zero[32] = {}, ignored[32];
-    exec_mask = goc::dpp16_source(flags, exec_mask, mode, ignored, zero);
+    Mask filtered = 0;
+    const unsigned rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+    for (unsigned half = 0; half < sizeof(Mask) / sizeof(uint32_t); ++half) {
+      // DPP routes within 16-lane rows; Wave64 has four independent row bits.
+      const uint64_t half_mode =
+          (mode & ~GOC_DPP_ROW_MASK) | (uint64_t((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+      filtered |= Mask(goc::dpp16_source(flags, uint32_t(exec_mask >> (half * 32)), half_mode,
+                                         ignored, zero))
+                  << (half * 32);
+    }
+    exec_mask = filtered;
   }
   *d = value ? exec_mask : 0;
   return GOC_SUCCESS;
@@ -174,5 +185,157 @@ int goc_v_cmpx_f_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fl
 
 int goc_v_cmpx_t_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                      const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 64, true, excp_flag_user);
+}
+
+int goc_v_cmp_f_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 32);
+}
+
+int goc_v_cmp_t_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 32);
+}
+
+int goc_v_cmpx_f_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 32);
+}
+
+int goc_v_cmpx_t_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 32);
+}
+
+int goc_v_cmp_f_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 32);
+}
+
+int goc_v_cmp_t_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 32);
+}
+
+int goc_v_cmpx_f_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 32);
+}
+
+int goc_v_cmpx_t_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 32);
+}
+
+int goc_v_cmp_f_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 64);
+}
+
+int goc_v_cmp_t_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 64);
+}
+
+int goc_v_cmpx_f_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 64);
+}
+
+int goc_v_cmpx_t_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 64);
+}
+
+int goc_v_cmp_f_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 64);
+}
+
+int goc_v_cmp_t_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 64);
+}
+
+int goc_v_cmpx_f_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 64);
+}
+
+int goc_v_cmpx_t_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 64);
+}
+
+int goc_v_cmp_f_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 16, true, excp_flag_user);
+}
+
+int goc_v_cmp_t_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 16, true, excp_flag_user);
+}
+
+int goc_v_cmpx_f_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 16, true, excp_flag_user);
+}
+
+int goc_v_cmpx_t_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 16, true, excp_flag_user);
+}
+
+int goc_v_cmp_f_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 32, true, excp_flag_user);
+}
+
+int goc_v_cmp_t_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 32, true, excp_flag_user);
+}
+
+int goc_v_cmpx_f_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 32, true, excp_flag_user);
+}
+
+int goc_v_cmpx_t_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 32, true, excp_flag_user);
+}
+
+int goc_v_cmp_f_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 64, true, excp_flag_user);
+}
+
+int goc_v_cmp_t_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 64, true, excp_flag_user);
+}
+
+int goc_v_cmpx_f_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 64, true, excp_flag_user);
+}
+
+int goc_v_cmpx_t_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user) {
   return compare(flags, exec_mask, instruction_flags, d, true, 64, true, excp_flag_user);
 }

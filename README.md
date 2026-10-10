@@ -2394,3 +2394,9 @@ Both `goc_v_dual_dot2acc_f32_f16` and `goc_v_dual_dot2acc_f32_bf16` use the borr
 RDNA3 exact model; append `_rdna4` for RDNA4's different accumulation semantics.
 All dual operations inherit the ordinary APIs' exactness and optional global-state
 limitations. They have no Wave64 variants.
+
+
+The constant F/T CMP/CMPX predicates also have `_wave64` forms with 64-bit EXEC
+and result masks. They use the same validation, DPP filtering and optional-state
+contract as Wave32. Floating exact non-null exception reporting remains
+unsupported; null reporting permits exact constant result masks.

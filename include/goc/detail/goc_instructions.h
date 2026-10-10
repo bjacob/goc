@@ -3861,6 +3861,107 @@ int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c);
 
+// Wave64 constant F/T comparisons. The result is zero or the effective EXEC
+// mask, including DPP filtering for 32-bit and half inputs. Sources are ignored
+// and may be null. Floating exact exception reporting is not implemented;
+// a non-null excp_flag_user returns GOC_ERROR_UNSUPPORTED_GLOBAL_STATE in exact
+// semantics, while loose semantics leaves it unchanged. Errors preserve outputs.
+int goc_v_cmp_f_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmp_t_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmpx_f_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmpx_t_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmp_f_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmp_t_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmpx_f_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmpx_t_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmp_f_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmp_t_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmpx_f_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmpx_t_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmp_f_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmp_t_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmpx_f_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmpx_t_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *);
+
+int goc_v_cmp_f_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user);
+
+int goc_v_cmp_t_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user);
+
+int goc_v_cmpx_f_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user);
+
+int goc_v_cmpx_t_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user);
+
+int goc_v_cmp_f_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user);
+
+int goc_v_cmp_t_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user);
+
+int goc_v_cmpx_f_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user);
+
+int goc_v_cmpx_t_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user);
+
+int goc_v_cmp_f_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user);
+
+int goc_v_cmp_t_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                           uint32_t *excp_flag_user);
+
+int goc_v_cmpx_f_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user);
+
+int goc_v_cmpx_t_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
+                            uint32_t *excp_flag_user);
+
 // One decoded VOPD operation, Wave32 only. Operand layouts, numerical semantics,
 // CPU paths and optional exception reporting match the ordinary instruction.
 // instruction_flags must be zero: VOPD encodes no arithmetic modifiers or DPP.

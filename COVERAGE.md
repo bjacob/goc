@@ -54,7 +54,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
 | Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
-| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented | RDNA3 floating constant exception reporting, Wave64 floating/constant comparisons, and architecture-specific floating-policy audit |
+| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented at both wave widths | RDNA3 floating constant exception reporting, Wave64 relational floating comparisons, and architecture-specific floating-policy audit |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
@@ -626,3 +626,56 @@ cross-cutting gates above remain open.
 
 Validation: all 744 tests pass with Clang 21 and GCC 15 Release builds. All ten
 VOPD, exception-register and instruction-flag tests pass under ASan/UBSan.
+
+
+## Hardware-register access audit (implementation still open)
+
+The three remaining canonical names, `s_getreg_b32`, `s_setreg_b32` and
+`s_setreg_imm32_b32`, cannot be completed by adding a generic bitfield helper.
+RDNA3 ISA section 3.4 and SOPK definitions specify a six-bit register ID,
+five-bit bit offset and five-bit size-minus-one. SETREG also applies
+register-specific writable bits and privilege and can trigger side effects.
+The printed SETREG pseudocode's mask does not include the offset shift; it
+must not be copied without checking hardware or the independent model.
+
+rocjitsu `vm/amdgpu/hwreg.cpp` provides useful field decoding/insertion and
+architecture tables, but many entries explicitly return Unsupported. Its RDNA3
+STATUS descriptor is read-only even though the manual allows some privileged
+writes. It is evidence for partial behavior, not an exhaustive reference.
+
+| Register ID | RDNA3 | RDNA4 |
+|---|---|---|
+| 1 | MODE | WAVE_MODE |
+| 2 | STATUS (includes privileged writable fields) | WAVE_STATUS (separate privileged state) |
+| 3 / 4 | TRAPSTS at 3 | WAVE_STATE_PRIV at 4 |
+| 17 | SHADER_TBA_HI | WAVE_EXCP_FLAG_PRIV |
+| 18 | PERF_SNAPSHOT_PC_LO | WAVE_EXCP_FLAG_USER |
+| 19 | PERF_SNAPSHOT_PC_HI | WAVE_TRAP_CTRL |
+| 20 / 21 | SHADER_FLAT_SCRATCH_LO/HI | WAVE_SCRATCH_BASE_LO/HI |
+| 29 / 30 | SHADER_CYCLES at 29 | SHADER_CYCLES_LO/HI |
+
+A raw-encoding API therefore needs `_rdna4` variants. Implementing it requires
+explicit input snapshots for readable registers and one trailing optional output
+per writable architectural register, together with the existing exact/loose
+state contract. Scheduler/cache actions such as FLUSH_IB must be separated from
+register arithmetic rather than silently fabricated. Architectural register
+write masks, privilege-dependent writes and side effects remain unchecked work.
+This does not change the family's in-scope status or claim those three APIs.
+
+## Wave64 constant comparisons
+
+Added the 28 Wave64 F/T integer and floating CMP/CMPX entry points. One shared
+mask-width template retains the Wave32 validation and result rules. DPP uses
+independent 16-lane rows; the Wave64 implementation remaps the row-enable bits
+for each half and combines both filtered masks before writing the result.
+No operand loads or floating arithmetic are needed for these predicates.
+
+Tests independently check both semantics, every available CPU level, masks
+including lane 63, DPP routing/filtering, modifiers, and error preservation.
+Floating exact non-null exception reporting still fails explicitly; loose mode
+leaves the supplied state unchanged. No new hardware captures are claimed.
+Canonical-name counts remain 806 present and three absent.
+
+Validation: all 747 tests pass with Clang 21 and GCC 15 Release. All twelve
+constant-comparison, exception-register and instruction-flag tests pass under
+ASan/UBSan. No existing arithmetic or SIMD kernel changed.
