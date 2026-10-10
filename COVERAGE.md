@@ -15,10 +15,17 @@ reverse-engineering is out of scope. Unsupported exact/global-state requests mus
 fail honestly under the documented contracts. Loose SIMD
 paths must retain their existing performance and may skip optional state outputs.
 
-The [cross-architecture review queue](ARCHITECTURE_AUDIT.md) now identifies a
-confirmed broad gap: ordinary RDNA3 OMOD/IEEE policies differ from the RDNA4
-policies currently used by many unsuffixed floating APIs. Those names must not
-be treated as verified shared semantics. Width completeness does not close this gap.
+The [cross-architecture review queue](ARCHITECTURE_AUDIT.md) records **808 of
+809** in-scope mnemonic contract reviews. All 809 have matching API declarations.
+The remaining review is RDNA3 `v_fmac_dx9_zero_f32`'s optional exception-state
+contract; its implemented numerical behavior and encoding correction are described
+[below](#rdna3-dx9-fmac-encoding-correction). These counts are not a completion
+percentage: declarations and review records do not prove every implementation,
+encoding, empirical model, or performance requirement.
+
+The family summary below reflects the later contract reviews. The chronological
+increments retain their original counts and findings; later sections explicitly
+supersede earlier findings, including the removal of newly inferred exact models.
 
 ## Evidence and starting point
 
@@ -51,22 +58,52 @@ be treated as verified shared semantics. Width completeness does not close this 
 
 ## Family checklist
 
-| Family | Current evidence | Remaining work |
+| Family | Current evidence | Remaining limits or verification |
 |---|---|---|
-| RDNA3 WMMA | All six contracts reviewed at both widths; borrowed GFX11 models and captures; direct RDNA3/RDNA4 rounding and saturation tests | Reviewed limitations: scalar paths and fixed numerical modes; see matrix contract reviews below |
-| RDNA4 WMMA/SWMMAC | All 22 matrix contracts reviewed at both widths; existing captures, SIMD and fallback tests; upstream discrepancies documented | FP8 dense and all floating sparse forms remain loose-only; other mode/encoding limits are recorded below |
-| DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting remains unsupported; ordinary forms support both wave widths |
-| FP32 unary | Ten floating-result operations plus FREXP_EXP retain rocjitsu-derived numerical models; FRACT is loose-only. Architecture policies are split; new inferred reporting was removed | Finish modifier review and upstream-port availability review for FP16/FP64; unavailable exact reporting is an explicit limitation, not a reverse-engineering task |
-| Floating min/max/median | FP32 ternary family reviewed: separate RDNA3 IEEE/OMOD rules and RDNA4 NUM/propagating forms, all guest policies/modifiers and both widths on scalar/AVX2 | Review remaining binary, FP16/FP64 and packed contracts; strict exact and optional reporting remain unsupported |
-| Scalar integer arithmetic | All 29 canonical names in `scalar_integer.cpp` reviewed across ISA descriptions, rocjitsu handlers and existing fixtures; shared results/SCC, seven renamed aliases, RDNA4-only 64-bit forms; carry/borrow-chain and immediate tests | Scalar bitwise/field, comparisons and register/control families have separate review records or remain pending |
-| Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
-| Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
-| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented at both wave widths | RDNA3 floating constant exception reporting and architecture-specific floating-policy audit |
-| Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures; confirmed OMOD/IEEE architecture differences | Split differing APIs and implement RDNA3 guest-mode policies; see ARCHITECTURE_AUDIT.md |
-| Transcendentals, reciprocal, division | FP32 RCP/SQRT/RSQ/EXP/LOG exact captured mappings on both architectures; other partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
-| Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
-| Interpolation | Six shared loose contracts reviewed at both wave widths; manual-based routing/modifiers/no-exception rule, RDNA4 captures and independent tests | Upstream numerical handlers are stubs; exact semantics and guest IEEE/denormal controls remain unsupported |
-| Dual-issue VOPD | All 19 canonical operations; shared ordinary kernels, architecture-split floating arithmetic/DOT2ACC; Wave32 only | Direct VOPD hardware captures; inherited exact/global-state gaps |
+| RDNA3 WMMA | All six contracts reviewed at both widths; borrowed GFX11 models and captures | Scalar paths and fixed numerical modes; see [matrix review](#fp16-and-bf16-wmma-architecture-contract-review) |
+| RDNA4 WMMA/SWMMAC | All 22 matrix contracts reviewed at both widths; captures, SIMD and fallback tests | FP8 dense and floating sparse forms remain loose-only; [sparse review](#sparse-wmma-contract-review) records encoding/mode limits |
+| DOT2 and DOT2ACC | Ordinary, accumulator, dual and half-result contracts reviewed; architecture-specific FP32-result models and shared SIMD | RDNA3 reporting unavailable; see [DOT2 review](#fp32-result-dot2-architecture-contracts) |
+| Floating selection | Binary/ternary FP16/FP32, packed FP16 and FP64 contracts reviewed; architecture policies and both widths tested | Strict exact and optional exact reporting remain unsupported; see [FP16 selection](#fp16-binary-and-packed-selection-architecture-contracts) and [FP64 selection](#fp64-minmax-architecture-contracts) |
+| Scalar arithmetic and bits | Integer arithmetic, Boolean, shifts, fields, counts, comparisons and EXEC operations reviewed; scalar floating contracts also reviewed | Floating exact support is selective; see [scalar FMA](#scalar-fp32-fma-exact-port-and-architecture-contracts) and following FP16 limitation |
+| Scalar/register moves | Moves, relative addressing, guest MODE, GETPC and architecture-specific HWREG contracts reviewed | Scratch, FLUSH_IB and snapshot side effects remain limited; [HWREG review](#hardware-register-access-architecture-contracts) and [register audit](HWREG_AUDIT.md) |
+| Vector/register routing | Moves, relative moves, swaps, lane transfers, row/half-wave permutations and DS contracts reviewed at both widths | Hardware captures cover selected targets/cases; see [move review](#vector-move-and-relative-move-architecture-contracts) and [DS review](#ds-permutation-architecture-contract-review) |
+| Comparisons | Floating/integer relational, constant and CLASS contracts reviewed; required masks, widths, modifiers and aliases tested | RDNA3 optional floating reporting unavailable; [relational review](#floating-relational-comparison-architecture-review), [constant review](#constant-comparison-architecture-contracts) |
+| Basic floating arithmetic and FMA | Architecture splits, guest policies, ordinary/literal/packed/mixed/dual contracts reviewed; existing empirical fused models reused | RDNA3 DX9 FMAC state contract remains open; exact arithmetic/reporting coverage varies by operation and policy; [ordinary FMA](#ordinary-fp32-fma-architecture-contracts), [half FMA](#ordinary-fp16-fma-contract-review), [mixed FMA](#mixed-fma-architecture-contract-review) |
+| Conversions | Integer, byte/nibble, FP16/32/64, packed/normalized and FP8/BF8 contracts reviewed at both widths | Many numerical conversions remain loose-only; [conversion review](#fp32integer-conversion-architecture-review), [FP8 review](#fp8-and-bf8-conversion-contract-review) |
+| Unary, transcendentals and division | Floating unary, pseudo-scalar, exponent, reciprocal, division and cube contracts reviewed; available empirical models reused | Directed rounding and several guest/exact-reporting policies unavailable; [reciprocal review](#reciprocal-and-square-root-architecture-contracts), [DIV_SCALE review](#div_scale-architecture-contract-review), [cube review](#cube-architecture-contract-review) |
+| Integer/vector arithmetic | Arithmetic, carry/borrow, selection, shifts, Boolean, bitfields, counts, MAD, SAD and integer dots reviewed | Per-instruction encodings and modifier restrictions still apply; see [carry review](#vector-carry-and-borrow-architecture-contracts) and subsequent family reviews |
+| Interpolation | Six shared loose contracts reviewed at both widths; documented routing/modifiers/no-exception rule and RDNA4 captures | Upstream numerical handlers are stubs; exact and guest IEEE/denormal controls unsupported; [review](#interpolation-architecture-contracts) |
+| Dual-issue VOPD | All 19 canonical operations reviewed; ordinary kernels reused, architecture policies split, Wave32 only | Caller handles pair legality and architecture-specific source staging; no direct VOPD captures; [pair contract](#vopd-decoded-operations), [FMA review](#dual-fp32-fma-architecture-contracts) |
+
+## Public definition check
+
+At implementation commit `677b070`, both current Clang and GCC Release archives
+(`../goc-build/src/libgoc.a` and `../goc-build-gcc/src/libgoc.a`) define all
+**1,791** public `int goc_*` instruction declarations found in `include/`.
+`nm -g --defined-only` finds no duplicate `goc_*` definitions; the sole additional
+function is the separately typed `goc_init_cpu_flags`. Ninja reports both builds
+up to date. This checks symbol presence, not parameter ABI compatibility,
+architecture semantics, caller linkage, or instruction encoding coverage.
+
+## Remaining completion checks
+
+- Resolve RDNA3 DX9 FMAC's global-state applicability from existing authoritative
+  evidence. Generic LLVM VOP2 metadata differs from explicit VOP3 FMA metadata;
+  RDNA4 three-source captures do not establish RDNA3 accumulator behavior.
+- Reconcile the complete public API and built definitions with the inventory,
+  including aliases, architecture suffixes and wave variants. The inventory
+  currently checks declaration names, not successful linkage or execution.
+- Reconcile available upstream empirical models with retained exact ports and
+  explicit limitations. Generic rocjitsu arithmetic is not automatically an
+  empirical model, and newly reverse-engineered behavior is out of scope.
+- Check final validation and performance evidence against the actual final
+  changes. Family test counts and timing records below describe their commits;
+  they are not a substitute for the final requirement-by-requirement audit.
+
+These checks remain open. Documented unsupported exact/reporting modes are
+intentional limitations under the agreed scope, not requests to develop new
+hardware models. Missing loose behavior or incorrect public contracts must still
+be fixed; a ledger entry alone cannot excuse them.
 
 Keep this checklist conservative: unchecked review work is not made complete by
 a green test suite that exercises only the current implementation.
