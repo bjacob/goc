@@ -1190,8 +1190,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_interp_p2_f32` | yes | yes | in | `goc_v_interp_p2_f32`<br>`goc_v_interp_p2_f32_wave64` | `v_interp_p2_new_f32` | API present; semantic audit pending |
 | `v_interp_p2_rtz_f16_f32` | yes | yes | in | `goc_v_interp_p2_rtz_f16_f32`<br>`goc_v_interp_p2_rtz_f16_f32_wave64` | — | API present; semantic audit pending |
 | `v_ldexp_f16` | yes | yes | in | `goc_v_ldexp_f16`<br>`goc_v_ldexp_f16_wave64` | — | API present; semantic audit pending |
-| `v_ldexp_f32` | yes | yes | in | `goc_v_ldexp_f32`<br>`goc_v_ldexp_f32_wave64` | — | API present; semantic audit pending |
-| `v_ldexp_f64` | yes | yes | in | `goc_v_ldexp_f64`<br>`goc_v_ldexp_f64_wave64` | — | API present; semantic audit pending |
+| `v_ldexp_f32` | yes | yes | in | `goc_v_ldexp_f32`<br>`goc_v_ldexp_f32_wave64`<br>`goc_v_ldexp_f32_rdna4`<br>`goc_v_ldexp_f32_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#ldexp-fp32fp64-architecture-review) |
+| `v_ldexp_f64` | yes | yes | in | `goc_v_ldexp_f64`<br>`goc_v_ldexp_f64_wave64`<br>`goc_v_ldexp_f64_rdna4`<br>`goc_v_ldexp_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#ldexp-fp32fp64-architecture-review) |
 | `v_lerp_u8` | yes | yes | in | `goc_v_lerp_u8`<br>`goc_v_lerp_u8_wave64` | — | API present; semantic audit pending |
 | `v_log_f16` | yes | yes | in | `goc_v_log_f16`<br>`goc_v_log_f16_wave64` | — | API present; semantic audit pending |
 | `v_log_f32` | yes | yes | in | `goc_v_log_f32`<br>`goc_v_log_f32_wave64`<br>`goc_v_log_f32_rdna4`<br>`goc_v_log_f32_rdna4_wave64` | — | API present; semantic audit pending |

@@ -3653,3 +3653,57 @@ four instructions and the 32 conversions reviewed in the preceding sections.
 Its generator tests reject unknown or duplicate mnemonics and missing evidence
 sections/test files. This ledger is a scoped contract checklist, not a replacement
 for the documented exact-semantics and encoding limitations.
+
+## LDEXP FP32/FP64 architecture review
+
+Reviewed `v_ldexp_f32` and `v_ldexp_f64` against rocjitsu revision `ffc144c564c`:
+`generated/shared/execute_shared.h::execute_v_ldexp_f{32,64}_vop3`,
+`shared/fp_mode.h::ldexp` and `effective_omod`, and
+`shared/division.h::div_round`. The input-denormal rule is applied before scaling;
+output flushing applies to the rounded result. RDNA3 ISA section 7.2.3.1 and
+rocjitsu agree that IEEE mode or output-denormal preservation disables RDNA3
+OMOD. RDNA4 applies OMOD independently of those settings.
+
+- Unsuffixed APIs now select RDNA3; `_rdna4` APIs preserve the established RDNA4
+  behavior. This applies to Wave32 and Wave64. Optional state parameters are
+  `trapsts` and `excp_flag_user`, respectively.
+- Both architectures accept guest IEEE/input/output-denormal flags. Input and
+  output flushing preserve the zero sign, independently of host FP controls.
+  Existing OMOD tininess handling, ABS/NEG, CLAMP, source aliases and masked
+  writes remain supported. FP32 retains DPP8/DPP16 on A; FP64 DPP remains
+  explicitly rejected. The signed exponent in B is not permuted.
+- Both forms remain loose-only. Strict exact results and non-null exact optional
+  state reporting remain unsupported. Guest rounding modes and faithful NaN
+  payload/signaling behavior are not newly claimed. Rocjitsu's integer rounding
+  model has not yet been ported here; no new hardware characterization was done.
+  Its `ScopedFenv` use is not copied: production never changes host FP controls.
+- Scalar, AVX2 and AVX-512 paths share each architecture's effective OMOD policy.
+  Guest flushing has SIMD implementations; it does not force a scalar fallback.
+  A compile-time denormal-policy choice keeps the default loops free of new
+  per-lane flag checks. The guest scalar entry is kept out of line because the
+  compiler otherwise merges its loop into the default loop. This adds compiled
+  variants while keeping one source algorithm per CPU path.
+
+`ldexp_architecture_test.cpp` covers literal scaling/flushing witnesses, all
+32 low modifier combinations, eight guest policies, both architectures and wave
+widths, all available CPU selections, overflow/underflow boundaries, signed
+zeros, NaN classes, DPP, aliases (including coincident FP64 destinations), sparse
+EXEC, unaligned words, guard words, error atomicity and optional-state contracts.
+It checks host rounding controls, FTZ/DAZ and preservation of existing sticky
+flags. Established RDNA4 reference and captured tests now use `_rdna4` names.
+
+Performance: seven alternating before/after samples, pinned to CPU 2, with thread
+CPU time and a 20 ms minimum per sample. Across FP32/FP64 plain and modified
+forms, median time changes are +0.29% scalar, -1.50% AVX2 and +1.06% AVX-512.
+The largest measured slowdown is plain FP32 AVX-512, 5.279 ns to 5.451 ns
+(+3.26%). Raw samples are in `../goc-build/coverage-work/ldexp-performance.json`.
+These measurements cover the established default guest-denormal policy, not a
+claim that newly supported flushing has no cost. Loose optional reporting adds
+no per-lane work.
+
+Validation: all 1,048 CTests pass with Clang 21 Release and GCC 15 Release;
+27 targeted ASan/UBSan tests pass. Logs are `ldexp-tests2.log` under
+`../goc-build/coverage-work/`, `../goc-build-gcc/`, and
+`../goc-build-sanitize/`. All nine audit-tool unit tests pass. The native-state
+naming audit now resolves 502 of 732 reporting signatures, with zero mismatches;
+230 remain unresolved. This does not establish reporting accuracy or completeness.

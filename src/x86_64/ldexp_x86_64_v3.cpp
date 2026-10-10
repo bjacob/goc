@@ -16,7 +16,9 @@ __m256i clamp64(__m256i value, int low, int high) {
   return _mm256_blendv_epi8(value, hi, _mm256_cmpgt_epi64(value, hi));
 }
 
-void run32(uint32_t mode, uint32_t result[2][32], const uint32_t *const *a, const uint32_t *b) {
+template <bool GuestDenormals>
+void run32(uint64_t flags, uint32_t mode, uint32_t result[2][32], const uint32_t *const *a,
+           const uint32_t *b) {
   auto keep = _mm256_set1_epi32(mode & GOC_ALU_ABS_A ? INT32_MAX : -1);
   auto flip = _mm256_set1_epi32(mode & GOC_ALU_NEG_A ? INT32_MIN : 0);
   const double scales[] = {1, 2, 4, 0.5};
@@ -26,6 +28,8 @@ void run32(uint32_t mode, uint32_t result[2][32], const uint32_t *const *a, cons
     adjustment = _mm256_min_epi32(_mm256_max_epi32(adjustment, _mm256_set1_epi32(-4096)),
                                   _mm256_set1_epi32(4096));
     raw = _mm256_xor_si256(_mm256_and_si256(raw, keep), flip);
+    if (GuestDenormals && (flags & GOC_FP_FLUSH_INPUT_DENORMALS))
+      raw = _mm256_castps_si256(flush_denorm_f32(_mm256_castsi256_ps(raw)));
     auto magnitude = _mm256_and_si256(raw, _mm256_set1_epi32(INT32_MAX));
     auto subnormal = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x800000), magnitude);
     auto small = _mm256_and_si256(raw, subnormal);
@@ -75,12 +79,16 @@ void run32(uint32_t mode, uint32_t result[2][32], const uint32_t *const *a, cons
     }
     if (mode & GOC_ALU_CLAMP)
       value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
+    if (GuestDenormals && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+      value = flush_denorm_f32(value);
     bits = _mm256_castps_si256(value);
     _mm256_storeu_si256(reinterpret_cast<__m256i *>(result[0] + lane), bits);
   }
 }
 
-void run64(uint32_t mode, uint32_t result[2][32], const uint32_t *const *a, const uint32_t *b) {
+template <bool GuestDenormals>
+void run64(uint64_t flags, uint32_t mode, uint32_t result[2][32], const uint32_t *const *a,
+           const uint32_t *b) {
   auto keep = _mm256_set1_epi64x(mode & GOC_ALU_ABS_A ? INT64_MAX : -1);
   auto flip = _mm256_set1_epi64x(mode & GOC_ALU_NEG_A ? INT64_MIN : 0);
   const double scales[] = {1, 2, 4, 0.5};
@@ -94,6 +102,8 @@ void run64(uint32_t mode, uint32_t result[2][32], const uint32_t *const *a, cons
     power = _mm_min_epi32(_mm_max_epi32(power, _mm_set1_epi32(-4096)), _mm_set1_epi32(4096));
     auto adjustment = _mm256_cvtepi32_epi64(power);
     raw = _mm256_xor_si256(_mm256_and_si256(raw, keep), flip);
+    if (GuestDenormals && (flags & GOC_FP_FLUSH_INPUT_DENORMALS))
+      raw = _mm256_castpd_si256(flush_denorm_f64(_mm256_castsi256_pd(raw)));
     auto magnitude = _mm256_and_si256(raw, _mm256_set1_epi64x(INT64_MAX));
     auto subnormal = _mm256_cmpgt_epi64(_mm256_set1_epi64x(INT64_C(0x10000000000000)), magnitude);
     auto small = _mm256_and_si256(raw, subnormal);
@@ -138,6 +148,8 @@ void run64(uint32_t mode, uint32_t result[2][32], const uint32_t *const *a, cons
     }
     if (mode & GOC_ALU_CLAMP)
       value = _mm256_min_pd(_mm256_max_pd(value, _mm256_setzero_pd()), _mm256_set1_pd(1));
+    if (GuestDenormals && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+      value = flush_denorm_f64(value);
     bits = _mm256_castpd_si256(value);
     auto packed = _mm256_permutevar8x32_epi32(bits, _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7));
     _mm_storeu_si128(reinterpret_cast<__m128i *>(result[0] + lane), _mm256_castsi256_si128(packed));
@@ -146,15 +158,14 @@ void run64(uint32_t mode, uint32_t result[2][32], const uint32_t *const *a, cons
   }
 }
 
-} // namespace
-
-void ldexp_x86_64_v3(bool fp64, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
-                     const uint32_t *const *a, const uint32_t *b) {
+template <bool GuestDenormals>
+void run(bool fp64, uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+         const uint32_t *const *a, const uint32_t *b) {
   uint32_t result[2][32];
   if (fp64)
-    run64(mode, result, a, b);
+    run64<GuestDenormals>(flags, mode, result, a, b);
   else
-    run32(mode, result, a, b);
+    run32<GuestDenormals>(flags, mode, result, a, b);
   for (int reg = 0; reg < (fp64 ? 2 : 1); ++reg)
     for (int lane = 0; lane < 32; lane += 8) {
       auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
@@ -163,6 +174,18 @@ void ldexp_x86_64_v3(bool fp64, uint32_t exec_mask, uint32_t mode, uint32_t *con
           reinterpret_cast<int *>(d[reg] + lane), lane_exec_mask,
           _mm256_loadu_si256(reinterpret_cast<const __m256i *>(result[reg] + lane)));
     }
+}
+
+} // namespace
+
+void ldexp_x86_64_v3(bool fp64, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+                     const uint32_t *const *a, const uint32_t *b) {
+  run<false>(fp64, 0, exec_mask, mode, d, a, b);
+}
+
+void ldexp_guest_x86_64_v3(bool fp64, uint64_t flags, uint32_t exec_mask, uint32_t mode,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *b) {
+  run<true>(fp64, flags, exec_mask, mode, d, a, b);
 }
 
 } // namespace goc

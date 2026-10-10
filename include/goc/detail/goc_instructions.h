@@ -4656,26 +4656,44 @@ int goc_v_frexp_exp_i32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t 
 
 // Scale A by 2^B, with a signed 32-bit integer exponent in one B VGPR.
 // FP32 A/D each use one VGPR; FP64 A/D use low/high pairs. Supports A ABS/NEG,
-// OMOD and CLAMP with loose semantics and gradual underflow. Integer B has no
+// OMOD and CLAMP with loose semantics. Guest IEEE and input/output denormal
+// controls are accepted. RDNA3 disables OMOD when IEEE is set or output
+// denormals are preserved; RDNA4 applies OMOD independently. Integer B has no
 // sign modifiers. D may alias any whole source VGPR; FP64 writes low then high.
 // The FP32 form supports DPP8/DPP16 on A; B is not permuted.
 int goc_v_ldexp_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                    uint32_t *excp_flag_user);
+                    uint32_t *trapsts);
 
-// Wave64 retains the same operand layout, modifiers and loose semantics.
 int goc_v_ldexp_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                           uint32_t *excp_flag_user);
+                           uint32_t *trapsts);
 
 int goc_v_ldexp_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                    uint32_t *excp_flag_user);
+                    uint32_t *trapsts);
 
-// Wave64 retains the same operand layout, modifiers and loose semantics.
 int goc_v_ldexp_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                           uint32_t *excp_flag_user);
+                           uint32_t *trapsts);
+
+int goc_v_ldexp_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user);
+
+// Wave64 retains the same operand layout, modifiers and loose semantics.
+int goc_v_ldexp_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_ldexp_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user);
+
+// Wave64 retains the same operand layout, modifiers and loose semantics.
+int goc_v_ldexp_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, uint32_t *excp_flag_user);
 
 // Signed/unsigned 32-bit integer selection. Each operand uses one VGPR;
 // D may alias any whole source VGPR. These instructions have no arithmetic

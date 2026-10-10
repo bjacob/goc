@@ -172,9 +172,9 @@ const Case cases[] = {
     {goc_v_maxmin_u32, true, 0},
     {goc_v_med3_u32, true, 0},
 
-    {binary<goc_v_ldexp_f32>, false,
+    {binary<goc_v_ldexp_f32_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
-    {binary<goc_v_ldexp_f64>, false,
+    {binary<goc_v_ldexp_f64_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
 
     {unary<goc_v_frexp_exp_i32_f32_rdna4>, true,

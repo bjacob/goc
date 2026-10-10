@@ -67,7 +67,7 @@ TEST(OutputScaling, LdexpAndConversionsHardwareBoundaries) {
             uint64_t mode = (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
                             ((variant >> 2 & 3) << 6) | (variant & 16 ? GOC_ALU_CLAMP : 0);
             int error =
-                op == 0   ? goc_v_ldexp_f32(cpu, UINT32_MAX, mode, &p[alias], p, p + 2, nullptr)
+                op == 0 ? goc_v_ldexp_f32_rdna4(cpu, UINT32_MAX, mode, &p[alias], p, p + 2, nullptr)
                 : op == 1 ? goc_v_cvt_f32_f16_rdna4(cpu, UINT32_MAX, mode, &p[alias], p, nullptr)
                           : goc_v_cvt_f32_f64_rdna4(cpu, UINT32_MAX, mode, &p[alias], p, nullptr);
             ASSERT_EQ(error, GOC_SUCCESS);

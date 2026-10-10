@@ -801,7 +801,7 @@ bool benchmark_integer_minmax(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_ldexp(uint64_t cpu, int iterations, int min_ms) {
   using Binary = goc_test::WaveInstruction<decltype(&goc_v_min_u32)>;
-  const Binary functions[] = {goc_v_ldexp_f32, goc_v_ldexp_f64};
+  const Binary functions[] = {goc_v_ldexp_f32_rdna4, goc_v_ldexp_f64_rdna4};
   const double inputs[] = {0.75, -0.5, 1.5, -2};
   const int powers[] = {-2, -1, 1, 2};
   for (int fp64 = 0; fp64 < 2; ++fp64)

@@ -126,7 +126,8 @@ TEST(Fp64Output, LdexpHardwareBoundaries) {
             words[2][lane] = set ? UINT32_MAX : 0;
           }
           uint64_t mode = ((v >> 2) << 6) | (v & 2 ? GOC_ALU_CLAMP : 0) | (v & 1);
-          ASSERT_EQ(goc_v_ldexp_f64(cpu, UINT32_MAX, mode, d, p, p + 2, nullptr), GOC_SUCCESS);
+          ASSERT_EQ(goc_v_ldexp_f64_rdna4(cpu, UINT32_MAX, mode, d, p, p + 2, nullptr),
+                    GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
             uint64_t raw = d[0][lane] | (uint64_t(d[1][lane]) << 32);
             if ((raw & 0x7fffffffffffffffULL) > 0x7ff0000000000000ULL)

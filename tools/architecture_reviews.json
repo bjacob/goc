@@ -76,5 +76,14 @@
       "v_cvt_pk_i16_i32",
       "v_cvt_pk_u16_u32"
     ]
+  },
+  {
+    "heading": "LDEXP FP32/FP64 architecture review",
+    "semantics": "loose",
+    "tests": "tests/ldexp_architecture_test.cpp",
+    "mnemonics": [
+      "v_ldexp_f32",
+      "v_ldexp_f64"
+    ]
   }
 ]

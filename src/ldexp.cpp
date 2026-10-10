@@ -14,22 +14,38 @@
 namespace {
 
 template <bool Fp64>
+[[gnu::noinline]] int ldexp_guest(uint64_t flags, uint32_t exec_mask, uint32_t mode,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b);
+
+template <bool Fp64, bool GuestDenormals = false>
 int ldexp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
           const uint32_t *const *a, const uint32_t *const *b) {
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, false,
+                                GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                                    GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
+  if constexpr (!GuestDenormals)
+    if (flags & (GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
+      return ldexp_guest<Fp64>(flags, exec_mask, mode, d, a, b);
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::ldexp_x86_64_v4(Fp64, exec_mask, mode, d, a, b[0]);
+    if constexpr (GuestDenormals)
+      goc::ldexp_guest_x86_64_v4(Fp64, flags, exec_mask, mode, d, a, b[0]);
+    else
+      goc::ldexp_x86_64_v4(Fp64, exec_mask, mode, d, a, b[0]);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::ldexp_x86_64_v3(Fp64, exec_mask, mode, d, a, b[0]);
+    if constexpr (GuestDenormals)
+      goc::ldexp_guest_x86_64_v3(Fp64, flags, exec_mask, mode, d, a, b[0]);
+    else
+      goc::ldexp_x86_64_v3(Fp64, exec_mask, mode, d, a, b[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -39,6 +55,8 @@ int ldexp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
     std::memcpy(&exponent, b[0] + lane, sizeof(exponent));
     if constexpr (Fp64) {
       double input = goc::fp64_input(a, lane, mode);
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_INPUT_DENORMALS))
+        input = goc::fp64_flush_denorm(input);
       double value = std::ldexp(input, exponent);
       if ((mode & GOC_ALU_OMOD_HALF) && std::abs(value) == 0x1p-1022) {
         // A tiny exact result can round up to minimum normal. Detect this
@@ -48,11 +66,16 @@ int ldexp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
         if (int64_t(source_exponent) + exponent <= -1022)
           value = 0;
       }
-      uint64_t bits = goc::double_bits(goc::fp64_output(value, mode));
+      value = goc::fp64_output(value, mode);
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+        value = goc::fp64_flush_denorm(value);
+      uint64_t bits = goc::double_bits(value);
       result[0][lane] = uint32_t(bits);
       result[1][lane] = uint32_t(bits >> 32);
     } else {
       float input = goc::alu_input(a[0][lane], mode);
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_INPUT_DENORMALS))
+        input = goc::flush_denorm_f32(input);
       float value;
       if (mode & GOC_ALU_OMOD_HALF) {
         // OMOD flushes tininess before FP32 rounding, including values
@@ -62,7 +85,10 @@ int ldexp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
       } else {
         value = std::ldexp(input, exponent);
       }
-      result[0][lane] = goc::as_bits(goc::alu_output_f32(value, mode));
+      value = goc::alu_output_f32(value, mode);
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+        value = goc::flush_denorm_f32(value);
+      result[0][lane] = goc::as_bits(value);
     }
   }
   for (int reg = 0; reg < (Fp64 ? 2 : 1); ++reg)
@@ -72,10 +98,19 @@ int ldexp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+// Keep guest denormal handling out of the default scalar loop. Inlining it
+// allows the compiler to merge both loops and reintroduce per-lane flag checks.
+template <bool Fp64>
+[[gnu::noinline]] int ldexp_guest(uint64_t flags, uint32_t exec_mask, uint32_t mode,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b) {
+  return ldexp<Fp64, true>(flags, exec_mask, mode, d, a, b);
+}
+
 template <bool Fp64>
 int ldexp_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
-  constexpr auto instruction = Fp64 ? goc_v_ldexp_f64 : goc_v_ldexp_f32;
+  constexpr auto instruction = Fp64 ? goc_v_ldexp_f64_rdna4 : goc_v_ldexp_f32_rdna4;
   if (int error = instruction(flags, 0, mode, nullptr, nullptr, nullptr, excp_flag_user))
     return error;
   if (!exec_mask)
@@ -103,8 +138,9 @@ int ldexp_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *co
 
 } // namespace
 
-int goc_v_ldexp_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                    const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
+int goc_v_ldexp_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
@@ -115,8 +151,9 @@ int goc_v_ldexp_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t 
   return ldexp<false>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_v_ldexp_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                    const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
+int goc_v_ldexp_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
@@ -124,14 +161,46 @@ int goc_v_ldexp_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t 
   return ldexp<true>(flags, exec_mask, mode, d, a, b);
 }
 
-int goc_v_ldexp_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
-                           const uint32_t *const *a, const uint32_t *const *b,
-                           uint32_t *excp_flag_user) {
+int goc_v_ldexp_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, uint32_t *excp_flag_user) {
   return ldexp_wave64<false>(flags, exec_mask, mode, d, a, b, excp_flag_user);
 }
 
-int goc_v_ldexp_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
-                           const uint32_t *const *a, const uint32_t *const *b,
-                           uint32_t *excp_flag_user) {
+int goc_v_ldexp_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, uint32_t *excp_flag_user) {
   return ldexp_wave64<true>(flags, exec_mask, mode, d, a, b, excp_flag_user);
+}
+
+int goc_v_ldexp_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                    const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  // RDNA3 gates OMOD on guest IEEE mode and output-denormal preservation.
+  if (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_ldexp_f32_rdna4(flags, exec_mask, mode, d, a, b, trapsts);
+}
+
+int goc_v_ldexp_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                           const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  // RDNA3 gates OMOD on guest IEEE mode and output-denormal preservation.
+  if (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_ldexp_f32_rdna4_wave64(flags, exec_mask, mode, d, a, b, trapsts);
+}
+
+int goc_v_ldexp_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                    const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  // RDNA3 gates OMOD on guest IEEE mode and output-denormal preservation.
+  if (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_ldexp_f64_rdna4(flags, exec_mask, mode, d, a, b, trapsts);
+}
+
+int goc_v_ldexp_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                           const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  // RDNA3 gates OMOD on guest IEEE mode and output-denormal preservation.
+  if (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_ldexp_f64_rdna4_wave64(flags, exec_mask, mode, d, a, b, trapsts);
 }

@@ -19,10 +19,10 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_ldexp_f32);
-const Fn functions[] = {goc_v_ldexp_f32, goc_v_ldexp_f64};
-const decltype(&goc_v_ldexp_f32_wave64) wave64_functions[] = {goc_v_ldexp_f32_wave64,
-                                                              goc_v_ldexp_f64_wave64};
+using Fn = decltype(&goc_v_ldexp_f32_rdna4);
+const Fn functions[] = {goc_v_ldexp_f32_rdna4, goc_v_ldexp_f64_rdna4};
+const decltype(&goc_v_ldexp_f32_rdna4_wave64) wave64_functions[] = {goc_v_ldexp_f32_rdna4_wave64,
+                                                                    goc_v_ldexp_f64_rdna4_wave64};
 
 uint32_t modifiers(int variant) {
   return (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
@@ -525,9 +525,9 @@ TEST(Ldexp, Wave64OptionalStateAndEmptyExec) {
       EXPECT_EQ(exceptions, 0x80000000U);
     }
   for (uint64_t descriptor : goc_test::dpp_modes) {
-    EXPECT_EQ(goc_v_ldexp_f32_wave64(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr),
+    EXPECT_EQ(goc_v_ldexp_f32_rdna4_wave64(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr),
               GOC_SUCCESS);
-    EXPECT_EQ(goc_v_ldexp_f64_wave64(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr),
+    EXPECT_EQ(goc_v_ldexp_f64_rdna4_wave64(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
   }
 }
