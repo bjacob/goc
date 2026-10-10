@@ -1379,5 +1379,40 @@
       "v_s_exp_f16",
       "v_s_log_f16"
     ]
+  },
+  {
+    "heading": "Scalar floating comparison architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/compare_exceptions_test.cpp",
+    "mnemonics": [
+      "s_cmp_lt_f32",
+      "s_cmp_lt_f16",
+      "s_cmp_eq_f32",
+      "s_cmp_eq_f16",
+      "s_cmp_le_f32",
+      "s_cmp_le_f16",
+      "s_cmp_gt_f32",
+      "s_cmp_gt_f16",
+      "s_cmp_lg_f32",
+      "s_cmp_lg_f16",
+      "s_cmp_ge_f32",
+      "s_cmp_ge_f16",
+      "s_cmp_o_f32",
+      "s_cmp_o_f16",
+      "s_cmp_u_f32",
+      "s_cmp_u_f16",
+      "s_cmp_nge_f32",
+      "s_cmp_nge_f16",
+      "s_cmp_nlg_f32",
+      "s_cmp_nlg_f16",
+      "s_cmp_ngt_f32",
+      "s_cmp_ngt_f16",
+      "s_cmp_nle_f32",
+      "s_cmp_nle_f16",
+      "s_cmp_neq_f32",
+      "s_cmp_neq_f16",
+      "s_cmp_nlt_f32",
+      "s_cmp_nlt_f16"
+    ]
   }
 ]

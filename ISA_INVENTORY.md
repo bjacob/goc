@@ -577,48 +577,48 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_cmov_b32` | yes | yes | in | `goc_s_cmov_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_cmov_b64` | yes | yes | in | `goc_s_cmov_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_cmovk_i32` | yes | yes | in | `goc_s_cmovk_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
-| `s_cmp_eq_f16` | — | yes | in | `goc_s_cmp_eq_f16` | — | API present; semantic audit pending |
-| `s_cmp_eq_f32` | — | yes | in | `goc_s_cmp_eq_f32` | — | API present; semantic audit pending |
+| `s_cmp_eq_f16` | — | yes | in | `goc_s_cmp_eq_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_eq_f32` | — | yes | in | `goc_s_cmp_eq_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
 | `s_cmp_eq_i32` | yes | yes | in | `goc_s_cmp_eq_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_eq_u32` | yes | yes | in | `goc_s_cmp_eq_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_eq_u64` | yes | yes | in | `goc_s_cmp_eq_u64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
-| `s_cmp_ge_f16` | — | yes | in | `goc_s_cmp_ge_f16` | — | API present; semantic audit pending |
-| `s_cmp_ge_f32` | — | yes | in | `goc_s_cmp_ge_f32` | — | API present; semantic audit pending |
+| `s_cmp_ge_f16` | — | yes | in | `goc_s_cmp_ge_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_ge_f32` | — | yes | in | `goc_s_cmp_ge_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
 | `s_cmp_ge_i32` | yes | yes | in | `goc_s_cmp_ge_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_ge_u32` | yes | yes | in | `goc_s_cmp_ge_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
-| `s_cmp_gt_f16` | — | yes | in | `goc_s_cmp_gt_f16` | — | API present; semantic audit pending |
-| `s_cmp_gt_f32` | — | yes | in | `goc_s_cmp_gt_f32` | — | API present; semantic audit pending |
+| `s_cmp_gt_f16` | — | yes | in | `goc_s_cmp_gt_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_gt_f32` | — | yes | in | `goc_s_cmp_gt_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
 | `s_cmp_gt_i32` | yes | yes | in | `goc_s_cmp_gt_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_gt_u32` | yes | yes | in | `goc_s_cmp_gt_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
-| `s_cmp_le_f16` | — | yes | in | `goc_s_cmp_le_f16` | — | API present; semantic audit pending |
-| `s_cmp_le_f32` | — | yes | in | `goc_s_cmp_le_f32` | — | API present; semantic audit pending |
+| `s_cmp_le_f16` | — | yes | in | `goc_s_cmp_le_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_le_f32` | — | yes | in | `goc_s_cmp_le_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
 | `s_cmp_le_i32` | yes | yes | in | `goc_s_cmp_le_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_le_u32` | yes | yes | in | `goc_s_cmp_le_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
-| `s_cmp_lg_f16` | — | yes | in | `goc_s_cmp_lg_f16` | — | API present; semantic audit pending |
-| `s_cmp_lg_f32` | — | yes | in | `goc_s_cmp_lg_f32` | — | API present; semantic audit pending |
+| `s_cmp_lg_f16` | — | yes | in | `goc_s_cmp_lg_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_lg_f32` | — | yes | in | `goc_s_cmp_lg_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
 | `s_cmp_lg_i32` | yes | yes | in | `goc_s_cmp_lg_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_lg_u32` | yes | yes | in | `goc_s_cmp_lg_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_lg_u64` | yes | yes | in | `goc_s_cmp_lg_u64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
-| `s_cmp_lt_f16` | — | yes | in | `goc_s_cmp_lt_f16` | — | API present; semantic audit pending |
-| `s_cmp_lt_f32` | — | yes | in | `goc_s_cmp_lt_f32` | — | API present; semantic audit pending |
+| `s_cmp_lt_f16` | — | yes | in | `goc_s_cmp_lt_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_lt_f32` | — | yes | in | `goc_s_cmp_lt_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
 | `s_cmp_lt_i32` | yes | yes | in | `goc_s_cmp_lt_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmp_lt_u32` | yes | yes | in | `goc_s_cmp_lt_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
-| `s_cmp_neq_f16` | — | yes | in | `goc_s_cmp_neq_f16` | — | API present; semantic audit pending |
-| `s_cmp_neq_f32` | — | yes | in | `goc_s_cmp_neq_f32` | — | API present; semantic audit pending |
-| `s_cmp_nge_f16` | — | yes | in | `goc_s_cmp_nge_f16` | — | API present; semantic audit pending |
-| `s_cmp_nge_f32` | — | yes | in | `goc_s_cmp_nge_f32` | — | API present; semantic audit pending |
-| `s_cmp_ngt_f16` | — | yes | in | `goc_s_cmp_ngt_f16` | — | API present; semantic audit pending |
-| `s_cmp_ngt_f32` | — | yes | in | `goc_s_cmp_ngt_f32` | — | API present; semantic audit pending |
-| `s_cmp_nle_f16` | — | yes | in | `goc_s_cmp_nle_f16` | — | API present; semantic audit pending |
-| `s_cmp_nle_f32` | — | yes | in | `goc_s_cmp_nle_f32` | — | API present; semantic audit pending |
-| `s_cmp_nlg_f16` | — | yes | in | `goc_s_cmp_nlg_f16` | — | API present; semantic audit pending |
-| `s_cmp_nlg_f32` | — | yes | in | `goc_s_cmp_nlg_f32` | — | API present; semantic audit pending |
-| `s_cmp_nlt_f16` | — | yes | in | `goc_s_cmp_nlt_f16` | — | API present; semantic audit pending |
-| `s_cmp_nlt_f32` | — | yes | in | `goc_s_cmp_nlt_f32` | — | API present; semantic audit pending |
-| `s_cmp_o_f16` | — | yes | in | `goc_s_cmp_o_f16` | — | API present; semantic audit pending |
-| `s_cmp_o_f32` | — | yes | in | `goc_s_cmp_o_f32` | — | API present; semantic audit pending |
-| `s_cmp_u_f16` | — | yes | in | `goc_s_cmp_u_f16` | — | API present; semantic audit pending |
-| `s_cmp_u_f32` | — | yes | in | `goc_s_cmp_u_f32` | — | API present; semantic audit pending |
+| `s_cmp_neq_f16` | — | yes | in | `goc_s_cmp_neq_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_neq_f32` | — | yes | in | `goc_s_cmp_neq_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_nge_f16` | — | yes | in | `goc_s_cmp_nge_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_nge_f32` | — | yes | in | `goc_s_cmp_nge_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_ngt_f16` | — | yes | in | `goc_s_cmp_ngt_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_ngt_f32` | — | yes | in | `goc_s_cmp_ngt_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_nle_f16` | — | yes | in | `goc_s_cmp_nle_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_nle_f32` | — | yes | in | `goc_s_cmp_nle_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_nlg_f16` | — | yes | in | `goc_s_cmp_nlg_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_nlg_f32` | — | yes | in | `goc_s_cmp_nlg_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_nlt_f16` | — | yes | in | `goc_s_cmp_nlt_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_nlt_f32` | — | yes | in | `goc_s_cmp_nlt_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_o_f16` | — | yes | in | `goc_s_cmp_o_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_o_f32` | — | yes | in | `goc_s_cmp_o_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_u_f16` | — | yes | in | `goc_s_cmp_u_f16` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
+| `s_cmp_u_f32` | — | yes | in | `goc_s_cmp_u_f32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-floating-comparison-architecture-contracts) |
 | `s_cmpk_eq_i32` | yes | — | in | `goc_s_cmpk_eq_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmpk_eq_u32` | yes | — | in | `goc_s_cmpk_eq_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_cmpk_ge_i32` | yes | — | in | `goc_s_cmpk_ge_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |

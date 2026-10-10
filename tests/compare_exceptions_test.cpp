@@ -148,3 +148,80 @@ TEST(CompareExceptions, LooseSkipsReportingAndErrorsPreserveOutputs) {
     EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), host_exceptions);
   }
 }
+
+TEST(CompareExceptions, ScalarLiteralTruthTableAndOptionalState) {
+  // Columns: LT EQ LE GT LG GE O U NGE NLG NGT NLE NEQ NLT.
+  // Rows: less, equal, greater, unordered. These are ISA truth values,
+  // independent of the implementation's integer ordering transform.
+  const uint32_t truth[4][14] = {{1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
+                                 {0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1},
+                                 {0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1},
+                                 {0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1}};
+  const uint32_t inputs[2][8][2] = {{{0x3c00, 0x4000},
+                                     {0xbc00, 0xc000},
+                                     {0x8000, 0},
+                                     {0x7c00, 0x7c00},
+                                     {0xfe01, 0x3c00},
+                                     {0x3c00, 0xfc01},
+                                     {0x8001, 0},
+                                     {0x7c00, 1}},
+                                    {{0x3f800000, 0x40000000},
+                                     {0xbf800000, 0xc0000000},
+                                     {0x80000000, 0},
+                                     {0x7f800000, 0x7f800000},
+                                     {0xffc00001, 0x3f800000},
+                                     {0x3f800000, 0xff800001},
+                                     {0x80000001, 0},
+                                     {0x7f800000, 1}}};
+  const unsigned order[] = {0, 2, 1, 1, 3, 3, 0, 2};
+  for (unsigned format = 0; format < 2; ++format)
+    for (unsigned predicate = 0; predicate < 14; ++predicate)
+      for (unsigned sample = 0; sample < 8; ++sample)
+        for (uint64_t semantics :
+             {uint64_t(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
+          for (unsigned denorm = 0; denorm < 4; ++denorm)
+            for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+              uint64_t flags = cpu | semantics | (denorm & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                               (denorm & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+              uint32_t a = inputs[format][sample][0], b = inputs[format][sample][1];
+              if (!format) {
+                a |= 0xfc010000U;
+                b |= 0x7c010000U;
+              }
+              uint32_t state = 0xa5000040, output = 0xdeadbeef;
+              auto fn = scalar_functions[format * 14 + predicate];
+              ASSERT_EQ(fn(flags, 0, &output, a, b, &state), GOC_SUCCESS);
+              unsigned relation = sample == 6 && (denorm & 1) ? 1 : order[sample];
+              EXPECT_EQ(output, truth[relation][predicate]);
+              uint32_t generated = sample == 5                    ? GOC_EXCEPTION_INVALID
+                                   : sample == 6 && !(denorm & 1) ? GOC_EXCEPTION_INPUT_DENORM
+                                                                  : 0;
+              EXPECT_EQ(state, 0xa5000040U | (semantics ? generated : 0));
+              uint32_t without_state = 0xdeadbeef;
+              ASSERT_EQ(fn(flags, 0, &without_state, a, b, nullptr), GOC_SUCCESS);
+              EXPECT_EQ(without_state, output);
+            }
+}
+
+TEST(CompareExceptions, ScalarErrorsPreserveBothOutputs) {
+  for (auto fn : scalar_functions)
+    for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT}) {
+      for (unsigned bit = 0; bit < 64; ++bit) {
+        uint32_t output = 0xdeadbeef, state = 0xa5000040;
+        for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+          EXPECT_EQ(fn(semantics | strict, 1ULL << bit, &output, 0x7c01, 1, &state),
+                    GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(output, 0xdeadbeefU);
+          EXPECT_EQ(state, 0xa5000040U);
+        }
+      }
+      for (uint64_t semantics :
+           {2 * GOC_SEMANTICS_EXACT_EMPIRICAL, 3 * GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+        uint32_t output = 0xdeadbeef, state = 0xa5000040;
+        EXPECT_EQ(fn(semantics | strict, 1ULL << 63, &output, 0x7c01, 1, &state),
+                  GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+        EXPECT_EQ(output, 0xdeadbeefU);
+        EXPECT_EQ(state, 0xa5000040U);
+      }
+    }
+}

@@ -7715,3 +7715,56 @@ faster to 0.89% slower. The worst loose case is scalar reciprocal with guest
 flushing, 7.37 to 7.91 ns/call: approximately 0.55 ns added for the new dispatch.
 This scalar cost is retained and reported; no SIMD kernel changed. Samples and
 summary are in `../goc-build/coverage-work/pseudo-half-exact-performance/`.
+
+
+## Scalar floating comparison architecture contracts
+
+Reviewed all 28 `s_cmp_*_f16/f32` names against the RDNA3/RDNA4 XML inventories,
+RDNA4 ISA sections 6.8 and 16.4, rocjitsu revision `ffc144c564c`'s shared SOPC
+handlers, and GoC's existing scalar result and exception fixtures. The 14
+predicates are LT/EQ/LE/GT/LG/GE/O/U/NGE/NLG/NGT/NLE/NEQ/NLT. These instructions
+are RDNA4-only, encoded as SOPC with optional literal source; no architecture
+suffix collision exists. No new numerical or exception model was developed.
+
+- Each operates once on two scalar values regardless of EXEC and writes the
+  required SCC as exactly 0 or 1. There is no Wave64 variant. FP16 reads only
+  the low halves; upper bits are ignored. No instruction modifiers, half
+  selectors or DPP are accepted. Optional literal words have already been
+  decoded into the raw API arguments by the caller.
+- Signed zeros compare equal. Ordered predicates reject NaNs; negated
+  predicates are logical complements, so NEQ and NLG are true for NaNs while
+  LG and EQ are false. O/U test orderedness directly. GoC's existing raw-bit
+  comparison avoids dependence on host floating-point comparisons and follows
+  the guest input-flush policy explicitly. Output flushing and FP16_OVFL are
+  accepted no-ops. Directed rounding, IEEE and DX10-clamp-off flags remain
+  unsupported by the common validator. Both loose and empirical-exact semantics
+  produce the required SCC.
+- The manual explicitly permits scalar FP exceptions. The trailing optional
+  `excp_flag_user` remains separate from the required SCC result. Existing exact
+  reporting accumulates INVALID for signaling NaNs; finite operand pairs with
+  unflushed subnormals accumulate INPUT_DENORM. A nonfinite partner suppresses
+  denormal reporting. This preserves the existing GFX1201 capture-backed
+  classifier, rather than claiming that rocjitsu's generated raw comparison
+  operators implement those reporting rules. Loose mode skips reporting and
+  null state opts out. Reserved semantics with non-null state reject reporting
+  before instruction validation; other errors preserve both outputs.
+- Existing tests check the retained 4,096-input result hashes for every scalar
+  predicate, eight guest settings, both semantics and all CPU tiers, plus
+  source-storage aliases. The existing reporting fixture covers 12-by-12 pairs
+  for all predicates, input/output flushing and sticky accumulation. Added
+  explicit four-way truth tables for all 28 floating APIs, including negative
+  ordering, signed zero, infinity, quiet/signaling NaNs, subnormal flushing,
+  ignored FP16 upper halves, exact/loose/null state behavior, and preservation
+  of old exception bits. Added all-64-bit invalid-modifier checks and reserved
+  semantics/error-precedence checks with unchanged SCC and state.
+
+No production code changed, so this slice introduces no performance change.
+The ledger records 737 mnemonic contracts, with 72 remaining; it is a review
+count, not an overall completion percentage.
+
+
+Validation: all **10** selected scalar-comparison and comparison-reporting tests
+pass under Clang 21 Release, GCC 15 Release and Clang ASan/UBSan. All nine
+tooling tests pass. Logs use `coverage-work/scalar-compare-contract-{build,tests}.log`
+in each build directory. Existing production implementations were unchanged;
+this validation is specific to the reviewed families, not a new full-suite run.
