@@ -3861,6 +3861,97 @@ int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c);
 
+// One decoded VOPD operation, Wave32 only. Operand layouts, numerical semantics,
+// CPU paths and optional exception reporting match the ordinary instruction.
+// instruction_flags must be zero: VOPD encodes no arithmetic modifiers or DPP.
+// FMAC/DOT2ACC read old D as the accumulator. Literal FMA parameters contain raw
+// FP32 bits. CNDMASK's condition is the wave's VCC mask. Source operands must
+// already be decoded, including scalar/inline-constant replication for DOT2ACC.
+// Legal VOPD register-bank, destination-parity and pair-dependency constraints
+// are preconditions. Each call executes one operation, not the whole X/Y pair.
+// No Wave64 forms exist. RDNA3 DOT2ACC is unsuffixed; RDNA4's distinct exact
+// accumulation model uses _rdna4. Invalid calls preserve the outputs.
+int goc_v_dual_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        uint32_t *excp_flag_user);
+
+int goc_v_dual_fmaak_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         uint32_t literal, uint32_t *excp_flag_user);
+
+int goc_v_dual_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
+                         const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_dual_mul_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                       uint32_t *excp_flag_user);
+
+int goc_v_dual_add_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                       uint32_t *excp_flag_user);
+
+int goc_v_dual_sub_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                       uint32_t *excp_flag_user);
+
+int goc_v_dual_subrev_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user);
+
+int goc_v_dual_mul_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_dual_mov_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_dual_cndmask_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t condition);
+
+int goc_v_dual_max_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user);
+
+int goc_v_dual_min_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user);
+
+int goc_v_dual_max_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                       uint32_t *excp_flag_user);
+
+int goc_v_dual_min_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                       uint32_t *excp_flag_user);
+
+int goc_v_dual_add_nc_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_dual_lshlrev_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_dual_and_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_dual_dot2acc_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_dual_dot2acc_f32_bf16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_dual_dot2acc_f32_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_dual_dot2acc_f32_bf16_rdna4(uint64_t flags, uint32_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      uint32_t *excp_flag_user);
+
 // Bit counts: every operand holds one VGPR. CLZ/CTZ return 0xffffffff for zero;
 // CLS counts leading sign bits (including the sign bit) and returns 0xffffffff
 // if all bits match. BCNT returns popcount(A) + B, wrapping modulo 2^32.

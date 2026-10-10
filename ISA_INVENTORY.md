@@ -20,8 +20,8 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 22
-- in, API present: 787
+- in, API absent: 3
+- in, API present: 806
 - out, API absent: 587
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
@@ -1132,25 +1132,25 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_dot4_u32_u8` | yes | yes | in | `goc_v_dot4_u32_u8` | — | API present; semantic audit pending |
 | `v_dot8_i32_iu4` | yes | yes | in | `goc_v_dot8_i32_iu4` | `v_dot8_i32_i4` | API present; semantic audit pending |
 | `v_dot8_u32_u4` | yes | yes | in | `goc_v_dot8_u32_u4` | — | API present; semantic audit pending |
-| `v_dual_add_f32` | yes | yes | in | — | — | missing API |
-| `v_dual_add_nc_u32` | yes | yes | in | — | — | missing API |
-| `v_dual_and_b32` | yes | yes | in | — | — | missing API |
-| `v_dual_cndmask_b32` | yes | yes | in | — | — | missing API |
-| `v_dual_dot2acc_f32_bf16` | yes | yes | in | — | — | missing API |
-| `v_dual_dot2acc_f32_f16` | yes | yes | in | — | — | missing API |
-| `v_dual_fmaak_f32` | yes | yes | in | — | — | missing API |
-| `v_dual_fmac_f32` | yes | yes | in | — | — | missing API |
-| `v_dual_fmamk_f32` | yes | yes | in | — | — | missing API |
-| `v_dual_lshlrev_b32` | yes | yes | in | — | — | missing API |
-| `v_dual_max_f32` | yes | — | in | — | — | missing API |
-| `v_dual_max_num_f32` | — | yes | in | — | — | missing API |
-| `v_dual_min_f32` | yes | — | in | — | — | missing API |
-| `v_dual_min_num_f32` | — | yes | in | — | — | missing API |
-| `v_dual_mov_b32` | yes | yes | in | — | — | missing API |
-| `v_dual_mul_dx9_zero_f32` | yes | yes | in | — | — | missing API |
-| `v_dual_mul_f32` | yes | yes | in | — | — | missing API |
-| `v_dual_sub_f32` | yes | yes | in | — | — | missing API |
-| `v_dual_subrev_f32` | yes | yes | in | — | — | missing API |
+| `v_dual_add_f32` | yes | yes | in | `goc_v_dual_add_f32` | — | API present; semantic audit pending |
+| `v_dual_add_nc_u32` | yes | yes | in | `goc_v_dual_add_nc_u32` | — | API present; semantic audit pending |
+| `v_dual_and_b32` | yes | yes | in | `goc_v_dual_and_b32` | — | API present; semantic audit pending |
+| `v_dual_cndmask_b32` | yes | yes | in | `goc_v_dual_cndmask_b32` | — | API present; semantic audit pending |
+| `v_dual_dot2acc_f32_bf16` | yes | yes | in | `goc_v_dual_dot2acc_f32_bf16`<br>`goc_v_dual_dot2acc_f32_bf16_rdna4` | — | API present; semantic audit pending |
+| `v_dual_dot2acc_f32_f16` | yes | yes | in | `goc_v_dual_dot2acc_f32_f16`<br>`goc_v_dual_dot2acc_f32_f16_rdna4` | — | API present; semantic audit pending |
+| `v_dual_fmaak_f32` | yes | yes | in | `goc_v_dual_fmaak_f32` | — | API present; semantic audit pending |
+| `v_dual_fmac_f32` | yes | yes | in | `goc_v_dual_fmac_f32` | — | API present; semantic audit pending |
+| `v_dual_fmamk_f32` | yes | yes | in | `goc_v_dual_fmamk_f32` | — | API present; semantic audit pending |
+| `v_dual_lshlrev_b32` | yes | yes | in | `goc_v_dual_lshlrev_b32` | — | API present; semantic audit pending |
+| `v_dual_max_f32` | yes | — | in | `goc_v_dual_max_f32` | — | API present; semantic audit pending |
+| `v_dual_max_num_f32` | — | yes | in | `goc_v_dual_max_num_f32` | — | API present; semantic audit pending |
+| `v_dual_min_f32` | yes | — | in | `goc_v_dual_min_f32` | — | API present; semantic audit pending |
+| `v_dual_min_num_f32` | — | yes | in | `goc_v_dual_min_num_f32` | — | API present; semantic audit pending |
+| `v_dual_mov_b32` | yes | yes | in | `goc_v_dual_mov_b32` | — | API present; semantic audit pending |
+| `v_dual_mul_dx9_zero_f32` | yes | yes | in | `goc_v_dual_mul_dx9_zero_f32` | — | API present; semantic audit pending |
+| `v_dual_mul_f32` | yes | yes | in | `goc_v_dual_mul_f32` | — | API present; semantic audit pending |
+| `v_dual_sub_f32` | yes | yes | in | `goc_v_dual_sub_f32` | — | API present; semantic audit pending |
+| `v_dual_subrev_f32` | yes | yes | in | `goc_v_dual_subrev_f32` | — | API present; semantic audit pending |
 | `v_exp_f16` | yes | yes | in | `goc_v_exp_f16` | — | API present; semantic audit pending |
 | `v_exp_f32` | yes | yes | in | `goc_v_exp_f32` | — | API present; semantic audit pending |
 | `v_floor_f16` | yes | yes | in | `goc_v_floor_f16` | — | API present; semantic audit pending |

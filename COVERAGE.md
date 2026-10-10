@@ -49,7 +49,7 @@ paths must retain their existing performance and may skip optional state outputs
 |---|---|---|
 | RDNA3 WMMA | All six mnemonics, both widths, exact rocjitsu GFX11 model; `wmma_replicated_exact_test.cpp`; 103 DOT2 captures and 28 packed matrices | Scalar implementations; verify inventory integration as other APIs evolve |
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
-| DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC added with the same exact model and loose SIMD; dual forms, RDNA3 reporting, and Wave64 remain |
+| DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting and ordinary Wave64 forms remain |
 | Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms and SIMD dispatch | Exact IEEE-mode NaN policies, exception reporting and Wave64 |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
@@ -59,7 +59,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
 | Interpolation | Existing RDNA4 paths | Compare RDNA3 contracts and empirical behavior |
-| Dual-issue VOPD | No separately named APIs | Inventory independent operations and cross-operation source/output dependencies |
+| Dual-issue VOPD | All 19 canonical operations; shared ordinary kernels, architecture-split DOT2ACC; Wave32 only | Direct VOPD hardware captures; inherited exact/global-state gaps |
 
 Keep this checklist conservative: unchecked review work is not made complete by
 a green test suite that exercises only the current implementation.
@@ -594,3 +594,35 @@ Four APIs were added. Canonical name counts remain 787 present and 22 absent.
 Validation: all 740 tests pass on Clang/GCC. All thirteen bit-count and
 instruction-flag tests pass under ASan/UBSan. Existing numerical/routing bodies
 are unchanged; the new SIMD specializations vary only the lane count.
+
+
+## VOPD decoded operations
+
+Added the nineteen canonical VOPD operation names (21 APIs including the two
+RDNA4 DOT2ACC variants). Each forwards to the corresponding ordinary operation;
+DOT2ACC supplies the old destination as the addend. Existing scalar/SIMD dispatch
+and exact models are reused without a second arithmetic implementation.
+
+Section 7.8 of the RDNA4 ISA permits Y to overwrite an X source, but forbids X
+from overwriting a Y source. Consequently, legal pairs can execute X then Y.
+The caller validates slot, bank, destination parity and literal restrictions and
+resolves encoded operands, including scalar DOT2 replication and out-of-range
+VGPR addressing. VOPD is Wave32-only and encodes no arithmetic modifiers or DPP;
+all nonzero instruction flags are rejected. LLVM's gfx1201 assembler confirms
+that the ordinary ADD form is accepted and a negated VOPD operand is rejected.
+
+The RDNA3 and RDNA4 rocjitsu VOPD handlers select different GFX11/GFX12 DOT2
+models. Both FP16 and BF16 therefore have unsuffixed RDNA3 and `_rdna4` APIs.
+Tests reuse the borrowed GFX1100 ordinary DOT2 captures and check an explicit
+architecture-difference witness. These are not new VOPD hardware captures.
+Additional tests independently check each operation's finite result, masks,
+accumulator/literal/condition operands, every instruction-flag bit, state
+preservation on errors, all available CPU levels and a legal reverse dependency.
+Exact support and optional exception reporting retain the ordinary APIs' limits.
+
+Canonical-name coverage is now 806 present and three absent (general scalar
+GETREG/SETREG). This is not semantic completeness: the family checklist and
+cross-cutting gates above remain open.
+
+Validation: all 744 tests pass with Clang 21 and GCC 15 Release builds. All ten
+VOPD, exception-register and instruction-flag tests pass under ASan/UBSan.

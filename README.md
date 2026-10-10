@@ -2375,3 +2375,22 @@ modifiers are checked against RX 9070 captures.
 Integer relational comparisons support Wave64 for signed/unsigned 16-, 32- and
 64-bit elements, returning a 64-bit comparison or replacement EXEC mask. They
 reuse the scalar and x86 SIMD comparison kernels and preserve input/output aliasing.
+
+
+### Dual-issue operations
+
+The `goc_v_dual_*` APIs execute one decoded Wave32 VOPD operation using the same
+arithmetic and CPU dispatch as its ordinary counterpart. `instruction_flags`
+must be zero: VOPD has no modifier fields or DPP. Accumulator forms read the old
+destination. The decoder supplies resolved operands and validates the physical
+slot, register-bank, parity and literal constraints.
+
+For a legal pair, call X before Y. The ISA forbids X from overwriting Y sources,
+while allowing Y to overwrite X sources. Pair-level validation should precede
+both calls if the emulator needs atomic error handling. These APIs do not accept
+arbitrary pairs with dependencies forbidden by the encoding.
+
+Both `goc_v_dual_dot2acc_f32_f16` and `goc_v_dual_dot2acc_f32_bf16` use the borrowed
+RDNA3 exact model; append `_rdna4` for RDNA4's different accumulation semantics.
+All dual operations inherit the ordinary APIs' exactness and optional global-state
+limitations. They have no Wave64 variants.

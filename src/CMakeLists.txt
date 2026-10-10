@@ -1,4 +1,5 @@
 add_library(goc STATIC
+  dual.cpp
   scalar_exec.cpp
   scalar_relative_move.cpp
   scalar_move.cpp
