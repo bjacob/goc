@@ -3510,3 +3510,46 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   `/tmp/goc-half-fract-{before,after}.asm` and
   `/tmp/goc-half-fract-asm-identical.txt`. Initial measurements are retained
   separately with `initial-timing` in their filenames.
+
+### Exhaustive FP16 reciprocal and square-root model audit
+
+- Added `tests/check_half_sfu_capture.py`. Its independent binary64 mathematical
+  reference plus half narrowing checks every RCP, RSQ and SQRT result and
+  EXCP_FLAG_USER word from the preceding captures: **16,777,216 pairs each,
+  50,331,648 total**, all passing. It also rejects deliberately corrupted
+  result words, corrupted exception words, and wrong-sized files. NumPy is
+  required only by the analysis tool.
+- Separately evaluated rocjitsu's `transcendental::map_f16` approach using GoC's
+  already-borrowed integer FP32 models (`rcp_f32_bits`, `rsq_f32_bits`,
+  `sqrt_f32_bits`), half narrowing, and guest denormal/saturation policies.
+  After preserving the sign of newly tiny div:2 results, those models match
+  **every captured result** for all three instructions, including all modifiers
+  and both FP16_OVFL settings. This establishes a concrete reuse path, without
+  copying rocjitsu's host-environment save/modify/restore mechanism.
+- Captured exception rules: sNaNs report INVALID; negative nonzero SQRT/RSQ
+  inputs report INVALID and suppress INPUT_DENORM. Guest input flushing happens
+  first. RCP/RSQ zero or flushed-zero report DIV0. Preserved subnormal inputs
+  report INPUT_DENORM unless INVALID supersedes it. Positive finite SQRT/RSQ
+  report INEXACT except for powers of four, including INEXACT for sqrt(9).
+  Finite RCP reports INEXACT except for representable powers-of-two reciprocals.
+- RCP tiny inexact results report UNDERFLOW/INEXACT; guest output flushing
+  reports both even for an exactly representable tiny reciprocal. Finite
+  overflow reports OVERFLOW/INEXACT regardless of FP16_OVFL. OMOD suppresses
+  UNDERFLOW/INEXACT but can add OVERFLOW; CLAMP suppresses all flags.
+- A captured instruction distinction prevents over-sharing: FP16_OVFL saturates
+  RCP and RSQ zero-input infinities to finite maxima, but subsequent overflowing
+  OMOD adds OVERFLOW only for RCP. RSQ retains DIV0 alone, including flushed
+  subnormal inputs. Input-to-OMOD tiny values become positive zero, while
+  div:2 flushing of a newly tiny negative reciprocal retains negative zero.
+- Recheck with `python3 tests/check_half_sfu_capture.py OP CAPTURE_BIN`, using
+  the three paths and SHA256 values recorded in the preceding section. The
+  separate model-comparison source/binary are `/tmp/goc-half-sfu-check.cpp`
+  and `/tmp/goc-half-sfu-check`; build with
+  `clang++ -O2 -std=c++17 -Isrc -Iinclude /tmp/goc-half-sfu-check.cpp -o /tmp/goc-half-sfu-check`
+  and pass RCP, RSQ, SQRT capture paths in that order. That program checks
+  numeric model reuse; the committed Python tool checks results and flags.
+- This checkpoint adds verified hardware/model evidence, **not production API
+  support**. RCP/RSQ/SQRT exact integration, architecture-specific NaN quieting,
+  native output-parameter splits, per-lane/DPP tests, and SIMD timing remain
+  required. EXP/LOG capture analysis also remains outstanding. Existing Clang,
+  GCC and sanitizer results remain those of `f1f8920`; no production code changed.
