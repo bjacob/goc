@@ -6075,3 +6075,33 @@ Validation: all 1,131 CTests pass under Clang and GCC Release; all eleven
 CNDMASK/BooleanWave64 tests pass under ASan/UBSan. Logs use `cndmask-review-`
 in each build directory. The ledger records 603 contracts; 206 in-scope
 mnemonics remain without recorded reviews.
+
+## Saturating byte-pack architecture contract
+
+Reviewed `v_sat_pk_u8_i16` at rocjitsu `ffc144c564c`: all four RDNA3/RDNA4
+VOP1/VOP3 normal/modifier handler pairs are identical. The two shared helpers
+use the same signed-halfword saturation and byte placement. Operand constructors
+specify a 32-bit source and a 16-bit destination; the raw-result output helper
+does not apply floating-point output modifiers. Bodies, hashes and locations
+are in `../goc-build/coverage-work/sat-pack-upstream-review.json`.
+
+Each signed halfword is independently saturated to [0, 255], then the low-source
+byte and high-source byte are packed into the selected destination half.
+The other destination half is preserved. DPP routes the entire source word
+before saturation. Shared APIs remain appropriate, with no optional global-state
+output. GoC retains its existing gfx1201 exhaustive encoding and DPP fixtures;
+this review adds no RDNA3 hardware capture or new numerical model.
+
+Fixed validation to accept ignored CLAMP. The scalar, eight-lane v3 and
+sixteen-lane v4 paths are unchanged: SIMD sign-extends both halves, clamps each
+32-bit lane, packs bytes, merges the old destination half and uses masked stores.
+HIGH_D and CLAMP do not force a fallback. Added fixed signed-boundary pairs
+covering negative values, 0, 1, 254, 255, 256 and signed extrema, including mixed
+saturation within a word. Tests cover both semantics, both wave widths, both
+CLAMP/destination-half settings, empty/full/mixed EXEC, source aliases and guards.
+The Wave64 DPP/alias test now also exercises ignored CLAMP for this instruction.
+
+Validation: all 1,132 CTests pass under Clang and GCC Release; all ten packing
+tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`sat-pack-review-` in each build directory. The ledger records 604 contracts;
+205 in-scope mnemonics remain without recorded reviews.

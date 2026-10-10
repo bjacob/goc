@@ -2528,9 +2528,9 @@ int goc_v_mullit_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t i
 
 // Saturate both signed I16 halves of A to U8, pack them low byte first, and
 // write the selected half of D, preserving the other half. HIGH_D selects the
-// upper destination half. DPP8/DPP16 permutes A before saturation; no other
-// instruction modifiers apply. A/D use one
-// VGPR each. Exact result semantics; all host FP state is preserved.
+// upper destination half. CLAMP is accepted and ignored. DPP8/DPP16 permutes A
+// before saturation; no other instruction modifiers apply. A/D use one VGPR each. Exact result
+// semantics; all host FP state is preserved.
 int goc_v_sat_pk_u8_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a);
 

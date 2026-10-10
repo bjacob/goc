@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-603 in-scope mnemonics have explicit contract-review records in
+604 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 206 in-scope mnemonics need a recorded review.
+The remaining 205 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -615,7 +615,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_sad_u16` | SIMD macro, output helper | no | 18885 | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
 | `v_sad_u32` | SIMD macro, output helper | no | 18910 | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
 | `v_sad_u8` | SIMD macro, output helper | no | 18930 | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
-| `v_sat_pk_u8_i16` | output helper | no | 18947, 18963 | review required |
+| `v_sat_pk_u8_i16` | output helper | no | 18947, 18963 | [loose and exact contract reviewed; see limitations](COVERAGE.md#saturating-byte-pack-architecture-contract) |
 | `v_sin_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 18979, 18998 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-sincos-architecture-policies) |
 | `v_sin_f32` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 19037, 19051 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-sincos-architecture-policies) |
 | `v_sqrt_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 19083, 19117 | review required |

@@ -18,7 +18,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                             [&](uint32_t exec_mask, const uint32_t *const *source) {
                               return run<Saturate>(flags, exec_mask, uint32_t(mode), d, source, b);
                             });
-  const uint32_t known = Saturate ? GOC_ALU_HIGH_D
+  const uint32_t known = Saturate ? GOC_ALU_HIGH_D | GOC_ALU_CLAMP
                                   : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_ABS_A |
                                         GOC_ALU_ABS_B | GOC_ALU_NEG_A | GOC_ALU_NEG_B;
   if (int error = goc::validate(flags, mode & ~known, true,

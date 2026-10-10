@@ -68,7 +68,8 @@ TEST(Pack, MasksAliasesAndUnalignedStorage) {
 
 TEST(Pack, ValidationAndEmptyMask) {
   for (unsigned variant : {0u, 2u}) {
-    uint32_t allowed = goc_test::pack_mode(variant == 0 ? 1 : 65);
+    uint32_t allowed =
+        goc_test::pack_mode(variant == 0 ? 1 : 65) | (variant == 0 ? GOC_ALU_CLAMP : 0);
     EXPECT_EQ(goc_test::pack_call(variant, 0, 0U, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
     for (unsigned bit = 0; bit < 32; ++bit) {
       if (!(allowed & (1u << bit))) {
@@ -238,10 +239,12 @@ TEST(Pack, Wave64DppModifiersAliasesAndGlobalStateContract) {
             if (route & GOC_DPP16)
               descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
             uint64_t exec_mask = 0x87654321fedcba98ULL;
-            ASSERT_EQ(pack_wave64(variant,
-                                  cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                  exec_mask, descriptor | goc_test::pack_mode(variant), &d, &a, &b),
-                      GOC_SUCCESS);
+            ASSERT_EQ(
+                pack_wave64(
+                    variant, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask,
+                    descriptor | goc_test::pack_mode(variant) | (variant < 2 ? GOC_ALU_CLAMP : 0),
+                    &d, &a, &b),
+                GOC_SUCCESS);
             for (unsigned lane = 0; lane < 64; ++lane) {
               int source = 0;
               bool enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
@@ -270,4 +273,41 @@ TEST(Pack, Wave64DppModifiersAliasesAndGlobalStateContract) {
     EXPECT_EQ(pack_wave64(variant, 0, UINT64_MAX, 1ULL << 63, nullptr, nullptr, nullptr),
               GOC_ERROR_INVALID_FLAGS);
   }
+}
+
+// Fixed signed boundary pairs exercise independent byte saturation and preservation
+// of the unused destination half, including when the destination is the source.
+TEST(Pack, SaturationBoundariesIgnoredClampAndWaveWidths) {
+  const uint32_t input[] = {0x80007fff, 0xffff0100, 0x00ff0000, 0x000100fe,
+                            0x010000ff, 0x7fff8000, 0x0000ffff, 0x00fe0001};
+  const uint32_t packed[] = {0x00ff, 0x00ff, 0xff00, 0x01fe, 0xffff, 0xff00, 0x0000, 0xfe01};
+  for (unsigned width : {32U, 64U})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (uint32_t clamp : {0U, GOC_ALU_CLAMP})
+          for (unsigned high : {0U, 1U})
+            for (bool alias : {false, true})
+              for (uint64_t exec_mask :
+                   {0ULL, 0xffffffffffffffffULL, 0x8000000180000001ULL, 0xaaaaaaaa55555555ULL}) {
+                uint32_t source[66], output[66], expected[66];
+                for (unsigned i = 0; i < 66; ++i) {
+                  source[i] = input[i % 8];
+                  output[i] = 0xa9753210U ^ (i * 0x01030709U);
+                  expected[i] = alias ? source[i] : output[i];
+                }
+                unsigned shift = high * 16;
+                for (unsigned lane = 0; lane < width; ++lane)
+                  if ((exec_mask >> lane) & 1)
+                    expected[lane + 1] = (expected[lane + 1] & ~(0xffffU << shift)) |
+                                         (packed[(lane + 1) % 8] << shift);
+                const uint32_t *a = source + 1;
+                uint32_t *d = (alias ? source : output) + 1;
+                uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+                uint64_t mode = clamp | (high ? GOC_ALU_HIGH_D : 0);
+                ASSERT_EQ(width == 32
+                              ? goc_v_sat_pk_u8_i16(flags, uint32_t(exec_mask), mode, &d, &a)
+                              : goc_v_sat_pk_u8_i16_wave64(flags, exec_mask, mode, &d, &a),
+                          GOC_SUCCESS);
+                EXPECT_TRUE(std::equal(expected, expected + 66, alias ? source : output));
+              }
 }

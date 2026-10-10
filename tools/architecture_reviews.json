@@ -1042,5 +1042,13 @@
       "v_cndmask_b16",
       "v_cndmask_b32"
     ]
+  },
+  {
+    "heading": "Saturating byte-pack architecture contract",
+    "semantics": "loose and exact",
+    "tests": "tests/pack_test.cpp",
+    "mnemonics": [
+      "v_sat_pk_u8_i16"
+    ]
   }
 ]
