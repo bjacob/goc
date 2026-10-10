@@ -135,6 +135,10 @@ These are CPU instruction-emulation microbenchmarks, not end-to-end emulator
 throughput or GPU comparisons. Results vary with host, compiler, workload and
 system load; the scalar reference is intentionally simple.
 
+The ongoing cross-architecture audit is tracked in [COVERAGE.md](COVERAGE.md),
+with a full [ISA inventory](ISA_INVENTORY.md). API presence alone does not imply
+verified compatibility with both architectures.
+
 ## RDNA3 WMMA support
 
 All six RDNA3 WMMA mnemonics are implemented in Wave32 and Wave64: FP16/BF16
