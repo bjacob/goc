@@ -1013,7 +1013,7 @@ bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
                              goc_v_rsq_f16,
                              goc_v_exp_f16,
                              goc_v_log_f16,
-                             goc_v_fract_f16,
+                             goc_v_fract_f16_rdna4,
                              goc_v_frexp_mant_f16_rdna4};
   const char *names[] = {"v_trunc_f16", "v_ceil_f16",  "v_rndne_f16",     "v_floor_f16",
                          "v_sqrt_f16",  "v_rcp_f16",   "v_rsq_f16",       "v_exp_f16",

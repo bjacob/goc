@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Check exhaustive capture_half_unary.py rounding/FREXP_MANT captures.
+"""Check exhaustive capture_half_unary.py rounding/FREXP_MANT/FRACT captures.
 
 Usage: check_half_unary_capture.py MNEMONIC CAPTURE_BIN
 Requires NumPy. Mathematical operations use exactly represented binary64 inputs;
@@ -25,18 +25,27 @@ def reference(op, saturate, policy, modifier):
     subnormal = (magnitude != 0) & (magnitude < 0x400)
     snan = (magnitude > 0x7C00) & ((bits & 0x200) == 0)
     exceptions = snan.astype(np.uint32)
-    if op == "frexp_mant":
+    if op in ("frexp_mant", "fract"):
         exceptions |= (magnitude == 0x7C00).astype(np.uint32)
     if policy & 1:
         bits = np.where(subnormal, bits & 0x8000, bits).astype(np.uint16)
     else:
         exceptions |= subnormal.astype(np.uint32) * 2
 
-    # Every finite half input and every intermediate here is exact in binary64.
-    # Only the final FP16 conversion can overflow after OMOD. None of these
-    # operations can produce a nonzero subnormal result, even after div:2.
+    # Every finite half input and x - floor(x) are exact in binary64.
+    # FRACT rounds to half and caps below one before output scaling.
     value = bits.view(np.float16).astype(np.float64)
-    if op == "frexp_mant":
+    if op == "fract":
+        result = value - np.floor(value)
+        rounded = result.astype(np.float16).astype(np.float64)
+        if not modifier & 12:
+            exceptions |= ((rounded != result) & np.isfinite(value)).astype(np.uint32) * 32
+        result = np.minimum(rounded, 1 - 2**-11)
+        tiny = (result != 0) & (result < 2**-14)
+        if policy & 2 and not modifier & 12:
+            result = np.where(tiny, 0, result)
+            exceptions |= tiny.astype(np.uint32) * 48
+    elif op == "frexp_mant":
         result = np.frexp(value)[0]
     else:
         result = {"trunc": np.trunc, "ceil": np.ceil, "rndne": np.rint,
@@ -47,7 +56,11 @@ def reference(op, saturate, policy, modifier):
     result *= [1, 2, 4, 0.5][(modifier >> 2) & 3]
     if saturate:
         result = np.where(np.isfinite(result), np.clip(result, -65504, 65504), result)
+    if op == "fract" and modifier & 12:
+        result = np.where(np.abs(result) < 2**-14, 0, result)
     output = result.astype(np.float16).view(np.uint16)
+    if op == "fract":
+        output = np.where(magnitude == 0x7C00, 0xFE00, output).astype(np.uint16)
     nan = magnitude > 0x7C00
     output = np.where(nan, bits | 0x200, output).astype(np.uint16)
     if modifier & 16:
@@ -82,7 +95,7 @@ def check(op, path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mnemonic", choices=["trunc", "ceil", "rndne", "floor", "frexp_mant"])
+    parser.add_argument("mnemonic", choices=["trunc", "ceil", "rndne", "floor", "frexp_mant", "fract"])
     parser.add_argument("capture", type=Path)
     args = parser.parse_args()
     try:

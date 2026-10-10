@@ -24,7 +24,7 @@ const decltype(&goc_v_trunc_f16_rdna4_wave64) wave64[] = {goc_v_trunc_f16_rdna4_
                                                           goc_v_rsq_f16_wave64,
                                                           goc_v_exp_f16_wave64,
                                                           goc_v_log_f16_wave64,
-                                                          goc_v_fract_f16_wave64,
+                                                          goc_v_fract_f16_rdna4_wave64,
                                                           goc_v_frexp_mant_f16_rdna4_wave64};
 
 void check(int op, uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
@@ -178,9 +178,9 @@ TEST(HalfUnary, ValidationAndSemantics) {
       EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, nullptr), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(
           fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, nullptr),
-          op < 4 || op == 10 ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
+          op < 4 || op == 9 || op == 10 ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
-    if (op >= 4 && op != 10) {
+    if (op >= 4 && op != 9 && op != 10) {
       for (auto word : data)
         EXPECT_EQ(word, 0xdeadbeef);
     }
@@ -310,7 +310,7 @@ TEST(HalfUnary, Wave64ModifiersDppSelectorsAndAliases) {
 TEST(HalfUnary, Wave64ValidationAndOptionalState) {
   for (unsigned op = 0; op < 11; ++op) {
     auto fn = wave64[op];
-    bool supported = op < 4 || op == 10;
+    bool supported = op < 4 || op == 9 || op == 10;
     uint32_t words[64] = {};
     uint32_t *d = words;
     const uint32_t *a = words;

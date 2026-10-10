@@ -207,7 +207,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_minimum3_f16`, `v_maximum3_f16`, `v_minimummaximum_f16`, `v_maximumminimum_f16`, `v_med3_num_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_ldexp_f16`, `v_frexp_exp_i16_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_trunc_f16`, `v_ceil_f16`, `v_rndne_f16`, `v_floor_f16`, `v_frexp_mant_f16` | Scalar, x86-64-v3 | Integer model; both architectures, RDNA4 reporting |
-| `v_fract_f16` | Scalar, x86-64-v3 | Not implemented |
+| `v_fract_f16` | Scalar, x86-64-v3 | Integer fractional-bit model; both architectures, RDNA4 reporting |
 | `v_sqrt_f16`, `v_rcp_f16`, `v_rsq_f16` | Scalar, x86-64-v3 | Not implemented |
 | `v_exp_f16`, `v_log_f16` | Scalar | Not implemented |
 | `v_add_f16`, `v_sub_f16`, `v_subrev_f16`, `v_mul_f16` | Scalar, x86-64-v3 | Not implemented |
@@ -2306,6 +2306,15 @@ RDNA3 reporting remains unsupported. Guest input flushing is supported in
 scalar and AVX2 loose paths; loose calls skip optional reporting. Exact paths
 are independent of host rounding and denormal controls. Native RDNA3 captures
 are not available, so its architecture policy follows rocjitsu and the ISA.
+
+FP16 FRACT also has an exact integer path, checked against another 16,777,216
+captured result/flag pairs. It implements `x - floor(x)`, rounds to FP16 and
+caps below one before OMOD. Preserved subnormal inputs report INPUT_DENORM;
+discarded fractional bits report INEXACT, and output flushing reports
+UNDERFLOW plus INEXACT. OMOD suppresses the latter two flags; CLAMP suppresses
+all flags. Its unsuffixed/`_rdna4` APIs follow the same architecture and native
+state distinction above. Scalar loose mode shares the integer calculation;
+AVX2 loose mode retains its SIMD path and skips optional reporting.
 
 All eleven FP16 unary operations now support DPP8/DPP16 with source NEG/ABS,
 OMOD/CLAMP, and source/destination half selectors. Two GFX1201 captures check

@@ -480,7 +480,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_fmac_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12047, 12069 | review required |
 | `v_fmamk_f16` | IEEE mode, NaN quieting, SIMD macro, architecture query, output helper | yes | 12174 | review required |
 | `v_fmamk_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 12194 | review required |
-| `v_fract_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 12217, 12247 | review required |
+| `v_fract_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12217, 12247 | review required |
 | `v_fract_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12295, 12311 | review required |
 | `v_fract_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 12345, 12360 | review required |
 | `v_frexp_exp_i16_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 12400, 12435 | review required |

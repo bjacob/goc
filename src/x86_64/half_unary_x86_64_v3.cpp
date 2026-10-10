@@ -23,7 +23,7 @@ void half_unary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uin
   for (int lane = 0; lane < 32; lane += 8) {
     auto x = half_input<false>(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)),
                                a_shift, mode);
-    if constexpr (unary_rounds_f32<Op> || Op == Unary::FrexpMant)
+    if constexpr (unary_rounds_f32<Op> || Op == Unary::FrexpMant || Op == Unary::Fract)
       if (flags & GOC_FP_FLUSH_INPUT_DENORMALS) {
         auto bits = _mm256_castps_si256(x);
         auto magnitude = _mm256_and_si256(bits, _mm256_set1_epi32(0x7fffffff));
@@ -32,6 +32,11 @@ void half_unary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uin
         x = _mm256_castsi256_ps(_mm256_blendv_epi8(bits, sign, tiny));
       }
     auto value = unary_value<Op, true>(x);
+    if constexpr (Op == Unary::Fract)
+      if (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) {
+        auto tiny = _mm256_cmp_ps(value, _mm256_set1_ps(0x1p-14f), _CMP_LT_OQ);
+        value = _mm256_andnot_ps(tiny, value);
+      }
     if constexpr (Op == Unary::Log) {
       if (saturate)
         value = _mm256_blendv_ps(value, _mm256_set1_ps(-65504),

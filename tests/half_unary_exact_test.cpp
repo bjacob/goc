@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cfenv>
+#include <cmath>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <stdint.h>
@@ -23,15 +24,17 @@ const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 
 int invoke(unsigned op, bool rdna3, bool wide, uint64_t flags, uint64_t exec_mask, uint64_t mode,
            uint32_t *d, const uint32_t *a, uint32_t *state) {
-  const decltype(&goc_v_trunc_f16) narrow[2][5] = {
+  const decltype(&goc_v_trunc_f16) narrow[2][6] = {
       {goc_v_trunc_f16_rdna4, goc_v_ceil_f16_rdna4, goc_v_rndne_f16_rdna4, goc_v_floor_f16_rdna4,
-       goc_v_frexp_mant_f16_rdna4},
-      {goc_v_trunc_f16, goc_v_ceil_f16, goc_v_rndne_f16, goc_v_floor_f16, goc_v_frexp_mant_f16}};
-  const decltype(&goc_v_trunc_f16_wave64) wave64[2][5] = {
+       goc_v_frexp_mant_f16_rdna4, goc_v_fract_f16_rdna4},
+      {goc_v_trunc_f16, goc_v_ceil_f16, goc_v_rndne_f16, goc_v_floor_f16, goc_v_frexp_mant_f16,
+       goc_v_fract_f16}};
+  const decltype(&goc_v_trunc_f16_wave64) wave64[2][6] = {
       {goc_v_trunc_f16_rdna4_wave64, goc_v_ceil_f16_rdna4_wave64, goc_v_rndne_f16_rdna4_wave64,
-       goc_v_floor_f16_rdna4_wave64, goc_v_frexp_mant_f16_rdna4_wave64},
+       goc_v_floor_f16_rdna4_wave64, goc_v_frexp_mant_f16_rdna4_wave64,
+       goc_v_fract_f16_rdna4_wave64},
       {goc_v_trunc_f16_wave64, goc_v_ceil_f16_wave64, goc_v_rndne_f16_wave64,
-       goc_v_floor_f16_wave64, goc_v_frexp_mant_f16_wave64}};
+       goc_v_floor_f16_wave64, goc_v_frexp_mant_f16_wave64, goc_v_fract_f16_wave64}};
   return wide ? wave64[rdna3][op](flags, exec_mask, mode, &d, &a, state)
               : narrow[rdna3][op](flags, uint32_t(exec_mask), mode, &d, &a, state);
 }
@@ -47,13 +50,29 @@ uint64_t policy_flags(unsigned policy) {
 }
 
 // Independently checked against every captured raw EXCP_FLAG_USER word.
-uint32_t exception(unsigned op, uint16_t input, bool flush_input, bool clamp) {
-  if (clamp)
+uint32_t exception(unsigned op, uint16_t input, unsigned policy, unsigned modifier) {
+  if (modifier & 16)
     return 0;
+  if (modifier & 2)
+    input &= 0x7fff;
+  if (modifier & 1)
+    input ^= 0x8000;
   unsigned magnitude = input & 0x7fff;
-  if ((magnitude > 0x7c00 && !(magnitude & 0x200)) || (op == 4 && magnitude == 0x7c00))
+  if ((magnitude > 0x7c00 && !(magnitude & 0x200)) || (op >= 4 && magnitude == 0x7c00))
     return GOC_EXCEPTION_INVALID;
-  return magnitude && magnitude < 0x400 && !flush_input ? GOC_EXCEPTION_INPUT_DENORM : 0;
+  uint32_t flags = magnitude && magnitude < 0x400 && !(policy & 1) ? GOC_EXCEPTION_INPUT_DENORM : 0;
+  if (op == 5 && magnitude < 0x7c00 && !(modifier & 12)) {
+    double x = goc_test::half_value(input);
+    if ((policy & 1) && magnitude < 0x400)
+      x = 0;
+    double fraction = x - std::floor(x);
+    double rounded = goc_test::half_value(goc_test::half_bits(fraction, false));
+    if (rounded != fraction)
+      flags |= GOC_EXCEPTION_INEXACT;
+    if ((policy & 2) && rounded > 0 && rounded < 0x1p-14)
+      flags |= GOC_EXCEPTION_UNDERFLOW | GOC_EXCEPTION_INEXACT;
+  }
+  return flags;
 }
 
 void compare_half(uint32_t actual, uint32_t expected, unsigned shift) {
@@ -69,7 +88,7 @@ void compare_half(uint32_t actual, uint32_t expected, unsigned shift) {
 
 TEST(HalfUnaryExact, ExhaustiveHardwareResultsAndWaveFlags) {
   const unsigned cpu_count = unsigned(goc_init_cpu_flags() + 1);
-  for (unsigned op = 0; op < 5; ++op)
+  for (unsigned op = 0; op < 6; ++op)
     for (bool precise : {false, true})
       for (unsigned saturate = 0; saturate < 2; ++saturate)
         for (unsigned policy = 0; policy < 4; ++policy)
@@ -88,7 +107,7 @@ TEST(HalfUnaryExact, ExhaustiveHardwareResultsAndWaveFlags) {
               for (unsigned lane = 0; lane < lanes; ++lane) {
                 input[lane] = ((base + lane) << a_shift) | (0x7c01U << (16 - a_shift));
                 output[lane] = 0xdeadbeef;
-                expected_state |= exception(op, uint16_t(base + lane), policy & 1, m & 16);
+                expected_state |= exception(op, uint16_t(base + lane), policy, m);
               }
               ASSERT_EQ(invoke(op, false, wide, flags, UINT64_MAX, mode, output, input, &state),
                         GOC_SUCCESS);
@@ -104,23 +123,28 @@ TEST(HalfUnaryExact, ExhaustiveHardwareResultsAndWaveFlags) {
                     word &= 0x7fff;
                   if (m & 1)
                     word ^= 0x8000;
-                  word |= 0x200;
+                  word = (word & 0x7fff) == 0x7c00 ? 0xfe00 : word | 0x200;
                 }
                 hash = goc_test::capture_hash_word(hash, word);
                 pair_hash = goc_test::capture_hash_word(pair_hash, word);
                 pair_hash = goc_test::capture_hash_word(
-                    pair_hash, exception(op, uint16_t(base + lane), policy & 1, m & 16));
+                    pair_hash, exception(op, uint16_t(base + lane), policy, m));
               }
             }
-            EXPECT_EQ(hash, goc_test::half_unary_exact_hashes[op][saturate][policy & 1][m][0])
+            EXPECT_EQ(hash,
+                      (op == 5 ? goc_test::half_fract_exact_hashes[policy][m][0]
+                               : goc_test::half_unary_exact_hashes[op][saturate][policy & 1][m][0]))
                 << op << '/' << precise << '/' << saturate << '/' << policy << '/' << m;
-            EXPECT_EQ(pair_hash, goc_test::half_unary_exact_hashes[op][saturate][policy & 1][m][1]);
+            EXPECT_EQ(pair_hash,
+                      (op == 5
+                           ? goc_test::half_fract_exact_hashes[policy][m][1]
+                           : goc_test::half_unary_exact_hashes[op][saturate][policy & 1][m][1]));
           }
 }
 
 TEST(HalfUnaryExact, OnlyParticipatingLanesReport) {
-  for (unsigned op = 0; op < 5; ++op)
-    for (unsigned policy = 0; policy < 2; ++policy)
+  for (unsigned op = 0; op < 6; ++op)
+    for (unsigned policy = 0; policy < 4; ++policy)
       for (bool clamp : {false, true})
         for (unsigned value = 0; value < 65536; ++value) {
           bool wide = value & 1;
@@ -133,7 +157,7 @@ TEST(HalfUnaryExact, OnlyParticipatingLanesReport) {
           ASSERT_EQ(invoke(op, false, wide, exact | policy_flags(policy), 1ULL << lane,
                            clamp ? GOC_ALU_CLAMP : 0, output, input, &state),
                     GOC_SUCCESS);
-          ASSERT_EQ(state, 0x80000040U | exception(op, uint16_t(value), policy, clamp));
+          ASSERT_EQ(state, 0x80000040U | exception(op, uint16_t(value), policy, clamp ? 16 : 0));
           for (unsigned i = 0; i < lanes; ++i)
             if (i != lane) {
               ASSERT_EQ(output[i], 0xdeadbeefU);
@@ -145,7 +169,7 @@ TEST(HalfUnaryExact, ArchitecturePoliciesDppSelectorsAndAliases) {
   const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x83ff, 0x400,  0x8400,
                              0x3800, 0xb800, 0x3bff, 0xbbff, 0x3c00, 0xbc00, 0x3e00, 0xbe00,
                              0x7bff, 0xfbff, 0x7c00, 0xfc00, 0x7c01, 0xfc01, 0x7e55, 0xfe55};
-  for (unsigned op = 0; op < 5; ++op)
+  for (unsigned op = 0; op < 6; ++op)
     for (bool rdna3 : {false, true})
       for (bool precise : {false, true})
         for (bool wide : {false, true})
@@ -172,13 +196,17 @@ TEST(HalfUnaryExact, ArchitecturePoliciesDppSelectorsAndAliases) {
                     uint32_t word = source < 0 ? 0 : input[source];
                     uint16_t half = uint16_t(word >> a_shift);
                     if (precise && !rdna3)
-                      want_state |= exception(op, half, policy & 1, m & 16);
+                      want_state |= exception(op, half, policy, m);
                     if ((policy & 1) && (half & 0x7fff) < 0x400) {
                       word &= ~(65535U << a_shift);
                       word |= uint32_t(half & 0x8000) << a_shift;
                     }
-                    uint16_t result =
-                        goc_test::half_unary_reference(op == 4 ? 10 : op, word, effective, false);
+                    uint16_t result = goc_test::half_unary_reference(op == 4   ? 10
+                                                                     : op == 5 ? 9
+                                                                               : op,
+                                                                     word, effective, false);
+                    if (op == 5 && (policy & 2) && result < 0x400)
+                      result = 0;
                     expected[lane] =
                         (expected[lane] & ~(65535U << d_shift)) | (uint32_t(result) << d_shift);
                   }
@@ -194,7 +222,7 @@ TEST(HalfUnaryExact, ArchitecturePoliciesDppSelectorsAndAliases) {
 TEST(HalfUnaryExact, HostControlsAndValidation) {
   goc_test::ScopedFpEnvironment saved;
   ASSERT_TRUE(saved.saved());
-  for (unsigned op = 0; op < 5; ++op)
+  for (unsigned op = 0; op < 6; ++op)
     for (bool rdna3 : {false, true})
       for (bool wide : {false, true}) {
         uint32_t input[64], baseline[64], actual[64];

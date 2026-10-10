@@ -21,7 +21,7 @@ const HalfUnaryFn half_unary_functions[] = {goc_v_trunc_f16_rdna4,
                                             goc_v_rsq_f16,
                                             goc_v_exp_f16,
                                             goc_v_log_f16,
-                                            goc_v_fract_f16,
+                                            goc_v_fract_f16_rdna4,
                                             goc_v_frexp_mant_f16_rdna4};
 const uint32_t half_unary_known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF |
                                   GOC_ALU_CLAMP | GOC_ALU_HIGH_A | GOC_ALU_HIGH_D;

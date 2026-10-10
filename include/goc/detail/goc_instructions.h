@@ -4769,16 +4769,17 @@ int goc_v_frexp_exp_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t 
 // half and inactive lanes; whole-register A/D aliasing is allowed. EXP/LOG
 // use base two, RNDNE rounds ties to even, and FRACT is capped below one.
 // Supports DPP8/DPP16 on A. Loose semantics require host nearest-even arithmetic
-// with denormals enabled. EXP/LOG round to FP16 before OMOD; other forms apply
+// with denormals enabled. EXP/LOG/FRACT round to FP16 before OMOD; other forms apply
 // output modifiers before final FP16 narrowing.
-// TRUNC/CEIL/RNDNE/FLOOR/FREXP_MANT support integer bit-exact results and guest
-// input/output-denormal flags plus IEEE. Their nonzero finite outputs remain
-// normal after OMOD. Unsuffixed APIs select RDNA3: OMOD is disabled when IEEE is set or
-// output denormals are preserved. RDNA4 OMOD is independent of these guest modes.
-// RDNA4 exact reporting supports INVALID/INPUT_DENORM; FREXP_MANT also reports
-// INVALID for infinity. CLAMP suppresses these flags. RDNA3 non-null non-loose
-// reporting remains unsupported. Loose paths leave optional state unchanged.
-// Other FP16 unary operations here retain their existing loose-only behavior.
+// TRUNC/CEIL/RNDNE/FLOOR/FREXP_MANT/FRACT support integer bit-exact results and guest
+// input/output-denormal flags plus IEEE. FRACT rounds and caps below one before
+// OMOD, and reports INEXACT for rounding and UNDERFLOW/INEXACT for output flushing.
+// OMOD suppresses these two FRACT flags. Unsuffixed APIs select RDNA3: OMOD is disabled when IEEE
+// is set or output denormals are preserved. RDNA4 OMOD is independent of these guest modes. RDNA4
+// exact reporting supports INVALID/INPUT_DENORM; FREXP_MANT also reports INVALID for infinity, as
+// does FRACT. CLAMP suppresses all flags. RDNA3 non-null non-loose reporting remains unsupported.
+// Loose paths leave optional state unchanged. Other FP16 unary operations here retain their
+// existing loose-only behavior.
 int goc_v_trunc_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
 
@@ -4819,7 +4820,10 @@ int goc_v_log_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_fract_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_fract_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_frexp_mant_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
@@ -4874,7 +4878,11 @@ int goc_v_log_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instructio
                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_fract_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_fract_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_frexp_mant_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);

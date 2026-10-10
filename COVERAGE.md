@@ -3427,3 +3427,86 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   output `/tmp/goc-half-unary-timing.log`. The two production object text sizes
   total 50,367 bytes versus 36,057 before adding exact paths, architecture APIs
   and guest flushing; this feature addition is not a code-size reduction.
+
+### Exact FP16 FRACT and remaining unary hardware captures
+
+- Added exact FP16 FRACT in both wave sizes, with unsuffixed RDNA3 and `_rdna4`
+  APIs. Native state outputs are `trapsts` and `excp_flag_user`, respectively.
+  RDNA3's conditional OMOD policy is shared with the other audited FP16 unary
+  operations. Requested exact RDNA3 reporting still returns unsupported;
+  null opts out, and loose calls never perform optional reporting.
+- The calculation follows rocjitsu's `x - floor(x)` formula but evaluates the
+  fractional part in integer units of the smallest half, `2^-24`. It rounds
+  once to FP16, caps below one, and then applies output scaling. This avoids
+  host arithmetic and shares the existing unary validation, DPP, masked-store,
+  architecture-policy and output-scaling code. Scalar loose calls also use this
+  integer path; AVX2 retains its SIMD arithmetic with guest denormal flushing.
+- Captured and independently verified **16,777,216 raw FRACT result/flag pairs**:
+  every half encoding, all 32 NEG/ABS/OMOD/CLAMP combinations, four denormal
+  policies, and both FP16_OVFL settings. The NumPy checker computes the exact
+  binary64 fraction, narrows to half, and classifies exceptions independently
+  of the production integer algorithm. FP16_OVFL makes no difference here.
+- INVALID covers infinity and sNaN. Preserved subnormal input reports
+  INPUT_DENORM. Discarded fraction bits report INEXACT; flushing a nonzero
+  subnormal output reports UNDERFLOW plus INEXACT even when that fraction was
+  exactly representable. OMOD suppresses UNDERFLOW/INEXACT; CLAMP suppresses
+  all reporting. NaN sign/payload are preserved when quieting, and infinity
+  produces `0xfe00` before CLAMP.
+- The existing exact-unary tests now include FRACT: exhaustive hardware hashes
+  and per-lane flag checks, both wave sizes, selectors, CPU dispatch, DPP,
+  inactive-lane poison, aliases, both architecture policies, validation and
+  host rounding/DAZ/FTZ independence. An old validation expectation that FRACT
+  must reject exact semantics was updated. The naming audit now has **688
+  signatures, 414 matching resolved names, zero mismatches, 274 pending**;
+  canonical API coverage remains **809/809**, not a completeness claim.
+- Also captured SQRT/RCP/RSQ/EXP/LOG with the same exhaustive probe. Those
+  additional **83,886,080 pairs** are evidence for subsequent analysis, not
+  completed exact support. All six files have 134,217,728 bytes and live at
+  `../goc-build/coverage-work/half-OP-report-captures/capture.bin`; driver/log:
+  `/tmp/goc-half-rest-capture.py` and `/tmp/goc-half-rest-capture.log`.
+
+  | Operation | SHA256 |
+  |---|---|
+  | FRACT | `28963be1883a7553603e2915f8ca9a23cecdcafefb8aeb3c2f42c9613ea3787c` |
+  | SQRT | `4bb2f27d1f1fe94c4124c87072837c1d7c05a84cf60e43533e74645d5d9ed3f0` |
+  | RCP | `995dac5a6ef93856f46e3c41d92026221dcb1fd3d95d3027fa5cece632442913` |
+  | RSQ | `9741773b9ade4efd8fd280890fdf4ef058de1b4dd327453b45c342a816cf3536` |
+  | EXP | `2f8e608882ae40cbe1885e34d1d4f353f1bdd6862ce205d9d2bf7a170f8db2a9` |
+  | LOG | `dea80661481e8d03b0b89c110452210d6d69a476b450faa6ddc1054ae2630ab8` |
+
+- The captures use gfx1201, uniform-input Wave32, nearest-even guest rounding,
+  and low halves. Other routing is tested in software, not established by these
+  captures. Native RDNA3 captures remain unavailable.
+- Final Clang 21 and GCC 15 Release suites each pass **1,048/1,048** tests;
+  targeted Clang ASan/UBSan passes **20/20** tests. Logs:
+  `/tmp/goc-half-fract-tuned-{clang,gcc,san}-tests.log`. The extended capture
+  checker also reverified all six implemented operations (**100,663,296 pairs**).
+- Timings compare against `cc4b10c` with seven alternating sample pairs, CPU 2
+  affinity, and at least 50 ms thread CPU per case. The 176 loose cases cover
+  eleven operations, scalar/AVX2, normal/subnormal data, null/non-null state,
+  and default/combined modifiers. An initial shared tiny-result check added
+  work to neighboring scalar operations; the final code restricts that check
+  to FRACT, whose outputs can actually be tiny.
+
+  | Loose cases | Median time change | Per-case range |
+  |---|---:|---:|
+  | FRACT, scalar | -23.41% | -63.26% to -0.16% |
+  | FRACT, AVX2 | +0.53% | -0.25% to +3.65% |
+  | Ten neighboring operations, scalar | +0.56% | -1.29% to +15.38% |
+  | Ten neighboring operations, AVX2 | -0.01% | -3.09% to +6.03% |
+
+  FRACT's largest AVX2 increase is 0.748 ns; neighboring AVX2 controls reach
+  1.224 ns. Scalar controls retain outliers up to 13.51 ns. A disassembly
+  comparison found identical normalized instruction sequences in the five
+  existing integer implementations and their loose dispatch helpers, ignoring
+  addresses and padding. Their object offsets changed, so layout/measurement
+  effects are plausible; these measurements do not establish uniformly
+  unchanged performance. No alignment tuning was added to fit this benchmark.
+  FRACT's null/non-null state groups have scalar medians -23.41%/-23.39% and
+  AVX2 medians +1.80%/+0.53%; loose reporting remains skipped.
+- Timing artifacts: `../goc-build/coverage-work/half-fract-timing-samples.json`,
+  `/tmp/goc-half-fract-{perf,sample}.py`, `/tmp/goc-half-fract-timing.log`.
+  Disassemblies and the identical-function list are
+  `/tmp/goc-half-fract-{before,after}.asm` and
+  `/tmp/goc-half-fract-asm-identical.txt`. Initial measurements are retained
+  separately with `initial-timing` in their filenames.
