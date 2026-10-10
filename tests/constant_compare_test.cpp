@@ -62,7 +62,7 @@ TEST(ConstantCompare, FloatingResultsMasksAndDpp) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (uint32_t exec_mask : {0U, 1U, 0x80000000U, 0xaaaaaaaaU, UINT32_MAX}) {
           uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT | GOC_FP_FLUSH_INPUT_DENORMALS |
-                           GOC_FP_FLUSH_OUTPUT_DENORMALS;
+                           GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
           uint32_t d = 123;
           ASSERT_EQ(floating[op](flags, exec_mask, 0, &d, nullptr, nullptr, nullptr), GOC_SUCCESS);
           EXPECT_EQ(d, op & 1 ? exec_mask : 0);
@@ -92,7 +92,8 @@ TEST(ConstantCompare, FloatingModifiersAndOptionalStateContract) {
     if (op < 4)
       known |= GOC_ALU_HIGH_A | GOC_ALU_HIGH_B;
     uint32_t d = 123, exceptions = 0x12340000;
-    ASSERT_EQ(floating[op](0, 0x87654321, known, &d, nullptr, nullptr, &exceptions), GOC_SUCCESS);
+    ASSERT_EQ(floating[op](GOC_FP_IEEE_MODE, 0x87654321, known, &d, nullptr, nullptr, &exceptions),
+              GOC_SUCCESS);
     EXPECT_EQ(d, op & 1 ? 0x87654321U : 0U);
     EXPECT_EQ(exceptions, 0x12340000U);
     for (unsigned bit = 0; bit < 32; ++bit) {
@@ -180,7 +181,7 @@ TEST(ConstantCompareWave64, FloatingResultsMasksAndDpp) {
         for (uint64_t exec_mask : {uint64_t(0), uint64_t(1), uint64_t(0x8000000000000000ULL),
                                    uint64_t(0xaaaaaaaaaaaaaaaaULL), UINT64_MAX}) {
           uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT | GOC_FP_FLUSH_INPUT_DENORMALS |
-                           GOC_FP_FLUSH_OUTPUT_DENORMALS;
+                           GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
           uint64_t d = 123;
           ASSERT_EQ(floating_wave64[op](flags, exec_mask, 0, &d, nullptr, nullptr, nullptr),
                     GOC_SUCCESS);
@@ -212,9 +213,9 @@ TEST(ConstantCompareWave64, FloatingModifiersAndOptionalStateContract) {
       known |= GOC_ALU_HIGH_A | GOC_ALU_HIGH_B;
     uint64_t d = 123;
     uint32_t exceptions = 0x12340000;
-    ASSERT_EQ(
-        floating_wave64[op](0, 0x8765432187654321ULL, known, &d, nullptr, nullptr, &exceptions),
-        GOC_SUCCESS);
+    ASSERT_EQ(floating_wave64[op](GOC_FP_IEEE_MODE, 0x8765432187654321ULL, known, &d, nullptr,
+                                  nullptr, &exceptions),
+              GOC_SUCCESS);
     EXPECT_EQ(d, op & 1 ? 0x8765432187654321ULL : 0U);
     EXPECT_EQ(exceptions, 0x12340000U);
     for (unsigned bit = 0; bit < 32; ++bit) {
@@ -238,4 +239,21 @@ TEST(ConstantCompareWave64, FloatingModifiersAndOptionalStateContract) {
       EXPECT_EQ(exceptions, 0x12340000U);
     }
   }
+}
+
+TEST(ConstantCompare, ExactStateRejectionPrecedesEmptyExecAndFlagValidation) {
+  for (unsigned op = 0; op < 12; ++op)
+    for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT})
+      for (uint64_t bad_flags : {0ULL, 1ULL << 63}) {
+        uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_FP_IEEE_MODE | strict | bad_flags;
+        uint32_t d32 = 0x12345678, trapsts = 0x87654321;
+        uint64_t d64 = 0x0123456789abcdefULL;
+        EXPECT_EQ(floating[op](flags, 0, bad_flags, &d32, nullptr, nullptr, &trapsts),
+                  GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+        EXPECT_EQ(floating_wave64[op](flags, 0, bad_flags, &d64, nullptr, nullptr, &trapsts),
+                  GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+        EXPECT_EQ(d32, 0x12345678U);
+        EXPECT_EQ(d64, 0x0123456789abcdefULL);
+        EXPECT_EQ(trapsts, 0x87654321U);
+      }
 }

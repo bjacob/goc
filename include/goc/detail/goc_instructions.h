@@ -1933,10 +1933,10 @@ int goc_v_cmpx_nlt_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instru
 // RDNA3 floating constant comparisons. F returns zero; T returns active lanes,
 // after DPP16 row/bank/boundary filtering. CMPX returns the resulting EXEC mask
 // in d, with no separate VCC write. Operand values do not affect the result;
-// a/b may be NULL. F16 half selectors, ABS/NEG, CLAMP and input/output flushing
-// are accepted without changing the result. F64 does not support DPP.
+// a/b may be NULL. F16 half selectors, ABS/NEG, CLAMP, guest IEEE mode and
+// input/output flushing are accepted without changing the result. F64 rejects DPP.
 // Result masks are exact in both semantics. Exact-mode exception reporting is
-// not implemented: non-NULL excp_flag_user in non-loose semantics returns
+// not implemented: non-NULL trapsts in non-loose semantics returns
 // GOC_ERROR_UNSUPPORTED_GLOBAL_STATE before modifying any output. Loose mode
 // leaves that register unchanged. The ISA still specifies NaN exceptions for
 // these predicates; an exception-free result must not be inferred from F/T.

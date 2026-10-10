@@ -5342,3 +5342,40 @@ Validation: all 1,120 CTests pass under Clang and GCC Release; all eleven intege
 comparison tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `vector-integer-compare-review-` in each build directory. The ledger records
 443 contracts; 366 in-scope mnemonics still need recorded reviews.
+
+## Constant comparison architecture contracts
+
+Reviewed all 28 F/T CMP/CMPX forms: floating 16/32/64-bit inputs and signed/
+unsigned 32/64-bit inputs. Both XML inventories confirm these canonical forms
+are RDNA3-only. Checked 56 RDNA3 VOPC/VOP3 bodies at rocjitsu `ffc144c564c`,
+resolving shared helpers and confirming the constant predicate; hashes/checks
+are in `../goc-build/coverage-work/constant-compare-upstream-review.json`.
+No RDNA4 suffix is needed because no same-mnemonic conflict exists.
+
+F produces zero; T produces participating EXEC after DPP16 row/bank/boundary
+filtering. CMP's required destination is a condition mask and CMPX's is the
+replacement EXEC. Operand values are irrelevant, so null operand pointers are
+allowed even for nonempty EXEC; the mask destination is always required.
+DPP is supported for 16/32-bit forms and rejected for 64-bit forms. Constant
+floating results support sign/half/CLAMP input flags without depending on them.
+
+Guest IEEE mode was unnecessarily rejected for the floating forms. It is now
+accepted alongside the guest denormal flags, without changing the constant
+result. The optional RDNA3 register remains TRAPSTS: loose semantics leave it
+unchanged; exact semantics with a non-null pointer still return
+`GOC_ERROR_UNSUPPORTED_GLOBAL_STATE` before flag checks or operand/output access,
+even for empty EXEC and non-strict requests. This review does not supply a new
+exception model. Integer forms have no floating-state output. The private helper
+now also names that pointer `trapsts`, matching its public callers.
+
+Existing tests cover all predicates, both wave sizes/semantics, DPP filtering,
+modifiers, null inputs and output preservation. Floating result/DPP and loose
+state tests now include guest IEEE mode. Added rejection-order tests for every
+floating form with empty EXEC, invalid flags, and both strict settings, verifying
+that result and state outputs remain unchanged.
+
+Validation: all 1,121 CTests pass under Clang and GCC Release; all seven constant
+comparison tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`constant-compare-review-` in each build directory. The public contract now also
+names TRAPSTS correctly and documents IEEE-mode acceptance. The ledger records
+471 contracts; 338 in-scope mnemonics remain without recorded reviews.

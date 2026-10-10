@@ -756,5 +756,40 @@
       "v_cmpx_ne_u32",
       "v_cmpx_ne_u64"
     ]
+  },
+  {
+    "heading": "Constant comparison architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/constant_compare_test.cpp",
+    "mnemonics": [
+      "v_cmp_f_f16",
+      "v_cmp_f_f32",
+      "v_cmp_f_f64",
+      "v_cmp_f_i32",
+      "v_cmp_f_i64",
+      "v_cmp_f_u32",
+      "v_cmp_f_u64",
+      "v_cmp_t_f16",
+      "v_cmp_t_f32",
+      "v_cmp_t_f64",
+      "v_cmp_t_i32",
+      "v_cmp_t_i64",
+      "v_cmp_t_u32",
+      "v_cmp_t_u64",
+      "v_cmpx_f_f16",
+      "v_cmpx_f_f32",
+      "v_cmpx_f_f64",
+      "v_cmpx_f_i32",
+      "v_cmpx_f_i64",
+      "v_cmpx_f_u32",
+      "v_cmpx_f_u64",
+      "v_cmpx_t_f16",
+      "v_cmpx_t_f32",
+      "v_cmpx_t_f64",
+      "v_cmpx_t_i32",
+      "v_cmpx_t_i64",
+      "v_cmpx_t_u32",
+      "v_cmpx_t_u64"
+    ]
   }
 ]

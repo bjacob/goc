@@ -13,8 +13,8 @@ namespace {
 
 template <typename Mask>
 int compare(uint64_t flags, Mask exec_mask, uint64_t mode, Mask *d, bool value, unsigned bits,
-            bool floating = false, uint32_t *excp_flag_user = nullptr) {
-  if (floating && excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+            bool floating = false, uint32_t *trapsts = nullptr) {
+  if (floating && trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32) {
     if (bits == 64 || !(mode & (GOC_DPP8 | GOC_DPP16)) || !goc::valid_dpp(mode))
@@ -24,7 +24,9 @@ int compare(uint64_t flags, Mask exec_mask, uint64_t mode, Mask *d, bool value, 
                                         GOC_ALU_NEG_B |
                                         (bits == 16 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0)
                                   : 0;
-  const uint64_t fp = floating ? GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS : 0;
+  const uint64_t fp =
+      floating ? GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE
+               : 0;
   if (int error = goc::validate(flags, uint32_t(mode) & ~known, true, fp))
     return error;
   if (value && exec_mask && (mode & GOC_DPP16)) {
