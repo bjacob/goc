@@ -46,12 +46,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-643 in-scope mnemonics have explicit contract-review records in
+651 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 166 in-scope mnemonics need a recorded review.
+The remaining 158 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -227,8 +227,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_bfi_b32` | SIMD macro, output helper | no | 3706 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_bfm_b32` | SIMD macro, output helper | no | 3723 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_bfrev_b32` | SIMD macro, output helper | no | 3738, 3762 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
-| `v_ceil_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3786, 3810 | review required |
-| `v_ceil_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3855, 3869 | review required |
+| `v_ceil_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3786, 3810 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-integral-rounding-contract-review) |
+| `v_ceil_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3855, 3869 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-integral-rounding-contract-review) |
 | `v_ceil_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 3899, 3913 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_cls_i32` | SIMD macro, output helper | no | 3956, 3977 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
 | `v_clz_i32_u32` | SIMD macro, output helper | no | 3998, 4017 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
@@ -472,8 +472,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_dual_subrev_f32` | no direct policy detected | yes | not found | [loose contract reviewed; see limitations](COVERAGE.md#fp32-loose-subtract-and-legacy-multiply-architecture-contracts) |
 | `v_exp_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11151, 11183 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-explog-architecture-policies) |
 | `v_exp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11229, 11247 | review required |
-| `v_floor_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11399, 11423 | review required |
-| `v_floor_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11468, 11482 | review required |
+| `v_floor_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11399, 11423 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-integral-rounding-contract-review) |
+| `v_floor_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11468, 11482 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-integral-rounding-contract-review) |
 | `v_floor_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 11512, 11526 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_fma_dx9_zero_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 11563 | review required |
 | `v_fma_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 11625 | review required |
@@ -606,8 +606,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_rcp_iflag_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18409, 18429 | review required |
 | `v_readfirstlane_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
 | `v_readlane_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
-| `v_rndne_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18465, 18489 | review required |
-| `v_rndne_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18534, 18548 | review required |
+| `v_rndne_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18465, 18489 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-integral-rounding-contract-review) |
+| `v_rndne_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18534, 18548 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-integral-rounding-contract-review) |
 | `v_rndne_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 18578, 18592 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_rsq_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18629, 18663 | review required |
 | `v_rsq_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18709, 18727 | review required |
@@ -639,8 +639,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_swap_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
 | `v_swaprel_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
 | `v_trig_preop_f64` | IEEE mode, OMOD, architecture query | yes | 20185 | [loose and exact contract reviewed; see limitations](COVERAGE.md#trig_preop-architecture-policies) |
-| `v_trunc_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20238, 20262 | review required |
-| `v_trunc_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20307, 20321 | review required |
+| `v_trunc_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20238, 20262 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-integral-rounding-contract-review) |
+| `v_trunc_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20307, 20321 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-integral-rounding-contract-review) |
 | `v_trunc_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 20351, 20365 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
 | `v_wmma_bf16_16x16x16_bf16` | no direct policy detected | yes | not found | review required |
 | `v_wmma_f16_16x16x16_f16` | no direct policy detected | yes | not found | review required |

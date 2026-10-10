@@ -183,3 +183,32 @@ TEST(RoundingArchitecture, ExactDppAliasesAndHostEnvironment) {
                 }
             }
 }
+
+TEST(RoundingArchitecture, RoundingNanPayloadsIgnoreIeeeMode) {
+  // rocjitsu util::rndne_scalar and ceil/floor/trunc_scalar quiet signaling
+  // NaNs unconditionally. RDNA3 IEEE mode does not gate this family's quieting.
+  const uint32_t inputs[] = {0x7f800001, 0xff812345, 0x7fc54321, 0xffc76543};
+  const uint32_t results[] = {0x7fc00001, 0xffc12345, 0x7fc54321, 0xffc76543};
+  for (unsigned op = 0; op < 4; ++op)
+    for (bool rdna3 : {false, true})
+      for (bool wide : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned policy = 0; policy < 8; ++policy) {
+            uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                             (policy & 1 ? GOC_FP_IEEE_MODE : 0) |
+                             (policy & 2 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                             (policy & 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+            uint32_t a[64], d[64];
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              a[lane] = inputs[lane % 4];
+              d[lane] = 0x12345678;
+            }
+            uint64_t exec_mask = wide ? 0x800000010000000fULL : 0x8000000fU;
+            ASSERT_EQ(invoke(op, rdna3, wide, flags, exec_mask, 0, d, a, nullptr), GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              bool active = (exec_mask >> lane) & 1;
+              EXPECT_EQ(d[lane], active ? results[lane % 4] : 0x12345678U)
+                  << op << '/' << rdna3 << '/' << wide << '/' << policy << '/' << lane;
+            }
+          }
+}

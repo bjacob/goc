@@ -6673,3 +6673,48 @@ Fp64/Fp64Output tests pass with ASan/UBSan; all nine audit-tool tests pass.
 Logs are `../goc-build/coverage-work/fp64-arithmetic-review-*`.
 The ledger records 640 reviewed mnemonics and 169 remain unrecorded; these are
 review counts, not a completion percentage.
+
+
+## FP16 and FP32 integral-rounding contract review
+
+Reviewed `v_trunc`, `v_ceil`, `v_rndne` and `v_floor` with both `_f16` and
+`_f32` types. Their existing unsuffixed RDNA3 and `_rdna4` APIs, in both wave
+sizes, preserve the architecture-specific OMOD policy: RDNA3 suppresses scaling
+when IEEE is enabled or output denormals are preserved; RDNA4 does not.
+Guest input flushing occurs before rounding. The operation selects its own
+rounding direction; RNDNE uses ties-to-even. FP16 source/destination half
+selectors preserve the unselected destination half. NEG/ABS, OMOD, CLAMP and
+DPP are supported without mask-density dispatch.
+
+Rechecked rocjitsu `ffc144c564c` generated `vop1_exec.cpp` and `vop3_exec.cpp`
+for both architectures, shared `execute_shared.h`, and `lib/util/include/util/simd.h`.
+FP32 handlers delegate to the shared rounding helpers; FP16 handlers also have
+inlined generated bodies using the same scalar utilities and FP16 conversion.
+`rndne_scalar` handles NaNs with integer bits. `ceil_scalar`, `floor_scalar`
+and `trunc_scalar` use the explicit signaling-NaN fixup documented alongside
+them. These operations quiet signaling NaNs irrespective of RDNA3 IEEE mode;
+the architecture-dependent quieting rule of reciprocal and square root must
+not be applied here. Existing integer rounding ports retain sign and payload.
+
+The new `RoundingNanPayloadsIgnoreIeeeMode` tests check literal positive and
+negative signaling/quiet NaN payloads for all eight instructions, both
+architectures, wave widths, every CPU selector and all IEEE/denormal flag
+combinations. They check partial EXEC, lane 63, untouched lanes, and FP16 high
+half selection/preservation. Unlike fuzzy NaN comparisons, they verify the
+quiet bit and the remaining payload exactly.
+
+Existing rounding and half-unary tests cover numerical results, guest modes,
+OMOD, DPP routing, aliases and validation, with the retained gfx1201 rounding
+fixture and host-control independence checks. Loose paths retain scalar and
+eight-lane AVX2 implementations; higher CPU selectors reuse AVX2. Exact paths
+use the existing integer helpers. No numerical kernel or dispatch changed in
+this review.
+
+Limits remain explicit: exact non-null TRAPSTS/EXCP_FLAG_USER reporting is
+unsupported; loose calls skip it. No exception model was inferred from the
+historical capture. CLAMP-to-zero for NaNs uses the fixed RDNA3 DX10_CLAMP-enabled
+policy; disabled DX10_CLAMP is not represented. These are reviewed contracts,
+not a claim of every possible guest MODE setting or complete exception support.
+
+Validation: all nine RoundingArchitecture/HalfUnaryExact tests pass with
+Clang 21, GCC 15 and ASan/UBSan. All nine inventory-tool tests pass.
