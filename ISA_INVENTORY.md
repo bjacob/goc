@@ -1291,9 +1291,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_movrels_b32` | yes | yes | in: register access | `goc_v_movrels_b32`<br>`goc_v_movrels_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
 | `v_movrelsd_2_b32` | yes | yes | in: register access | `goc_v_movrelsd_2_b32`<br>`goc_v_movrelsd_2_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
 | `v_movrelsd_b32` | yes | yes | in: register access | `goc_v_movrelsd_b32`<br>`goc_v_movrelsd_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
-| `v_mqsad_pk_u16_u8` | yes | yes | in | `goc_v_mqsad_pk_u16_u8`<br>`goc_v_mqsad_pk_u16_u8_wave64` | — | API present; semantic audit pending |
-| `v_mqsad_u32_u8` | yes | yes | in | `goc_v_mqsad_u32_u8`<br>`goc_v_mqsad_u32_u8_wave64` | — | API present; semantic audit pending |
-| `v_msad_u8` | yes | yes | in | `goc_v_msad_u8`<br>`goc_v_msad_u8_wave64` | — | API present; semantic audit pending |
+| `v_mqsad_pk_u16_u8` | yes | yes | in | `goc_v_mqsad_pk_u16_u8`<br>`goc_v_mqsad_pk_u16_u8_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
+| `v_mqsad_u32_u8` | yes | yes | in | `goc_v_mqsad_u32_u8`<br>`goc_v_mqsad_u32_u8_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
+| `v_msad_u8` | yes | yes | in | `goc_v_msad_u8`<br>`goc_v_msad_u8_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
 | `v_mul_dx9_zero_f32` | yes | yes | in | `goc_v_mul_dx9_zero_f32`<br>`goc_v_mul_dx9_zero_f32_wave64`<br>`goc_v_mul_dx9_zero_f32_rdna4`<br>`goc_v_mul_dx9_zero_f32_rdna4_wave64` | `v_mul_legacy_f32` | API present; semantic audit pending |
 | `v_mul_f16` | yes | yes | in | `goc_v_mul_f16`<br>`goc_v_mul_f16_wave64`<br>`goc_v_mul_f16_rdna4`<br>`goc_v_mul_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_mul_f32` | yes | yes | in | `goc_v_mul_f32`<br>`goc_v_mul_f32_wave64`<br>`goc_v_mul_f32_rdna4`<br>`goc_v_mul_f32_rdna4_wave64` | — | API present; semantic audit pending |
@@ -1345,7 +1345,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_pk_mul_lo_u16` | yes | yes | in | `goc_v_pk_mul_lo_u16`<br>`goc_v_pk_mul_lo_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_pk_sub_i16` | yes | yes | in | `goc_v_pk_sub_i16`<br>`goc_v_pk_sub_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_pk_sub_u16` | yes | yes | in | `goc_v_pk_sub_u16`<br>`goc_v_pk_sub_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
-| `v_qsad_pk_u16_u8` | yes | yes | in | `goc_v_qsad_pk_u16_u8`<br>`goc_v_qsad_pk_u16_u8_wave64` | — | API present; semantic audit pending |
+| `v_qsad_pk_u16_u8` | yes | yes | in | `goc_v_qsad_pk_u16_u8`<br>`goc_v_qsad_pk_u16_u8_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
 | `v_rcp_f16` | yes | yes | in | `goc_v_rcp_f16`<br>`goc_v_rcp_f16_wave64`<br>`goc_v_rcp_f16_rdna4`<br>`goc_v_rcp_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_rcp_f32` | yes | yes | in | `goc_v_rcp_f32`<br>`goc_v_rcp_f32_wave64`<br>`goc_v_rcp_f32_rdna4`<br>`goc_v_rcp_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_rcp_f64` | yes | yes | in | `goc_v_rcp_f64`<br>`goc_v_rcp_f64_wave64`<br>`goc_v_rcp_f64_rdna4`<br>`goc_v_rcp_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
@@ -1368,10 +1368,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_s_rsq_f32` | — | yes | in | `goc_v_s_rsq_f32` | — | API present; semantic audit pending |
 | `v_s_sqrt_f16` | — | yes | in | `goc_v_s_sqrt_f16` | — | API present; semantic audit pending |
 | `v_s_sqrt_f32` | — | yes | in | `goc_v_s_sqrt_f32` | — | API present; semantic audit pending |
-| `v_sad_hi_u8` | yes | yes | in | `goc_v_sad_hi_u8`<br>`goc_v_sad_hi_u8_wave64` | — | API present; semantic audit pending |
-| `v_sad_u16` | yes | yes | in | `goc_v_sad_u16`<br>`goc_v_sad_u16_wave64` | — | API present; semantic audit pending |
-| `v_sad_u32` | yes | yes | in | `goc_v_sad_u32`<br>`goc_v_sad_u32_wave64` | — | API present; semantic audit pending |
-| `v_sad_u8` | yes | yes | in | `goc_v_sad_u8`<br>`goc_v_sad_u8_wave64` | — | API present; semantic audit pending |
+| `v_sad_hi_u8` | yes | yes | in | `goc_v_sad_hi_u8`<br>`goc_v_sad_hi_u8_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
+| `v_sad_u16` | yes | yes | in | `goc_v_sad_u16`<br>`goc_v_sad_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
+| `v_sad_u32` | yes | yes | in | `goc_v_sad_u32`<br>`goc_v_sad_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
+| `v_sad_u8` | yes | yes | in | `goc_v_sad_u8`<br>`goc_v_sad_u8_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#sad-architecture-contracts) |
 | `v_sat_pk_u8_i16` | yes | yes | in | `goc_v_sat_pk_u8_i16`<br>`goc_v_sat_pk_u8_i16_wave64` | — | API present; semantic audit pending |
 | `v_sin_f16` | yes | yes | in | `goc_v_sin_f16`<br>`goc_v_sin_f16_wave64`<br>`goc_v_sin_f16_rdna4`<br>`goc_v_sin_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-sincos-architecture-policies) |
 | `v_sin_f32` | yes | yes | in | `goc_v_sin_f32`<br>`goc_v_sin_f32_wave64`<br>`goc_v_sin_f32_rdna4`<br>`goc_v_sin_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-sincos-architecture-policies) |

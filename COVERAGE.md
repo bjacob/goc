@@ -5953,3 +5953,45 @@ selected ternary integer16, packed MAD, Wave64 and DPP fixture/validation tests
 pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `integer16-ternary-review-` in each build directory. The ledger records
 589 contracts; 220 in-scope mnemonics remain without recorded reviews.
+
+## SAD architecture contracts
+
+Reviewed all eight SAD/MSAD/QSAD/MQSAD operations at rocjitsu `ffc144c564c`.
+All thirteen architecture-specific execution/modifier pairs are identical
+(26 bodies). The review includes five shared execution helpers, the five
+scalar difference/accumulation helpers, and the quad handlers' window/packing
+logic. Locations, bodies and hashes are recorded in
+`../goc-build/coverage-work/sad-upstream-review.json`. Both architectures retain
+shared APIs with no optional exception-register output.
+
+Ordinary SAD sums unsigned absolute byte, halfword or word differences, then
+adds C; SAD_HI_U8 shifts the byte sum by sixteen before adding C. Masked forms
+skip differences only when the corresponding B byte is zero. Quad forms slide
+four four-byte windows across A's two VGPRs, ignoring the last source byte.
+QSAD/MQSAD_PK accumulate into four independent 16-bit fields in two VGPRs;
+MQSAD_U32 has four separate 32-bit accumulators. CLAMP saturates after adding C,
+otherwise each result wraps independently. Ordinary forms support DPP on A;
+quad forms reject it. GoC's existing scalar arithmetic agrees with upstream.
+
+The unchanged v3 path processes eight lanes. Byte differences use unsigned
+saturating subtraction in both directions, followed by pair/four-byte sums
+within each GPU lane. Halfword/word forms subtract unsigned min from max.
+Quad windows combine shifts from both A words. Packed accumulation uses native
+halfword wrapping/saturating adds; full-word saturation detects unsigned carry.
+All sources and accumulators are loaded before any result store. The v3 path
+also serves newer CPUs, with no CLAMP fallback.
+
+Added a literal Wave64 quad test at each accumulator's maximum-minus-one,
+maximum and overflow boundary. Different windows cross their boundaries
+independently, detecting accidental carry between packed halves. Masked variants
+use zero B bytes, and the unused eighth A byte varies by lane. The test covers
+both semantics, CLAMP settings, full/mixed/empty EXEC and individual lanes 31/32,
+in-place accumulators and coincident destinations, checking that the final
+register write wins without corrupting later input reads. Existing exhaustive
+byte pairs, halfword inputs, aliases, DPP and gfx1201 fixtures remain intact.
+No production change or new hardware characterization was needed.
+
+Validation: all 1,129 CTests pass under Clang and GCC Release; all thirteen
+SAD/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`sad-review-` in each build directory. The ledger records 597 contracts;
+212 in-scope mnemonics remain without recorded reviews.

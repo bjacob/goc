@@ -1007,5 +1007,20 @@
       "v_pk_mad_i16",
       "v_pk_mad_u16"
     ]
+  },
+  {
+    "heading": "SAD architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/sad_wave64_test.cpp",
+    "mnemonics": [
+      "v_mqsad_pk_u16_u8",
+      "v_mqsad_u32_u8",
+      "v_msad_u8",
+      "v_qsad_pk_u16_u8",
+      "v_sad_hi_u8",
+      "v_sad_u16",
+      "v_sad_u32",
+      "v_sad_u8"
+    ]
   }
 ]

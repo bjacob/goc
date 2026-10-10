@@ -89,6 +89,57 @@ TEST(SadWave64, WindowsSaturationDppMasksAndAliases) {
           }
 }
 
+TEST(SadWave64, QuadAccumulatorThresholdsAndCoincidentDestinations) {
+  for (unsigned op = 5; op < 8; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (bool clamp : {false, true})
+          for (bool coincident : {false, true})
+            for (uint64_t exec_mask : {uint64_t(0), UINT64_MAX, uint64_t(0x87654321fedcba98ULL),
+                                       uint64_t(1) << 31, uint64_t(1) << 32}) {
+              const unsigned outputs = op == 7 ? 4 : 2;
+              const uint32_t limit = op == 7 ? UINT32_MAX : 65535;
+              uint32_t a[2][64], b[64], accum[4][64] = {}, expected[4][64];
+              uint32_t results[4][64] = {};
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                a[0][lane] = 0x04030201;
+                a[1][lane] = (lane << 24) | 0x00070605;
+                // Four windows have differences 64,60,56,52 for QSAD.
+                // Masking reference bytes 0 and 2 gives 32,30,28,26.
+                b[lane] = op == 5 ? 0x14131211 : 0x14001200;
+                for (unsigned window = 0; window < 4; ++window) {
+                  const unsigned difference = op == 5 ? 64 - 4 * window : 32 - 2 * window;
+                  const int delta = int((lane + window) % 3) - 1;
+                  const uint32_t base = uint32_t(int64_t(limit) - difference + delta);
+                  const uint32_t value =
+                      clamp && delta > 0 ? limit : uint32_t(int64_t(limit) + delta) & limit;
+                  const unsigned reg = op == 7 ? window : window / 2;
+                  const unsigned shift = op == 7 ? 0 : 16 * (window % 2);
+                  accum[reg][lane] |= base << shift;
+                  results[reg][lane] |= value << shift;
+                }
+              }
+              std::memcpy(expected, accum, sizeof accum);
+              for (unsigned reg = 0; reg < outputs; ++reg)
+                for (unsigned lane = 0; lane < 64; ++lane)
+                  if ((exec_mask >> lane) & 1)
+                    expected[coincident ? 0 : reg][lane] = results[reg][lane];
+              const uint32_t *pa[] = {a[0], a[1]}, *pb = b;
+              const uint32_t *pc[] = {accum[0], accum[1], accum[2], accum[3]};
+              uint32_t *pd[4];
+              for (unsigned reg = 0; reg < outputs; ++reg)
+                pd[reg] = accum[coincident ? 0 : reg];
+              ASSERT_EQ(functions[op](cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask,
+                                      clamp ? GOC_ALU_CLAMP : 0, pd, pa, &pb, pc),
+                        GOC_SUCCESS);
+              for (unsigned reg = 0; reg < 4; ++reg)
+                for (unsigned lane = 0; lane < 64; ++lane)
+                  ASSERT_EQ(accum[reg][lane], expected[reg][lane])
+                      << op << '/' << cpu << '/' << clamp << '/' << coincident << '/' << reg << '/'
+                      << lane;
+            }
+}
+
 TEST(SadWave64, EmptyAndInvalidCallsDoNotAccessOperands) {
   for (unsigned op = 0; op < 8; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
