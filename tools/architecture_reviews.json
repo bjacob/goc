@@ -605,5 +605,13 @@
       "ds_bpermute_fi_b32",
       "ds_permute_b32"
     ]
+  },
+  {
+    "heading": "DS swizzle architecture contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/ds_swizzle_test.cpp",
+    "mnemonics": [
+      "ds_swizzle_b32"
+    ]
   }
 ]

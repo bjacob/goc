@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-348 in-scope mnemonics have explicit contract-review records in
+349 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 461 in-scope mnemonics need a recorded review.
+The remaining 460 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -68,7 +68,7 @@ hardware captures and test suite are independent evidence, not replacements.
 |---|---|---|---|---|
 | `ds_bpermute_b32` | architecture query | no | 68, 97 | [loose and exact contract reviewed; see limitations](COVERAGE.md#ds-permutation-architecture-contract-review) |
 | `ds_permute_b32` | architecture query | no | 160, 189 | [loose and exact contract reviewed; see limitations](COVERAGE.md#ds-permutation-architecture-contract-review) |
-| `ds_swizzle_b32` | no direct policy detected | no | 219, 248 | review required |
+| `ds_swizzle_b32` | no direct policy detected | no | 219, 248 | [loose and exact contract reviewed; see limitations](COVERAGE.md#ds-swizzle-architecture-contract-review) |
 | `s_abs_i32` | no direct policy detected | no | 286 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_absdiff_i32` | no direct policy detected | no | 298 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_and_b32` | no direct policy detected | no | 429 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-boolean-and-shift-architecture-contracts) |

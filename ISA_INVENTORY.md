@@ -251,7 +251,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `ds_sub_rtn_u64` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_sub_u32` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_sub_u64` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
-| `ds_swizzle_b32` | yes | yes | in: register routing | `goc_ds_swizzle_b32`<br>`goc_ds_swizzle_b32_wave64` | — | API present; semantic audit pending |
+| `ds_swizzle_b32` | yes | yes | in: register routing | `goc_ds_swizzle_b32`<br>`goc_ds_swizzle_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#ds-swizzle-architecture-contract-review) |
 | `ds_wrap_rtn_b32` | yes | — | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_xor_b32` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_xor_b64` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |

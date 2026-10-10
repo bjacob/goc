@@ -14,9 +14,9 @@ namespace {
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 
 int run(unsigned lanes, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
-        const uint32_t *const *a, uint16_t offset) {
-  return lanes == 32 ? goc_ds_swizzle_b32(exact, uint32_t(exec_mask), mode, d, a, offset)
-                     : goc_ds_swizzle_b32_wave64(exact, exec_mask, mode, d, a, offset);
+        const uint32_t *const *a, uint16_t offset, uint64_t flags = exact) {
+  return lanes == 32 ? goc_ds_swizzle_b32(flags, uint32_t(exec_mask), mode, d, a, offset)
+                     : goc_ds_swizzle_b32_wave64(flags, exec_mask, mode, d, a, offset);
 }
 
 // Independent bit-by-bit routing reference. The FFT lookup is the manual's
@@ -120,4 +120,26 @@ TEST(DsSwizzle, MaskedAliasesValidationAndEmptyExec) {
       EXPECT_EQ(run(lanes, UINT64_MAX, 1ULL << bit, nullptr, nullptr, 0), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(run(lanes, 0, 0, nullptr, nullptr, 65535), GOC_SUCCESS);
   }
+}
+
+TEST(DsSwizzle, BasicModesInactiveSourcesInBothSemantics) {
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (unsigned lanes : {32U, 64U})
+      for (unsigned active = 0; active < lanes; ++active)
+        for (unsigned source = 0; source < 32; ++source)
+          for (bool quad : {false, true}) {
+            // Broadcast a lane within each row or quad. Only the destination
+            // lane is active, so every other selected source must supply zero.
+            uint16_t offset = quad ? 0x8000U | ((source & 3) * 0x55U) : source << 5;
+            unsigned selected = quad ? (active / 4) * 4 + source % 4 : (active / 32) * 32 + source;
+            uint32_t words[66];
+            std::fill_n(words, 66, 0x7f800001U);
+            uint32_t *d = words + 1;
+            ASSERT_EQ(
+                run(lanes, 1ULL << active, 0, &d, &d, offset, semantics | GOC_SEMANTICS_STRICT),
+                GOC_SUCCESS);
+            for (unsigned word = 0; word < 66; ++word)
+              ASSERT_EQ(words[word], word == active + 1 && selected != active ? 0U : 0x7f800001U)
+                  << lanes << '/' << active << '/' << source << '/' << quad;
+          }
 }

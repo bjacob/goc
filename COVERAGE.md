@@ -5096,3 +5096,34 @@ use `ds-permute-review-` in each build directory. XML membership and upstream
 file hashes are saved in `../goc-build/coverage-work/ds-permute-upstream-review.json`.
 The ledger now records 348 contracts, with 461 in-scope mnemonics still needing
 recorded reviews. These counts do not imply complete encoding or numerical coverage.
+
+## DS swizzle architecture contract review
+
+Rechecked both rocjitsu architecture delegates and the DS/VDS shared swizzle
+helpers at `ffc144c564c`, alongside RDNA3 manual section 16.15, pages 513–515,
+and the earlier RDNA4 review and retained fixtures above. The upstream helpers
+implement only bit-mask/quad selection and read inactive sources unconditionally.
+They are not a complete model for this instruction: the manual explicitly
+specifies invalid-source zeroing (`thread_valid` in every pseudocode branch),
+rotate and FFT. GoC already implements those rules and retains the four encoding
+classes, thirty-two-lane row boundaries in Wave64, alias-safe source reads and
+masked destination stores. There is no implicit global-state output or LDS access.
+
+RDNA3's conflicting masked-rotate examples remain a documented limitation:
+GoC follows the common pseudocode with row-local wrap, not those examples.
+Existing RDNA4 captures support that choice only for RDNA4. This review does not
+establish an RDNA3 hardware difference or remove that uncertainty, so the APIs
+remain shared. No new numerical model or hardware probe was introduced.
+
+Existing tests cover all 65,536 offset encodings, both wave widths, aliases,
+retained RDNA4 corpora and invalid flags. Added raw-bit tests for every basic-mode
+broadcast source and single active destination in both strict semantics, with
+in-place operands and guard words. These directly distinguish the required
+inactive-source zero from rocjitsu's unconditional source reads. Production
+code is unchanged.
+
+Validation: all 1,114 CTests pass in Clang and GCC Release builds; all four
+swizzle tests pass under ASan/UBSan, including the retained hardware corpus.
+All nine audit-tool tests pass. Logs use `ds-swizzle-review-` in each build
+directory. The ledger records 349 contracts; 460 remain unrecorded. The
+RDNA3 rotate-example ambiguity above remains explicit in that reviewed contract.
