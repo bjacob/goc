@@ -53,7 +53,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Floating min/max/median | Existing RDNA4 NUM forms | RDNA3 names and NaN/zero policies, signaling NaNs, all widths and packed forms |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV B32/B64 and MOVK/CMOVK implemented for both architectures; exhaustive immediate/condition tests | Relative addressing, saveexec/wrexec, hardware registers |
-| Vector/register routing | Existing DPP/permlane/move coverage | Read/write lane, first lane, swaps, relative moves, permlane64, cross-width behavior |
+| Vector/register routing | READLANE/WRITELANE/READFIRSTLANE now shared for Wave32/64, including lane-index wrapping and zero EXEC; existing DPP/permlane/move coverage | Swaps, relative moves, permlane64, broader cross-width behavior |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests | RDNA3 always-true/false forms; Wave64; architecture-specific floating policies |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
@@ -87,3 +87,9 @@ a green test suite that exercises only the current implementation.
   bit position in B32/B64, conditional preservation and aliases, invalid flags,
   and host FP-state preservation. All 683 tests pass with Clang and GCC; all
   three new move tests pass under ASan/UBSan. Missing in-scope API names: 115.
+- Lane transfers: READLANE, WRITELANE and READFIRSTLANE implemented for both wave
+  widths, using shared RDNA3/RDNA4 contracts from rocjitsu execution and register
+  access. Explicit indices wrap; READFIRSTLANE selects lane 0 for zero EXEC.
+  Tests cover every lane, wrapped/high-bit indices, single-bit and suffix EXEC
+  masks, scalar output overlap and invalid flags. All 686 tests pass on Clang
+  and GCC; the three new tests pass under ASan/UBSan. Missing API names: 112.

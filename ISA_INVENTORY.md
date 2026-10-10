@@ -18,8 +18,8 @@ are included. SALU/VALU register/control boundaries are not silently excluded.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 115
-- in, API present: 689
+- in, API absent: 112
+- in, API present: 692
 - out, API absent: 578
 - review, API absent: 14
 
@@ -1345,8 +1345,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_rcp_f32` | yes | yes | in | `goc_v_rcp_f32` | — | API present; semantic audit pending |
 | `v_rcp_f64` | yes | yes | in | `goc_v_rcp_f64` | — | API present; semantic audit pending |
 | `v_rcp_iflag_f32` | yes | yes | in | `goc_v_rcp_iflag_f32` | — | API present; semantic audit pending |
-| `v_readfirstlane_b32` | yes | yes | in | — | — | missing API |
-| `v_readlane_b32` | yes | yes | in | — | — | missing API |
+| `v_readfirstlane_b32` | yes | yes | in | `goc_v_readfirstlane_b32`<br>`goc_v_readfirstlane_b32_wave64` | — | API present; semantic audit pending |
+| `v_readlane_b32` | yes | yes | in | `goc_v_readlane_b32`<br>`goc_v_readlane_b32_wave64` | — | API present; semantic audit pending |
 | `v_rndne_f16` | yes | yes | in | `goc_v_rndne_f16` | — | API present; semantic audit pending |
 | `v_rndne_f32` | yes | yes | in | `goc_v_rndne_f32` | — | API present; semantic audit pending |
 | `v_rndne_f64` | yes | yes | in | `goc_v_rndne_f64` | — | API present; semantic audit pending |
@@ -1415,7 +1415,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_wmma_i32_16x16x16_iu4` | yes | yes | in | `goc_v_wmma_i32_16x16x16_iu4`<br>`goc_v_wmma_i32_16x16x16_iu4_wave64`<br>`goc_v_wmma_i32_16x16x16_iu4_rdna4` | — | API present; semantic audit pending |
 | `v_wmma_i32_16x16x16_iu8` | yes | yes | in | `goc_v_wmma_i32_16x16x16_iu8`<br>`goc_v_wmma_i32_16x16x16_iu8_wave64`<br>`goc_v_wmma_i32_16x16x16_iu8_rdna4` | — | API present; semantic audit pending |
 | `v_wmma_i32_16x16x32_iu4` | — | yes | in | `goc_v_wmma_i32_16x16x32_iu4` | — | API present; semantic audit pending |
-| `v_writelane_b32` | yes | yes | in | — | — | missing API |
+| `v_writelane_b32` | yes | yes | in | `goc_v_writelane_b32`<br>`goc_v_writelane_b32_wave64` | — | API present; semantic audit pending |
 | `v_xad_u32` | yes | yes | in | `goc_v_xad_u32` | `v_xor_add_u32` | API present; semantic audit pending |
 | `v_xnor_b32` | yes | yes | in | `goc_v_xnor_b32` | — | API present; semantic audit pending |
 | `v_xor3_b32` | yes | yes | in | `goc_v_xor3_b32` | — | API present; semantic audit pending |

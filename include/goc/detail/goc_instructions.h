@@ -186,6 +186,30 @@ int goc_s_wqm_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint6
 // Finite operand pairs accumulate INPUT_DENORM if either input is subnormal and
 // input flushing is disabled. Loose mode leaves excp_flag_user unchanged.
 
+// Scalar lane transfers shared by RDNA3/RDNA4; one VGPR input/output.
+// READFIRSTLANE reads the first active lane, or lane 0 for zero EXEC.
+// READLANE/WRITELANE ignore EXEC; lane indices wrap modulo 32 or 64.
+// WRITELANE preserves every other lane. All copy raw bits, support both
+// semantics, require zero instruction_flags, and preserve host FP state.
+// Scalar destinations may overlap source lane storage; values are read first.
+int goc_v_readfirstlane_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *d, const uint32_t *const *a);
+
+int goc_v_readlane_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d,
+                       const uint32_t *const *a, uint32_t lane);
+
+int goc_v_writelane_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d, uint32_t a,
+                        uint32_t lane);
+
+int goc_v_readfirstlane_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *d, const uint32_t *const *a);
+
+int goc_v_readlane_b32_wave64(uint64_t flags, uint64_t instruction_flags, uint32_t *d,
+                              const uint32_t *const *a, uint32_t lane);
+
+int goc_v_writelane_b32_wave64(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
+                               uint32_t a, uint32_t lane);
+
 // Scalar moves shared by RDNA3/RDNA4. Copy raw bits; MOVK/CMOVK sign-extend
 // their 16-bit immediate. Conditional forms write only when input_scc bit 0
 // is set, otherwise d is unchanged. SCC and EXEC are not modified; EXEC is

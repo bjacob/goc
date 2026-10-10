@@ -2268,3 +2268,9 @@ Scalar `s_mov_b32/b64`, `s_cmov_b32/b64`, `s_movk_i32`, and `s_cmovk_i32`
 are shared by both architectures. Moves preserve raw bits; immediate forms
 sign-extend 16 bits. Conditional forms use `input_scc` bit 0. They ignore EXEC,
 preserve SCC and host FP state, and support exact semantics.
+
+`v_readlane_b32`, `v_writelane_b32`, and `v_readfirstlane_b32` have shared
+Wave32 and `_wave64` APIs. Explicit lane indices wrap to the wave size and
+ignore EXEC. `readfirstlane` takes an `exec_mask`, reads the lowest active lane,
+and reads lane 0 when the mask is zero. These operations copy raw register bits
+without modifying SCC or the host FP environment.
