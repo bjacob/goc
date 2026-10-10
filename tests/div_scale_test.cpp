@@ -159,12 +159,14 @@ TEST(DivScale, MasksAndCrossRegisterAliases) {
 }
 
 TEST(DivScale, ValidationAndZeroExec) {
-  for (auto fn : functions)
+  const Fn all[] = {goc_v_div_scale_f32, goc_v_div_scale_f64, goc_v_div_scale_f32_rdna4,
+                    goc_v_div_scale_f64_rdna4};
+  for (auto fn : all)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       uint32_t condition = 0xdeadbeef;
-      for (unsigned bit = 0; bit < 32; ++bit)
-        if (!((1u << bit) & 0x1c7)) {
-          EXPECT_EQ(fn(cpu, 0, 1u << bit, nullptr, &condition, nullptr, nullptr, nullptr),
+      for (unsigned bit = 0; bit < 64; ++bit)
+        if (!((1ULL << bit) & 0x1c7)) {
+          EXPECT_EQ(fn(cpu, 0, 1ULL << bit, nullptr, &condition, nullptr, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
           EXPECT_EQ(condition, 0xdeadbeef);
         }
@@ -333,12 +335,15 @@ TEST(DivScale, Wave64MasksAndCrossRegisterAliases) {
 }
 
 TEST(DivScale, Wave64ValidationAndZeroExec) {
-  for (auto fn : wave64_functions)
+  const decltype(&goc_v_div_scale_f32_wave64) all[] = {
+      goc_v_div_scale_f32_wave64, goc_v_div_scale_f64_wave64, goc_v_div_scale_f32_rdna4_wave64,
+      goc_v_div_scale_f64_rdna4_wave64};
+  for (auto fn : all)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       uint64_t condition = 0xdeadbeef;
-      for (unsigned bit = 0; bit < 32; ++bit)
-        if (!((1u << bit) & 0x1c7)) {
-          EXPECT_EQ(fn(cpu, 0, 1u << bit, nullptr, &condition, nullptr, nullptr, nullptr),
+      for (unsigned bit = 0; bit < 64; ++bit)
+        if (!((1ULL << bit) & 0x1c7)) {
+          EXPECT_EQ(fn(cpu, 0, 1ULL << bit, nullptr, &condition, nullptr, nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
           EXPECT_EQ(condition, 0xdeadbeef);
         }

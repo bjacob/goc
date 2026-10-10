@@ -8484,3 +8484,52 @@ a **0.92% faster** median; this limited check finds no regression, rather than
 establishing a general speedup. Arithmetic object text decreases from 32,389 to
 32,341 bytes. Baseline archive, driver and raw timings are under
 `../goc-build/coverage-work/dx9-fmac-encoding-performance/`.
+
+
+## DIV_SCALE architecture contract review
+
+Reviewed FP32/FP64 DIV_SCALE against both XML inventories, the manuals' division
+pre-scaling pseudocode and explicit SDST result, rocjitsu revision `ffc144c564c`
+`shared/division.h`, and LLVM `VOP3Instructions.td`. Each operation writes a VGPR
+result and a required scalar condition mask. The mask is an ordinary explicit
+result, not optional sticky state: active lanes set their post-scaling condition,
+inactive lanes are zero, and empty EXEC writes a zero mask. It is uint32_t for
+Wave32 and uint64_t for Wave64. FP64 values occupy two consecutive register words.
+
+The API has no optional exception output. LLVM explicitly marks both DIV_SCALE
+operations `mayRaiseFPException = 0`; its comment qualifies that choice because
+the manual does not state that exceptions are generated. GoC follows this
+existing compiler contract and the manual's explicit outputs. This is not a
+new hardware proof of absent exceptions, and the LLVM qualification is retained
+here rather than overstating the evidence. No speculative classifier is added.
+
+A must select the numerator or denominator after source NEG, with B the
+denominator and C the numerator. The borrowed bit-level scaling decisions use
+exponent differences and format-specific thresholds, with guest input/output
+flushing and signed NaN/zero handling. ABS and DPP are not encoded; source NEG,
+OMOD and CLAMP are supported. Both inventories list VOP3 with explicit SDST and
+literal-source forms, without DPP. Scalar and SIMD implementations stage reads
+before stores and delay the condition output, preserving its tested aliases
+with vector storage, including across Wave64 halves.
+
+The architecture split is necessary: RDNA3 FP64 preserves a selected signaling
+NaN where RDNA4 quiets it, and RDNA3 gates OMOD on output-denormal preservation
+and IEEE. The existing exact model covers nearest-even unscaled RDNA3 results;
+active RDNA3 OMOD remains explicitly loose-only because the borrowed handler
+does not supply that exact behavior. Strict exact rejects it before output
+writes; non-strict requests may fall back. Encoded OMOD disabled by guest policy
+is accepted in exact mode. RDNA4 retains its existing captured modifier model.
+Guest directed rounding and DX10-clamp-off are unsupported.
+
+Existing tests cover hardware Cartesian corpora, random bit patterns, all
+modifiers, zero/partial/full EXEC, input/output denormals, architecture NaNs,
+condition masks, cross-register aliases and unaligned storage. Validation tests
+now include all eight architecture/format/wave APIs and all 64 modifier bits,
+with null vector operands. They check unchanged condition state on errors and
+required zero-mask writes on successful empty execution. No production code,
+SIMD width or performance path changed. The ledger records **808** reviewed
+mnemonic contracts and **one** pending: RDNA3 DX9 FMAC's global-state contract.
+
+Validation: all **13** DivScale tests pass with Clang 21 Release, GCC 15 Release
+and Clang ASan/UBSan, as do all nine tooling tests. Logs use
+`coverage-work/div-scale-contract-{build,tests}.log` in each build directory.

@@ -1595,5 +1595,14 @@
     "mnemonics": [
       "v_fma_dx9_zero_f32"
     ]
+  },
+  {
+    "heading": "DIV_SCALE architecture contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/div_scale_test.cpp",
+    "mnemonics": [
+      "v_div_scale_f32",
+      "v_div_scale_f64"
+    ]
   }
 ]

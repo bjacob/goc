@@ -46,12 +46,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-806 in-scope mnemonics have explicit contract-review records in
+808 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 3 in-scope mnemonics need a recorded review.
+The remaining 1 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -445,8 +445,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_div_fixup_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 10412 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32fp64-div_fixup-architecture-policies) |
 | `v_div_fmas_f32` | SIMD macro, output helper | yes | 10457 | [loose and exact contract reviewed; see limitations](COVERAGE.md#div_fmas-architecture-policies) |
 | `v_div_fmas_f64` | SIMD macro | yes | 10488 | [loose and exact contract reviewed; see limitations](COVERAGE.md#div_fmas-architecture-policies) |
-| `v_div_scale_f32` | output helper | yes | 10519 | review required |
-| `v_div_scale_f64` | architecture query | yes | 10551 | review required |
+| `v_div_scale_f32` | output helper | yes | 10519 | [loose and exact contract reviewed; see limitations](COVERAGE.md#div_scale-architecture-contract-review) |
+| `v_div_scale_f64` | architecture query | yes | 10551 | [loose and exact contract reviewed; see limitations](COVERAGE.md#div_scale-architecture-contract-review) |
 | `v_dot2_bf16_bf16` | no direct policy detected | yes | not found | [loose contract reviewed; see limitations](COVERAGE.md#half-result-dot2-architecture-contracts) |
 | `v_dot2_f16_f16` | no direct policy detected | yes | not found | [loose contract reviewed; see limitations](COVERAGE.md#half-result-dot2-architecture-contracts) |
 | `v_dot2_f32_bf16` | SIMD macro, architecture model, architecture query, output helper | yes | 10584 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-result-dot2-architecture-contracts) |
