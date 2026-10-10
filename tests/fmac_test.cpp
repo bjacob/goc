@@ -18,7 +18,7 @@
 namespace {
 
 using Fn = decltype(&goc_v_fmac_f32_rdna4);
-const Fn functions[] = {goc_v_fmac_f32_rdna4, goc_v_fmac_f16};
+const Fn functions[] = {goc_v_fmac_f32_rdna4, goc_v_fmac_f16_rdna4};
 const uint32_t known32 = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
 const uint32_t known16 = known32 | GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D;
@@ -217,8 +217,8 @@ TEST(Fmac, HalfHardwareWitnessesAndHostEnvironment) {
                     high ? (uint32_t(test.d) << 16) | 0x7c01 : 0xfc010000 | test.d);
           uint32_t mode =
               GOC_ALU_OMOD_HALF | (high ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D : 0);
-          EXPECT_EQ(goc_v_fmac_f16(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                   UINT32_MAX, mode, p + 2, p, p + 1, nullptr),
+          EXPECT_EQ(goc_v_fmac_f16_rdna4(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                         UINT32_MAX, mode, p + 2, p, p + 1, nullptr),
                     GOC_SUCCESS);
           for (auto word : words[2])
             EXPECT_EQ(word,

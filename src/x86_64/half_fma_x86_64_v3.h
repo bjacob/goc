@@ -12,7 +12,8 @@ namespace goc {
 
 // Return eight FP16 encodings in 32-bit elements after fused rounding and output
 // modifiers. Inputs are widened halves with source modifiers already applied.
-inline __m256i half_fma_value(__m256 x, __m256 y, __m256 z, bool saturate, uint32_t mode) {
+inline __m256i half_fma_value(__m256 x, __m256 y, __m256 z, bool saturate, uint32_t mode,
+                              bool flush_output = false) {
   uint32_t omod = (mode >> 6) & 3;
   const float scales[] = {1, 2, 4, 0.5f};
   auto scale = _mm256_set1_ps(scales[omod]);
@@ -34,7 +35,7 @@ inline __m256i half_fma_value(__m256 x, __m256 y, __m256 z, bool saturate, uint3
   bits = _mm256_add_epi32(bits, _mm256_and_si256(adjust, step));
   value = _mm256_castsi256_ps(bits);
   auto result = half_narrow<false>(value, saturate);
-  if (omod) {
+  if (omod || flush_output) {
     auto magnitude = _mm256_and_si256(result, _mm256_set1_epi32(0x7fff));
     auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x0400), magnitude);
     auto boundary = _mm256_cmpeq_epi32(magnitude, _mm256_set1_epi32(0x0400));
@@ -42,14 +43,19 @@ inline __m256i half_fma_value(__m256 x, __m256 y, __m256 z, bool saturate, uint3
     auto below = _mm256_castps_si256(
         _mm256_cmp_ps(abs_value, _mm256_set1_ps(0x1p-14f - 0x1p-26f), _CMP_LT_OQ));
     tiny = _mm256_or_si256(tiny, _mm256_and_si256(boundary, below));
-    auto scaled =
-        half_narrow<false>(_mm256_mul_ps(half_input<false>(result, 0, 0), scale), saturate);
-    if (omod == 3) {
-      auto newly_tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x0800), magnitude);
-      scaled = _mm256_blendv_epi8(scaled, _mm256_and_si256(result, _mm256_set1_epi32(0x8000)),
-                                  newly_tiny);
+    if (omod) {
+      auto scaled =
+          half_narrow<false>(_mm256_mul_ps(half_input<false>(result, 0, 0), scale), saturate);
+      if (omod == 3) {
+        auto newly_tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x0800), magnitude);
+        scaled = _mm256_blendv_epi8(scaled, _mm256_and_si256(result, _mm256_set1_epi32(0x8000)),
+                                    newly_tiny);
+      }
+      result = _mm256_andnot_si256(tiny, scaled);
+    } else {
+      result =
+          _mm256_blendv_epi8(result, _mm256_and_si256(result, _mm256_set1_epi32(0x8000)), tiny);
     }
-    result = _mm256_andnot_si256(tiny, scaled);
   }
   if (mode & GOC_ALU_CLAMP) {
     auto negative = _mm256_cmpgt_epi32(result, _mm256_set1_epi32(0x7fff));

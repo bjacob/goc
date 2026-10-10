@@ -2139,3 +2139,48 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   now has 616 reporting signatures, 274 resolved names, zero mismatches and
   342 unresolved shared signatures. Logs:
   `../goc-build/coverage-work/fma-architecture-*-tests.log`.
+
+## FP16 FMA architecture and guest-mode policies
+
+- Split FMA/FMAC/FMAMK/FMAAK into unsuffixed RDNA3 and `_rdna4` APIs, in both
+  wave widths. Adapted rocjitsu's shared fp_mode::fma_f16, quiets_nan,
+  effective_f16_omod and finish_fma_f16 rules: RDNA3 gates OMOD on output
+  denormals/IEEE mode and preserves a selected signaling NaN when IEEE is off;
+  RDNA4 quiets selected NaNs and applies OMOD independently of those settings.
+- The RNE exact result model now accepts input/output-denormal flushing. Input
+  flushing precedes exceptional-input classification; output flushing preserves
+  zero signs and uses the pre-exponent-limit rounding boundary at the smallest
+  normal. OMOD still rounds to FP16 before scaling. The existing integer
+  intermediate avoids changing or depending on the host rounding controls.
+- Scalar and eight-lane loose SIMD paths support the guest flush flags. Loose
+  NaN payload/quiet-bit behavior remains approximate. Existing RDNA4 result and
+  exception corpora were migrated to the suffixed APIs without changing their
+  captured expectations. This is a rocjitsu-derived RDNA3 model, not a claim
+  of a newly captured native RDNA3 hardware corpus.
+- RDNA3 exception reporting and RDNA4 reporting with input/output flush enabled
+  reject non-null exact requests until faithful reporting for these policies is
+  verified. Null exact requests retain the result model; loose requests skip
+  reporting without error. Existing RDNA4 no-flush reporting remains enabled.
+- Tests cover all four operand forms, both wave widths, half selectors, all
+  guest-mode combinations, all allowed OMOD settings, masks, NaN priority,
+  signaling bits and host-control preservation. An independent integer oracle
+  covers a Cartesian boundary corpus under both loose and exact semantics.
+  Generated unsupported-reporting tests now distinguish the RDNA3 and RDNA4
+  forms. Packed, mixed and dual-issue FMA policies remain separate audit items.
+- Performance against `f9b7063`: eleven alternating samples pinned to CPU 2,
+  each at least 50 ms thread CPU time. RDNA4 loose AVX2 FMA medians changed
+  27.657 -> 28.218 ns unmodified (+2.0%) and 43.244 -> 44.717 ns with
+  ABS/NEG/OMOD/CLAMP (+3.4%); literal FMAMK changed 23.228 -> 24.607 ns (+5.9%).
+  Exact scalar FMA changed 792.706 -> 825.748 ns (+4.2%) and
+  917.987 -> 950.263 ns (+3.5%); exact FMAMK changed 782.899 -> 803.665 ns (+2.7%).
+  The shared scalar helper now carries saturation and guest policy in one flag
+  word instead of adding a seventh per-lane argument. These finite-input checks
+  expose modest overhead from guest controls; they are not a whole-library
+  performance result. Artifacts: `../goc-build/coverage-work/half-fma-architecture-*`,
+  including `half-fma-architecture-timing.json`.
+- Final validation: all 954 tests pass under Clang 21 and GCC 15 Release;
+  all 37 HalfFma/PackedFma/ScalarFma/ExceptionRegisters/InstructionFlags tests
+  pass under ASan/UBSan. Seven audit-tool tests pass. The global-state audit
+  now has 624 reporting signatures, 290 resolved names, zero mismatches and
+  334 unresolved shared signatures. Logs:
+  `../goc-build/coverage-work/half-fma-architecture-*-tests.log`.

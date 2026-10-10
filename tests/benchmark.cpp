@@ -5339,10 +5339,10 @@ bool benchmark_literal_fma(uint64_t cpu, int iterations, int min_ms) {
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             const uint32_t *const *) {
           if (half)
-            return multiply ? goc_v_fmamk_f16(flags, exec_mask, modifiers, d, a, uint16_t(literal),
-                                              b, nullptr)
-                            : goc_v_fmaak_f16(flags, exec_mask, modifiers, d, a, b,
-                                              uint16_t(literal), nullptr);
+            return multiply ? goc_v_fmamk_f16_rdna4(flags, exec_mask, modifiers, d, a,
+                                                    uint16_t(literal), b, nullptr)
+                            : goc_v_fmaak_f16_rdna4(flags, exec_mask, modifiers, d, a, b,
+                                                    uint16_t(literal), nullptr);
           return multiply ? goc_v_fmamk_f32(flags, exec_mask, modifiers, d, a, literal, b, nullptr)
                           : goc_v_fmaak_f32(flags, exec_mask, modifiers, d, a, b, literal, nullptr);
         };
@@ -5412,7 +5412,7 @@ bool benchmark_fmac(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] = bits(want);
         }
       }
-      auto operation = half ? goc_v_fmac_f16 : goc_v_fmac_f32_rdna4;
+      auto operation = half ? goc_v_fmac_f16_rdna4 : goc_v_fmac_f32_rdna4;
       const auto fn = [&](uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           const uint32_t *const *c) {
@@ -5477,7 +5477,7 @@ bool benchmark_half_fma(uint64_t cpu, int iterations, int min_ms) {
       r.expected[128 * (lane / 16) + lane % 16] =
           mode ? (result << 16) | 0xcafe : 0xface0000 | result;
     }
-    auto fn = goc_v_fma_f16;
+    auto fn = goc_v_fma_f16_rdna4;
     const char *label = mode ? "ABS/NEG/hi/half/cl" : "none";
     double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, mode);
     if (scalar < 0)

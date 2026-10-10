@@ -12,11 +12,11 @@ namespace goc_test {
 inline int half_fmac(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *,
                      uint32_t *excp_flag_user) {
-  return goc_v_fmac_f16(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  return goc_v_fmac_f16_rdna4(flags, exec_mask, mode, d, a, b, excp_flag_user);
 }
 
-using HalfFmaFn = decltype(&goc_v_fma_f16);
-const HalfFmaFn half_fma_functions[] = {goc_v_fma_f16, half_fmac};
+using HalfFmaFn = decltype(&goc_v_fma_f16_rdna4);
+const HalfFmaFn half_fma_functions[] = {goc_v_fma_f16_rdna4, half_fmac};
 const char *const half_fma_names[] = {"v_fma_f16", "v_fmac_f16"};
 
 inline bool half_fma_valid_mode(unsigned op, uint32_t mode) {

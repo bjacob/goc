@@ -31,8 +31,8 @@ int literal_fma(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *con
                 const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *) {
   if constexpr (Half) {
     if constexpr (Multiply)
-      return goc_v_fmamk_f16(flags, exec_mask, mode, d, a, 0x3800, b, nullptr);
-    return goc_v_fmaak_f16(flags, exec_mask, mode, d, a, b, 0x3800, nullptr);
+      return goc_v_fmamk_f16_rdna4(flags, exec_mask, mode, d, a, 0x3800, b, nullptr);
+    return goc_v_fmaak_f16_rdna4(flags, exec_mask, mode, d, a, b, 0x3800, nullptr);
   } else {
     if constexpr (Multiply)
       return goc_v_fmamk_f32(flags, exec_mask, mode, d, a, 0x3f000000, b, nullptr);
@@ -260,12 +260,12 @@ const Case cases[] = {
     {goc_v_dot4_f32_bf8_bf8, false, GOC_DOT_NEG_C | GOC_DOT_ABS_C},
     {goc_v_dot2_f16_f16, false, 63 | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D},
     {goc_v_dot2_bf16_bf16, false, 63 | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D},
-    {binary<goc_v_fmac_f16>, true,
+    {binary<goc_v_fmac_f16_rdna4>, true,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D |
          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
     {binary<goc_v_fmac_f32_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
-    {goc_v_fma_f16, true, 0x1fff},
+    {goc_v_fma_f16_rdna4, true, 0x1fff},
     {goc_v_fma_f32_rdna4, false, 0x1ff},
     {goc_v_fma_dx9_zero_f32_rdna4, false, 0x1ff},
     {unary<goc_v_log_f32>, false,

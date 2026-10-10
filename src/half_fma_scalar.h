@@ -40,15 +40,19 @@ inline uint16_t half_fma_clamp(uint16_t value) {
 }
 
 // Adapted from rocjitsu shared/fp_mode.h: fma_f16 and finish_fma_f16.
-// RNE and preserved input/output denormals are the currently exposed FP policy.
-inline uint16_t half_fma_value(uint16_t a, uint16_t b, uint16_t c, uint32_t mode, bool saturate,
+// RNE, guest input/output denormals and architecture-specific NaN quieting.
+template <bool Rdna3 = false>
+inline uint16_t half_fma_value(uint16_t a, uint16_t b, uint16_t c, uint32_t mode, uint64_t flags,
                                uint32_t *exceptions = nullptr) {
+  bool saturate = flags & GOC_FP16_OVFL;
   uint16_t inputs[] = {a, b, c};
   for (int i = 0; i < 3; ++i) {
     if (mode & (GOC_ALU_ABS_A << i))
       inputs[i] &= 0x7fff;
     if (mode & (GOC_ALU_NEG_A << i))
       inputs[i] ^= 0x8000;
+    if ((flags & GOC_FP_FLUSH_INPUT_DENORMALS) && (inputs[i] & 0x7fff) < 0x400)
+      inputs[i] &= 0x8000;
   }
   a = inputs[0];
   b = inputs[1];
@@ -73,7 +77,10 @@ inline uint16_t half_fma_value(uint16_t a, uint16_t b, uint16_t c, uint32_t mode
   if ((ma == 0 && mb == 0x7c00) || (mb == 0 && ma == 0x7c00))
     exceptional = 0xfe00;
   else if (ma > 0x7c00 || mb > 0x7c00 || mc > 0x7c00)
-    exceptional = (ma > 0x7c00 ? a : mb > 0x7c00 ? b : c) | 0x0200;
+    exceptional = (ma > 0x7c00   ? a
+                   : mb > 0x7c00 ? b
+                                 : c) |
+                  ((!Rdna3 || (flags & GOC_FP_IEEE_MODE)) ? 0x0200 : 0);
   else if (ma == 0x7c00 || mb == 0x7c00) {
     exceptional = ((a ^ b) & 0x8000) | 0x7c00;
     if (mc == 0x7c00 && ((exceptional ^ c) & 0x8000))
@@ -104,6 +111,11 @@ inline uint16_t half_fma_value(uint16_t a, uint16_t b, uint16_t c, uint32_t mode
     }
     if ((omod == 1 || omod == 2) && magnitude < 0x7c00 && (magnitude >> 10) + omod >= 31)
       *exceptions |= GOC_EXCEPTION_OVERFLOW;
+  }
+  if (!omod && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)) {
+    uint16_t magnitude = result & 0x7fff;
+    if (magnitude < 0x400 || (magnitude == 0x400 && std::abs(value) < 0x1p-14 - 0x1p-26))
+      result &= 0x8000;
   }
   if (omod) {
     uint16_t magnitude = result & 0x7fff;

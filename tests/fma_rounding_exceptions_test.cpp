@@ -46,8 +46,8 @@ TEST(FmaExceptions, RoundingBoundaryHardwareCorpora) {
                            (i % (goc_init_cpu_flags() + 1));
           int status;
           if (type == 0)
-            status = goc_v_fma_f16(flags | (setting ? GOC_FP16_OVFL : 0), 1, mode, d, a, b, c,
-                                   &exceptions);
+            status = goc_v_fma_f16_rdna4(flags | (setting ? GOC_FP16_OVFL : 0), 1, mode, d, a, b, c,
+                                         &exceptions);
           else if (type == 1)
             status = goc_v_div_fmas_f32(flags, 1, mode, d, a, b, c, setting, &exceptions);
           else

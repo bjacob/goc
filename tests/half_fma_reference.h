@@ -52,7 +52,10 @@ inline uint16_t pack(Number value, bool saturate) {
   return sign | uint16_t(((exponent + 15) << 10) + sig - 1024);
 }
 
-inline uint16_t evaluate(uint32_t a, uint32_t b, uint32_t c, uint32_t mode, bool saturate) {
+inline uint16_t evaluate(uint32_t a, uint32_t b, uint32_t c, uint32_t mode, bool saturate,
+                         uint64_t fp_flags = 0, bool rdna3 = false) {
+  if (rdna3 && (!(fp_flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (fp_flags & GOC_FP_IEEE_MODE)))
+    mode &= ~GOC_ALU_OMOD_HALF;
   uint32_t words[] = {a, b, c};
   uint16_t h[3];
   for (int i = 0; i < 3; ++i) {
@@ -61,13 +64,18 @@ inline uint16_t evaluate(uint32_t a, uint32_t b, uint32_t c, uint32_t mode, bool
       h[i] &= 0x7fff;
     if (mode & (GOC_ALU_NEG_A << i))
       h[i] ^= 0x8000;
+    if ((fp_flags & GOC_FP_FLUSH_INPUT_DENORMALS) && (h[i] & 0x7fff) < 0x400)
+      h[i] &= 0x8000;
   }
   unsigned ma = h[0] & 0x7fff, mb = h[1] & 0x7fff, mc = h[2] & 0x7fff;
   uint16_t result;
   if ((!ma && mb == 0x7c00) || (!mb && ma == 0x7c00))
     result = 0xfe00;
   else if (nan(h[0]) || nan(h[1]) || nan(h[2]))
-    result = (nan(h[0]) ? h[0] : nan(h[1]) ? h[1] : h[2]) | 0x200;
+    result = (nan(h[0])   ? h[0]
+              : nan(h[1]) ? h[1]
+                          : h[2]) |
+             ((!rdna3 || (fp_flags & GOC_FP_IEEE_MODE)) ? 0x200 : 0);
   else if (ma == 0x7c00 || mb == 0x7c00) {
     result = ((h[0] ^ h[1]) & 0x8000) | 0x7c00;
     if (mc == 0x7c00 && ((result ^ h[2]) & 0x8000))
@@ -89,6 +97,12 @@ inline uint16_t evaluate(uint32_t a, uint32_t b, uint32_t c, uint32_t mode, bool
     }
     result = pack(sum, saturate);
     unsigned omod = (mode >> 6) & 3;
+    if (!omod && (fp_flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)) {
+      bool tiny = grid < -26 ? sum.magnitude < (4095ULL << (-26 - grid))
+                             : (sum.magnitude << (grid + 26)) < 4095;
+      if (tiny)
+        result &= 0x8000;
+    }
     if (omod) {
       // Active OMOD flushes before packing at 2^-14 - 2^-26.
       bool tiny = grid < -26 ? sum.magnitude < (4095ULL << (-26 - grid))

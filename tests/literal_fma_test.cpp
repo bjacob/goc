@@ -28,8 +28,9 @@ const uint16_t special16[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x
 int call(bool half, bool multiply, uint64_t flags, uint32_t exec_mask, uint64_t mode,
          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b, uint32_t literal) {
   if (half)
-    return multiply ? goc_v_fmamk_f16(flags, exec_mask, mode, d, a, uint16_t(literal), b, nullptr)
-                    : goc_v_fmaak_f16(flags, exec_mask, mode, d, a, b, uint16_t(literal), nullptr);
+    return multiply
+               ? goc_v_fmamk_f16_rdna4(flags, exec_mask, mode, d, a, uint16_t(literal), b, nullptr)
+               : goc_v_fmaak_f16_rdna4(flags, exec_mask, mode, d, a, b, uint16_t(literal), nullptr);
   return multiply ? goc_v_fmamk_f32(flags, exec_mask, mode, d, a, literal, b, nullptr)
                   : goc_v_fmaak_f32(flags, exec_mask, mode, d, a, b, literal, nullptr);
 }

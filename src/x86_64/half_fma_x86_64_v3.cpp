@@ -12,7 +12,7 @@
 namespace goc {
 
 template <FmaOperands Operands>
-void half_fma_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+void half_fma_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                         const uint32_t *a, const uint32_t *b, const uint32_t *c, uint16_t literal) {
   if constexpr (Operands != FmaOperands::Registers)
     mode &= GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D;
@@ -36,7 +36,20 @@ void half_fma_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32
       z = half_input<false>(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(c + lane)),
                             c_shift, mode >> 2);
     }
-    auto result = half_fma_value(x, y, z, saturate, mode);
+    if (flags & GOC_FP_FLUSH_INPUT_DENORMALS) {
+      auto flush = [](__m256 input) {
+        auto bits = _mm256_castps_si256(input);
+        auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x38800000),
+                                       _mm256_and_si256(bits, _mm256_set1_epi32(INT32_MAX)));
+        return _mm256_castsi256_ps(
+            _mm256_blendv_epi8(bits, _mm256_and_si256(bits, _mm256_set1_epi32(INT32_MIN)), tiny));
+      };
+      x = flush(x);
+      y = flush(y);
+      z = flush(z);
+    }
+    auto result =
+        half_fma_value(x, y, z, flags & GOC_FP16_OVFL, mode, flags & GOC_FP_FLUSH_OUTPUT_DENORMALS);
     result = _mm256_sll_epi32(result, _mm_cvtsi32_si128(d_shift));
     auto old = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(d + lane));
     result = _mm256_or_si256(result, _mm256_and_si256(old, keep));
@@ -46,15 +59,16 @@ void half_fma_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32
   }
 }
 
-template void half_fma_x86_64_v3<FmaOperands::Registers>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_fma_x86_64_v3<FmaOperands::Registers>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                          const uint32_t *, const uint32_t *,
                                                          const uint32_t *, uint16_t);
 
-template void half_fma_x86_64_v3<FmaOperands::MultiplyLiteral>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_fma_x86_64_v3<FmaOperands::MultiplyLiteral>(uint64_t, uint32_t, uint32_t,
+                                                               uint32_t *, const uint32_t *,
                                                                const uint32_t *, const uint32_t *,
-                                                               const uint32_t *, uint16_t);
+                                                               uint16_t);
 
-template void half_fma_x86_64_v3<FmaOperands::AddLiteral>(bool, uint32_t, uint32_t, uint32_t *,
+template void half_fma_x86_64_v3<FmaOperands::AddLiteral>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                           const uint32_t *, const uint32_t *,
                                                           const uint32_t *, uint16_t);
 
