@@ -1059,5 +1059,17 @@
       "s_round_mode",
       "s_denorm_mode"
     ]
+  },
+  {
+    "heading": "Integer VOPD architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/dual_test.cpp",
+    "mnemonics": [
+      "v_dual_add_nc_u32",
+      "v_dual_and_b32",
+      "v_dual_cndmask_b32",
+      "v_dual_lshlrev_b32",
+      "v_dual_mov_b32"
+    ]
   }
 ]

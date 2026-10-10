@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "capture_hash.h"
+#include "exec_masks.h"
 #include "gfx11_dot2_fixtures.h"
 #include "goc/goc.h"
 
@@ -255,4 +256,65 @@ TEST(Dual, FloatingGuestPoliciesMatchTheirArchitecture) {
             EXPECT_EQ(state, 0x12345678U);
             EXPECT_EQ(std::memcmp(expected, d, sizeof(expected)), 0);
           }
+}
+
+TEST(Dual, IntegerBitPatternsShiftCountsAndAliases) {
+  for (unsigned op : {8U, 9U, 14U, 15U, 16U})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (unsigned seed = 0; seed < 32; ++seed)
+          for (unsigned breg : {0U, 1U})
+            for (unsigned target = 0; target < 3; ++target)
+              for (uint32_t exec_mask : exec_masks()) {
+                uint32_t words[3][34], expected[3][34];
+                for (unsigned reg = 0; reg < 3; ++reg)
+                  for (unsigned lane = 0; lane < 34; ++lane) {
+                    // Each batch covers every shift count; high count bits vary.
+                    uint32_t value = reg == 0 ? 0xffffffe0U | ((lane + seed) & 31)
+                                              : (1U << seed) ^ (lane & 1 ? UINT32_MAX : 0);
+                    words[reg][lane] = expected[reg][lane] = value;
+                  }
+                for (unsigned lane = 0; lane < 32; ++lane) {
+                  if (!((exec_mask >> lane) & 1))
+                    continue;
+                  uint32_t a = words[0][lane + 1], b = words[breg][lane + 1];
+                  uint32_t result = op == 8    ? a
+                                    : op == 9  ? (lane & 1 ? b : a)
+                                    : op == 14 ? a + b
+                                    : op == 15 ? b << (a & 31)
+                                               : a & b;
+                  expected[target][lane + 1] = result;
+                }
+                const uint32_t *a = words[0] + 1, *b = words[breg] + 1;
+                uint32_t *d = words[target] + 1;
+                ASSERT_EQ(execute(op, cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, 0, &d, &a,
+                                  &b, nullptr),
+                          GOC_SUCCESS);
+                EXPECT_EQ(std::memcmp(words, expected, sizeof words), 0)
+                    << op << '/' << seed << '/' << target << '/' << exec_mask;
+              }
+}
+
+TEST(Dual, Rdna3PairReadsPrePairSources) {
+  // RDNA3 section 7.6: both slots read old values even when the other slot
+  // writes the same VGPR. X: mov v0,v1; Y: mov v1,v0 satisfies bank/parity
+  // restrictions. GoC executes individual slots, so the caller stages inputs.
+  // This dependency is forbidden by RDNA4 section 7.8.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint32_t exec_mask : exec_masks()) {
+      uint32_t x[32], y[32], old_x[32], old_y[32];
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        x[lane] = old_x[lane] = 0xa5a50000U | lane;
+        y[lane] = old_y[lane] = 0x5a5a0000U | (31 - lane);
+      }
+      uint32_t *dx = x, *dy = y;
+      const uint32_t *ax = old_y, *ay = old_x;
+      uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+      ASSERT_EQ(goc_v_dual_mov_b32(flags, exec_mask, 0, &dx, &ax), GOC_SUCCESS);
+      ASSERT_EQ(goc_v_dual_mov_b32(flags, exec_mask, 0, &dy, &ay), GOC_SUCCESS);
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        EXPECT_EQ(x[lane], (exec_mask >> lane) & 1 ? old_y[lane] : old_x[lane]);
+        EXPECT_EQ(y[lane], (exec_mask >> lane) & 1 ? old_x[lane] : old_y[lane]);
+      }
+    }
 }

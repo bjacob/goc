@@ -7472,6 +7472,9 @@ int goc_v_cmpx_t_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruc
 // already be decoded, including scalar/inline-constant replication for DOT2ACC.
 // Legal VOPD register-bank, destination-parity and pair-dependency constraints
 // are preconditions. Each call executes one operation, not the whole X/Y pair.
+// Supply pre-pair source values when either slot overwrites the other's source;
+// RDNA3 callers must stage such inputs. Legal RDNA4 pairs may execute X then Y
+// because X may not overwrite a Y source.
 // No Wave64 forms exist. Shared floating arithmetic uses unsuffixed RDNA3 APIs
 // with TRAPSTS and _rdna4 APIs with EXCP_FLAG_USER, including architecture-specific
 // NaN/IEEE behavior. DOT2ACC additionally has different accumulation models.

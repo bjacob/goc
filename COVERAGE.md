@@ -611,7 +611,9 @@ DOT2ACC supplies the old destination as the addend. Existing scalar/SIMD dispatc
 and exact models are reused without a second arithmetic implementation.
 
 Section 7.8 of the RDNA4 ISA permits Y to overwrite an X source, but forbids X
-from overwriting a Y source. Consequently, legal pairs can execute X then Y.
+from overwriting a Y source. Consequently, legal RDNA4 pairs can execute X then Y. RDNA3 section 7.6
+instead specifies old-value reads in either overlap direction; its callers must
+stage sources that would be overwritten by an earlier per-slot call.
 The caller validates slot, bank, destination parity and literal restrictions and
 resolves encoded operands, including scalar DOT2 replication and out-of-range
 VGPR addressing. VOPD is Wave32-only and encodes no arithmetic modifiers or DPP;
@@ -6138,3 +6140,45 @@ Validation: all 1,133 CTests pass under Clang and GCC Release; all seventeen
 guest-mode/HWREG tests pass under ASan/UBSan. All nine audit-tool tests pass.
 Logs use `guest-mode-review-` in each build directory. The ledger records
 606 contracts; 203 in-scope mnemonics remain without recorded reviews.
+
+## Integer VOPD architecture contracts
+
+Reviewed the five integer/bitwise dual operations: MOV_B32, CNDMASK_B32,
+ADD_NC_U32, LSHLREV_B32 and AND_B32. Each case in rocjitsu `ffc144c564c`'s
+RDNA3 `Vopd::execute_slot` matches RDNA4 byte-for-byte. Source bodies, hashes
+and locations are in `../goc-build/coverage-work/dual-integer-upstream-review.json`.
+MOV copies raw bits, CNDMASK selects with the physical lane's VCC bit, ADD wraps
+modulo 2^32 without carry output, LSHLREV shifts B by A's low five bits, and AND
+operates bitwise. No optional global-state output or architecture suffix is
+needed for these individual operations.
+
+The upstream whole-pair executor computes both results before either write.
+Its integer SIMD helper does the same for MOV/ADD/LSHL pairs. RDNA3 manual
+section 7.6 explicitly gives reads the old VGPR value when the other slot writes
+that register. RDNA4 section 7.8 instead forbids X from overwriting a Y source,
+while permitting the reverse. GoC's per-slot APIs cannot preserve the previous
+pair state across separate calls. Clarified the public contract: callers supply
+pre-pair sources, staging as needed on RDNA3; legal RDNA4 pairs can run X then Y.
+Register-bank, slot, literal and destination-parity validation remains the
+caller's responsibility. The API deliberately represents a decoded operation,
+not an entire encoded pair. There are no Wave64 variants or DPP/modifier fields.
+
+No production kernel changed. Wrappers retain ordinary dispatch: baseline MOV;
+baseline or sixteen-lane v4 ADD/AND/CNDMASK; eight-lane v3 shifts, also used on
+newer CPU levels. In particular, the wrapping ADD wrapper does not use the
+v3 saturation-only path. Ordinary ignored CLAMP support does not make CLAMP
+valid in a dual encoding; every nonzero instruction flag remains rejected.
+
+Added independent integer expectations across every shift count with nonzero
+high bits, per-bit operands, complements, wrapping additions, both semantics,
+all CPU levels, EXEC patterns, unaligned storage and whole-register aliases.
+Added a staged RDNA3 MOV pair that swaps two opposite-parity registers while
+reading both old values. The existing RDNA4 reverse-dependency example remains.
+These are ISA/reference tests, not new hardware captures. Floating dual
+contracts and their underlying numerical models remain separate review work.
+
+Validation: all 1,135 CTests pass under Clang and GCC Release; all eight dual
+operation tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`dual-integer-review-` in each build directory. GCC's initial build hit the
+`/tmp` quota; the retry succeeded using build-local compiler temporary files.
+The ledger records 611 contracts; 198 in-scope mnemonics remain unrecorded.

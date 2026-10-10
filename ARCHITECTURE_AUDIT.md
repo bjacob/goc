@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-606 in-scope mnemonics have explicit contract-review records in
+611 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 203 in-scope mnemonics need a recorded review.
+The remaining 198 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -455,16 +455,16 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_dot8_i32_iu4` | SIMD macro, output helper | no | 11048 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-dot-product-architecture-contracts) |
 | `v_dot8_u32_u4` | SIMD macro, output helper | no | 11080 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-dot-product-architecture-contracts) |
 | `v_dual_add_f32` | no direct policy detected | yes | not found | review required |
-| `v_dual_add_nc_u32` | no direct policy detected | no | not found | review required |
-| `v_dual_and_b32` | no direct policy detected | no | not found | review required |
-| `v_dual_cndmask_b32` | no direct policy detected | no | not found | review required |
+| `v_dual_add_nc_u32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
+| `v_dual_and_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
+| `v_dual_cndmask_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
 | `v_dual_dot2acc_f32_bf16` | no direct policy detected | yes | not found | review required |
 | `v_dual_dot2acc_f32_f16` | no direct policy detected | yes | not found | review required |
 | `v_dual_fmaak_f32` | no direct policy detected | yes | not found | review required |
 | `v_dual_fmac_f32` | no direct policy detected | yes | not found | review required |
 | `v_dual_fmamk_f32` | no direct policy detected | yes | not found | review required |
-| `v_dual_lshlrev_b32` | no direct policy detected | no | not found | review required |
-| `v_dual_mov_b32` | no direct policy detected | no | not found | review required |
+| `v_dual_lshlrev_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
+| `v_dual_mov_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
 | `v_dual_mul_dx9_zero_f32` | no direct policy detected | yes | not found | review required |
 | `v_dual_mul_f32` | no direct policy detected | yes | not found | review required |
 | `v_dual_sub_f32` | no direct policy detected | yes | not found | review required |
