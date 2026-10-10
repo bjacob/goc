@@ -4222,7 +4222,7 @@ int goc_v_mad_i32_i24(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
 // select source and destination halves; the other D half is preserved.
 // MAD supports CLAMP after full-precision A * B + C, otherwise wrapping.
 // MIN3/MAX3 select the smallest/largest of all three signed/unsigned inputs.
-// MED3 selects the middle value. CLAMP is invalid for MIN3/MAX3/MED3.
+// MED3 selects the middle value. MIN3/MAX3/MED3 accept and ignore CLAMP.
 // Supports DPP8/DPP16 on A before half selection; other instruction flags are
 // invalid. Both semantics are exact; independent of host floating-point state.
 int goc_v_mad_u16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,

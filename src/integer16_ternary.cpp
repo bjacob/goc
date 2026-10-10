@@ -34,8 +34,7 @@ int ternary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   const uint32_t known =
       Packed ? GOC_PK_LO_A_HIGH | GOC_PK_LO_B_HIGH | GOC_PK_LO_C_HIGH | GOC_PK_HI_A_LOW |
                    GOC_PK_HI_B_LOW | GOC_PK_HI_C_LOW | GOC_PK_CLAMP
-             : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D |
-                   (Op == goc::Integer16Ternary::Mad ? GOC_ALU_CLAMP : 0);
+             : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (exec_mask == 0)

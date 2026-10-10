@@ -56,7 +56,7 @@ TEST(Integer16Wave64, HalfSelectorsSaturationRoutingAndAliases) {
         routes.push_back((goc_test::dpp_modes[2] & ~GOC_DPP_ROW_MASK) |
                          (uint64_t(rows) << GOC_DPP_ROW_SHIFT));
     }
-    unsigned mode_count = op < 12 ? 16 : op < 14 ? 32 : op < 20 ? 16 : op < 32 ? 32 : 128;
+    unsigned mode_count = op < 12 ? 16 : op < 32 ? 32 : 128;
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
         for (unsigned m = 0; m < mode_count; ++m)

@@ -5910,3 +5910,46 @@ selected integer16, packed, Wave64 and DPP fixture/validation tests pass under
 ASan/UBSan. All nine audit-tool tests pass. Logs use `integer16-review-` in each
 build directory. The ledger records 579 contracts; 230 in-scope mnemonics remain
 without recorded reviews.
+
+## Integer16 ternary and packed MAD architecture contracts
+
+Reviewed signed/unsigned MAD, MIN3, MAX3 and MED3, plus packed MAD, at rocjitsu
+`ffc144c564c`. All sixteen ordinary execution/modifier pairs are identical.
+The two RDNA4 packed handlers match the corresponding RDNA3 shared bodies after
+normalizing operand references, selector field spelling and execution-mask
+access. The review includes 36 handlers, both shared packed helpers and the
+wide integer-MAD helper. Locations, bodies, hashes and comparison notes are in
+`../goc-build/coverage-work/integer16-ternary-upstream-review.json`. All ten
+operations retain shared APIs and require no optional exception-register output.
+
+MAD sign- or zero-extends the selected inputs, computes A * B + C, then either
+wraps to sixteen bits or saturates the full result. Saturation cannot precede
+the addition: an opposite-sign addend can bring a product outside the 16-bit
+range back inside it. MIN3/MAX3 select signed/unsigned extrema; MED3 selects the
+middle value, including ties. Ordinary forms preserve the other destination
+half. Packed MAD computes both output halves from original sources with six
+independent half selectors. Packed DPP remains invalid; ordinary DPP routes A
+before selection and leaves B/C local.
+
+Fixed rejection of ignored CLAMP for MIN3/MAX3/MED3, matching both upstream
+architectures. MAD behavior and all arithmetic kernels are unchanged. The
+eight-lane v3 path uses native halfword min/max for selection. Unclamped MAD uses
+low halfword products/addition; clamped MAD widens to 32 bits, adds C and clamps
+before repacking. The maximum unsigned intermediate fits uint32, and signed
+intermediates fit int32. Selectors and saturation retain this SIMD path on all
+v3-or-newer CPU levels.
+
+Expanded ordinary boundary-triple/random, every-source-encoding and alias tests
+to all 32 selector/CLAMP combinations for every operation. Wave64 tests now
+combine the added settings with strict exact/loose semantics, DPP controls and
+row masks, inactive lanes and destination aliases. Removed obsolete CLAMP
+rejection expectations. Existing packed tests cover all 128 selector/CLAMP
+combinations, every source encoding and literal saturation/cancellation cases.
+Existing gfx1201 DPP fixture inputs and hashes are retained. No new hardware
+numerical model was introduced.
+
+Validation: all 1,128 CTests pass under Clang and GCC Release; all fourteen
+selected ternary integer16, packed MAD, Wave64 and DPP fixture/validation tests
+pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`integer16-ternary-review-` in each build directory. The ledger records
+589 contracts; 220 in-scope mnemonics remain without recorded reviews.

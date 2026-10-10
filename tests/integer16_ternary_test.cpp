@@ -16,7 +16,7 @@ TEST(Integer16Ternary, EveryModifierBoundaryTriplesAndRandomInputs) {
   const uint32_t edge[] = {0, 1, 2, 0x7fff, 0x8000, 0x8001, 0xfffe, 0xffff};
   for (int op = 0; op < 8; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (int mode = 0; mode < (op < 2 ? 32 : 16); ++mode) {
+      for (int mode = 0; mode < 32; ++mode) {
         SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << mode);
         std::mt19937 random(995);
         for (int start = 0; start < 1536; start += 32) {
@@ -47,8 +47,8 @@ TEST(Integer16Ternary, EverySourceEncoding) {
   for (int op = 0; op < 8; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int source = 0; source < 3; ++source)
-        for (uint32_t mode : {uint32_t(0), GOC_ALU_HIGH_A | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D |
-                                               (op < 2 ? GOC_ALU_CLAMP : 0)}) {
+        for (uint32_t mode :
+             {uint32_t(0), GOC_ALU_HIGH_A | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D | GOC_ALU_CLAMP}) {
           std::mt19937 random(401);
           for (uint32_t start = 0; start < 65536; start += 32) {
             uint32_t words[4][32];
@@ -73,7 +73,7 @@ TEST(Integer16Ternary, EverySourceEncoding) {
 TEST(Integer16Ternary, AllMasksModifiersAndWholeRegisterAliases) {
   for (int op = 0; op < 8; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (int mode = 0; mode < (op < 2 ? 32 : 16); ++mode)
+      for (int mode = 0; mode < 32; ++mode)
         for (uint32_t exec_mask : exec_masks())
           // Restricted growth indices enumerate all 15 partitions of A/B/C/D.
           for (int bi = 0; bi <= 1; ++bi)
@@ -157,8 +157,8 @@ TEST(Integer16Ternary, ValidationAndFloatingEnvironment) {
     for (int i = 0; i < 32; ++i)
       words[3][i] = 0x76543210;
     std::memcpy(saved, words[3], sizeof(saved));
-    const uint32_t known = GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D |
-                           (op < 2 ? GOC_ALU_CLAMP : 0);
+    const uint32_t known =
+        GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D | GOC_ALU_CLAMP;
     for (int bit = 0; bit < 32; ++bit) {
       uint32_t invalid = 1U << bit;
       if (invalid & known)

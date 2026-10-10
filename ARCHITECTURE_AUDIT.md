@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-579 in-scope mnemonics have explicit contract-review records in
+589 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 230 in-scope mnemonics need a recorded review.
+The remaining 220 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -516,15 +516,15 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_lshrrev_b16` | SIMD macro, output helper | no | 13304, 13322 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_lshrrev_b32` | SIMD macro, output helper | no | 13340, 13356 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
 | `v_lshrrev_b64` | SIMD macro | no | 13372 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
-| `v_mad_i16` | output helper | no | 13587 | review required |
+| `v_mad_i16` | output helper | no | 13587 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer16-ternary-and-packed-mad-architecture-contracts) |
 | `v_mad_i32_i16` | SIMD macro, output helper | no | 13604 | [loose and exact contract reviewed; see limitations](COVERAGE.md#narrow-factor-integer-mad-architecture-contracts) |
 | `v_mad_i32_i24` | SIMD macro, output helper | no | 13629 | [loose and exact contract reviewed; see limitations](COVERAGE.md#narrow-factor-integer-mad-architecture-contracts) |
-| `v_mad_u16` | output helper | no | 13866 | review required |
+| `v_mad_u16` | output helper | no | 13866 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer16-ternary-and-packed-mad-architecture-contracts) |
 | `v_mad_u32_u16` | SIMD macro, output helper | no | 13881 | [loose and exact contract reviewed; see limitations](COVERAGE.md#narrow-factor-integer-mad-architecture-contracts) |
 | `v_mad_u32_u24` | SIMD macro, output helper | no | 13900 | [loose and exact contract reviewed; see limitations](COVERAGE.md#narrow-factor-integer-mad-architecture-contracts) |
-| `v_max3_i16` | SIMD macro, output helper | no | 14179 | review required |
+| `v_max3_i16` | SIMD macro, output helper | no | 14179 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer16-ternary-and-packed-mad-architecture-contracts) |
 | `v_max3_i32` | SIMD macro, output helper | no | 14203 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
-| `v_max3_u16` | SIMD macro, output helper | no | 14271 | review required |
+| `v_max3_u16` | SIMD macro, output helper | no | 14271 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer16-ternary-and-packed-mad-architecture-contracts) |
 | `v_max3_u32` | SIMD macro, output helper | no | 14292 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_max_i16` | SIMD macro, output helper | no | 14505, 14524 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_max_i32` | SIMD macro, output helper | no | 14543, 14557 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
@@ -534,13 +534,13 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_maxmin_u32` | output helper | no | 15085 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_mbcnt_hi_u32_b32` | output helper | no | 15099 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
 | `v_mbcnt_lo_u32_b32` | output helper | no | 15115 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
-| `v_med3_i16` | SIMD macro, output helper | no | 15251 | review required |
+| `v_med3_i16` | SIMD macro, output helper | no | 15251 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer16-ternary-and-packed-mad-architecture-contracts) |
 | `v_med3_i32` | SIMD macro, output helper | no | 15277 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
-| `v_med3_u16` | SIMD macro, output helper | no | 15346 | review required |
+| `v_med3_u16` | SIMD macro, output helper | no | 15346 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer16-ternary-and-packed-mad-architecture-contracts) |
 | `v_med3_u32` | SIMD macro, output helper | no | 15369 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
-| `v_min3_i16` | SIMD macro, output helper | no | 15503 | review required |
+| `v_min3_i16` | SIMD macro, output helper | no | 15503 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer16-ternary-and-packed-mad-architecture-contracts) |
 | `v_min3_i32` | SIMD macro, output helper | no | 15527 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
-| `v_min3_u16` | SIMD macro, output helper | no | 15595 | review required |
+| `v_min3_u16` | SIMD macro, output helper | no | 15595 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer16-ternary-and-packed-mad-architecture-contracts) |
 | `v_min3_u32` | SIMD macro, output helper | no | 15616 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
 | `v_min_i16` | SIMD macro, output helper | no | 15829, 15848 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_min_i32` | SIMD macro, output helper | no | 15867, 15881 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-selection-architecture-contracts) |
@@ -588,8 +588,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_pk_fmac_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 17594, 17627 | review required |
 | `v_pk_lshlrev_b16` | SIMD macro, output helper | no | 17665 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_pk_lshrrev_b16` | SIMD macro, output helper | no | 17694 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
-| `v_pk_mad_i16` | SIMD macro, output helper | no | 17723 | review required |
-| `v_pk_mad_u16` | SIMD macro, output helper | no | 17768 | review required |
+| `v_pk_mad_i16` | SIMD macro, output helper | no | 17723 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer16-ternary-and-packed-mad-architecture-contracts) |
+| `v_pk_mad_u16` | SIMD macro, output helper | no | 17768 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer16-ternary-and-packed-mad-architecture-contracts) |
 | `v_pk_max_i16` | SIMD macro, output helper | no | 17851 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_pk_max_u16` | SIMD macro, output helper | no | 17887 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |
 | `v_pk_min_i16` | SIMD macro, output helper | no | 17959 | [loose and exact contract reviewed; see limitations](COVERAGE.md#packed-and-single-result-integer16-architecture-contracts) |

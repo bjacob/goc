@@ -990,5 +990,22 @@
       "v_sub_nc_i16",
       "v_sub_nc_u16"
     ]
+  },
+  {
+    "heading": "Integer16 ternary and packed MAD architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/integer16_ternary_test.cpp",
+    "mnemonics": [
+      "v_mad_i16",
+      "v_mad_u16",
+      "v_max3_i16",
+      "v_max3_u16",
+      "v_med3_i16",
+      "v_med3_u16",
+      "v_min3_i16",
+      "v_min3_u16",
+      "v_pk_mad_i16",
+      "v_pk_mad_u16"
+    ]
   }
 ]
