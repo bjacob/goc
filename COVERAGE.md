@@ -5779,3 +5779,45 @@ Validation: all 1,128 CTests pass under Clang and GCC Release; all 253 tests in
 the Boolean/DPP selection pass under ASan/UBSan. All nine audit-tool tests pass.
 Logs use `boolean-review-` in each build directory. The ledger records
 543 contracts; 266 in-scope mnemonics remain without recorded reviews.
+
+## Vector shift architecture contracts
+
+Reviewed the 32/64-bit LSHLREV, LSHRREV and ASHRREV operations at rocjitsu
+`ffc144c564c`. All fifteen common architecture-specific execution/modifier pairs
+are identical. RDNA4 additionally has a VOP2 encoding of LSHLREV_B64, with the
+same value/count behavior as VOP3; its decoder explicitly rejects DPP. The
+review covers 31 handler bodies, ten shared execution helpers and their SIMD
+shift helpers. Locations, hashes and shared bodies are recorded in
+`../goc-build/coverage-work/shift-upstream-review.json`. Shared APIs remain
+appropriate; no architecture suffix or optional exception-register output is
+needed.
+
+A is the 32-bit shift count, masked to five or six bits. B is the shifted value,
+with the low VGPR first for 64-bit forms. Left shifts discard high bits, logical
+right shifts insert zeros, and arithmetic right shifts replicate the sign bit.
+GoC's scalar arithmetic-right path complements negative values around a logical
+shift to avoid relying on implementation-defined signed shifts. This agrees
+with the upstream signed-shift model. The 32-bit forms route A through DPP8/16;
+64-bit forms reject DPP. Wave64 adjusts row masks between its two halves.
+
+Fixed rejection of the ignored CLAMP modifier. All reviewed execution helpers
+leave the shifted bit pattern unchanged by CLAMP. Other low modifiers remain
+invalid, and validation precedes empty EXEC. The SIMD path still processes eight
+lanes at a time on v3 and newer CPUs. It combines low/high 32-bit word shifts for
+64-bit values, exploiting AVX2 logical out-of-range shift counts to insert zero
+and using arithmetic shifts for sign fill. Sources are loaded before either
+half is stored, supporting reversed and coincident destination aliases. No
+arithmetic kernel, dispatch choice or abstraction changed.
+
+Expanded every-count/per-bit tests to both CLAMP settings, including counts
+0, 31, 32 and 63 and repeated modulo periods. Expanded Wave64 tests to combine
+CLAMP with strict exact/loose semantics, routing, sign-bit and single-bit inputs,
+full/mixed EXEC and source aliases on each available CPU level. Existing random
+upper-count-bit tests, all destination-alias combinations, and the gfx1201 DPP
+shift corpus remain unchanged. This validates the borrowed operation contract;
+it introduces no hardware-derived numerical model.
+
+Validation: all 1,128 CTests pass under Clang and GCC Release; all nineteen
+shift/Wave64/DPP regression tests pass under ASan/UBSan. All nine audit-tool
+tests pass. Logs use `shift-review-` in each build directory. The ledger records
+549 contracts; 260 in-scope mnemonics remain without recorded reviews.

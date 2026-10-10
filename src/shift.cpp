@@ -23,7 +23,7 @@ int shift(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
     }
   }
 
-  if (int error = goc::validate(flags, mode, true))
+  if (int error = goc::validate(flags, mode & ~GOC_ALU_CLAMP, true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;

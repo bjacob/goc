@@ -27,11 +27,15 @@ std::vector<uint64_t> routes() {
 } // namespace
 
 TEST(BitwiseWave64, ShiftsCountsBitsMasksRoutingAndAliases) {
+  auto modes = routes();
+  const auto unclamped_modes = modes;
+  for (auto mode : unclamped_modes)
+    modes.push_back(mode | GOC_ALU_CLAMP);
   for (unsigned op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
-        for (uint64_t mode : routes()) {
-          if (mode && op >= 3)
+        for (uint64_t mode : modes) {
+          if ((mode & (GOC_DPP8 | GOC_DPP16)) && op >= 3)
             continue;
           for (unsigned bit = 0; bit < (op < 3 ? 32U : 64U); ++bit)
             for (unsigned alias = 0; alias < 2; ++alias) {
@@ -53,7 +57,7 @@ TEST(BitwiseWave64, ShiftsCountsBitsMasksRoutingAndAliases) {
               for (unsigned lane = 0; lane < 64; ++lane) {
                 int source = int(lane);
                 bool enabled = (exec_mask >> lane) & 1;
-                if (mode)
+                if (mode & (GOC_DPP8 | GOC_DPP16))
                   enabled = goc_test::dpp_source(mode, exec_mask, lane, source);
                 uint32_t count = source < 0 ? 0 : a[source];
                 uint64_t want = enabled ? goc_test::shift_reference(op < 3 ? 32 : 64, op % 3, count,

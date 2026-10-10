@@ -35,24 +35,25 @@ TEST(Shift, EveryCountAndBitPosition) {
       values.push_back(mask ^ (1ULL << bit));
     }
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (uint64_t value : values)
-        for (uint32_t start = 0; start < unsigned(bits * 4); start += 32) {
-          uint32_t a[32], b[2][32], d[2][32];
-          const uint32_t *ap[] = {a}, *bp[] = {b[0], b[1]};
-          uint32_t *dp[] = {d[0], d[1]};
-          for (uint32_t lane = 0; lane < 32; ++lane) {
-            a[lane] = start + lane;
-            b[0][lane] = uint32_t(value);
-            b[1][lane] = uint32_t(value >> 32);
-            d[0][lane] = d[1][lane] = 0xdeadbeef;
+      for (uint32_t mode : {0U, GOC_ALU_CLAMP})
+        for (uint64_t value : values)
+          for (uint32_t start = 0; start < unsigned(bits * 4); start += 32) {
+            uint32_t a[32], b[2][32], d[2][32];
+            const uint32_t *ap[] = {a}, *bp[] = {b[0], b[1]};
+            uint32_t *dp[] = {d[0], d[1]};
+            for (uint32_t lane = 0; lane < 32; ++lane) {
+              a[lane] = start + lane;
+              b[0][lane] = uint32_t(value);
+              b[1][lane] = uint32_t(value >> 32);
+              d[0][lane] = d[1][lane] = 0xdeadbeef;
+            }
+            ASSERT_EQ(functions[op](cpu, UINT32_MAX, mode, dp, ap, bp), GOC_SUCCESS);
+            for (int lane = 0; lane < 32; ++lane) {
+              uint64_t expected = goc_test::shift_reference(bits, op % 3, a[lane], value);
+              ASSERT_EQ(d[0][lane], uint32_t(expected)) << op << "/" << cpu << "/" << a[lane];
+              ASSERT_EQ(d[1][lane], bits == 64 ? uint32_t(expected >> 32) : 0xdeadbeef);
+            }
           }
-          ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, dp, ap, bp), GOC_SUCCESS);
-          for (int lane = 0; lane < 32; ++lane) {
-            uint64_t expected = goc_test::shift_reference(bits, op % 3, a[lane], value);
-            ASSERT_EQ(d[0][lane], uint32_t(expected)) << op << "/" << cpu << "/" << a[lane];
-            ASSERT_EQ(d[1][lane], bits == 64 ? uint32_t(expected >> 32) : 0xdeadbeef);
-          }
-        }
   }
 }
 
@@ -161,7 +162,7 @@ TEST(Shift, PreservesHostFloatingPointState) {
     }
 }
 
-TEST(Shift, RejectsModifiersAndStrictExactBeforeEmptyMask) {
+TEST(Shift, RejectsUnknownFlagsAndSemanticsBeforeEmptyMask) {
   for (Fn fn : functions) {
     uint32_t a[32] = {}, b[2][32] = {}, d[2][32];
     const uint32_t *ap[] = {a}, *bp[] = {b[0], b[1]};
@@ -169,8 +170,11 @@ TEST(Shift, RejectsModifiersAndStrictExactBeforeEmptyMask) {
     for (auto &reg : d)
       std::fill_n(reg, 32, 0xdeadbeef);
     for (uint32_t exec_mask : {0U, UINT32_MAX}) {
-      for (int bit = 0; bit < 32; ++bit)
+      for (int bit = 0; bit < 32; ++bit) {
+        if ((1U << bit) == GOC_ALU_CLAMP)
+          continue;
         EXPECT_EQ(fn(0, exec_mask, uint32_t(1) << bit, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
+      }
       EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, dp, ap, bp), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, dp, ap, bp),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);

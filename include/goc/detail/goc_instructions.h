@@ -3769,9 +3769,9 @@ int goc_v_mqsad_u32_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instr
 // Reverse shifts: shift B by the count in A. A is one VGPR. B and D are one
 // VGPR for 32-bit forms or two VGPRs (low word first) for 64-bit forms. Counts
 // wrap modulo 32 or 64. ASHR replicates the sign bit; logical shifts insert
-// zero bits. The 32-bit forms support DPP8/DPP16 on A (the shift count); their
-// low 32 instruction-flag bits must be zero. The 64-bit forms require zero
-// instruction_flags. Both semantics are exact; preserves all host floating-point state.
+// zero bits. CLAMP is accepted and ignored; other low flags are invalid.
+// The 32-bit forms support DPP8/DPP16 on A (the shift count); the 64-bit forms
+// do not support DPP. Both semantics are exact; all host FP state is preserved.
 int goc_v_lshlrev_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
 int goc_v_lshrrev_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,

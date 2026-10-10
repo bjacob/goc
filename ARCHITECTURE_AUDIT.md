@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-543 in-scope mnemonics have explicit contract-review records in
+549 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 266 in-scope mnemonics need a recorded review.
+The remaining 260 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -218,8 +218,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_and_b32` | SIMD macro, output helper | no | 3499, 3513 | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |
 | `v_and_or_b32` | SIMD macro, output helper | no | 3527 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_ashrrev_i16` | SIMD macro, output helper | no | 3542, 3566 | review required |
-| `v_ashrrev_i32` | SIMD macro, output helper | no | 3590, 3607 | review required |
-| `v_ashrrev_i64` | SIMD macro | no | 3624 | review required |
+| `v_ashrrev_i32` | SIMD macro, output helper | no | 3590, 3607 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
+| `v_ashrrev_i64` | SIMD macro | no | 3624 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
 | `v_bcnt_u32_b32` | SIMD macro, output helper | no | 3642 | review required |
 | `v_bfe_i32` | SIMD macro, output helper | no | 3658 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_bfe_u32` | SIMD macro, output helper | no | 3686 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
@@ -511,11 +511,11 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_lshl_add_u32` | SIMD macro, output helper | no | 13155 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_lshl_or_b32` | SIMD macro, output helper | no | 13189 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_lshlrev_b16` | SIMD macro, output helper | no | 13206, 13224 | review required |
-| `v_lshlrev_b32` | SIMD macro, output helper | no | 13242, 13258 | review required |
-| `v_lshlrev_b64` | SIMD macro | no | 13274, 13288 | review required |
+| `v_lshlrev_b32` | SIMD macro, output helper | no | 13242, 13258 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
+| `v_lshlrev_b64` | SIMD macro | no | 13274, 13288 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
 | `v_lshrrev_b16` | SIMD macro, output helper | no | 13304, 13322 | review required |
-| `v_lshrrev_b32` | SIMD macro, output helper | no | 13340, 13356 | review required |
-| `v_lshrrev_b64` | SIMD macro | no | 13372 | review required |
+| `v_lshrrev_b32` | SIMD macro, output helper | no | 13340, 13356 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
+| `v_lshrrev_b64` | SIMD macro | no | 13372 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
 | `v_mad_i16` | output helper | no | 13587 | review required |
 | `v_mad_i32_i16` | SIMD macro, output helper | no | 13604 | [loose and exact contract reviewed; see limitations](COVERAGE.md#narrow-factor-integer-mad-architecture-contracts) |
 | `v_mad_i32_i24` | SIMD macro, output helper | no | 13629 | [loose and exact contract reviewed; see limitations](COVERAGE.md#narrow-factor-integer-mad-architecture-contracts) |

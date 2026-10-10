@@ -859,8 +859,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_and_b32` | yes | yes | in | `goc_v_and_b32`<br>`goc_v_and_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |
 | `v_and_or_b32` | yes | yes | in | `goc_v_and_or_b32`<br>`goc_v_and_or_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_ashrrev_i16` | yes | yes | in | `goc_v_ashrrev_i16`<br>`goc_v_ashrrev_i16_wave64` | — | API present; semantic audit pending |
-| `v_ashrrev_i32` | yes | yes | in | `goc_v_ashrrev_i32`<br>`goc_v_ashrrev_i32_wave64` | — | API present; semantic audit pending |
-| `v_ashrrev_i64` | yes | yes | in | `goc_v_ashrrev_i64`<br>`goc_v_ashrrev_i64_wave64` | — | API present; semantic audit pending |
+| `v_ashrrev_i32` | yes | yes | in | `goc_v_ashrrev_i32`<br>`goc_v_ashrrev_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
+| `v_ashrrev_i64` | yes | yes | in | `goc_v_ashrrev_i64`<br>`goc_v_ashrrev_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
 | `v_bcnt_u32_b32` | yes | yes | in | `goc_v_bcnt_u32_b32`<br>`goc_v_bcnt_u32_b32_wave64` | — | API present; semantic audit pending |
 | `v_bfe_i32` | yes | yes | in | `goc_v_bfe_i32`<br>`goc_v_bfe_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_bfe_u32` | yes | yes | in | `goc_v_bfe_u32`<br>`goc_v_bfe_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
@@ -1198,11 +1198,11 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_lshl_add_u32` | yes | yes | in | `goc_v_lshl_add_u32`<br>`goc_v_lshl_add_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_lshl_or_b32` | yes | yes | in | `goc_v_lshl_or_b32`<br>`goc_v_lshl_or_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_lshlrev_b16` | yes | yes | in | `goc_v_lshlrev_b16`<br>`goc_v_lshlrev_b16_wave64` | — | API present; semantic audit pending |
-| `v_lshlrev_b32` | yes | yes | in | `goc_v_lshlrev_b32`<br>`goc_v_lshlrev_b32_wave64` | — | API present; semantic audit pending |
-| `v_lshlrev_b64` | yes | yes | in | `goc_v_lshlrev_b64`<br>`goc_v_lshlrev_b64_wave64` | — | API present; semantic audit pending |
+| `v_lshlrev_b32` | yes | yes | in | `goc_v_lshlrev_b32`<br>`goc_v_lshlrev_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
+| `v_lshlrev_b64` | yes | yes | in | `goc_v_lshlrev_b64`<br>`goc_v_lshlrev_b64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
 | `v_lshrrev_b16` | yes | yes | in | `goc_v_lshrrev_b16`<br>`goc_v_lshrrev_b16_wave64` | — | API present; semantic audit pending |
-| `v_lshrrev_b32` | yes | yes | in | `goc_v_lshrrev_b32`<br>`goc_v_lshrrev_b32_wave64` | — | API present; semantic audit pending |
-| `v_lshrrev_b64` | yes | yes | in | `goc_v_lshrrev_b64`<br>`goc_v_lshrrev_b64_wave64` | — | API present; semantic audit pending |
+| `v_lshrrev_b32` | yes | yes | in | `goc_v_lshrrev_b32`<br>`goc_v_lshrrev_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
+| `v_lshrrev_b64` | yes | yes | in | `goc_v_lshrrev_b64`<br>`goc_v_lshrrev_b64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-shift-architecture-contracts) |
 | `v_mad_co_i64_i32` | — | yes | in | `goc_v_mad_co_i64_i32`<br>`goc_v_mad_co_i64_i32_wave64` | `v_mad_i64_i32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#wide-integer-mad-architecture-contracts) |
 | `v_mad_co_u64_u32` | — | yes | in | `goc_v_mad_co_u64_u32`<br>`goc_v_mad_co_u64_u32_wave64` | `v_mad_u64_u32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#wide-integer-mad-architecture-contracts) |
 | `v_mad_i16` | yes | yes | in | `goc_v_mad_i16`<br>`goc_v_mad_i16_wave64` | — | API present; semantic audit pending |
