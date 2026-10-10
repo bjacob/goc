@@ -2006,3 +2006,41 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   global-state audit tests and four architecture audit tests pass. Generated
   reporting-contract coverage remains 366 entries after accepting both parameter
   names. Logs: `../goc-build/coverage-work/register-names-*-tests.log`.
+
+## RDNA3 FP32 ternary selection policies
+
+- Replaced RDNA3 MIN3/MAX3/MINMAX/MAXMIN/MED3 forwarding to RDNA4 number-selection
+  APIs with RDNA3 binary-policy composition, in both wave widths. RDNA3 ISA
+  section 16.12 explicitly defines these nested operations; MED3 uses MIN3 for
+  any NaN and otherwise removes the first maximum. IEEE mode therefore affects
+  signaling NaNs at each binary selection, rather than globally propagating any
+  signaling input to the final result.
+- Scalar and eight-lane AVX2 paths reuse their respective binary RDNA3 selectors.
+  Added input-denormal flushing and guest IEEE/output-denormal flag acceptance
+  throughout FP32 ternary selection. Output denormals survive selection; RDNA3
+  output scaling is disabled when output denormals are preserved or IEEE mode
+  is enabled. RDNA4 scaling remains independent of those guest settings.
+- Literal tests cover signaling payloads in different operand positions, all-NaN
+  inputs, both IEEE settings, wave widths and optional-state preservation. Existing
+  Wave64 all-modifier/DPP/mask/alias tests now use RDNA3 expectations for its APIs.
+  Additional guest-mode tests distinguish input flushing, retained output
+  subnormals and architecture-dependent output scaling.
+- Strict exact semantics and faithful exception reporting remain unsupported for
+  these APIs; loose execution still skips optional reporting. FP16 ternary
+  selection remains a separate policy-audit item.
+- Rocjitsu's shared MIN3/MED3 helpers confirm conditional OMOD through
+  `fp_mode::effective_omod`, but use host `fmin`/`fmax` for selection. Their host
+  selection is not evidence for guest IEEE-mode NaN priority; that correction
+  follows the manual's nested binary pseudocode.
+- Performance: eleven alternating before/after samples against `db9a8c3`, pinned
+  to CPU 2, each at least 50 ms thread CPU time. RDNA4 AVX2 MIN3_NUM_F32 medians
+  changed 20.384 -> 21.506 ns unmodified (+5.5%) and 24.070 -> 25.203 ns with
+  ABS/NEG/OMOD/CLAMP (+4.7%). MED3_NUM_F32 changed 32.819 -> 32.883 ns and
+  34.875 -> 35.102 ns (both within 1%). Input-denormal policy dispatch occurs
+  outside the SIMD loop; this reduced an initial roughly 10% MIN3 regression.
+  These finite-input measurements are not a whole-library performance result.
+  Driver, parent objects and raw samples: `../goc-build/coverage-work/ternary-*`,
+  including `ternary-timing.json`.
+- Final validation: all 947 tests pass with Clang 21 and GCC 15 Release; all nine
+  Minmax3 tests pass under ASan/UBSan. Seven architecture/global-state audit
+  tests pass. Logs: `../goc-build/coverage-work/ternary-*-tests.log`.

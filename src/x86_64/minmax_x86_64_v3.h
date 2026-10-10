@@ -137,4 +137,22 @@ __m256 minmax3_value(__m256 x, __m256 y, __m256 z) {
   return value;
 }
 
+// Apply RDNA3's binary selection policy at each step of the ternary operation.
+template <bool FirstMaximum, bool SecondMaximum, bool Median>
+__m256 minmax3_rdna3(__m256 x, __m256 y, __m256 z, bool ieee) {
+  if constexpr (Median) {
+    auto ab = minmax_rdna3<true>(x, y, ieee);
+    auto maximum = minmax_rdna3<true>(ab, z, ieee);
+    auto value =
+        _mm256_blendv_ps(ab, minmax_rdna3<true>(x, z, ieee), _mm256_cmp_ps(maximum, y, _CMP_EQ_OQ));
+    value = _mm256_blendv_ps(value, minmax_rdna3<true>(y, z, ieee),
+                             _mm256_cmp_ps(maximum, x, _CMP_EQ_OQ));
+    auto has_nan =
+        _mm256_or_ps(_mm256_cmp_ps(x, y, _CMP_UNORD_Q), _mm256_cmp_ps(z, z, _CMP_UNORD_Q));
+    auto minimum = minmax_rdna3<false>(minmax_rdna3<false>(x, y, ieee), z, ieee);
+    return _mm256_blendv_ps(value, minimum, has_nan);
+  }
+  return minmax_rdna3<SecondMaximum>(minmax_rdna3<FirstMaximum>(x, y, ieee), z, ieee);
+}
+
 } // namespace goc

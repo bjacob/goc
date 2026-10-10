@@ -34,7 +34,15 @@ inline uint32_t select(uint32_t a, uint32_t b, bool maximum, bool propagate) {
   return (maximum ? ordered(a) > ordered(b) : ordered(a) < ordered(b)) ? a : b;
 }
 
-inline uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t c, uint32_t mode) {
+inline uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t c, uint32_t mode,
+                          bool rdna3 = false) {
+  auto selection = [rdna3](uint32_t x, uint32_t y, bool maximum, bool propagate) {
+    if (rdna3 && nan(x) && nan(y))
+      return x;
+    return select(x, y, maximum, propagate);
+  };
+  if (rdna3)
+    mode &= ~GOC_ALU_OMOD_HALF;
   uint32_t inputs[] = {a, b, c};
   for (int i = 0; i < 3; ++i) {
     if (mode & (GOC_ALU_ABS_A << i))
@@ -44,11 +52,11 @@ inline uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t c, uint32_t m
   }
   bool first_max = op % 4 == 1 || op % 4 == 3;
   bool second_max = op % 4 == 1 || op % 4 == 2;
-  uint32_t result =
-      select(select(inputs[0], inputs[1], first_max, op >= 4), inputs[2], second_max, op >= 4);
+  uint32_t result = selection(selection(inputs[0], inputs[1], first_max, op >= 4), inputs[2],
+                              second_max, op >= 4);
   if (op == 8) {
     if (nan(inputs[0]) || nan(inputs[1]) || nan(inputs[2])) {
-      result = select(select(inputs[0], inputs[1], false, false), inputs[2], false, false);
+      result = selection(selection(inputs[0], inputs[1], false, false), inputs[2], false, false);
     } else {
       // Sorting independently establishes the median for nonzero values. The
       // ISA's first-maximum removal rule additionally defines signed-zero ties.
@@ -60,7 +68,7 @@ inline uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t c, uint32_t m
         int drop = goc::as_float(inputs[0]) == maximum   ? 0
                    : goc::as_float(inputs[1]) == maximum ? 1
                                                          : 2;
-        result = select(inputs[(drop + 1) % 3], inputs[(drop + 2) % 3], true, false);
+        result = selection(inputs[(drop + 1) % 3], inputs[(drop + 2) % 3], true, false);
       }
     }
   }
@@ -71,7 +79,8 @@ inline uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t c, uint32_t m
     value = 0;
   else if (scale == 3 && std::abs(value) < std::ldexp(1.0f, -125))
     value = std::copysign(0.0f, value);
-  value = std::ldexp(value, exponents[scale]);
+  if (scale)
+    value = std::ldexp(value, exponents[scale]);
   if (mode & GOC_ALU_CLAMP)
     value = !(value > 0) ? 0 : std::min(value, 1.0f);
   return goc::as_bits(value);

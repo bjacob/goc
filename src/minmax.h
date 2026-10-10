@@ -81,7 +81,28 @@ float minmax3_value(float x, float y, float z) {
   return value;
 }
 
+// RDNA3 ternary selection composes the binary IEEE-mode rule. Median removes
+// the first maximum, except that any NaN selects the chained minimum instead.
+template <bool FirstMaximum, bool SecondMaximum, bool Median>
+float minmax3_rdna3(float x, float y, float z, bool ieee) {
+  if constexpr (Median) {
+    if ((as_bits(x) & 0x7fffffffU) > 0x7f800000U || (as_bits(y) & 0x7fffffffU) > 0x7f800000U ||
+        (as_bits(z) & 0x7fffffffU) > 0x7f800000U)
+      return minmax_rdna3<false>(minmax_rdna3<false>(x, y, ieee), z, ieee);
+    float maximum = minmax_rdna3<true>(minmax_rdna3<true>(x, y, ieee), z, ieee);
+    return maximum == x   ? minmax_rdna3<true>(y, z, ieee)
+           : maximum == y ? minmax_rdna3<true>(x, z, ieee)
+                          : minmax_rdna3<true>(x, y, ieee);
+  }
+  return minmax_rdna3<SecondMaximum>(minmax_rdna3<FirstMaximum>(x, y, ieee), z, ieee);
+}
+
 enum class Minmax3 {
+  Min3Legacy,
+  Max3Legacy,
+  MinmaxLegacy,
+  MaxminLegacy,
+  MedianLegacy,
   MedianNum,
   Min3Num,
   Max3Num,
@@ -94,7 +115,7 @@ enum class Minmax3 {
 };
 
 #if defined(GOC_HAVE_X86_64_V3)
-void minmax3_x86_64_v3(Minmax3 op, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+void minmax3_x86_64_v3(Minmax3 op, uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                        const uint32_t *a, const uint32_t *b, const uint32_t *c);
 #endif
 
