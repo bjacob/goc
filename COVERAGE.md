@@ -53,12 +53,16 @@ supersede earlier findings, including the removal of newly inferred exact models
 - [x] Fill the canonical API inventory: all 809 in-scope mnemonics are present;
   all public functions link and all instruction APIs have compiled test references.
   This does not imply every encoding or guest numerical mode is implemented.
-- [ ] Borrow all applicable rocjitsu empirical models and captures; document any
-  unsupported exact behavior and optional global-state reporting.
+- [x] Borrow applicable rocjitsu empirical models and captures; reconcile ports
+  and explicit exclusions in the [model map](#borrowed-numerical-model-map) and
+  [classifier review](#upstream-exception-classifier-availability-review).
+  No new hardware-derived model is required or authorized.
 - [x] Review Wave32/Wave64 contracts, including comparisons, routing and EXEC.
   The generated inventory has no eligible vector or matrix width gaps; VOPD
   remains Wave32-only, and scalar/pseudo-scalar instructions omit EXEC.
-- [ ] Preserve existing SIMD dispatch; compare performance for affected hot paths.
+- [x] Preserve SIMD kernels and loose reporting opt-outs; compare affected hot
+  paths in the family records and [performance follow-up](#completion-performance-follow-up).
+  Recorded dispatch costs are retained explicitly, not claimed as zero overhead.
 - [x] Validate complete Clang/GCC suites and targeted ASan/UBSan tests; also
   validate the complete build without specialized SIMD implementations. See the
   [latest fallback validation](#build-without-specialized-simd-implementations).
@@ -129,25 +133,26 @@ path is exercised, or every numerical/encoding case is tested. The README's
 stale exact-support rows for FP32 ADD/MUL and fused arithmetic are corrected
 against the current implementations and these tests.
 
-## Remaining completion checks
+## Remaining completion check
 
-- Resolve RDNA3 DX9 FMAC's global-state applicability from existing authoritative
-  evidence. Generic LLVM VOP2 metadata differs from explicit VOP3 FMA metadata;
-  RDNA4 three-source captures do not establish RDNA3 accumulator behavior.
-- Reconcile the complete public API and built definitions with the inventory,
-  including aliases, architecture suffixes and wave variants. The inventory
-  currently checks declaration names, not successful linkage or execution.
-- Reconcile available upstream empirical models with retained exact ports and
-  explicit limitations. Generic rocjitsu arithmetic is not automatically an
-  empirical model, and newly reverse-engineered behavior is out of scope.
-- Check final validation and performance evidence against the actual final
-  changes. Family test counts and timing records below describe their commits;
-  they are not a substitute for the final requirement-by-requirement audit.
+RDNA3 `v_fmac_dx9_zero_f32`'s exception-state applicability is unresolved.
+The manual and XML specify its numerical result but do not establish whether
+it updates TRAPSTS. LLVM's generic VOP2 metadata differs from the explicit
+no-exception VOP3 FMA metadata; LLVM's FMAC-to-FMA conversion supplies supporting
+compiler behavior, not a definitive exception contract. Rocjitsu's numerical
+handler and RDNA4 three-source captures do not close that evidence gap.
 
-These checks remain open. Documented unsupported exact/reporting modes are
-intentional limitations under the agreed scope, not requests to develop new
-hardware models. Missing loose behavior or incorrect public contracts must still
-be fixed; a ledger entry alone cannot excuse them.
+The current API has no optional state output. It must not be advertised as a
+verified complete exception-state emulation contract. A decision is pending on
+whether to retain that API with an explicit unavailable-state limitation, or
+require authoritative clarification before closing this review. No hardware
+probing or invented classifier will be used to resolve it.
+
+Public symbol/linkage, wave widths, model provenance, current test runs and
+recorded performance evidence have now been reconciled below. The remaining
+uncertainty prevents claiming the full goal complete. Documented unsupported
+exact/reporting modes elsewhere remain intentional limitations under the agreed
+scope, not requests to develop new hardware models.
 
 Keep this checklist conservative: unchecked review work is not made complete by
 a green test suite that exercises only the current implementation.
@@ -8727,3 +8732,26 @@ work is added to loose SIMD paths. Unsupported exact reporting remains an
 explicit error under the existing API contracts. This review adds source-based
 reasons for the limitations; it is not new hardware characterization or a
 repeat audit of production host FP-environment writes.
+
+## Completion audit disposition
+
+This audit uses the implementation at `b80af57` and the subsequent documentation
+and performance checks through `266fa94`. No production code changed after
+`b80af57`. The working tree was clean before this audit update.
+
+| Requirement | Evidence and disposition |
+|---|---|
+| Inventory both ISAs and maintain explicit scope | XML fingerprints, all canonical rows and exclusions in [ISA_INVENTORY.md](ISA_INVENTORY.md); 809 in-scope mnemonics present |
+| Implement loose arithmetic/register operations | Family contract reviews, linked implementations, all instruction APIs referenced by compiled tests, and complete suites including the build without specialized SIMD; accepted encoding/mode limits remain explicit |
+| Share compatible APIs and split differing architectures | All 587 common-mnemonic reviews recorded; suffixes and native register names checked; 962 existing exception-output signatures have resolved names |
+| Borrow existing empirical models and fixtures | [Model map](#borrowed-numerical-model-map) and family provenance/capture records; [classifier exclusions](#upstream-exception-classifier-availability-review) explain incomplete upstream reporting helpers |
+| Preserve optional-state semantics | Existing rejection-precedence, accumulation, opt-out, alias and loose-path tests; exact reporting limitations documented. **Unresolved:** DX9 FMAC state applicability |
+| Preserve host FP controls | Standing rule, earlier implementation corrections and existing regression tests retained; this completion audit did not repeat the one-time source search |
+| Preserve SIMD performance and readable sharing | Per-family measurements, unchanged-kernel records, rejected slower trials and [FP8 follow-up](#completion-performance-follow-up); dispatch costs are disclosed |
+| Validate and commit locally | 1,184 tests each in normal Clang/GCC and Clang without specialized SIMD; 44 targeted sanitizer tests for the final source change; ten tooling tests; public C99/C++17 linkage checks; tested local commits |
+| State limitations honestly | Header contracts, README and this worklist distinguish exact arithmetic, optional state, guest modes, widths and encoding limitations; no claim of general hardware equivalence |
+
+**Overall: not complete.** The remaining DX9 FMAC evidence/contract decision has
+persisted through the final independent checks. Resolving it requires additional
+authoritative evidence or the user's decision about the explicit limitation;
+repeating existing tests or adding speculative exception behavior cannot close it.
