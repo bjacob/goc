@@ -1267,5 +1267,13 @@
       "v_cvt_sr_fp8_f32",
       "v_cvt_sr_bf8_f32"
     ]
+  },
+  {
+    "heading": "FP32 FREXP mantissa contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/frexp_mant_test.cpp",
+    "mnemonics": [
+      "v_frexp_mant_f32"
+    ]
   }
 ]

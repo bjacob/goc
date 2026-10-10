@@ -146,3 +146,60 @@ TEST(FrexpMant, ValidationAndEmptyExec) {
         EXPECT_EQ(value, 0xdeadbeefU);
     }
 }
+
+// Literal expectations supplement the capture hashes, which canonicalize NaNs.
+TEST(FrexpMant, ExactSpecialValuesPreservePayloads) {
+  const uint32_t inputs[] = {0,          0x80000000, 0x7f800000, 0xff800000,
+                             0x7f812345, 0xff812345, 0x7fc12345, 0xffc12345};
+  const uint32_t results[] = {0,          0x80000000, 0x7f800000, 0xff800000,
+                              0x7fc12345, 0xffc12345, 0x7fc12345, 0xffc12345};
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (bool ieee : {false, true})
+          for (unsigned sign = 0; sign < 4; ++sign) {
+            uint32_t values[64], expected[64];
+            const unsigned lanes = wide ? 64 : 32;
+            const uint64_t exec_mask = 0xa5a571abcdef9192ULL;
+            for (unsigned lane = 0; lane < lanes; ++lane) {
+              values[lane] = inputs[lane % 8];
+              expected[lane] = values[lane];
+              if ((exec_mask >> lane) & 1) {
+                expected[lane] = results[lane % 8];
+                if (sign & 2)
+                  expected[lane] &= 0x7fffffff;
+                if (sign & 1)
+                  expected[lane] ^= 0x80000000;
+              }
+            }
+            const uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                                   (ieee ? GOC_FP_IEEE_MODE : 0);
+            const uint64_t mode = (sign & 1 ? GOC_ALU_NEG_A : 0) | (sign & 2 ? GOC_ALU_ABS_A : 0);
+            ASSERT_EQ(invoke(rdna3, wide, flags, exec_mask, mode, values, values, nullptr),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < lanes; ++lane)
+              EXPECT_EQ(values[lane], expected[lane]) << rdna3 << '/' << wide << '/' << lane;
+          }
+}
+
+TEST(FrexpMant, EverySubnormalPowerOfTwo) {
+  // Every positive power of two has mantissa 0.5, including all 23 subnormal
+  // exponents. Exercise the SIMD normalization across each leading-bit position.
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (bool exact : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (bool flush : {false, true}) {
+            uint32_t values[64];
+            const unsigned lanes = wide ? 64 : 32;
+            for (unsigned lane = 0; lane < lanes; ++lane)
+              values[lane] = (1U << (lane % 23)) | (lane & 1 ? 0x80000000U : 0);
+            const uint64_t flags =
+                cpu | (flush ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0);
+            ASSERT_EQ(invoke(rdna3, wide, flags, UINT64_MAX, 0, values, values, nullptr),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < lanes; ++lane)
+              EXPECT_EQ(values[lane], (flush ? 0 : 0x3f000000U) | (lane & 1 ? 0x80000000U : 0));
+          }
+}

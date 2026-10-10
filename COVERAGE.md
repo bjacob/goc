@@ -7158,3 +7158,48 @@ routing-capable dispatch has measurable overhead on these short Wave64 calls.
 The isolated driver's `size` text grows from 16,311 to 21,809 bytes, including
 newly linked DPP helpers; this is not a whole-library size measurement. Raw
 samples and drivers are in `goc-build/coverage-work/fp8-dot-dpp-performance/`.
+
+## FP32 FREXP mantissa contract review
+
+Reviewed `v_frexp_mant_f32` in both wave sizes against the RDNA3/RDNA4
+VOP3 instruction descriptions and rocjitsu revision `ffc144c564c`, specifically
+`shared/fp_mode.h::frexp_f32`, `effective_omod`, and the generated shared VOP1/VOP3
+handlers. The existing GoC integer normalization is a port of that upstream
+model, not a newly inferred hardware model.
+
+- Signed zeros and infinities survive before output modifiers. Finite nonzero
+  values normalize to a signed significand with magnitude in `[0.5, 1)`;
+  preserved subnormals are normalized without consuming a host subnormal float.
+  Exact NaNs retain sign/payload and gain the quiet bit, independently of IEEE
+  mode, as in upstream `frexp_f32`.
+- ABS precedes NEG. RDNA3 suppresses OMOD when IEEE mode is enabled or output
+  denormals are preserved; RDNA4 applies it independently. The architectural
+  suffix therefore remains necessary. CLAMP and RDNA3 DX10-clamp-off behavior
+  follow the already reviewed unary policy. Guest input/output denormal and
+  IEEE flags are supported; guest directed rounding remains unsupported.
+- Both semantics, DPP8/DPP16, in-place output, and both EXEC widths are supported.
+  Loose AVX2 handles eight lanes at a time; exact evaluation uses the integer
+  scalar model. Loose NaN quieting is not promised to equal the exact result.
+  Non-null exact `trapsts`/`excp_flag_user` remains unsupported, including empty
+  EXEC and non-strict exact requests. Loose paths skip state updates. The older
+  capture/reporting discussion above is historical; it does not reinstate the
+  removed, newly inferred exception model.
+- Added literal exact tests for signed zeros, infinities, and both signs of
+  signaling/quiet NaNs, including ABS/NEG, IEEE mode, sparse EXEC and aliases.
+  These check payload bits that the existing numerical capture hashes omit.
+  Added every subnormal power of two, both signs, input-flush choices, both
+  semantics, architectures, wave sizes, and every available CPU level.
+
+No production code changed, so this review has no runtime performance impact.
+
+The adjacent FP16 mantissa review remains open: upstream scalar handlers widen
+FP16 before calling `frexp_f32` with the FP32 denormal policy, while GoC's exact
+half-width normalization applies its guest input-flush flag directly to FP16
+subnormals. This difference needs reconciliation before recording FP16 as
+reviewed; the FP32 review does not establish the FP16 contract.
+
+Validation: all five `FrexpMant` tests pass with Clang 21 Release, GCC 15
+Release, and Clang ASan/UBSan; all nine inventory/audit tooling tests pass.
+Test logs are `coverage-work/frexp-mant-contract-tests.log` in each build
+directory. The ledger now records 682 of 809 in-scope mnemonic contracts;
+this is a review count, not an overall completion percentage.
