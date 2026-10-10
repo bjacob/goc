@@ -1274,3 +1274,29 @@ No new exactness or hardware capture claim is made. The width queue is 132.
 
 Validation: all 803 tests pass on Clang 21 and GCC 15 Release. All eight
 binary arithmetic and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 exact FP16 FMA and optional exceptions
+
+Added Wave64 FMA, FMAC and both literal forms using the existing exact scalar
+and loose AVX2 kernels. Source/destination half selectors, accumulator selection,
+DPP and overflow controls retain their Wave32 rules. Exact reporting accumulates
+into a local register across both halves, then ORs the caller's EXCP_FLAG_USER
+after every source read and destination write. Loose execution skips reporting.
+
+The existing exception hardware corpus now also runs in lane 63; raw flag
+hashes match, including equivalent accumulator/literal cases. Independent
+integer references check all forms, exact/loose results, modifiers, half
+selectors, DPP row filtering, aliases, masks and preserved halves. Directed
+tests combine invalid and overflow/inexact in different halves and alias the
+exception output with an unread upper source. DPP-filtered exception tests
+verify host rounding and sticky-flag preservation in every rounding mode, plus
+loose opt-out behavior. No new native Wave64 capture is claimed.
+
+Corrected two stale README descriptions of FP16 FMA saving/restoring host FP
+state: the implementation uses an integer intermediate and never changes host
+controls. The vector width-review queue is 128 APIs.
+
+Validation: all 807 tests pass on Clang 21 and GCC 15 Release. All fourteen
+FP16 FMA and instruction-flag tests pass under ASan/UBSan, as do all five
+generic exception-register tests. The generated unsupported-reporting test
+list now explicitly excludes these four supported Wave64 APIs.

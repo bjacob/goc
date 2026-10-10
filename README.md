@@ -1632,6 +1632,10 @@ selection, overflow policy, fused rounding and rocjitsu's FMA/FMAC witnesses.
 FMAC benchmark timings include resetting D to a fixed accumulator before each
 call, equally for all CPU paths, to avoid drift during repeated accumulation.
 
+FP16 FMA, FMAC, FMAMK and FMAAK have Wave32 and `_wave64` APIs. Exact
+exception reporting accumulates across both halves, after all input reads and
+destination writes; loose SIMD execution skips reporting.
+
 FP16 `FMA` supports all 8,192 combinations of source ABS/NEG, OMOD, CLAMP
 and A/B/C/D half selectors, plus `GOC_FP16_OVFL`. Loose semantics have scalar
 and eight-lane x86-64-v3 paths. The SIMD path retains a product/sum residual
@@ -1643,8 +1647,8 @@ an arithmetic overflow or a flushed tiny value. CLAMP applies last.
 
 An empirical exact scalar path borrows rocjitsu's FMA exceptional-value and
 rounding policies, including NaN payload priority and invalid-product ordering.
-It uses nearest-even arithmetic with preserved denormals and restores the host
-floating-point environment. Tests use an independent integer-significand oracle,
+It uses an integer FMA intermediate and explicit nearest-even FP16 rounding,
+preserving the host floating-point environment without changing its controls. Tests use an independent integer-significand oracle,
 all half encodings, random triples, all modifier combinations, mask/alias cases,
 rocjitsu hardware witnesses, double-rounding and tininess boundaries, and all
 four host rounding modes. Benchmarks compare full-EXEC scalar/SIMD loose paths
@@ -1766,7 +1770,8 @@ to signed 65504 instead of infinity. Input infinities remain infinite, and
 BF16/FP32 instructions ignore this state. Packed results narrow after each
 four-product step. The packed WMMA and empirical exact WMMA paths use integer
 arithmetic, preserving the caller's host rounding mode and exception flags.
-Exact FP16 FMA instead saves and restores the host floating-point environment.
+Exact FP16 FMA also preserves host rounding controls and exception flags
+without any save/modify/restore operation.
 Other loose paths require nearest-even rounding and denormals enabled.
 
 ## Validation and provenance

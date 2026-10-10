@@ -70,6 +70,36 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+template <goc::FmaOperands Operands = goc::FmaOperands::Registers>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+               uint32_t *excp_flag_user, uint16_t literal = 0) {
+  if (int error =
+          run<Operands>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr, nullptr, literal))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  bool report = excp_flag_user && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
+  uint32_t exceptions = 0;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *x = a[0] + half * 32, *y = b[0] + half * 32;
+    const uint32_t *z = Operands == goc::FmaOperands::Registers ? c[0] + half * 32 : nullptr;
+    if (int error = run<Operands>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest, &x,
+                                  &y, &z, report ? &exceptions : nullptr, literal))
+      return error;
+  }
+  // The global output may alias an upper-half source: update only after all reads.
+  if (report)
+    *excp_flag_user |= exceptions;
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_fma_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -120,4 +150,52 @@ int goc_v_fmaak_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t 
     return GOC_ERROR_INVALID_FLAGS;
   return run<goc::FmaOperands::AddLiteral>(flags, exec_mask, mode, d, a, b, nullptr, excp_flag_user,
                                            literal);
+}
+
+int goc_v_fma_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_fmac_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if ((mode >> 32) && !goc::valid_dpp(mode))
+    return GOC_ERROR_INVALID_FLAGS;
+  const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
+                         GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP | GOC_ALU_HIGH_A | GOC_ALU_HIGH_B |
+                         GOC_ALU_HIGH_D;
+  if (int error = goc::validate(flags, uint32_t(mode) & ~known, true))
+    return error;
+  // FMAC reads the same destination half that it overwrites.
+  if (mode & GOC_ALU_HIGH_D)
+    mode |= GOC_ALU_HIGH_C;
+  return run_wave64(flags, exec_mask, mode, d, a, b, d, excp_flag_user);
+}
+
+int goc_v_fmamk_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                           const uint32_t *const *a, uint16_t literal, const uint32_t *const *b,
+                           uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run_wave64<goc::FmaOperands::MultiplyLiteral>(flags, exec_mask, mode, d, a, b, nullptr,
+                                                       excp_flag_user, literal);
+}
+
+int goc_v_fmaak_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                           const uint32_t *const *a, const uint32_t *const *b, uint16_t literal,
+                           uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (mode >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run_wave64<goc::FmaOperands::AddLiteral>(flags, exec_mask, mode, d, a, b, nullptr,
+                                                  excp_flag_user, literal);
 }

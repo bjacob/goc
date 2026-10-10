@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "capture_hash.h"
+#include "dpp_reference.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
@@ -47,6 +48,21 @@ void run(uint64_t flags, uint32_t mode, uint32_t (&words)[4][32]) {
           goc_test::half_fma_reference::evaluate(before[0][lane], before[1][lane], before[2][lane],
                                                  mode, flags & GOC_FP16_OVFL),
           mode, flags & GOC_SEMANTICS_MASK);
+  }
+}
+
+int wave64_call(unsigned op, uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+                uint16_t literal, uint32_t *excp_flag_user) {
+  switch (op) {
+  case 0:
+    return goc_v_fma_f16_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+  case 1:
+    return goc_v_fmac_f16_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  case 2:
+    return goc_v_fmamk_f16_wave64(flags, exec_mask, mode, d, a, literal, b, excp_flag_user);
+  default:
+    return goc_v_fmaak_f16_wave64(flags, exec_mask, mode, d, a, b, literal, excp_flag_user);
   }
 }
 
@@ -336,4 +352,197 @@ TEST(HalfFma, AccumulatorAndLiteralExceptionHardwareCorpora) {
         }
         EXPECT_EQ(hash, goc_test::other_half_fma_exception_hashes[op][variant]);
       }
+}
+
+TEST(HalfFma, Wave64UpperLaneExceptionHardwareCorpus) {
+  const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3c00, 0xbc00,
+                             0x4000, 0x7bff, 0x77ff, 0x7c00, 0xfc00, 0x7c01, 0xfe03, 0x800};
+  for (unsigned variant = 0; variant < 16; ++variant)
+    for (bool saturate : {false, true}) {
+      uint32_t mode =
+          ((variant & 3) << 6) | (variant & 4 ? GOC_ALU_CLAMP : 0) |
+          (variant & 8 ? GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_ABS_B | GOC_ALU_NEG_C : 0);
+      uint64_t hash = goc_test::capture_hash_seed;
+      for (unsigned i = 0; i < 8192; ++i) {
+        uint32_t words[4][64] = {};
+        uint64_t state = uint64_t(i) * 0x9e3779b97f4a7c15ULL;
+        for (unsigned operand = 0; operand < 3; ++operand) {
+          state ^= state >> 12;
+          state ^= state << 25;
+          state ^= state >> 27;
+          words[operand][63] = i < 4096 ? values[(i >> (8 - operand * 4)) & 15]
+                                        : uint16_t(state * 0x2545f4914f6cdd1dULL);
+          // Inactive lanes would raise invalid if accidentally included.
+          words[operand][1] = 0x7c01;
+        }
+        const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+        uint32_t *d[] = {words[3]};
+        uint32_t exceptions = 0x80000000;
+        uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | (i & 1 ? GOC_SEMANTICS_STRICT : 0) |
+                         (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
+        ASSERT_EQ(goc_v_fma_f16_wave64(flags, 1ULL << 63, mode, d, a, b, c, &exceptions),
+                  GOC_SUCCESS);
+        ASSERT_TRUE(exceptions & 0x80000000);
+        hash = goc_test::capture_hash_word(hash, exceptions & 127);
+        // Literal and accumulator forms must generate the same flags, selecting
+        // the same half, even when the destination aliases an input.
+        if (!mode) {
+          uint32_t expected = words[3][63];
+          uint32_t mk_flags = 0x80000000, ak_flags = mk_flags, mac_flags = mk_flags;
+          ASSERT_EQ(goc_v_fmamk_f16_wave64(flags, 1ULL << 63, 0, d, a, uint16_t(words[1][63]), c,
+                                           &mk_flags),
+                    GOC_SUCCESS);
+          EXPECT_EQ(words[3][63], expected);
+          ASSERT_EQ(goc_v_fmaak_f16_wave64(flags, 1ULL << 63, 0, d, a, b, uint16_t(words[2][63]),
+                                           &ak_flags),
+                    GOC_SUCCESS);
+          EXPECT_EQ(words[3][63], expected);
+          words[3][63] = words[2][63];
+          ASSERT_EQ(goc_v_fmac_f16_wave64(flags, 1ULL << 63, 0, d, a, b, &mac_flags), GOC_SUCCESS);
+          EXPECT_EQ(words[3][63], expected);
+          EXPECT_EQ(mk_flags, exceptions);
+          EXPECT_EQ(ak_flags, exceptions);
+          EXPECT_EQ(mac_flags, exceptions);
+        }
+      }
+      EXPECT_EQ(hash, goc_test::half_fma_exception_hashes[variant]) << variant << "/" << saturate;
+    }
+}
+
+TEST(HalfFma, Wave64FormsDppHalfSelectorsAndAliases) {
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (auto sem : semantics)
+        for (unsigned variant = 0; variant < 128; ++variant)
+          for (unsigned route_index = 0; route_index < (op < 2 ? 8U : 1U); ++route_index)
+            for (unsigned alias = 0; alias < 4; ++alias) {
+              uint32_t mode = (variant * 65) & 8191;
+              if (op == 1)
+                mode &= ~(GOC_ALU_NEG_C | GOC_ALU_ABS_C | GOC_ALU_HIGH_C);
+              if (op >= 2)
+                mode &= GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D;
+              uint64_t descriptor = route_index ? goc_test::dpp_modes[route_index - 1] : 0;
+              if (descriptor & GOC_DPP16)
+                descriptor = (descriptor & ~GOC_DPP_ROW_MASK) |
+                             (uint64_t(variant & 15) << GOC_DPP_ROW_SHIFT);
+              uint32_t words[4][66], before[4][66];
+              for (unsigned reg = 0; reg < 4; ++reg)
+                for (unsigned lane = 0; lane < 66; ++lane)
+                  words[reg][lane] = values[(lane + 5 * reg) % 24] |
+                                     (uint32_t(values[(lane * 7 + 3 * reg) % 24]) << 16);
+              std::memcpy(before, words, sizeof words);
+              uint32_t *d = words[alias] + 1;
+              const uint32_t *a = words[0] + 1, *b = words[1] + 1, *c = words[2] + 1;
+              uint64_t exec_mask = 0x87654321fedcba98ULL;
+              bool saturate = variant & 1;
+              ASSERT_EQ(wave64_call(op, cpu | sem | (saturate ? GOC_FP16_OVFL : 0), exec_mask,
+                                    descriptor | mode, &d, &a, &b, &c, 0x3c01, nullptr),
+                        GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                int source = int(lane);
+                bool enabled = descriptor
+                                   ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                                   : ((exec_mask >> lane) & 1);
+                if (!enabled) {
+                  EXPECT_EQ(d[lane], before[alias][lane + 1]);
+                  continue;
+                }
+                uint32_t x = source < 0 ? 0 : before[0][source + 1];
+                uint32_t y = before[1][lane + 1], z = before[op == 1 ? alias : 2][lane + 1];
+                x = uint16_t(x >> (mode & GOC_ALU_HIGH_A ? 16 : 0));
+                y = uint16_t(y >> (mode & GOC_ALU_HIGH_B ? 16 : 0));
+                z = uint16_t(z >> (mode & (op == 1 ? GOC_ALU_HIGH_D : GOC_ALU_HIGH_C) ? 16 : 0));
+                if (op == 2) {
+                  z = y;
+                  y = 0x3c01;
+                }
+                if (op == 3)
+                  z = 0x3c01;
+                uint16_t expected = goc_test::half_fma_reference::evaluate(
+                    x, y, z, mode & ~(GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C), saturate);
+                check(d[lane], before[alias][lane + 1], expected, mode, sem != GOC_SEMANTICS_LOOSE);
+              }
+              for (unsigned reg = 0; reg < 4; ++reg) {
+                EXPECT_EQ(words[reg][0], before[reg][0]);
+                EXPECT_EQ(words[reg][65], before[reg][65]);
+              }
+            }
+}
+
+TEST(HalfFma, Wave64ReportingAccumulationAndAliasedUpperSource) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (bool alias : {false, true}) {
+      uint32_t a[64] = {}, b[64] = {}, c[64] = {}, d[64] = {};
+      // Lane 0 raises invalid; lane 62 overflows. Reporting into a[63] early
+      // would change the upper input before it is read.
+      a[0] = 0x7c01;
+      b[0] = 0x3c00;
+      a[62] = 0x7bff;
+      b[62] = 0x4000;
+      a[63] = b[63] = 0x3c00;
+      uint32_t exceptions = 0x80000000;
+      uint32_t *out = alias ? &a[63] : &exceptions;
+      uint32_t original = *out;
+      uint32_t *pd = d;
+      const uint32_t *pa = a, *pb = b, *pc = c;
+      ASSERT_EQ(goc_v_fma_f16_wave64(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                     1ULL | (3ULL << 62), 0, &pd, &pa, &pb, &pc, out),
+                GOC_SUCCESS);
+      EXPECT_EQ(d[62], 0x7c00U);
+      EXPECT_EQ(d[63], 0x3c00U);
+      EXPECT_EQ(*out,
+                original | GOC_EXCEPTION_INVALID | GOC_EXCEPTION_OVERFLOW | GOC_EXCEPTION_INEXACT);
+    }
+  for (unsigned op = 0; op < 4; ++op) {
+    uint32_t exceptions = 0x80000000;
+    EXPECT_EQ(wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr,
+                          nullptr, 0, &exceptions),
+              GOC_SUCCESS);
+    EXPECT_EQ(wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 1ULL << 36, nullptr,
+                          nullptr, nullptr, nullptr, 0, &exceptions),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(exceptions, 0x80000000U);
+  }
+}
+
+TEST(HalfFma, Wave64ReportingDppAndHostEnvironment) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned op = 0; op < 4; ++op)
+        for (unsigned route_index = 0; route_index < (op < 2 ? 8U : 1U); ++route_index)
+          for (unsigned rows = 0; rows < 16; ++rows) {
+            uint64_t descriptor = route_index ? goc_test::dpp_modes[route_index - 1] : 0;
+            if (descriptor & GOC_DPP16)
+              descriptor = (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+            uint32_t a[64], b[64], c[64] = {}, d[64] = {};
+            std::fill_n(a, 64, 0x7c01);
+            std::fill_n(b, 64, 0x3c00);
+            const uint32_t *pa = a, *pb = b, *pc = c;
+            uint32_t *pd = d;
+            uint64_t exec_mask = 0x87654321fedcba98ULL;
+            uint32_t expected = 0x80000000, exceptions = expected;
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              int source = int(lane);
+              bool enabled = descriptor ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                                        : ((exec_mask >> lane) & 1);
+              if (enabled && source >= 0)
+                expected |= GOC_EXCEPTION_INVALID;
+            }
+            ASSERT_EQ(std::fesetround(rounding), 0);
+            std::feclearexcept(FE_ALL_EXCEPT);
+            std::feraiseexcept(FE_DIVBYZERO);
+            ASSERT_EQ(wave64_call(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                  exec_mask, descriptor, &pd, &pa, &pb, &pc, 0x3c00, &exceptions),
+                      GOC_SUCCESS);
+            EXPECT_EQ(exceptions, expected);
+            EXPECT_EQ(std::fegetround(), rounding);
+            EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
+            exceptions = 0x80000000;
+            ASSERT_EQ(wave64_call(op, cpu, exec_mask, descriptor, &pd, &pa, &pb, &pc, 0x3c00,
+                                  &exceptions),
+                      GOC_SUCCESS);
+            EXPECT_EQ(exceptions, 0x80000000U);
+          }
 }

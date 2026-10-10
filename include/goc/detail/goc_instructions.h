@@ -2965,6 +2965,25 @@ int goc_v_fmaak_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fla
                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                     uint16_t literal, uint32_t *excp_flag_user);
 
+// Wave64 FP16 FMA forms retain the Wave32 exact/loose semantics, modifiers
+// and half selectors. Exact optional exceptions accumulate across both halves,
+// after all source reads and destination writes. Loose reporting is skipped.
+int goc_v_fma_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_fmac_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user);
+
+int goc_v_fmamk_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, uint16_t literal,
+                           const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_fmaak_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint16_t literal, uint32_t *excp_flag_user);
+
 // Literal FP32 FMA: FMAMK computes A * literal + B; FMAAK computes A * B +
 // literal. The literal is a raw FP32 encoding. No instruction flags are valid.
 // Loose semantics only; requires host nearest-even rounding and denormals enabled.
