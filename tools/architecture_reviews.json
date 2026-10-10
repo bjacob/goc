@@ -1576,5 +1576,16 @@
       "v_dual_fmaak_f32",
       "v_dual_fmamk_f32"
     ]
+  },
+  {
+    "heading": "Cube architecture contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/cube_test.cpp",
+    "mnemonics": [
+      "v_cubeid_f32",
+      "v_cubesc_f32",
+      "v_cubetc_f32",
+      "v_cubema_f32"
+    ]
   }
 ]

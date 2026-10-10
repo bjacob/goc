@@ -633,3 +633,33 @@ TEST(Cube, Dx10ClampFlagAvailability) {
         fn(GOC_FP_DX10_CLAMP_OFF, 1ULL << 63, GOC_ALU_CLAMP, nullptr, nullptr, nullptr, nullptr),
         GOC_ERROR_INVALID_FLAGS);
 }
+
+TEST(Cube, EmptyExecValidatesBothArchitectureContracts) {
+  const Fn rdna3[] = {goc_v_cubeid_f32, goc_v_cubesc_f32, goc_v_cubetc_f32, goc_v_cubema_f32};
+  const decltype(&goc_v_cubeid_f32_wave64) rdna3_wide[] = {
+      goc_v_cubeid_f32_wave64, goc_v_cubesc_f32_wave64, goc_v_cubetc_f32_wave64,
+      goc_v_cubema_f32_wave64};
+  for (bool older : {false, true})
+    for (bool wide : {false, true})
+      for (unsigned op = 0; op < 4; ++op)
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, exact}) {
+            auto call = [&](uint64_t flags, uint64_t mode) {
+              return wide ? (older ? rdna3_wide[op] : wave64_functions[op])(
+                                flags, 0, mode, nullptr, nullptr, nullptr, nullptr)
+                          : (older ? rdna3[op] : functions[op])(flags, 0, mode, nullptr, nullptr,
+                                                                nullptr, nullptr);
+            };
+            uint64_t flags = cpu | semantics;
+            EXPECT_EQ(call(flags, 0x1ff), GOC_SUCCESS);
+            EXPECT_EQ(call(flags | GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                               GOC_FP_FLUSH_OUTPUT_DENORMALS,
+                           0x1ff),
+                      GOC_SUCCESS);
+            EXPECT_EQ(call(flags | GOC_FP_DX10_CLAMP_OFF, GOC_ALU_CLAMP),
+                      older ? GOC_SUCCESS : GOC_ERROR_INVALID_FLAGS);
+            for (unsigned bit = 9; bit < 32; ++bit)
+              EXPECT_EQ(call(flags, 1ULL << bit), GOC_ERROR_INVALID_FLAGS);
+            EXPECT_EQ(call(flags, 1ULL << 63), GOC_ERROR_INVALID_FLAGS);
+          }
+}

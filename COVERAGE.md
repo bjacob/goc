@@ -8373,3 +8373,49 @@ this count.
 Validation: all **nine** Dual tests pass with Clang 21 Release, GCC 15 Release
 and Clang ASan/UBSan. All nine tooling tests pass. Logs use
 `coverage-work/dual-fma-contract-{build,tests}.log` in each build directory.
+
+
+## Cube architecture contract review
+
+Reviewed all four cube mnemonics against both inventories, the manuals' cube
+pseudocode and modifier rules, rocjitsu revision `ffc144c564c`'s shared `cube.h`
+and generated cube handlers, and LLVM `VOP3Instructions.td`. LLVM explicitly
+places all four definitions in a `mayRaiseFPException = 0` block (lines 264–269
+in the checked-out source). Together with the manuals' result-only instruction
+contracts, this supports retaining no optional exception-register parameter.
+It resolves the earlier applicability question without inventing an exception
+model or performing a new hardware probe.
+
+The existing implementation borrows the bit-level cube selection model. ID
+returns a face number; SC/TC select and sign-adjust a coordinate; MA returns
+twice the signed major coordinate. Equal magnitudes prioritize Z, then Y, then
+X. Comparisons treat subnormals as zero, but selected SC/TC coordinate bits can
+retain a subnormal, as the existing literal and hardware tests require. Guest
+flush flags do not override this instruction-specific policy. NaNs and axis
+selection use the shared model's explicit ordering rather than host comparisons.
+
+The unsuffixed RDNA3 and `_rdna4` variants differ in selected-NaN quieting and
+OMOD gating: RDNA3 IEEE gates OMOD and NaN quieting, while output-denormal
+preservation does not disable cube OMOD. RDNA4 quiets selected NaNs and applies
+OMOD independently. RDNA3 additionally accepts DX10_CLAMP_OFF to preserve a
+selected NaN under CLAMP; RDNA4 rejects that unavailable mode. ABS/NEG, OMOD,
+CLAMP, DPP8/DPP16 and both wave widths are supported. EXEC masks stores and
+input staging preserves aliases. The existing scalar, eight-lane AVX2 and
+sixteen-lane AVX-512 paths share the same bit-level policy in both semantics.
+
+The borrowed implementation currently exposes nearest-even overflow behavior;
+guessed directed-rounding behavior is not added. GoC has no guest directed-round
+flags, so this remains an explicit limitation, not silently accepted control
+state. Existing tests cover raw hardware Cartesian corpora, all modifiers,
+axis ties, NaNs, signed zeros, aliases, DPP, guest modes and both architectures.
+The new regression checks all sixteen architecture/width/operation APIs with
+null operands and empty EXEC: valid modifiers and guest policies succeed,
+invalid low/high bits reject, and DX10_CLAMP_OFF is accepted only by RDNA3.
+
+No production code changed. The ledger records **805** reviewed mnemonic
+contracts and **four** pending. This count does not erase the explicit
+nearest-even-only limitation or constitute a complete-goal audit.
+
+Validation: all **21** Cube tests pass with Clang 21 Release, GCC 15 Release
+and Clang ASan/UBSan; all nine tooling tests pass. Logs use
+`coverage-work/cube-contract-{build,tests}.log` in each build directory.

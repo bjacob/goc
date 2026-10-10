@@ -46,12 +46,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-801 in-scope mnemonics have explicit contract-review records in
+805 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 8 in-scope mnemonics need a recorded review.
+The remaining 4 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -399,10 +399,10 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cos_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 8187, 8206 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-sincos-architecture-policies) |
 | `v_cos_f32` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 8245, 8260 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-sincos-architecture-policies) |
 | `v_ctz_i32_b32` | SIMD macro, output helper | no | 8293, 8312 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-bit-count-architecture-contracts) |
-| `v_cubeid_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 8331 | review required |
-| `v_cubema_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 8385 | review required |
-| `v_cubesc_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 8439 | review required |
-| `v_cubetc_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 8493 | review required |
+| `v_cubeid_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 8331 | [loose and exact contract reviewed; see limitations](COVERAGE.md#cube-architecture-contract-review) |
+| `v_cubema_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 8385 | [loose and exact contract reviewed; see limitations](COVERAGE.md#cube-architecture-contract-review) |
+| `v_cubesc_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 8439 | [loose and exact contract reviewed; see limitations](COVERAGE.md#cube-architecture-contract-review) |
+| `v_cubetc_f32` | IEEE mode, SIMD macro, architecture query, output helper | yes | 8493 | [loose and exact contract reviewed; see limitations](COVERAGE.md#cube-architecture-contract-review) |
 | `v_cvt_f16_f32` | SIMD macro, output helper | yes | 8547, 8570 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
 | `v_cvt_f16_i16` | SIMD macro, output helper | yes | 8593, 8621 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
 | `v_cvt_f16_u16` | SIMD macro, output helper | yes | 8649, 8676 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
