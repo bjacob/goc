@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 
 #include "binary_reference.h"
+#include "dpp_reference.h"
 #include "exec_masks.h"
 #include "goc/goc.h"
 #include "internal.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <stdint.h>
 
@@ -16,6 +18,12 @@ using Fn = decltype(&goc_v_add_f32);
 const Fn functions[] = {goc_v_add_f32,     goc_v_sub_f32,     goc_v_subrev_f32,
                         goc_v_mul_f32,     goc_v_min_num_f32, goc_v_max_num_f32,
                         goc_v_minimum_f32, goc_v_maximum_f32, goc_v_mul_dx9_zero_f32};
+
+const decltype(&goc_v_add_f32_wave64) wave64[] = {
+    goc_v_add_f32_wave64,     goc_v_sub_f32_wave64,     goc_v_subrev_f32_wave64,
+    goc_v_mul_f32_wave64,     goc_v_min_num_f32_wave64, goc_v_max_num_f32_wave64,
+    goc_v_minimum_f32_wave64, goc_v_maximum_f32_wave64, goc_v_mul_dx9_zero_f32_wave64,
+    goc_v_min_f32_wave64,     goc_v_max_f32_wave64};
 
 } // namespace
 
@@ -144,5 +152,71 @@ TEST(Binary, Dx9NonzeroUnderflowRetainsSign) {
     ASSERT_EQ(goc_v_mul_dx9_zero_f32(cpu, UINT32_MAX, 0, &pd, &pa, &pb, nullptr), GOC_SUCCESS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0x80000000);
+  }
+}
+
+TEST(Binary, Wave64ModifiersDppMasksAndAliases) {
+  const uint32_t values[] = {0,          0x80000000, 1,          0x80000001, 0x007fffff, 0x00800000,
+                             0x3f000000, 0xbf000000, 0x3f800000, 0xbf800000, 0x3f800001, 0x3f7fffff,
+                             0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000, 0x7fc12345, 0xffc12345,
+                             0x7f812345, 0xff812345, 0xc0400000};
+  for (unsigned op = 0; op < 11; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < 128; ++variant)
+        for (unsigned route_index = 0; route_index < 8; ++route_index)
+          for (unsigned alias = 0; alias < 3; ++alias) {
+            uint32_t mode = (variant & 3) | ((variant & 12) << 1) | ((variant & 112) << 2);
+            uint64_t descriptor = route_index ? goc_test::dpp_modes[route_index - 1] : 0;
+            if (descriptor & GOC_DPP16)
+              descriptor =
+                  (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t(variant & 15) << GOC_DPP_ROW_SHIFT);
+            uint32_t words[3][66], before[3][66];
+            for (unsigned reg = 0; reg < 3; ++reg)
+              for (unsigned lane = 0; lane < 66; ++lane)
+                words[reg][lane] = values[(lane * (reg + 1) + 7 * reg) % 21];
+            std::memcpy(before, words, sizeof words);
+            uint32_t *d = words[alias] + 1;
+            const uint32_t *a = words[0] + 1, *b = words[1] + 1;
+            uint64_t exec_mask = 0x87654321fedcba98ULL;
+            uint32_t excp_flag_user = 0x12345678;
+            ASSERT_EQ(wave64[op](cpu, exec_mask, mode | descriptor, &d, &a, &b, &excp_flag_user),
+                      GOC_SUCCESS);
+            EXPECT_EQ(excp_flag_user, 0x12345678U);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              int source = int(lane);
+              bool enabled = descriptor ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                                        : ((exec_mask >> lane) & 1);
+              if (!enabled) {
+                EXPECT_EQ(d[lane], before[alias][lane + 1]);
+                continue;
+              }
+              float expected = goc_test::binary_reference(
+                  op >= 9 ? op - 5 : op, goc::as_float(source < 0 ? 0 : before[0][source + 1]),
+                  goc::as_float(before[1][lane + 1]), mode);
+              if (std::isnan(expected))
+                EXPECT_TRUE(std::isnan(goc::as_float(d[lane])));
+              else
+                EXPECT_EQ(d[lane], goc::as_bits(expected)) << op << '/' << mode << '/' << lane;
+            }
+            for (unsigned reg = 0; reg < 3; ++reg) {
+              EXPECT_EQ(words[reg][0], before[reg][0]);
+              EXPECT_EQ(words[reg][65], before[reg][65]);
+            }
+          }
+}
+
+TEST(Binary, Wave64ValidationAndOptionalState) {
+  for (auto fn : wave64) {
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, GOC_ALU_NEG_C, nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, nullptr,
+                 nullptr, nullptr, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    uint32_t excp_flag_user = 0x12345678;
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, nullptr,
+                 &excp_flag_user),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(excp_flag_user, 0x12345678U);
   }
 }

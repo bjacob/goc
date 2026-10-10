@@ -1950,6 +1950,10 @@ EXEC masks and aliases, plus a 65,536-result GFX1201 hardware corpus. The
 AVX2 (3.9–5.4× scalar) and 11.8–12.0 ns/wave on AVX-512 (7.6–10.2×),
 including FI/NEG/output scaling.
 
+Binary FP32 arithmetic and min/max (including the MIN/MAX aliases) have
+Wave32 and `_wave64` APIs with the same scalar/AVX2 paths, loose semantics,
+and optional-state contract.
+
 DPP8/DPP16 also cover all nine binary FP32 arithmetic operations and all nine
 three-input FP32 min/max/median operations. They retain their AVX2 arithmetic
 paths, using AVX-512 source permutation on x86-64-v4 hosts. A shared adapter

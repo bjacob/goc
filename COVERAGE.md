@@ -1255,3 +1255,22 @@ added. The vector width-review queue is now 143 APIs.
 
 Validation: all 801 tests pass on Clang 21 and GCC 15 Release. All nineteen
 arithmetic and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 FP32 binary arithmetic and min/max
+
+Added all eleven FP32 binary APIs at Wave64: ADD, SUB, SUBREV, MUL, DX9-zero
+MUL, four min/max variants and the legacy MIN/MAX aliases. The existing
+scalar/AVX2 operation kernels, loose semantics and optional-state rejection
+are unchanged. DPP routes A and applies each half's row enables; ordinary
+source/output modifiers retain their Wave32 meaning.
+
+Tests cover every supported low modifier combination, all DPP forms plus
+unpermuted execution, all row enables, upper EXEC bits, source/destination
+aliases and guards. Independent references include signed zeros, subnormals,
+infinities, quiet/signaling NaNs and DX9 zero-product cases. NaN payload
+comparison retains the loose policy. Loose exception state stays untouched;
+invalid flags and unsupported exact requests reject before operand access.
+No new exactness or hardware capture claim is made. The width queue is 132.
+
+Validation: all 803 tests pass on Clang 21 and GCC 15 Release. All eight
+binary arithmetic and instruction-flag tests pass under ASan/UBSan.
