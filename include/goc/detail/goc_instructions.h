@@ -5999,46 +5999,77 @@ int goc_v_cmpx_t_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruc
                             uint32_t *trapsts);
 
 // One decoded VOPD operation, Wave32 only. Operand layouts, numerical semantics,
-// CPU paths and optional exception reporting match the ordinary instruction.
+// CPU paths follow the corresponding ordinary instruction. Unimplemented exact
+// optional reporting returns UNSUPPORTED_GLOBAL_STATE; loose calls skip it.
 // instruction_flags must be zero: VOPD encodes no arithmetic modifiers or DPP.
 // FMAC/DOT2ACC read old D as the accumulator. Literal FMA parameters contain raw
 // FP32 bits. CNDMASK's condition is the wave's VCC mask. Source operands must
 // already be decoded, including scalar/inline-constant replication for DOT2ACC.
 // Legal VOPD register-bank, destination-parity and pair-dependency constraints
 // are preconditions. Each call executes one operation, not the whole X/Y pair.
-// No Wave64 forms exist. RDNA3 DOT2ACC is unsuffixed; RDNA4's distinct exact
-// accumulation model uses _rdna4. Invalid calls preserve the outputs.
+// No Wave64 forms exist. Shared floating arithmetic uses unsuffixed RDNA3 APIs
+// with TRAPSTS and _rdna4 APIs with EXCP_FLAG_USER, including architecture-specific
+// NaN/IEEE behavior. DOT2ACC additionally has different accumulation models.
+// RDNA4 fused forms implement exact RNE results and optional exception reporting.
+// RDNA3 fused forms implement exact results but reject non-null exact reporting.
+// Invalid calls preserve the outputs.
 int goc_v_dual_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                        uint32_t *excp_flag_user);
+                        uint32_t *trapsts);
+int goc_v_dual_fmac_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_dual_fmaak_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                         uint32_t literal, uint32_t *excp_flag_user);
+                         uint32_t literal, uint32_t *trapsts);
+int goc_v_dual_fmaak_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, uint32_t literal,
+                               uint32_t *excp_flag_user);
 
 int goc_v_dual_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
-                         const uint32_t *const *b, uint32_t *excp_flag_user);
+                         const uint32_t *const *b, uint32_t *trapsts);
+int goc_v_dual_fmamk_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
+                               const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_dual_mul_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       uint32_t *excp_flag_user);
+                       uint32_t *trapsts);
+int goc_v_dual_mul_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user);
 
 int goc_v_dual_add_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       uint32_t *excp_flag_user);
+                       uint32_t *trapsts);
+int goc_v_dual_add_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user);
 
 int goc_v_dual_sub_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       uint32_t *excp_flag_user);
+                       uint32_t *trapsts);
+int goc_v_dual_sub_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user);
 
 int goc_v_dual_subrev_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                          uint32_t *excp_flag_user);
+                          uint32_t *trapsts);
+int goc_v_dual_subrev_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_dual_mul_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
-                                const uint32_t *const *b, uint32_t *excp_flag_user);
+                                const uint32_t *const *b, uint32_t *trapsts);
+int goc_v_dual_mul_dx9_zero_f32_rdna4(uint64_t flags, uint32_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      uint32_t *excp_flag_user);
 
 int goc_v_dual_mov_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a);

@@ -64,7 +64,7 @@ be treated as verified shared semantics. Width completeness does not close this 
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
 | Interpolation | All six APIs at both wave widths; shared quad routing checked against both manuals; RDNA4 captures and independent arithmetic tests | Compare remaining RDNA3 numerical contracts and empirical behavior |
-| Dual-issue VOPD | All 19 canonical operations; shared ordinary kernels, architecture-split DOT2ACC; Wave32 only | Direct VOPD hardware captures; inherited exact/global-state gaps |
+| Dual-issue VOPD | All 19 canonical operations; shared ordinary kernels, architecture-split floating arithmetic/DOT2ACC; Wave32 only | Direct VOPD hardware captures; inherited exact/global-state gaps |
 
 Keep this checklist conservative: unchecked review work is not made complete by
 a green test suite that exercises only the current implementation.
@@ -2621,3 +2621,37 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   DX9/ordinary-FMA control cases, including ordinary null/non-null state
   pointers, changed by less than 1%. This does not characterize exact-path or
   whole-library performance. Artifacts use `../goc-build/coverage-work/dx9-exact-*`.
+
+## VOPD architecture split and exact fused reporting
+
+- Split eight floating VOPD families: FMAC, FMAAK, FMAMK, MUL, ADD, SUB,
+  SUBREV and MUL_DX9_ZERO. Unsuffixed APIs now use RDNA3 ordinary implementations
+  and TRAPSTS; `_rdna4` APIs use RDNA4 implementations and EXCP_FLAG_USER.
+  These are explicit wrappers over existing arithmetic, with no new execution
+  abstraction. The three fused families demonstrate architecture-specific NaN
+  quieting; the other families inherit their ordinary guest-policy contracts.
+- Captured 196,608 RX 9070 gfx1201 fused result/exception pairs across all three
+  fused forms, both X/Y slots and four denormal policies. Each matches its ordinary
+  instruction's capture, including nonzero exception flags. Enabled exact RDNA4
+  reporting by delegation, superseding the earlier temporary VOPD reporting
+  guards. RDNA3 non-null exact reporting remains explicitly unsupported.
+- Added native digest tests plus architecture/IEEE, guest-policy, CPU-level,
+  alias, sparse-EXEC and output-preservation checks. Loose non-null reporting
+  leaves state untouched. The capture generator accepts `--vopd` and `--vopd-y`;
+  artifacts are in `../goc-build/coverage-work/vopd-fma-captures/`.
+- The global-state audit now covers 646 signatures: 334 resolved matches,
+  zero mismatches and 312 still requiring architecture review. The generated
+  helper audit does not inspect VOPD execution bodies; this slice inspected
+  rocjitsu's generated RDNA3/RDNA4 `vopd_exec.cpp` directly. API presence
+  remains 806 of 809 in-scope mnemonics and is not a completeness claim.
+- Validation: all 976 tests pass with Clang 21 and GCC 15 Release; all 19
+  Dual/ExceptionRegisters/FmaExact tests pass under ASan/UBSan. The seven audit
+  tool tests also pass. RDNA3 behavior is model-backed, not newly hardware-captured.
+- Eleven alternating CPU-2-pinned samples, minimum 50 ms thread CPU time,
+  compare old unsuffixed RDNA4 wrappers against the new `_rdna4` wrappers.
+  Twenty loose cases cover FMAC/FMAMK/FMAAK/ADD/MUL, AVX2/AVX512 and null/non-null
+  reporting. Median changes range from -14.9% to +3.44%; the largest slowdown
+  is 0.532 ns for MUL. Fused wrappers generally improve after removing their
+  reporting guards; their underlying SIMD kernels are unchanged. This measures
+  these wrappers only, not whole-library performance. Raw samples are in
+  `../goc-build/coverage-work/vopd-timing-samples.json`.

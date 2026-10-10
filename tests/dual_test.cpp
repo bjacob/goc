@@ -1,47 +1,58 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
+#include "dual_fma_hardware.h"
 #include "gfx11_dot2_fixtures.h"
 #include "goc/goc.h"
 
 #include <algorithm>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <stdint.h>
 
 namespace {
 
 int execute(unsigned op, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-            const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
-  const uint32_t literal = 0x40800000; // 4.0f
+            const uint32_t *const *a, const uint32_t *const *b, uint32_t *state, bool rdna3 = false,
+            uint32_t literal = 0x40800000) {
   const uint32_t condition = 0xaaaaaaaa;
   switch (op) {
   case 0:
-    return goc_v_dual_fmac_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return (rdna3 ? goc_v_dual_fmac_f32 : goc_v_dual_fmac_f32_rdna4)(flags, exec_mask, mode, d, a,
+                                                                     b, state);
   case 1:
-    return goc_v_dual_fmaak_f32(flags, exec_mask, mode, d, a, b, literal, excp_flag_user);
+    return (rdna3 ? goc_v_dual_fmaak_f32 : goc_v_dual_fmaak_f32_rdna4)(flags, exec_mask, mode, d, a,
+                                                                       b, literal, state);
   case 2:
-    return goc_v_dual_fmamk_f32(flags, exec_mask, mode, d, a, literal, b, excp_flag_user);
+    return (rdna3 ? goc_v_dual_fmamk_f32 : goc_v_dual_fmamk_f32_rdna4)(flags, exec_mask, mode, d, a,
+                                                                       literal, b, state);
   case 3:
-    return goc_v_dual_mul_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return (rdna3 ? goc_v_dual_mul_f32 : goc_v_dual_mul_f32_rdna4)(flags, exec_mask, mode, d, a, b,
+                                                                   state);
   case 4:
-    return goc_v_dual_add_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return (rdna3 ? goc_v_dual_add_f32 : goc_v_dual_add_f32_rdna4)(flags, exec_mask, mode, d, a, b,
+                                                                   state);
   case 5:
-    return goc_v_dual_sub_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return (rdna3 ? goc_v_dual_sub_f32 : goc_v_dual_sub_f32_rdna4)(flags, exec_mask, mode, d, a, b,
+                                                                   state);
   case 6:
-    return goc_v_dual_subrev_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return (rdna3 ? goc_v_dual_subrev_f32 : goc_v_dual_subrev_f32_rdna4)(flags, exec_mask, mode, d,
+                                                                         a, b, state);
   case 7:
-    return goc_v_dual_mul_dx9_zero_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return (rdna3 ? goc_v_dual_mul_dx9_zero_f32
+                  : goc_v_dual_mul_dx9_zero_f32_rdna4)(flags, exec_mask, mode, d, a, b, state);
   case 8:
     return goc_v_dual_mov_b32(flags, exec_mask, mode, d, a);
   case 9:
     return goc_v_dual_cndmask_b32(flags, exec_mask, mode, d, a, b, condition);
   case 10:
-    return goc_v_dual_max_num_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return goc_v_dual_max_num_f32(flags, exec_mask, mode, d, a, b, state);
   case 11:
-    return goc_v_dual_min_num_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return goc_v_dual_min_num_f32(flags, exec_mask, mode, d, a, b, state);
   case 12:
-    return goc_v_dual_max_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return goc_v_dual_max_f32(flags, exec_mask, mode, d, a, b, state);
   case 13:
-    return goc_v_dual_min_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return goc_v_dual_min_f32(flags, exec_mask, mode, d, a, b, state);
   case 14:
     return goc_v_dual_add_nc_u32(flags, exec_mask, mode, d, a, b);
   case 15:
@@ -49,13 +60,13 @@ int execute(unsigned op, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
   case 16:
     return goc_v_dual_and_b32(flags, exec_mask, mode, d, a, b);
   case 17:
-    return goc_v_dual_dot2acc_f32_f16(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return goc_v_dual_dot2acc_f32_f16(flags, exec_mask, mode, d, a, b, state);
   case 18:
-    return goc_v_dual_dot2acc_f32_bf16(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return goc_v_dual_dot2acc_f32_bf16(flags, exec_mask, mode, d, a, b, state);
   case 19:
-    return goc_v_dual_dot2acc_f32_f16_rdna4(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return goc_v_dual_dot2acc_f32_f16_rdna4(flags, exec_mask, mode, d, a, b, state);
   case 20:
-    return goc_v_dual_dot2acc_f32_bf16_rdna4(flags, exec_mask, mode, d, a, b, excp_flag_user);
+    return goc_v_dual_dot2acc_f32_bf16_rdna4(flags, exec_mask, mode, d, a, b, state);
   default:
     return -1;
   }
@@ -122,7 +133,7 @@ TEST(Dual, LegalPairExecutesXBeforeY) {
   std::fill(b, b + 32, 0x40400000);
   std::fill(source_y, source_y + 32, 0x40e00000);
   auto px = x, py = y, pb = b, ps = source_y;
-  ASSERT_EQ(goc_v_dual_add_f32(0, UINT32_MAX, 0, &px, &py, &pb, nullptr), GOC_SUCCESS);
+  ASSERT_EQ(goc_v_dual_add_f32_rdna4(0, UINT32_MAX, 0, &px, &py, &pb, nullptr), GOC_SUCCESS);
   ASSERT_EQ(goc_v_dual_mov_b32(0, UINT32_MAX, 0, &py, &ps), GOC_SUCCESS);
   for (unsigned lane = 0; lane < 32; ++lane) {
     EXPECT_EQ(x[lane], 0x40a00000U);
@@ -162,4 +173,130 @@ TEST(Dual, Rdna3ExactDotCapturesAndArchitectureDifference) {
             GOC_SUCCESS);
   EXPECT_EQ(d3[0], 0x425c0001U);
   EXPECT_NE(d3[0], d4[0]);
+}
+
+TEST(Dual, FusedArchitectureNaNPriorityAndReporting) {
+  for (unsigned op = 0; op < 3; ++op)
+    for (bool rdna3 : {false, true})
+      for (bool ieee : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (int alias = 0; alias < 3; ++alias) {
+            uint32_t words[3][32], before[3][32];
+            std::fill(words[0], words[0] + 32, 0xff800123);
+            std::fill(words[1], words[1] + 32, 0x3f800000);
+            std::fill(words[2], words[2] + 32, 0x3f800000);
+            std::memcpy(before, words, sizeof(words));
+            uint32_t *d = words[alias];
+            const uint32_t *a = words[0], *b = words[1];
+            uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                             (ieee ? GOC_FP_IEEE_MODE : 0);
+            uint32_t state = 0x40000000;
+            if (rdna3) {
+              EXPECT_EQ(execute(op, flags, UINT32_MAX, 0, &d, &a, &b, &state, true),
+                        GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+              EXPECT_EQ(std::memcmp(before, words, sizeof(words)), 0);
+              EXPECT_EQ(state, 0x40000000U);
+            }
+            ASSERT_EQ(
+                execute(op, flags, 0xa5a55a5a, 0, &d, &a, &b, rdna3 ? nullptr : &state, rdna3),
+                GOC_SUCCESS);
+            EXPECT_EQ(state, 0x40000000U | (rdna3 ? 0 : GOC_EXCEPTION_INVALID));
+            for (unsigned lane = 0; lane < 32; ++lane)
+              EXPECT_EQ(d[lane], (0xa5a55a5aU >> lane) & 1
+                                     ? rdna3 && !ieee ? 0xff800123U : 0xffc00123U
+                                     : before[alias][lane]);
+          }
+}
+
+TEST(Dual, FloatingGuestPoliciesMatchTheirArchitecture) {
+  const uint32_t values[] = {0,          0x80000000, 1,          0x80000001, 0x7fffff,   0x800000,
+                             0x3f800000, 0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000, 0x7f800001,
+                             0xffc00123, 0x3f800001, 0x3f7fffff, 0xbf800000};
+  for (unsigned op = 0; op < 8; ++op)
+    for (bool rdna3 : {false, true})
+      for (unsigned policy = 0; policy < 8; ++policy)
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (int alias = 0; alias < 3; ++alias) {
+            uint64_t flags = cpu | (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                             (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                             (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+            uint32_t words[3][32], expected[32];
+            for (unsigned reg = 0; reg < 3; ++reg)
+              for (unsigned lane = 0; lane < 32; ++lane)
+                words[reg][lane] = values[(lane + reg * 7) % 16];
+            std::memcpy(expected, words[alias], sizeof(expected));
+            uint32_t *d = words[alias], *e = expected;
+            const uint32_t *a = words[0], *b = words[1];
+            uint32_t exec_mask = 0xa7109efa, state = 0x12345678;
+            int reference;
+            if (op == 0)
+              reference = (rdna3 ? goc_v_fmac_f32 : goc_v_fmac_f32_rdna4)(flags, exec_mask, 0, &e,
+                                                                          &a, &b, nullptr);
+            else if (op == 1)
+              reference = (rdna3 ? goc_v_fmaak_f32 : goc_v_fmaak_f32_rdna4)(
+                  flags, exec_mask, 0, &e, &a, &b, 0x40800000, nullptr);
+            else if (op == 2)
+              reference = (rdna3 ? goc_v_fmamk_f32 : goc_v_fmamk_f32_rdna4)(
+                  flags, exec_mask, 0, &e, &a, 0x40800000, &b, nullptr);
+            else {
+              using Fn = decltype(&goc_v_mul_f32);
+              const Fn functions[2][5] = {{goc_v_mul_f32_rdna4, goc_v_add_f32_rdna4,
+                                           goc_v_sub_f32_rdna4, goc_v_subrev_f32_rdna4,
+                                           goc_v_mul_dx9_zero_f32_rdna4},
+                                          {goc_v_mul_f32, goc_v_add_f32, goc_v_sub_f32,
+                                           goc_v_subrev_f32, goc_v_mul_dx9_zero_f32}};
+              reference = functions[rdna3][op - 3](flags, exec_mask, 0, &e, &a, &b, nullptr);
+            }
+            ASSERT_EQ(reference, GOC_SUCCESS);
+            ASSERT_EQ(execute(op, flags, exec_mask, 0, &d, &a, &b, &state, rdna3), GOC_SUCCESS);
+            EXPECT_EQ(state, 0x12345678U);
+            for (unsigned lane = 0; lane < 32; ++lane)
+              EXPECT_EQ(d[lane], expected[lane]);
+            std::memcpy(expected, d, sizeof(expected));
+            EXPECT_EQ(execute(op, flags, exec_mask, GOC_ALU_NEG_A, &d, &a, &b, &state, rdna3),
+                      GOC_ERROR_INVALID_FLAGS);
+            EXPECT_EQ(state, 0x12345678U);
+            EXPECT_EQ(std::memcmp(expected, d, sizeof(expected)), 0);
+          }
+}
+
+TEST(Dual, FusedHardwareResultsAndExceptions) {
+  const uint32_t edge[] = {0,          0x80000000, 1,          0x80000001, 0x7fffff,   0x800000,
+                           0x3f800000, 0xbf800000, 0x40000000, 0x7f7fffff, 0x7effffff, 0x7f800000,
+                           0xff800000, 0x7f800001, 0xffc00003, 0x1000000};
+  for (unsigned op = 0; op < 3; ++op)
+    for (unsigned policy = 0; policy < 4; ++policy) {
+      uint64_t hash = goc_test::capture_hash_seed;
+      for (unsigned i = 0; i < 8192; ++i) {
+        uint32_t input[3];
+        uint64_t random = uint64_t(i) * 0x9e3779b97f4a7c15ULL;
+        for (unsigned operand = 0; operand < 3; ++operand) {
+          random ^= random >> 12;
+          random ^= random << 25;
+          random ^= random >> 27;
+          input[operand] = i < 4096 ? edge[(i >> (8 - operand * 4)) & 15]
+                                    : uint32_t(random * 0x2545f4914f6cdd1dULL);
+        }
+        uint32_t words[3][32];
+        for (auto &reg : words)
+          std::fill(reg, reg + 32, 0x7f800001);
+        unsigned lane = i % 32;
+        words[0][lane] = input[0];
+        words[1][lane] = input[op == 2 ? 2 : 1];
+        words[2][lane] = input[2];
+        const uint32_t *a = words[0], *b = words[1];
+        uint32_t *d = words[2], state = 0x40000000;
+        uint64_t flags = (i % (goc_init_cpu_flags() + 1)) | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                         (i & 1 ? GOC_SEMANTICS_STRICT : 0) |
+                         (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                         (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+        ASSERT_EQ(execute(op, flags, 1U << lane, 0, &d, &a, &b, &state, false, 0x3f800001),
+                  GOC_SUCCESS);
+        ASSERT_EQ(state & 0x40000000, 0x40000000U);
+        hash = goc_test::capture_hash_word(hash, d[lane]);
+        hash = goc_test::capture_hash_word(hash, state & ~0x40000000U);
+      }
+      EXPECT_EQ(hash, goc_test::dual_fma_hashes[op == 0 ? 0 : 3 - op][policy])
+          << op << '/' << policy;
+    }
 }

@@ -9,10 +9,17 @@
 
 int goc_v_dual_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                        uint32_t *excp_flag_user) {
-  // VOPD exception behavior still needs separate architectural validation.
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+                        uint32_t *trapsts) {
+  if (instruction_flags) {
+    int error = goc_v_fmac_f32(flags, 0, 0, d, a, b, trapsts);
+    return error ? error : GOC_ERROR_INVALID_FLAGS;
+  }
+  return goc_v_fmac_f32(flags, exec_mask, 0, d, a, b, trapsts);
+}
+
+int goc_v_dual_fmac_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, uint32_t *excp_flag_user) {
   if (instruction_flags) {
     int error = goc_v_fmac_f32_rdna4(flags, 0, 0, d, a, b, excp_flag_user);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
@@ -22,10 +29,18 @@ int goc_v_dual_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 
 int goc_v_dual_fmaak_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                         uint32_t literal, uint32_t *excp_flag_user) {
-  // VOPD exception behavior still needs separate architectural validation.
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+                         uint32_t literal, uint32_t *trapsts) {
+  if (instruction_flags) {
+    int error = goc_v_fmaak_f32(flags, 0, 0, d, a, b, literal, trapsts);
+    return error ? error : GOC_ERROR_INVALID_FLAGS;
+  }
+  return goc_v_fmaak_f32(flags, exec_mask, 0, d, a, b, literal, trapsts);
+}
+
+int goc_v_dual_fmaak_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, uint32_t literal,
+                               uint32_t *excp_flag_user) {
   if (instruction_flags) {
     int error = goc_v_fmaak_f32_rdna4(flags, 0, 0, d, a, b, literal, excp_flag_user);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
@@ -35,10 +50,17 @@ int goc_v_dual_fmaak_f32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 
 int goc_v_dual_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
-                         const uint32_t *const *b, uint32_t *excp_flag_user) {
-  // VOPD exception behavior still needs separate architectural validation.
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
-    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+                         const uint32_t *const *b, uint32_t *trapsts) {
+  if (instruction_flags) {
+    int error = goc_v_fmamk_f32(flags, 0, 0, d, a, literal, b, trapsts);
+    return error ? error : GOC_ERROR_INVALID_FLAGS;
+  }
+  return goc_v_fmamk_f32(flags, exec_mask, 0, d, a, literal, b, trapsts);
+}
+
+int goc_v_dual_fmamk_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
+                               const uint32_t *const *b, uint32_t *excp_flag_user) {
   if (instruction_flags) {
     int error = goc_v_fmamk_f32_rdna4(flags, 0, 0, d, a, literal, b, excp_flag_user);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
@@ -48,7 +70,17 @@ int goc_v_dual_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 
 int goc_v_dual_mul_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       uint32_t *excp_flag_user) {
+                       uint32_t *trapsts) {
+  if (instruction_flags) {
+    int error = goc_v_mul_f32(flags, 0, 0, d, a, b, trapsts);
+    return error ? error : GOC_ERROR_INVALID_FLAGS;
+  }
+  return goc_v_mul_f32(flags, exec_mask, 0, d, a, b, trapsts);
+}
+
+int goc_v_dual_mul_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
   if (instruction_flags) {
     int error = goc_v_mul_f32_rdna4(flags, 0, 0, d, a, b, excp_flag_user);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
@@ -58,7 +90,17 @@ int goc_v_dual_mul_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
 
 int goc_v_dual_add_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       uint32_t *excp_flag_user) {
+                       uint32_t *trapsts) {
+  if (instruction_flags) {
+    int error = goc_v_add_f32(flags, 0, 0, d, a, b, trapsts);
+    return error ? error : GOC_ERROR_INVALID_FLAGS;
+  }
+  return goc_v_add_f32(flags, exec_mask, 0, d, a, b, trapsts);
+}
+
+int goc_v_dual_add_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
   if (instruction_flags) {
     int error = goc_v_add_f32_rdna4(flags, 0, 0, d, a, b, excp_flag_user);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
@@ -68,7 +110,17 @@ int goc_v_dual_add_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
 
 int goc_v_dual_sub_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       uint32_t *excp_flag_user) {
+                       uint32_t *trapsts) {
+  if (instruction_flags) {
+    int error = goc_v_sub_f32(flags, 0, 0, d, a, b, trapsts);
+    return error ? error : GOC_ERROR_INVALID_FLAGS;
+  }
+  return goc_v_sub_f32(flags, exec_mask, 0, d, a, b, trapsts);
+}
+
+int goc_v_dual_sub_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
   if (instruction_flags) {
     int error = goc_v_sub_f32_rdna4(flags, 0, 0, d, a, b, excp_flag_user);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
@@ -78,7 +130,17 @@ int goc_v_dual_sub_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
 
 int goc_v_dual_subrev_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                          uint32_t *excp_flag_user) {
+                          uint32_t *trapsts) {
+  if (instruction_flags) {
+    int error = goc_v_subrev_f32(flags, 0, 0, d, a, b, trapsts);
+    return error ? error : GOC_ERROR_INVALID_FLAGS;
+  }
+  return goc_v_subrev_f32(flags, exec_mask, 0, d, a, b, trapsts);
+}
+
+int goc_v_dual_subrev_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, uint32_t *excp_flag_user) {
   if (instruction_flags) {
     int error = goc_v_subrev_f32_rdna4(flags, 0, 0, d, a, b, excp_flag_user);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
@@ -88,7 +150,18 @@ int goc_v_dual_subrev_f32(uint64_t flags, uint32_t exec_mask, uint64_t instructi
 
 int goc_v_dual_mul_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
-                                const uint32_t *const *b, uint32_t *excp_flag_user) {
+                                const uint32_t *const *b, uint32_t *trapsts) {
+  if (instruction_flags) {
+    int error = goc_v_mul_dx9_zero_f32(flags, 0, 0, d, a, b, trapsts);
+    return error ? error : GOC_ERROR_INVALID_FLAGS;
+  }
+  return goc_v_mul_dx9_zero_f32(flags, exec_mask, 0, d, a, b, trapsts);
+}
+
+int goc_v_dual_mul_dx9_zero_f32_rdna4(uint64_t flags, uint32_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      uint32_t *excp_flag_user) {
   if (instruction_flags) {
     int error = goc_v_mul_dx9_zero_f32_rdna4(flags, 0, 0, d, a, b, excp_flag_user);
     return error ? error : GOC_ERROR_INVALID_FLAGS;

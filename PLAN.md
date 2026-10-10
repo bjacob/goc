@@ -441,6 +441,13 @@ policies, checked against 196,608 RX 9070 captures. RDNA3 still rejects non-null
 exact global-state reporting requests. Loose calls retain their SIMD paths and
 skip optional state updates.
 
+The eight floating VOPD arithmetic families likewise distinguish unsuffixed RDNA3
+from `_rdna4`, including their native optional state outputs. Each executes one
+decoded Wave32 operation through its ordinary implementation. RDNA4 VOPD
+`FMAC`, `FMAMK` and `FMAAK` exact results and exception reporting match 196,608
+RX 9070 records across both slots and four denormal policies. RDNA3 exact
+reporting remains unsupported; loose calls skip it and retain ordinary SIMD paths.
+
 FP16/32 `SIN`/`COS` report invalid, input-denormal, underflow, and inexact flags.
 Their hardware corpora cover every FP16 encoding, FP32 exponent/mantissa patterns,
 and FP32 neighborhoods around underflow, quarter turns, zeros, and NaNs.

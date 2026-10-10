@@ -444,21 +444,21 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_dot4_u32_u8` | SIMD macro, output helper | no | 10955 | review required |
 | `v_dot8_i32_iu4` | SIMD macro, output helper | no | 11048 | review required |
 | `v_dot8_u32_u4` | SIMD macro, output helper | no | 11080 | review required |
-| `v_dual_add_f32` | no direct policy detected | no | not found | review required |
+| `v_dual_add_f32` | no direct policy detected | yes | not found | review required |
 | `v_dual_add_nc_u32` | no direct policy detected | no | not found | review required |
 | `v_dual_and_b32` | no direct policy detected | no | not found | review required |
 | `v_dual_cndmask_b32` | no direct policy detected | no | not found | review required |
 | `v_dual_dot2acc_f32_bf16` | no direct policy detected | yes | not found | review required |
 | `v_dual_dot2acc_f32_f16` | no direct policy detected | yes | not found | review required |
-| `v_dual_fmaak_f32` | no direct policy detected | no | not found | review required |
-| `v_dual_fmac_f32` | no direct policy detected | no | not found | review required |
-| `v_dual_fmamk_f32` | no direct policy detected | no | not found | review required |
+| `v_dual_fmaak_f32` | no direct policy detected | yes | not found | review required |
+| `v_dual_fmac_f32` | no direct policy detected | yes | not found | review required |
+| `v_dual_fmamk_f32` | no direct policy detected | yes | not found | review required |
 | `v_dual_lshlrev_b32` | no direct policy detected | no | not found | review required |
 | `v_dual_mov_b32` | no direct policy detected | no | not found | review required |
-| `v_dual_mul_dx9_zero_f32` | no direct policy detected | no | not found | review required |
-| `v_dual_mul_f32` | no direct policy detected | no | not found | review required |
-| `v_dual_sub_f32` | no direct policy detected | no | not found | review required |
-| `v_dual_subrev_f32` | no direct policy detected | no | not found | review required |
+| `v_dual_mul_dx9_zero_f32` | no direct policy detected | yes | not found | review required |
+| `v_dual_mul_f32` | no direct policy detected | yes | not found | review required |
+| `v_dual_sub_f32` | no direct policy detected | yes | not found | review required |
+| `v_dual_subrev_f32` | no direct policy detected | yes | not found | review required |
 | `v_exp_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 11151, 11183 | review required |
 | `v_exp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 11229, 11247 | review required |
 | `v_floor_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 11399, 11423 | review required |

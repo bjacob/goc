@@ -16,6 +16,8 @@ capture.bin contains little-endian uint32 records:
 Case count is 65,536 for sin/cos, otherwise 8,192. MODE defaults to preserved
 denormals and always selects nearest-even. All 32 lanes use identical inputs.
 The probe restores MODE and clears EXCP_FLAG_USER before each instruction.
+--vopd selects an unmodified FP32 fused slot paired with integer MOV;
+--vopd-y places it in slot Y instead of X. Modifier/saturation records repeat.
 
 Ordinary modifier index: bits 0:1 OMOD, bit 2 CLAMP, bit 3 -abs(A)/abs(B)/-C.
 For DIV_FMAS the outer setting selects condition=false/true (FP16_OVFL is irrelevant).
@@ -45,8 +47,14 @@ parser.add_argument("--boundaries", action="store_true", help="FP32 SIN/COS boun
 parser.add_argument("--rounding-boundaries", action="store_true", help="FMA underflow/overflow corpus")
 parser.add_argument("--mix-high", action="store_true", help="mixed FMA high halves and source modifiers")
 parser.add_argument("--literal", type=lambda value: int(value, 0), help="raw FMAMK/FMAAK literal bits")
+parser.add_argument("--vopd", action="store_true", help="FP32 fused VOPD slot paired with MOV")
+parser.add_argument("--vopd-y", action="store_true", help="put the fused VOPD operation in slot Y")
 args = parser.parse_args()
 out, family, width = args.output, args.family, args.width
+if args.vopd and (width != 32 or family not in ("fmac", "fmamk", "fmaak")):
+    parser.error("--vopd requires FP32 FMAC/FMAMK/FMAAK")
+if args.vopd_y and not args.vopd:
+    parser.error("--vopd-y requires --vopd")
 allowed_widths = {"div_fixup": (16, 32, 64), "div_fmas": (32, 64),
                   "fma_dx9_zero": (32,), "sin": (16, 32), "cos": (16, 32), "fma_mix": (32,),
                   "fmamk": (16, 32), "fmaak": (16, 32), "fma": (16, 32), "fmac": (16, 32)}
@@ -178,6 +186,15 @@ for m in range(16):
     else:
         instruction += " clamp" if m & 4 else ""
         instruction += ["", " mul:2", " mul:4", " div:2"][m & 3]
+    if args.vopd:
+        if family == "fmac":
+            arithmetic = "v_dual_fmac_f32 v6, v0, v2"
+        elif family == "fmamk":
+            arithmetic = f"v_dual_fmamk_f32 v6, v0, {literal:#x}, v4"
+        else:
+            arithmetic = f"v_dual_fmaak_f32 v6, v0, v2, {literal:#x}"
+        move = "v_dual_mov_b32 v7, v1"
+        instruction = move + " :: " + arithmetic if args.vopd_y else arithmetic + " :: " + move
     assembly = [
         "s_getreg_b32 s7, hwreg(HW_REG_MODE)",
         "s_setreg_b32 hwreg(HW_REG_MODE), %9",
