@@ -1779,3 +1779,28 @@ remain unchanged. Four matrix width gaps remain, all FP16/BF16 SWMMAC.
 
 Validation: all 929 tests pass with Clang 21 and GCC 15 Release. All eleven
 integer SWMMAC and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 FP16/BF16 SWMMAC completes the matrix width inventory
+
+Added all four FP16/BF16 sparse forms at Wave64. Width-aware decoding handles
+two A VGPRs, four B VGPRs, four FP32 or two packed D VGPRs, and four metadata
+bytes per lane. The existing scalar, AVX2 and AVX-512 kernels retain pair
+negation, FP32 accumulation and packed narrowing. Strict exact requests remain
+unsupported; this change makes no new general numerical-exactness claim.
+
+Native RX 9070 gfx1201 captures cover all 64 combinations of four negation bits
+and two index bits for each format/output type: 256 digests over 49,152 result
+words. Every CPU path matches these exactly representable sums. Generator:
+`tests/capture_swmmac16_wave64.cpp`, SHA-256
+`023bff6696b8698779e8ad6ca1df3bb9c7085ba9edc6e54c204e232577744f41`;
+fixtures: `tests/swmmac16_wave64_hardware.h`. Additional tests cover packed
+nearest-even ties, finite saturation versus infinity, literal pair negation,
+aliases with inputs/metadata, duplicate destinations and validation.
+
+The ordinary-vector and matrix API width inventories now both have zero missing
+counterparts. Scalar/pseudo-scalar width contracts, encoding legality, complete
+architecture comparison, hardware-register access and remaining numerical/state
+gaps are separate gates and are not closed by this milestone.
+
+Validation: all 935 tests pass with Clang 21 and GCC 15 Release. All fourteen
+FP16/BF16 SWMMAC and instruction-flag tests pass under ASan/UBSan.

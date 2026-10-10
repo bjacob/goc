@@ -1390,12 +1390,12 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_swap_b16` | yes | yes | in | `goc_v_swap_b16`<br>`goc_v_swap_b16_wave64` | — | API present; semantic audit pending |
 | `v_swap_b32` | yes | yes | in | `goc_v_swap_b32`<br>`goc_v_swap_b32_wave64` | — | API present; semantic audit pending |
 | `v_swaprel_b32` | yes | yes | in | `goc_v_swaprel_b32`<br>`goc_v_swaprel_b32_wave64` | — | API present; semantic audit pending |
-| `v_swmmac_bf16_16x16x32_bf16` | — | yes | in | `goc_v_swmmac_bf16_16x16x32_bf16` | — | API present; semantic audit pending |
-| `v_swmmac_f16_16x16x32_f16` | — | yes | in | `goc_v_swmmac_f16_16x16x32_f16` | — | API present; semantic audit pending |
-| `v_swmmac_f32_16x16x32_bf16` | — | yes | in | `goc_v_swmmac_f32_16x16x32_bf16` | — | API present; semantic audit pending |
+| `v_swmmac_bf16_16x16x32_bf16` | — | yes | in | `goc_v_swmmac_bf16_16x16x32_bf16`<br>`goc_v_swmmac_bf16_16x16x32_bf16_wave64` | — | API present; semantic audit pending |
+| `v_swmmac_f16_16x16x32_f16` | — | yes | in | `goc_v_swmmac_f16_16x16x32_f16`<br>`goc_v_swmmac_f16_16x16x32_f16_wave64` | — | API present; semantic audit pending |
+| `v_swmmac_f32_16x16x32_bf16` | — | yes | in | `goc_v_swmmac_f32_16x16x32_bf16`<br>`goc_v_swmmac_f32_16x16x32_bf16_wave64` | — | API present; semantic audit pending |
 | `v_swmmac_f32_16x16x32_bf8_bf8` | — | yes | in | `goc_v_swmmac_f32_16x16x32_bf8_bf8`<br>`goc_v_swmmac_f32_16x16x32_bf8_bf8_wave64` | — | API present; semantic audit pending |
 | `v_swmmac_f32_16x16x32_bf8_fp8` | — | yes | in | `goc_v_swmmac_f32_16x16x32_bf8_fp8`<br>`goc_v_swmmac_f32_16x16x32_bf8_fp8_wave64` | — | API present; semantic audit pending |
-| `v_swmmac_f32_16x16x32_f16` | — | yes | in | `goc_v_swmmac_f32_16x16x32_f16` | — | API present; semantic audit pending |
+| `v_swmmac_f32_16x16x32_f16` | — | yes | in | `goc_v_swmmac_f32_16x16x32_f16`<br>`goc_v_swmmac_f32_16x16x32_f16_wave64` | — | API present; semantic audit pending |
 | `v_swmmac_f32_16x16x32_fp8_bf8` | — | yes | in | `goc_v_swmmac_f32_16x16x32_fp8_bf8`<br>`goc_v_swmmac_f32_16x16x32_fp8_bf8_wave64` | — | API present; semantic audit pending |
 | `v_swmmac_f32_16x16x32_fp8_fp8` | — | yes | in | `goc_v_swmmac_f32_16x16x32_fp8_fp8`<br>`goc_v_swmmac_f32_16x16x32_fp8_fp8_wave64` | — | API present; semantic audit pending |
 | `v_swmmac_i32_16x16x32_iu4` | — | yes | in | `goc_v_swmmac_i32_16x16x32_iu4`<br>`goc_v_swmmac_i32_16x16x32_iu4_wave64` | — | API present; semantic audit pending |
@@ -1439,11 +1439,10 @@ SAVEEXEC/WREXEC consume EXEC as data and already have distinct `_b32` and
 
 ## Matrix wave-width API audit
 
-There are 4 matrix APIs lacking a Wave64 counterpart.
+There are 0 matrix APIs lacking a Wave64 counterpart.
 RDNA4 ISA sections 7.12.2 and 7.12.3 specify both widths, including
 different operand VGPR counts and sparse-index selection. Matching layouts
 alone does not prove matching accumulation order or saturation stages.
 
 | Implementation | APIs lacking a Wave64 counterpart |
 |---|---|
-| [`swmmac16.cpp`](src/swmmac16.cpp) | `goc_v_swmmac_bf16_16x16x32_bf16`, `goc_v_swmmac_f16_16x16x32_f16`, `goc_v_swmmac_f32_16x16x32_bf16`, `goc_v_swmmac_f32_16x16x32_f16` |

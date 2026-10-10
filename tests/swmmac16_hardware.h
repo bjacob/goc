@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstring>
 #include <stdint.h>
 
@@ -56,7 +57,8 @@ static const uint64_t swmmac16_capture_digests[4][32] = {
 };
 
 // Reproduce the physical inputs used by the GPU captures.
-inline void swmmac16_capture_inputs(unsigned op, uint32_t (&data)[21][32]) {
+template <size_t Lanes>
+inline void swmmac16_capture_inputs(unsigned op, uint32_t (&data)[21][Lanes]) {
   std::memset(data, 0, sizeof(data));
   uint32_t state = 0x76895231;
   auto next = [&]() {

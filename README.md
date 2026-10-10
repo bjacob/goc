@@ -504,6 +504,11 @@ on every call, equally for all CPU paths. Pinned-core Ryzen 9 7950X3D timings
 measured 4.77–11.19x for v3 and 4.81–11.84x for v4 versus scalar, including
 negation and index-key selection (seven samples, each at least 10 ms).
 
+The FP16/BF16 sparse forms also support Wave64, using two A VGPRs,
+four B VGPRs, one index VGPR and four FP32 or two packed accumulator VGPRs.
+Both selector bits choose among four 8-bit metadata sets. The scalar and v3/v4
+kernels retain the same loose arithmetic, pair negation and packed rounding.
+
 Sparse FP8/BF8 WMMA covers all four `v_swmmac_f32_16x16x32_*_*`
 combinations at both wave widths. Wave32 uses two A VGPRs, four B VGPRs,
 one index VGPR and eight in/out D VGPRs; Wave64 uses one, two, one and four.

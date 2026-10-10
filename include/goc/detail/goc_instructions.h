@@ -2255,6 +2255,26 @@ int goc_v_swmmac_bf16_16x16x32_bf16(uint64_t flags, uint64_t instruction_flags, 
                                     const uint32_t *const *a, const uint32_t *const *b,
                                     const uint32_t *const *index);
 
+// Wave64 FP16/BF16 SWMMAC: A two VGPRs, B four, index one. D holds
+// four VGPRs for FP32 or two for packed FP16/BF16. KEY_1/KEY_2 select one
+// of four metadata bytes per lane. Sign flags, loose-only arithmetic,
+// packed rounding, aliasing and errors follow the Wave32 contracts above.
+int goc_v_swmmac_f32_16x16x32_f16_wave64(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *index);
+
+int goc_v_swmmac_f32_16x16x32_bf16_wave64(uint64_t flags, uint64_t instruction_flags,
+                                          uint32_t *const *d, const uint32_t *const *a,
+                                          const uint32_t *const *b, const uint32_t *const *index);
+
+int goc_v_swmmac_f16_16x16x32_f16_wave64(uint64_t flags, uint64_t instruction_flags,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         const uint32_t *const *b, const uint32_t *const *index);
+
+int goc_v_swmmac_bf16_16x16x32_bf16_wave64(uint64_t flags, uint64_t instruction_flags,
+                                           uint32_t *const *d, const uint32_t *const *a,
+                                           const uint32_t *const *b, const uint32_t *const *index);
+
 // Multiply two 32-bit lanes and add a 64-bit accumulator. A/B use one VGPR;
 // C/D use low/high pairs. The scalar output contains bit 64 of the full sum:
 // unsigned carry for U64, or the sign of the mathematical 65-bit sum for I64.

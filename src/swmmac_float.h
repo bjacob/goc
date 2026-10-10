@@ -27,26 +27,34 @@ void swmmac_float_accumulate(uint32_t mode, SwmmacFloatInputs &input);
 
 // Decode all input registers and the initial accumulator before destination
 // writes. Each metadata pair must contain two increasing positions in [0,3].
-template <bool Bf16, bool Packed>
+template <bool Bf16, bool Packed, bool Wave64 = false>
 inline void swmmac16_prepare(SwmmacFloatInputs &input, uint32_t mode, uint32_t *const *d,
                              const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *index) {
   auto decode = [](uint16_t x) { return Bf16 ? bf16_to_float(x) : f16_to_float(x); };
-  unsigned key = mode & GOC_SWMMAC_INDEX_KEY_1 ? 16 : 0;
+  unsigned key = Wave64 ? 8 * ((mode >> 7) & 3) : (mode & GOC_SWMMAC_INDEX_KEY_1 ? 16 : 0);
   for (unsigned row = 0; row < 16; ++row)
     for (unsigned ck = 0; ck < 16; ++ck) {
       unsigned group = ck / 2, slot = ck % 2, lane = row + 16 * ((group / 2) & 1),
                reg = 2 * (group / 4) + (group & 1);
+      if constexpr (Wave64) {
+        lane = row + 16 * (ck / 4);
+        reg = (ck % 4) / 2;
+      }
       uint16_t value = uint16_t(a[reg][lane] >> (16 * slot));
       if (mode & (slot ? GOC_WMMA_NEG_HI_A : GOC_WMMA_NEG_LO_A))
         value ^= 0x8000;
       input.a[row][ck] = decode(value);
-      unsigned local = 2 * (group & 1) + 4 * (group / 4) + slot;
+      unsigned local = Wave64 ? ck % 4 : 2 * (group & 1) + 4 * (group / 4) + slot;
       input.selected[row][ck] = uint8_t(4 * group + ((index[0][lane] >> (key + 2 * local)) & 3));
     }
   for (unsigned k = 0; k < 32; ++k)
     for (unsigned col = 0; col < 16; ++col) {
       unsigned lane = col + 16 * ((k / 8) & 1), slot = 8 * (k / 16) + 2 * ((k / 2) & 3) + (k & 1);
+      if constexpr (Wave64) {
+        lane = col + 16 * (k / 8);
+        slot = k % 8;
+      }
       input.b[k][col] = decode(uint16_t(b[slot / 2][lane] >> (16 * (slot % 2))));
     }
   for (unsigned row = 0; row < 16; ++row)
