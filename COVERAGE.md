@@ -7492,3 +7492,71 @@ with Clang 21 Release, GCC 15 Release and Clang ASan/UBSan; all nine tooling
 tests pass. Logs are `coverage-work/exp-log-contract-{build,tests}.log` in each
 build directory. The ledger records 698 mnemonic contracts, with 111 remaining;
 these counts are not an overall completion percentage.
+
+## RCP_IFLAG exact port and architecture contract
+
+Reviewed `v_rcp_iflag_f32` against rocjitsu revision `ffc144c564c`'s shared
+VOP1/VOP3 handlers, `transcendental::rcp_f32`, `util/amdgpu_rcp.h`, ordinary
+`effective_omod`, and `classify_rcp_iflag_f32_exceptions`. Upstream uses the
+same empirical reciprocal model as ordinary RCP, with unconditional NaN
+quieting and a separate integer-divide-by-zero classifier. GoC previously
+exposed only loose numerical results for this instruction despite already
+having that numerical model.
+
+Both architectures and wave widths now support empirical exact results.
+After routing and RDNA3 OMOD adjustment, exact execution reuses the ordinary
+RDNA4 RCP entry point with null state output: that entry point exposes the
+shared numerical mapping with the always-quiet NaN policy RCP_IFLAG needs.
+No new numerical kernel, correction table or abstraction was added. The
+existing loose scalar/eight-lane AVX2/sixteen-lane AVX512 kernels remain in place.
+
+- Input/output subnormals flush independently of guest denormal flags. Unlike
+  ordinary FP32 RCP, RDNA3 RCP_IFLAG uses the guest output-denormal policy
+  when deciding OMOD: it applies only with output flushing enabled and IEEE
+  disabled. RDNA4 OMOD is independent of those settings. ABS/NEG, CLAMP and
+  DPP8/DPP16 remain supported. Guest directed rounding and DX10-clamp-off
+  remain unsupported; FP16_OVFL has no numerical effect.
+- RDNA3 exact non-null TRAPSTS remains unsupported and loose calls skip it.
+  RDNA4 retains its existing INT_DIV0 accumulation for active zero/subnormal
+  inputs, suppressed by CLAMP, in both semantics. The already implemented
+  subnormal/CLAMP corrections to upstream's zero-only classifier are unchanged;
+  no new exception behavior was reverse-engineered. Reserved semantics with
+  non-null state now reject reporting before validation rather than falling
+  through to loose execution.
+- Exact reporting snapshots its source classifications and previous state
+  before destination writes, preserving the existing explicit status/operand
+  alias contract. It scans all 32 lanes and masks the resulting causes; there
+  is no sparse-mask optimization. Wave64 commits accumulated status after both
+  halves. Empty EXEC leaves every output unchanged and permits null operands.
+- Added all 2^23 normalized reciprocal inputs against the retained raw RCP
+  hash, cycling architecture, wave width and CPU tier. This reuses the fixture
+  for the common borrowed mapping; it is not a new RCP_IFLAG hardware capture.
+  Existing status corpora and DPP/status-alias tests now run in strict exact
+  as well as loose semantics, including upper-half Wave64 replay. The
+  architecture OMOD/DPP test now exercises exact results too. Literal NaN
+  quieting and unsupported-state/error-priority checks cover both architectures.
+
+Validation: Clang 21 Release and GCC 15 Release each pass all **1,164** tests;
+Clang ASan/UBSan passes all **23** selected RCP_IFLAG, reciprocal-model and
+instruction-flag tests. All nine tooling tests pass. Logs use
+`coverage-work/rcp-iflag-exact-{build,tests}.log` in each build directory.
+
+Loose performance versus `0e31bc8`: 24 default-modifier cases covering both
+architectures, wave widths, scalar/AVX2/AVX512 and null/non-null reporting,
+seven alternating paired repetitions pinned to CPU 2, at least 50 ms of thread
+CPU time per sample. Median change is **0.84% slower**, ranging from **0.41%
+faster to 2.37% slower**. The SIMD kernels themselves did not change; dispatch
+now distinguishes exact requests. Samples and summary are under
+`../goc-build/coverage-work/rcp-iflag-exact-performance/`.
+
+Sharing the existing public reciprocal implementation centralizes approximation,
+rounding and output-modifier behavior without a second exact kernel. There is
+an object-granularity linking cost: the isolated RCP_IFLAG-only driver now pulls
+in the existing unary object, including other unary models. Its linked text
+increases from 20,049 to 120,865 bytes (+100,816). This is not new duplicated
+source or the whole-library size increase; consumers already using the unary
+object have already paid that model cost. Splitting that object is a possible
+future organization improvement, not part of this port.
+
+The review ledger records 699 mnemonic contracts, with 110 remaining; this is
+not an overall completion percentage.

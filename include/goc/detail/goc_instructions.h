@@ -1356,8 +1356,9 @@ static const uint32_t GOC_EXCEPTION_INT_DIV0 = 1U << 6;
 // instruction also permits it to alias any operand word: its initial value is
 // read before VGPR stores and its final write takes precedence on overlap.
 // Zero EXEC permits null VGPR pointers and leaves all outputs unchanged.
-// Errors leave all outputs unchanged. Loose semantics only; strict exact is
-// rejected. RDNA4 implements exception accumulation on all CPU paths.
+// Errors leave all outputs unchanged. Loose and empirical exact results are
+// supported; exact RCP_IFLAG always quiets NaNs, including on RDNA3.
+// RDNA4 implements exception accumulation in both semantics.
 // RDNA3 loose calls skip TRAPSTS updates; non-null exact reporting is unsupported.
 int goc_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
@@ -1365,7 +1366,7 @@ int goc_v_rcp_iflag_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instr
                               uint32_t *const *d, const uint32_t *const *a,
                               uint32_t *excp_flag_user);
 
-// Wave64 retains the same loose numerical and optional accumulation behavior,
+// Wave64 retains the same numerical and optional accumulation behavior,
 // with four independent DPP rows. Status is committed after all VGPR writes.
 int goc_v_rcp_iflag_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);

@@ -605,8 +605,8 @@ preservation, overflow settings and preservation of host rounding. Earlier
 throughput measurements predate the software RTZ implementation and do not
 characterize the current RTZ path.
 
-`v_rcp_iflag_f32` and its `_wave64` variant compute a reciprocal and return sticky guest exception
-status through a separate scalar output. Active signed-zero and subnormal inputs
+RDNA4 `v_rcp_iflag_f32_rdna4` and its `_wave64` variant compute a reciprocal
+and return sticky guest exception status through a separate scalar output. Active signed-zero and subnormal inputs
 raise `GOC_EXCEPTION_INT_DIV0`; CLAMP suppresses a new cause but preserves
 any pre-existing status bit. Other status bits survive unchanged. The scalar
 status is written after VGPR stores, taking precedence if its storage aliases
@@ -618,8 +618,13 @@ INT_DIV0. Existing status bits survive all DPP and CLAMP combinations.
 
 The scalar, eight-lane v3 and sixteen-lane v4 paths support every ABS/NEG/OMOD/
 CLAMP combination. Input/output subnormals always flush, independently of guest
-FP-mode settings. Numeric results use loose semantics; host nearest-even rounding
-and enabled denormals are required, and host exception flags may change.
+FP-mode settings. Loose numeric results require host nearest-even rounding
+and enabled denormals; host arithmetic exception flags may change. Both
+architectures also support empirical exact results through the shared integer
+reciprocal model, without SIMD approximation or host FP-control changes.
+RCP_IFLAG always quiets NaNs in exact mode. RDNA3's unsuffixed APIs disable
+OMOD unless output flushing is enabled and IEEE is clear; exact non-null
+`trapsts` reporting remains unsupported, while loose calls leave it unchanged.
 The status rules correct two details in rocjitsu's classifier: flushed subnormal
 inputs also raise INT_DIV0, and CLAMP suppresses the new cause.
 DPP tests add 354,816 GPU-captured words covering all modifiers, sticky seeds,
@@ -633,7 +638,7 @@ Tests use GPU captures of 4,718,592 lane results and 147,456 exact status values
 covering modifiers, full/empty/partial EXEC, denormal modes and initial sticky
 flags. Further tests cover every single active/inactive lane, numeric special
 values, unaligned storage, source/destination/status aliases, invalid flags and
-strict-semantics rejection. The full capture also matches the compiled API
+unsupported-reporting errors. The full capture also matches the loose API
 across every available CPU level within two numeric ULPs, with exact zeros,
 infinities and status bits. Pinned-core Ryzen 9 7950X3D timings show 1.47–2.30x
 for v3 and 3.78–5.30x for v4 versus scalar, including modifiers and CLAMP
@@ -2431,9 +2436,9 @@ exception bits into this wave-wide register, preserving prior bits. Instructions
 that do not report exceptions have no such parameter; existing register outputs
 are not duplicated.
 
-**Implemented reporting:** `v_rcp_iflag_f32` accumulates integer-divide-by-zero
-flags on all CPU paths. All 112 floating comparisons implement invalid and
-input-denormal flags in exact mode with a non-null pointer. Signaling NaNs raise
+**Implemented reporting:** `v_rcp_iflag_f32_rdna4` accumulates integer-divide-by-zero
+flags in both semantics and on all CPU paths. All 112 floating comparisons
+implement invalid and input-denormal flags in exact mode with a non-null pointer. Signaling NaNs raise
 invalid; vector CLAMP also signals on quiet NaNs without changing the condition
 result. Nonfinite operand pairs suppress input-denormal reporting. Subnormals
 raise input-denormal only when input flushing is disabled. Scalar comparisons

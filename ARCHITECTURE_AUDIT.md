@@ -46,12 +46,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-698 in-scope mnemonics have explicit contract-review records in
+699 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 111 in-scope mnemonics need a recorded review.
+The remaining 110 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -603,7 +603,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_rcp_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18222, 18256 | [loose and exact contract reviewed; see limitations](COVERAGE.md#reciprocal-and-square-root-architecture-contracts) |
 | `v_rcp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 18302, 18320 | [loose and exact contract reviewed; see limitations](COVERAGE.md#reciprocal-and-square-root-architecture-contracts) |
 | `v_rcp_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 18358, 18372 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
-| `v_rcp_iflag_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18409, 18429 | review required |
+| `v_rcp_iflag_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18409, 18429 | [loose and exact contract reviewed; see limitations](COVERAGE.md#rcp_iflag-exact-port-and-architecture-contract) |
 | `v_readfirstlane_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
 | `v_readlane_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
 | `v_rndne_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18465, 18489 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp16-and-fp32-integral-rounding-contract-review) |

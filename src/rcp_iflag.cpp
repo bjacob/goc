@@ -16,13 +16,13 @@ namespace {
 template <bool Rdna3>
 int rcp_iflag(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
               const uint32_t *const *a, uint32_t *excp_flag_user) {
-  if constexpr (Rdna3)
-    if ((flags & GOC_SEMANTICS_MASK) && excp_flag_user)
-      return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  const uint64_t semantics = flags & GOC_SEMANTICS_MASK;
+  if (excp_flag_user && semantics && (Rdna3 || semantics != GOC_SEMANTICS_EXACT_EMPIRICAL))
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if ((mode >> 32) && (!(mode & (GOC_DPP8 | GOC_DPP16)) || !goc::valid_dpp(mode)))
     return GOC_ERROR_INVALID_FLAGS;
   const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  if (int error = goc::validate(flags, uint32_t(mode) & ~known, false,
+  if (int error = goc::validate(flags, uint32_t(mode) & ~known, true,
                                 GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS |
                                     GOC_FP_IEEE_MODE))
     return error;
@@ -46,6 +46,23 @@ int rcp_iflag(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const
     return rcp_iflag<Rdna3>(flags, exec_mask, uint32_t(mode), d, &source, excp_flag_user);
   }
   const uint32_t prior_exceptions = excp_flag_user ? *excp_flag_user : 0;
+  if (semantics == GOC_SEMANTICS_EXACT_EMPIRICAL) {
+    // Snapshot the existing INT_DIV0 cause before D can overwrite an input.
+    uint32_t generated = 0;
+    if (excp_flag_user && !(mode & GOC_ALU_CLAMP)) {
+      uint32_t zeros = 0;
+      for (unsigned lane = 0; lane < 32; ++lane)
+        zeros |= uint32_t(!(a[0][lane] & 0x7f800000U)) << lane;
+      generated = zeros & exec_mask ? GOC_EXCEPTION_INT_DIV0 : 0;
+    }
+    // rocjitsu RCP_IFLAG always quiets NaNs. The RDNA4 RCP entry point
+    // supplies that shared model; RDNA3's distinct OMOD policy is applied above.
+    if (int error = goc_v_rcp_f32_rdna4(flags, exec_mask, mode, d, a, nullptr))
+      return error;
+    if (excp_flag_user)
+      *excp_flag_user = prior_exceptions | generated;
+    return GOC_SUCCESS;
+  }
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
     uint32_t generated = goc::rcp_iflag_x86_64_v4(exec_mask, mode, d[0], a[0]);

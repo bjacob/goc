@@ -473,9 +473,11 @@ particular invocation or currently accepted modifier cannot produce them.
 `V_RCP_IFLAG_F32` now has unsuffixed RDNA3 and `_rdna4` APIs, in both wave
 sizes. RDNA3 applies OMOD only with guest output flushing enabled and IEEE mode
 disabled; its forced reciprocal flushing does not override that policy. Both
-reuse the existing scalar/AVX2/AVX512 arithmetic. RDNA3 optional TRAPSTS reporting
-remains unsupported for exact requests and is skipped in loose mode. Numerical
-strict-exact reciprocal remains unsupported on both architectures.
+reuse the existing scalar/AVX2/AVX512 loose arithmetic. Exact numerical results
+reuse rocjitsu's empirical reciprocal model on a scalar path, with unconditional
+NaN quieting for RCP_IFLAG. RDNA3 optional TRAPSTS reporting remains unsupported
+for exact requests and is skipped in loose mode. RDNA4 retains its implemented
+INT_DIV0 accumulation in both semantics.
 
 FP32 `SQRT`, `RCP`, `RSQ`, `EXP`, and `LOG` likewise distinguish unsuffixed
 RDNA3 and `_rdna4` APIs in both wave sizes. These five operations use forced-flush

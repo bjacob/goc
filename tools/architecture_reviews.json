@@ -1340,5 +1340,13 @@
       "v_exp_f32",
       "v_log_f32"
     ]
+  },
+  {
+    "heading": "RCP_IFLAG exact port and architecture contract",
+    "semantics": "loose and exact",
+    "tests": "tests/rcp_iflag_test.cpp",
+    "mnemonics": [
+      "v_rcp_iflag_f32"
+    ]
   }
 ]
