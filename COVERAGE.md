@@ -3117,3 +3117,43 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   changes 32.764 -> 32.470 ns. The scalar model therefore adds no measured
   material cost in this sample. Samples use `frexp-exp-scalar-*`, with summary
   `/tmp/goc-frexp-exp-scalar-timing.log`.
+
+### FRACT FP32 hardware/reference review
+
+- Added `fract` to `tests/capture_unary_exact.py`. The ordinary and `--exactness`
+  corpora each capture 8192 inputs across four denormal policies and all 32
+  modifiers on gfx1201: **2,097,152 raw result/EXCP_FLAG_USER pairs** in total.
+  HIP compilation/execution and per-pair reference comparison passed. Existing
+  probe outputs are unchanged. No production FRACT behavior changes in this slice.
+- Both ISA manuals describe `x - floor(x)`, guest rounding and saturation to
+  `0x3f7fffff`. The inspected rocjitsu generated VOP1/VOP3 executors use host
+  subtraction and floor, with architecture-specific OMOD handling in VOP3;
+  they do not supply a host-independent exact model for this instruction.
+  In particular, direct host subtraction can produce one for negative tiny
+  inputs, so it cannot be imported unchanged as the exact instruction model.
+- An independent integer reference decodes the significand and power of two,
+  takes its exact fractional remainder (complementing it for negative inputs),
+  rounds the resulting dyadic rational to FP32 nearest-even, then limits it to
+  the largest FP32 value below one. It matches every captured result bit,
+  including signed/payload-preserving NaN quieting and canonical `0xffc00000`
+  for either infinity. Integer inputs and both signed zeros produce positive zero.
+- Input flushing happens before fractional extraction. Otherwise subnormal
+  inputs generate INPUT_DENORM. Output flushing zeroes positive subnormal
+  results and generates UNDERFLOW|INEXACT. Negative tiny inputs produce
+  `0x3f7fffff`, with INEXACT when the exact fractional remainder is not
+  representable; this is independent of the explicit CLAMP modifier.
+- Infinity and signaling NaN generate INVALID; quiet NaNs do not. Nonzero OMOD
+  flushes subnormal intermediates/results and suppresses UNDERFLOW|INEXACT,
+  retaining applicable INVALID/INPUT_DENORM. Explicit CLAMP suppresses all new
+  flags and maps NaNs to zero. These rules match both complete captured corpora;
+  they are not inferred solely from the mathematical fractional-part formula.
+- Capture directories: `../goc-build/coverage-work/fract-report-captures/` and
+  `../goc-build/coverage-work/fract-exactness-report-captures/`. SHA256 hashes:
+  `cd7826945a8231b4aad48f8bccd1685bc36448d774b1242dca81e8646fb4868e` and
+  `f59c4300e7a6eded7a0e4e7952a657b3887bca8cf372d42bb17e6191cee2e979`.
+  `/tmp/goc-check-fract.py CAPTURE_DIRECTORY` verifies raw results/status against
+  the dyadic reference; capture scripts are `/tmp/goc-fract{,-exactness}-capture.py`.
+- Pending: integrate the integer model and regression fixtures, preserve loose
+  SIMD throughput while adding guest denormal handling, split native-state APIs,
+  and test both wave sizes/DPP/aliases. These probes use guest nearest-even only;
+  they do not validate other guest rounding modes or native RDNA3 reporting.

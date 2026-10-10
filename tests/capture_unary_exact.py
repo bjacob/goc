@@ -3,7 +3,7 @@
 """Generate a gfx1201 HIP raw unary-result probe.
 
 Arguments: OUTPUT_DIR MNEMONIC [--exceptions], default rcp.
-MNEMONIC: rcp, sqrt, rsq, exp, log, trunc, ceil, rndne, floor, frexp_mant or frexp_exp_i32.
+MNEMONIC: rcp, sqrt, rsq, exp, log, trunc, ceil, rndne, floor, fract, frexp_mant or frexp_exp_i32.
 Compile probe.cpp with hipcc. `probe normalized` covers every FP32 value in
 [1,2) for RCP, [1,4) for SQRT/RSQ, [0.5,2) for LOG, and both signs of [0.5,2)
 for EXP. Rounding normalized probes cover [1,4). `probe` covers [4 denormal policies][32 modifiers][8192 inputs].
@@ -20,7 +20,7 @@ import struct
 from pathlib import Path
 import sys
 op = sys.argv[2] if len(sys.argv) > 2 else "rcp"
-if op not in ("rcp", "sqrt", "rsq", "exp", "log", "trunc", "ceil", "rndne", "floor", "frexp_mant", "frexp_exp_i32"):
+if op not in ("rcp", "sqrt", "rsq", "exp", "log", "trunc", "ceil", "rndne", "floor", "fract", "frexp_mant", "frexp_exp_i32"):
     raise SystemExit("expected a supported FP32 unary mnemonic")
 report = "--exceptions" in sys.argv[3:]
 exactness = "--exactness" in sys.argv[3:]
