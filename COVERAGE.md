@@ -2505,3 +2505,42 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   ranged from -0.1% to -8.0%, all below 0.4 ns absolute. The largest slowdown
   was 1.9%; these measurements support preserving the loose path, not a general
   speedup claim. Artifacts use `../goc-build/coverage-work/literal-fma32-reporting-*`.
+
+## Exact ordinary FP32 FMA/FMAC results
+
+- Ordinary FP32 FMA/FMAC now expose exact nearest-even results for RDNA3 and
+  RDNA4, Wave32 and Wave64. A scalar integer path reuses `fma_value_f32` for
+  fused arithmetic and NaN priority, then applies output scaling and CLAMP.
+  Source modifiers, DPP8/DPP16 routing, aliases and masks retain their existing
+  decoding/staging paths. The exact scalar frame is isolated from loose SIMD
+  dispatch; existing AVX2/AVX512 arithmetic kernels are unchanged.
+- Output scaling follows rocjitsu `fp_mode::apply_omod_f32`: flush tiny unscaled
+  intermediates, adjust normal exponents, flush newly tiny halves and apply
+  CLAMP last. The integer FMA model detects tininess before exponent packing.
+  RDNA3 gates OMOD on output flushing and IEEE being clear, preserving selected
+  signaling NaNs when IEEE is clear; RDNA4 always applies OMOD and quiets NaNs.
+  RDNA3 CLAMP models DX10_CLAMP=1. No new RDNA3 hardware validation is claimed.
+- RX 9070 gfx1201 captures cover 2,097,152 result records: FMA/FMAC, edge/random
+  and rounding-boundary corpora, sixteen modifier configurations and four
+  coupled denormal policies. Exact CPU results match raw-result digests at all
+  available CPU levels and both wave sizes, including NaN payloads. Checked-in
+  capture generation now accepts FP32 ordinary FMA/FMAC. Raw probes, records
+  and manifests are in `../goc-build/coverage-work/fma32-exact-captures/`.
+- Independent integer-oracle tests cover every source/output modifier, both
+  architectures, aliases and masks. Separate DPP tests vary host rounding and
+  FTZ/DAZ while checking exact results, preserved controls and sticky flags.
+  C99 API tests now explicitly exercise exact ordinary FMA. Previous tests
+  that assumed exact requests were rejected now test reserved semantics instead
+  or verify successful exact empty-EXEC calls.
+- Optional exact exception reporting for ordinary FMA/FMAC remains explicitly
+  unsupported for both architectures. DX9 forms remain loose-only. Enabling
+  ordinary exact results does not claim either of these unfinished behaviors.
+- Validation: all 970 tests pass under Clang 21 and GCC 15 Release. All 37
+  FmaExact/Arithmetic/Fmac/Dpp8/Dpp16/ExecMask/Api tests pass under ASan/UBSan.
+- Eleven alternating CPU-2-pinned samples, minimum 50 ms thread CPU time,
+  compare loose paths against `9d24d32`. FMA AVX2 medians were
+  16.310 -> 16.374 ns (default) and 19.390 -> 19.441 ns (modifiers); AVX512
+  medians were 7.161 -> 7.358 ns and 8.032 -> 8.340 ns. The DX9 control cases
+  changed by less than 1%. All eight measured changes were under 4%; this is
+  a dispatch-regression check, not an exact-path or whole-library speed claim.
+  Artifacts use `../goc-build/coverage-work/fma32-exact-*`.

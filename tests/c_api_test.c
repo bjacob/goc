@@ -36,9 +36,13 @@ int goc_test_c_api(void) {
   const uint64_t *strict = &GOC_SEMANTICS_STRICT;
   const int *unsupported = &GOC_ERROR_UNSUPPORTED_SEMANTICS;
   const uint32_t *modifier = &GOC_ALU_NEG_C;
-  status = goc_v_fma_f32(*exact | *strict, 1, 0, &pd, input_vgprs(&pa), input_vgprs(&pb),
+  status = goc_v_fma_f32((2ULL << 16) | *strict, 1, 0, &pd, input_vgprs(&pa), input_vgprs(&pb),
                          input_vgprs(&pc), NULL);
   if (status != *unsupported || d[0] != 0x41200000)
+    return 0;
+  status = goc_v_fma_f32(*exact | *strict, 1, 0, &pd, input_vgprs(&pa), input_vgprs(&pb),
+                         input_vgprs(&pc), NULL);
+  if (status != GOC_SUCCESS || d[0] != 0x42080000)
     return 0;
   status = goc_v_fma_f32(GOC_CPU_BASELINE, 1, *modifier, &pd, input_vgprs(&pa), input_vgprs(&pb),
                          input_vgprs(&pc), NULL);

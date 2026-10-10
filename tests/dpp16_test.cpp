@@ -175,5 +175,5 @@ TEST(Dpp16, InvalidControlAndDescriptorFields) {
     EXPECT_EQ(call(false, 0, 0, mode, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
   EXPECT_EQ(call(false, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, GOC_DPP16, nullptr,
                  nullptr, nullptr, nullptr),
-            GOC_ERROR_UNSUPPORTED_SEMANTICS);
+            GOC_SUCCESS);
 }

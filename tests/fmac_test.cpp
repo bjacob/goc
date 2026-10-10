@@ -242,11 +242,6 @@ TEST(Fmac, ValidationAndZeroMasks) {
       EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &p, &p, &p, nullptr), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
-      if (!half) {
-        EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &p, &p, &p,
-                     nullptr),
-                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
-      }
     }
     for (auto word : words)
       EXPECT_EQ(word, 0xfacecafe);

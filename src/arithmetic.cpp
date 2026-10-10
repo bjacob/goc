@@ -13,12 +13,61 @@
 
 namespace {
 
+// Exact ordinary FMA, including source modifiers, output scaling and CLAMP.
+// Sources may overlap the destination. Host FP controls do not affect results.
+template <bool Rdna3>
+[[gnu::noinline]] int fma_exact(uint64_t flags, uint32_t exec_mask, uint32_t mode,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c) {
+  uint32_t result[32];
+  unsigned omod = (mode >> 6) & 3;
+  for (unsigned lane = 0; lane < 32; ++lane) {
+    uint32_t input[] = {a[0][lane], b[0][lane], c[0][lane]};
+    for (unsigned operand = 0; operand < 3; ++operand) {
+      if (mode & (GOC_ALU_ABS_A << operand))
+        input[operand] &= 0x7fffffff;
+      if (mode & (GOC_ALU_NEG_A << operand))
+        input[operand] ^= 0x80000000;
+      if ((flags & GOC_FP_FLUSH_INPUT_DENORMALS) && !(input[operand] & 0x7f800000))
+        input[operand] &= 0x80000000;
+    }
+    // OMOD flushes a tiny intermediate before scaling, independently of MODE.
+    uint32_t value = goc::fma_value_f32(input[0], input[1], input[2], false,
+                                        flags | (omod ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0), Rdna3);
+    uint32_t magnitude = value & 0x7fffffff;
+    if (omod && magnitude < 0x7f800000) {
+      unsigned exponent = magnitude >> 23;
+      if (!exponent)
+        value = 0;
+      else if (omod == 3 && exponent == 1)
+        value &= 0x80000000;
+      else if (omod != 3 && exponent + omod >= 255)
+        value = (value & 0x80000000) | 0x7f800000;
+      else
+        value = omod == 3 ? value - 0x800000 : value + (omod << 23);
+    }
+    if (mode & GOC_ALU_CLAMP)
+      value = (value & 0x80000000) || (value & 0x7fffffff) > 0x7f800000 ? 0
+              : value > 0x3f800000                                      ? 0x3f800000
+                                                                        : value;
+    result[lane] = value;
+  }
+  for (unsigned lane = 0; lane < 32; ++lane)
+    if ((exec_mask >> lane) & 1)
+      d[0][lane] = result[lane];
+  return GOC_SUCCESS;
+}
+
 template <bool Dx9Zero, bool Rdna3 = false>
 int fma(uint64_t flags, uint32_t exec_mask, uint32_t instruction_flags, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   if constexpr (Rdna3)
     if (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE))
       instruction_flags &= ~GOC_ALU_OMOD_HALF;
+
+  if constexpr (!Dx9Zero)
+    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
+      return fma_exact<Rdna3>(flags, exec_mask, instruction_flags, d, a, b, c);
 
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
@@ -96,7 +145,7 @@ int fma_with_dpp(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *co
     return GOC_ERROR_INVALID_FLAGS;
   constexpr uint64_t fp_flags =
       GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
-  if (int error = goc::validate(flags, 0, false, fp_flags))
+  if (int error = goc::validate(flags, 0, !Dx9Zero, fp_flags))
     return error;
   if (mode >> 32)
     return fma_dpp<Rdna3, Dx9Zero>(flags, exec_mask, mode, d, a, b, c);

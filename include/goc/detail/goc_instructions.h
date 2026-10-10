@@ -3090,11 +3090,13 @@ int goc_v_fma_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 // OMOD independently of these guest settings. FMAC_DX9_ZERO is RDNA3-only.
 // DX9-zero forms always flush input
 // and output denormals, while retaining the architecture's OMOD gating rule.
-// All retain their scalar, eight-lane AVX2 and sixteen-lane AVX512 paths.
-// Exact requests fall back to loose unless STRICT is set; faithful optional
-// exception output remains unsupported. Loose execution skips that output.
-// Host nearest-even arithmetic and enabled denormals are required; guest mode
-// does not change the host FP environment.
+// Ordinary FMA/FMAC have exact integer RNE paths, including NaN payload priority,
+// DPP and all source/output modifiers, independent of host FP controls. RDNA3
+// exact CLAMP uses DX10_CLAMP=1. Faithful optional exception output is unsupported.
+// Loose calls retain scalar, eight-lane AVX2 and sixteen-lane AVX512 paths and
+// skip optional output. They require host nearest-even arithmetic and enabled
+// denormals. DX9 exact requests still fall back to loose unless STRICT is set.
+// Guest settings never change the host FP environment.
 int goc_v_fma_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   const uint32_t *const *c, uint32_t *trapsts);

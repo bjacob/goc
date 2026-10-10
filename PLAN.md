@@ -422,6 +422,12 @@ Their integer FMA intermediate supplies inexact/underflow/overflow classificatio
 Packed results accumulate exceptions from both selected halves. Loose SIMD
 paths skip all of this work.
 
+Ordinary FP32 `FMA`/`FMAC` implement exact nearest-even results with DPP,
+source modifiers, OMOD and CLAMP using the shared integer FMA model. Their
+optional exact exception reporting remains unsupported. Loose SIMD paths are
+retained; DX9 forms still only implement loose results. RDNA3 exact CLAMP models
+`DX10_CLAMP=1`; the alternative NaN-preserving setting is not exposed.
+
 FP32 literal `FMAMK`/`FMAAK` implement exact nearest-even results, including
 guest denormal policies and architecture-specific NaN quieting, using the shared
 integer FMA model. RDNA4 reports exceptions across all four exposed denormal

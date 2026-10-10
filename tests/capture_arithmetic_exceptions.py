@@ -4,8 +4,8 @@
 
 Usage: capture_arithmetic_exceptions.py OUTPUT_DIR FAMILY WIDTH
 Families: div_fixup (16/32/64), div_fmas (32/64), sin/cos (16/32), fma_mix (32).
-Literal fmamk/fmaak accept 16/32.
-All other families use WIDTH=16: fma/fmac, pk_fma/pk_fmac,
+FMA/fmac and literal fmamk/fmaak accept 16/32.
+All other families use WIDTH=16: pk_fma/pk_fmac,
 fma_mixlo/fma_mixhi, dot2_f32_f16/dot2_f32_bf16.
 Compile probe.cpp with hipcc for gfx1201 and run from OUTPUT_DIR. The probe
 accepts an optional FP_DENORM nibble (0..15, default 15), allowing independent
@@ -49,12 +49,12 @@ args = parser.parse_args()
 out, family, width = args.output, args.family, args.width
 allowed_widths = {"div_fixup": (16, 32, 64), "div_fmas": (32, 64),
                   "sin": (16, 32), "cos": (16, 32), "fma_mix": (32,),
-                  "fmamk": (16, 32), "fmaak": (16, 32)}
+                  "fmamk": (16, 32), "fmaak": (16, 32), "fma": (16, 32), "fmac": (16, 32)}
 if width not in allowed_widths.get(family, (16,)):
     parser.error("unsupported family/width combination")
 if args.boundaries and (family not in ("sin", "cos") or width != 32):
     parser.error("--boundaries requires FP32 SIN/COS")
-if args.rounding_boundaries and family not in ("fma", "div_fmas", "fmamk", "fmaak"):
+if args.rounding_boundaries and family not in ("fma", "fmac", "div_fmas", "fmamk", "fmaak"):
     parser.error("--rounding-boundaries requires FMA, literal FMA or DIV_FMAS")
 if args.mix_high and not family.startswith("fma_mix"):
     parser.error("--mix-high requires mixed FMA")
@@ -149,7 +149,7 @@ for m in range(16):
     instruction = f"v_{family}_f{width} {dest}, " + ", ".join(operands)
     if family in ("fmac", "fmamk", "fmaak"):
         if family == "fmac":
-            instruction = "v_fmac_f16 v6, " + ("-|v0|, |v2|" if m & 8 else "v0, v2")
+            instruction = f"v_fmac_f{width} v6, " + ("-|v0|, |v2|" if m & 8 else "v0, v2")
             instruction += " clamp" if m & 4 else ""
             instruction += ["", " mul:2", " mul:4", " div:2"][m & 3]
         elif family == "fmamk":

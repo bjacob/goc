@@ -55,8 +55,8 @@ TEST(Arithmetic, ErrorsPreserveDestination) {
   auto pa = a, pd = d;
   for (auto &v : d)
     v = 0xdeadbeef;
-  EXPECT_EQ(goc_v_fma_f32_rdna4(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX, 0,
-                                &pd, &pa, &pa, &pa, nullptr),
+  EXPECT_EQ(goc_v_fma_f32_rdna4((2ULL << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, &pd, &pa, &pa,
+                                &pa, nullptr),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
   EXPECT_EQ(goc_v_log_f32(0, UINT32_MAX, GOC_ALU_NEG_B, &pd, &pa, nullptr),
             GOC_ERROR_INVALID_FLAGS);
@@ -601,8 +601,8 @@ TEST(Arithmetic, Wave64FmaValidation) {
     EXPECT_EQ(fma_wave64_call(op, 0, UINT64_MAX, 1ULL << 36, nullptr, nullptr, nullptr, nullptr, 0,
                               nullptr),
               GOC_ERROR_INVALID_FLAGS);
-    // Ordinary FMA/FMAC remain loose-only; literal forms support exact results.
-    if (op < 4)
+    // DX9 remains loose-only; ordinary and literal forms support exact results.
+    if (op == 2 || op == 3)
       EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                                 UINT64_MAX, 0, nullptr, nullptr, nullptr, nullptr, 0, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
