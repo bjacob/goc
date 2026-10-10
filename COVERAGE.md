@@ -54,7 +54,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
 | Vector/register routing | Lane transfers, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; Wave32 relative moves; RX 9070 SWAPREL and DS_SWIZZLE captures | Wave64 moves/relative moves and broader cross-width/modifier audit; RDNA3 hardware confirmation |
-| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests | RDNA3 integer true/false forms now implemented; floating constant forms, Wave64, and architecture-specific floating policies remain |
+| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; RDNA3 integer and floating true/false results implemented | RDNA3 floating constant exception reporting, Wave64, and architecture-specific floating-policy audit |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
@@ -435,3 +435,38 @@ overflow and all invalid instruction-flag bits. Missing canonical names: 34;
 
 Validation: all 727 tests pass on Clang/GCC, and all eight swap-family tests pass
 under ASan/UBSan. Existing SIMD implementations are unchanged.
+
+
+## RDNA3 floating constant comparisons
+
+Added all twelve Wave32 CMP/CMPX false/true FP16/FP32/FP64 entry points. Results
+follow rocjitsu's constant predicates: false returns zero, true returns EXEC
+filtered by DPP16 row/bank/boundary rules. CMPX returns the new EXEC mask as its
+ordinary scalar destination. FP16/FP32 accept DPP8/DPP16; FP64 rejects DPP.
+ABS/NEG, half selectors, CLAMP and supported flushing settings cannot change
+the constant result. Existing integer and new floating forms share the short
+predicate/mask implementation; no SIMD numerical loop is necessary.
+
+The RDNA3 manual explicitly says these predicates still signal invalid for
+sNaNs and, with CLAMP, qNaNs. rocjitsu's shared result handlers do not model
+those exceptions. The existing GoC comparison exception classifier is backed
+by RDNA4 captures, which do not establish the behavior of these RDNA3-only
+opcodes. Accordingly result masks are exact, but non-null reporting in
+non-loose semantics returns `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE` before any
+output write. Loose mode leaves the optional register unchanged. No exception
+support or new GPU observation is claimed for this slice.
+
+The input VGPR pointers may be null because successful calls need only EXEC
+and the modifiers. Tests cover all twelve entry points, all available CPU
+levels, strict exact and loose semantics, EXEC/DPP filtering, accepted and
+rejected modifiers, unchanged optional state in loose mode, and preservation
+of both outputs on reporting errors. The generic reporting-contract test now
+includes these APIs instead of treating them as implemented classifiers.
+
+There are now 787 in-scope canonical names with APIs and 22 absent. The missing
+names are VOPD operations and general scalar hardware-register access; Wave64,
+exception models, and broader semantic audits remain separate open work.
+
+Validation: all 729 tests pass with Clang/GCC. All eight constant-comparison and
+exception-register contract tests pass under ASan/UBSan. Public standalone
+headers and exhaustive high instruction-flag checks include the new entry points.

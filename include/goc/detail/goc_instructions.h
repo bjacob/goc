@@ -1474,6 +1474,52 @@ int goc_v_cmpx_nlt_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
                        const uint32_t *const *a, const uint32_t *const *b,
                        uint32_t *excp_flag_user);
 
+// RDNA3 floating constant comparisons. F returns zero; T returns active lanes,
+// after DPP16 row/bank/boundary filtering. CMPX returns the resulting EXEC mask
+// in d, with no separate VCC write. Operand values do not affect the result;
+// a/b may be NULL. F16 half selectors, ABS/NEG, CLAMP and input/output flushing
+// are accepted without changing the result. F64 does not support DPP.
+// Result masks are exact in both semantics. Exact-mode exception reporting is
+// not implemented: non-NULL excp_flag_user in non-loose semantics returns
+// GOC_ERROR_UNSUPPORTED_GLOBAL_STATE before modifying any output. Loose mode
+// leaves that register unchanged. The ISA still specifies NaN exceptions for
+// these predicates; an exception-free result must not be inferred from F/T.
+int goc_v_cmp_f_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_cmp_t_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_cmpx_f_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_cmpx_t_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_cmp_f_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_cmp_t_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_cmpx_f_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_cmpx_t_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_cmp_f_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_cmp_t_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                    const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_cmpx_f_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_cmpx_t_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
+                     const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user);
+
 // RDNA3 constant integer comparisons. F writes zero; T writes participating
 // EXEC after DPP filtering. CMP produces the condition mask; CMPX produces
 // replacement EXEC in d. A/B values are ignored and their pointers may be null.

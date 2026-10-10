@@ -2359,3 +2359,7 @@ checked against RX 9070 captures.
 Relative VGPR swaps support both wave sizes, preserving inactive lanes and
 cancelling both writes when either index is invalid. RX 9070 captures check the
 shared RDNA3/RDNA4 behavior, including masks and out-of-range offsets.
+
+RDNA3 floating true/false comparisons provide exact result masks, including
+DPP filtering. Their optional exception reporting remains unsupported in exact
+semantics; loose semantics leave the supplied exception register unchanged.
