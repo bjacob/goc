@@ -2455,13 +2455,13 @@ static const uint32_t GOC_CVT_BYTE_3 = 3U << 16;
 
 // Single-result forms support DPP8/DPP16, permuting A before byte selection.
 // Packed two-result forms have no RDNA4 DPP encoding and reject DPP flags.
-// FP8 (OCP E4M3FN) / BF8 (OCP E5M2) to FP32, loose semantics. A holds one
+// FP8 (OCP E4M3FN) / BF8 (OCP E5M2) to FP32, exact in both semantics. A holds one
 // VGPR. Single-result forms select one byte with GOC_CVT_BYTE_* and write D[0].
 // Packed forms select the low/high A half with GOC_ALU_HIGH_A and write its
 // two bytes to D[0]/D[1], respectively. If D halves alias, D[1] wins. Supports
 // whole-register source/destination aliases and EXEC masking. No ABS/NEG,
-// OMOD or CLAMP. Finite results are exact; NaNs become sign-preserving quiet
-// NaNs. All host rounding modes give the same bits and preserve FP state.
+// OMOD or CLAMP. Finite results are exact; NaNs become 0xffc00000. All host
+// rounding modes give the same bits and preserve FP state.
 
 int goc_v_cvt_f32_fp8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a);
@@ -2474,6 +2474,20 @@ int goc_v_cvt_pk_f32_fp8(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 
 int goc_v_cvt_pk_f32_bf8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a);
+
+// Wave64 FP8/BF8 widening has the same VGPR layout, selectors and NaN rules.
+// DPP row enables cover all 64 lanes in the single-result forms.
+int goc_v_cvt_f32_fp8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_f32_bf8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_pk_f32_fp8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_pk_f32_bf8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a);
 
 // DPP8/DPP16 permute A before byte selection.
 // Unsigned byte-to-FP32 conversions: one VGPR per operand. The mnemonic's

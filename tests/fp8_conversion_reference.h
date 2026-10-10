@@ -16,7 +16,7 @@ inline uint32_t fp8_conversion_reference(bool bf8, uint8_t code) {
   if (bf8 && magnitude == 124)
     return (negative ? 0x80000000u : 0) | 0x7f800000;
   if ((bf8 && magnitude > 124) || (!bf8 && magnitude == 127))
-    return (negative ? 0x80000000u : 0) | 0x7fc00000;
+    return 0xffc00000;
   unsigned exponent = magnitude >> fraction_bits;
   unsigned significand = magnitude & ((1u << fraction_bits) - 1);
   if (exponent)

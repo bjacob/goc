@@ -1085,7 +1085,8 @@ and E5M2 decoders. Single-result forms accept `GOC_CVT_BYTE_0` through
 half's two bytes into two FP32 VGPRs. They reject ABS/NEG, OMOD and CLAMP.
 All selectors remain on the eight-lane v3 and sixteen-lane v4 paths. Finite
 values expand exactly, including subnormals and signed zeros; NaNs become
-sign-preserving canonical quiet NaNs. These APIs expose loose semantics and
+the canonical negative quiet NaN `0xffc00000`. Both wave sizes accept exact
+and loose semantics and
 preserve the host FP environment under every rounding mode.
 
 The single-result forms support DPP8/DPP16, permuting A before byte selection.
@@ -1294,7 +1295,7 @@ half, preserving the other half (`HIGH_D`). The latter selects source halves
 with `HIGH_A/B`, applies `ABS_A/B` before `NEG_A/B`, quiets signaling NaNs, and
 packs A low/B high. Other FP16 bits, including subnormals and NaN payloads,
 are preserved. All modifiers stay on eight-lane v3 and sixteen-lane v4 paths;
-host FP state is unchanged. Only loose semantics are exposed.
+host FP state is unchanged. Both semantics return exact result bits.
 Both instructions also support DPP8/DPP16 on A before saturation or half
 selection, retaining SIMD with every modifier. DPP tests cover all 66 packing
 modes, EXEC masks, destination aliases and guard words, plus 118,272 GPU

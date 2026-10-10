@@ -1070,10 +1070,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cvt_f16_f32` | yes | yes | in | `goc_v_cvt_f16_f32` | — | API present; semantic audit pending |
 | `v_cvt_f16_i16` | yes | yes | in | `goc_v_cvt_f16_i16` | — | API present; semantic audit pending |
 | `v_cvt_f16_u16` | yes | yes | in | `goc_v_cvt_f16_u16` | — | API present; semantic audit pending |
-| `v_cvt_f32_bf8` | — | yes | in | `goc_v_cvt_f32_bf8` | — | API present; semantic audit pending |
+| `v_cvt_f32_bf8` | — | yes | in | `goc_v_cvt_f32_bf8`<br>`goc_v_cvt_f32_bf8_wave64` | — | API present; semantic audit pending |
 | `v_cvt_f32_f16` | yes | yes | in | `goc_v_cvt_f32_f16` | — | API present; semantic audit pending |
 | `v_cvt_f32_f64` | yes | yes | in | `goc_v_cvt_f32_f64` | — | API present; semantic audit pending |
-| `v_cvt_f32_fp8` | — | yes | in | `goc_v_cvt_f32_fp8` | — | API present; semantic audit pending |
+| `v_cvt_f32_fp8` | — | yes | in | `goc_v_cvt_f32_fp8`<br>`goc_v_cvt_f32_fp8_wave64` | — | API present; semantic audit pending |
 | `v_cvt_f32_i32` | yes | yes | in | `goc_v_cvt_f32_i32` | — | API present; semantic audit pending |
 | `v_cvt_f32_u32` | yes | yes | in | `goc_v_cvt_f32_u32` | — | API present; semantic audit pending |
 | `v_cvt_f32_ubyte0` | yes | yes | in | `goc_v_cvt_f32_ubyte0`<br>`goc_v_cvt_f32_ubyte0_wave64` | — | API present; semantic audit pending |
@@ -1093,8 +1093,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cvt_norm_u16_f16` | yes | yes | in | `goc_v_cvt_norm_u16_f16` | — | API present; semantic audit pending |
 | `v_cvt_off_f32_i4` | yes | yes | in | `goc_v_cvt_off_f32_i4`<br>`goc_v_cvt_off_f32_i4_wave64` | — | API present; semantic audit pending |
 | `v_cvt_pk_bf8_f32` | — | yes | in | `goc_v_cvt_pk_bf8_f32` | — | API present; semantic audit pending |
-| `v_cvt_pk_f32_bf8` | — | yes | in | `goc_v_cvt_pk_f32_bf8` | — | API present; semantic audit pending |
-| `v_cvt_pk_f32_fp8` | — | yes | in | `goc_v_cvt_pk_f32_fp8` | — | API present; semantic audit pending |
+| `v_cvt_pk_f32_bf8` | — | yes | in | `goc_v_cvt_pk_f32_bf8`<br>`goc_v_cvt_pk_f32_bf8_wave64` | — | API present; semantic audit pending |
+| `v_cvt_pk_f32_fp8` | — | yes | in | `goc_v_cvt_pk_f32_fp8`<br>`goc_v_cvt_pk_f32_fp8_wave64` | — | API present; semantic audit pending |
 | `v_cvt_pk_fp8_f32` | — | yes | in | `goc_v_cvt_pk_fp8_f32` | — | API present; semantic audit pending |
 | `v_cvt_pk_i16_f32` | yes | yes | in | `goc_v_cvt_pk_i16_f32` | — | API present; semantic audit pending |
 | `v_cvt_pk_i16_i32` | yes | yes | in | `goc_v_cvt_pk_i16_i32`<br>`goc_v_cvt_pk_i16_i32_wave64` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 202 Wave32 EXEC-taking APIs without a corresponding
+There are 198 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1445,7 +1445,6 @@ this screen; their width requirements remain a separate audit.
 | [`div_scale.cpp`](src/div_scale.cpp) | `goc_v_div_scale_f32`, `goc_v_div_scale_f64` |
 | [`dot.cpp`](src/dot.cpp) | `goc_v_dot2_f32_bf16`, `goc_v_dot2_f32_bf16_rdna4`, `goc_v_dot2_f32_f16`, `goc_v_dot2_f32_f16_rdna4`, `goc_v_dot2acc_f32_f16` |
 | [`fp64.cpp`](src/fp64.cpp) | `goc_v_add_f64`, `goc_v_ceil_f64`, `goc_v_floor_f64`, `goc_v_fma_f64`, `goc_v_fract_f64`, `goc_v_frexp_mant_f64`, `goc_v_max_f64`, `goc_v_max_num_f64`, `goc_v_maximum_f64`, `goc_v_min_f64`, `goc_v_min_num_f64`, `goc_v_minimum_f64`, `goc_v_mul_f64`, `goc_v_rcp_f64`, `goc_v_rndne_f64`, `goc_v_rsq_f64`, `goc_v_sqrt_f64`, `goc_v_trunc_f64` |
-| [`fp8_conversion.cpp`](src/fp8_conversion.cpp) | `goc_v_cvt_f32_bf8`, `goc_v_cvt_f32_fp8`, `goc_v_cvt_pk_f32_bf8`, `goc_v_cvt_pk_f32_fp8` |
 | [`fp8_dot.cpp`](src/fp8_dot.cpp) | `goc_v_dot4_f32_bf8_bf8`, `goc_v_dot4_f32_bf8_fp8`, `goc_v_dot4_f32_fp8_bf8`, `goc_v_dot4_f32_fp8_fp8` |
 | [`fp8_narrow.cpp`](src/fp8_narrow.cpp) | `goc_v_cvt_pk_bf8_f32`, `goc_v_cvt_pk_fp8_f32`, `goc_v_cvt_sr_bf8_f32`, `goc_v_cvt_sr_fp8_f32` |
 | [`half_binary.cpp`](src/half_binary.cpp) | `goc_v_add_f16`, `goc_v_max_f16`, `goc_v_max_num_f16`, `goc_v_maximum_f16`, `goc_v_min_f16`, `goc_v_min_num_f16`, `goc_v_minimum_f16`, `goc_v_mul_f16`, `goc_v_pk_add_f16`, `goc_v_pk_max_f16`, `goc_v_pk_max_num_f16`, `goc_v_pk_maximum_f16`, `goc_v_pk_min_f16`, `goc_v_pk_min_num_f16`, `goc_v_pk_minimum_f16`, `goc_v_pk_mul_f16`, `goc_v_sub_f16`, `goc_v_subrev_f16` |

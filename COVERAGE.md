@@ -1042,3 +1042,31 @@ The width-review queue is now 202 APIs.
 
 Validation: all 780 tests pass on Clang 21 and GCC 15 Release. All twenty
 byte conversion, byte packing and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 FP8/BF8 widening and raw NaN correction
+
+Added all four single/packed FP8/BF8 widening Wave64 APIs and enabled exact
+semantics at both widths. The existing scalar/v3/v4 algorithms are shared;
+single-result forms support DPP, packed forms reject it and write two VGPRs.
+Destination aliasing retains the second-result-wins rule.
+
+Review found that prior hardware tests canonicalized NaNs before comparing,
+so they could not justify an exact NaN-bit claim. A new RX 9070 gfx1201 probe
+captured all 256 codes for both single instructions and both packed result
+pairs. Hardware maps every NaN, regardless of input sign, to `0xffc00000`.
+The former sign-preserving conversion behavior was corrected in scalar and
+SIMD kernels. The shared SIMD decoder has an explicit constant NaN-policy
+parameter used by conversions; existing dot/matrix callers retain their prior
+policy. This changes the NaN constants in the same SIMD instruction sequence,
+without adding a reporting pass or changing finite arithmetic.
+
+`tests/capture_fp8_widen.cpp` reproduces the 1536 raw captured result words.
+The regression hashes raw words without NaN normalization and checks both
+wave widths on all CPU paths; Wave64 regroups the Wave32 hardware corpus.
+Additional independent tests exhaust all packed byte pairs, selectors,
+upper/lower masks and aliases, including overlapping packed outputs, and
+exercise every DPP row-enable combination. The width-review queue is 198 APIs.
+
+Validation: all 782 tests pass on Clang 21 and GCC 15 Release. All twelve FP8
+widening and instruction-flag tests pass under ASan/UBSan. The raw HIP probe
+completed successfully on the local RX 9070.

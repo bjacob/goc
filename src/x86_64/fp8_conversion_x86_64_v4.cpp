@@ -14,10 +14,10 @@ void fp8_conversion_x86_64_v4(uint32_t exec_mask, unsigned shift, uint32_t *cons
   for (unsigned lane = 0; lane < 32; lane += 16) {
     auto raw = _mm512_loadu_si512(reinterpret_cast<const __m512i *>(a + lane));
     raw = _mm512_srl_epi32(raw, _mm_cvtsi32_si128(int(shift)));
-    auto low = _mm512_castps_si512(widen_fp8<Bf8>(raw));
+    auto low = _mm512_castps_si512(widen_fp8<Bf8, true>(raw));
     auto lane_exec_mask = __mmask16(exec_mask >> lane);
     if constexpr (Packed) {
-      auto high = _mm512_castps_si512(widen_fp8<Bf8>(_mm512_srli_epi32(raw, 8)));
+      auto high = _mm512_castps_si512(widen_fp8<Bf8, true>(_mm512_srli_epi32(raw, 8)));
       _mm512_mask_storeu_epi32(d[0] + lane, lane_exec_mask, low);
       _mm512_mask_storeu_epi32(d[1] + lane, lane_exec_mask, high);
     } else {

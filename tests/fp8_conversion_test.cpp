@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cfenv>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <random>
@@ -50,10 +51,10 @@ TEST(Fp8Conversion, LiteralFormatBoundaries) {
                            0x78, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f, 0xfc, 0xff};
   const uint32_t expected[2][16] = {{0, 0x80000000, 0x3b000000, 0xbb000000, 0x3c600000, 0x3c800000,
                                      0x3f800000, 0x3fc00000, 0x43800000, 0x43b00000, 0x43c00000,
-                                     0x43d00000, 0x43e00000, 0x7fc00000, 0xc3c00000, 0xffc00000},
+                                     0x43d00000, 0x43e00000, 0xffc00000, 0xc3c00000, 0xffc00000},
                                     {0, 0x80000000, 0x37800000, 0xb7800000, 0x38e00000, 0x39000000,
                                      0x3f000000, 0x3f800000, 0x47000000, 0x47600000, 0x7f800000,
-                                     0x7fc00000, 0x7fc00000, 0x7fc00000, 0xff800000, 0xffc00000}};
+                                     0xffc00000, 0xffc00000, 0xffc00000, 0xff800000, 0xffc00000}};
   for (unsigned op = 0; op < 4; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned select = 0; select < (op >= 2 ? 2u : 4u); ++select) {
@@ -168,8 +169,7 @@ TEST(Fp8Conversion, ValidationAndSemanticFallback) {
           EXPECT_EQ(functions[op](cpu, 0, 1u << bit, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
         }
       EXPECT_EQ(functions[op](cpu | (1ULL << 63), UINT32_MAX, 0, d, a), GOC_ERROR_INVALID_FLAGS);
-      EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                              UINT32_MAX, 0, d, a),
+      EXPECT_EQ(functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, d, a),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
       for (auto &reg : output)
         for (auto word : reg)
@@ -267,4 +267,121 @@ TEST(Fp8Conversion, DppHardwareCorpusAndHostEnvironment) {
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
     }
   }
+}
+
+TEST(Fp8Conversion, Wave64ExactEncodingsSelectorsMasksAndAliases) {
+  const decltype(&goc_v_cvt_f32_fp8_wave64) wave64[] = {
+      goc_v_cvt_f32_fp8_wave64, goc_v_cvt_f32_bf8_wave64, goc_v_cvt_pk_f32_fp8_wave64,
+      goc_v_cvt_pk_f32_bf8_wave64};
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned selection = 0; selection < (op < 2 ? 4U : 2U); ++selection)
+        for (unsigned start = 0; start < 65536; start += 64)
+          for (unsigned alias = 0; alias < 4; ++alias) {
+            uint32_t initial[3][66], words[3][66];
+            for (unsigned lane = 0; lane < 66; ++lane) {
+              uint32_t pair = (start + lane) & 65535;
+              initial[0][lane] = pair | ((pair ^ 0xa55aU) << 16);
+              initial[1][lane] = initial[2][lane] = 0xdeadbeef;
+            }
+            std::memcpy(words, initial, sizeof words);
+            unsigned dest0 = alias == 1 ? 0 : 1;
+            unsigned dest1 = alias == 2 ? 0 : alias == 3 ? dest0 : 2;
+            uint32_t *d[] = {words[dest0] + 1, words[dest1] + 1};
+            const uint32_t *a = words[0] + 1;
+            uint64_t exec_mask = alias ? 0x87654321fedcba98ULL : UINT64_MAX;
+            uint64_t mode = goc_test::fp8_conversion_mode(op >= 2, selection);
+            ASSERT_EQ(wave64[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                 exec_mask, mode, d, &a),
+                      GOC_SUCCESS);
+            unsigned shift = selection * (op < 2 ? 8 : 16);
+            for (unsigned reg = 0; reg < (op < 2 ? 1U : 2U); ++reg)
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                unsigned final_reg = op >= 2 && alias == 3 ? 1 : reg;
+                uint32_t expected = goc_test::fp8_conversion_reference(
+                    op & 1, uint8_t(initial[0][lane + 1] >> (shift + final_reg * 8)));
+                unsigned dest = reg ? dest1 : dest0;
+                ASSERT_EQ(d[reg][lane],
+                          (exec_mask >> lane & 1) ? expected : initial[dest][lane + 1]);
+              }
+            for (unsigned reg = 0; reg < 3; ++reg) {
+              EXPECT_EQ(words[reg][0], initial[reg][0]);
+              EXPECT_EQ(words[reg][65], initial[reg][65]);
+            }
+          }
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (auto route : goc_test::dpp_modes) {
+        uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+        EXPECT_EQ(wave64[op](flags, 0, 0, nullptr, nullptr), GOC_SUCCESS);
+        if (op >= 2) {
+          EXPECT_EQ(wave64[op](flags, UINT64_MAX, route, nullptr, nullptr),
+                    GOC_ERROR_INVALID_FLAGS);
+          continue;
+        }
+        for (unsigned rows = 0; rows < 16; ++rows)
+          for (unsigned selection = 0; selection < 4; ++selection) {
+            uint32_t a[64], d[64];
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              a[lane] = lane * 0x7395a831U;
+              d[lane] = 0xdeadbeef;
+            }
+            const uint32_t *pa = a;
+            uint32_t *pd = d;
+            uint64_t descriptor = route;
+            if (route & GOC_DPP16)
+              descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+            uint64_t exec_mask = 0x87654321fedcba98ULL;
+            ASSERT_EQ(
+                wave64[op](flags, exec_mask, descriptor | (uint64_t(selection) << 16), &pd, &pa),
+                GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              int source = 0;
+              bool enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+              uint32_t expected = goc_test::fp8_conversion_reference(
+                  op & 1, uint8_t((source < 0 ? 0 : a[source]) >> (selection * 8)));
+              ASSERT_EQ(d[lane], enabled ? expected : 0xdeadbeef);
+            }
+          }
+      }
+}
+
+// RX 9070 gfx1201, capture_fp8_widen.cpp, 2026-10-09. Raw output SHA-256:
+// aace0dc4e35dc8e08644234ad5e18d05fc7fd942ce39ffd49aab83a35ce437ea.
+// All 256 codes, A=code|(((code+1)&255)<<8), byte/half selector zero.
+// Hash whole uint32 words without NaN canonicalization. Wave64 regroups the
+// Wave32 capture; it is not a separate native Wave64 hardware measurement.
+TEST(Fp8Conversion, ExactRawHardwareCorpusIncludingNanSign) {
+  const uint64_t expected[4][2] = {{0xd13a8adf628bb725ULL, 0},
+                                   {0xc67905e08e6bb725ULL, 0},
+                                   {0xd13a8adf628bb725ULL, 0xfbb92838b70bb725ULL},
+                                   {0xc67905e08e6bb725ULL, 0xec3a563d886bb725ULL}};
+  const decltype(&goc_v_cvt_f32_fp8_wave64) wave64[] = {
+      goc_v_cvt_f32_fp8_wave64, goc_v_cvt_f32_bf8_wave64, goc_v_cvt_pk_f32_fp8_wave64,
+      goc_v_cvt_pk_f32_bf8_wave64};
+  for (unsigned op = 0; op < 4; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned width : {32U, 64U}) {
+        uint64_t hash[] = {goc_test::capture_hash_seed, goc_test::capture_hash_seed};
+        for (unsigned start = 0; start < 256; start += width) {
+          uint32_t input[64], output[2][64];
+          for (unsigned lane = 0; lane < width; ++lane) {
+            unsigned code = start + lane;
+            input[lane] = code | (((code + 1) & 255) << 8);
+          }
+          const uint32_t *a = input;
+          uint32_t *d[] = {output[0], output[1]};
+          uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+          ASSERT_EQ(width == 64 ? wave64[op](flags, UINT64_MAX, 0, d, &a)
+                                : functions[op](flags, UINT32_MAX, 0, d, &a),
+                    GOC_SUCCESS);
+          for (unsigned reg = 0; reg < (op < 2 ? 1U : 2U); ++reg)
+            for (unsigned lane = 0; lane < width; ++lane)
+              hash[reg] = goc_test::capture_hash_word(hash[reg], output[reg][lane]);
+        }
+        EXPECT_EQ(hash[0], expected[op][0]);
+        if (op >= 2) {
+          EXPECT_EQ(hash[1], expected[op][1]);
+        }
+      }
 }
