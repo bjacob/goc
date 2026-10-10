@@ -55,7 +55,7 @@ be treated as verified shared semantics. Width completeness does not close this 
 | RDNA3 WMMA | All six mnemonics, both widths, exact rocjitsu GFX11 model; `wmma_replicated_exact_test.cpp`; 103 DOT2 captures and 28 packed matrices | Scalar implementations; verify inventory integration as other APIs evolve |
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting remains unsupported; ordinary forms support both wave widths |
-| FP32 unary | Ten floating-result operations plus FREXP_EXP have exact RDNA3/RDNA4 results and captured RDNA4 reporting, with separate architecture policies and SIMD | FRACT review; native RDNA3 reporting; FP16/FP64 counterparts |
+| FP32 unary | All eleven floating-result operations plus FREXP_EXP have exact RDNA3/RDNA4 results and captured RDNA4 reporting, with separate architecture policies and SIMD | Native RDNA3 reporting; FP16/FP64 counterparts |
 | Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms, Wave64 and SIMD dispatch | Exact IEEE-mode NaN policies and exception reporting |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
@@ -3157,3 +3157,51 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   SIMD throughput while adding guest denormal handling, split native-state APIs,
   and test both wave sizes/DPP/aliases. These probes use guest nearest-even only;
   they do not validate other guest rounding modes or native RDNA3 reporting.
+
+### FP32 FRACT exact semantics and architecture/state APIs
+
+- Implemented exact `x - floor(x)` by composing the existing integer FLOOR and
+  FMA models, then applying FRACT's saturation below one. This reuses verified
+  nearest-even rounding and exception classification without adding another
+  floating-point arithmetic engine or modifying host FP controls.
+- Unsuffixed FP32 FRACT APIs now use RDNA3's conditional OMOD policy and native
+  `trapsts`; `_rdna4` comes before `_wave64` and uses `excp_flag_user`. Both have
+  exact numerical results. Exact RDNA4 reporting implements the captured
+  INVALID/INPUT_DENORM/UNDERFLOW/INEXACT rules, OMOD suppression and CLAMP
+  suppression. Exact non-null RDNA3 reporting remains unsupported; hardware
+  capture provenance is gfx1201, not native RDNA3 verification.
+- Scalar and eight-lane loose AVX2 paths honor guest input/output denormal
+  flushing while skipping optional reporting. The backend receives existing FP
+  flags in its existing argument slot because FRACT needs both denormal bits;
+  no additional argument or guest-state adapter was added. Other unary paths
+  retain their prior flushing policies. All eleven FP32 unary operations now
+  support exact results, simplifying the former exact-support dispatch list.
+- New tests check both hardware corpora's result and raw result/status hashes
+  (2,097,152 captured pairs), all modifiers, guest policies, both architectures
+  and wave widths, CPU tiers, DPP routing, in-place aliases, inactive exceptional
+  operands, sticky accumulation, empty EXEC and validation. Exact paths are
+  tested under four host rounding modes and four DAZ/FTZ combinations; loose
+  arithmetic retains its documented host nearest-even/denormals-enabled contract.
+- Clang 21 and GCC 15 Release each pass **1,032/1,032** tests. Clang ASan/UBSan
+  passes **64/64** targeted tests: 29 FRACT/unary/DPP/FP16-unary/FREXP_MANT tests
+  and 35 existing exact unary tests. Logs use `/tmp/goc-fract-{clang,gcc}-tests.log`,
+  `/tmp/goc-fract-san-tests.log` and `/tmp/goc-fract-san-unary-exact-tests.log`.
+- Refreshed inventory and architecture/state audits: 672 native-state signatures,
+  386 resolved names matching, zero mismatches, 286 pending. Canonical API
+  inventory remains 806/809. README and public contracts describe FRACT's new
+  support; common FP-flag comments refer to per-instruction contracts rather
+  than stale incomplete lists of supported instructions.
+- Final scalar/AVX2 loose paths avoid a redundant output-flush check when OMOD
+  already mandates flushing. After that change, Clang/GCC again pass 1,032 tests
+  each; 56 affected FP32 sanitizer tests pass. The earlier eight FP16-unary
+  sanitizer tests also passed, and their implementation was not changed by this
+  final adjustment. Final logs use `/tmp/goc-fract-final-{clang,gcc,san}-tests.log`.
+- Final loose AVX2 timing versus `598530a`: eight FRACT cases (normal/subnormal,
+  default/combined modifiers, null/non-null state) cost **2.48–4.53%**, at most
+  **0.614 ns/call**. Default normal/null-state changes 13.653 -> 14.267 ns;
+  combined modifiers change 16.048 -> 16.501 ns. The other eight AVX2 unary
+  operations span -1.87% to +4.56% across 64 control cases. These are measured
+  small costs/variation, not a claim of identical throughput. Eleven alternating
+  CPU-2-pinned samples use at least 50 ms thread CPU time per case. Binaries and
+  samples use `../goc-build/coverage-work/fract-*`; the final summary is
+  `/tmp/goc-fract-final-timing.log`. No sparse-mask specialization was added.

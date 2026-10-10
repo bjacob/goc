@@ -12,7 +12,7 @@ namespace goc {
 namespace {
 
 template <Unary Op>
-void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, bool flush_input) {
+void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a, uint64_t flags) {
   const __m256i keep = _mm256_set1_epi32((modifiers & GOC_ALU_ABS_A) ? 0x7fffffff : -1);
   const __m256i flip = _mm256_set1_epi32((modifiers & GOC_ALU_NEG_A) ? INT32_MIN : 0);
   const float scales[] = {1, 2, 4, 0.5f};
@@ -23,8 +23,8 @@ void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
         flip));
     if constexpr (unary_flushes_f32<Op>)
       value = flush_denorm_f32(value);
-    else if constexpr (unary_rounds_f32<Op> || Op == Unary::FrexpMant) {
-      if (flush_input)
+    else {
+      if (flags & GOC_FP_FLUSH_INPUT_DENORMALS)
         value = flush_denorm_f32(value);
     }
     value = unary_value<Op>(value);
@@ -33,6 +33,10 @@ void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
     if (modifiers & GOC_ALU_OMOD_HALF) {
       value = prepare_omod_f32(value, modifiers);
       value = _mm256_mul_ps(value, scale);
+    } else if constexpr (Op == Unary::Fract) {
+      // OMOD already enforces output flushing, independently of guest policy.
+      if (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)
+        value = flush_denorm_f32(value);
     }
     if (modifiers & GOC_ALU_CLAMP)
       value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
@@ -46,26 +50,26 @@ void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
 } // namespace
 
 void unary_x86_64_v3(Unary op, uint32_t exec_mask, uint32_t modifiers, uint32_t *d,
-                     const uint32_t *a, bool flush_input) {
+                     const uint32_t *a, uint64_t flags) {
   switch (op) {
   case Unary::Fract:
-    return run<Unary::Fract>(exec_mask, modifiers, d, a, flush_input);
+    return run<Unary::Fract>(exec_mask, modifiers, d, a, flags);
   case Unary::FrexpMant:
-    return run<Unary::FrexpMant>(exec_mask, modifiers, d, a, flush_input);
+    return run<Unary::FrexpMant>(exec_mask, modifiers, d, a, flags);
   case Unary::Trunc:
-    return run<Unary::Trunc>(exec_mask, modifiers, d, a, flush_input);
+    return run<Unary::Trunc>(exec_mask, modifiers, d, a, flags);
   case Unary::Ceil:
-    return run<Unary::Ceil>(exec_mask, modifiers, d, a, flush_input);
+    return run<Unary::Ceil>(exec_mask, modifiers, d, a, flags);
   case Unary::Rndne:
-    return run<Unary::Rndne>(exec_mask, modifiers, d, a, flush_input);
+    return run<Unary::Rndne>(exec_mask, modifiers, d, a, flags);
   case Unary::Floor:
-    return run<Unary::Floor>(exec_mask, modifiers, d, a, flush_input);
+    return run<Unary::Floor>(exec_mask, modifiers, d, a, flags);
   case Unary::Sqrt:
-    return run<Unary::Sqrt>(exec_mask, modifiers, d, a, flush_input);
+    return run<Unary::Sqrt>(exec_mask, modifiers, d, a, flags);
   case Unary::Rcp:
-    return run<Unary::Rcp>(exec_mask, modifiers, d, a, flush_input);
+    return run<Unary::Rcp>(exec_mask, modifiers, d, a, flags);
   case Unary::Rsq:
-    return run<Unary::Rsq>(exec_mask, modifiers, d, a, flush_input);
+    return run<Unary::Rsq>(exec_mask, modifiers, d, a, flags);
   case Unary::Exp:
   case Unary::Log:
     return;

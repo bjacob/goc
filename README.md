@@ -225,7 +225,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_mul_i32_i24`, `v_mul_hi_i32_i24`, `v_mul_u32_u24`, `v_mul_hi_u32_u24` | Scalar, x86-64-v3, x86-64-v4 | Exact integer operations; both wave sizes |
 | `v_min3_{i32,u32}`, `v_max3_{i32,u32}`, `v_minmax_{i32,u32}`, `v_maxmin_{i32,u32}`, `v_med3_{i32,u32}` | Scalar, x86-64-v3, x86-64-v4 | Exact integer operations; both wave sizes |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32` | Scalar, x86-64-v3 | Integer rounding; both architectures, RDNA4 reporting |
-| `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
+| `v_fract_f32` | Scalar, x86-64-v3 | Integer FLOOR/FMA models; both architectures, RDNA4 reporting |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Rocjitsu integer models; both architectures, RDNA4 reporting |
 | `v_sin_f16`, `v_cos_f16` | Scalar, x86-64-v3; half selectors and all modifiers | Rounded captured RDNA3/4 integer model |
 | `v_sin_f32`, `v_cos_f32` | Scalar, x86-64-v3 | Captured RDNA3/4 integer model |
@@ -1281,6 +1281,14 @@ pinned-core samples of at least 10 ms each.
 FP32 `FRACT` computes `x - floor(x)` and caps it at `0x3f7fffff` before
 output modifiers, so tiny negative inputs stay strictly below one. Scalar/v3
 paths support all 32 modifiers, with literal boundary and signed-zero tests.
+Exact semantics reuse the integer FLOOR and FMA models, independently of host
+FP controls. Unsuffixed APIs use RDNA3's conditional OMOD rule and `trapsts`;
+`_rdna4` applies OMOD independently and reports into `excp_flag_user`. Exact
+RDNA4 reporting includes INVALID, INPUT_DENORM, UNDERFLOW and INEXACT; OMOD
+suppresses UNDERFLOW/INEXACT, while CLAMP suppresses all new flags. RDNA3 exact
+reporting remains unsupported. Loose mode skips reporting and retains SIMD,
+including guest input/output flushing. Two gfx1201 corpora check 2,097,152 raw
+result/status pairs; both wave widths, DPP and aliases have regression tests.
 
 FP16 and FP32 `SIN`/`COS` support Wave32 and Wave64, sharing their existing
 empirical exact models and loose SIMD kernels. Wave64 supports four independent
@@ -1462,8 +1470,11 @@ mask/alias guarantees.
 
 `FREXP_EXP_I32_F32` and `FREXP_EXP_I32_F64` return a signed binary exponent
 in one destination VGPR, using one or two source VGPRs respectively, at both
-wave sizes with shared scalar/v3 kernels. Exact semantics and exact optional
-exception reporting remain unsupported. Both FP64 paths extract subnormal
+wave sizes with shared scalar/v3 kernels. FP32 supports exact results and guest
+input flushing, with RDNA4 exact INVALID/INPUT_DENORM reporting and CLAMP
+suppression. Its unsuffixed RDNA3 form accepts `trapsts` but rejects exact
+non-null reporting; `_rdna4` accepts `excp_flag_user`. Loose mode skips reporting.
+FP64 remains loose-only. Both FP64 paths extract subnormal
 exponents independently of host DAZ/FTZ and rounding settings. Zero,
 infinity and NaN inputs return zero. Both scalar and v3 paths handle subnormals;
 ABS/NEG, OMOD and CLAMP are accepted without changing the integer result.
@@ -1791,8 +1802,8 @@ layouts and host FP-environment preservation.
 All eleven FP16 and eleven FP32 unary operations support Wave32 and Wave64.
 Wave64 reuses the existing scalar/SIMD kernels with four independent DPP rows,
 preserving inactive lanes and the unselected FP16 destination half. Numerical
-semantics follow their Wave32 counterparts. Ten FP32 operations (all except
-FRACT) support exact numerical results on both architectures and exact RDNA4
+semantics follow their Wave32 counterparts. All eleven FP32 operations
+support exact numerical results on both architectures and exact RDNA4
 optional exception reporting. RDNA3 reporting remains unsupported. The eleven
 FP16 operations retain their existing loose-only contracts.
 
@@ -1804,8 +1815,9 @@ OMOD flushes an unscaled subnormal or either zero sign to positive zero;
 halving a normal value below twice minimum normal produces signed zero.
 SQRT, RCP, RSQ, EXP, and LOG additionally flush subnormal inputs and results
 with the original sign, independently of guest denormal mode. Their RDNA3
-OMOD is disabled by IEEE mode. FP32 rounding and FREXP mantissa instead honor
-guest input flushing; their RDNA3 OMOD also requires output flushing. All these
+OMOD is disabled by IEEE mode. FP32 rounding, FRACT and FREXP mantissa instead
+honor guest input flushing; their RDNA3 OMOD also requires output flushing. FRACT
+also honors guest output flushing. All these
 RDNA4 forms apply OMOD independently. The FP16 unary paths retain their separate
 rules. GPU captures cover all eleven FP32 unary
 operations with all OMOD values, NEG, and CLAMP; tests require exact special

@@ -31,28 +31,19 @@ static const uint64_t GOC_SEMANTICS_STRICT = 1ULL << 18;
 // of the host floating-point environment.
 static const uint64_t GOC_FP16_OVFL = 1ULL << 19;
 
-// Flush guest input subnormals to signed zero. Supported by floating comparisons
-// and pseudo-scalar FP16 math, plus FP32 binary arithmetic/min/max and ordinary FP16
-// ADD/SUB/SUBREV/MUL and FP64 ADD/MUL/FMA/min/max and ordinary/packed FP16 min/max. CLASS accepts
-// it without changing classification; pseudo-scalar FP32 math, RCP_IFLAG, and DX9 FMA always flush.
-// Other instructions reject it. Independent of host FP settings; zero preserves inputs where
-// configurable.
+// Flush guest input subnormals to signed zero, independently of host FP settings.
+// Availability and mandatory-flush behavior are specified by each instruction's
+// contract. Zero preserves inputs where the policy is configurable.
 static const uint64_t GOC_FP_FLUSH_INPUT_DENORMALS = 1ULL << 20;
 
-// Flush guest output subnormals to signed zero. Supported by pseudo-scalar FP16
-// math and FP32 binary arithmetic/min/max and ordinary FP16 ADD/SUB/SUBREV/MUL and FP64
-// ADD/MUL/FMA. Pseudo-scalar FP32 math, RCP_IFLAG, and DX9 FMA always flush; floating and CLASS
-// comparisons accept this bit without effect because they produce integer masks. FP16/FP32/FP64
-// min/max ignore output flushing except through OMOD. Other instructions currently reject it.
-// Independent of host FTZ; zero preserves outputs where configurable. Nonzero OMOD may require
-// flushing independently.
+// Flush guest output subnormals to signed zero, independently of host FTZ.
+// Availability and effects are specified by each instruction's contract. Zero
+// preserves outputs where configurable; nonzero OMOD may flush independently.
 static const uint64_t GOC_FP_FLUSH_OUTPUT_DENORMALS = 1ULL << 21;
 
-// Guest MODE.IEEE for the FP32 binary arithmetic/min/max and ordinary FP16 ADD/SUB/SUBREV/MUL and
-// FP64 ADD/MUL/FMA/min/max and ordinary/packed FP16 min/max APIs. On RDNA3 this disables OMOD and
-// changes MIN/MAX NaN selection; RDNA4 accepts it without changing OMOD. These APIs support only
-// loose arithmetic; exact arithmetic and exception reporting remain unsupported. Other APIs
-// currently reject this flag. It never changes the host FP environment.
+// Guest MODE.IEEE. Availability and effects on OMOD and NaN handling are
+// instruction- and architecture-specific; see each entry-point contract.
+// This flag never changes the host FP environment.
 static const uint64_t GOC_FP_IEEE_MODE = 1ULL << 22;
 
 // Status codes returned by instruction emulation functions.

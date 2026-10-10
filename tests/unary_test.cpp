@@ -19,7 +19,7 @@ const decltype(&goc_v_trunc_f32_rdna4_wave64) wave64[] = {
     goc_v_trunc_f32_rdna4_wave64, goc_v_ceil_f32_rdna4_wave64,      goc_v_rndne_f32_rdna4_wave64,
     goc_v_floor_f32_rdna4_wave64, goc_v_sqrt_f32_rdna4_wave64,      goc_v_rcp_f32_rdna4_wave64,
     goc_v_rsq_f32_rdna4_wave64,   goc_v_exp_f32_rdna4_wave64,       goc_v_log_f32_rdna4_wave64,
-    goc_v_fract_f32_wave64,       goc_v_frexp_mant_f32_rdna4_wave64};
+    goc_v_fract_f32_rdna4_wave64, goc_v_frexp_mant_f32_rdna4_wave64};
 
 } // namespace
 
@@ -77,13 +77,7 @@ TEST(Unary, ValidationAndEmptyMask) {
       EXPECT_EQ(fn(0, exec_mask, GOC_ALU_ABS_B, &pd, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(0, exec_mask, 1u << 31, &pd, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &pd, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
-      uint64_t unsupported =
-          (fn == goc_v_rcp_f32_rdna4 || fn == goc_v_trunc_f32_rdna4 || fn == goc_v_ceil_f32_rdna4 ||
-           fn == goc_v_rndne_f32_rdna4 || fn == goc_v_floor_f32_rdna4 ||
-           fn == goc_v_sqrt_f32_rdna4 || fn == goc_v_rsq_f32_rdna4 || fn == goc_v_exp_f32_rdna4 ||
-           fn == goc_v_log_f32_rdna4 || fn == goc_v_frexp_mant_f32_rdna4)
-              ? 2ULL << 16
-              : GOC_SEMANTICS_EXACT_EMPIRICAL;
+      uint64_t unsupported = 2ULL << 16;
       EXPECT_EQ(fn(unsupported | GOC_SEMANTICS_STRICT, exec_mask, 0, &pd, &pa, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
@@ -116,7 +110,7 @@ TEST(Unary, FractLiteralBoundaries) {
       uint32_t a[32], d[32];
       std::fill(a, a + 32, test[0]);
       auto pa = a, pd = d;
-      ASSERT_EQ(goc_v_fract_f32(cpu, UINT32_MAX, 0, &pd, &pa, nullptr), GOC_SUCCESS);
+      ASSERT_EQ(goc_v_fract_f32_rdna4(cpu, UINT32_MAX, 0, &pd, &pa, nullptr), GOC_SUCCESS);
       for (uint32_t value : d)
         EXPECT_EQ(value, test[1]) << cpu << "/" << test[0];
     }
@@ -248,15 +242,13 @@ TEST(Unary, Wave64ModifiersDppSelectorsAndAliases) {
 
 TEST(Unary, Wave64ValidationAndOptionalState) {
   for (auto fn : wave64) {
-    bool exact = fn != goc_v_fract_f32_wave64;
     EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(fn(0, UINT64_MAX, GOC_ALU_NEG_B, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(
         fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr, nullptr),
-        exact ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        GOC_SUCCESS);
     uint32_t exceptions = 0x80000055;
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, &exceptions),
-              exact ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, &exceptions), GOC_SUCCESS);
     EXPECT_EQ(exceptions, 0x80000055U);
   }
 }

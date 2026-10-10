@@ -1171,7 +1171,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_fmamk_f16` | yes | yes | in | `goc_v_fmamk_f16`<br>`goc_v_fmamk_f16_wave64`<br>`goc_v_fmamk_f16_rdna4`<br>`goc_v_fmamk_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_fmamk_f32` | yes | yes | in | `goc_v_fmamk_f32`<br>`goc_v_fmamk_f32_wave64`<br>`goc_v_fmamk_f32_rdna4`<br>`goc_v_fmamk_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_fract_f16` | yes | yes | in | `goc_v_fract_f16`<br>`goc_v_fract_f16_wave64` | — | API present; semantic audit pending |
-| `v_fract_f32` | yes | yes | in | `goc_v_fract_f32`<br>`goc_v_fract_f32_wave64` | — | API present; semantic audit pending |
+| `v_fract_f32` | yes | yes | in | `goc_v_fract_f32`<br>`goc_v_fract_f32_wave64`<br>`goc_v_fract_f32_rdna4`<br>`goc_v_fract_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_fract_f64` | yes | yes | in | `goc_v_fract_f64`<br>`goc_v_fract_f64_wave64` | — | API present; semantic audit pending |
 | `v_frexp_exp_i16_f16` | yes | yes | in | `goc_v_frexp_exp_i16_f16`<br>`goc_v_frexp_exp_i16_f16_wave64` | — | API present; semantic audit pending |
 | `v_frexp_exp_i32_f32` | yes | yes | in | `goc_v_frexp_exp_i32_f32`<br>`goc_v_frexp_exp_i32_f32_wave64`<br>`goc_v_frexp_exp_i32_f32_rdna4`<br>`goc_v_frexp_exp_i32_f32_rdna4_wave64` | — | API present; semantic audit pending |

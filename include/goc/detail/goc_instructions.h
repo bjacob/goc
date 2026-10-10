@@ -4125,10 +4125,17 @@ int goc_v_mul_dx9_zero_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t in
                                  const uint32_t *const *b, uint32_t *excp_flag_user);
 
 // FP32 fractional part: x - floor(x), capped at the largest FP32 value below one
-// before output scaling/CLAMP. Supports A ABS/NEG, OMOD and CLAMP, loose semantics.
-// One VGPR per operand; infinite inputs produce NaN.
+// before output scaling/CLAMP. Supports A ABS/NEG, OMOD and CLAMP, both semantics,
+// and guest input/output flushing. One VGPR per operand; infinite inputs produce
+// NaN. Exact results use nearest-even independently of host FP controls.
+// RDNA3 ignores OMOD with IEEE mode or preserved output denormals; RDNA4 does not.
+// Exact RDNA4 reporting accumulates INVALID, INPUT_DENORM, UNDERFLOW and INEXACT.
+// OMOD suppresses UNDERFLOW/INEXACT; CLAMP suppresses all new flags. Exact RDNA3
+// reporting is unsupported. Null opts out; loose mode skips optional reporting.
 int goc_v_fract_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_fract_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 // FP32 median: one VGPR per operand; all A/B/C ABS/NEG, OMOD and CLAMP, loose
 // semantics. Any NaN selects minimumNumber across all three inputs. Otherwise
@@ -4294,7 +4301,10 @@ int goc_v_log_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
                                uint32_t *excp_flag_user);
 
 int goc_v_fract_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_fract_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user);
 
 int goc_v_frexp_mant_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);

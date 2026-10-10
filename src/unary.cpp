@@ -6,6 +6,7 @@
 #include "alu.h"
 #include "dpp.h"
 #include "exp_model.h"
+#include "fma_scalar.h"
 #include "goc/goc.h"
 #include "internal.h"
 #include "log_model.h"
@@ -84,9 +85,8 @@ template <goc::Unary Op>
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
-  if (rdna3 &&
-      ((flags & GOC_FP_IEEE_MODE) || ((goc::unary_rounds_f32<Op> || Op == goc::Unary::FrexpMant) &&
-                                      !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))))
+  if (rdna3 && ((flags & GOC_FP_IEEE_MODE) ||
+                (!goc::unary_flushes_f32<Op> && !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))))
     mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
   unsigned omod = (mode >> 6) & 3;
   uint32_t result[32];
@@ -99,7 +99,22 @@ template <goc::Unary Op>
       input ^= 0x80000000;
     bool quiet_snan = !rdna3 || (flags & GOC_FP_IEEE_MODE);
     uint32_t value;
-    if constexpr (goc::unary_rounds_f32<Op>) {
+    uint32_t lane_exceptions = 0;
+    if constexpr (Op == goc::Unary::Fract) {
+      // Evaluate x - floor(x) with the existing integer rounding/FMA models.
+      // Multiplication by one is exact; no host arithmetic or FP-state writes.
+      if ((flags & GOC_FP_FLUSH_INPUT_DENORMALS) && !(input & 0x7f800000))
+        input &= 0x80000000;
+      uint32_t floor = goc::round_integral_bits<goc::IntegralRound::Floor, false>(input, false);
+      value = goc::fma_value_f32(input, 0x3f800000, floor ^ 0x80000000, false, flags, false,
+                                 excp_flag_user ? &lane_exceptions : nullptr);
+      if (value > 0x3f7fffff && value < 0x7f800000)
+        value = 0x3f7fffff;
+      if (omod)
+        lane_exceptions &= ~(GOC_EXCEPTION_UNDERFLOW | GOC_EXCEPTION_INEXACT);
+      if (mode & GOC_ALU_CLAMP)
+        lane_exceptions = 0;
+    } else if constexpr (goc::unary_rounds_f32<Op>) {
       constexpr auto rounding = Op == goc::Unary::Trunc   ? goc::IntegralRound::Trunc
                                 : Op == goc::Unary::Ceil  ? goc::IntegralRound::Ceil
                                 : Op == goc::Unary::Floor ? goc::IntegralRound::Floor
@@ -118,12 +133,13 @@ template <goc::Unary Op>
       value = goc::exp_f32_bits(input, quiet_snan);
     else
       value = goc::log_f32_bits(input, quiet_snan);
-    if (!(value & 0x7f800000))
-      value &= 0x80000000;
-    uint32_t lane_exceptions = 0;
-    if (excp_flag_user && !(mode & GOC_ALU_CLAMP))
-      lane_exceptions =
-          unary_exceptions<Op>(input, value, omod, flags & GOC_FP_FLUSH_INPUT_DENORMALS);
+    if constexpr (Op != goc::Unary::Fract) {
+      if (!(value & 0x7f800000))
+        value &= 0x80000000;
+      if (excp_flag_user && !(mode & GOC_ALU_CLAMP))
+        lane_exceptions =
+            unary_exceptions<Op>(input, value, omod, flags & GOC_FP_FLUSH_INPUT_DENORMALS);
+    }
     uint32_t magnitude = value & 0x7fffffff;
     if (omod && magnitude < 0x7f800000) {
       unsigned exponent = magnitude >> 23;
@@ -157,15 +173,12 @@ template <goc::Unary Op>
 template <goc::Unary Op, bool Rdna3 = false>
 int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
           const uint32_t *const *a, uint32_t *excp_flag_user = nullptr) {
-  if constexpr (Op == goc::Unary::Rcp || Op == goc::Unary::Sqrt || Op == goc::Unary::Rsq ||
-                Op == goc::Unary::Exp || Op == goc::Unary::Log || goc::unary_rounds_f32<Op> ||
-                Op == goc::Unary::FrexpMant)
-    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
-      return unary_exact<Op>(flags, exec_mask, modifiers, d, a, Rdna3, excp_flag_user);
+  if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return unary_exact<Op>(flags, exec_mask, modifiers, d, a, Rdna3, excp_flag_user);
   if constexpr (Rdna3) {
-    // Transcendentals use forced-flush OMOD policy. Integral rounding instead
-    // uses the guest output-denormal policy, even though rounding itself does
-    // not produce subnormal results. Both also honor RDNA3 IEEE mode.
+    // Transcendentals use forced-flush OMOD policy. Other unary operations
+    // use the guest output-denormal policy, even where their result cannot
+    // be subnormal. Both policies also honor RDNA3 IEEE mode.
     if ((flags & GOC_FP_IEEE_MODE) ||
         (!goc::unary_flushes_f32<Op> && !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)))
       modifiers &= ~uint64_t(GOC_ALU_OMOD_HALF);
@@ -180,9 +193,7 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
 
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   constexpr uint64_t fp_flags =
-      (goc::unary_flushes_f32<Op> || goc::unary_rounds_f32<Op> || Op == goc::Unary::FrexpMant)
-          ? GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE
-          : 0;
+      GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
   if (int error = goc::validate(flags, modifiers & ~known, false, fp_flags))
     return error;
   if (exec_mask == 0)
@@ -190,8 +201,7 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
 #if defined(GOC_HAVE_X86_64_V3)
   if constexpr (Op != goc::Unary::Exp && Op != goc::Unary::Log) {
     if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-      goc::unary_x86_64_v3(Op, exec_mask, modifiers, d[0], a[0],
-                           flags & GOC_FP_FLUSH_INPUT_DENORMALS);
+      goc::unary_x86_64_v3(Op, exec_mask, modifiers, d[0], a[0], flags);
       return GOC_SUCCESS;
     }
   }
@@ -201,13 +211,17 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
     float value = goc::alu_input(a[0][lane], modifiers);
     if constexpr (goc::unary_flushes_f32<Op>)
       value = goc::flush_denorm_f32(value);
-    else if constexpr (goc::unary_rounds_f32<Op> || Op == goc::Unary::FrexpMant) {
+    else {
       if (flags & GOC_FP_FLUSH_INPUT_DENORMALS)
         value = goc::flush_denorm_f32(value);
     }
     value = goc::unary_value<Op>(value);
     if constexpr (goc::unary_flushes_f32<Op>)
       value = goc::flush_denorm_f32(value);
+    else if constexpr (Op == goc::Unary::Fract) {
+      if ((flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && !(modifiers & GOC_ALU_OMOD_HALF))
+        value = goc::flush_denorm_f32(value);
+    }
     result[lane] = goc::as_bits(goc::alu_output_f32(value, modifiers));
   }
   for (int lane = 0; lane < 32; ++lane)
@@ -372,10 +386,17 @@ int goc_v_log_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 }
 
 int goc_v_fract_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                    uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return unary<goc::Unary::Fract>(flags, exec_mask, instruction_flags, d, a);
+  return unary<goc::Unary::Fract, true>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_fract_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary<goc::Unary::Fract>(flags, exec_mask, instruction_flags, d, a, excp_flag_user);
 }
 
 int goc_v_frexp_mant_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -534,10 +555,18 @@ int goc_v_log_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
 }
 
 int goc_v_fract_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return unary_wave64<goc::Unary::Fract>(flags, exec_mask, instruction_flags, d, a);
+  return unary_wave64<goc::Unary::Fract, true>(flags, exec_mask, instruction_flags, d, a);
+}
+
+int goc_v_fract_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary_wave64<goc::Unary::Fract>(flags, exec_mask, instruction_flags, d, a, excp_flag_user);
 }
 
 int goc_v_frexp_mant_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
