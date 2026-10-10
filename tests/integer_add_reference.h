@@ -54,7 +54,7 @@ inline uint32_t integer_add_reference(int op, uint32_t a, uint32_t b, uint32_t c
   int64_t result = op == 1 || op == 4 ? x - y : op == 2 ? y - x : x + y;
   if (op == 5)
     result += c;
-  if (clamp) {
+  if (clamp && op != 5) {
     int64_t low = signed_op ? INT32_MIN : 0, high = signed_op ? INT32_MAX : int64_t(UINT32_MAX);
     if (result < low)
       result = low;

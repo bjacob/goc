@@ -29,7 +29,7 @@ int arithmetic(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *cons
   }
 
   constexpr bool three = Op == goc::IntegerAdd::Add3;
-  const uint32_t known = three ? 0 : GOC_ALU_CLAMP;
+  const uint32_t known = GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (exec_mask == 0)
@@ -62,7 +62,7 @@ int arithmetic(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *cons
       sum = y - x;
     if constexpr (three)
       sum = x + y + c[0][lane];
-    if (mode & GOC_ALU_CLAMP)
+    if (!three && (mode & GOC_ALU_CLAMP))
       sum = std::clamp(sum, Signed ? int64_t(INT32_MIN) : INT64_C(0),
                        Signed ? int64_t(INT32_MAX) : int64_t(UINT32_MAX));
     result[lane] = uint32_t(sum);

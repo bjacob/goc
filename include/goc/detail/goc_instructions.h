@@ -5352,7 +5352,7 @@ int goc_v_mul_hi_u32_u24(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 // Non-carry 32-bit integer addition/subtraction. Each operand uses one VGPR;
 // D may alias any whole source VGPR. The two-input forms accept GOC_ALU_CLAMP
 // to saturate in the signed/unsigned result domain; otherwise results wrap.
-// ADD3 wraps modulo 2^32 and requires zero low instruction-flag bits. All forms
+// ADD3 wraps modulo 2^32 and accepts but ignores CLAMP. All forms
 // support DPP8/DPP16 on A, except SUBREV_NC_U32 which permutes B. Both semantics
 // are exact and preserve the host FP environment. No carry mask is produced.
 int goc_v_add_nc_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,

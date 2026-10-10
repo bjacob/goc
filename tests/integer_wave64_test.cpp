@@ -26,7 +26,7 @@ TEST(IntegerWave64, BoundariesSaturationRoutingMasksAndAliases) {
                             0x80000000, 0x80000001, 0xfffffffe, UINT32_MAX};
   for (unsigned op = 0; op < 13; ++op) {
     bool can_dpp = op < 6 || op >= 9;
-    bool can_clamp = op < 5 || op == 9 || op == 11;
+    bool can_clamp = op < 6 || op == 9 || op == 11;
     std::vector<uint64_t> routes = {0};
     if (can_dpp) {
       for (auto route : goc_test::dpp_modes)
@@ -96,7 +96,7 @@ TEST(IntegerWave64, ZeroExecAndValidation) {
         EXPECT_EQ(execute(op, 0, UINT64_MAX, mode, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
     }
-    if (!(op < 5 || op == 9 || op == 11)) {
+    if (!(op < 6 || op == 9 || op == 11)) {
       EXPECT_EQ(execute(op, 0, UINT64_MAX, GOC_ALU_CLAMP, nullptr, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
     }

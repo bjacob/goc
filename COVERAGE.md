@@ -5419,3 +5419,45 @@ tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `class-review-` in each build directory. The ledger now records 477 contracts;
 332 in-scope mnemonics still need recorded reviews. These counts do not resolve
 the documented semantic limitations.
+
+## Non-carry integer addition architecture contracts
+
+Reviewed ADD3 and signed/unsigned 32-bit non-carry ADD/SUB plus unsigned SUBREV
+at rocjitsu `ffc144c564c`. All 18 pairs of architecture-specific execution and
+modifier bodies are identical: three VOP2 and six VOP3 instructions, each with
+a modifier body. Locations, hashes and shared-helper names are recorded in
+`../goc-build/coverage-work/integer-add-upstream-review.json`. Shared helpers
+and `vop3_integer_add`/`vop3_integer_sub` implement wrapping or widened signed/
+unsigned saturation without architecture queries. The canonical ADD3 name
+also covers the RDNA4 `v_add3_nc_u32` spelling. No suffix is needed.
+
+Two-input CLAMP saturates after addition/subtraction, including reversed
+operand order for SUBREV. ADD3 always wraps modulo 2^32. Fixed GoC's rejection
+of ADD3 CLAMP: the RDNA3/RDNA4 ignored-CLAMP tables explicitly include ADD3,
+and rocjitsu's helper ignores it. The scalar path now explicitly excludes ADD3
+from saturation, matching its existing v4 kernel. No carry, SCC or floating
+exception output is produced. Other low instruction flags remain rejected.
+
+Existing DPP routing is preserved, including GoC's gfx1201 fixture showing
+SUBREV routes B before subtracting lane-local A. Upstream modifier staging
+routes encoded SRC0; this review does not supply a new RDNA3 capture to resolve
+the distinction between encoded-source staging and GoC's existing operand
+contract. DPP8/DPP16 remain supported, with Wave64 row masks mapped to each half.
+Whole-VGPR aliases and inactive destination lanes are preserved.
+
+Expanded existing Cartesian-boundary, random-input, alias and literal-overflow
+tests to cover ADD3 CLAMP. Expanded Wave64 tests also exercise it with both
+semantics, all CPU levels, all DPP descriptors and row masks. Literal cases
+include three UINT32_MAX operands and cancellation across bit 31, so accidental
+saturation is observable. Existing hardware hashes were retained unchanged;
+new ignored-CLAMP combinations are specification/upstream tests, not captures.
+
+Dispatch is unchanged: v3 uses eight-lane explicit SIMD for two-input saturation;
+wrapping operations retain the previously selected baseline path. v4 uses
+sixteen-lane SIMD for all six operations. The compile-time ADD3 exclusion adds
+no per-lane dynamic branch or mask-density logic.
+
+Validation: all 1,122 CTests pass under Clang and GCC Release; all twelve targeted
+integer-add/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests pass.
+Logs use `integer-add-review-` in each build directory. The ledger records
+483 contracts; 326 in-scope mnemonics remain without recorded reviews.

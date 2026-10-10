@@ -19,7 +19,7 @@ TEST(IntegerAdd, BoundaryCartesianProductsAndRandomInputs) {
                              0xffffffff, 0x7f800001, 0xff800001, 0x40000000};
   for (int op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (int clamp = 0; clamp <= int(op != 5); ++clamp) {
+      for (int clamp = 0; clamp <= 1; ++clamp) {
         std::mt19937 random(421);
         for (int start = 0; start < 1728 + 1024; start += 32) {
           SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << clamp << "/" << start);
@@ -47,7 +47,7 @@ TEST(IntegerAdd, MasksAliasesAndSaturation) {
   const int layouts[][3] = {{0, 1, 2}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}};
   for (int op = 0; op < 6; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (int clamp = 0; clamp <= int(op != 5); ++clamp)
+      for (int clamp = 0; clamp <= 1; ++clamp)
         for (uint32_t exec_mask : exec_masks())
           for (const auto &layout : layouts)
             for (int dest = 0; dest < 4; ++dest) {
@@ -102,7 +102,7 @@ TEST(IntegerAdd, LiteralOverflowBorrowAndOperandOrder) {
                         {5, 1, 2, 3, 6, 0}};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (const auto &test : cases)
-      for (int clamp = 0; clamp <= int(test.op != 5); ++clamp) {
+      for (int clamp = 0; clamp <= 1; ++clamp) {
         uint32_t words[4][32];
         uint32_t *p[] = {words[0], words[1], words[2], words[3]};
         std::fill(words[0], words[0] + 32, test.a);
@@ -112,7 +112,7 @@ TEST(IntegerAdd, LiteralOverflowBorrowAndOperandOrder) {
                       cpu, UINT32_MAX, clamp ? GOC_ALU_CLAMP : 0, p + 3, p, p + 1, p + 2),
                   GOC_SUCCESS);
         for (uint32_t word : words[3])
-          EXPECT_EQ(word, clamp ? test.clamp : test.wrap);
+          EXPECT_EQ(word, clamp && test.op != 5 ? test.clamp : test.wrap);
       }
 }
 
@@ -128,7 +128,7 @@ TEST(IntegerAdd, ValidationAndFpEnvironment) {
       for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit) {
           uint32_t mode = 1U << bit;
-          if (op != 5 && mode == GOC_ALU_CLAMP)
+          if (mode == GOC_ALU_CLAMP)
             continue;
           EXPECT_EQ(goc_test::integer_add_functions[op](cpu, exec_mask, mode, &d, &a, &a, &a),
                     GOC_ERROR_INVALID_FLAGS);

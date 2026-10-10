@@ -804,5 +804,18 @@
       "v_cmpx_class_f32",
       "v_cmpx_class_f64"
     ]
+  },
+  {
+    "heading": "Non-carry integer addition architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/integer_add_test.cpp",
+    "mnemonics": [
+      "v_add3_u32",
+      "v_add_nc_i32",
+      "v_add_nc_u32",
+      "v_sub_nc_i32",
+      "v_sub_nc_u32",
+      "v_subrev_nc_u32"
+    ]
   }
 ]
