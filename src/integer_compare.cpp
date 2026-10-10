@@ -7,6 +7,7 @@
 #include "goc/goc.h"
 #include "internal.h"
 
+#include <cstring>
 #include <stdint.h>
 
 namespace {
@@ -73,6 +74,37 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *d, const ui
     equal |= uint32_t(av == bv) << lane;
   }
   *d = goc::integer_compare_result<Predicate>(less, equal) & exec_mask;
+  return GOC_SUCCESS;
+}
+
+// Accepted DPP controls are row-local. Compute both halves before publishing
+// the scalar mask, since its storage may overlap either half of either source.
+template <unsigned Bits, bool Signed, unsigned Predicate>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint64_t *d,
+               const uint32_t *const *a, const uint32_t *const *b) {
+  uint32_t masks[2] = {};
+  if (int error = run<Bits, Signed, Predicate>(flags, 0, mode, masks, nullptr, nullptr))
+    return error;
+  if (exec_mask) {
+    for (unsigned half = 0; half < 2; ++half) {
+      uint64_t half_mode = mode;
+      if (mode & GOC_DPP16) {
+        uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+        half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+      }
+      constexpr unsigned words = Bits == 64 ? 2 : 1;
+      const uint32_t *source_a[words], *source_b[words];
+      for (unsigned word = 0; word < words; ++word) {
+        source_a[word] = a[word] + half * 32;
+        source_b[word] = b[word] + half * 32;
+      }
+      if (int error = run<Bits, Signed, Predicate>(flags, uint32_t(exec_mask >> (half * 32)),
+                                                   half_mode, masks + half, source_a, source_b))
+        return error;
+    }
+  }
+  uint64_t result = masks[0] | (uint64_t(masks[1]) << 32);
+  std::memcpy(d, &result, sizeof result);
   return GOC_SUCCESS;
 }
 
@@ -436,4 +468,364 @@ int goc_v_cmpx_ne_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
 int goc_v_cmpx_ge_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                       const uint32_t *const *a, const uint32_t *const *b) {
   return run<64, false, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_lt_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_eq_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_le_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_gt_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ne_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ge_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_lt_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_eq_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_le_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_gt_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ne_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ge_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, true, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_lt_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_eq_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_le_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_gt_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ne_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ge_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_lt_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_eq_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_le_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_gt_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ne_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ge_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<16, false, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_lt_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_eq_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_le_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_gt_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ne_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ge_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_lt_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_eq_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_le_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_gt_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ne_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ge_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, true, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_lt_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_eq_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_le_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_gt_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ne_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ge_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_lt_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_eq_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_le_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_gt_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ne_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ge_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<32, false, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_lt_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_eq_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_le_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_gt_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ne_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ge_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_lt_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_eq_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_le_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_gt_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ne_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ge_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, true, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_lt_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_eq_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_le_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_gt_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ne_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmp_ge_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 6>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_lt_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 1>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_eq_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 2>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_le_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 3>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_gt_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 4>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ne_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 5>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_cmpx_ge_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return run_wave64<64, false, 6>(flags, exec_mask, instruction_flags, d, a, b);
 }

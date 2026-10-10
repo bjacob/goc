@@ -2368,3 +2368,7 @@ MOV_B32, MOV_B16 and the relative VGPR moves support Wave64, including all
 currently accepted DPP controls and the upper rows' enables. The wider paths
 reuse existing lane routing and SIMD implementations. Raw Wave64 half-move
 modifiers are checked against RX 9070 captures.
+
+Integer relational comparisons support Wave64 for signed/unsigned 16-, 32- and
+64-bit elements, returning a 64-bit comparison or replacement EXEC mask. They
+reuse the scalar and x86 SIMD comparison kernels and preserve input/output aliasing.

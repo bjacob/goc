@@ -54,7 +54,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
 | Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
-| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; RDNA3 integer and floating true/false results implemented | RDNA3 floating constant exception reporting, Wave64, and architecture-specific floating-policy audit |
+| Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented | RDNA3 floating constant exception reporting, Wave64 floating/constant comparisons, and architecture-specific floating-policy audit |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
@@ -503,3 +503,38 @@ Six Wave64 APIs were added. The canonical-name count remains 787 present and
 Validation: all 732 tests pass on Clang/GCC, and all eleven move/relative-move
 tests pass under ASan/UBSan. Standalone-header and exhaustive instruction-flag
 checks include all six new entry points.
+
+
+## Wave64 integer relational comparisons
+
+Added the 72 Wave64 signed/unsigned LT/EQ/LE/GT/NE/GE CMP/CMPX entry points
+for 16-, 32- and 64-bit elements. Each returns a native 64-bit scalar mask;
+inactive bits are zero. A shared implementation invokes the existing comparison
+kernel for both halves, remaps DPP16's upper row enables, and publishes the
+combined mask only after all source reads. This last ordering is necessary when
+the scalar output overlaps an upper-half source. A byte-copy publishes the mask
+without introducing a typed 64-bit aliasing access to the VGPR words.
+
+The scalar ordering logic borrowed from rocjitsu and the existing x86-64-v3/v4
+kernels are reused unchanged. FP16-style half selectors apply to 16-bit integer
+operands; 16/32-bit comparisons retain DPP8/DPP16, and 64-bit element comparisons
+continue to reject DPP. Flags are validated before accessing any source or
+writing the real output, including empty EXEC. Both semantics are exact.
+
+Tests independently compute full 64-lane masks for all predicates, signedness,
+element widths, selectors, edge values and random patterns at every available
+CPU level. They cover all four upper/lower row enables, DPP filtering, empty and
+upper-lane EXEC, masks overlapping each input register, guard words and error
+preservation. Existing host rounding/sticky-flag/MXCSR checks now exercise both
+wave sizes. No new GPU comparison capture is claimed; the existing Wave32
+hardware corpus remains unchanged. Wave64 constant and floating comparisons
+remain open. Canonical name counts remain 787 present and 22 absent.
+
+The high-flag audit also exposed an existing cross-width limitation: Wave64
+MBCNT_LO/HI reject DPP although Wave32 supports it. This remains open; tests
+must not infer modifier parity merely by stripping every `_wave64` suffix.
+The shared-name check is restricted to the audited comparison/move families.
+
+Validation: all 735 tests pass with Clang/GCC. The three new Wave64 comparison
+tests, the combined-width host-FP-state test and exhaustive instruction-flag
+test all pass under ASan/UBSan. Existing numerical SIMD kernels are unchanged.

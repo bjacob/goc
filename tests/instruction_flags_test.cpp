@@ -24,6 +24,7 @@
 #include <cstring>
 #include <gtest/gtest.h>
 #include <stdint.h>
+#include <string>
 #include <type_traits>
 
 namespace {
@@ -50,18 +51,24 @@ void check_high_flags(const char *name,
 template <typename Mask, typename... Operands>
 void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint64_t, Operands...)) {
   SCOPED_TRACE(name);
-  if (std::strcmp(name + std::strlen(name) - sizeof("_wave64") + 1, "_wave64") == 0)
+  std::string base_name(name);
+  if (base_name.size() >= 7 && base_name.compare(base_name.size() - 7, 7, "_wave64") == 0) {
     EXPECT_TRUE((std::is_same_v<Mask, uint64_t>));
-  else
+    base_name.resize(base_name.size() - 7);
+    // Only these audited families currently share DPP support across widths.
+    // In particular, the existing Wave64 MBCNT paths still reject DPP.
+    if (base_name.compare(0, 9, "goc_v_cmp") == 0 || base_name == "goc_v_mov_b32" ||
+        base_name == "goc_v_mov_b16")
+      name = base_name.c_str();
+  } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));
+  }
   bool supports_dpp =
       std::strcmp(name, "goc_v_dot2acc_f32_f16") == 0 ||
       std::strncmp(name, "goc_v_movrel", 12) == 0 || std::strcmp(name, "goc_v_mov_b32") == 0 ||
-      std::strcmp(name, "goc_v_mov_b32_wave64") == 0 ||
-      std::strcmp(name, "goc_v_mov_b16_wave64") == 0 || std::strcmp(name, "goc_v_mov_b16") == 0 ||
-      std::strcmp(name, "goc_v_fma_f32") == 0 || std::strcmp(name, "goc_v_fmac_f32") == 0 ||
-      std::strcmp(name, "goc_v_fma_f16") == 0 || std::strcmp(name, "goc_v_fmac_f16") == 0 ||
-      std::strcmp(name, "goc_v_ldexp_f16") == 0 ||
+      std::strcmp(name, "goc_v_mov_b16") == 0 || std::strcmp(name, "goc_v_fma_f32") == 0 ||
+      std::strcmp(name, "goc_v_fmac_f32") == 0 || std::strcmp(name, "goc_v_fma_f16") == 0 ||
+      std::strcmp(name, "goc_v_fmac_f16") == 0 || std::strcmp(name, "goc_v_ldexp_f16") == 0 ||
       std::strcmp(name, "goc_v_frexp_exp_i16_f16") == 0 ||
       std::strcmp(name, "goc_v_frexp_exp_i32_f32") == 0 ||
       std::strcmp(name, "goc_v_ldexp_f32") == 0;

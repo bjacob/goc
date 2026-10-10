@@ -234,8 +234,8 @@ TEST(IntegerCompare, ValidationAndHostFpState) {
       }
     for (int round : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO})
       for (unsigned flush = 0; flush < 2; ++flush) {
-        uint32_t words[4][32];
-        for (unsigned lane = 0; lane < 32; ++lane) {
+        uint32_t words[4][64];
+        for (unsigned lane = 0; lane < 64; ++lane) {
           uint32_t w[4];
           goc_test::integer_compare_inputs(op / 24, lane + 32768, w);
           for (unsigned j = 0; j < 4; ++j)
@@ -250,14 +250,117 @@ TEST(IntegerCompare, ValidationAndHostFpState) {
         unsigned before = _mm_getcsr();
 #endif
         int exceptions = std::fetestexcept(FE_ALL_EXCEPT);
-        for (uint64_t cpu = 0; cpu <= max_cpu; ++cpu)
+        for (uint64_t cpu = 0; cpu <= max_cpu; ++cpu) {
           EXPECT_EQ(goc_test::integer_compare_functions[op](cpu, UINT32_MAX, known, &d, a, b),
                     GOC_SUCCESS);
+          uint64_t wide_result = 0;
+          EXPECT_EQ(goc_test::integer_compare_wave64_functions[op](cpu, UINT64_MAX, known,
+                                                                   &wide_result, a, b),
+                    GOC_SUCCESS);
+        }
         EXPECT_EQ(std::fegetround(), round);
         EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
 #if defined(__x86_64__) || defined(_M_X64)
         EXPECT_EQ(_mm_getcsr(), before);
 #endif
       }
+  }
+}
+
+TEST(IntegerCompare, Wave64AllPredicatesFormatsAndMasks) {
+  const uint64_t masks[] = {0, 1, 1ULL << 63, 0xaaaaaaaa55555555ULL, UINT64_MAX};
+  for (unsigned op = 0; op < 72; ++op)
+    for (unsigned m = 0; m < (op < 24 ? 4U : 1U); ++m)
+      for (unsigned start = 0; start < 384; start += 64) {
+        uint32_t words[4][64];
+        uint64_t expected = 0;
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          uint32_t w[4];
+          goc_test::integer_compare_inputs(op / 24, start + lane, w);
+          for (unsigned r = 0; r < 4; ++r)
+            words[r][lane] = w[r];
+          expected |= uint64_t(goc_test::integer_compare_reference(op, m, w)) << lane;
+        }
+        const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]};
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (uint64_t exec_mask : masks) {
+            uint64_t result = 123;
+            uint64_t flags =
+                cpu | (start & 64 ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0);
+            ASSERT_EQ(goc_test::integer_compare_wave64_functions[op](
+                          flags, exec_mask, goc_test::integer_compare_mode(m), &result, a, b),
+                      GOC_SUCCESS);
+            EXPECT_EQ(result, expected & exec_mask) << op << '/' << m << '/' << start << '/' << cpu;
+          }
+      }
+}
+
+TEST(IntegerCompare, Wave64DppAndOverlappingOutput) {
+  const uint64_t masks[] = {0, 0x8000000100000001ULL, 0xaaaaaaaaaaaaaaaaULL, UINT64_MAX};
+  for (unsigned op = 0; op < 72; ++op)
+    for (unsigned m = 0; m < (op < 24 ? 4U : 1U); ++m)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (int routing = -1; routing < (op < 48 ? 7 : 0); ++routing)
+          for (uint64_t exec_mask : masks)
+            for (unsigned target = 0; target < 4; ++target) {
+              alignas(uint64_t) uint32_t words[4][68], expected[4][68];
+              for (unsigned r = 0; r < 4; ++r)
+                for (auto &word : words[r])
+                  word = 0xdeadbeef;
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                uint32_t w[4];
+                goc_test::integer_compare_inputs(op / 24, 256 + lane, w);
+                for (unsigned r = 0; r < 4; ++r)
+                  words[r][lane + 2] = w[r];
+              }
+              std::memcpy(expected, words, sizeof words);
+              uint64_t mode = routing < 0 ? 0 : goc_test::dpp_modes[routing];
+              // Exercise each upper row separately rather than repeating the low enables.
+              if (mode & GOC_DPP16)
+                mode = (mode & ~GOC_DPP_ROW_MASK) | (uint64_t(1U << target) << GOC_DPP_ROW_SHIFT);
+              uint64_t want = 0;
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                int source = int(lane);
+                bool write = routing < 0 ? (exec_mask >> lane) & 1
+                                         : goc_test::dpp_source(mode, exec_mask, lane, source);
+                if (write) {
+                  uint32_t w[] = {source < 0 ? 0 : words[0][source + 2],
+                                  source < 0 ? 0 : words[1][source + 2], words[2][lane + 2],
+                                  words[3][lane + 2]};
+                  want |= uint64_t(goc_test::integer_compare_reference(op, m, w)) << lane;
+                }
+              }
+              // Writing here before computing the upper half would destroy two inputs.
+              auto d = reinterpret_cast<uint64_t *>(words[target] + 42);
+              std::memcpy(expected[target] + 42, &want, sizeof want);
+              const uint32_t *a[] = {words[0] + 2, words[1] + 2},
+                             *b[] = {words[2] + 2, words[3] + 2};
+              ASSERT_EQ(goc_test::integer_compare_wave64_functions[op](
+                            cpu, exec_mask, mode | goc_test::integer_compare_mode(m), d, a, b),
+                        GOC_SUCCESS);
+              ASSERT_EQ(std::memcmp(words, expected, sizeof words), 0)
+                  << op << '/' << routing << '/' << target;
+            }
+}
+
+TEST(IntegerCompare, Wave64ValidationBeforeOperandAccess) {
+  for (unsigned op = 0; op < 72; ++op) {
+    auto fn = goc_test::integer_compare_wave64_functions[op];
+    uint64_t d = 123;
+    EXPECT_EQ(fn(0, 0, 0, &d, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(d, 0U);
+    uint64_t known = op < 24 ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B : 0;
+    for (unsigned bit = 0; bit < 32; ++bit) {
+      if (known & (1ULL << bit))
+        continue;
+      d = 123;
+      EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << bit, &d, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(d, 123U);
+    }
+    if (op >= 48) {
+      d = 123;
+      EXPECT_EQ(fn(0, UINT64_MAX, GOC_DPP8, &d, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(d, 123U);
+    }
   }
 }

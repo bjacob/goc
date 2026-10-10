@@ -1749,6 +1749,155 @@ int goc_v_cmpx_ne_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
 int goc_v_cmpx_ge_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
                       const uint32_t *const *a, const uint32_t *const *b);
 
+// Wave64 integer comparisons have the same predicates, operand widths and flags
+// as the Wave32 forms above, with a 64-bit result mask. DPP16 enables all four
+// rows. Inputs are consumed before writing d, which may overlap source storage.
+// Empty EXEC returns zero without accessing a/b. Both semantics are exact.
+int goc_v_cmp_lt_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_eq_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_le_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_gt_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ne_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ge_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_lt_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_eq_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_le_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_gt_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ne_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ge_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_lt_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_eq_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_le_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_gt_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ne_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ge_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_lt_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_eq_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_le_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_gt_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ne_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ge_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_lt_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_eq_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_le_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_gt_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ne_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ge_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_lt_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_eq_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_le_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_gt_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ne_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ge_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_lt_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_eq_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_le_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_gt_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ne_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ge_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_lt_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_eq_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_le_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_gt_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ne_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ge_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_lt_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_eq_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_le_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_gt_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ne_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ge_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_lt_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_eq_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_le_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_gt_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ne_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ge_i64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_lt_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_eq_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_le_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_gt_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ne_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmp_ge_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_lt_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_eq_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_le_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_gt_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ne_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+int goc_v_cmpx_ge_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint64_t *d, const uint32_t *const *a, const uint32_t *const *b);
+
 // Floating-point class-mask bits; any combination may be supplied in B.
 static const uint32_t GOC_CLASS_SNAN = 1U << 0;
 static const uint32_t GOC_CLASS_QNAN = 1U << 1;

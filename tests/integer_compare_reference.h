@@ -44,6 +44,33 @@ static const char *const integer_compare_names[] = {
     "v_cmpx_ne_u64", "v_cmpx_ge_u64",
 };
 
+using IntegerCompareWave64Fn = decltype(&goc_v_cmp_lt_i16_wave64);
+static const IntegerCompareWave64Fn integer_compare_wave64_functions[] = {
+    goc_v_cmp_lt_i16_wave64,  goc_v_cmp_eq_i16_wave64,  goc_v_cmp_le_i16_wave64,
+    goc_v_cmp_gt_i16_wave64,  goc_v_cmp_ne_i16_wave64,  goc_v_cmp_ge_i16_wave64,
+    goc_v_cmpx_lt_i16_wave64, goc_v_cmpx_eq_i16_wave64, goc_v_cmpx_le_i16_wave64,
+    goc_v_cmpx_gt_i16_wave64, goc_v_cmpx_ne_i16_wave64, goc_v_cmpx_ge_i16_wave64,
+    goc_v_cmp_lt_u16_wave64,  goc_v_cmp_eq_u16_wave64,  goc_v_cmp_le_u16_wave64,
+    goc_v_cmp_gt_u16_wave64,  goc_v_cmp_ne_u16_wave64,  goc_v_cmp_ge_u16_wave64,
+    goc_v_cmpx_lt_u16_wave64, goc_v_cmpx_eq_u16_wave64, goc_v_cmpx_le_u16_wave64,
+    goc_v_cmpx_gt_u16_wave64, goc_v_cmpx_ne_u16_wave64, goc_v_cmpx_ge_u16_wave64,
+    goc_v_cmp_lt_i32_wave64,  goc_v_cmp_eq_i32_wave64,  goc_v_cmp_le_i32_wave64,
+    goc_v_cmp_gt_i32_wave64,  goc_v_cmp_ne_i32_wave64,  goc_v_cmp_ge_i32_wave64,
+    goc_v_cmpx_lt_i32_wave64, goc_v_cmpx_eq_i32_wave64, goc_v_cmpx_le_i32_wave64,
+    goc_v_cmpx_gt_i32_wave64, goc_v_cmpx_ne_i32_wave64, goc_v_cmpx_ge_i32_wave64,
+    goc_v_cmp_lt_u32_wave64,  goc_v_cmp_eq_u32_wave64,  goc_v_cmp_le_u32_wave64,
+    goc_v_cmp_gt_u32_wave64,  goc_v_cmp_ne_u32_wave64,  goc_v_cmp_ge_u32_wave64,
+    goc_v_cmpx_lt_u32_wave64, goc_v_cmpx_eq_u32_wave64, goc_v_cmpx_le_u32_wave64,
+    goc_v_cmpx_gt_u32_wave64, goc_v_cmpx_ne_u32_wave64, goc_v_cmpx_ge_u32_wave64,
+    goc_v_cmp_lt_i64_wave64,  goc_v_cmp_eq_i64_wave64,  goc_v_cmp_le_i64_wave64,
+    goc_v_cmp_gt_i64_wave64,  goc_v_cmp_ne_i64_wave64,  goc_v_cmp_ge_i64_wave64,
+    goc_v_cmpx_lt_i64_wave64, goc_v_cmpx_eq_i64_wave64, goc_v_cmpx_le_i64_wave64,
+    goc_v_cmpx_gt_i64_wave64, goc_v_cmpx_ne_i64_wave64, goc_v_cmpx_ge_i64_wave64,
+    goc_v_cmp_lt_u64_wave64,  goc_v_cmp_eq_u64_wave64,  goc_v_cmp_le_u64_wave64,
+    goc_v_cmp_gt_u64_wave64,  goc_v_cmp_ne_u64_wave64,  goc_v_cmp_ge_u64_wave64,
+    goc_v_cmpx_lt_u64_wave64, goc_v_cmpx_eq_u64_wave64, goc_v_cmpx_le_u64_wave64,
+    goc_v_cmpx_gt_u64_wave64, goc_v_cmpx_ne_u64_wave64, goc_v_cmpx_ge_u64_wave64};
+
 inline uint32_t integer_compare_mode(unsigned m) {
   return (m & 1 ? GOC_ALU_HIGH_A : 0) | (m & 2 ? GOC_ALU_HIGH_B : 0);
 }
