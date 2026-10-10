@@ -158,3 +158,142 @@ TEST(Mullit, DppHardwareCorpus) {
     EXPECT_EQ(hash, 0x7d17538d3e94b7a5ULL);
   }
 }
+
+TEST(Mullit, Wave64HardwareSpecialValuesAndModifiers) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned mode = 0; mode < 16; ++mode) {
+      uint64_t digest = goc_test::capture_hash_seed;
+      for (unsigned start = 0; start < 4096; start += 64) {
+        uint32_t words[4][64];
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          unsigned index = start + lane;
+          words[0][lane] = goc_test::mullit_capture_values[index / 256];
+          words[1][lane] = goc_test::mullit_capture_values[(index / 16) % 16];
+          words[2][lane] = goc_test::mullit_capture_values[index % 16];
+        }
+        const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
+        uint32_t *d[] = {words[3]};
+        ASSERT_EQ(goc_v_mullit_f32_wave64(cpu, UINT64_MAX, goc_test::mullit_capture_modes[mode], d,
+                                          a, b, c, nullptr),
+                  GOC_SUCCESS);
+        for (uint32_t word : words[3]) {
+          if ((word & 0x7fffffff) > 0x7f800000)
+            word = 0x7fc00000;
+          digest = goc_test::capture_hash_bytes(digest, word, 4);
+        }
+      }
+      EXPECT_EQ(digest, goc_test::mullit_capture_digests[mode]) << cpu << "/" << mode;
+    }
+}
+
+TEST(Mullit, Wave64AllModifiersMasksAndAliases) {
+  uint32_t initial[4][67];
+  for (unsigned reg = 0; reg < 4; ++reg)
+    for (unsigned lane = 0; lane < 67; ++lane)
+      initial[reg][lane] = goc_test::mullit_capture_values[(lane * (reg + 1) + reg * 3) % 16];
+  for (uint32_t mode = 0; mode < 512; ++mode) {
+    uint32_t result[64];
+    for (unsigned lane = 0; lane < 64; ++lane)
+      result[lane] = goc_test::mullit_reference(initial[0][lane + 1], initial[1][lane + 1],
+                                                initial[2][lane + 1], mode);
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned target = 0; target < 4; ++target)
+        for (uint64_t exec_mask : {uint64_t(UINT64_MAX), uint64_t(0xffffffff00000000ULL),
+                                   uint64_t(0x87654321fedcba98ULL)}) {
+          uint32_t words[4][67];
+          std::memcpy(words, initial, sizeof(words));
+          const uint32_t *a[] = {words[0] + 1}, *b[] = {words[1] + 1}, *c[] = {words[2] + 1};
+          uint32_t *d[] = {words[target] + 1};
+          ASSERT_EQ(goc_v_mullit_f32_wave64(cpu, exec_mask, mode, d, a, b, c, nullptr),
+                    GOC_SUCCESS);
+          for (unsigned reg = 0; reg < 4; ++reg)
+            for (unsigned lane = 0; lane < 67; ++lane) {
+              uint32_t want = initial[reg][lane], got = words[reg][lane];
+              if (reg == target && lane > 0 && lane <= 64 && ((exec_mask >> (lane - 1)) & 1)) {
+                want = result[lane - 1];
+                if ((got & 0x7fffffff) > 0x7f800000)
+                  got = 0x7fc00000;
+              }
+              ASSERT_EQ(got, want) << mode << "/" << cpu << "/" << target << "/" << lane;
+            }
+        }
+  }
+}
+
+TEST(Mullit, Wave64InvalidFlagsAndEmptyExec) {
+  EXPECT_EQ(goc_v_mullit_f32_wave64(0, 0U, 511, nullptr, nullptr, nullptr, nullptr, nullptr),
+            GOC_SUCCESS);
+  for (unsigned bit = 9; bit < 32; ++bit)
+    EXPECT_EQ(goc_v_mullit_f32_wave64(0, 0, 1u << bit, nullptr, nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+  EXPECT_EQ(goc_v_mullit_f32_wave64(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0,
+                                    nullptr, nullptr, nullptr, nullptr, nullptr),
+            GOC_ERROR_UNSUPPORTED_SEMANTICS);
+}
+
+TEST(Mullit, Wave64DppModifiersMasksAliasesAndGuards) {
+  for (uint32_t mode = 0; mode < 512; ++mode)
+    for (uint64_t descriptor_base : goc_test::dpp_modes)
+      for (bool shared : {false, true}) {
+        uint64_t descriptor = descriptor_base;
+        if (descriptor & GOC_DPP16)
+          descriptor =
+              (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t(mode & 15) << GOC_DPP_ROW_SHIFT);
+        uint32_t initial[4][66];
+        for (unsigned reg = 0; reg < 4; ++reg)
+          for (unsigned lane = 0; lane < 66; ++lane)
+            initial[reg][lane] = goc_test::mullit_capture_values[(lane * (reg + 1) + reg * 3) % 16];
+        for (uint64_t exec_mask : {uint64_t(UINT64_MAX), uint64_t(0xffffffff00000000ULL),
+                                   uint64_t(0x87654321fedcba98ULL)}) {
+          if (mode != 0 && mode != 511 && exec_mask != UINT64_MAX)
+            continue;
+          uint32_t result[64];
+          uint64_t writes = 0;
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            int source;
+            if (goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
+              writes |= 1ULL << lane;
+              result[lane] = goc_test::mullit_reference(source < 0 ? 0 : initial[0][source + 1],
+                                                        initial[shared ? 0 : 1][lane + 1],
+                                                        initial[shared ? 0 : 2][lane + 1], mode);
+            }
+          }
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+            for (unsigned target = 0; target < 4; ++target) {
+              uint32_t words[4][66];
+              std::memcpy(words, initial, sizeof(words));
+              const uint32_t *a[] = {words[0] + 1}, *b[] = {words[shared ? 0 : 1] + 1},
+                             *c[] = {words[shared ? 0 : 2] + 1};
+              uint32_t *d[] = {words[target] + 1};
+              ASSERT_EQ(
+                  goc_v_mullit_f32_wave64(cpu, exec_mask, descriptor | mode, d, a, b, c, nullptr),
+                  GOC_SUCCESS);
+              for (unsigned reg = 0; reg < 4; ++reg)
+                for (unsigned lane = 0; lane < 66; ++lane) {
+                  uint32_t want = initial[reg][lane], got = words[reg][lane];
+                  if (reg == target && lane > 0 && lane < 65 && ((writes >> (lane - 1)) & 1)) {
+                    want = result[lane - 1];
+                    if ((got & 0x7fffffff) > 0x7f800000)
+                      got = 0x7fc00000;
+                  }
+                  ASSERT_EQ(got, want) << mode << "/" << descriptor << "/" << cpu << "/" << target;
+                }
+            }
+        }
+      }
+}
+
+TEST(Mullit, Wave64OptionalState) {
+  uint32_t inputs[64] = {}, output[64], exceptions = 0x80000000;
+  const uint32_t *a = inputs;
+  uint32_t *d = output;
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    ASSERT_EQ(goc_v_mullit_f32_wave64(cpu, UINT64_MAX, 0, &d, &a, &a, &a, &exceptions),
+              GOC_SUCCESS);
+    EXPECT_EQ(exceptions, 0x80000000U);
+    EXPECT_EQ(goc_v_mullit_f32_wave64(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr,
+                                      nullptr, nullptr, nullptr, &exceptions),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(exceptions, 0x80000000U);
+  }
+}

@@ -1581,3 +1581,25 @@ or throughput claim is made. The vector width queue is 19 APIs.
 Validation: all 876 tests pass on Clang 21 and GCC 15 Release. All eight
 Wave64 cube and instruction-flag tests pass under ASan/UBSan, including
 the complete modifier/DPP sweeps and captured Cartesian result digests.
+
+
+## Wave64 MULLIT and TRIG_PREOP
+
+Added both Wave64 APIs using existing scalar/v3/v4 kernels. MULLIT retains loose
+semantics and four independent DPP rows. TRIG_PREOP retains exact table-based
+results, two destination VGPRs, A's high-word-only exponent read and one selector
+VGPR; it rejects DPP. Optional exact exception reporting remains unsupported
+for both, while loose pointers remain unchanged.
+
+Tests replay MULLIT's existing hardware Cartesian digests and TRIG_PREOP's
+complete exponent/selector/modifier digests across 64 lanes. Independent MULLIT
+references check all modifiers, DPP row enables, source sharing, destination
+aliases, upper-only/sparse EXEC and guards. TRIG_PREOP checks captured samples
+with crossed/shared destination words, upper-half input rotation and all host
+rounding modes. A null low-word pointer verifies its unused input, and optional
+state/error tests preserve outputs. No native Wave64 capture or new throughput
+claim is made. The vector width queue is 17 APIs.
+
+Validation: all 885 tests pass on Clang 21 and GCC 15 Release. All ten
+Wave64 MULLIT/TRIG_PREOP and instruction-flag tests pass under ASan/UBSan,
+including the full hardware digest replays and modifier/DPP sweeps.

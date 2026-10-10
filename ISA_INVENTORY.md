@@ -1302,7 +1302,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_mul_lo_u16` | yes | yes | in | `goc_v_mul_lo_u16`<br>`goc_v_mul_lo_u16_wave64` | — | API present; semantic audit pending |
 | `v_mul_lo_u32` | yes | yes | in | `goc_v_mul_lo_u32`<br>`goc_v_mul_lo_u32_wave64` | — | API present; semantic audit pending |
 | `v_mul_u32_u24` | yes | yes | in | `goc_v_mul_u32_u24`<br>`goc_v_mul_u32_u24_wave64` | — | API present; semantic audit pending |
-| `v_mullit_f32` | yes | yes | in | `goc_v_mullit_f32` | — | API present; semantic audit pending |
+| `v_mullit_f32` | yes | yes | in | `goc_v_mullit_f32`<br>`goc_v_mullit_f32_wave64` | — | API present; semantic audit pending |
 | `v_nop` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
 | `v_not_b16` | yes | yes | in | `goc_v_not_b16`<br>`goc_v_not_b16_wave64` | — | API present; semantic audit pending |
 | `v_not_b32` | yes | yes | in | `goc_v_not_b32`<br>`goc_v_not_b32_wave64` | — | API present; semantic audit pending |
@@ -1401,7 +1401,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_swmmac_i32_16x16x32_iu4` | — | yes | in | `goc_v_swmmac_i32_16x16x32_iu4` | — | API present; semantic audit pending |
 | `v_swmmac_i32_16x16x32_iu8` | — | yes | in | `goc_v_swmmac_i32_16x16x32_iu8` | — | API present; semantic audit pending |
 | `v_swmmac_i32_16x16x64_iu4` | — | yes | in | `goc_v_swmmac_i32_16x16x64_iu4` | — | API present; semantic audit pending |
-| `v_trig_preop_f64` | yes | yes | in | `goc_v_trig_preop_f64` | — | API present; semantic audit pending |
+| `v_trig_preop_f64` | yes | yes | in | `goc_v_trig_preop_f64`<br>`goc_v_trig_preop_f64_wave64` | — | API present; semantic audit pending |
 | `v_trunc_f16` | yes | yes | in | `goc_v_trunc_f16`<br>`goc_v_trunc_f16_wave64` | — | API present; semantic audit pending |
 | `v_trunc_f32` | yes | yes | in | `goc_v_trunc_f32`<br>`goc_v_trunc_f32_wave64` | — | API present; semantic audit pending |
 | `v_trunc_f64` | yes | yes | in | `goc_v_trunc_f64`<br>`goc_v_trunc_f64_wave64` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 19 Wave32 EXEC-taking APIs without a corresponding
+There are 17 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1441,5 +1441,3 @@ SAVEEXEC/WREXEC consume EXEC as data and already have distinct `_b32` and
 | [`half_dot.cpp`](src/half_dot.cpp) | `goc_v_dot2_bf16_bf16`, `goc_v_dot2_f16_f16` |
 | [`interp16.cpp`](src/interp16.cpp) | `goc_v_interp_p10_f16_f32`, `goc_v_interp_p10_rtz_f16_f32`, `goc_v_interp_p2_f16_f32`, `goc_v_interp_p2_rtz_f16_f32` |
 | [`interp32.cpp`](src/interp32.cpp) | `goc_v_interp_p10_f32`, `goc_v_interp_p2_f32` |
-| [`mullit.cpp`](src/mullit.cpp) | `goc_v_mullit_f32` |
-| [`trig_preop.cpp`](src/trig_preop.cpp) | `goc_v_trig_preop_f64` |

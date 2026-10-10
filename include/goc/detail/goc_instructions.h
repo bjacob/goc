@@ -2035,6 +2035,11 @@ int goc_v_trig_preop_f64(uint64_t flags, uint32_t exec_mask, uint64_t instructio
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user);
 
+// Wave64 retains the same operand layout, modifiers and numerical contract.
+int goc_v_trig_preop_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, uint32_t *excp_flag_user);
+
 // Lighting multiply. After ABS/NEG source modifiers, return -FLT_MAX if B is
 // -FLT_MAX, -infinity or NaN, or C is nonpositive or NaN. Otherwise return +0
 // if either factor is zero, or A*B. OMOD scales the result, flushing tiny
@@ -2048,6 +2053,11 @@ int goc_v_trig_preop_f64(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 int goc_v_mullit_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                      const uint32_t *const *c, uint32_t *excp_flag_user);
+
+// Wave64 retains the same operand layout, modifiers and numerical contract.
+int goc_v_mullit_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c, uint32_t *excp_flag_user);
 
 // Saturate both signed I16 halves of A to U8, pack them low byte first, and
 // write the selected half of D, preserving the other half. HIGH_D selects the

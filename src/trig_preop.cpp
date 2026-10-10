@@ -109,3 +109,21 @@ int goc_v_trig_preop_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
         d[reg][lane] = uint32_t(result[lane] >> (32 * reg));
   return GOC_SUCCESS;
 }
+
+int goc_v_trig_preop_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (int error = goc_v_trig_preop_f64(flags, 0, mode, nullptr, nullptr, nullptr, excp_flag_user))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint32_t *dest[] = {d[0] + half * 32, d[1] + half * 32};
+    // Only A's high word supplies the exponent; B is a single selector VGPR.
+    const uint32_t *source[] = {nullptr, a[1] + half * 32}, *selector = b[0] + half * 32;
+    if (int error = goc_v_trig_preop_f64(flags, uint32_t(exec_mask >> (half * 32)), mode, dest,
+                                         source, &selector, excp_flag_user))
+      return error;
+  }
+  return GOC_SUCCESS;
+}

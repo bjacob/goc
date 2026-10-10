@@ -67,3 +67,26 @@ int goc_v_mullit_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fl
       d[0][lane] = result[lane];
   return GOC_SUCCESS;
 }
+
+int goc_v_mullit_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c, uint32_t *excp_flag_user) {
+  if (int error =
+          goc_v_mullit_f32(flags, 0, mode, nullptr, nullptr, nullptr, nullptr, excp_flag_user))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *av = a[0] + half * 32, *bv = b[0] + half * 32, *cv = c[0] + half * 32;
+    if (int error = goc_v_mullit_f32(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                                     &av, &bv, &cv, excp_flag_user))
+      return error;
+  }
+  return GOC_SUCCESS;
+}

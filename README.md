@@ -747,7 +747,8 @@ Ryzen 9 7950X3D measurements show 4.39–4.50x for B32 and 2.09–2.13x for B16
 on v4 versus scalar, including ABS/NEG and half selection (seven samples, each
 at least 10 ms).
 
-Trigonometric range reduction (`v_trig_preop_f64`) supports scalar, four-lane
+Trigonometric range reduction (`v_trig_preop_f64`) supports Wave32 and Wave64
+with shared scalar, four-lane
 x86-64-v3 and eight-lane x86-64-v4 table lookups, including ABS/NEG, OMOD and
 CLAMP. Both loose and empirical-exact semantics use an integer implementation
 that preserves host FP state. The table model comes from rocjitsu, with two
@@ -765,7 +766,7 @@ exception-state preservation. Pinned-core Ryzen 9 7950X3D measurements show
 1.48–1.59x for v3 and 3.65–3.80x for v4 versus scalar, including ABS/NEG,
 scaling and CLAMP (seven samples, each at least 10 ms).
 
-Lighting multiply (`v_mullit_f32`) supports all 512 combinations of source
+Lighting multiply (`v_mullit_f32`) supports Wave32 and Wave64 and all 512 combinations of source
 ABS/NEG, output scaling and CLAMP on scalar, eight-lane v3 and sixteen-lane v4.
 After source modifiers, invalid lighting inputs (nonpositive/NaN C, or B equal
 to negative FLT_MAX, negative infinity or NaN) return negative FLT_MAX before
