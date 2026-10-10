@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-362 in-scope mnemonics have explicit contract-review records in
+367 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 447 in-scope mnemonics need a recorded review.
+The remaining 442 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -548,7 +548,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_min_u32` | SIMD macro, output helper | no | 16049, 16063 | review required |
 | `v_minmax_i32` | output helper | no | 16343 | review required |
 | `v_minmax_u32` | output helper | no | 16409 | review required |
-| `v_mov_b16` | no direct policy detected | no | not found | review required |
+| `v_mov_b16` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
 | `v_mov_b32` | SIMD macro, output helper | no | 16423, 16435 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
 | `v_movreld_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
 | `v_movrels_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
@@ -578,7 +578,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_pack_b32_f16` | SIMD macro, output helper | yes | 17243 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-pack-and-fp32-byte-pack-architecture-contracts) |
 | `v_perm_b32` | SIMD macro, output helper | no | 17260 | review required |
 | `v_permlane16_b32` | no direct policy detected | no | not found | review required |
-| `v_permlane64_b32` | output helper | no | 17291 | review required |
+| `v_permlane64_b32` | output helper | no | 17291 | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
 | `v_permlanex16_b32` | no direct policy detected | no | not found | review required |
 | `v_pk_add_f16` | IEEE mode, SIMD macro, architecture query, output helper | yes | 17313 | [loose contract reviewed; see limitations](COVERAGE.md#packed-fp16-addmul-architecture-policies) |
 | `v_pk_add_i16` | SIMD macro, output helper | no | 17399 | review required |
@@ -634,9 +634,9 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_subrev_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 19929, 19961 | review required |
 | `v_subrev_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20030, 20056 | review required |
 | `v_subrev_nc_u32` | SIMD macro, output helper | no | 20110, 20125 | review required |
-| `v_swap_b16` | no direct policy detected | no | not found | review required |
-| `v_swap_b32` | no direct policy detected | no | not found | review required |
-| `v_swaprel_b32` | no direct policy detected | no | not found | review required |
+| `v_swap_b16` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
+| `v_swap_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
+| `v_swaprel_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
 | `v_trig_preop_f64` | IEEE mode, OMOD, architecture query | yes | 20185 | [loose and exact contract reviewed; see limitations](COVERAGE.md#trig_preop-architecture-policies) |
 | `v_trunc_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20238, 20262 | review required |
 | `v_trunc_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20307, 20321 | review required |

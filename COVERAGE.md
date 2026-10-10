@@ -5226,3 +5226,41 @@ audit-tool tests pass. Logs use `vector-relative-review-` in each build director
 Clang disassembly confirms that the unmodified case branches around sign-bit
 processing; no timing-based performance claim is made. Existing SIMD kernels
 are unchanged. The ledger records 362 contracts; 447 remain unrecorded.
+
+## Half moves and swap architecture contracts
+
+Reviewed MOV_B16, SWAP_B16/B32, SWAPREL_B32 and PERMLANE64_B32 against
+rocjitsu `ffc144c564c` (both VOP1 architecture handlers, VOP3 half-move paths,
+shared PERMLANE64 and true16 source/destination helpers), RDNA3 manual
+sections 3.3.2.2 and 16.8, and the prior two-architecture review/fixtures above.
+The RDNA4 half-move handler adds a SIMD shortcut but retains the same scalar
+half-selection and preserved-half semantics. No architecture split is needed.
+
+SWAP uses both original operands and preserves inactive lanes. Half swaps
+preserve unselected halves, including when the two selected halves share one
+VGPR. These operations reject arithmetic modifiers. SWAPREL extracts ten-bit
+source/destination fields from M0 bits 0 and 16, but offsets above 255 remain
+invalid even with larger caller-provided arrays. Either invalid operand cancels
+both writes; wide index sums prevent wrapping. Rocjitsu checks allocation bounds
+but does not enforce that smaller offset limit; GoC follows the documented rule.
+
+PERMLANE64 is a Wave32 no-op with no operand access. Wave64 selects lane XOR 32
+from the original source, including inactive source lanes, and masks destination
+writes. MOV_B16 selects a half, applies ABS then NEG to its sign bit, and preserves
+the other destination half. Its ignored OMOD/CLAMP behavior retains the existing
+RDNA4 fixture evidence; no new hardware evidence for RDNA3 is claimed. Upstream
+half-move handlers omit these sign modifiers, so they are not used as an oracle
+for that behavior. All five are raw-bit contracts with no implicit global-state
+outputs and are supported in both semantics.
+
+Existing tests cover masks, aliases, half choices, DPP for MOV, index overflow,
+invalid flags and retained RDNA4 captures. Exhaustive half-encoding/sign tests
+now run in both strict semantics. A new SWAPREL test supplies 300 registers and
+independently puts each offset at 255, 256 and 299, distinguishing the ISA limit
+from the allocation bound while checking both writes and all untouched lanes.
+No production change was required.
+
+Validation: all 1,118 CTests pass with Clang and GCC Release; all sixteen
+move/swap tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`swap-review-` in each build directory. The ledger records 367 contracts;
+442 in-scope mnemonics remain without recorded reviews.

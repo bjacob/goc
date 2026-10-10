@@ -1285,7 +1285,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_minmax_num_f16` | — | yes | in | `goc_v_minmax_num_f16`<br>`goc_v_minmax_num_f16_wave64` | `v_minmax_f16` | [loose contract reviewed; see limitations](COVERAGE.md#fp16-ternary-minmax-architecture-contracts) |
 | `v_minmax_num_f32` | — | yes | in | `goc_v_minmax_num_f32`<br>`goc_v_minmax_num_f32_wave64` | `v_minmax_f32` | [loose contract reviewed; see limitations](COVERAGE.md#fp32-ternary-minmax-architecture-contracts) |
 | `v_minmax_u32` | yes | yes | in | `goc_v_minmax_u32`<br>`goc_v_minmax_u32_wave64` | — | API present; semantic audit pending |
-| `v_mov_b16` | yes | yes | in | `goc_v_mov_b16`<br>`goc_v_mov_b16_wave64` | — | API present; semantic audit pending |
+| `v_mov_b16` | yes | yes | in | `goc_v_mov_b16`<br>`goc_v_mov_b16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
 | `v_mov_b32` | yes | yes | in | `goc_v_mov_b32`<br>`goc_v_mov_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
 | `v_movreld_b32` | yes | yes | in: register access | `goc_v_movreld_b32`<br>`goc_v_movreld_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
 | `v_movrels_b32` | yes | yes | in: register access | `goc_v_movrels_b32`<br>`goc_v_movrels_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
@@ -1317,7 +1317,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_perm_b32` | yes | yes | in | `goc_v_perm_b32`<br>`goc_v_perm_b32_wave64` | — | API present; semantic audit pending |
 | `v_permlane16_b32` | yes | yes | in | `goc_v_permlane16_b32`<br>`goc_v_permlane16_b32_wave64` | — | API present; semantic audit pending |
 | `v_permlane16_var_b32` | — | yes | in | `goc_v_permlane16_var_b32`<br>`goc_v_permlane16_var_b32_wave64` | — | API present; semantic audit pending |
-| `v_permlane64_b32` | yes | yes | in | `goc_v_permlane64_b32`<br>`goc_v_permlane64_b32_wave64` | — | API present; semantic audit pending |
+| `v_permlane64_b32` | yes | yes | in | `goc_v_permlane64_b32`<br>`goc_v_permlane64_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
 | `v_permlanex16_b32` | yes | yes | in | `goc_v_permlanex16_b32`<br>`goc_v_permlanex16_b32_wave64` | — | API present; semantic audit pending |
 | `v_permlanex16_var_b32` | — | yes | in | `goc_v_permlanex16_var_b32`<br>`goc_v_permlanex16_var_b32_wave64` | — | API present; semantic audit pending |
 | `v_pipeflush` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
@@ -1391,9 +1391,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_subrev_f16` | yes | yes | in | `goc_v_subrev_f16`<br>`goc_v_subrev_f16_wave64`<br>`goc_v_subrev_f16_rdna4`<br>`goc_v_subrev_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_subrev_f32` | yes | yes | in | `goc_v_subrev_f32`<br>`goc_v_subrev_f32_wave64`<br>`goc_v_subrev_f32_rdna4`<br>`goc_v_subrev_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_subrev_nc_u32` | yes | yes | in | `goc_v_subrev_nc_u32`<br>`goc_v_subrev_nc_u32_wave64` | — | API present; semantic audit pending |
-| `v_swap_b16` | yes | yes | in | `goc_v_swap_b16`<br>`goc_v_swap_b16_wave64` | — | API present; semantic audit pending |
-| `v_swap_b32` | yes | yes | in | `goc_v_swap_b32`<br>`goc_v_swap_b32_wave64` | — | API present; semantic audit pending |
-| `v_swaprel_b32` | yes | yes | in | `goc_v_swaprel_b32`<br>`goc_v_swaprel_b32_wave64` | — | API present; semantic audit pending |
+| `v_swap_b16` | yes | yes | in | `goc_v_swap_b16`<br>`goc_v_swap_b16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
+| `v_swap_b32` | yes | yes | in | `goc_v_swap_b32`<br>`goc_v_swap_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
+| `v_swaprel_b32` | yes | yes | in | `goc_v_swaprel_b32`<br>`goc_v_swaprel_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
 | `v_swmmac_bf16_16x16x32_bf16` | — | yes | in | `goc_v_swmmac_bf16_16x16x32_bf16`<br>`goc_v_swmmac_bf16_16x16x32_bf16_wave64` | — | API present; semantic audit pending |
 | `v_swmmac_f16_16x16x32_f16` | — | yes | in | `goc_v_swmmac_f16_16x16x32_f16`<br>`goc_v_swmmac_f16_16x16x32_f16_wave64` | — | API present; semantic audit pending |
 | `v_swmmac_f32_16x16x32_bf16` | — | yes | in | `goc_v_swmmac_f32_16x16x32_bf16`<br>`goc_v_swmmac_f32_16x16x32_bf16_wave64` | — | API present; semantic audit pending |

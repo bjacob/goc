@@ -647,5 +647,24 @@
       "v_movrelsd_b32",
       "v_movrelsd_2_b32"
     ]
+  },
+  {
+    "heading": "Half moves and swap architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/move_test.cpp",
+    "mnemonics": [
+      "v_mov_b16"
+    ]
+  },
+  {
+    "heading": "Half moves and swap architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/swap_test.cpp",
+    "mnemonics": [
+      "v_permlane64_b32",
+      "v_swap_b16",
+      "v_swap_b32",
+      "v_swaprel_b32"
+    ]
   }
 ]

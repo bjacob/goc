@@ -219,3 +219,39 @@ TEST(Swap, RelativeHardwareBothWaves) {
       }
   }
 }
+
+TEST(Swap, RelativeOffsetLimitIsIndependentOfAllocationSize) {
+  for (unsigned lanes : {32U, 64U})
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+      for (bool source_offset : {false, true})
+        for (uint32_t offset : {255U, 256U, 299U}) {
+          uint32_t words[300][64];
+          uint32_t *registers[300];
+          for (unsigned r = 0; r < 300; ++r) {
+            registers[r] = words[r];
+            for (unsigned lane = 0; lane < 64; ++lane)
+              words[r][lane] = 0x7f800001U + r * 64 + lane;
+          }
+          // Both addresses fit the supplied storage even when the ISA offset
+          // limit is exceeded. Either invalid offset must cancel both writes.
+          uint32_t m0 = 0xfc00fc00U | (source_offset ? offset : offset << 16);
+          uint64_t exec_mask = 0x8000000180000001ULL;
+          uint64_t flags = semantics | GOC_SEMANTICS_STRICT;
+          ASSERT_EQ(lanes == 32 ? goc_v_swaprel_b32(flags, uint32_t(exec_mask), 0, registers,
+                                                    registers, 300, 300, 0, 0, m0)
+                                : goc_v_swaprel_b32_wave64(flags, exec_mask, 0, registers,
+                                                           registers, 300, 300, 0, 0, m0),
+                    GOC_SUCCESS);
+          for (unsigned r = 0; r < 300; ++r)
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              unsigned original = r;
+              if (offset == 255 && lane < lanes && ((exec_mask >> lane) & 1)) {
+                if (r == 0)
+                  original = 255;
+                else if (r == 255)
+                  original = 0;
+              }
+              EXPECT_EQ(words[r][lane], 0x7f800001U + original * 64 + lane);
+            }
+        }
+}

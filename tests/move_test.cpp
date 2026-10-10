@@ -73,27 +73,27 @@ TEST(Move, HalfHardwareModifierCorpus) {
 }
 
 TEST(Move, EveryHalfEncodingAndSignModifier) {
-  for (unsigned start = 0; start < 65536; start += 32)
-    for (unsigned mode = 0; mode < 16; ++mode) {
-      unsigned sa = mode & 1 ? 16 : 0, sd = mode & 2 ? 16 : 0;
-      uint32_t data[32], before[32];
-      for (unsigned lane = 0; lane < 32; ++lane)
-        before[lane] = data[lane] = (start + lane) | ((65535U - start - lane) << 16);
-      uint64_t flags = (sa ? GOC_ALU_HIGH_A : 0) | (sd ? GOC_ALU_HIGH_D : 0) |
-                       (mode & 4 ? GOC_ALU_ABS_A : 0) | (mode & 8 ? GOC_ALU_NEG_A : 0);
-      uint32_t *d = data;
-      ASSERT_EQ(goc_v_mov_b16(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
-                              flags, &d, &d),
-                GOC_SUCCESS);
-      for (unsigned lane = 0; lane < 32; ++lane) {
-        uint32_t value = (before[lane] >> sa) & 65535;
-        if (mode & 4)
-          value &= 32767;
-        if (mode & 8)
-          value ^= 32768;
-        EXPECT_EQ(data[lane], (before[lane] & ~(65535U << sd)) | (value << sd));
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (unsigned start = 0; start < 65536; start += 32)
+      for (unsigned mode = 0; mode < 16; ++mode) {
+        unsigned sa = mode & 1 ? 16 : 0, sd = mode & 2 ? 16 : 0;
+        uint32_t data[32], before[32];
+        for (unsigned lane = 0; lane < 32; ++lane)
+          before[lane] = data[lane] = (start + lane) | ((65535U - start - lane) << 16);
+        uint64_t flags = (sa ? GOC_ALU_HIGH_A : 0) | (sd ? GOC_ALU_HIGH_D : 0) |
+                         (mode & 4 ? GOC_ALU_ABS_A : 0) | (mode & 8 ? GOC_ALU_NEG_A : 0);
+        uint32_t *d = data;
+        ASSERT_EQ(goc_v_mov_b16(semantics | GOC_SEMANTICS_STRICT, UINT32_MAX, flags, &d, &d),
+                  GOC_SUCCESS);
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          uint32_t value = (before[lane] >> sa) & 65535;
+          if (mode & 4)
+            value &= 32767;
+          if (mode & 8)
+            value ^= 32768;
+          EXPECT_EQ(data[lane], (before[lane] & ~(65535U << sd)) | (value << sd));
+        }
       }
-    }
 }
 
 TEST(Move, HalfDppMasksAliasesAndErrors) {
