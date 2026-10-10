@@ -503,18 +503,18 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_alloc_vgpr` | — | yes | out: resource allocation/scheduling | — | — | excluded: memory/control/scheduling |
 | `s_and_b32` | yes | yes | in | `goc_s_and_b32` | — | API present; semantic audit pending |
 | `s_and_b64` | yes | yes | in | `goc_s_and_b64` | — | API present; semantic audit pending |
-| `s_and_not0_saveexec_b32` | yes | yes | in | `goc_s_and_not0_saveexec_b32` | `s_andn1_saveexec_b32` | API present; semantic audit pending |
-| `s_and_not0_saveexec_b64` | yes | yes | in | `goc_s_and_not0_saveexec_b64` | `s_andn1_saveexec_b64` | API present; semantic audit pending |
-| `s_and_not0_wrexec_b32` | yes | yes | in | `goc_s_and_not0_wrexec_b32` | `s_andn1_wrexec_b32` | API present; semantic audit pending |
-| `s_and_not0_wrexec_b64` | yes | yes | in | `goc_s_and_not0_wrexec_b64` | `s_andn1_wrexec_b64` | API present; semantic audit pending |
+| `s_and_not0_saveexec_b32` | yes | yes | in | `goc_s_and_not0_saveexec_b32` | `s_andn1_saveexec_b32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not0_saveexec_b64` | yes | yes | in | `goc_s_and_not0_saveexec_b64` | `s_andn1_saveexec_b64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not0_wrexec_b32` | yes | yes | in | `goc_s_and_not0_wrexec_b32` | `s_andn1_wrexec_b32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not0_wrexec_b64` | yes | yes | in | `goc_s_and_not0_wrexec_b64` | `s_andn1_wrexec_b64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_and_not1_b32` | yes | yes | in | `goc_s_and_not1_b32` | `s_andn2_b32` | API present; semantic audit pending |
 | `s_and_not1_b64` | yes | yes | in | `goc_s_and_not1_b64` | `s_andn2_b64` | API present; semantic audit pending |
-| `s_and_not1_saveexec_b32` | yes | yes | in | `goc_s_and_not1_saveexec_b32` | `s_andn2_saveexec_b32` | API present; semantic audit pending |
-| `s_and_not1_saveexec_b64` | yes | yes | in | `goc_s_and_not1_saveexec_b64` | `s_andn2_saveexec_b64` | API present; semantic audit pending |
-| `s_and_not1_wrexec_b32` | yes | yes | in | `goc_s_and_not1_wrexec_b32` | `s_andn2_wrexec_b32` | API present; semantic audit pending |
-| `s_and_not1_wrexec_b64` | yes | yes | in | `goc_s_and_not1_wrexec_b64` | `s_andn2_wrexec_b64` | API present; semantic audit pending |
-| `s_and_saveexec_b32` | yes | yes | in | `goc_s_and_saveexec_b32` | — | API present; semantic audit pending |
-| `s_and_saveexec_b64` | yes | yes | in | `goc_s_and_saveexec_b64` | — | API present; semantic audit pending |
+| `s_and_not1_saveexec_b32` | yes | yes | in | `goc_s_and_not1_saveexec_b32` | `s_andn2_saveexec_b32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not1_saveexec_b64` | yes | yes | in | `goc_s_and_not1_saveexec_b64` | `s_andn2_saveexec_b64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not1_wrexec_b32` | yes | yes | in | `goc_s_and_not1_wrexec_b32` | `s_andn2_wrexec_b32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not1_wrexec_b64` | yes | yes | in | `goc_s_and_not1_wrexec_b64` | `s_andn2_wrexec_b64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_saveexec_b32` | yes | yes | in | `goc_s_and_saveexec_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_saveexec_b64` | yes | yes | in | `goc_s_and_saveexec_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_ashr_i32` | yes | yes | in | `goc_s_ashr_i32` | — | API present; semantic audit pending |
 | `s_ashr_i64` | yes | yes | in | `goc_s_ashr_i64` | — | API present; semantic audit pending |
 | `s_atc_probe` | — | yes | out: SMEM | — | — | excluded: memory/control/scheduling |
@@ -709,25 +709,25 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_mulk_i32` | yes | yes | in | `goc_s_mulk_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_nand_b32` | yes | yes | in | `goc_s_nand_b32` | — | API present; semantic audit pending |
 | `s_nand_b64` | yes | yes | in | `goc_s_nand_b64` | — | API present; semantic audit pending |
-| `s_nand_saveexec_b32` | yes | yes | in | `goc_s_nand_saveexec_b32` | — | API present; semantic audit pending |
-| `s_nand_saveexec_b64` | yes | yes | in | `goc_s_nand_saveexec_b64` | — | API present; semantic audit pending |
+| `s_nand_saveexec_b32` | yes | yes | in | `goc_s_nand_saveexec_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_nand_saveexec_b64` | yes | yes | in | `goc_s_nand_saveexec_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_nop` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
 | `s_nor_b32` | yes | yes | in | `goc_s_nor_b32` | — | API present; semantic audit pending |
 | `s_nor_b64` | yes | yes | in | `goc_s_nor_b64` | — | API present; semantic audit pending |
-| `s_nor_saveexec_b32` | yes | yes | in | `goc_s_nor_saveexec_b32` | — | API present; semantic audit pending |
-| `s_nor_saveexec_b64` | yes | yes | in | `goc_s_nor_saveexec_b64` | — | API present; semantic audit pending |
+| `s_nor_saveexec_b32` | yes | yes | in | `goc_s_nor_saveexec_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_nor_saveexec_b64` | yes | yes | in | `goc_s_nor_saveexec_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_not_b32` | yes | yes | in | `goc_s_not_b32` | — | API present; semantic audit pending |
 | `s_not_b64` | yes | yes | in | `goc_s_not_b64` | — | API present; semantic audit pending |
 | `s_or_b32` | yes | yes | in | `goc_s_or_b32` | — | API present; semantic audit pending |
 | `s_or_b64` | yes | yes | in | `goc_s_or_b64` | — | API present; semantic audit pending |
-| `s_or_not0_saveexec_b32` | yes | yes | in | `goc_s_or_not0_saveexec_b32` | `s_orn1_saveexec_b32` | API present; semantic audit pending |
-| `s_or_not0_saveexec_b64` | yes | yes | in | `goc_s_or_not0_saveexec_b64` | `s_orn1_saveexec_b64` | API present; semantic audit pending |
+| `s_or_not0_saveexec_b32` | yes | yes | in | `goc_s_or_not0_saveexec_b32` | `s_orn1_saveexec_b32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_or_not0_saveexec_b64` | yes | yes | in | `goc_s_or_not0_saveexec_b64` | `s_orn1_saveexec_b64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_or_not1_b32` | yes | yes | in | `goc_s_or_not1_b32` | `s_orn2_b32` | API present; semantic audit pending |
 | `s_or_not1_b64` | yes | yes | in | `goc_s_or_not1_b64` | `s_orn2_b64` | API present; semantic audit pending |
-| `s_or_not1_saveexec_b32` | yes | yes | in | `goc_s_or_not1_saveexec_b32` | `s_orn2_saveexec_b32` | API present; semantic audit pending |
-| `s_or_not1_saveexec_b64` | yes | yes | in | `goc_s_or_not1_saveexec_b64` | `s_orn2_saveexec_b64` | API present; semantic audit pending |
-| `s_or_saveexec_b32` | yes | yes | in | `goc_s_or_saveexec_b32` | — | API present; semantic audit pending |
-| `s_or_saveexec_b64` | yes | yes | in | `goc_s_or_saveexec_b64` | — | API present; semantic audit pending |
+| `s_or_not1_saveexec_b32` | yes | yes | in | `goc_s_or_not1_saveexec_b32` | `s_orn2_saveexec_b32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_or_not1_saveexec_b64` | yes | yes | in | `goc_s_or_not1_saveexec_b64` | `s_orn2_saveexec_b64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_or_saveexec_b32` | yes | yes | in | `goc_s_or_saveexec_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_or_saveexec_b64` | yes | yes | in | `goc_s_or_saveexec_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_pack_hh_b32_b16` | yes | yes | in | `goc_s_pack_hh_b32_b16` | — | API present; semantic audit pending |
 | `s_pack_hl_b32_b16` | yes | yes | in | `goc_s_pack_hl_b32_b16` | — | API present; semantic audit pending |
 | `s_pack_lh_b32_b16` | yes | yes | in | `goc_s_pack_lh_b32_b16` | — | API present; semantic audit pending |
@@ -796,12 +796,12 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_wqm_b64` | yes | yes | in | `goc_s_wqm_b64` | — | API present; semantic audit pending |
 | `s_xnor_b32` | yes | yes | in | `goc_s_xnor_b32` | — | API present; semantic audit pending |
 | `s_xnor_b64` | yes | yes | in | `goc_s_xnor_b64` | — | API present; semantic audit pending |
-| `s_xnor_saveexec_b32` | yes | yes | in | `goc_s_xnor_saveexec_b32` | — | API present; semantic audit pending |
-| `s_xnor_saveexec_b64` | yes | yes | in | `goc_s_xnor_saveexec_b64` | — | API present; semantic audit pending |
+| `s_xnor_saveexec_b32` | yes | yes | in | `goc_s_xnor_saveexec_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_xnor_saveexec_b64` | yes | yes | in | `goc_s_xnor_saveexec_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_xor_b32` | yes | yes | in | `goc_s_xor_b32` | — | API present; semantic audit pending |
 | `s_xor_b64` | yes | yes | in | `goc_s_xor_b64` | — | API present; semantic audit pending |
-| `s_xor_saveexec_b32` | yes | yes | in | `goc_s_xor_saveexec_b32` | — | API present; semantic audit pending |
-| `s_xor_saveexec_b64` | yes | yes | in | `goc_s_xor_saveexec_b64` | — | API present; semantic audit pending |
+| `s_xor_saveexec_b32` | yes | yes | in | `goc_s_xor_saveexec_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_xor_saveexec_b64` | yes | yes | in | `goc_s_xor_saveexec_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `scratch_load_b128` | yes | yes | out: VMEM | — | `scratch_load_dwordx4` | excluded: memory/control/scheduling |
 | `scratch_load_b32` | yes | yes | out: VMEM | — | `scratch_load_dword` | excluded: memory/control/scheduling |
 | `scratch_load_b64` | yes | yes | out: VMEM | — | `scratch_load_dwordx2` | excluded: memory/control/scheduling |

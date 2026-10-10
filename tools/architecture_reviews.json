@@ -417,5 +417,36 @@
       "v_pk_min_num_f16",
       "v_pk_minimum_f16"
     ]
+  },
+  {
+    "heading": "Scalar EXEC Boolean architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/scalar_exec_test.cpp",
+    "mnemonics": [
+      "s_and_not0_saveexec_b32",
+      "s_and_not0_saveexec_b64",
+      "s_and_not0_wrexec_b32",
+      "s_and_not0_wrexec_b64",
+      "s_and_not1_saveexec_b32",
+      "s_and_not1_saveexec_b64",
+      "s_and_not1_wrexec_b32",
+      "s_and_not1_wrexec_b64",
+      "s_and_saveexec_b32",
+      "s_and_saveexec_b64",
+      "s_nand_saveexec_b32",
+      "s_nand_saveexec_b64",
+      "s_nor_saveexec_b32",
+      "s_nor_saveexec_b64",
+      "s_or_not0_saveexec_b32",
+      "s_or_not0_saveexec_b64",
+      "s_or_not1_saveexec_b32",
+      "s_or_not1_saveexec_b64",
+      "s_or_saveexec_b32",
+      "s_or_saveexec_b64",
+      "s_xnor_saveexec_b32",
+      "s_xnor_saveexec_b64",
+      "s_xor_saveexec_b32",
+      "s_xor_saveexec_b64"
+    ]
   }
 ]

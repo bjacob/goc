@@ -52,6 +52,64 @@ template <typename T> void check(const Fn<T> *functions) {
         }
 }
 
+template <typename T>
+void nested_branches(Fn<T> and_save, Fn<T> xor_save, Fn<T> or_save, Fn<T> and_not1_write) {
+  uint64_t seed = 0x923456789abcdef1ULL;
+  auto random = [&]() {
+    seed ^= seed << 13;
+    seed ^= seed >> 7;
+    seed ^= seed << 17;
+    return T(seed);
+  };
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+      for (unsigned sample = 0; sample < 512; ++sample) {
+        const T original = sample == 0 ? T(0) : sample == 1 ? T(~T(0)) : random();
+        const T outer_condition = random(), inner_condition = random();
+        const uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+        T exec_mask = original, outer_saved = 0, inner_saved = 0, scratch = 0;
+        uint32_t scc = 99;
+        ASSERT_EQ(and_save(flags, 0, &outer_saved, outer_condition, exec_mask, &exec_mask, &scc),
+                  GOC_SUCCESS);
+        const T outer_then = exec_mask;
+        EXPECT_EQ(outer_saved, original);
+        EXPECT_EQ(scc, unsigned(exec_mask != 0));
+        ASSERT_EQ(and_save(flags, 0, &inner_saved, inner_condition, exec_mask, &exec_mask, &scc),
+                  GOC_SUCCESS);
+        const T inner_then = exec_mask;
+        EXPECT_EQ(inner_saved, outer_then);
+        EXPECT_EQ(scc, unsigned(exec_mask != 0));
+        ASSERT_EQ(and_not1_write(flags, 0, &scratch, inner_saved, exec_mask, &exec_mask, &scc),
+                  GOC_SUCCESS);
+        const T inner_else = exec_mask;
+        EXPECT_EQ(scratch, inner_else);
+        EXPECT_EQ(scc, unsigned(exec_mask != 0));
+        ASSERT_EQ(or_save(flags, 0, &scratch, inner_saved, exec_mask, &exec_mask, &scc),
+                  GOC_SUCCESS);
+        EXPECT_EQ(scratch, inner_else);
+        EXPECT_EQ(exec_mask, outer_then);
+        ASSERT_EQ(xor_save(flags, 0, &scratch, outer_saved, exec_mask, &exec_mask, &scc),
+                  GOC_SUCCESS);
+        const T outer_else = exec_mask;
+        EXPECT_EQ(scratch, outer_then);
+        EXPECT_EQ(scc, unsigned(exec_mask != 0));
+        // Check lane membership independently of the word-wide Boolean operations.
+        for (unsigned lane = 0; lane < sizeof(T) * 8; ++lane) {
+          bool entered = (original >> lane) & 1;
+          bool outer = (outer_condition >> lane) & 1;
+          bool inner = (inner_condition >> lane) & 1;
+          EXPECT_EQ(bool((inner_then >> lane) & 1), entered && outer && inner);
+          EXPECT_EQ(bool((inner_else >> lane) & 1), entered && outer && !inner);
+          EXPECT_EQ(bool((outer_else >> lane) & 1), entered && !outer);
+        }
+        ASSERT_EQ(or_save(flags, 0, &scratch, outer_saved, exec_mask, &exec_mask, &scc),
+                  GOC_SUCCESS);
+        EXPECT_EQ(scratch, outer_else);
+        EXPECT_EQ(exec_mask, original);
+        EXPECT_EQ(scc, unsigned(original != 0));
+      }
+}
+
 } // namespace
 
 TEST(ScalarExec, B32TruthTablesAliasesAndValidation) {
@@ -70,4 +128,14 @@ TEST(ScalarExec, B64TruthTablesAliasesAndValidation) {
       goc_s_and_not0_saveexec_b64, goc_s_or_not0_saveexec_b64, goc_s_and_not1_saveexec_b64,
       goc_s_or_not1_saveexec_b64,  goc_s_and_not0_wrexec_b64,  goc_s_and_not1_wrexec_b64};
   check<uint64_t>(functions);
+}
+
+TEST(ScalarExec, B32NestedBranchesRestoreExecAndScc) {
+  nested_branches<uint32_t>(goc_s_and_saveexec_b32, goc_s_xor_saveexec_b32, goc_s_or_saveexec_b32,
+                            goc_s_and_not1_wrexec_b32);
+}
+
+TEST(ScalarExec, B64NestedBranchesRestoreExecAndScc) {
+  nested_branches<uint64_t>(goc_s_and_saveexec_b64, goc_s_xor_saveexec_b64, goc_s_or_saveexec_b64,
+                            goc_s_and_not1_wrexec_b64);
 }

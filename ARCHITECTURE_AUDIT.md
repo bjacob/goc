@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-223 in-scope mnemonics have explicit contract-review records in
+247 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 586 in-scope mnemonics need a recorded review.
+The remaining 562 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -73,18 +73,18 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_absdiff_i32` | no direct policy detected | no | 298 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_and_b32` | no direct policy detected | no | 429 | review required |
 | `s_and_b64` | no direct policy detected | no | 437 | review required |
-| `s_and_not0_saveexec_b32` | no direct policy detected | no | 445 | review required |
-| `s_and_not0_saveexec_b64` | no direct policy detected | no | 455 | review required |
-| `s_and_not0_wrexec_b32` | no direct policy detected | no | 465 | review required |
-| `s_and_not0_wrexec_b64` | no direct policy detected | no | 476 | review required |
+| `s_and_not0_saveexec_b32` | no direct policy detected | no | 445 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not0_saveexec_b64` | no direct policy detected | no | 455 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not0_wrexec_b32` | no direct policy detected | no | 465 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not0_wrexec_b64` | no direct policy detected | no | 476 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_and_not1_b32` | no direct policy detected | no | 487 | review required |
 | `s_and_not1_b64` | no direct policy detected | no | 496 | review required |
-| `s_and_not1_saveexec_b32` | no direct policy detected | no | 506 | review required |
-| `s_and_not1_saveexec_b64` | no direct policy detected | no | 516 | review required |
-| `s_and_not1_wrexec_b32` | no direct policy detected | no | 526 | review required |
-| `s_and_not1_wrexec_b64` | no direct policy detected | no | 537 | review required |
-| `s_and_saveexec_b32` | no direct policy detected | no | 548 | review required |
-| `s_and_saveexec_b64` | no direct policy detected | no | 558 | review required |
+| `s_and_not1_saveexec_b32` | no direct policy detected | no | 506 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not1_saveexec_b64` | no direct policy detected | no | 516 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not1_wrexec_b32` | no direct policy detected | no | 526 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_not1_wrexec_b64` | no direct policy detected | no | 537 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_saveexec_b32` | no direct policy detected | no | 548 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_and_saveexec_b64` | no direct policy detected | no | 558 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_ashr_i32` | no direct policy detected | no | 669 | review required |
 | `s_ashr_i64` | no direct policy detected | no | 681 | review required |
 | `s_bcnt0_i32_b32` | no direct policy detected | no | 705 | review required |
@@ -162,24 +162,24 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_mulk_i32` | no direct policy detected | no | 2057 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_nand_b32` | no direct policy detected | no | 2065 | review required |
 | `s_nand_b64` | no direct policy detected | no | 2073 | review required |
-| `s_nand_saveexec_b32` | no direct policy detected | no | 2082 | review required |
-| `s_nand_saveexec_b64` | no direct policy detected | no | 2092 | review required |
+| `s_nand_saveexec_b32` | no direct policy detected | no | 2082 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_nand_saveexec_b64` | no direct policy detected | no | 2092 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_nor_b32` | no direct policy detected | no | 2105 | review required |
 | `s_nor_b64` | no direct policy detected | no | 2113 | review required |
-| `s_nor_saveexec_b32` | no direct policy detected | no | 2122 | review required |
-| `s_nor_saveexec_b64` | no direct policy detected | no | 2132 | review required |
+| `s_nor_saveexec_b32` | no direct policy detected | no | 2122 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_nor_saveexec_b64` | no direct policy detected | no | 2132 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_not_b32` | no direct policy detected | no | 2142 | review required |
 | `s_not_b64` | no direct policy detected | no | 2149 | review required |
 | `s_or_b32` | no direct policy detected | no | 2156 | review required |
 | `s_or_b64` | no direct policy detected | no | 2164 | review required |
-| `s_or_not0_saveexec_b32` | no direct policy detected | no | 2172 | review required |
-| `s_or_not0_saveexec_b64` | no direct policy detected | no | 2182 | review required |
+| `s_or_not0_saveexec_b32` | no direct policy detected | no | 2172 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_or_not0_saveexec_b64` | no direct policy detected | no | 2182 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_or_not1_b32` | no direct policy detected | no | 2192 | review required |
 | `s_or_not1_b64` | no direct policy detected | no | 2201 | review required |
-| `s_or_not1_saveexec_b32` | no direct policy detected | no | 2211 | review required |
-| `s_or_not1_saveexec_b64` | no direct policy detected | no | 2221 | review required |
-| `s_or_saveexec_b32` | no direct policy detected | no | 2231 | review required |
-| `s_or_saveexec_b64` | no direct policy detected | no | 2241 | review required |
+| `s_or_not1_saveexec_b32` | no direct policy detected | no | 2211 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_or_not1_saveexec_b64` | no direct policy detected | no | 2221 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_or_saveexec_b32` | no direct policy detected | no | 2231 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_or_saveexec_b64` | no direct policy detected | no | 2241 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_pack_hh_b32_b16` | no direct policy detected | no | 2308 | review required |
 | `s_pack_hl_b32_b16` | no direct policy detected | no | 2316 | review required |
 | `s_pack_lh_b32_b16` | no direct policy detected | no | 2324 | review required |
@@ -195,12 +195,12 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_wqm_b64` | no direct policy detected | no | 2753 | review required |
 | `s_xnor_b32` | no direct policy detected | no | 2767 | review required |
 | `s_xnor_b64` | no direct policy detected | no | 2775 | review required |
-| `s_xnor_saveexec_b32` | no direct policy detected | no | 2784 | review required |
-| `s_xnor_saveexec_b64` | no direct policy detected | no | 2794 | review required |
+| `s_xnor_saveexec_b32` | no direct policy detected | no | 2784 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_xnor_saveexec_b64` | no direct policy detected | no | 2794 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_xor_b32` | no direct policy detected | no | 2804 | review required |
 | `s_xor_b64` | no direct policy detected | no | 2812 | review required |
-| `s_xor_saveexec_b32` | no direct policy detected | no | 2820 | review required |
-| `s_xor_saveexec_b64` | no direct policy detected | no | 2830 | review required |
+| `s_xor_saveexec_b32` | no direct policy detected | no | 2820 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
+| `s_xor_saveexec_b64` | no direct policy detected | no | 2830 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `v_add3_u32` | SIMD macro, output helper | no | 2866 | review required |
 | `v_add_co_ci_u32` | SIMD macro, output helper | no | 2881, 2911 | review required |
 | `v_add_co_u32` | SIMD macro, output helper | no | 2942, 2967 | review required |

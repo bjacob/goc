@@ -2521,7 +2521,9 @@ SAVEEXEC returns old EXEC in its ordinary destination; WREXEC returns the new
 value there. They take `exec_mask` by value and append an optional `exec` output
 and required `scc` result. B32 accesses the low word; B64 accesses the raw pair,
 including EXEC_HI used as scalar storage in Wave32. Both semantics compute exact
-integer results, including when incoming EXEC is zero.
+integer results, including when incoming EXEC is zero. Tests cover Boolean truth
+tables, alias write order, optional EXEC, and nested branch-mask save/restore
+sequences in both widths.
 
 RDNA3 integer `v_cmp_[ft]_{i32,u32,i64,u64}` and corresponding `v_cmpx_`
 forms return constant false/true condition masks. True still respects EXEC and

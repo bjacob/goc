@@ -4835,3 +4835,48 @@ to the pre-change audit builds under both compilers; hashes are in
 `packed-selection-production-objects.json` in `../goc-build/coverage-work/`.
 Build/test logs use `packed-selection-` in each build directory. The ledger
 records 223 contracts, leaving 586 in-scope mnemonics without recorded reviews.
+
+
+## Scalar EXEC Boolean architecture contracts
+
+Reviewed all 24 B32/B64 SAVEEXEC/WREXEC instructions in
+[`scalar_exec.cpp`](src/scalar_exec.cpp). Both RDNA3 and RDNA4 per-architecture
+SOP1 handlers delegate to the same shared bodies at rocjitsu revision
+`ffc144c564c`; both XML sets contain the canonical names. The review inspected
+every Boolean expression, old/new destination selection, complement width, EXEC
+replacement and SCC update, plus `Wavefront::exec`, `read_exec`, `set_exec`,
+`write_exec` and `write_scc`. RDNA3 manual section 16.3 agrees with the Boolean
+rules. Per-instruction helper hashes, handler lines, XML descriptions and
+encodings are recorded in `scalar-exec-upstream-review.json` in
+`../goc-build/coverage-work/`.
+
+SAVEEXEC returns the old EXEC value in D; WREXEC returns the computed replacement.
+NOT0 complements the explicit source, NOT1 the old EXEC value. SCC reports
+whether the computed replacement is nonzero even when the optional EXEC output
+is omitted. Calls execute with incoming EXEC zero. B32 APIs operate on supplied
+32-bit words; B64 APIs operate on raw 64-bit values, including high bits that may
+serve as scalar storage in Wave32. Integration with a wave's architectural
+register pair remains the caller's job: these value APIs do not own a wavefront
+or apply the emulator's register-write decoding rules.
+
+The public output order is D, optional EXEC, then required SCC. Existing truth-table
+tests check all twelve operations in each width, both semantics, output aliasing,
+null optional EXEC and rejection of every instruction flag bit before pointer
+access. The new two tests compose nested branch masks through AND_SAVEEXEC,
+AND_NOT1_WREXEC, OR_SAVEEXEC and XOR_SAVEEXEC. They check each lane's membership
+in inner-then, inner-else and outer-else paths, each saved destination, restoration
+of original EXEC, and SCC, for deterministic random masks and zero/full masks.
+They run both semantics with STRICT at every available CPU level in both widths.
+
+These are exact integer operations shared across architectures; no FP model,
+host FP mutation, SIMD requirement or new architecture suffix is involved.
+No production changes were necessary. EXEC reporting is implemented, so an exact
+non-null request does not need an unsupported-state fallback. The inexpensive
+loose-mode update remains permitted by the optional-state contract.
+
+Validation: all 1,108 CTests pass under Clang 21 Release and GCC 15 Release;
+all four scalar EXEC tests pass under ASan/UBSan. All nine audit-tool tests pass.
+The scalar EXEC production object is byte-identical to the pre-change audit
+build under both release compilers (`scalar-exec-production-objects.json`).
+Logs use `scalar-exec-review-` in each build directory. The ledger records 247
+contracts; 562 in-scope mnemonics still need recorded reviews.
