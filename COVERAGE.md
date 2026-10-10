@@ -2655,3 +2655,34 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   reporting guards; their underlying SIMD kernels are unchanged. This measures
   these wrappers only, not whole-library performance. Raw samples are in
   `../goc-build/coverage-work/vopd-timing-samples.json`.
+
+## RCP_IFLAG architecture-specific output scaling
+
+- Split `goc_v_rcp_iflag_f32` and its Wave64 variant into unsuffixed RDNA3
+  APIs with TRAPSTS and `_rdna4` APIs with EXCP_FLAG_USER. RDNA3 OMOD is disabled
+  when guest output denormals are preserved or IEEE mode is set. This follows
+  rocjitsu's `execute_v_rcp_iflag_f32_vop3` and `fp_mode::effective_omod`;
+  forced flushing by the reciprocal operation does not alter guest-mode gating.
+- Both variants share one implementation with explicit architecture branches,
+  and the existing SIMD kernels remain unchanged. Existing RDNA4 captures and
+  benchmarks now call `_rdna4`. RDNA3 loose calls skip state reporting; exact
+  non-null reporting requests explicitly fail before operand access. Numerical
+  strict-exact reciprocal is still unsupported on both architectures.
+- New tests cover all source/output modifiers, all eight guest IEEE/denormal
+  policies, both architectures/wave widths, DPP descriptors, sparse EXEC, aliases
+  and CPU tiers. Powers-of-two inputs give directly checkable exact results
+  within loose semantics. Additional error tests verify state/output preservation
+  and optional reporting. No new RDNA3 hardware evidence is claimed.
+- The architectural-state naming audit now has 648 signatures, 338 resolved
+  matches, zero mismatches and 310 pending architecture review.
+- Validation: all 978 tests pass under Clang 21 and GCC 15 Release, and all
+  21 RcpIflag/InstructionFlags/ExceptionRegisters tests pass under ASan/UBSan.
+  Seven audit-tool tests pass. The final test-only warning/style adjustments
+  were rechecked in the Clang and sanitizer builds as well.
+- Eleven alternating CPU-2-pinned timing samples, minimum 50 ms thread CPU time,
+  compare the old RDNA4 entry point against `_rdna4`: eight loose cases cover
+  AVX2/AVX512, default/combined modifiers and null/non-null reporting. Changes
+  range from -0.97% to +4.8%, at most 0.309 ns slower. Default AVX512 medians
+  were 6.364 -> 6.561 ns without reporting and 6.439 -> 6.748 ns with reporting.
+  These are dispatch-level measurements, not whole-library results. Artifacts
+  use `../goc-build/coverage-work/rcp-arch-*`.

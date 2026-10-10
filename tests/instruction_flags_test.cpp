@@ -198,7 +198,8 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_sad_u8" || base_name == "goc_v_sad_hi_u8" ||
         base_name == "goc_v_sad_u16" || base_name == "goc_v_sad_u32" ||
         base_name == "goc_v_msad_u8" || base_name == "goc_v_qsad_pk_u16_u8" ||
-        base_name == "goc_v_mqsad_pk_u16_u8" || base_name == "goc_v_mqsad_u32_u8")
+        base_name == "goc_v_mqsad_pk_u16_u8" || base_name == "goc_v_mqsad_u32_u8" ||
+        base_name == "goc_v_rcp_iflag_f32_rdna4")
       name = base_name.c_str();
   } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));
@@ -299,7 +300,8 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
                         "goc_v_med3_f16", "goc_v_min3_f32", "goc_v_max3_f32", "goc_v_minmax_f32",
                         "goc_v_maxmin_f32", "goc_v_med3_f32"})
     supports_dpp |= std::strcmp(name, mnemonic) == 0;
-  bool dpp_scalar_output = std::strcmp(name, "goc_v_rcp_iflag_f32") == 0;
+  bool dpp_scalar_output = std::strcmp(name, "goc_v_rcp_iflag_f32") == 0 ||
+                           std::strcmp(name, "goc_v_rcp_iflag_f32_rdna4") == 0;
   for (auto mnemonic : {"v_add_co_u32", "v_sub_co_u32", "v_subrev_co_u32", "v_add_co_ci_u32",
                         "v_sub_co_ci_u32", "v_subrev_co_ci_u32"})
     dpp_scalar_output |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;

@@ -592,7 +592,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_rcp_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 18222, 18256 | review required |
 | `v_rcp_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | no | 18302, 18320 | review required |
 | `v_rcp_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 18358, 18372 | review required |
-| `v_rcp_iflag_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 18409, 18429 | review required |
+| `v_rcp_iflag_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 18409, 18429 | review required |
 | `v_readfirstlane_b32` | no direct policy detected | no | not found | review required |
 | `v_readlane_b32` | no direct policy detected | no | not found | review required |
 | `v_rndne_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 18465, 18489 | review required |

@@ -1345,7 +1345,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_rcp_f16` | yes | yes | in | `goc_v_rcp_f16`<br>`goc_v_rcp_f16_wave64` | — | API present; semantic audit pending |
 | `v_rcp_f32` | yes | yes | in | `goc_v_rcp_f32`<br>`goc_v_rcp_f32_wave64` | — | API present; semantic audit pending |
 | `v_rcp_f64` | yes | yes | in | `goc_v_rcp_f64`<br>`goc_v_rcp_f64_wave64` | — | API present; semantic audit pending |
-| `v_rcp_iflag_f32` | yes | yes | in | `goc_v_rcp_iflag_f32`<br>`goc_v_rcp_iflag_f32_wave64` | — | API present; semantic audit pending |
+| `v_rcp_iflag_f32` | yes | yes | in | `goc_v_rcp_iflag_f32`<br>`goc_v_rcp_iflag_f32_wave64`<br>`goc_v_rcp_iflag_f32_rdna4`<br>`goc_v_rcp_iflag_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_readfirstlane_b32` | yes | yes | in | `goc_v_readfirstlane_b32`<br>`goc_v_readfirstlane_b32_wave64` | — | API present; semantic audit pending |
 | `v_readlane_b32` | yes | yes | in | `goc_v_readlane_b32`<br>`goc_v_readlane_b32_wave64` | — | API present; semantic audit pending |
 | `v_rndne_f16` | yes | yes | in | `goc_v_rndne_f16`<br>`goc_v_rndne_f16_wave64` | — | API present; semantic audit pending |

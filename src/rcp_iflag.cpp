@@ -11,14 +11,29 @@
 
 #include <stdint.h>
 
-int goc_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                        const uint32_t *const *a, uint32_t *excp_flag_user) {
+namespace {
+
+template <bool Rdna3>
+int rcp_iflag(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+              const uint32_t *const *a, uint32_t *excp_flag_user) {
+  if constexpr (Rdna3)
+    if ((flags & GOC_SEMANTICS_MASK) && excp_flag_user)
+      return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if ((mode >> 32) && (!(mode & (GOC_DPP8 | GOC_DPP16)) || !goc::valid_dpp(mode)))
     return GOC_ERROR_INVALID_FLAGS;
   const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, uint32_t(mode) & ~known, false,
-                                GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
+                                GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS |
+                                    GOC_FP_IEEE_MODE))
     return error;
+  if constexpr (Rdna3) {
+    // RDNA3 OMOD is disabled with preserved output denormals or IEEE mode.
+    // The reciprocal's forced flushing does not change that guest-mode test.
+    if (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE))
+      mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+    // RDNA3 reporting has not been validated. Loose calls leave TRAPSTS alone.
+    excp_flag_user = nullptr;
+  }
   if (!exec_mask)
     return GOC_SUCCESS;
   if (mode >> 32) {
@@ -28,7 +43,7 @@ int goc_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint3
       goc::dpp8_source(flags, exec_mask, mode, permuted, a[0]);
     else
       exec_mask = goc::dpp16_source(flags, exec_mask, mode, permuted, a[0]);
-    return goc_v_rcp_iflag_f32(flags, exec_mask, uint32_t(mode), d, &source, excp_flag_user);
+    return rcp_iflag<Rdna3>(flags, exec_mask, uint32_t(mode), d, &source, excp_flag_user);
   }
   const uint32_t prior_exceptions = excp_flag_user ? *excp_flag_user : 0;
 #if defined(GOC_HAVE_X86_64_V4)
@@ -85,13 +100,15 @@ int goc_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint3
   return GOC_SUCCESS;
 }
 
-int goc_v_rcp_iflag_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
-                               uint32_t *const *d, const uint32_t *const *a,
-                               uint32_t *excp_flag_user) {
-  if (int error = goc_v_rcp_iflag_f32(flags, 0, mode, nullptr, nullptr, nullptr))
+template <bool Rdna3>
+int rcp_iflag_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                     const uint32_t *const *a, uint32_t *excp_flag_user) {
+  if (int error = rcp_iflag<Rdna3>(flags, 0, mode, nullptr, nullptr, excp_flag_user))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
+  if constexpr (Rdna3)
+    excp_flag_user = nullptr;
   // Preserve the register's pre-instruction value even when it aliases D.
   uint32_t exceptions = excp_flag_user ? *excp_flag_user : 0;
   for (unsigned half = 0; half < 2; ++half) {
@@ -102,11 +119,34 @@ int goc_v_rcp_iflag_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode
     }
     uint32_t *dest = d[0] + half * 32;
     const uint32_t *source = a[0] + half * 32;
-    if (int error = goc_v_rcp_iflag_f32(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
-                                        &source, excp_flag_user ? &exceptions : nullptr))
+    if (int error = rcp_iflag<Rdna3>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                                     &source, excp_flag_user ? &exceptions : nullptr))
       return error;
   }
   if (excp_flag_user)
     *excp_flag_user = exceptions;
   return GOC_SUCCESS;
+}
+
+} // namespace
+
+int goc_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                        const uint32_t *const *a, uint32_t *trapsts) {
+  return rcp_iflag<true>(flags, exec_mask, mode, d, a, trapsts);
+}
+
+int goc_v_rcp_iflag_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  return rcp_iflag_wave64<true>(flags, exec_mask, mode, d, a, trapsts);
+}
+
+int goc_v_rcp_iflag_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, uint32_t *excp_flag_user) {
+  return rcp_iflag<false>(flags, exec_mask, mode, d, a, excp_flag_user);
+}
+
+int goc_v_rcp_iflag_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     uint32_t *excp_flag_user) {
+  return rcp_iflag_wave64<false>(flags, exec_mask, mode, d, a, excp_flag_user);
 }

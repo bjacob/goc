@@ -8,6 +8,7 @@
 #include "rcp_iflag_hardware.h"
 #include "rcp_iflag_reference.h"
 
+#include <algorithm>
 #include <cfenv>
 #include <cstring>
 #include <gtest/gtest.h>
@@ -33,9 +34,9 @@ TEST(RcpIflag, HardwareNumericAndStickyExceptions) {
             }
             const uint32_t *ap[] = {a};
             uint32_t *dp[] = {d};
-            ASSERT_EQ(
-                goc_v_rcp_iflag_f32(flags, masks[mi], goc_test::rcp_iflag_mode(m), dp, ap, &status),
-                GOC_SUCCESS);
+            ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(flags, masks[mi], goc_test::rcp_iflag_mode(m), dp,
+                                                ap, &status),
+                      GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
               if ((masks[mi] >> lane) & 1)
                 ASSERT_TRUE(
@@ -56,9 +57,9 @@ TEST(RcpIflag, HardwareNumericAndStickyExceptions) {
           a[lane] = goc_test::rcp_iflag_input(group ? 2048 + lane : lane * 32);
         const uint32_t *ap[] = {a};
         uint32_t *dp[] = {d};
-        ASSERT_EQ(
-            goc_v_rcp_iflag_f32(cpu, UINT32_MAX, goc_test::rcp_iflag_mode(m), dp, ap, &status),
-            GOC_SUCCESS);
+        ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu, UINT32_MAX, goc_test::rcp_iflag_mode(m), dp, ap,
+                                            &status),
+                  GOC_SUCCESS);
         for (unsigned lane = 0; lane < 32; ++lane)
           ASSERT_TRUE(
               goc_test::rcp_iflag_close(d[lane], goc_test::rcp_iflag_numeric[m][group * 32 + lane]))
@@ -86,9 +87,9 @@ TEST(RcpIflag, ModifiersExecAliasesAndUnalignedStorage) {
             uint32_t wanted_status =
                 goc_test::rcp_iflag_status(words[0] + 1, exec_mask, m, *status);
             const uint32_t *ap[] = {words[0] + 1};
-            ASSERT_EQ(
-                goc_v_rcp_iflag_f32(cpu, exec_mask, goc_test::rcp_iflag_mode(m), dp, ap, status),
-                GOC_SUCCESS);
+            ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu, exec_mask, goc_test::rcp_iflag_mode(m), dp, ap,
+                                                status),
+                      GOC_SUCCESS);
             ASSERT_EQ(*status, wanted_status);
             for (unsigned j = 0; j < 2; ++j)
               for (unsigned lane = 0; lane < 35; ++lane) {
@@ -114,16 +115,16 @@ TEST(RcpIflag, ActiveSubnormalsClampAndStickyState) {
     a[1] = 1;
     const uint32_t *ap[] = {a};
     uint32_t *dp[] = {d};
-    ASSERT_EQ(goc_v_rcp_iflag_f32(cpu, 1, 0, dp, ap, &status), GOC_SUCCESS);
+    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu, 1, 0, dp, ap, &status), GOC_SUCCESS);
     EXPECT_EQ(status, 0u);
-    ASSERT_EQ(goc_v_rcp_iflag_f32(cpu, 2, 0, dp, ap, &status), GOC_SUCCESS);
+    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu, 2, 0, dp, ap, &status), GOC_SUCCESS);
     EXPECT_EQ(status, GOC_EXCEPTION_INT_DIV0);
     EXPECT_EQ(d[1], 0x7f800000u);
-    ASSERT_EQ(goc_v_rcp_iflag_f32(cpu, 2, GOC_ALU_CLAMP, dp, ap, &status), GOC_SUCCESS);
+    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu, 2, GOC_ALU_CLAMP, dp, ap, &status), GOC_SUCCESS);
     EXPECT_EQ(status, GOC_EXCEPTION_INT_DIV0);
     EXPECT_EQ(d[1], 0x3f800000u);
     status = 0x55;
-    ASSERT_EQ(goc_v_rcp_iflag_f32(cpu, 2, GOC_ALU_CLAMP, dp, ap, &status), GOC_SUCCESS);
+    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu, 2, GOC_ALU_CLAMP, dp, ap, &status), GOC_SUCCESS);
     EXPECT_EQ(status, 0x55u);
   }
 }
@@ -131,22 +132,23 @@ TEST(RcpIflag, ActiveSubnormalsClampAndStickyState) {
 TEST(RcpIflag, ValidationAndHostRounding) {
   uint32_t status = 0xdeadbeef, dwords[32] = {};
   uint32_t *dp[] = {dwords};
-  EXPECT_EQ(goc_v_rcp_iflag_f32(0, 0U, 0, nullptr, nullptr, &status), GOC_SUCCESS);
+  EXPECT_EQ(goc_v_rcp_iflag_f32_rdna4(0, 0U, 0, nullptr, nullptr, &status), GOC_SUCCESS);
   EXPECT_EQ(status, 0xdeadbeefu);
   const uint32_t known = goc_test::rcp_iflag_mode(31);
   for (unsigned bit = 0; bit < 32; ++bit)
     if (!(known & (1u << bit))) {
       status = 0xdeadbeef;
-      EXPECT_EQ(goc_v_rcp_iflag_f32(0, 0, 1u << bit, dp, nullptr, &status),
+      EXPECT_EQ(goc_v_rcp_iflag_f32_rdna4(0, 0, 1u << bit, dp, nullptr, &status),
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(status, 0xdeadbeef);
       EXPECT_EQ(dwords[0], 0u);
     }
-  EXPECT_EQ(goc_v_rcp_iflag_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, dp,
-                                nullptr, &status),
+  EXPECT_EQ(goc_v_rcp_iflag_f32_rdna4(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0,
+                                      dp, nullptr, &status),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
   EXPECT_EQ(status, 0xdeadbeef);
-  EXPECT_EQ(goc_v_rcp_iflag_f32(1ULL << 63, 0, 0, dp, nullptr, &status), GOC_ERROR_INVALID_FLAGS);
+  EXPECT_EQ(goc_v_rcp_iflag_f32_rdna4(1ULL << 63, 0, 0, dp, nullptr, &status),
+            GOC_ERROR_INVALID_FLAGS);
   EXPECT_EQ(status, 0xdeadbeef);
   goc_test::ScopedFpEnvironment saved;
   ASSERT_TRUE(saved.saved());
@@ -156,8 +158,8 @@ TEST(RcpIflag, ValidationAndHostRounding) {
     v = 0x40400000;
   const uint32_t *ap[] = {a};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    EXPECT_EQ(goc_v_rcp_iflag_f32(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, known, dp, ap,
-                                  &status),
+    EXPECT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, known, dp,
+                                        ap, &status),
               GOC_SUCCESS);
     EXPECT_EQ(std::fegetround(), FE_TONEAREST);
   }
@@ -190,10 +192,10 @@ TEST(RcpIflag, DppModifiersMasksAndStatusAliases) {
                 expected[status_target][14] = want;
               const uint32_t *a[] = {words[0] + 1};
               uint32_t *d[] = {words[target] + 1};
-              ASSERT_EQ(
-                  goc_v_rcp_iflag_f32(cpu, exec_mask, descriptor | goc_test::rcp_iflag_mode(m), d,
-                                      a, status_target < 2 ? words[status_target] + 14 : &status),
-                  GOC_SUCCESS);
+              ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(
+                            cpu, exec_mask, descriptor | goc_test::rcp_iflag_mode(m), d, a,
+                            status_target < 2 ? words[status_target] + 14 : &status),
+                        GOC_SUCCESS);
               EXPECT_EQ(status, status_target < 2 ? 0xdeadbeef : want);
               for (unsigned reg = 0; reg < 2; ++reg)
                 for (unsigned word = 0; word < 34; ++word) {
@@ -213,16 +215,16 @@ TEST(RcpIflag, DppValidationAndZeroExec) {
     uint32_t status = 0xdeadbeef;
     for (auto invalid : {1ULL << 36, 1ULL << 1})
       for (uint32_t exec_mask : {0U, UINT32_MAX}) {
-        EXPECT_EQ(
-            goc_v_rcp_iflag_f32(0, exec_mask, descriptor | invalid, nullptr, nullptr, &status),
-            GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(goc_v_rcp_iflag_f32_rdna4(0, exec_mask, descriptor | invalid, nullptr, nullptr,
+                                            &status),
+                  GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(status, 0xdeadbeefu);
       }
-    EXPECT_EQ(goc_v_rcp_iflag_f32(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
-                                  descriptor, nullptr, nullptr, &status),
+    EXPECT_EQ(goc_v_rcp_iflag_f32_rdna4(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
+                                        descriptor, nullptr, nullptr, &status),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(status, 0xdeadbeefu);
-    EXPECT_EQ(goc_v_rcp_iflag_f32(0, 0U, descriptor, nullptr, nullptr, &status), GOC_SUCCESS);
+    EXPECT_EQ(goc_v_rcp_iflag_f32_rdna4(0, 0U, descriptor, nullptr, nullptr, &status), GOC_SUCCESS);
     EXPECT_EQ(status, 0xdeadbeefu);
   }
 }
@@ -250,9 +252,9 @@ TEST(RcpIflag, DppHardwareCorpus) {
               }
               const uint32_t *a[] = {av};
               uint32_t *d[] = {output};
-              ASSERT_EQ(goc_v_rcp_iflag_f32(cpu | fp, exec_mask,
-                                            descriptor | goc_test::rcp_iflag_mode(m), d, a,
-                                            &status),
+              ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu | fp, exec_mask,
+                                                  descriptor | goc_test::rcp_iflag_mode(m), d, a,
+                                                  &status),
                         GOC_SUCCESS);
               for (auto word : output) {
                 if ((word & 0x7fffffff) > 0x7f800000)
@@ -274,8 +276,8 @@ TEST(RcpIflag, NullExceptionOutput) {
   uint32_t *dp[] = {reported}, *np[] = {unreported};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint32_t status = 0x80000001;
-    ASSERT_EQ(goc_v_rcp_iflag_f32(cpu, UINT32_MAX, 0, dp, ap, &status), GOC_SUCCESS);
-    ASSERT_EQ(goc_v_rcp_iflag_f32(cpu, UINT32_MAX, 0, np, ap, nullptr), GOC_SUCCESS);
+    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu, UINT32_MAX, 0, dp, ap, &status), GOC_SUCCESS);
+    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu, UINT32_MAX, 0, np, ap, nullptr), GOC_SUCCESS);
     EXPECT_EQ(status, 0x80000001 | GOC_EXCEPTION_INT_DIV0);
     for (unsigned lane = 0; lane < 32; ++lane)
       EXPECT_EQ(reported[lane], unreported[lane]);
@@ -303,8 +305,8 @@ TEST(RcpIflag, Wave64ModifiersExecAliasesAndUnalignedStorage) {
             uint32_t wanted_status =
                 goc_test::rcp_iflag_status(words[0] + 1, exec_mask, m, *status);
             const uint32_t *ap[] = {words[0] + 1};
-            ASSERT_EQ(goc_v_rcp_iflag_f32_wave64(cpu, exec_mask, goc_test::rcp_iflag_mode(m), dp,
-                                                 ap, status),
+            ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(cpu, exec_mask, goc_test::rcp_iflag_mode(m),
+                                                       dp, ap, status),
                       GOC_SUCCESS);
             ASSERT_EQ(*status, wanted_status);
             for (unsigned j = 0; j < 2; ++j)
@@ -355,7 +357,7 @@ TEST(RcpIflag, Wave64DppModifiersMasksAndStatusAliases) {
                 expected[status_target][46] = want;
               const uint32_t *a[] = {words[0] + 1};
               uint32_t *d[] = {words[target] + 1};
-              ASSERT_EQ(goc_v_rcp_iflag_f32_wave64(
+              ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(
                             cpu, exec_mask, descriptor | goc_test::rcp_iflag_mode(m), d, a,
                             status_target < 2 ? words[status_target] + 46 : &status),
                         GOC_SUCCESS);
@@ -378,16 +380,16 @@ TEST(RcpIflag, Wave64DppValidationAndZeroExec) {
     uint32_t status = 0xdeadbeef;
     for (auto invalid : {1ULL << 36, 1ULL << 1})
       for (uint64_t exec_mask : {uint64_t(0), uint64_t(UINT64_MAX)}) {
-        EXPECT_EQ(goc_v_rcp_iflag_f32_wave64(0, exec_mask, descriptor | invalid, nullptr, nullptr,
-                                             &status),
+        EXPECT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(0, exec_mask, descriptor | invalid, nullptr,
+                                                   nullptr, &status),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(status, 0xdeadbeefu);
       }
-    EXPECT_EQ(goc_v_rcp_iflag_f32_wave64(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
-                                         descriptor, nullptr, nullptr, &status),
+    EXPECT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                               0, descriptor, nullptr, nullptr, &status),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(status, 0xdeadbeefu);
-    EXPECT_EQ(goc_v_rcp_iflag_f32_wave64(0, 0U, descriptor, nullptr, nullptr, &status),
+    EXPECT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(0, 0U, descriptor, nullptr, nullptr, &status),
               GOC_SUCCESS);
     EXPECT_EQ(status, 0xdeadbeefu);
   }
@@ -401,8 +403,8 @@ TEST(RcpIflag, Wave64NullExceptionOutput) {
   uint32_t *dp[] = {reported}, *np[] = {unreported};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint32_t status = 0x80000001;
-    ASSERT_EQ(goc_v_rcp_iflag_f32_wave64(cpu, UINT64_MAX, 0, dp, ap, &status), GOC_SUCCESS);
-    ASSERT_EQ(goc_v_rcp_iflag_f32_wave64(cpu, UINT64_MAX, 0, np, ap, nullptr), GOC_SUCCESS);
+    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(cpu, UINT64_MAX, 0, dp, ap, &status), GOC_SUCCESS);
+    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(cpu, UINT64_MAX, 0, np, ap, nullptr), GOC_SUCCESS);
     EXPECT_EQ(status, 0x80000001 | GOC_EXCEPTION_INT_DIV0);
     for (unsigned lane = 0; lane < 64; ++lane)
       EXPECT_EQ(reported[lane], unreported[lane]);
@@ -431,8 +433,8 @@ TEST(RcpIflag, Wave64UpperHalfHardwareStatusCorpus) {
             const uint32_t *ap = a;
             uint32_t *dp = d;
             uint64_t exec_mask = uint64_t(masks[mi]) << 32;
-            ASSERT_EQ(goc_v_rcp_iflag_f32_wave64(flags, exec_mask, goc_test::rcp_iflag_mode(m), &dp,
-                                                 &ap, &status),
+            ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(
+                          flags, exec_mask, goc_test::rcp_iflag_mode(m), &dp, &ap, &status),
                       GOC_SUCCESS);
             for (unsigned lane = 0; lane < 64; ++lane) {
               if ((exec_mask >> lane) & 1) {
@@ -446,4 +448,80 @@ TEST(RcpIflag, Wave64UpperHalfHardwareStatusCorpus) {
           }
           EXPECT_EQ(digest, goc_test::rcp_iflag_status_digests[(si * 6 + mi) * 32 + m]);
         }
+}
+
+TEST(RcpIflag, ArchitectureOmodGuestPolicyAcrossWaveSizesAndDpp) {
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned policy = 0; policy < 8; ++policy)
+          for (unsigned m = 0; m < 32; ++m)
+            for (auto descriptor : goc_test::dpp_modes)
+              for (bool alias : {false, true}) {
+                uint32_t input[64], output[64], original[64];
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  // Powers of two make the reciprocal and OMOD exact on every CPU.
+                  input[lane] = original[lane] = 0x3f800000 + (lane % 4) * 0x800000;
+                  output[lane] = 0xdeadbeef;
+                }
+                const uint32_t *a = input;
+                uint32_t *d = alias ? input : output, state = 0x80000001;
+                uint64_t flags = cpu | (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                 (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                 (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+                uint64_t exec_mask = wide ? 0x8192a5a571abcdefULL : 0x71abcdef;
+                uint64_t mode = descriptor | goc_test::rcp_iflag_mode(m);
+                int error =
+                    wide ? (rdna3 ? goc_v_rcp_iflag_f32_wave64 : goc_v_rcp_iflag_f32_rdna4_wave64)(
+                               flags, exec_mask, mode, &d, &a, &state)
+                         : (rdna3 ? goc_v_rcp_iflag_f32 : goc_v_rcp_iflag_f32_rdna4)(
+                               flags, uint32_t(exec_mask), mode, &d, &a, &state);
+                ASSERT_EQ(error, GOC_SUCCESS);
+                unsigned effective_m = rdna3 && (!(policy & 2) || (policy & 4)) ? m & ~12U : m;
+                for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane) {
+                  int source;
+                  bool active = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+                  uint32_t expected = active ? goc_test::rcp_iflag_reference(
+                                                   source < 0 ? 0 : original[source], effective_m)
+                                      : alias ? original[lane]
+                                              : 0xdeadbeef;
+                  EXPECT_EQ(d[lane], expected) << rdna3 << '/' << wide << '/' << policy << '/' << m;
+                }
+                if (rdna3) {
+                  EXPECT_EQ(state, 0x80000001U);
+                }
+              }
+}
+
+TEST(RcpIflag, Rdna3ReportingValidationAndLooseOptOut) {
+  for (bool wide : {false, true})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      uint32_t input[64] = {}, output[64];
+      std::fill(output, output + 64, 0xdeadbeef);
+      const uint32_t *a = input;
+      uint32_t *d = output, state = 0x80000001;
+      auto invoke = [&](uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *status) {
+        return wide ? goc_v_rcp_iflag_f32_wave64(flags, exec_mask, mode, &d, &a, status)
+                    : goc_v_rcp_iflag_f32(flags, uint32_t(exec_mask), mode, &d, &a, status);
+      };
+      for (uint64_t exec_mask : {0ULL, ~0ULL}) {
+        EXPECT_EQ(invoke(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, exec_mask, 0, &state),
+                  GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+        EXPECT_EQ(invoke(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0,
+                         &state),
+                  GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+        EXPECT_EQ(invoke(cpu, exec_mask, GOC_ALU_NEG_B, &state), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(state, 0x80000001U);
+        for (auto word : output)
+          EXPECT_EQ(word, 0xdeadbeefU);
+      }
+      ASSERT_EQ(invoke(cpu, ~0ULL, 0, &state), GOC_SUCCESS);
+      EXPECT_EQ(state, 0x80000001U);
+      for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane)
+        EXPECT_EQ(output[lane], 0x7f800000U);
+      EXPECT_EQ(invoke(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, ~0ULL, 0, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(
+          invoke(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, ~0ULL, 0, nullptr),
+          GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    }
 }

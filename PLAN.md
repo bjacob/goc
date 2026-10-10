@@ -402,7 +402,7 @@ Any exception bits that are reported still accumulate with OR.
 
 For bit-exact semantics with a non-null pointer, unavailable faithful updates
 return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE`; they must not silently fall back to
-loose reporting. Currently, `V_RCP_IFLAG_F32` retains its implemented
+loose reporting. Currently, RDNA4 `V_RCP_IFLAG_F32` retains its implemented
 integer-divide-by-zero reporting. Floating comparisons also implement exact
 invalid/input-denormal reporting, validated against RX 9070 captures. Their exact
 reporting path uses integer classification; loose and null-output paths keep SIMD
@@ -476,9 +476,16 @@ The classification uses the [RDNA4 ISA reference](https://www.amd.com/content/da
 (§3.4.10, §6.8, §7.7, §7.11, §12.3 and instruction descriptions), cross-checked
 against LLVM AMDGPU instruction metadata. LLVM metadata alone is insufficient:
 for example, the ISA explicitly supports exceptions for floating min/max and
-explicitly excludes FP8 dot products. `V_RCP_IFLAG_F32` reports integer
+explicitly excludes FP8 dot products. RDNA4 `V_RCP_IFLAG_F32` reports integer
 divide-by-zero through the same register. Matrix instructions, interpolation,
 CLASS comparisons, cube operations, FP8 conversions/dots, and other non-reporting
 conversion variants retain their existing signatures. The parameter is present
 if an instruction can report exceptions in any supported ISA mode, even when a
 particular invocation or currently accepted modifier cannot produce them.
+
+`V_RCP_IFLAG_F32` now has unsuffixed RDNA3 and `_rdna4` APIs, in both wave
+sizes. RDNA3 applies OMOD only with guest output flushing enabled and IEEE mode
+disabled; its forced reciprocal flushing does not override that policy. Both
+reuse the existing scalar/AVX2/AVX512 arithmetic. RDNA3 optional TRAPSTS reporting
+remains unsupported for exact requests and is skipped in loose mode. Numerical
+strict-exact reciprocal remains unsupported on both architectures.

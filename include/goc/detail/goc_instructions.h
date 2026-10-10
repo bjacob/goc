@@ -1267,7 +1267,9 @@ static const uint32_t GOC_EXCEPTION_INT_DIV0 = 1U << 6;
 
 // Reciprocal with sticky integer divide-by-zero status. Supports ABS_A, NEG_A,
 // OMOD and CLAMP. Input/output subnormals always flush, independently of guest
-// flush flags. Active zero or subnormal inputs set INT_DIV0 unless CLAMP is set.
+// flush flags. RDNA3 OMOD applies only when guest output flushing is enabled
+// and GOC_FP_IEEE_MODE is clear; RDNA4 OMOD applies independently.
+// RDNA4 active zero/subnormal inputs generate INT_DIV0 unless clamped.
 // Existing excp_flag_user bits, including a pre-existing INT_DIV0, survive.
 // DPP8/DPP16 permutes A before source modifiers. DPP-filtered destination lanes
 // add no exception; a zero-filled source in an active lane can set INT_DIV0.
@@ -1276,15 +1278,21 @@ static const uint32_t GOC_EXCEPTION_INT_DIV0 = 1U << 6;
 // read before VGPR stores and its final write takes precedence on overlap.
 // Zero EXEC permits null VGPR pointers and leaves all outputs unchanged.
 // Errors leave all outputs unchanged. Loose semantics only; strict exact is
-// rejected. This instruction implements exception accumulation on all CPU paths.
+// rejected. RDNA4 implements exception accumulation on all CPU paths.
+// RDNA3 loose calls skip TRAPSTS updates; non-null exact reporting is unsupported.
 int goc_v_rcp_iflag_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_rcp_iflag_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              uint32_t *excp_flag_user);
 
 // Wave64 retains the same loose numerical and optional accumulation behavior,
 // with four independent DPP rows. Status is committed after all VGPR writes.
 int goc_v_rcp_iflag_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                               uint32_t *const *d, const uint32_t *const *a,
-                               uint32_t *excp_flag_user);
+                               uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_rcp_iflag_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     uint32_t *excp_flag_user);
 
 // Pseudo-scalar transcendental math on raw SGPR values. Executes once regardless
 // of EXEC, including zero. a is a scalar value; d must always be writable.

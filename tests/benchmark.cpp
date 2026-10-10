@@ -2701,7 +2701,7 @@ bool benchmark_rcp_iflag(uint64_t cpu, int iterations, int min_ms) {
       auto fn = [&r](uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *, const uint32_t *const *) {
         r.status = 0x15;
-        return goc_v_rcp_iflag_f32(flags, exec_mask, mode, d, a, &r.status);
+        return goc_v_rcp_iflag_f32_rdna4(flags, exec_mask, mode, d, a, &r.status);
       };
       const char *label = m == 0 ? "none" : m == 15 ? "ABS/NEG/half" : "ABS/NEG/half/clamp";
       if (descriptor >= 0)
