@@ -4627,7 +4627,8 @@ int goc_v_frexp_mant_f64(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 // VGPR or an FP64 low/high pair. Returns zero for zeros, infinities and NaNs;
 // preserved finite nonzero inputs satisfy A = FREXP_MANT(A) * 2^D.
 // A ABS/NEG, OMOD and CLAMP are accepted but do not change the integer result.
-// D may alias either whole source VGPR. FP64 supports loose semantics only.
+// D may alias either whole source VGPR. FP64 supports loose semantics only
+// and accepts guest IEEE/input/output-denormal flags without numeric effect.
 // FP32 supports exact semantics and guest input flushing; output flushing and
 // IEEE mode do not change its integer result. Flushed subnormals return zero.
 // Non-null exact reporting is unsupported on both architectures.
@@ -4640,7 +4641,11 @@ int goc_v_frexp_exp_i32_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t i
                                   uint32_t *excp_flag_user);
 
 int goc_v_frexp_exp_i32_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                            uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                            uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_frexp_exp_i32_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  uint32_t *excp_flag_user);
 
 // Wave64 exponent extraction uses the same operand layouts and semantics,
 // with 64 lanes per VGPR. Optional state reporting is unchanged.
@@ -4651,8 +4656,11 @@ int goc_v_frexp_exp_i32_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
                                          const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_frexp_exp_i32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                                   uint32_t *const *d, const uint32_t *const *a,
-                                   uint32_t *excp_flag_user);
+                                   uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_frexp_exp_i32_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                         uint64_t instruction_flags, uint32_t *const *d,
+                                         const uint32_t *const *a, uint32_t *excp_flag_user);
 
 // Scale A by 2^B, with a signed 32-bit integer exponent in one B VGPR.
 // FP32 A/D each use one VGPR; FP64 A/D use low/high pairs. Supports A ABS/NEG,

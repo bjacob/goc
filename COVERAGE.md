@@ -3771,3 +3771,53 @@ Validation: all 1,052 CTests pass with Clang 21 Release and GCC 15 Release;
 `../goc-build-sanitize/`. All nine audit-tool tests pass. The naming audit now
 resolves 510 of 736 reporting signatures, with zero mismatches and 226 still
 unresolved; these counts do not assert exception-reporting accuracy.
+
+## FP32/FP64 FREXP exponent architecture review
+
+Reviewed `v_frexp_exp_i32_f32` and `v_frexp_exp_i32_f64` against rocjitsu revision
+`ffc144c564c`: `shared/fp_mode.h::frexp_f32`, shared VOP1/VOP3 execution helpers,
+and architecture-specific delegation in `generated/rdna{3,4}/vop{1,3}_exec.cpp`.
+RDNA3 ISA VOP1/VOP3 FP64 descriptions specify signed integer output.
+
+- FP32 already uses the borrowed integer `frexp_f32` result model in both
+  architectures, with guest input flushing, loose/exact results and native
+  `trapsts`/`excp_flag_user` APIs. IEEE and output-denormal flags do not change
+  the exponent. Both wave widths and FP32 DPP remain covered by the existing
+  exact/numerical regression suites. No new numerical or reporting model was
+  added during this review.
+- FP64 now has unsuffixed RDNA3 and `_rdna4` APIs, including Wave64, with native
+  `trapsts` and `excp_flag_user` parameters. Both share the existing exponent
+  computation and accept guest IEEE/input/output-denormal flags without numeric
+  effect, following the upstream FP64 VOP1 extraction. The scalar and SIMD
+  algorithms do not change. FP64 DPP remains explicitly rejected.
+- FP64 remains loose-only. Its VOP3 upstream helper converts the integer exponent
+  to FP32 and applies floating result modifiers, whereas its VOP1 helper and
+  the ISA specify integer output. GoC keeps its existing integer exponent and
+  ignored floating modifiers instead of copying that discrepancy. No new
+  hardware inference or exact claim follows from this review.
+- Exact non-null optional state reporting remains unsupported on both targets
+  and both element widths. Loose calls leave optional state untouched. The
+  historical FP32 reporting model described earlier in this file was removed
+  during the scope correction and is not reinstated.
+
+Two new `frexp_exp_test.cpp` cases cover FP64 architecture APIs, both wave
+widths, all eight guest policies, all low modifiers, all available CPU selections,
+source/destination aliases, signed subnormals, normals, infinities, signaling/quiet
+NaNs, sparse EXEC, unaligned buffers, guards and error atomicity. Tests verify
+results and unchanged host rounding, FTZ/DAZ and sticky flags across all host
+control combinations. Existing exponent-field/leading-bit sweeps and RDNA4
+numerical tests now name the explicit FP64 `_rdna4` APIs.
+
+Performance: seven alternating before/after samples, CPU 2 affinity, thread CPU
+time, 20 ms minimum per case. For FP64 normal/subnormal inputs with plain/modified
+forms, median time changes are -0.68% scalar, +0.41% for the AVX2 CPU selection,
+and +0.36% for v4 (which also uses AVX2 here). The worst measured slowdown is
+1.26%, from 20.720 ns to 20.981 ns. The SIMD object is byte-identical before and
+after. Raw samples are in `../goc-build/coverage-work/frexp64-performance.json`.
+
+Validation: all 1,054 CTests pass with Clang 21 Release and GCC 15 Release;
+17 targeted ASan/UBSan tests pass. Logs are `frexp64-tests.log` under
+`../goc-build/coverage-work/`, `../goc-build-gcc/`, and
+`../goc-build-sanitize/`. All nine audit-tool tests pass. The native-register
+naming audit resolves 514 of 738 reporting signatures, with zero mismatches and
+224 still unresolved; numerical/reporting completeness remains a separate gate.

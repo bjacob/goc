@@ -179,7 +179,7 @@ const Case cases[] = {
 
     {unary<goc_v_frexp_exp_i32_f32_rdna4>, true,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
-    {unary<goc_v_frexp_exp_i32_f64>, false,
+    {unary<goc_v_frexp_exp_i32_f64_rdna4>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
 
     {unary<goc_v_frexp_mant_f32_rdna4>, true,

@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-40 in-scope mnemonics have explicit contract-review records in
+42 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 769 in-scope mnemonics need a recorded review.
+The remaining 767 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -491,8 +491,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_fract_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12295, 12311 | review required |
 | `v_fract_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 12345, 12360 | review required |
 | `v_frexp_exp_i16_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12400, 12435 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-exponent-architecture-review) |
-| `v_frexp_exp_i32_f32` | SIMD macro, output helper | yes | 12489, 12514 | review required |
-| `v_frexp_exp_i32_f64` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 12546, 12566 | review required |
+| `v_frexp_exp_i32_f32` | SIMD macro, output helper | yes | 12489, 12514 | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32fp64-frexp-exponent-architecture-review) |
+| `v_frexp_exp_i32_f64` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12546, 12566 | [loose contract reviewed; see limitations](COVERAGE.md#fp32fp64-frexp-exponent-architecture-review) |
 | `v_frexp_mant_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12613, 12643 | review required |
 | `v_frexp_mant_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12693, 12715 | review required |
 | `v_frexp_mant_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 12753, 12770 | review required |

@@ -5,6 +5,7 @@
 #include "exec_masks.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
+#include "test_instruction.h"
 #include "unary_capture_input.h"
 
 #include <algorithm>
@@ -20,7 +21,7 @@
 namespace {
 
 using Fn = decltype(&goc_v_frexp_exp_i32_f32);
-const Fn functions[] = {goc_v_frexp_exp_i32_f32, goc_v_frexp_exp_i32_f64};
+const Fn functions[] = {goc_v_frexp_exp_i32_f32, goc_v_frexp_exp_i32_f64_rdna4};
 
 uint32_t mode(int variant) {
   return (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
@@ -291,7 +292,7 @@ TEST(FrexpExp, DppValidation) {
 
 TEST(FrexpExp, Wave64ExponentFieldsModifiersDppAndAliases) {
   const decltype(&goc_v_frexp_exp_i32_f32_wave64) wave64[] = {goc_v_frexp_exp_i32_f32_wave64,
-                                                              goc_v_frexp_exp_i32_f64_wave64};
+                                                              goc_v_frexp_exp_i32_f64_rdna4_wave64};
   for (unsigned fp64 = 0; fp64 < 2; ++fp64)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       unsigned width = fp64 ? 52 : 23;
@@ -395,7 +396,7 @@ TEST(FrexpExp, Fp64HostDenormalControlsAndRoundingDoNotAffectResults) {
           }
           const uint32_t *a[] = {input[0], input[1]};
           uint32_t *d = output;
-          ASSERT_EQ(goc_v_frexp_exp_i32_f64_wave64(cpu, UINT64_MAX, 0, &d, a, nullptr),
+          ASSERT_EQ(goc_v_frexp_exp_i32_f64_rdna4_wave64(cpu, UINT64_MAX, 0, &d, a, nullptr),
                     GOC_SUCCESS);
           for (unsigned lane = 0; lane < 64; ++lane)
             ASSERT_EQ(output[lane], reference(cases[lane % 8], true));
@@ -529,4 +530,130 @@ TEST(FrexpExpExact, ValidationAndEmptyExec) {
       for (auto value : output)
         EXPECT_EQ(value, 0xdeadbeefU);
     }
+}
+
+namespace {
+
+using ExponentInstruction = goc_test::WaveInstruction<decltype(&goc_v_cvt_f64_i32)>;
+const ExponentInstruction fp64_instructions[2][2] = {
+    {goc_v_frexp_exp_i32_f64, goc_v_frexp_exp_i32_f64_wave64},
+    {goc_v_frexp_exp_i32_f64_rdna4, goc_v_frexp_exp_i32_f64_rdna4_wave64}};
+
+uint64_t fp64_policy(unsigned guest) {
+  return (guest & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+         (guest & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) | (guest & 4 ? GOC_FP_IEEE_MODE : 0);
+}
+
+} // namespace
+
+TEST(FrexpExp, Fp64ArchitecturePoliciesWidthsModifiersAndAliases) {
+  const uint64_t values[] = {0,
+                             0x8000000000000000ULL,
+                             1,
+                             0x8000000000000001ULL,
+                             0xfffffffffffffULL,
+                             0x10000000000000ULL,
+                             0x10000000000001ULL,
+                             0x3ff0000000000000ULL,
+                             0xbfefffffffffffffULL,
+                             0x7fefffffffffffffULL,
+                             0x7ff0000000000000ULL,
+                             0xfff0000000000000ULL,
+                             0x7ff0000000000001ULL,
+                             0xfff0000000000001ULL,
+                             0x7ff8000000004321ULL,
+                             0xfff8000000004321ULL};
+  for (unsigned arch = 0; arch < 2; ++arch)
+    for (unsigned wide = 0; wide < 2; ++wide)
+      for (unsigned guest = 0; guest < 8; ++guest)
+        for (unsigned m = 0; m < 32; ++m)
+          for (unsigned alias = 0; alias < 3; ++alias)
+            for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+              uint32_t words[3][66], before[3][66];
+              for (unsigned lane = 0; lane < 66; ++lane) {
+                uint64_t bits = values[(lane + lane / 32) % 16];
+                words[0][lane] = uint32_t(bits);
+                words[1][lane] = uint32_t(bits >> 32);
+                words[2][lane] = 0xdeadbeef;
+              }
+              std::memcpy(before, words, sizeof(words));
+              const uint32_t *a[] = {words[0] + 1, words[1] + 1};
+              uint32_t *d = words[alias] + 1, state = 0x80000055;
+              const uint64_t exec_mask = 0xf13579bde2468acfULL;
+              ASSERT_EQ(fp64_instructions[arch][wide](cpu | fp64_policy(guest), exec_mask,
+                                                      modifiers(m), &d, a, &state),
+                        GOC_SUCCESS);
+              EXPECT_EQ(state, 0x80000055U);
+              for (unsigned reg = 0; reg < 3; ++reg)
+                for (unsigned lane = 0; lane < 66; ++lane) {
+                  uint32_t want = before[reg][lane];
+                  if (reg == alias && lane > 0 && lane <= (wide ? 64U : 32U) &&
+                      ((exec_mask >> (lane - 1)) & 1))
+                    want = reference(uint64_t(before[0][lane]) | (uint64_t(before[1][lane]) << 32),
+                                     true);
+                  ASSERT_EQ(words[reg][lane], want)
+                      << arch << '/' << wide << '/' << guest << '/' << m;
+                }
+            }
+}
+
+TEST(FrexpExp, Fp64ArchitectureValidationAndHostEnvironment) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (const auto &architecture : fp64_instructions)
+    for (auto instruction : architecture)
+      for (unsigned guest = 0; guest < 8; ++guest)
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          uint32_t words[2][64], output[64], state = 0x80000055;
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            uint64_t bits = 1ULL << (lane % 52);
+            words[0][lane] = uint32_t(bits);
+            words[1][lane] = uint32_t(bits >> 32);
+            output[lane] = 0xdeadbeef;
+          }
+          const uint32_t *a[] = {words[0], words[1]};
+          uint32_t *d = output;
+          for (uint64_t exec_mask : {0ULL, ~0ULL}) {
+            EXPECT_EQ(instruction(cpu | fp64_policy(guest) | GOC_SEMANTICS_EXACT_EMPIRICAL,
+                                  exec_mask, 0, &d, a, &state),
+                      GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+            EXPECT_EQ(instruction(cpu | fp64_policy(guest) | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                      GOC_SEMANTICS_STRICT,
+                                  exec_mask, 0, &d, a),
+                      GOC_ERROR_UNSUPPORTED_SEMANTICS);
+            EXPECT_EQ(instruction(cpu | fp64_policy(guest), exec_mask, GOC_DPP8, &d, a, &state),
+                      GOC_ERROR_INVALID_FLAGS);
+            EXPECT_EQ(
+                instruction(cpu | fp64_policy(guest), exec_mask, GOC_ALU_NEG_B, &d, a, &state),
+                GOC_ERROR_INVALID_FLAGS);
+          }
+          for (auto word : output)
+            EXPECT_EQ(word, 0xdeadbeefU);
+          for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO})
+            for (unsigned controls = 0; controls < 4; ++controls) {
+              ASSERT_EQ(std::fesetround(rounding), 0);
+              ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
+              ASSERT_EQ(std::feraiseexcept(FE_DIVBYZERO), 0);
+#if defined(__x86_64__) || defined(_M_X64)
+              unsigned csr = (_mm_getcsr() & ~0x8040U) | (controls & 1 ? 0x40U : 0) |
+                             (controls & 2 ? 0x8000U : 0);
+              _mm_setcsr(csr);
+#endif
+              EXPECT_EQ(instruction(cpu | fp64_policy(guest), UINT64_MAX, 0, &d, a, &state),
+                        GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                // Wave32 leaves the upper half untouched even after repeated calls.
+                uint32_t want = instruction.reporting_wave64 || lane < 32
+                                    ? reference(1ULL << (lane % 52), true)
+                                    : 0xdeadbeefU;
+                EXPECT_EQ(output[lane], want);
+              }
+              EXPECT_EQ(std::fegetround(), rounding);
+              EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+              EXPECT_EQ(_mm_getcsr(), csr);
+#endif
+            }
+          EXPECT_EQ(state, 0x80000055U);
+        }
 }

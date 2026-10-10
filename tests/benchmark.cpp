@@ -871,7 +871,7 @@ bool benchmark_ldexp(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_frexp_exp(uint64_t cpu, int iterations, int min_ms) {
   using Unary = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
-  const Unary functions[] = {goc_v_frexp_exp_i32_f32_rdna4, goc_v_frexp_exp_i32_f64};
+  const Unary functions[] = {goc_v_frexp_exp_i32_f32_rdna4, goc_v_frexp_exp_i32_f64_rdna4};
   const uint64_t inputs[][4] = {
       {0x3e800000, 0xbf800000, 0x40800000, 0x41800000},
       {0x3fd0000000000000ULL, 0xbff0000000000000ULL, 0x4010000000000000ULL, 0x4030000000000000ULL}};

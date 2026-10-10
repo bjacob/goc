@@ -15,9 +15,8 @@ int frexp_exp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const
               const uint32_t *const *a) {
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known, !Fp64,
-                                Fp64 ? 0
-                                     : GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
-                                           GOC_FP_FLUSH_OUTPUT_DENORMALS))
+                                GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                                    GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
@@ -88,8 +87,9 @@ int goc_v_frexp_exp_i32_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t m
   return frexp_exp<false>(flags, exec_mask, mode, d, a);
 }
 
-int goc_v_frexp_exp_i32_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                            const uint32_t *const *a, uint32_t *excp_flag_user) {
+int goc_v_frexp_exp_i32_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
@@ -102,7 +102,7 @@ namespace {
 template <bool Fp64, bool Rdna4 = false>
 int frexp_exp_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, uint32_t *excp_flag_user) {
-  const auto instruction = Fp64    ? goc_v_frexp_exp_i32_f64
+  const auto instruction = Fp64    ? goc_v_frexp_exp_i32_f64_rdna4
                            : Rdna4 ? goc_v_frexp_exp_i32_f32_rdna4
                                    : goc_v_frexp_exp_i32_f32;
   if (int error = instruction(flags, 0, mode, nullptr, nullptr, excp_flag_user))
@@ -140,8 +140,19 @@ int goc_v_frexp_exp_i32_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uin
   return frexp_exp_wave64<false, true>(flags, exec_mask, mode, d, a, excp_flag_user);
 }
 
+int goc_v_frexp_exp_i32_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                         uint32_t *const *d, const uint32_t *const *a,
+                                         uint32_t *excp_flag_user) {
+  return frexp_exp_wave64<true>(flags, exec_mask, mode, d, a, excp_flag_user);
+}
+
+int goc_v_frexp_exp_i32_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, uint32_t *trapsts) {
+  return goc_v_frexp_exp_i32_f64_rdna4(flags, exec_mask, mode, d, a, trapsts);
+}
+
 int goc_v_frexp_exp_i32_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
                                    uint32_t *const *d, const uint32_t *const *a,
-                                   uint32_t *excp_flag_user) {
-  return frexp_exp_wave64<true>(flags, exec_mask, mode, d, a, excp_flag_user);
+                                   uint32_t *trapsts) {
+  return goc_v_frexp_exp_i32_f64_rdna4_wave64(flags, exec_mask, mode, d, a, trapsts);
 }
