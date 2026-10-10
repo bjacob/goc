@@ -917,5 +917,21 @@
       "v_bfrev_b32",
       "v_perm_b32"
     ]
+  },
+  {
+    "heading": "Boolean architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/boolean_test.cpp",
+    "mnemonics": [
+      "v_and_b16",
+      "v_and_b32",
+      "v_not_b16",
+      "v_not_b32",
+      "v_or_b16",
+      "v_or_b32",
+      "v_xnor_b32",
+      "v_xor_b16",
+      "v_xor_b32"
+    ]
   }
 ]

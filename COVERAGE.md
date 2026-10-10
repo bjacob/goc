@@ -5741,3 +5741,41 @@ Validation: all 1,128 CTests pass under Clang and GCC Release; all seventeen
 bitfield/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests pass.
 Logs use `bitfield-review-` in each build directory. The ledger records
 534 contracts; 275 in-scope mnemonics remain without recorded reviews.
+
+## Boolean architecture contracts
+
+Reviewed AND/OR/XOR/NOT B16/B32 and XNOR B32 at rocjitsu `ffc144c564c`.
+The review covers sixty architecture-specific execution/modifier bodies and ten
+shared B32 helpers. Twenty handler pairs are identical; the ten remaining pairs
+have identical scalar behavior and differ by RDNA4 true16 SIMD shortcuts. Their
+selector loads and partial-half stores agree with the scalar helpers. Locations,
+hashes and shared bodies are recorded in
+`../goc-build/coverage-work/boolean-upstream-review.json`.
+
+These operations are bitwise, with no floating-point policy or exception-state
+output. B16 selects the input and destination halves and preserves the other
+destination half. NOT has no B input; XNOR complements XOR. The existing shared
+GoC implementations match both architectures, so no architecture suffix is
+needed. DPP routes A before half selection, retaining local B and old D;
+Wave64 maps row enables to its two halves.
+
+Fixed rejection of CLAMP, which the upstream scalar implementations ignore and
+the RDNA3 ignored-CLAMP table explicitly lists for bitwise operations. Accepting
+it does not change the scalar algorithm or sixteen-lane v4 kernel. The previously
+benchmark-selected baseline path remains in use below v4. No new abstraction or
+SIMD fallback was introduced. Other arithmetic modifiers remain invalid. Also
+corrected the stale public XNOR comment: both semantics already support exact
+results.
+
+Expanded the existing per-bit truth tables and all 65,536 half encodings to
+both CLAMP settings. Wave64 tests now combine both settings with half selectors,
+DPP routes/row masks, full and mixed EXEC, unaligned destinations, source aliases,
+and strict exact/loose semantics on every available CPU level. Validation tests
+still reject unrelated modifiers and preserve outputs on errors. Existing DPP
+hardware fixtures are retained; this is a source-contract review, not a new
+hardware characterization.
+
+Validation: all 1,128 CTests pass under Clang and GCC Release; all 253 tests in
+the Boolean/DPP selection pass under ASan/UBSan. All nine audit-tool tests pass.
+Logs use `boolean-review-` in each build directory. The ledger records
+543 contracts; 266 in-scope mnemonics remain without recorded reviews.

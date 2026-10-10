@@ -50,7 +50,7 @@ TEST(BooleanWave64, ModifiersRoutingAliasingAndExactSemantics) {
   for (unsigned op = 0; op < 11; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
-        for (unsigned m = 0; m < (op == 10 ? 128U : op == 9 ? 16U : 8U); ++m)
+        for (unsigned m = 0; m < (op == 10 ? 128U : 16U); ++m)
           for (auto route : routes)
             for (unsigned alias = 0; alias < 3; ++alias) {
               uint32_t words[3][66], initial[3][66];
@@ -62,7 +62,8 @@ TEST(BooleanWave64, ModifiersRoutingAliasingAndExactSemantics) {
               uint32_t *d = words[dst] + 1;
               const uint32_t *a = words[0] + 1, *b = words[1] + 1;
               uint64_t mode =
-                  route | (op < 9 ? goc_test::boolean_mode(op, m) : goc_test::cndmask_mode(m));
+                  route | (op < 9 ? goc_test::boolean_mode(op, m & 7) | (m & 8 ? GOC_ALU_CLAMP : 0)
+                                  : goc_test::cndmask_mode(m));
               const uint64_t exec_mask = alias ? UINT64_MAX : 0x87654321fedcba98ULL;
               const uint64_t condition = 0x5a5a5a5aa5a5a5a5ULL;
               ASSERT_EQ(execute(op, cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode, &d, &a,

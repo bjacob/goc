@@ -855,8 +855,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_add_nc_u32` | yes | yes | in | `goc_v_add_nc_u32`<br>`goc_v_add_nc_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |
 | `v_alignbit_b32` | yes | yes | in | `goc_v_alignbit_b32`<br>`goc_v_alignbit_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_alignbyte_b32` | yes | yes | in | `goc_v_alignbyte_b32`<br>`goc_v_alignbyte_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
-| `v_and_b16` | yes | yes | in | `goc_v_and_b16`<br>`goc_v_and_b16_wave64` | — | API present; semantic audit pending |
-| `v_and_b32` | yes | yes | in | `goc_v_and_b32`<br>`goc_v_and_b32_wave64` | — | API present; semantic audit pending |
+| `v_and_b16` | yes | yes | in | `goc_v_and_b16`<br>`goc_v_and_b16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |
+| `v_and_b32` | yes | yes | in | `goc_v_and_b32`<br>`goc_v_and_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |
 | `v_and_or_b32` | yes | yes | in | `goc_v_and_or_b32`<br>`goc_v_and_or_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_ashrrev_i16` | yes | yes | in | `goc_v_ashrrev_i16`<br>`goc_v_ashrrev_i16_wave64` | — | API present; semantic audit pending |
 | `v_ashrrev_i32` | yes | yes | in | `goc_v_ashrrev_i32`<br>`goc_v_ashrrev_i32_wave64` | — | API present; semantic audit pending |
@@ -1308,11 +1308,11 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_mul_u32_u24` | yes | yes | in | `goc_v_mul_u32_u24`<br>`goc_v_mul_u32_u24_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-multiplication-architecture-contracts) |
 | `v_mullit_f32` | yes | yes | in | `goc_v_mullit_f32`<br>`goc_v_mullit_f32_wave64`<br>`goc_v_mullit_f32_rdna4`<br>`goc_v_mullit_f32_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#mullit-architecture-policies) |
 | `v_nop` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
-| `v_not_b16` | yes | yes | in | `goc_v_not_b16`<br>`goc_v_not_b16_wave64` | — | API present; semantic audit pending |
-| `v_not_b32` | yes | yes | in | `goc_v_not_b32`<br>`goc_v_not_b32_wave64` | — | API present; semantic audit pending |
+| `v_not_b16` | yes | yes | in | `goc_v_not_b16`<br>`goc_v_not_b16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |
+| `v_not_b32` | yes | yes | in | `goc_v_not_b32`<br>`goc_v_not_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |
 | `v_or3_b32` | yes | yes | in | `goc_v_or3_b32`<br>`goc_v_or3_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
-| `v_or_b16` | yes | yes | in | `goc_v_or_b16`<br>`goc_v_or_b16_wave64` | — | API present; semantic audit pending |
-| `v_or_b32` | yes | yes | in | `goc_v_or_b32`<br>`goc_v_or_b32_wave64` | — | API present; semantic audit pending |
+| `v_or_b16` | yes | yes | in | `goc_v_or_b16`<br>`goc_v_or_b16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |
+| `v_or_b32` | yes | yes | in | `goc_v_or_b32`<br>`goc_v_or_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |
 | `v_pack_b32_f16` | yes | yes | in | `goc_v_pack_b32_f16`<br>`goc_v_pack_b32_f16_wave64`<br>`goc_v_pack_b32_f16_rdna4`<br>`goc_v_pack_b32_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-pack-and-fp32-byte-pack-architecture-contracts) |
 | `v_perm_b32` | yes | yes | in | `goc_v_perm_b32`<br>`goc_v_perm_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_permlane16_b32` | yes | yes | in | `goc_v_permlane16_b32`<br>`goc_v_permlane16_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#permlane16-architecture-and-simd-contracts) |
@@ -1422,10 +1422,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_wmma_i32_16x16x32_iu4` | — | yes | in | `goc_v_wmma_i32_16x16x32_iu4`<br>`goc_v_wmma_i32_16x16x32_iu4_wave64` | — | API present; semantic audit pending |
 | `v_writelane_b32` | yes | yes | in | `goc_v_writelane_b32`<br>`goc_v_writelane_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
 | `v_xad_u32` | yes | yes | in | `goc_v_xad_u32`<br>`goc_v_xad_u32_wave64` | `v_xor_add_u32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
-| `v_xnor_b32` | yes | yes | in | `goc_v_xnor_b32`<br>`goc_v_xnor_b32_wave64` | — | API present; semantic audit pending |
+| `v_xnor_b32` | yes | yes | in | `goc_v_xnor_b32`<br>`goc_v_xnor_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |
 | `v_xor3_b32` | yes | yes | in | `goc_v_xor3_b32`<br>`goc_v_xor3_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
-| `v_xor_b16` | yes | yes | in | `goc_v_xor_b16`<br>`goc_v_xor_b16_wave64` | — | API present; semantic audit pending |
-| `v_xor_b32` | yes | yes | in | `goc_v_xor_b32`<br>`goc_v_xor_b32_wave64` | — | API present; semantic audit pending |
+| `v_xor_b16` | yes | yes | in | `goc_v_xor_b16`<br>`goc_v_xor_b16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |
+| `v_xor_b32` | yes | yes | in | `goc_v_xor_b32`<br>`goc_v_xor_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#boolean-architecture-contracts) |
 
 ## Wave-width API audit
 

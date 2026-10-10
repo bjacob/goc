@@ -2565,8 +2565,8 @@ int goc_v_pack_b32_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t
                                     const uint32_t *const *b, uint32_t *excp_flag_user);
 
 // Bitwise equivalence: D = ~(A ^ B). Each operand uses one VGPR. Supports
-// DPP8/DPP16 on A; low 32 instruction-flag bits must be zero. Loose semantics
-// only; host FP state is preserved.
+// DPP8/DPP16 on A. CLAMP is accepted and ignored; other low flags are invalid.
+// Both semantics are bit-exact; host FP state is preserved.
 int goc_v_xnor_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                    uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
 
@@ -7632,7 +7632,7 @@ int goc_v_mbcnt_hi_u32_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t i
                                   const uint32_t *const *b);
 
 // Wave32 Boolean operations: each operand holds one VGPR. All forms support
-// DPP8/DPP16 on A. B32 forms have no arithmetic modifiers. B16 forms select A/B/D
+// DPP8/DPP16 on A. CLAMP is accepted and ignored. B16 forms select A/B/D
 // halves with HIGH_A/B/D after DPP and leave the other D half unchanged. Other
 // modifiers are invalid; NOT has no B.
 // Both semantics are bit-exact. All host FP state is preserved.

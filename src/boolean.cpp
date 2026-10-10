@@ -19,7 +19,8 @@ int boolean(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
         });
 
   const uint32_t known =
-      Half ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | (Op == goc::Boolean::Not ? 0 : GOC_ALU_HIGH_B) : 0;
+      GOC_ALU_CLAMP |
+      (Half ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | (Op == goc::Boolean::Not ? 0 : GOC_ALU_HIGH_B) : 0);
   if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (!exec_mask)

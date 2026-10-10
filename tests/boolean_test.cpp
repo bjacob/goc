@@ -24,12 +24,15 @@ namespace {
         goc_test::boolean_reference(op, words[0][lane], words[1][lane], words[2][lane], mode);
   const uint32_t *a[] = {words[0]}, *b[] = {words[1]};
   uint32_t *d[] = {words[2]};
-  int status = goc_test::boolean_functions[op](flags, UINT32_MAX, mode, d, a, b);
-  if (status != GOC_SUCCESS)
-    return ::testing::AssertionFailure() << "status " << status;
-  for (int lane = 0; lane < 32; ++lane)
-    if (words[2][lane] != expected[lane])
-      return ::testing::AssertionFailure() << op << "/" << flags << "/" << mode << "/" << lane;
+  for (uint32_t clamp : {0U, GOC_ALU_CLAMP}) {
+    int status = goc_test::boolean_functions[op](flags, UINT32_MAX, mode | clamp, d, a, b);
+    if (status != GOC_SUCCESS)
+      return ::testing::AssertionFailure() << "status " << status;
+    for (int lane = 0; lane < 32; ++lane)
+      if (words[2][lane] != expected[lane])
+        return ::testing::AssertionFailure()
+               << op << "/" << flags << "/" << mode << "/" << clamp << "/" << lane;
+  }
   return ::testing::AssertionSuccess();
 }
 
@@ -112,7 +115,7 @@ TEST(Boolean, ValidationBeforeEmptyMaskAndUnchangedOutputs) {
         std::fill_n(reg, 32, 0x859e43c1);
       const uint32_t *a[] = {words[0]}, *b[] = {words[1]};
       uint32_t *d[] = {words[2]};
-      uint32_t known = goc_test::boolean_mode(op, 7);
+      uint32_t known = GOC_ALU_CLAMP | goc_test::boolean_mode(op, 7);
       for (uint32_t exec_mask : {0U, UINT32_MAX}) {
         for (int bit = 0; bit < 32; ++bit)
           if (!(known & (uint32_t(1) << bit))) {
