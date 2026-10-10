@@ -3839,6 +3839,42 @@ int goc_v_rsq_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
 int goc_v_frexp_mant_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
+// Wave64 F32 unary forms retain Wave32 modifiers, DPP routing,
+// loose numerical behavior, destination preservation and optional-state contracts.
+int goc_v_trunc_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_ceil_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_rndne_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_floor_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_sqrt_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_rcp_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_rsq_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_exp_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_log_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_fract_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_frexp_mant_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                uint32_t *excp_flag_user);
+
 int goc_v_frexp_mant_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
@@ -4174,6 +4210,42 @@ int goc_v_fract_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fla
 
 int goc_v_frexp_mant_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+// Wave64 F16 unary forms retain Wave32 modifiers, DPP routing,
+// loose numerical behavior, destination preservation and optional-state contracts.
+int goc_v_trunc_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_ceil_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_rndne_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_floor_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_sqrt_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_rcp_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_rsq_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_exp_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_log_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_fract_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+int goc_v_frexp_mant_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                uint32_t *excp_flag_user);
 
 // DPP8/DPP16 permute the complete A word before modifiers; B/C stay in their
 // original lanes.

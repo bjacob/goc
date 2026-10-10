@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+#include "dpp_reference.h"
 #include "exec_masks.h"
 #include "goc/goc.h"
 #include "internal.h"
@@ -8,8 +9,19 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <stdint.h>
+
+namespace {
+
+const decltype(&goc_v_trunc_f32_wave64) wave64[] = {
+    goc_v_trunc_f32_wave64, goc_v_ceil_f32_wave64,      goc_v_rndne_f32_wave64,
+    goc_v_floor_f32_wave64, goc_v_sqrt_f32_wave64,      goc_v_rcp_f32_wave64,
+    goc_v_rsq_f32_wave64,   goc_v_exp_f32_wave64,       goc_v_log_f32_wave64,
+    goc_v_fract_f32_wave64, goc_v_frexp_mant_f32_wave64};
+
+} // namespace
 
 TEST(Unary, ModifiersMasksAliasesAndCpuLevels) {
   const uint32_t inputs[] = {0,          0x80000000, 0x3f000000, 0xbf000000, 0x3fc00000, 0xbfc00000,
@@ -167,4 +179,102 @@ TEST(Unary, HardwareOmodAndMandatoryFlush) {
                 EXPECT_EQ(d[0], 0xdeadbeefu);
                 EXPECT_EQ(d[33], 0xdeadbeefu);
               }
+}
+
+TEST(Unary, Wave64ModifiersDppSelectorsAndAliases) {
+
+  for (unsigned op = 0; op < 11; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < 32; ++variant)
+        for (unsigned route_index = 0; route_index < 8; ++route_index)
+          for (unsigned dest = 0; dest < 2; ++dest) {
+            uint32_t mode = (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
+                            ((variant >> 2 & 3) << 6) | (variant & 16 ? GOC_ALU_CLAMP : 0);
+            uint64_t descriptor = route_index ? goc_test::dpp_modes[route_index - 1] : 0;
+            if (descriptor & GOC_DPP16)
+              descriptor =
+                  (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t(variant & 15) << GOC_DPP_ROW_SHIFT);
+            uint32_t words[2][66], before[2][66];
+            for (unsigned reg = 0; reg < 2; ++reg)
+              for (unsigned lane = 0; lane < 66; ++lane)
+                words[reg][lane] =
+                    goc_test::unary_hardware_inputs[(lane + (lane / 32) * 7 + reg * 3) % 32];
+            std::memcpy(before, words, sizeof words);
+            uint32_t *d = words[dest] + 1;
+            const uint32_t *a = words[0] + 1;
+            uint64_t exec_mask = 0x87654321fedcba98ULL;
+            bool saturate = variant & 1;
+            uint32_t exceptions = 0x80000055;
+            ASSERT_EQ(wave64[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask, descriptor | mode,
+                                 &d, &a, &exceptions),
+                      GOC_SUCCESS);
+            EXPECT_EQ(exceptions, 0x80000055U);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              int source = int(lane);
+              bool enabled = descriptor ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                                        : ((exec_mask >> lane) & 1);
+              if (enabled) {
+                float want = goc_test::unary_reference(
+                    op, goc::as_float(source < 0 ? 0 : before[0][source + 1]), mode);
+                float got = goc::as_float(d[lane]);
+                if (std::isnan(want))
+                  EXPECT_TRUE(std::isnan(got));
+                else if (want == 0 || std::isinf(want))
+                  EXPECT_EQ(d[lane], goc::as_bits(want));
+                else
+                  EXPECT_FLOAT_EQ(got, want);
+              } else {
+                EXPECT_EQ(d[lane], before[dest][lane + 1]);
+              }
+            }
+            for (unsigned reg = 0; reg < 2; ++reg) {
+              EXPECT_EQ(words[reg][0], before[reg][0]);
+              EXPECT_EQ(words[reg][65], before[reg][65]);
+            }
+          }
+}
+
+TEST(Unary, Wave64ValidationAndOptionalState) {
+  for (auto fn : wave64) {
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, GOC_ALU_NEG_B, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, nullptr,
+                 nullptr, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    uint32_t exceptions = 0x80000055;
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, &exceptions),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(exceptions, 0x80000055U);
+  }
+}
+
+TEST(Unary, Wave64HardwareOmodAndMandatoryFlush) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned op = 0; op < 11; ++op)
+      for (unsigned omod = 0; omod < 4; ++omod)
+        for (unsigned clamp = 0; clamp < 2; ++clamp)
+          for (unsigned neg = 0; neg < 2; ++neg) {
+            uint32_t a[64], d[64];
+            for (unsigned lane = 0; lane < 64; ++lane)
+              a[lane] = goc_test::unary_hardware_inputs[(lane + (lane / 32) * 7) % 32];
+            const uint32_t *pa = a;
+            uint32_t *pd = d;
+            uint64_t mode = (omod << 6) | (clamp ? GOC_ALU_CLAMP : 0) | neg;
+            ASSERT_EQ(wave64[op](cpu, UINT64_MAX, mode, &pd, &pa, nullptr), GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              uint32_t want =
+                  goc_test::unary_hardware[op][omod][clamp][neg][(lane + (lane / 32) * 7) % 32];
+              uint32_t magnitude = want & 0x7fffffff;
+              if (magnitude > 0x7f800000) {
+                EXPECT_GT(d[lane] & 0x7fffffff, 0x7f800000U);
+              } else if (op >= 4 && op <= 8 && magnitude && magnitude < 0x7f800000) {
+                EXPECT_EQ(d[lane] >> 31, want >> 31);
+                EXPECT_GE(d[lane] & 0x7fffffff, 0x00800000U);
+                EXPECT_LT(d[lane] & 0x7fffffff, 0x7f800000U);
+                EXPECT_FLOAT_EQ(goc::as_float(d[lane]), goc::as_float(want));
+              } else {
+                EXPECT_EQ(d[lane], want);
+              }
+            }
+          }
 }

@@ -1738,6 +1738,11 @@ integer overflow/borrow detection. Tests cover signed limits, unsigned
 carry/borrow, operand order, three-input wrap, masks, all whole-register alias
 layouts and host FP-environment preservation.
 
+All eleven FP16 and eleven FP32 unary operations support Wave32 and Wave64.
+Wave64 reuses the existing scalar/SIMD kernels with four independent DPP rows,
+preserving inactive lanes and the unselected FP16 destination half. Numerical
+semantics remain loose; exact optional exception reporting remains unsupported.
+
 Unary FP32 instructions support `GOC_ALU_ABS_A`, `GOC_ALU_NEG_A`, output
 scaling (`GOC_ALU_OMOD_2`, `GOC_ALU_OMOD_4`, `GOC_ALU_OMOD_HALF`), and
 `GOC_ALU_CLAMP` on both scalar and SIMD paths. ABS precedes NEG; scaling
@@ -1757,12 +1762,12 @@ infinities, NaNs, half-integer ties and large integral values. With ABS/OMOD/CLA
 enabled, the nine AVX2 unary paths measure 3.2–6.5× scalar speed on the
 Ryzen 9 7950X3D; EXP and LOG remain scalar.
 
-GoC applies `exec_mask` to destination writes, including WMMA, as specified by
-its API contract. Inactive destination lanes remain unchanged; source lanes are
+GoC applies `exec_mask` to destination writes of EXEC-dependent instructions.
+WMMA and SWMMAC operate on all lanes and have no EXEC parameter. Inactive destination lanes remain unchanged; source lanes are
 not masked. Empty effective EXEC masks return immediately after flag validation,
 using `uint32_t` EXEC masks for Wave32 and `uint64_t` for Wave64. Invalid flags and unsupported strict
 semantics still return errors. Nonempty masks stay on the same SIMD paths;
-SIMD FMA/WMMA use masked stores, and WMMA stages results before writes to support
+SIMD FMA uses masked stores. WMMA stages results before writes to support
 aliasing. Improving sparse-mask performance is an explicit non-goal: the intended
 performance is independent of the mask. Compute full results and mask destination
 stores, without mask-density checks or sparse-mask specializations that add code

@@ -15,6 +15,11 @@
 #include <stdint.h>
 
 namespace {
+const decltype(&goc_v_trunc_f16_wave64) wave64[] = {
+    goc_v_trunc_f16_wave64, goc_v_ceil_f16_wave64,      goc_v_rndne_f16_wave64,
+    goc_v_floor_f16_wave64, goc_v_sqrt_f16_wave64,      goc_v_rcp_f16_wave64,
+    goc_v_rsq_f16_wave64,   goc_v_exp_f16_wave64,       goc_v_log_f16_wave64,
+    goc_v_fract_f16_wave64, goc_v_frexp_mant_f16_wave64};
 
 void check(int op, uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
   int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
@@ -240,4 +245,69 @@ TEST(HalfUnary, HardwareExpLogRoundingAndOverflow) {
             }
       EXPECT_EQ(hash, saturate ? 0x7e3c62853aa82d6cULL : 0xdeda4067db286486ULL);
     }
+}
+
+TEST(HalfUnary, Wave64ModifiersDppSelectorsAndAliases) {
+  const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3bff, 0x3c00,
+                             0xbc00, 0x4001, 0x7bff, 0xfbff, 0x7c00, 0xfc00, 0x7c01, 0xfe00};
+  for (unsigned op = 0; op < 11; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant = 0; variant < 128; ++variant)
+        for (unsigned route_index = 0; route_index < 8; ++route_index)
+          for (unsigned dest = 0; dest < 2; ++dest) {
+            uint32_t mode = (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
+                            ((variant >> 2 & 3) << 6) | (variant & 16 ? GOC_ALU_CLAMP : 0) |
+                            (variant & 32 ? GOC_ALU_HIGH_A : 0) |
+                            (variant & 64 ? GOC_ALU_HIGH_D : 0);
+            uint64_t descriptor = route_index ? goc_test::dpp_modes[route_index - 1] : 0;
+            if (descriptor & GOC_DPP16)
+              descriptor =
+                  (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t(variant & 15) << GOC_DPP_ROW_SHIFT);
+            uint32_t words[2][66], before[2][66];
+            for (unsigned reg = 0; reg < 2; ++reg)
+              for (unsigned lane = 0; lane < 66; ++lane)
+                words[reg][lane] = values[(lane + reg * 5) % 16] |
+                                   (uint32_t(values[(lane * 7 + reg * 3) % 16]) << 16);
+            std::memcpy(before, words, sizeof words);
+            uint32_t *d = words[dest] + 1;
+            const uint32_t *a = words[0] + 1;
+            uint64_t exec_mask = 0x87654321fedcba98ULL;
+            bool saturate = variant & 1;
+            uint32_t exceptions = 0x80000055;
+            ASSERT_EQ(wave64[op](cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask, descriptor | mode,
+                                 &d, &a, &exceptions),
+                      GOC_SUCCESS);
+            EXPECT_EQ(exceptions, 0x80000055U);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              int source = int(lane);
+              bool enabled = descriptor ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                                        : ((exec_mask >> lane) & 1);
+              if (enabled) {
+                check(op, d[lane], before[dest][lane + 1],
+                      goc_test::half_unary_reference(op, source < 0 ? 0 : before[0][source + 1],
+                                                     mode, saturate),
+                      mode);
+              } else {
+                EXPECT_EQ(d[lane], before[dest][lane + 1]);
+              }
+            }
+            for (unsigned reg = 0; reg < 2; ++reg) {
+              EXPECT_EQ(words[reg][0], before[reg][0]);
+              EXPECT_EQ(words[reg][65], before[reg][65]);
+            }
+          }
+}
+
+TEST(HalfUnary, Wave64ValidationAndOptionalState) {
+  for (auto fn : wave64) {
+    EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+    EXPECT_EQ(fn(0, UINT64_MAX, GOC_ALU_NEG_B, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX, 0, nullptr,
+                 nullptr, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    uint32_t exceptions = 0x80000055;
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, &exceptions),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(exceptions, 0x80000055U);
+  }
 }

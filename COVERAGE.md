@@ -1410,3 +1410,24 @@ is 59 APIs.
 
 Validation: all 827 tests pass on Clang 21 and GCC 15 Release. All six new
 Wave64 FP64 arithmetic/unary and instruction-flag tests pass under ASan/UBSan.
+
+
+## Wave64 FP16 and FP32 unary operations
+
+Added all eleven FP16 and eleven FP32 unary Wave64 APIs. Family-local wrappers
+reuse existing numerical kernels and scalar/AVX2 dispatch, including scalar
+FP32 EXP/LOG. Four independent DPP rows, source/output modifiers and FP16
+half selection retain their existing contracts. Exact semantics and faithful
+optional exception reporting remain unsupported; loose reporting adds no work.
+
+Independent references cover every modifier/selector combination, plain and
+DPP routing, all row-enable patterns, upper EXEC bits, aliases, guards and
+preserved destination halves. FP32 tests also replay the existing hardware
+OMOD/CLAMP/NEG corpus across 64 lanes, checking mandatory denormal flushing,
+zeros and infinities while retaining loose finite SFU tolerances. This is
+reuse of existing captures, not a new native Wave64 capture. Validation rejects
+unsupported modes before operand access and preserves optional output state.
+The vector width queue is 37 APIs. No new throughput claim is made.
+
+Validation: all 832 tests pass on Clang 21 and GCC 15 Release. All six new
+Wave64 unary and instruction-flag tests pass under ASan/UBSan.
