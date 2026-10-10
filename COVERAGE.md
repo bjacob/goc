@@ -5157,3 +5157,35 @@ Validation: all 1,115 CTests pass under Clang and GCC Release; all four
 lane-transfer tests pass under ASan/UBSan. All nine audit-tool tests pass.
 Logs use `lane-transfer-review-` in each build directory. The ledger records
 352 contracts; 457 in-scope mnemonics remain without a recorded review.
+
+## Scalar relative-move architecture contract review
+
+Rechecked all five scalar relative moves against both architectures' SOP1
+handlers at rocjitsu `ffc144c564c`, RDNA3 manual sections 3.3.1 and 16.3,
+and the earlier two-manual review and retained RDNA4 captures above.
+The upstream implementations agree with each other but conflict with the
+manuals: ordinary offsets are truncated to eight bits, B64 offsets are scaled
+by two, and RELSD_2 extracts adjacent eight-bit fields. GoC deliberately keeps
+full-width ordinary DWORD offsets and the specified ten-bit fields at bits
+0 and 16. Shared API names remain appropriate; upstream agreement alone is
+not the evidence for these index semantics.
+
+SGPR/VCC and TTMP regions cannot be crossed by indexing. Invalid sources
+redirect to SGPR0 (SGPR0/1 for B64); invalid destinations discard writes.
+Explicit array counts bound host storage, including empty and partial fallback
+storage. Wide index arithmetic prevents overflow from producing a valid index.
+B64 retains the documented even-base/even-M0 precondition; this API does not
+model invalid misaligned encodings. Caller-provided storage/counts must also
+reflect TTMP access restrictions. These raw-bit operations do not depend on
+EXEC or update implicit global state; M0 is an input value, not a mutated register.
+
+Existing tests retain the RDNA4 capture, full-M0 and region/count boundaries,
+B64 word order, aliases and validation before operand access. New tests sweep
+all 1,024 values of each split field at VCC_HI and TTMP15 boundaries, with
+reserved bits clear/set, a shared source/destination array, guards and both
+strict semantics. No new capture or production change was needed.
+
+Validation: all 1,116 CTests pass in Clang and GCC Release builds; all five
+scalar-relative tests pass under ASan/UBSan. All nine audit-tool tests pass.
+Logs use `scalar-relative-review-` in each build directory. The ledger records
+357 contracts; 452 in-scope mnemonics still need recorded reviews.

@@ -623,5 +623,17 @@
       "v_readlane_b32",
       "v_writelane_b32"
     ]
+  },
+  {
+    "heading": "Scalar relative-move architecture contract review",
+    "semantics": "loose and exact",
+    "tests": "tests/scalar_relative_move_test.cpp",
+    "mnemonics": [
+      "s_movreld_b32",
+      "s_movreld_b64",
+      "s_movrels_b32",
+      "s_movrels_b64",
+      "s_movrelsd_2_b32"
+    ]
   }
 ]

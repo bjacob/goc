@@ -695,11 +695,11 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_mov_b32` | yes | yes | in | `goc_s_mov_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_mov_b64` | yes | yes | in | `goc_s_mov_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_movk_i32` | yes | yes | in | `goc_s_movk_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
-| `s_movreld_b32` | yes | yes | in: register access | `goc_s_movreld_b32` | — | API present; semantic audit pending |
-| `s_movreld_b64` | yes | yes | in: register access | `goc_s_movreld_b64` | — | API present; semantic audit pending |
-| `s_movrels_b32` | yes | yes | in: register access | `goc_s_movrels_b32` | — | API present; semantic audit pending |
-| `s_movrels_b64` | yes | yes | in: register access | `goc_s_movrels_b64` | — | API present; semantic audit pending |
-| `s_movrelsd_2_b32` | yes | yes | in: register access | `goc_s_movrelsd_2_b32` | — | API present; semantic audit pending |
+| `s_movreld_b32` | yes | yes | in: register access | `goc_s_movreld_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-relative-move-architecture-contract-review) |
+| `s_movreld_b64` | yes | yes | in: register access | `goc_s_movreld_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-relative-move-architecture-contract-review) |
+| `s_movrels_b32` | yes | yes | in: register access | `goc_s_movrels_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-relative-move-architecture-contract-review) |
+| `s_movrels_b64` | yes | yes | in: register access | `goc_s_movrels_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-relative-move-architecture-contract-review) |
+| `s_movrelsd_2_b32` | yes | yes | in: register access | `goc_s_movrelsd_2_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-relative-move-architecture-contract-review) |
 | `s_mul_f16` | — | yes | in | `goc_s_mul_f16` | — | API present; semantic audit pending |
 | `s_mul_f32` | — | yes | in | `goc_s_mul_f32` | — | API present; semantic audit pending |
 | `s_mul_hi_i32` | yes | yes | in | `goc_s_mul_hi_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |

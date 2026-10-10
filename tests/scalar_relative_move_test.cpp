@@ -123,3 +123,30 @@ TEST(ScalarRelativeMove, ValidationBeforeOperandAccess) {
   EXPECT_EQ(d32, 123U);
   EXPECT_EQ(d64, 456U);
 }
+
+TEST(ScalarRelativeMove, EverySplitOffsetAtRegionBoundaries) {
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (bool vary_source : {false, true})
+      for (uint32_t offset = 0; offset < 1024; ++offset)
+        for (uint32_t reserved : {0U, 0xfc00fc00U}) {
+          uint32_t words[126];
+          for (unsigned i = 0; i < 126; ++i)
+            words[i] = 0x7f800001U + i;
+          uint32_t *registers = words + 1;
+          // Source ends at VCC_HI (107); destination ends at TTMP15 (123).
+          // Independent fields must not index across either region boundary.
+          uint32_t source_offset = vary_source ? offset : 1;
+          uint32_t destination_offset = vary_source ? 1 : offset;
+          uint32_t m0 = reserved | (destination_offset << 16) | source_offset;
+          ASSERT_EQ(goc_s_movrelsd_2_b32(semantics | GOC_SEMANTICS_STRICT, 0, registers, registers,
+                                         124, 124, 122, 106, m0),
+                    GOC_SUCCESS);
+          for (unsigned i = 0; i < 126; ++i) {
+            unsigned original = i;
+            if (destination_offset < 2 && i == 123 + destination_offset)
+              original = source_offset < 2 ? 107 + source_offset : 1;
+            EXPECT_EQ(words[i], 0x7f800001U + original)
+                << vary_source << '/' << offset << '/' << reserved << '/' << i;
+          }
+        }
+}

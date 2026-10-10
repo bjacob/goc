@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-352 in-scope mnemonics have explicit contract-review records in
+357 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 457 in-scope mnemonics need a recorded review.
+The remaining 452 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -151,11 +151,11 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_mov_b32` | no direct policy detected | no | 1985 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_mov_b64` | no direct policy detected | no | 1991 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
 | `s_movk_i32` | no direct policy detected | no | 1997 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-move-and-packing-architecture-contracts) |
-| `s_movreld_b32` | no direct policy detected | no | not found | review required |
-| `s_movreld_b64` | no direct policy detected | no | not found | review required |
-| `s_movrels_b32` | no direct policy detected | no | not found | review required |
-| `s_movrels_b64` | no direct policy detected | no | not found | review required |
-| `s_movrelsd_2_b32` | no direct policy detected | no | not found | review required |
+| `s_movreld_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-relative-move-architecture-contract-review) |
+| `s_movreld_b64` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-relative-move-architecture-contract-review) |
+| `s_movrels_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-relative-move-architecture-contract-review) |
+| `s_movrels_b64` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-relative-move-architecture-contract-review) |
+| `s_movrelsd_2_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-relative-move-architecture-contract-review) |
 | `s_mul_hi_i32` | no direct policy detected | no | 2019 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_mul_hi_u32` | no direct policy detected | no | 2031 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
 | `s_mul_i32` | no direct policy detected | no | 2041 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-arithmetic-architecture-contracts) |
