@@ -203,7 +203,7 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_med3_num_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_fma_mix_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_fma_mixlo_f16`, `v_fma_mixhi_f16` | Scalar, x86-64-v3 | Scalar, rocjitsu-derived direct FP16 rounding |
-| `v_fma_f32`, `v_fma_dx9_zero_f32` | Scalar, AVX2/FMA, AVX-512 | Not implemented |
+| `v_fma_f32`, `v_fma_dx9_zero_f32`, `v_fmac_dx9_zero_f32` (RDNA3) | Scalar, AVX2/FMA, AVX-512 | Not implemented |
 | `v_add_f64`, `v_mul_f64`, `v_fma_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_min_num_f64`, `v_max_num_f64`, `v_minimum_f64`, `v_maximum_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_trunc_f64`, `v_ceil_f64`, `v_rndne_f64`, `v_floor_f64`, `v_fract_f64` | Scalar, x86-64-v3 | Not implemented |

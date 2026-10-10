@@ -20,8 +20,8 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 71
-- in, API present: 737
+- in, API absent: 70
+- in, API present: 738
 - out, API absent: 588
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
@@ -1165,7 +1165,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_fma_mixlo_f16` | yes | yes | in | `goc_v_fma_mixlo_f16` | — | API present; semantic audit pending |
 | `v_fmaak_f16` | yes | yes | in | `goc_v_fmaak_f16` | — | API present; semantic audit pending |
 | `v_fmaak_f32` | yes | yes | in | `goc_v_fmaak_f32` | — | API present; semantic audit pending |
-| `v_fmac_dx9_zero_f32` | yes | — | in | — | `v_fmac_legacy_f32` | missing API |
+| `v_fmac_dx9_zero_f32` | yes | — | in | `goc_v_fmac_dx9_zero_f32` | `v_fmac_legacy_f32` | API present; semantic audit pending |
 | `v_fmac_f16` | yes | yes | in | `goc_v_fmac_f16` | — | API present; semantic audit pending |
 | `v_fmac_f32` | yes | yes | in | `goc_v_fmac_f32` | — | API present; semantic audit pending |
 | `v_fmamk_f16` | yes | yes | in | `goc_v_fmamk_f16` | — | API present; semantic audit pending |

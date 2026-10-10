@@ -142,6 +142,16 @@ int goc_v_fma_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
   return fma<true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }
 
+int goc_v_fmac_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
+                         GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
+  if (uint32_t(instruction_flags) & ~known)
+    return GOC_ERROR_INVALID_FLAGS;
+  return goc_v_fma_dx9_zero_f32(flags, exec_mask, instruction_flags, d, a, b, d);
+}
+
 int goc_v_fmac_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                    const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)

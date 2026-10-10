@@ -2357,6 +2357,12 @@ int goc_v_fma_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            const uint32_t *const *c);
 
+// RDNA3 DX9 fused multiply-accumulate into D, with the same flushing and
+// zero-product rules as DX9 FMA. Supports A/B ABS/NEG, OMOD, CLAMP and DPP
+// routing of A. C modifiers and half selectors are invalid. Loose semantics only.
+int goc_v_fmac_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
 // Packed FP16 FMA: two independent fused results per lane. All GOC_PK_* flags
 // below are supported. With no flags, corresponding input halves are multiplied
 // and added. Each result rounds to FP16; CLAMP applies last. Supports

@@ -168,3 +168,14 @@ reads are possible; 64-bit intermediate sums prevent accidental index wrapping.
   limit and widened address calculations. All 694 tests pass on Clang/GCC;
   all three relative-move tests also pass under ASan/UBSan. Missing API names: 71.
   Scalar-relative operations and Wave64 vector-relative variants remain open.
+
+- RDNA3 DX9 FMAC: `goc_v_fmac_dx9_zero_f32` reuses DX9 FMA's scalar,
+  x86-64-v3 and x86-64-v4 paths with D as the accumulator. rocjitsu's VOP2/VOP3
+  execution at `ffc144c564c` confirms the accumulator is unmodified by source
+  modifiers; A/B ABS/NEG, OMOD, CLAMP and DPP are supported. C modifiers are
+  rejected. Tests cover all valid modifier combinations with DPP, aliases and
+  masks, plus zero/NaN/infinity/subnormal cases and error preservation. The
+  existing FMA hardware corpus validates the reused arithmetic on RDNA4;
+  this is not a new RDNA3 FMAC hardware capture or a bit-exactness claim.
+  Strict exact semantics remain unsupported. All 696 tests pass on Clang/GCC;
+  the two new tests pass under ASan/UBSan. Missing API names: 70.

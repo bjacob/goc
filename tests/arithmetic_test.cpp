@@ -426,3 +426,57 @@ TEST(Arithmetic, Dx9DppModifiersMasksAliasesAndGuards) {
         }
       }
 }
+
+TEST(Arithmetic, Dx9FmacModifiersRoutingAndAliases) {
+  // The accumulator must retain its lane and its original value even when DPP
+  // routes an aliased A. Compare with the independently supplied FMA accumulator.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint32_t mode = 0; mode < 512; ++mode) {
+      if (mode & (GOC_ALU_NEG_C | GOC_ALU_ABS_C))
+        continue;
+      for (uint64_t descriptor : goc_test::dpp_modes)
+        for (uint32_t exec_mask : {0U, 1U, 0xaaaaaaaaU, 0xffffffffU})
+          for (unsigned alias = 0; alias < 3; ++alias) {
+            uint32_t words[3][32], expected[32];
+            for (unsigned lane = 0; lane < 32; ++lane)
+              goc_test::dx9_hardware_inputs(lane % 4, lane, words[0][lane], words[1][lane],
+                                            words[2][lane]);
+            std::copy_n(words[alias], 32, expected);
+            uint32_t *d[] = {words[alias]}, *reference[] = {expected};
+            const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[alias]};
+            ASSERT_EQ(goc_v_fma_dx9_zero_f32(cpu, exec_mask, descriptor | mode, reference, a, b, c),
+                      GOC_SUCCESS);
+            ASSERT_EQ(goc_v_fmac_dx9_zero_f32(cpu, exec_mask, descriptor | mode, d, a, b),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 32; ++lane)
+              ASSERT_EQ(words[alias][lane], expected[lane])
+                  << cpu << '/' << mode << '/' << descriptor << '/' << exec_mask << '/' << alias
+                  << '/' << lane;
+          }
+    }
+}
+
+TEST(Arithmetic, Dx9FmacZeroProductAndErrors) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+    // Zero (including flushed subnormals) suppresses an infinite/NaN factor.
+    uint32_t a[32] = {0, 0x80000000U, 1, 0x80000001U};
+    uint32_t b[32] = {0x7f800000U, 0x7fc00000U, 0xff800000U, 0x7f800001U};
+    uint32_t d[32];
+    std::fill_n(d, 32, 0x3f800000U);
+    const uint32_t *pa = a, *pb = b;
+    uint32_t *pd = d;
+    ASSERT_EQ(goc_v_fmac_dx9_zero_f32(cpu, 15, 0, &pd, &pa, &pb), GOC_SUCCESS);
+    for (uint32_t value : d)
+      EXPECT_EQ(value, 0x3f800000U);
+    for (uint64_t invalid : std::initializer_list<uint64_t>{GOC_ALU_NEG_C, GOC_ALU_ABS_C,
+                                                            uint64_t(GOC_ALU_HIGH_A), 1ULL << 63})
+      EXPECT_EQ(goc_v_fmac_dx9_zero_f32(cpu, UINT32_MAX, invalid, &pd, &pa, &pb),
+                GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(goc_v_fmac_dx9_zero_f32(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                      UINT32_MAX, 0, &pd, &pa, &pb),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    for (uint32_t value : d)
+      EXPECT_EQ(value, 0x3f800000U);
+    EXPECT_EQ(goc_v_fmac_dx9_zero_f32(cpu, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+  }
+}
