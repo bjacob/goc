@@ -527,6 +527,9 @@ Ryzen 9 7950X3D measurements show 1.39–1.86x for v3 and 1.77–2.34x for v4,
 including signed CLAMP and index-key selection; the accumulator reset is included
 in every path's timing (seven samples, each at least 10 ms).
 
+All six interpolation instructions support Wave32 and Wave64 with shared
+numerical kernels and the same loose-semantics contracts.
+
 FP32 interpolation (`v_interp_p10_f32`, `v_interp_p2_f32`) broadcasts parameter
 values within each four-lane quad, then performs an FMA. P10 takes A from quad
 lane 1 and C from quad lane 0; P2 takes A from quad lane 2 and C from the current

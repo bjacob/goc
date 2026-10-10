@@ -58,7 +58,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
-| Interpolation | Existing RDNA4 paths | Compare RDNA3 contracts and empirical behavior |
+| Interpolation | All six APIs at both wave widths; shared quad routing checked against both manuals; RDNA4 captures and independent arithmetic tests | Compare remaining RDNA3 numerical contracts and empirical behavior |
 | Dual-issue VOPD | All 19 canonical operations; shared ordinary kernels, architecture-split DOT2ACC; Wave32 only | Direct VOPD hardware captures; inherited exact/global-state gaps |
 
 Keep this checklist conservative: unchecked review work is not made complete by
@@ -1603,3 +1603,30 @@ claim is made. The vector width queue is 17 APIs.
 Validation: all 885 tests pass on Clang 21 and GCC 15 Release. All ten
 Wave64 MULLIT/TRIG_PREOP and instruction-flag tests pass under ASan/UBSan,
 including the full hardware digest replays and modifier/DPP sweeps.
+
+
+## Wave64 interpolation
+
+Added all six FP32/mixed-FP16 interpolation Wave64 APIs, including RTZ forms.
+Each family reuses its existing scalar/SIMD numerical kernels. Quad broadcasts
+remain within each 32-lane half and read inactive source lanes; wait fields,
+NEG/CLAMP, half selectors, overflow policy and destination-half preservation
+retain their contracts. Numerical semantics remain loose; strict exact requests
+continue to fail rather than claiming new arithmetic fidelity.
+
+Reviewed both manuals' interpolation descriptions: RDNA3 section 12.3 gives the
+same fixed DPP8 broadcasts and fetch-invalid behavior as RDNA4 sections 12.3
+and 16.13. This establishes the routing shared here, not untested numerical
+identity between GPUs.
+
+Tests replay existing FP16 result digests across 64 lanes and FP32 captures in
+both halves. Upper-only/single-lane capture tests verify inactive source reads.
+Independent numerical/integer references cover modifiers, wait counts, half
+selection, saturation, random/special values, shared inputs, destination aliases,
+guards and sparse EXEC. RTZ tests preserve host rounding and pre-existing sticky
+flags. No new native Wave64 capture or throughput claim is made. The vector
+width queue is 11 APIs, all dot products.
+
+Validation: all 895 tests pass on Clang 21 and GCC 15 Release. All eleven
+Wave64 interpolation and instruction-flag tests pass under ASan/UBSan,
+including captured digests, RTZ rounding and inactive-source reads.

@@ -47,6 +47,23 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+template <bool P2>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (int error = run<P2>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  // Quad broadcasts never cross a 32-lane half.
+  for (unsigned half = 0; half < 2; ++half) {
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *av = a[0] + half * 32, *bv = b[0] + half * 32, *cv = c[0] + half * 32;
+    if (int error = run<P2>(flags, uint32_t(exec_mask >> (half * 32)), mode, &dest, &av, &bv, &cv))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_interp_p10_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -63,4 +80,20 @@ int goc_v_interp_p2_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run<true>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_interp_p10_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run_wave64<false>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_interp_p2_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return run_wave64<true>(flags, exec_mask, instruction_flags, d, a, b, c);
 }

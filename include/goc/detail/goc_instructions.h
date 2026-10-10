@@ -1977,6 +1977,15 @@ int goc_v_interp_p2_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c);
 
+// Wave64 retains the same quad broadcasts, modifiers and loose numerical
+// semantics. Source reads include inactive lanes within each quad.
+int goc_v_interp_p10_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_interp_p2_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c);
+
 // Mixed FP16 interpolation uses the same quad broadcasts as the FP32 forms.
 // A is FP16, B is FP32. P10 reads FP16 C and writes FP32 D; P2 reads FP32 C
 // and writes FP16 D, preserving the other destination half. Supports NEG_A/B/C,
@@ -1998,6 +2007,23 @@ int goc_v_interp_p10_rtz_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t in
 int goc_v_interp_p2_rtz_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b, const uint32_t *const *c);
+
+// Wave64 retains the same quad broadcasts, modifiers and loose numerical
+// semantics. Source reads include inactive lanes within each quad.
+int goc_v_interp_p10_f16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_interp_p2_f16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_interp_p10_rtz_f16_f32_wave64(uint64_t flags, uint64_t exec_mask,
+                                        uint64_t instruction_flags, uint32_t *const *d,
+                                        const uint32_t *const *a, const uint32_t *const *b,
+                                        const uint32_t *const *c);
+int goc_v_interp_p2_rtz_f16_f32_wave64(uint64_t flags, uint64_t exec_mask,
+                                       uint64_t instruction_flags, uint32_t *const *d,
+                                       const uint32_t *const *a, const uint32_t *const *b,
+                                       const uint32_t *const *c);
 
 // Select B where the corresponding condition bit is set, A otherwise. Each
 // operand uses one VGPR. ABS_A/B clear source sign bits, then NEG_A/B toggle
