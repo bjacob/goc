@@ -1022,5 +1022,16 @@
       "v_sad_u32",
       "v_sad_u8"
     ]
+  },
+  {
+    "heading": "Integer dot-product architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/integer_dot_test.cpp",
+    "mnemonics": [
+      "v_dot4_i32_iu8",
+      "v_dot4_u32_u8",
+      "v_dot8_i32_iu4",
+      "v_dot8_u32_u4"
+    ]
   }
 ]

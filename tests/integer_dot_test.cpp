@@ -123,6 +123,71 @@ TEST(IntegerDot, ClampAfterWholeDotAndNoSaturatingBytePairs) {
   }
 }
 
+TEST(IntegerDot, RocjitsuDot4ClampPolicyVectors) {
+  // rocjitsu ffc144c564c, vop3p_dot_simd_correctness_test.cpp:
+  // Dot4ClampPolicyMatchesArchitecture. GFX11 and gfx1201 both saturate,
+  // despite the RDNA4 manual's claim that DOT4 ignores CLAMP.
+  for (bool unsigned_acc : {false, true})
+    for (bool wave64 : {false, true})
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+          for (bool clamp : {false, true}) {
+            uint32_t a[64], c[64];
+            const uint32_t initial = unsigned_acc ? 0xffffff00U : 0x7ffffff5U;
+            std::fill_n(a, 64, unsigned_acc ? UINT32_MAX : 0x7f7f7f7fU);
+            std::fill_n(c, 64, initial);
+            const uint32_t *pa = a, *pc = c;
+            uint32_t *pd = c;
+            const uint32_t mode = (clamp ? GOC_DOT_CLAMP : 0) |
+                                  (unsigned_acc ? 0 : GOC_DOT_SIGNED_A | GOC_DOT_SIGNED_B);
+            const uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+            if (wave64) {
+              auto fn = unsigned_acc ? goc_v_dot4_u32_u8_wave64 : goc_v_dot4_i32_iu8_wave64;
+              ASSERT_EQ(fn(flags, UINT64_MAX, mode, &pd, &pa, &pa, &pc), GOC_SUCCESS);
+            } else {
+              auto fn = unsigned_acc ? goc_v_dot4_u32_u8 : goc_v_dot4_i32_iu8;
+              ASSERT_EQ(fn(flags, UINT32_MAX, mode, &pd, &pa, &pa, &pc), GOC_SUCCESS);
+            }
+            const uint32_t expected = clamp ? (unsigned_acc ? UINT32_MAX : 0x7fffffffU)
+                                            : (unsigned_acc ? 0x0003f704U : 0x8000fbf9U);
+            for (unsigned lane = 0; lane < 64; ++lane)
+              EXPECT_EQ(c[lane], lane < (wave64 ? 64U : 32U) ? expected : initial);
+          }
+}
+
+TEST(IntegerDot, EveryElementPairAndPackedPosition) {
+  for (unsigned op = 0; op < 4; ++op) {
+    const unsigned bits = op < 2 ? 8 : 4;
+    const unsigned radix = 1U << bits;
+    for (unsigned sign = 0; sign < (op & 1 ? 1U : 4U); ++sign)
+      for (unsigned position = 0; position < 32 / bits; ++position)
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned start = 0; start < radix * radix; start += 32) {
+            uint32_t a[32], b[32], c[32] = {}, d[32], expected[32];
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              const unsigned x = (start + lane) / radix, y = (start + lane) % radix;
+              a[lane] = x << (position * bits);
+              b[lane] = y << (position * bits);
+              const int sx = int(x) - ((sign & 1) && x >= radix / 2 ? int(radix) : 0);
+              const int sy = int(y) - ((sign & 2) && y >= radix / 2 ? int(radix) : 0);
+              // All other products are zero: each field must yield this product
+              // regardless of its position within the packed source word.
+              expected[lane] = uint32_t(sx * sy);
+            }
+            const uint32_t *pa = a, *pb = b, *pc = c;
+            uint32_t *pd = d;
+            const uint32_t mode =
+                (sign & 1 ? GOC_DOT_SIGNED_A : 0) | (sign & 2 ? GOC_DOT_SIGNED_B : 0);
+            ASSERT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                    UINT32_MAX, mode, &pd, &pa, &pb, &pc),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 32; ++lane)
+              ASSERT_EQ(d[lane], expected[lane])
+                  << op << '/' << sign << '/' << position << '/' << start + lane;
+          }
+  }
+}
+
 TEST(IntegerDot, ValidationAndFpEnvironment) {
   goc_test::ScopedFpEnvironment saved;
   ASSERT_TRUE(saved.saved());

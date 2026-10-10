@@ -5995,3 +5995,44 @@ Validation: all 1,129 CTests pass under Clang and GCC Release; all thirteen
 SAD/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `sad-review-` in each build directory. The ledger records 597 contracts;
 212 in-scope mnemonics remain without recorded reviews.
+
+## Integer dot-product architecture contracts
+
+Reviewed the four DOT4/DOT8 integer operations at rocjitsu `ffc144c564c`.
+The four RDNA4 handlers match RDNA3's shared execution helpers after normalizing
+operand references and execution-mask access. The review includes eight
+architecture-specific handlers, four shared helpers, the signedness/SIMD paths
+and `dot4_clamp_supported`. Locations, bodies, hashes and comparison notes are in
+`../goc-build/coverage-work/integer-dot-upstream-review.json`. Shared APIs remain
+appropriate, with no optional exception-register output.
+
+I32_IU forms select A/B signedness independently but always interpret C as
+signed int32. U32_U uses unsigned factors and accumulation. All component
+products are summed before final wrapping or saturation; intermediate pair
+saturation is incorrect. DOT4's clamp policy explicitly enables saturation for
+both RDNA3 and RDNA4. Upstream records that gfx1201 contradicts the RDNA4 manual's
+ignored-CLAMP statement and that GFX11 also saturates. The policy's ignored-CLAMP
+branch is CDNA5-specific and does not require an RDNA4 API suffix.
+
+Ported upstream's two fixed overflow vectors from
+`tests/simd_correctness/vop3p_dot_simd_correctness_test.cpp`, test
+`Dot4ClampPolicyMatchesArchitecture`: unsigned maximum-byte products near
+UINT32_MAX, and signed positive products near INT32_MAX. GoC tests their literal
+saturated and wrapped results at both wave widths, both semantics, every CPU
+level and with D aliasing C. Added every possible byte/nibble pair in every
+packed position and supported signedness combination, isolating each product
+with zero other factors. Existing tests retain full-dot cancellation, avoidance
+of saturating byte-pair arithmetic, EXEC masks and source aliases.
+
+No production change was needed. The eight-lane v3 kernel widens factors to
+16 bits, including unsigned bytes up to 255, and uses signed 16-bit pair
+multiply-add into 32-bit sums. The dot itself fits int32; signed overflow or
+unsigned carry on the final addition detects saturation. Newer CPU levels use
+the same kernel, including all signedness/CLAMP combinations. DPP and unrelated
+modifiers remain unsupported. Hardware evidence is borrowed from upstream;
+no new hardware characterization was performed.
+
+Validation: all 1,131 CTests pass under Clang and GCC Release; all six integer-DOT
+tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`integer-dot-review-` in each build directory. The ledger records 601 contracts;
+208 in-scope mnemonics remain without recorded reviews.

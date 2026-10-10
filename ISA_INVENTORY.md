@@ -1132,10 +1132,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_dot4_f32_bf8_fp8` | — | yes | in | `goc_v_dot4_f32_bf8_fp8`<br>`goc_v_dot4_f32_bf8_fp8_wave64` | — | API present; semantic audit pending |
 | `v_dot4_f32_fp8_bf8` | — | yes | in | `goc_v_dot4_f32_fp8_bf8`<br>`goc_v_dot4_f32_fp8_bf8_wave64` | — | API present; semantic audit pending |
 | `v_dot4_f32_fp8_fp8` | — | yes | in | `goc_v_dot4_f32_fp8_fp8`<br>`goc_v_dot4_f32_fp8_fp8_wave64` | — | API present; semantic audit pending |
-| `v_dot4_i32_iu8` | yes | yes | in | `goc_v_dot4_i32_iu8`<br>`goc_v_dot4_i32_iu8_wave64` | `v_dot4_i32_i8` | API present; semantic audit pending |
-| `v_dot4_u32_u8` | yes | yes | in | `goc_v_dot4_u32_u8`<br>`goc_v_dot4_u32_u8_wave64` | — | API present; semantic audit pending |
-| `v_dot8_i32_iu4` | yes | yes | in | `goc_v_dot8_i32_iu4`<br>`goc_v_dot8_i32_iu4_wave64` | `v_dot8_i32_i4` | API present; semantic audit pending |
-| `v_dot8_u32_u4` | yes | yes | in | `goc_v_dot8_u32_u4`<br>`goc_v_dot8_u32_u4_wave64` | — | API present; semantic audit pending |
+| `v_dot4_i32_iu8` | yes | yes | in | `goc_v_dot4_i32_iu8`<br>`goc_v_dot4_i32_iu8_wave64` | `v_dot4_i32_i8` | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-dot-product-architecture-contracts) |
+| `v_dot4_u32_u8` | yes | yes | in | `goc_v_dot4_u32_u8`<br>`goc_v_dot4_u32_u8_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-dot-product-architecture-contracts) |
+| `v_dot8_i32_iu4` | yes | yes | in | `goc_v_dot8_i32_iu4`<br>`goc_v_dot8_i32_iu4_wave64` | `v_dot8_i32_i4` | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-dot-product-architecture-contracts) |
+| `v_dot8_u32_u4` | yes | yes | in | `goc_v_dot8_u32_u4`<br>`goc_v_dot8_u32_u4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-dot-product-architecture-contracts) |
 | `v_dual_add_f32` | yes | yes | in | `goc_v_dual_add_f32`<br>`goc_v_dual_add_f32_rdna4` | — | API present; semantic audit pending |
 | `v_dual_add_nc_u32` | yes | yes | in | `goc_v_dual_add_nc_u32` | — | API present; semantic audit pending |
 | `v_dual_and_b32` | yes | yes | in | `goc_v_dual_and_b32` | — | API present; semantic audit pending |
