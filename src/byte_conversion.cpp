@@ -19,7 +19,9 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
                             [&](uint32_t exec_mask, const uint32_t *const *source) {
                               return convert<Byte>(flags, exec_mask, uint32_t(mode), d, source);
                             });
-  if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP), true))
+  if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP), true,
+                                GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                                    GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -50,34 +52,36 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
 
 } // namespace
 
-int goc_v_cvt_f32_ubyte0(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f32_ubyte0_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a) {
   return convert<0>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_v_cvt_f32_ubyte1(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f32_ubyte1_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a) {
   return convert<1>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_v_cvt_f32_ubyte2(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f32_ubyte2_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a) {
   return convert<2>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_v_cvt_f32_ubyte3(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f32_ubyte3_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a) {
   return convert<3>(flags, exec_mask, instruction_flags, d, a);
 }
 
-int goc_v_cvt_off_f32_i4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                         const uint32_t *const *a) {
+int goc_v_cvt_off_f32_i4_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a) {
   if (mode >> 32)
     return goc::execute_dpp(
         flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
-          return goc_v_cvt_off_f32_i4(flags, exec_mask, uint32_t(mode), d, source);
+          return goc_v_cvt_off_f32_i4_rdna4(flags, exec_mask, uint32_t(mode), d, source);
         });
-  if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP), true))
+  if (int error = goc::validate(flags, mode & ~(GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP), true,
+                                GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                                    GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -155,7 +159,7 @@ namespace {
 template <unsigned Byte>
 int convert_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                    const uint32_t *const *a) {
-  const auto instruction = Byte == 4 ? goc_v_cvt_off_f32_i4 : convert<Byte % 4>;
+  const auto instruction = Byte == 4 ? goc_v_cvt_off_f32_i4_rdna4 : convert<Byte % 4>;
   if (int error = instruction(flags, 0, mode, nullptr, nullptr))
     return error;
   if (!exec_mask)
@@ -177,28 +181,28 @@ int convert_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *
 
 } // namespace
 
-int goc_v_cvt_f32_ubyte0_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
-                                uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f32_ubyte0_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                      uint32_t *const *d, const uint32_t *const *a) {
   return convert_wave64<0>(flags, exec_mask, mode, d, a);
 }
 
-int goc_v_cvt_f32_ubyte1_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
-                                uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f32_ubyte1_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                      uint32_t *const *d, const uint32_t *const *a) {
   return convert_wave64<1>(flags, exec_mask, mode, d, a);
 }
 
-int goc_v_cvt_f32_ubyte2_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
-                                uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f32_ubyte2_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                      uint32_t *const *d, const uint32_t *const *a) {
   return convert_wave64<2>(flags, exec_mask, mode, d, a);
 }
 
-int goc_v_cvt_f32_ubyte3_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
-                                uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_f32_ubyte3_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                      uint32_t *const *d, const uint32_t *const *a) {
   return convert_wave64<3>(flags, exec_mask, mode, d, a);
 }
 
-int goc_v_cvt_off_f32_i4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
-                                uint32_t *const *d, const uint32_t *const *a) {
+int goc_v_cvt_off_f32_i4_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                      uint32_t *const *d, const uint32_t *const *a) {
   return convert_wave64<4>(flags, exec_mask, mode, d, a);
 }
 
@@ -225,4 +229,84 @@ int goc_v_cvt_pk_u8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode
       return error;
   }
   return GOC_SUCCESS;
+}
+
+int goc_v_cvt_f32_ubyte0(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a) {
+  // rocjitsu fp_mode::effective_omod: RDNA3 scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f32_ubyte0_rdna4(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_f32_ubyte0_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a) {
+  // rocjitsu fp_mode::effective_omod: RDNA3 scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f32_ubyte0_rdna4_wave64(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_f32_ubyte1(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a) {
+  // rocjitsu fp_mode::effective_omod: RDNA3 scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f32_ubyte1_rdna4(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_f32_ubyte1_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a) {
+  // rocjitsu fp_mode::effective_omod: RDNA3 scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f32_ubyte1_rdna4_wave64(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_f32_ubyte2(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a) {
+  // rocjitsu fp_mode::effective_omod: RDNA3 scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f32_ubyte2_rdna4(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_f32_ubyte2_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a) {
+  // rocjitsu fp_mode::effective_omod: RDNA3 scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f32_ubyte2_rdna4_wave64(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_f32_ubyte3(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a) {
+  // rocjitsu fp_mode::effective_omod: RDNA3 scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f32_ubyte3_rdna4(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_f32_ubyte3_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a) {
+  // rocjitsu fp_mode::effective_omod: RDNA3 scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_f32_ubyte3_rdna4_wave64(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_off_f32_i4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a) {
+  // rocjitsu fp_mode::effective_omod: RDNA3 scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_off_f32_i4_rdna4(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_off_f32_i4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a) {
+  // rocjitsu fp_mode::effective_omod: RDNA3 scaling requires output flush and IEEE=0.
+  if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  return goc_v_cvt_off_f32_i4_rdna4_wave64(flags, exec_mask, mode, d, a);
 }

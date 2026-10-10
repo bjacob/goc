@@ -17,9 +17,9 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_cvt_f32_ubyte0);
-const Fn functions[] = {goc_v_cvt_f32_ubyte0, goc_v_cvt_f32_ubyte1, goc_v_cvt_f32_ubyte2,
-                        goc_v_cvt_f32_ubyte3};
+using Fn = decltype(&goc_v_cvt_f32_ubyte0_rdna4);
+const Fn functions[] = {goc_v_cvt_f32_ubyte0_rdna4, goc_v_cvt_f32_ubyte1_rdna4,
+                        goc_v_cvt_f32_ubyte2_rdna4, goc_v_cvt_f32_ubyte3_rdna4};
 
 } // namespace
 
@@ -151,7 +151,8 @@ TEST(ByteConversion, ValidationAndSemanticFallback) {
 }
 
 TEST(ByteConversion, DppModifiersMasksAliasesAndGuards) {
-  const Fn ops[] = {functions[0], functions[1], functions[2], functions[3], goc_v_cvt_off_f32_i4};
+  const Fn ops[] = {functions[0], functions[1], functions[2], functions[3],
+                    goc_v_cvt_off_f32_i4_rdna4};
   std::mt19937 random(3197);
   for (unsigned op = 0; op < 5; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
@@ -183,7 +184,8 @@ TEST(ByteConversion, DppModifiersMasksAliasesAndGuards) {
 }
 
 TEST(ByteConversion, DppValidation) {
-  for (auto fn : {functions[0], functions[1], functions[2], functions[3], goc_v_cvt_off_f32_i4})
+  for (auto fn :
+       {functions[0], functions[1], functions[2], functions[3], goc_v_cvt_off_f32_i4_rdna4})
     for (auto mode : goc_test::dpp_modes) {
       EXPECT_EQ(fn(0, 0, mode, nullptr, nullptr), GOC_SUCCESS);
       for (auto invalid : std::initializer_list<uint64_t>{1ULL << 36, uint64_t(GOC_ALU_ABS_A),
@@ -195,7 +197,8 @@ TEST(ByteConversion, DppValidation) {
 // RX 9070: five conversions, seven descriptors, eight output modifiers and
 // eight EXEC masks. Hash every output word, including preserved destinations.
 TEST(ByteConversion, DppHardwareCorpus) {
-  const Fn ops[] = {functions[0], functions[1], functions[2], functions[3], goc_v_cvt_off_f32_i4};
+  const Fn ops[] = {functions[0], functions[1], functions[2], functions[3],
+                    goc_v_cvt_off_f32_i4_rdna4};
   const uint32_t masks[] = {0xffffffff, 0,          0xaaaaaaaa, 0x55555555,
                             1,          0x80000000, 0xffff,     0xffff0000};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
@@ -222,9 +225,10 @@ TEST(ByteConversion, DppHardwareCorpus) {
 }
 
 TEST(ByteConversion, Wave64ExactValuesDppAndAliases) {
-  const decltype(&goc_v_cvt_f32_ubyte0_wave64) wave64[] = {
-      goc_v_cvt_f32_ubyte0_wave64, goc_v_cvt_f32_ubyte1_wave64, goc_v_cvt_f32_ubyte2_wave64,
-      goc_v_cvt_f32_ubyte3_wave64, goc_v_cvt_off_f32_i4_wave64};
+  const decltype(&goc_v_cvt_f32_ubyte0_rdna4_wave64) wave64[] = {
+      goc_v_cvt_f32_ubyte0_rdna4_wave64, goc_v_cvt_f32_ubyte1_rdna4_wave64,
+      goc_v_cvt_f32_ubyte2_rdna4_wave64, goc_v_cvt_f32_ubyte3_rdna4_wave64,
+      goc_v_cvt_off_f32_i4_rdna4_wave64};
   for (unsigned op = 0; op < 5; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < 8; ++variant)

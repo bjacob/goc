@@ -4312,7 +4312,7 @@ bool benchmark_byte_pack(uint64_t cpu, int iterations, int min_ms) {
   const Ternary functions[] = {
       +[](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
           const uint32_t *const *,
-          const uint32_t *const *) { return goc_v_cvt_off_f32_i4(f, exec_mask, i, d, a); },
+          const uint32_t *const *) { return goc_v_cvt_off_f32_i4_rdna4(f, exec_mask, i, d, a); },
       goc_v_cvt_pk_u8_f32};
   const char *names[] = {"v_cvt_off_f32_i4", "v_cvt_pk_u8_f32"};
   const uint32_t values[] = {0,          0x3f000000, 0x3fc00000, 0x40200000,
@@ -4636,8 +4636,9 @@ bool benchmark_fp8_conversion(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_byte_conversion(uint64_t cpu, int iterations, int min_ms) {
   using Unary = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
-  const Unary functions[] = {goc_v_cvt_f32_ubyte0, goc_v_cvt_f32_ubyte1, goc_v_cvt_f32_ubyte2,
-                             goc_v_cvt_f32_ubyte3, goc_v_cvt_off_f32_i4};
+  const Unary functions[] = {goc_v_cvt_f32_ubyte0_rdna4, goc_v_cvt_f32_ubyte1_rdna4,
+                             goc_v_cvt_f32_ubyte2_rdna4, goc_v_cvt_f32_ubyte3_rdna4,
+                             goc_v_cvt_off_f32_i4_rdna4};
   const char *names[] = {"v_cvt_f32_ubyte0", "v_cvt_f32_ubyte1", "v_cvt_f32_ubyte2",
                          "v_cvt_f32_ubyte3", "v_cvt_off_f32_i4"};
   for (unsigned byte = 0; byte < 5; ++byte)

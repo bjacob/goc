@@ -23,7 +23,7 @@ using Fn = goc_test::WaveInstruction<decltype(&goc_v_mad_u32_u24)>;
 const Fn functions[] = {
     +[](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *,
-        const uint32_t *const *) { return goc_v_cvt_off_f32_i4(f, exec_mask, i, d, a); },
+        const uint32_t *const *) { return goc_v_cvt_off_f32_i4_rdna4(f, exec_mask, i, d, a); },
     goc_v_cvt_pk_u8_f32};
 
 uint32_t mode(unsigned op, unsigned variant) {

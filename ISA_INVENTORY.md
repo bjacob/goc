@@ -1075,10 +1075,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cvt_f32_fp8` | — | yes | in | `goc_v_cvt_f32_fp8`<br>`goc_v_cvt_f32_fp8_wave64` | — | API present; semantic audit pending |
 | `v_cvt_f32_i32` | yes | yes | in | `goc_v_cvt_f32_i32`<br>`goc_v_cvt_f32_i32_wave64`<br>`goc_v_cvt_f32_i32_rdna4`<br>`goc_v_cvt_f32_i32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_cvt_f32_u32` | yes | yes | in | `goc_v_cvt_f32_u32`<br>`goc_v_cvt_f32_u32_wave64`<br>`goc_v_cvt_f32_u32_rdna4`<br>`goc_v_cvt_f32_u32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_cvt_f32_ubyte0` | yes | yes | in | `goc_v_cvt_f32_ubyte0`<br>`goc_v_cvt_f32_ubyte0_wave64` | — | API present; semantic audit pending |
-| `v_cvt_f32_ubyte1` | yes | yes | in | `goc_v_cvt_f32_ubyte1`<br>`goc_v_cvt_f32_ubyte1_wave64` | — | API present; semantic audit pending |
-| `v_cvt_f32_ubyte2` | yes | yes | in | `goc_v_cvt_f32_ubyte2`<br>`goc_v_cvt_f32_ubyte2_wave64` | — | API present; semantic audit pending |
-| `v_cvt_f32_ubyte3` | yes | yes | in | `goc_v_cvt_f32_ubyte3`<br>`goc_v_cvt_f32_ubyte3_wave64` | — | API present; semantic audit pending |
+| `v_cvt_f32_ubyte0` | yes | yes | in | `goc_v_cvt_f32_ubyte0`<br>`goc_v_cvt_f32_ubyte0_wave64`<br>`goc_v_cvt_f32_ubyte0_rdna4`<br>`goc_v_cvt_f32_ubyte0_rdna4_wave64` | — | API present; semantic audit pending |
+| `v_cvt_f32_ubyte1` | yes | yes | in | `goc_v_cvt_f32_ubyte1`<br>`goc_v_cvt_f32_ubyte1_wave64`<br>`goc_v_cvt_f32_ubyte1_rdna4`<br>`goc_v_cvt_f32_ubyte1_rdna4_wave64` | — | API present; semantic audit pending |
+| `v_cvt_f32_ubyte2` | yes | yes | in | `goc_v_cvt_f32_ubyte2`<br>`goc_v_cvt_f32_ubyte2_wave64`<br>`goc_v_cvt_f32_ubyte2_rdna4`<br>`goc_v_cvt_f32_ubyte2_rdna4_wave64` | — | API present; semantic audit pending |
+| `v_cvt_f32_ubyte3` | yes | yes | in | `goc_v_cvt_f32_ubyte3`<br>`goc_v_cvt_f32_ubyte3_wave64`<br>`goc_v_cvt_f32_ubyte3_rdna4`<br>`goc_v_cvt_f32_ubyte3_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_cvt_f64_f32` | yes | yes | in | `goc_v_cvt_f64_f32`<br>`goc_v_cvt_f64_f32_wave64`<br>`goc_v_cvt_f64_f32_rdna4`<br>`goc_v_cvt_f64_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_cvt_f64_i32` | yes | yes | in | `goc_v_cvt_f64_i32`<br>`goc_v_cvt_f64_i32_wave64`<br>`goc_v_cvt_f64_i32_rdna4`<br>`goc_v_cvt_f64_i32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_cvt_f64_u32` | yes | yes | in | `goc_v_cvt_f64_u32`<br>`goc_v_cvt_f64_u32_wave64`<br>`goc_v_cvt_f64_u32_rdna4`<br>`goc_v_cvt_f64_u32_rdna4_wave64` | — | API present; semantic audit pending |
@@ -1090,7 +1090,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cvt_nearest_i32_f32` | yes | yes | in | `goc_v_cvt_nearest_i32_f32`<br>`goc_v_cvt_nearest_i32_f32_wave64` | `v_cvt_rpi_i32_f32` | API present; semantic audit pending |
 | `v_cvt_norm_i16_f16` | yes | yes | in | `goc_v_cvt_norm_i16_f16`<br>`goc_v_cvt_norm_i16_f16_wave64` | — | API present; semantic audit pending |
 | `v_cvt_norm_u16_f16` | yes | yes | in | `goc_v_cvt_norm_u16_f16`<br>`goc_v_cvt_norm_u16_f16_wave64` | — | API present; semantic audit pending |
-| `v_cvt_off_f32_i4` | yes | yes | in | `goc_v_cvt_off_f32_i4`<br>`goc_v_cvt_off_f32_i4_wave64` | — | API present; semantic audit pending |
+| `v_cvt_off_f32_i4` | yes | yes | in | `goc_v_cvt_off_f32_i4`<br>`goc_v_cvt_off_f32_i4_wave64`<br>`goc_v_cvt_off_f32_i4_rdna4`<br>`goc_v_cvt_off_f32_i4_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_cvt_pk_bf8_f32` | — | yes | in | `goc_v_cvt_pk_bf8_f32`<br>`goc_v_cvt_pk_bf8_f32_wave64` | — | API present; semantic audit pending |
 | `v_cvt_pk_f32_bf8` | — | yes | in | `goc_v_cvt_pk_f32_bf8`<br>`goc_v_cvt_pk_f32_bf8_wave64` | — | API present; semantic audit pending |
 | `v_cvt_pk_f32_fp8` | — | yes | in | `goc_v_cvt_pk_f32_fp8`<br>`goc_v_cvt_pk_f32_fp8_wave64` | — | API present; semantic audit pending |

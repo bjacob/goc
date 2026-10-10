@@ -2616,9 +2616,15 @@ int goc_v_cvt_sr_bf8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t ins
 // Convert A's signed low nibble to FP32 divided by 16, then apply OMOD/CLAMP.
 // Each operand holds one VGPR; higher source bits are ignored. Supports both
 // semantics, full EXEC masking and whole-register aliasing. Results are exact
-// under all host rounding modes, preserving host FP state.
+// under all host rounding modes, preserving host FP state. Unsuffixed selects
+// RDNA3: OMOD is ignored when IEEE is set or output denormals are preserved.
+// _rdna4 applies OMOD independently. Guest IEEE/input/output-denormal flags are
+// accepted; there are no subnormal inputs/results, so flushing has no other effect.
 int goc_v_cvt_off_f32_i4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_off_f32_i4_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a);
 
 // DPP8/DPP16 permute A; byte selection B and preserved bytes C stay in their
 // original lanes. Convert FP32 A to an unsigned byte with nearest-even rounding, saturation
@@ -2803,32 +2809,72 @@ int goc_v_cvt_pk_f32_bf8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t ins
 // source ABS/NEG and half selectors are invalid. All results are exactly
 // representable, independent of host rounding, and preserve host FP state.
 // Supports both semantics, full EXEC masking and whole-register A/D aliasing.
+// Unsuffixed selects RDNA3: OMOD is ignored when IEEE is set or output denormals
+// are preserved. _rdna4 applies it independently. Guest IEEE/input/output-denormal
+// flags are accepted; flushing has no other effect on these finite normal results.
 
 int goc_v_cvt_f32_ubyte0(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a);
 
+int goc_v_cvt_f32_ubyte0_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a);
+
 int goc_v_cvt_f32_ubyte1(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_f32_ubyte1_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a);
 
 int goc_v_cvt_f32_ubyte2(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a);
 
+int goc_v_cvt_f32_ubyte2_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a);
+
 int goc_v_cvt_f32_ubyte3(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_f32_ubyte3_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a);
 
 // Wave64 byte/nibble conversions use the same operand layouts and modifiers.
 // Integer-to-float results support exact semantics at both widths. Byte packing
 // retains loose semantics and rejects exact non-null exception reporting.
 int goc_v_cvt_f32_ubyte0_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_f32_ubyte0_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a);
+
 int goc_v_cvt_f32_ubyte1_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_f32_ubyte1_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a);
+
 int goc_v_cvt_f32_ubyte2_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_f32_ubyte2_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a);
+
 int goc_v_cvt_f32_ubyte3_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_f32_ubyte3_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a);
+
 int goc_v_cvt_off_f32_i4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_cvt_off_f32_i4_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a);
+
 int goc_v_cvt_pk_u8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c,

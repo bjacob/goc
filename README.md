@@ -1288,6 +1288,12 @@ four AVX2 arithmetic paths (1.9–5.1× scalar speed) and 8.3–12.5 ns for all 
 AVX-512 paths (3.5–10.4×), including combined modifiers. Measurements use seven
 pinned-core samples of at least 10 ms each.
 
+Byte/nibble-to-FP32 conversions now have unsuffixed RDNA3 and `_rdna4` APIs.
+Both retain strict exact semantics and SIMD paths: the bounded integer inputs
+and scaled results are exactly representable under every host rounding mode.
+RDNA3 enables output scaling only with output flush and IEEE=0; RDNA4 enables
+it independently. Both accept guest IEEE and denormal flags.
+
 FP16 conversion APIs now select RDNA3 by default, with `_rdna4` variants for
 RDNA4 and native optional `trapsts`/`excp_flag_user` outputs. Floating-result
 conversions honor RDNA3's conditional output scaling. FP16-to-FP32 widening

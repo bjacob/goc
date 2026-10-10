@@ -402,10 +402,10 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cvt_f32_f64` | SIMD macro, output helper | yes | 8755, 8771 | review required |
 | `v_cvt_f32_i32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8787, 8804 | review required |
 | `v_cvt_f32_u32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8832, 8849 | review required |
-| `v_cvt_f32_ubyte0` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 8877, 8894 | review required |
-| `v_cvt_f32_ubyte1` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 8922, 8939 | review required |
-| `v_cvt_f32_ubyte2` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 8967, 8984 | review required |
-| `v_cvt_f32_ubyte3` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 9012, 9029 | review required |
+| `v_cvt_f32_ubyte0` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8877, 8894 | review required |
+| `v_cvt_f32_ubyte1` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8922, 8939 | review required |
+| `v_cvt_f32_ubyte2` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 8967, 8984 | review required |
+| `v_cvt_f32_ubyte3` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 9012, 9029 | review required |
 | `v_cvt_f64_f32` | SIMD macro | yes | 9057, 9073 | review required |
 | `v_cvt_f64_i32` | SIMD macro | yes | 9089, 9105 | review required |
 | `v_cvt_f64_u32` | SIMD macro | yes | 9121, 9137 | review required |
@@ -417,7 +417,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cvt_nearest_i32_f32` | SIMD macro, output helper | no | 9468, 9498 | review required |
 | `v_cvt_norm_i16_f16` | output helper | no | 9536, 9556 | review required |
 | `v_cvt_norm_u16_f16` | output helper | no | 9583, 9603 | review required |
-| `v_cvt_off_f32_i4` | IEEE mode, OMOD, architecture query, output helper | no | 9630, 9648 | review required |
+| `v_cvt_off_f32_i4` | IEEE mode, OMOD, architecture query, output helper | yes | 9630, 9648 | review required |
 | `v_cvt_pk_i16_f32` | no direct policy detected | no | not found | review required |
 | `v_cvt_pk_i16_i32` | SIMD macro, output helper | no | 9676 | review required |
 | `v_cvt_pk_norm_i16_f16` | no direct policy detected | no | not found | review required |

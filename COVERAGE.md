@@ -3525,3 +3525,46 @@ checks or reporting work were added.
 Next: byte/nibble conversion architecture policies, followed by the remaining
 packed/normalized conversion review. The overall ISA completion audit remains
 open.
+
+## Byte/nibble conversion architecture policies
+
+- Reviewed `v_cvt_f32_ubyte0..3` and `v_cvt_off_f32_i4` against rocjitsu
+  revision `ffc144c564c`, `generated/shared/execute_shared.h` and
+  `fp_mode::effective_omod`. All five generated VOP3 helpers explicitly apply
+  that architecture policy after extracting the integer and converting it.
+- Unsuffixed APIs now select RDNA3, where OMOD requires output flushing and
+  IEEE=0. `_rdna4` variants retain unconditional OMOD, including Wave64 forms.
+  Guest IEEE/input/output-denormal flags are accepted; there are no subnormal
+  inputs or results to flush. No implicit global-state outputs are added.
+- Both loose and strict exact semantics retain their existing scalar/AVX2/AVX-512
+  implementations. Extraction, conversion and power-of-two scaling are exact
+  for these bounded inputs under every host rounding mode. No new empirical
+  model or hardware characterization was used.
+- Tests cover every byte/nibble value, both semantics and wave sizes, eight guest
+  policies, every OMOD/CLAMP combination, every CPU level, DPP routing, sparse
+  masks, aliases, unaligned buffers and destination guards. Host tests exercise
+  all four rounding modes and both FTZ/DAZ settings with pre-existing exception
+  flags, and verify no changes to host rounding, controls or sticky flags.
+- Existing RDNA4 fixture/benchmark callers now explicitly select `_rdna4`.
+  Numeric kernels remain shared; the only new runtime policy is at the API
+  boundary before the existing execution paths.
+
+Validation: all 1,041 CTests pass with Clang 21 Release and GCC 15 Release;
+28 targeted ASan/UBSan tests pass. Logs are `byte-conversion-tests.log` under
+`../goc-build/coverage-work/`, `../goc-build-gcc/`, and
+`../goc-build-sanitize/`.
+
+Performance: seven alternating before/after samples, pinned to CPU 2, with
+thread CPU time and at least 20 ms per case. Across the five conversions and
+plain/modified forms, median time changes are +0.12% scalar, -0.01% AVX2, and
+-0.69% AVX-512; all measured slowdowns are below 1%. Both SIMD object files
+are byte-identical to the baseline. Raw samples are in
+`../goc-build/coverage-work/byte-conversion-performance.json`.
+
+Packed-conversion follow-up: rocjitsu's shared `v_cvt_pk_u8_f32` body truncates,
+whereas GoC's pre-existing RDNA4 fixture expects nearest-even. This is a model
+mismatch, not evidence that RDNA3 hardware differs from RDNA4. Do not invent an
+architecture-specific rounding rule or reverse-engineer a new exact model from
+that discrepancy. The three two-source packed conversions and normalized
+conversions also still need their native-state/API review; they are not closed
+by this byte/nibble slice.
