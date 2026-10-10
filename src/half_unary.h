@@ -12,7 +12,7 @@ namespace goc {
 template <Unary Op>
 constexpr bool half_unary_sfu = Op == Unary::Rcp || Op == Unary::Rsq || Op == Unary::Sqrt;
 
-template <Unary Op>
+template <Unary Op, bool GuestDenormals = true>
 void half_unary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                           const uint32_t *a);
 

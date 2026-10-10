@@ -115,24 +115,23 @@ template <goc::Unary Op, bool Rdna3 = false>
   return GOC_SUCCESS;
 }
 
-template <goc::Unary Op>
-int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
-          const uint32_t *const *a) {
+template <goc::Unary Op, bool GuestDenormals = true>
+[[gnu::noinline]] int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers,
+                            uint32_t *const *d, const uint32_t *const *a) {
   if (modifiers >> 32)
-    return goc::execute_dpp(flags, exec_mask, modifiers, a,
-                            [&](uint32_t exec_mask, const uint32_t *const *source) {
-                              return unary<Op>(flags, exec_mask, uint32_t(modifiers), d, source);
-                            });
+    return goc::execute_dpp(
+        flags, exec_mask, modifiers, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+          return unary<Op, GuestDenormals>(flags, exec_mask, uint32_t(modifiers), d, source);
+        });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP |
                          GOC_ALU_HIGH_A | GOC_ALU_HIGH_D;
-  if (int error = goc::validate(flags, modifiers & ~known, false,
-                                (supports_exact<Op> || Op == goc::Unary::Fract) ? fp_flags : 0))
+  if (int error = goc::validate(flags, modifiers & ~known, false, fp_flags))
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::half_unary_x86_64_v3<Op>(flags, exec_mask, modifiers, d[0], a[0]);
+    goc::half_unary_x86_64_v3<Op, GuestDenormals>(flags, exec_mask, modifiers, d[0], a[0]);
     return GOC_SUCCESS;
   }
 #endif
@@ -143,8 +142,9 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
   uint16_t result[32];
   for (int lane = 0; lane < 32; ++lane) {
     uint16_t input = uint16_t(a[0][lane] >> a_shift);
-    if constexpr (goc::half_unary_sfu<Op> || Op == goc::Unary::Fract)
-      if ((flags & GOC_FP_FLUSH_INPUT_DENORMALS) && (input & 0x7fff) < 0x400)
+    if constexpr (goc::half_unary_sfu<Op> || Op == goc::Unary::Fract || Op == goc::Unary::Exp ||
+                  Op == goc::Unary::Log)
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_INPUT_DENORMALS) && (input & 0x7fff) < 0x400)
         input &= 0x8000;
     float x = goc::alu_input(goc::as_bits(goc::f16_to_float(input)), modifiers);
     if constexpr (Op == goc::Unary::Exp) {
@@ -169,13 +169,21 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
           (!goc::half_unary_sfu<Op> || !(modifiers & GOC_ALU_CLAMP)))
         value = goc::f16_to_float(goc::float_to_f16(value, flags & GOC_FP16_OVFL));
     }
+    if constexpr (Op == goc::Unary::Exp || Op == goc::Unary::Log) {
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)) {
+        uint16_t rounded = goc::float_to_f16(value, flags & GOC_FP16_OVFL);
+        if ((rounded & 0x7fff) < 0x400)
+          rounded &= 0x8000;
+        value = goc::f16_to_float(rounded);
+      }
+    }
     if constexpr (Op == goc::Unary::Fract) {
       // Keep a fraction strictly below one after FP16 rounding.
       if (value > 0x1.ffcp-1f)
         value = 0x1.ffcp-1f;
     }
     if constexpr (goc::half_unary_sfu<Op> || Op == goc::Unary::Fract)
-      if ((flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && std::abs(value) < 0x1p-14f)
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && std::abs(value) < 0x1p-14f)
         value = std::copysign(0.0f, value);
     result[lane] = goc::float_to_f16(goc::alu_output_f16(value, modifiers), flags & GOC_FP16_OVFL);
   }
@@ -197,6 +205,9 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
     if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
       return unary_exact<Op, (Rdna3 && goc::half_unary_sfu<Op>)>(flags, exec_mask, mode, d, a);
   }
+  if constexpr (Op == goc::Unary::Exp || Op == goc::Unary::Log)
+    if (!(flags & (GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS)))
+      return unary<Op, false>(flags, exec_mask, mode, d, a);
   return unary<Op>(flags, exec_mask, mode, d, a);
 }
 
@@ -294,13 +305,13 @@ int goc_v_rsq_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   return run<goc::Unary::Rsq, false>(flags, exec_mask, instruction_flags, d, a, excp_flag_user);
 }
 
-int goc_v_exp_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+int goc_v_exp_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
   return run<goc::Unary::Exp, false>(flags, exec_mask, instruction_flags, d, a, excp_flag_user);
 }
 
-int goc_v_log_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+int goc_v_log_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
   return run<goc::Unary::Log, false>(flags, exec_mask, instruction_flags, d, a, excp_flag_user);
 }
 
@@ -410,14 +421,16 @@ int goc_v_rsq_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
                                               excp_flag_user);
 }
 
-int goc_v_exp_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+int goc_v_exp_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user) {
   return unary_wave64<goc::Unary::Exp, false>(flags, exec_mask, instruction_flags, d, a,
                                               excp_flag_user);
 }
 
-int goc_v_log_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user) {
+int goc_v_log_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user) {
   return unary_wave64<goc::Unary::Log, false>(flags, exec_mask, instruction_flags, d, a,
                                               excp_flag_user);
 }
@@ -445,4 +458,24 @@ int goc_v_frexp_mant_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
                                       const uint32_t *const *a, uint32_t *excp_flag_user) {
   return unary_wave64<goc::Unary::FrexpMant, false>(flags, exec_mask, instruction_flags, d, a,
                                                     excp_flag_user);
+}
+
+int goc_v_exp_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  return run<goc::Unary::Exp, true>(flags, exec_mask, instruction_flags, d, a, trapsts);
+}
+
+int goc_v_log_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  return run<goc::Unary::Log, true>(flags, exec_mask, instruction_flags, d, a, trapsts);
+}
+
+int goc_v_exp_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  return unary_wave64<goc::Unary::Exp, true>(flags, exec_mask, instruction_flags, d, a, trapsts);
+}
+
+int goc_v_log_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  return unary_wave64<goc::Unary::Log, true>(flags, exec_mask, instruction_flags, d, a, trapsts);
 }

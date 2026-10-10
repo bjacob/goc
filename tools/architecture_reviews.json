@@ -235,5 +235,14 @@
       "v_pk_add_f16",
       "v_pk_mul_f16"
     ]
+  },
+  {
+    "heading": "FP16 EXP/LOG architecture policies",
+    "semantics": "loose",
+    "tests": "tests/half_log_exp_architecture_test.cpp",
+    "mnemonics": [
+      "v_exp_f16",
+      "v_log_f16"
+    ]
   }
 ]

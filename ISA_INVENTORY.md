@@ -1155,7 +1155,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_dual_mul_f32` | yes | yes | in | `goc_v_dual_mul_f32`<br>`goc_v_dual_mul_f32_rdna4` | — | API present; semantic audit pending |
 | `v_dual_sub_f32` | yes | yes | in | `goc_v_dual_sub_f32`<br>`goc_v_dual_sub_f32_rdna4` | — | API present; semantic audit pending |
 | `v_dual_subrev_f32` | yes | yes | in | `goc_v_dual_subrev_f32`<br>`goc_v_dual_subrev_f32_rdna4` | — | API present; semantic audit pending |
-| `v_exp_f16` | yes | yes | in | `goc_v_exp_f16`<br>`goc_v_exp_f16_wave64` | — | API present; semantic audit pending |
+| `v_exp_f16` | yes | yes | in | `goc_v_exp_f16`<br>`goc_v_exp_f16_wave64`<br>`goc_v_exp_f16_rdna4`<br>`goc_v_exp_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-explog-architecture-policies) |
 | `v_exp_f32` | yes | yes | in | `goc_v_exp_f32`<br>`goc_v_exp_f32_wave64`<br>`goc_v_exp_f32_rdna4`<br>`goc_v_exp_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_floor_f16` | yes | yes | in | `goc_v_floor_f16`<br>`goc_v_floor_f16_wave64`<br>`goc_v_floor_f16_rdna4`<br>`goc_v_floor_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_floor_f32` | yes | yes | in | `goc_v_floor_f32`<br>`goc_v_floor_f32_wave64`<br>`goc_v_floor_f32_rdna4`<br>`goc_v_floor_f32_rdna4_wave64` | — | API present; semantic audit pending |
@@ -1193,7 +1193,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_ldexp_f32` | yes | yes | in | `goc_v_ldexp_f32`<br>`goc_v_ldexp_f32_wave64`<br>`goc_v_ldexp_f32_rdna4`<br>`goc_v_ldexp_f32_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#ldexp-fp32fp64-architecture-review) |
 | `v_ldexp_f64` | yes | yes | in | `goc_v_ldexp_f64`<br>`goc_v_ldexp_f64_wave64`<br>`goc_v_ldexp_f64_rdna4`<br>`goc_v_ldexp_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#ldexp-fp32fp64-architecture-review) |
 | `v_lerp_u8` | yes | yes | in | `goc_v_lerp_u8`<br>`goc_v_lerp_u8_wave64` | — | API present; semantic audit pending |
-| `v_log_f16` | yes | yes | in | `goc_v_log_f16`<br>`goc_v_log_f16_wave64` | — | API present; semantic audit pending |
+| `v_log_f16` | yes | yes | in | `goc_v_log_f16`<br>`goc_v_log_f16_wave64`<br>`goc_v_log_f16_rdna4`<br>`goc_v_log_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-explog-architecture-policies) |
 | `v_log_f32` | yes | yes | in | `goc_v_log_f32`<br>`goc_v_log_f32_wave64`<br>`goc_v_log_f32_rdna4`<br>`goc_v_log_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_lshl_add_u32` | yes | yes | in | `goc_v_lshl_add_u32`<br>`goc_v_lshl_add_u32_wave64` | — | API present; semantic audit pending |
 | `v_lshl_or_b32` | yes | yes | in | `goc_v_lshl_or_b32`<br>`goc_v_lshl_or_b32_wave64` | — | API present; semantic audit pending |

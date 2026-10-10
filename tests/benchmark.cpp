@@ -1004,17 +1004,11 @@ bool benchmark_half_exponent(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_half_unary(uint64_t cpu, int iterations, int min_ms) {
   using Unary = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
-  const Unary functions[] = {goc_v_trunc_f16_rdna4,
-                             goc_v_ceil_f16_rdna4,
-                             goc_v_rndne_f16_rdna4,
-                             goc_v_floor_f16_rdna4,
-                             goc_v_sqrt_f16_rdna4,
-                             goc_v_rcp_f16_rdna4,
-                             goc_v_rsq_f16_rdna4,
-                             goc_v_exp_f16,
-                             goc_v_log_f16,
-                             goc_v_fract_f16_rdna4,
-                             goc_v_frexp_mant_f16_rdna4};
+  const Unary functions[] = {
+      goc_v_trunc_f16_rdna4, goc_v_ceil_f16_rdna4,      goc_v_rndne_f16_rdna4,
+      goc_v_floor_f16_rdna4, goc_v_sqrt_f16_rdna4,      goc_v_rcp_f16_rdna4,
+      goc_v_rsq_f16_rdna4,   goc_v_exp_f16_rdna4,       goc_v_log_f16_rdna4,
+      goc_v_fract_f16_rdna4, goc_v_frexp_mant_f16_rdna4};
   const char *names[] = {"v_trunc_f16", "v_ceil_f16",  "v_rndne_f16",     "v_floor_f16",
                          "v_sqrt_f16",  "v_rcp_f16",   "v_rsq_f16",       "v_exp_f16",
                          "v_log_f16",   "v_fract_f16", "v_frexp_mant_f16"};

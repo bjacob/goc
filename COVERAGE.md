@@ -4048,3 +4048,55 @@ under `../goc-build/coverage-work/`, `../goc-build-gcc/`, and
 all ten `PackedBinary` sanitizer cases in `packed-binary-final-tests.log`.
 All nine audit-tool tests pass. The ledger records 139 contracts; the native
 state audit resolves 902 of 932 signatures with zero mismatches and 30 unresolved.
+
+## FP16 EXP/LOG architecture policies
+
+Reviewed `v_exp_f16` and `v_log_f16` VOP1/VOP3 forms on RDNA3/RDNA4 at rocjitsu
+revision `ffc144c564c`. Both use `transcendental::log_exp_f16` and its SIMD
+counterpart. Input subnormals follow the half denormal policy; results round to
+half and then undergo output flushing before OMOD. RDNA3 disables OMOD when
+IEEE is set or output denormals are preserved; RDNA4 keeps scaling enabled.
+
+Unsuffixed APIs now take RDNA3 `trapsts`; `_rdna4` APIs take `excp_flag_user`,
+with `_wave64` last. The existing `run`/`unary_wave64` architecture policy handles
+both names. Scalar and AVX2 loose paths now accept guest IEEE/denormal flags and
+apply the input/output flush stages. Optional loose state remains unchanged;
+strict exact results and exact non-null reporting remain unsupported. The
+upstream helper explicitly constructs `ScopedEnvironment`; no such guard was
+copied. Its double-precision LOG/EXP plus direct half rounding remains a future
+exact-port candidate requiring a compliant adaptation and validation. No new
+hardware-derived approximation or exception model was developed.
+
+Three new tests in `half_log_exp_architecture_test.cpp` cover both operations,
+architectures and wave sizes, all eight guest policies, all source/destination
+half selectors, ABS/NEG/OMOD/CLAMP, all available CPU paths, overflow mode,
+DPP8/DPP16, masks, aliases, unselected half preservation and guards. An independent
+double-precision reference allows one half ULP for loose finite results. Literal
+witnesses verify EXP scaling, LOG of a flushed tiny input and EXP output flushing.
+Exact/reporting errors preserve outputs and state; tests check host rounding and
+FTZ/DAZ controls without requiring ordinary arithmetic to preserve sticky flags.
+Existing RDNA4 fixtures and numerical tests now call explicit RDNA4 APIs.
+
+A single `GuestDenormals` template parameter in the existing scalar/SIMD bodies
+keeps default EXP/LOG loops free of per-lane flush checks. Dispatch selects that
+variant once per call. The scalar function is kept out of line to prevent loop
+merging from reintroducing those checks. Other unary operations retain their
+existing guest-aware instantiations. The arithmetic, modifier and store logic
+remain shared rather than duplicated as separate algorithms.
+
+Performance: seven alternating before/after samples, pinned to CPU 2, thread
+CPU time, at least 20 ms per case, plain and modified/non-null loose-state calls.
+EXP/LOG medians are -0.07% scalar, +0.43% AVX2 and -0.02% for the v4 selection
+(also AVX2); the largest slowdown is +0.86%. SQRT/RCP regression medians are
+-0.05%, -0.91% and -1.06%, with a maximum slowdown of +0.66%. Raw samples are
+`half-log-exp-performance.json` and `half-unary-regression-performance.json`
+in `../goc-build/coverage-work/`.
+
+Validation: all 1,071 CTests pass with Clang 21 Release and GCC 15 Release;
+26 targeted ASan/UBSan tests pass, including existing unary exact, DPP,
+modifier/alias, instruction-flag and optional-state coverage. Logs are
+`half-log-exp-tests.log` under `../goc-build/coverage-work/`,
+`../goc-build-gcc/`, and `../goc-build-sanitize/`. All nine audit-tool tests pass.
+A production-source scan finds no explicit host FP-environment mutations.
+The ledger records 141 contracts; the native-state audit resolves 910 of 936
+signatures, with zero mismatches and 26 unresolved.

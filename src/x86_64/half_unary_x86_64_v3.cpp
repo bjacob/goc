@@ -11,7 +11,7 @@
 
 namespace goc {
 
-template <Unary Op>
+template <Unary Op, bool GuestDenormals>
 void half_unary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                           const uint32_t *a) {
   bool saturate = flags & GOC_FP16_OVFL;
@@ -24,8 +24,8 @@ void half_unary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uin
     auto x = half_input<false>(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(a + lane)),
                                a_shift, mode);
     if constexpr (unary_rounds_f32<Op> || Op == Unary::FrexpMant || Op == Unary::Fract ||
-                  half_unary_sfu<Op>)
-      if (flags & GOC_FP_FLUSH_INPUT_DENORMALS) {
+                  half_unary_sfu<Op> || Op == Unary::Exp || Op == Unary::Log)
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_INPUT_DENORMALS)) {
         auto bits = _mm256_castps_si256(x);
         auto magnitude = _mm256_and_si256(bits, _mm256_set1_epi32(0x7fffffff));
         auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x38800000), magnitude);
@@ -34,7 +34,7 @@ void half_unary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uin
       }
     auto value = unary_value<Op, true>(x);
     if constexpr (Op == Unary::Fract || half_unary_sfu<Op>)
-      if (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) {
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)) {
         auto sign = _mm256_and_ps(value, _mm256_set1_ps(-0.0f));
         auto magnitude = _mm256_andnot_ps(_mm256_set1_ps(-0.0f), value);
         auto tiny = _mm256_cmp_ps(magnitude, _mm256_set1_ps(0x1p-14f), _CMP_LT_OQ);
@@ -56,6 +56,15 @@ void half_unary_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uin
       // commutes with the power-of-two output scale.
       if ((mode & GOC_ALU_OMOD_HALF) && (!half_unary_sfu<Op> || !(mode & GOC_ALU_CLAMP)))
         value = half_input<false>(half_narrow<false>(value, saturate), 0, 0);
+    }
+    if constexpr (Op == Unary::Exp || Op == Unary::Log) {
+      if (GuestDenormals && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)) {
+        auto rounded = half_narrow<false>(value, saturate);
+        auto magnitude = _mm256_and_si256(rounded, _mm256_set1_epi32(0x7fff));
+        auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x400), magnitude);
+        auto sign = _mm256_and_si256(rounded, _mm256_set1_epi32(0x8000));
+        value = half_input<false>(_mm256_blendv_epi8(rounded, sign, tiny), 0, 0);
+      }
     }
     if (mode & GOC_ALU_OMOD_HALF)
       value = _mm256_mul_ps(prepare_omod_f16(value, mode), scale);
@@ -93,5 +102,10 @@ template void half_unary_x86_64_v3<Unary::Exp>(uint64_t, uint32_t, uint32_t, uin
                                                const uint32_t *);
 template void half_unary_x86_64_v3<Unary::Log>(uint64_t, uint32_t, uint32_t, uint32_t *,
                                                const uint32_t *);
+
+template void half_unary_x86_64_v3<Unary::Exp, false>(uint64_t, uint32_t, uint32_t, uint32_t *,
+                                                      const uint32_t *);
+template void half_unary_x86_64_v3<Unary::Log, false>(uint64_t, uint32_t, uint32_t, uint32_t *,
+                                                      const uint32_t *);
 
 } // namespace goc
