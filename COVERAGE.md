@@ -6315,3 +6315,41 @@ individual case medians ranged from -2.10% to +2.72%, with the largest increase
 not characterize exact-path throughput or whole-library performance. Driver,
 parent object, executables and raw samples are in
 `../goc-build/coverage-work/fp32-binary-performance/`.
+
+## Ordinary FP16 arithmetic exact-port limitation
+
+The existing loose ADD/SUB/SUBREV/MUL implementations cover both architectures,
+wave sizes, modifiers, guest denormal controls, DPP and scalar/AVX2 execution.
+They still do not provide strict exact semantics or exact optional global-state
+updates. The additional `HalfBinary.ArithmeticOptionalStateAndExactFallback`
+test checks all sixteen architecture/width/operation entry points across CPU
+paths and empty, partial and full EXEC: exact reporting errors precede modifier
+validation, errors preserve destinations/state, null permits non-strict fallback,
+and loose execution with non-null state leaves it unchanged.
+
+An exact port needs more than replacing rocjitsu's host-environment guards.
+At upstream revision `ffc144c564c`, ordinary FP16 arithmetic evaluates in double
+in `shared/fp_mode.h::arithmetic_f16` and rounds through
+`finish_arithmetic_f16`. The shared `execute_v_add_f16_vop3` handler scales the
+double result before FP16 narrowing and then calls `finalize_omod_f16`.
+In contrast, `fp_mode::apply_omod_f16` flushes magnitudes below the FP16 normal
+threshold *before* scaling. GoC's `alu_output_f16` and SIMD
+`prepare_omod_f16` follow this latter order. These are distinct upstream rules;
+the presence of the helper alone does not establish which rule an arithmetic
+instruction should use.
+
+For example, with input denormals preserved, adding `0x0200` to zero and applying
+OMOD x4 yields `0x0800` if scaling precedes flushing, but zero if the unscaled
+tiny value is flushed first. `finalize_omod_f64` does not resolve that difference:
+it only flushes double subnormals. GoC's existing reference tests repeat the
+pre-scaling rule and therefore cannot independently settle it. No production
+behavior is changed or new exact model inferred from this discrepancy. The four
+ordinary arithmetic mnemonics remain outside the completed architecture-review
+ledger pending reconciliation with the manuals and existing upstream fixtures;
+no new hardware reverse-engineering is required or authorized.
+
+The manuals’ output-operand-modifier sections establish architecture gating,
+output-denormal flushing and negative-zero behavior, but do not explicitly settle
+the intermediate rounding/flushing order in this example. Validation for this
+contract-only change: all 13 HalfBinary tests pass with Clang 21 Release, GCC 15
+Release and ASan/UBSan. No production kernel or performance path changed.

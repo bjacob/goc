@@ -375,6 +375,62 @@ TEST(HalfBinary, Rdna3GuestFlagsDoNotEnableExactReporting) {
   }
 }
 
+TEST(HalfBinary, ArithmeticOptionalStateAndExactFallback) {
+  const goc_test::HalfBinaryFn narrow[][4] = {
+      {goc_v_add_f16, goc_v_sub_f16, goc_v_subrev_f16, goc_v_mul_f16},
+      {goc_v_add_f16_rdna4, goc_v_sub_f16_rdna4, goc_v_subrev_f16_rdna4, goc_v_mul_f16_rdna4}};
+  const decltype(&goc_v_add_f16_wave64) wide[][4] = {
+      {goc_v_add_f16_wave64, goc_v_sub_f16_wave64, goc_v_subrev_f16_wave64, goc_v_mul_f16_wave64},
+      {goc_v_add_f16_rdna4_wave64, goc_v_sub_f16_rdna4_wave64, goc_v_subrev_f16_rdna4_wave64,
+       goc_v_mul_f16_rdna4_wave64}};
+  // Exact integer-valued inputs keep this contract test independent of rounding.
+  const uint16_t results[] = {0x4500, 0xbc00, 0x3c00, 0x4600}; // 2+3, 2-3, 3-2, 2*3.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned arch = 0; arch < 2; ++arch)
+      for (unsigned op = 0; op < 4; ++op)
+        for (unsigned width : {32U, 64U})
+          for (uint64_t exec_mask : {0ULL, 0xa55aa55a5aa55aa5ULL, ~0ULL}) {
+            SCOPED_TRACE(::testing::Message()
+                         << cpu << '/' << arch << '/' << op << '/' << width << '/' << exec_mask);
+            uint32_t a[64], b[64], d[64];
+            std::fill(a, a + 64, 0x4000);
+            std::fill(b, b + 64, 0x4200);
+            const uint32_t *pa = a, *pb = b;
+            uint32_t *pd = d;
+            uint32_t state = 0x81234567;
+            auto call = [&](uint64_t flags, uint64_t mode, uint32_t *output) {
+              return width == 32
+                         ? narrow[arch][op](flags, uint32_t(exec_mask), mode, &pd, &pa, &pb, output)
+                         : wide[arch][op](flags, exec_mask, mode, &pd, &pa, &pb, output);
+            };
+            for (bool strict : {false, true}) {
+              std::fill(d, d + 64, 0xdeadbeef);
+              uint64_t flags =
+                  cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | (strict ? GOC_SEMANTICS_STRICT : 0);
+              // Reporting errors take precedence even over invalid modifiers and empty EXEC.
+              for (uint64_t mode : {0ULL, 1ULL << 63}) {
+                EXPECT_EQ(call(flags, mode, &state), GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+                EXPECT_EQ(state, 0x81234567U);
+                for (auto word : d)
+                  EXPECT_EQ(word, 0xdeadbeefU);
+              }
+              EXPECT_EQ(call(flags, 0, nullptr),
+                        strict ? GOC_ERROR_UNSUPPORTED_SEMANTICS : GOC_SUCCESS);
+              for (unsigned lane = 0; lane < 64; ++lane)
+                EXPECT_EQ(d[lane], !strict && lane < width && ((exec_mask >> lane) & 1)
+                                       ? 0xdead0000U | results[op]
+                                       : 0xdeadbeefU);
+            }
+            std::fill(d, d + 64, 0xdeadbeef);
+            EXPECT_EQ(call(cpu, 0, &state), GOC_SUCCESS);
+            EXPECT_EQ(state, 0x81234567U);
+            for (unsigned lane = 0; lane < 64; ++lane)
+              EXPECT_EQ(d[lane], lane < width && ((exec_mask >> lane) & 1)
+                                     ? 0xdead0000U | results[op]
+                                     : 0xdeadbeefU);
+          }
+}
+
 TEST(HalfBinary, MinmaxRawNanBitsGuestModesAndPackedSelectors) {
   // A/B, then selected source for legacy IEEE=0, legacy IEEE=1, RDNA4 number,
   // and RDNA4 propagating forms. 0/1 select A/B; 2/3 quiet the selected A/B NaN.
