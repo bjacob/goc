@@ -3931,3 +3931,58 @@ Logs are `compare-tests.log` under `../goc-build/coverage-work/`,
 now records 135 mnemonic contracts. The naming audit resolves 886 of 924
 reporting signatures, with zero mismatches and 38 unresolved. Neither count is
 a whole-project numerical-completeness claim.
+
+## FP16 pack and FP32 byte-pack architecture contracts
+
+Reviewed `v_pack_b32_f16` and `v_cvt_pk_u8_f32` on both architectures and wave
+sizes. Rocjitsu revision `ffc144c564c` has the same generated VOP3 packing bodies
+on both targets (apart from the spelling of the true16 selector field). The byte
+conversion delegates to `execute_v_cvt_pk_u8_f32_vop3`. Neither reviewed body
+uses IEEE or denormal control flags, and neither provides a faithful exception
+classifier to borrow.
+
+Unsuffixed entry points now take RDNA3 `trapsts`; `_rdna4` entry points take
+`excp_flag_user`, before `_wave64` where applicable. Both accept guest IEEE and
+denormal flags without numerical effect. Loose paths share the existing scalar,
+AVX2 and AVX512 kernels, skip optional reporting, and preserve prior state.
+Exact non-null reporting remains unsupported, including empty EXEC and non-strict
+requests. No new per-lane reporting or host FP-control changes were introduced.
+
+Two upstream-model limitations remain explicit:
+
+- Upstream FP16 PACK combines raw source halves; GoC's pre-existing RDNA4 corpus
+  establishes signaling-NaN quieting and source modifiers. The RDNA4 exact path
+  and exhaustive fixture are retained. RDNA3 uses the existing kernel in loose
+  mode and rejects strict exact semantics; the RDNA4 capture is not evidence
+  for RDNA3 NaN behavior. Non-strict exact requests may fall back to loose.
+- Upstream FP32 byte conversion truncates, whereas GoC's existing RDNA4 corpus
+  expects nearest-even rounding. Both GoC architectures retain that existing
+  loose policy, saturation and NaN-to-zero. This discrepancy does not establish
+  a hardware architecture difference. Neither target gains strict exact support.
+
+The RDNA3 manual describes packing FP16 sources and converting/packing an
+unsigned byte, but does not resolve these upstream-model discrepancies. No new
+hardware probing or bit-exact model was developed. This review records the loose
+contracts and known limitations rather than claiming new empirical exactness.
+
+Four new tests in `pack_architecture_test.cpp` cover both operations, targets,
+wave sizes, all eight guest policies, all source modifiers, all available CPU
+paths, zero/full/sparse EXEC, every whole-register output alias with guards,
+DPP8/DPP16, unsupported exact/reporting atomicity and host rounding/FTZ/DAZ
+preservation. Existing RDNA4 numerical, exhaustive pack, byte-rounding and
+hardware-fixture tests now call explicit RDNA4 entry points.
+
+Performance: seven alternating before/after runs, pinned to CPU 2, using thread
+CPU time and at least 20 ms per case. Both operations were measured with plain
+and modified/non-null loose-state calls. Median time changes are -1.64% scalar,
+-0.21% AVX2 and -0.75% AVX512; the largest measured slowdown is +0.13%. All four
+SIMD objects are byte-identical. Raw samples are in
+`../goc-build/coverage-work/pack-architecture-performance.json`.
+
+Validation: all 1,065 CTests pass with Clang 21 Release and GCC 15 Release;
+38 targeted ASan/UBSan tests pass. Logs are `pack-architecture-tests.log` under
+`../goc-build/coverage-work/`, `../goc-build-gcc/`, and
+`../goc-build-sanitize/`. All nine audit-tool tests pass. The ledger records
+137 reviewed mnemonic contracts; the native-output audit resolves 894 of 928
+signatures with zero mismatches and 34 unresolved. Remaining families and
+whole-project gates are still open.

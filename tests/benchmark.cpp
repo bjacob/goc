@@ -4313,7 +4313,7 @@ bool benchmark_byte_pack(uint64_t cpu, int iterations, int min_ms) {
       +[](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
           const uint32_t *const *,
           const uint32_t *const *) { return goc_v_cvt_off_f32_i4_rdna4(f, exec_mask, i, d, a); },
-      goc_v_cvt_pk_u8_f32};
+      goc_v_cvt_pk_u8_f32_rdna4};
   const char *names[] = {"v_cvt_off_f32_i4", "v_cvt_pk_u8_f32"};
   const uint32_t values[] = {0,          0x3f000000, 0x3fc00000, 0x40200000,
                              0x437f8000, 0xbf800000, 0x42ff0000, 0x3fffffff};

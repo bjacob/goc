@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-135 in-scope mnemonics have explicit contract-review records in
+137 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 674 in-scope mnemonics need a recorded review.
+The remaining 672 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -434,7 +434,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cvt_pk_rtz_f16_f32` | SIMD macro, output helper | yes | 9800, 9821 | [loose contract reviewed; see limitations](COVERAGE.md#packed-and-normalized-conversion-stateapi-review) |
 | `v_cvt_pk_u16_f32` | no direct policy detected | yes | not found | [loose contract reviewed; see limitations](COVERAGE.md#packed-and-normalized-conversion-stateapi-review) |
 | `v_cvt_pk_u16_u32` | SIMD macro, output helper | no | 9860 | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-conversion-architecture-review) |
-| `v_cvt_pk_u8_f32` | output helper | no | 9885 | review required |
+| `v_cvt_pk_u8_f32` | output helper | yes | 9885 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-pack-and-fp32-byte-pack-architecture-contracts) |
 | `v_cvt_u16_f16` | SIMD macro, output helper | yes | 10141, 10165 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-conversion-architecture-policies) |
 | `v_cvt_u32_f32` | SIMD macro, output helper | yes | 10202, 10224 | [loose contract reviewed; see limitations](COVERAGE.md#fp32integer-conversion-architecture-review) |
 | `v_cvt_u32_f64` | SIMD macro, output helper | yes | 10254, 10278 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-conversion-architecture-review) |
@@ -575,7 +575,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_or3_b32` | SIMD macro, output helper | no | 17200 | review required |
 | `v_or_b16` | no direct policy detected | no | not found | review required |
 | `v_or_b32` | SIMD macro, output helper | no | 17215, 17229 | review required |
-| `v_pack_b32_f16` | SIMD macro, output helper | no | 17243 | review required |
+| `v_pack_b32_f16` | SIMD macro, output helper | yes | 17243 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-pack-and-fp32-byte-pack-architecture-contracts) |
 | `v_perm_b32` | SIMD macro, output helper | no | 17260 | review required |
 | `v_permlane16_b32` | no direct policy detected | no | not found | review required |
 | `v_permlane64_b32` | output helper | no | 17291 | review required |

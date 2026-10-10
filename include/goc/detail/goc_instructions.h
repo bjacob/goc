@@ -2508,20 +2508,30 @@ int goc_v_sat_pk_u8_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 // are preserved.
 // DPP8/DPP16 permutes A before half selection; B stays in its original lane.
 // No other instruction modifiers apply. Each operand uses one VGPR. Exact
-// result semantics are supported; all host FP state is preserved.
-// Exact non-null exception reporting is unsupported.
+// result semantics are supported on RDNA4; RDNA3 currently supports loose semantics
+// only. All host FP state is preserved. Guest IEEE and denormal flags are accepted
+// without numerical effect. Unsuffixed RDNA3 APIs take trapsts; RDNA4 APIs take
+// excp_flag_user. Exact non-null exception reporting is unsupported on both.
 int goc_v_pack_b32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       uint32_t *excp_flag_user);
+                       uint32_t *trapsts);
+
+int goc_v_pack_b32_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user);
 
 // Wave64 packing uses the same operand layouts and modifiers, with 64 lanes
-// per VGPR. Both widths support exact result bits. PACK exact reporting
-// through a non-null excp_flag_user remains unsupported.
+// per VGPR. SAT supports exact bits; PACK has the same architecture-specific
+// numerical and optional-state contracts as Wave32.
 int goc_v_sat_pk_u8_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a);
 int goc_v_pack_b32_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
-                              const uint32_t *const *b, uint32_t *excp_flag_user);
+                              const uint32_t *const *b, uint32_t *trapsts);
+
+int goc_v_pack_b32_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, uint32_t *excp_flag_user);
 
 // Bitwise equivalence: D = ~(A ^ B). Each operand uses one VGPR. Supports
 // DPP8/DPP16 on A; low 32 instruction-flag bits must be zero. Loose semantics
@@ -2954,10 +2964,17 @@ int goc_v_cvt_off_f32_i4_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t inst
 // each operand holds one VGPR. Supports A ABS/NEG; CLAMP is accepted without
 // numeric effect. Loose semantics, full EXEC masking and all whole-register
 // aliases are supported. Host rounding does not affect results; exceptions may
-// change. GOC_FP16_OVFL has no effect.
+// change. GOC_FP16_OVFL, guest IEEE and denormal flags have no numerical effect.
+// Unsuffixed RDNA3 APIs take trapsts; RDNA4 APIs take excp_flag_user.
+// Exact non-null reporting is unsupported on both architectures.
 int goc_v_cvt_pk_u8_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c, uint32_t *excp_flag_user);
+                        const uint32_t *const *c, uint32_t *trapsts);
+
+int goc_v_cvt_pk_u8_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint32_t *excp_flag_user);
 
 // DPP8/DPP16 permute A before half selection or saturation; B stays in its
 // original lane. Integer widening and saturating packing use one VGPR per
@@ -3258,7 +3275,12 @@ int goc_v_cvt_off_f32_i4_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
 int goc_v_cvt_pk_u8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c,
-                               uint32_t *excp_flag_user);
+                               uint32_t *trapsts);
+
+int goc_v_cvt_pk_u8_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c,
+                                     uint32_t *excp_flag_user);
 
 // FP16 conversions, one VGPR per operand; loose semantics only. HIGH_A selects
 // a 16-bit source half, HIGH_D selects a 16-bit destination half, preserving the

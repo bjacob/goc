@@ -296,8 +296,8 @@ TEST(ByteConversion, Wave64BytePackingRoundingDppAliasesAndOptionalState) {
             uint64_t exec_mask = 0x87654321fedcba98ULL;
             uint64_t mode = goc_test::byte_pack_mode(variant);
             uint32_t excp_flag_user = 0x12345678;
-            ASSERT_EQ(goc_v_cvt_pk_u8_f32_wave64(cpu, exec_mask, mode | descriptor, &d, &a, &b, &c,
-                                                 &excp_flag_user),
+            ASSERT_EQ(goc_v_cvt_pk_u8_f32_rdna4_wave64(cpu, exec_mask, mode | descriptor, &d, &a,
+                                                       &b, &c, &excp_flag_user),
                       GOC_SUCCESS);
             EXPECT_EQ(excp_flag_user, 0x12345678U);
             for (unsigned lane = 0; lane < 64; ++lane) {
@@ -312,10 +312,10 @@ TEST(ByteConversion, Wave64BytePackingRoundingDppAliasesAndOptionalState) {
             EXPECT_EQ(words[dest][65], initial[dest][65]);
           }
   uint32_t excp_flag_user = 0x12345678;
-  EXPECT_EQ(goc_v_cvt_pk_u8_f32_wave64(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr,
-                                       nullptr, nullptr, nullptr, &excp_flag_user),
+  EXPECT_EQ(goc_v_cvt_pk_u8_f32_rdna4_wave64(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr,
+                                             nullptr, nullptr, nullptr, &excp_flag_user),
             GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(excp_flag_user, 0x12345678U);
-  EXPECT_EQ(goc_v_cvt_pk_u8_f32_wave64(0, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr),
+  EXPECT_EQ(goc_v_cvt_pk_u8_f32_rdna4_wave64(0, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr),
             GOC_SUCCESS);
 }

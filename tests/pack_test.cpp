@@ -190,8 +190,9 @@ namespace {
 int pack_wave64(unsigned variant, uint64_t flags, uint64_t exec_mask, uint64_t mode,
                 uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                 uint32_t *excp_flag_user = nullptr) {
-  return variant < 2 ? goc_v_sat_pk_u8_i16_wave64(flags, exec_mask, mode, d, a)
-                     : goc_v_pack_b32_f16_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  return variant < 2
+             ? goc_v_sat_pk_u8_i16_wave64(flags, exec_mask, mode, d, a)
+             : goc_v_pack_b32_f16_rdna4_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
 }
 } // namespace
 

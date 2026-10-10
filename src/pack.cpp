@@ -21,7 +21,10 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
   const uint32_t known = Saturate ? GOC_ALU_HIGH_D
                                   : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_ABS_A |
                                         GOC_ALU_ABS_B | GOC_ALU_NEG_A | GOC_ALU_NEG_B;
-  if (int error = goc::validate(flags, mode & ~known, true))
+  if (int error = goc::validate(flags, mode & ~known, true,
+                                Saturate ? 0
+                                         : GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                                               GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -106,9 +109,9 @@ int goc_v_sat_pk_u8_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   return run<true>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
-int goc_v_pack_b32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       uint32_t *excp_flag_user) {
+int goc_v_pack_b32_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return run<false>(flags, exec_mask, instruction_flags, d, a, b);
@@ -119,10 +122,34 @@ int goc_v_sat_pk_u8_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
   return run_wave64<true>(flags, exec_mask, instruction_flags, d, a, nullptr);
 }
 
-int goc_v_pack_b32_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *const *d, const uint32_t *const *a,
-                              const uint32_t *const *b, uint32_t *excp_flag_user) {
+int goc_v_pack_b32_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return run_wave64<false>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_pack_b32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                       uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (int error = goc::validate(flags, 0, false,
+                                GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                                    GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    return error;
+  return goc_v_pack_b32_f16_rdna4(flags, exec_mask, instruction_flags, d, a, b, nullptr);
+}
+
+int goc_v_pack_b32_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (int error = goc::validate(flags, 0, false,
+                                GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                                    GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    return error;
+  return goc_v_pack_b32_f16_rdna4_wave64(flags, exec_mask, instruction_flags, d, a, b, nullptr);
 }

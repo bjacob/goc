@@ -110,17 +110,20 @@ int goc_v_cvt_off_f32_i4_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode
   return GOC_SUCCESS;
 }
 
-int goc_v_cvt_pk_u8_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                        const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c, uint32_t *excp_flag_user) {
+int goc_v_cvt_pk_u8_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
-    return goc::execute_dpp(
-        flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
-          return goc_v_cvt_pk_u8_f32(flags, exec_mask, uint32_t(mode), d, source, b, c, nullptr);
-        });
-  if (int error = goc::validate(flags, mode & ~(GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_CLAMP)))
+    return goc::execute_dpp(flags, exec_mask, mode, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return goc_v_cvt_pk_u8_f32_rdna4(flags, exec_mask, uint32_t(mode), d,
+                                                               source, b, c, nullptr);
+                            });
+  if (int error = goc::validate(
+          flags, mode & ~(GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_CLAMP), false,
+          GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -206,12 +209,12 @@ int goc_v_cvt_off_f32_i4_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64
   return convert_wave64<4>(flags, exec_mask, mode, d, a);
 }
 
-int goc_v_cvt_pk_u8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
-                               uint32_t *const *d, const uint32_t *const *a,
-                               const uint32_t *const *b, const uint32_t *const *c,
-                               uint32_t *excp_flag_user) {
-  if (int error =
-          goc_v_cvt_pk_u8_f32(flags, 0, mode, nullptr, nullptr, nullptr, nullptr, excp_flag_user))
+int goc_v_cvt_pk_u8_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c,
+                                     uint32_t *excp_flag_user) {
+  if (int error = goc_v_cvt_pk_u8_f32_rdna4(flags, 0, mode, nullptr, nullptr, nullptr, nullptr,
+                                            excp_flag_user))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -224,8 +227,9 @@ int goc_v_cvt_pk_u8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode
     uint32_t *dest = d[0] + half * 32;
     const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32,
                    *source_c = c[0] + half * 32;
-    if (int error = goc_v_cvt_pk_u8_f32(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
-                                        &source_a, &source_b, &source_c, excp_flag_user))
+    if (int error =
+            goc_v_cvt_pk_u8_f32_rdna4(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                                      &source_a, &source_b, &source_c, excp_flag_user))
       return error;
   }
   return GOC_SUCCESS;
@@ -309,4 +313,21 @@ int goc_v_cvt_off_f32_i4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mod
   if ((flags & GOC_FP_IEEE_MODE) || !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
     mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
   return goc_v_cvt_off_f32_i4_rdna4_wave64(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_cvt_pk_u8_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *c, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return goc_v_cvt_pk_u8_f32_rdna4(flags, exec_mask, instruction_flags, d, a, b, c, nullptr);
+}
+
+int goc_v_cvt_pk_u8_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return goc_v_cvt_pk_u8_f32_rdna4_wave64(flags, exec_mask, instruction_flags, d, a, b, c, nullptr);
 }

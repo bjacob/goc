@@ -24,7 +24,7 @@ const Fn functions[] = {
     +[](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *,
         const uint32_t *const *) { return goc_v_cvt_off_f32_i4_rdna4(f, exec_mask, i, d, a); },
-    goc_v_cvt_pk_u8_f32};
+    goc_v_cvt_pk_u8_f32_rdna4};
 
 uint32_t mode(unsigned op, unsigned variant) {
   return op ? goc_test::byte_pack_mode(variant) : goc_test::byte_conversion_mode(variant);
@@ -219,9 +219,9 @@ TEST(BytePack, DppModifiersMasksAliasesAndGuards) {
                 const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[breg] + 1},
                                *c[] = {storage[creg] + 1};
                 uint32_t *d[] = {storage[dreg] + 1};
-                ASSERT_EQ(
-                    goc_v_cvt_pk_u8_f32(cpu | GOC_FP16_OVFL, exec_mask, flags, d, a, b, c, nullptr),
-                    GOC_SUCCESS);
+                ASSERT_EQ(goc_v_cvt_pk_u8_f32_rdna4(cpu | GOC_FP16_OVFL, exec_mask, flags, d, a, b,
+                                                    c, nullptr),
+                          GOC_SUCCESS);
                 for (unsigned reg = 0; reg < 4; ++reg)
                   for (unsigned word = 0; word < 34; ++word)
                     ASSERT_EQ(storage[reg][word], expected[reg][word])
@@ -231,12 +231,13 @@ TEST(BytePack, DppModifiersMasksAliasesAndGuards) {
 
 TEST(BytePack, DppValidation) {
   for (auto descriptor : goc_test::dpp_modes) {
-    EXPECT_EQ(goc_v_cvt_pk_u8_f32(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr, nullptr),
-              GOC_SUCCESS);
+    EXPECT_EQ(
+        goc_v_cvt_pk_u8_f32_rdna4(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr, nullptr),
+        GOC_SUCCESS);
     for (uint64_t invalid : std::initializer_list<uint64_t>{1ULL << 36, uint64_t(GOC_ALU_OMOD_2),
                                                             uint64_t(GOC_ALU_HIGH_A)})
-      EXPECT_EQ(goc_v_cvt_pk_u8_f32(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr,
-                                    nullptr),
+      EXPECT_EQ(goc_v_cvt_pk_u8_f32_rdna4(0, 0, descriptor | invalid, nullptr, nullptr, nullptr,
+                                          nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);
   }
 }
@@ -262,8 +263,9 @@ TEST(BytePack, DppHardwareCorpus) {
           }
           const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
           uint32_t *d[] = {output};
-          ASSERT_EQ(goc_v_cvt_pk_u8_f32(cpu, exec_mask, descriptor | modifier, d, a, b, c, nullptr),
-                    GOC_SUCCESS);
+          ASSERT_EQ(
+              goc_v_cvt_pk_u8_f32_rdna4(cpu, exec_mask, descriptor | modifier, d, a, b, c, nullptr),
+              GOC_SUCCESS);
           for (auto word : output)
             hash = goc_test::capture_hash_word(hash, word);
         }

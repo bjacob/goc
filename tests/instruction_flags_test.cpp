@@ -217,26 +217,27 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         (base_name == "goc_v_cvt_f32_ubyte2" || base_name == "goc_v_cvt_f32_ubyte2_rdna4") ||
         (base_name == "goc_v_cvt_f32_ubyte3" || base_name == "goc_v_cvt_f32_ubyte3_rdna4") ||
         (base_name == "goc_v_cvt_off_f32_i4" || base_name == "goc_v_cvt_off_f32_i4_rdna4") ||
-        base_name == "goc_v_cvt_pk_u8_f32" || base_name == "goc_v_frexp_exp_i32_f32" ||
-        base_name == "goc_v_frexp_exp_i32_f64_rdna4" || base_name == "goc_v_cvt_i32_i16" ||
-        base_name == "goc_v_cvt_u32_u16" || base_name == "goc_v_cvt_pk_i16_i32" ||
-        base_name == "goc_v_cvt_pk_u16_u32" || base_name == "goc_v_sat_pk_u8_i16" ||
-        base_name == "goc_v_pack_b32_f16" || base_name == "goc_v_sad_u8" ||
-        base_name == "goc_v_sad_hi_u8" || base_name == "goc_v_sad_u16" ||
-        base_name == "goc_v_sad_u32" || base_name == "goc_v_msad_u8" ||
-        base_name == "goc_v_qsad_pk_u16_u8" || base_name == "goc_v_mqsad_pk_u16_u8" ||
-        base_name == "goc_v_mqsad_u32_u8" || base_name == "goc_v_rcp_iflag_f32_rdna4" ||
-        base_name == "goc_v_trunc_f32_rdna4" || base_name == "goc_v_ceil_f32_rdna4" ||
-        base_name == "goc_v_rndne_f32_rdna4" || base_name == "goc_v_frexp_mant_f32_rdna4" ||
-        base_name == "goc_v_floor_f32_rdna4" || base_name == "goc_v_sqrt_f32_rdna4" ||
-        base_name == "goc_v_rcp_f32_rdna4" || base_name == "goc_v_rsq_f32_rdna4" ||
-        base_name == "goc_v_exp_f32_rdna4" || base_name == "goc_v_fract_f32_rdna4" ||
-        base_name == "goc_v_log_f32_rdna4" || base_name == "goc_v_frexp_exp_i32_f32_rdna4" ||
-        base_name == "goc_v_trunc_f16_rdna4" || base_name == "goc_v_ceil_f16_rdna4" ||
-        base_name == "goc_v_rndne_f16_rdna4" || base_name == "goc_v_floor_f16_rdna4" ||
-        base_name == "goc_v_fract_f16_rdna4" || base_name == "goc_v_rcp_f16_rdna4" ||
-        base_name == "goc_v_rsq_f16_rdna4" || base_name == "goc_v_sqrt_f16_rdna4" ||
-        base_name == "goc_v_frexp_mant_f16_rdna4")
+        (base_name == "goc_v_cvt_pk_u8_f32" || base_name == "goc_v_cvt_pk_u8_f32_rdna4") ||
+        base_name == "goc_v_frexp_exp_i32_f32" || base_name == "goc_v_frexp_exp_i32_f64_rdna4" ||
+        base_name == "goc_v_cvt_i32_i16" || base_name == "goc_v_cvt_u32_u16" ||
+        base_name == "goc_v_cvt_pk_i16_i32" || base_name == "goc_v_cvt_pk_u16_u32" ||
+        base_name == "goc_v_sat_pk_u8_i16" ||
+        (base_name == "goc_v_pack_b32_f16" || base_name == "goc_v_pack_b32_f16_rdna4") ||
+        base_name == "goc_v_sad_u8" || base_name == "goc_v_sad_hi_u8" ||
+        base_name == "goc_v_sad_u16" || base_name == "goc_v_sad_u32" ||
+        base_name == "goc_v_msad_u8" || base_name == "goc_v_qsad_pk_u16_u8" ||
+        base_name == "goc_v_mqsad_pk_u16_u8" || base_name == "goc_v_mqsad_u32_u8" ||
+        base_name == "goc_v_rcp_iflag_f32_rdna4" || base_name == "goc_v_trunc_f32_rdna4" ||
+        base_name == "goc_v_ceil_f32_rdna4" || base_name == "goc_v_rndne_f32_rdna4" ||
+        base_name == "goc_v_frexp_mant_f32_rdna4" || base_name == "goc_v_floor_f32_rdna4" ||
+        base_name == "goc_v_sqrt_f32_rdna4" || base_name == "goc_v_rcp_f32_rdna4" ||
+        base_name == "goc_v_rsq_f32_rdna4" || base_name == "goc_v_exp_f32_rdna4" ||
+        base_name == "goc_v_fract_f32_rdna4" || base_name == "goc_v_log_f32_rdna4" ||
+        base_name == "goc_v_frexp_exp_i32_f32_rdna4" || base_name == "goc_v_trunc_f16_rdna4" ||
+        base_name == "goc_v_ceil_f16_rdna4" || base_name == "goc_v_rndne_f16_rdna4" ||
+        base_name == "goc_v_floor_f16_rdna4" || base_name == "goc_v_fract_f16_rdna4" ||
+        base_name == "goc_v_rcp_f16_rdna4" || base_name == "goc_v_rsq_f16_rdna4" ||
+        base_name == "goc_v_sqrt_f16_rdna4" || base_name == "goc_v_frexp_mant_f16_rdna4")
       name = base_name.c_str();
   } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));
@@ -318,9 +319,10 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : goc_test::conversion16_names)
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
-  for (auto mnemonic : {"v_cvt_f32_ubyte0", "v_cvt_f32_ubyte1", "v_cvt_f32_ubyte2",
-                        "v_cvt_f32_ubyte3", "v_cvt_off_f32_i4", "v_cvt_pk_u8_f32", "v_cvt_i32_i16",
-                        "v_cvt_u32_u16", "v_cvt_pk_i16_i32", "v_cvt_pk_u16_u32"})
+  for (auto mnemonic :
+       {"v_cvt_f32_ubyte0", "v_cvt_f32_ubyte1", "v_cvt_f32_ubyte2", "v_cvt_f32_ubyte3",
+        "v_cvt_off_f32_i4", "v_cvt_pk_u8_f32", "v_cvt_pk_u8_f32_rdna4", "v_cvt_i32_i16",
+        "v_cvt_u32_u16", "v_cvt_pk_i16_i32", "v_cvt_pk_u16_u32"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : {"v_cvt_pk_norm_i16_f32", "v_cvt_pk_norm_u16_f32", "v_cvt_pk_norm_i16_f16",
                         "v_cvt_pk_norm_u16_f16", "v_cvt_norm_i16_f16", "v_cvt_norm_u16_f16"})
@@ -339,7 +341,7 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
   for (auto mnemonic :
        {"v_dot2_f32_f16", "v_dot2_f32_bf16", "v_dot2_f32_f16_rdna4", "v_dot2_f32_bf16_rdna4"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
-  for (auto mnemonic : {"v_sat_pk_u8_i16", "v_pack_b32_f16"})
+  for (auto mnemonic : {"v_sat_pk_u8_i16", "v_pack_b32_f16", "v_pack_b32_f16_rdna4"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : {"v_cndmask_b32", "v_cndmask_b16"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;

@@ -217,5 +217,14 @@
       "v_cmpx_neq_f64",
       "v_cmpx_nlt_f64"
     ]
+  },
+  {
+    "heading": "FP16 pack and FP32 byte-pack architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/pack_architecture_test.cpp",
+    "mnemonics": [
+      "v_pack_b32_f16",
+      "v_cvt_pk_u8_f32"
+    ]
   }
 ]

@@ -57,7 +57,7 @@ class ReviewRecordTest(unittest.TestCase):
         reviews = read_reviews(root, {name for name, _, _ in scope})
         self.assertIn('loose contract reviewed', reviews['v_cvt_f32_i32'])
         self.assertIn('loose and exact contract reviewed', reviews['v_cvt_i32_i16'])
-        self.assertNotIn('v_cvt_pk_u8_f32', reviews)
+        self.assertIn('loose contract reviewed', reviews['v_cvt_pk_u8_f32'])
 
     def test_invalid_records_fail_instead_of_claiming_coverage(self):
         with tempfile.TemporaryDirectory() as directory:
