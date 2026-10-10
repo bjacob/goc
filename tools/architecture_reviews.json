@@ -262,5 +262,13 @@
       "v_div_fixup_f32",
       "v_div_fixup_f64"
     ]
+  },
+  {
+    "heading": "FP16 DIV_FIXUP architecture policies",
+    "semantics": "loose and exact",
+    "tests": "tests/half_div_fixup_architecture_test.cpp",
+    "mnemonics": [
+      "v_div_fixup_f16"
+    ]
   }
 ]

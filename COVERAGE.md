@@ -4183,9 +4183,9 @@ Exact non-null reporting with input flushing, and all RDNA3 exact non-null
 reporting, return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE` before source access,
 including zero EXEC. Rocjitsu's classifier includes gfx1201-specific findings;
 this slice does not assume those prove RDNA3 flags or invent a classifier for
-the new input policy. Loose calls leave optional state unchanged. FP16 is still
-an explicit follow-up: its promoted arithmetic, narrowing and saturation rules
-need their own review and its current unsuffixed RDNA4 contract is unchanged.
+the new input policy. Loose calls leave optional state unchanged. FP16's promoted
+arithmetic, narrowing and saturation rules are covered by the subsequent
+[FP16 review](#fp16-div_fixup-architecture-policies).
 
 Three new architecture tests cover FP32/FP64, both wave sizes and architectures,
 all eight guest policies and all 512 source/output modifier encodings, every
@@ -4213,3 +4213,84 @@ no explicit host FP-environment mutation (`div-fixup-fp-environment-audit.json`
 in the coverage work folder). The ledger records 145 contracts; the native-state
 naming audit resolves 926 of 944 signatures, with zero mismatches and 18 unresolved.
 These counts do not establish whole-project completion.
+
+## FP16 DIV_FIXUP architecture policies
+
+Ported the RDNA3 generated `VDivFixupF16Vop3` sequence from rocjitsu
+`ffc144c564c`: integer exceptional-case selection via `div_fixup_f16`, exact
+power-of-two scaling in the promoted domain, nearest-even half narrowing with
+finite-overflow saturation, and `finalize_omod_f16`. GoC implements these stages
+with integer bit operations, so no borrowed environment guard or host rounding
+change is needed. This is a port of the upstream RDNA3 contract, not newly
+reverse-engineered hardware behavior; the RDNA4 capture-backed numerical and
+exception models are retained separately.
+
+The RDNA3 provisional-overflow result remains infinity even with `FP16_OVFL`;
+only finite scaling overflow saturates. Promoted scaling can turn an input half
+subnormal into a normal output, and halving just below twice the minimum normal
+can round up to a normal result. Active OMOD then flushes rounded subnormals and
+signed zero to +0. These stages differ from the retained RDNA4 captured model's
+pre-scaling flush and provisional-overflow saturation. RDNA3 gates OMOD on guest
+IEEE/output-denormal policy as for other ordinary half results. DX10_CLAMP=1 is
+the modeled RDNA3 NaN-clamp policy; arbitrary guest rounding/DX10_CLAMP controls
+remain outside the current API.
+
+Unsuffixed half APIs now use RDNA3 `trapsts`; `_rdna4` retains `excp_flag_user`,
+before `_wave64`. All DIV_FIXUP formats accept the three exposed guest FP flags.
+The existing input-flush preprocessing helper now supports selected half B/C
+operands while preserving A, including DPP on A and all half selectors. Output
+flushing does not independently discard the provisional quotient. Exact non-null
+reporting remains unsupported for RDNA3 and for RDNA4 input flushing; loose
+reporting remains skipped. Existing RDNA4 reporting without input flushing is
+unchanged.
+
+A single compile-time `Rdna3Half` choice shares operand classification, loads,
+alias staging and masked stores. The RDNA3 half output-stage helper is shared by
+the AVX2 and AVX512 backends through their existing operation wrappers; it handles
+only the promoted-scale/narrow/flush distinction. Scalar code reuses the existing
+integer power-of-two rounding helper. There is no separate duplicated FIXUP
+algorithm and no sparse-mask optimization.
+
+Four architecture tests cover every provisional half encoding at all four OMOD
+settings with saturation on/off, both architectures and every available CPU path.
+They also cover eight guest policies, both wave sizes, sampled source/output
+modifiers and half selectors, DPP8/DPP16, masks, aliases with each source, retained
+destination halves/guards, literal policy differences, reporting errors and
+host-control preservation. An independent promoted-arithmetic reference supplies
+expected RDNA3 outputs. Existing exhaustive RDNA4 DPP/alias and hardware/exception
+fixtures continue to test the explicit RDNA4 names.
+
+The new host-state test also exposed a pre-existing Clang baseline transformation:
+auto-vectorized variable integer shifts use `cvttps2dq`, which can raise a sticky
+exception flag. The before archive contains the same instruction. This does not
+violate the standing prohibition on explicit FP-environment changes. The public
+FIXUP comment and new tests now distinguish unchanged controls from permitted
+arithmetic sticky flags instead of promising preservation of every status bit.
+
+A standalone C++20 harness directly includes rocjitsu's `division.h` and
+`util/data_types.h` and reproduces the generated RDNA3 output sequence with
+DX10_CLAMP=1. All 4,194,304 lane comparisons match, across all four available CPU
+selections, every provisional half encoding (with permutations for B/C), guest
+policies, saturation, and source/output modifiers. Its source and log are
+`half-div-fixup-upstream.cpp` / `.log` in `../goc-build/coverage-work/`; GoC's
+production code and committed tests still build as C++17 without rocjitsu.
+
+Performance: seven alternating before/after samples, CPU 2 affinity, thread CPU
+time, at least 20 ms per case, plain and source-modified loose calls with non-null
+optional state in the modified cases. RDNA4 FP16 median time changes are +0.07%, +0.06%, +1.13%
+for scalar, AVX2 and AVX512, with a maximum +1.45%. FP32/FP64 regression medians
+are +1.24%, +0.36%, +1.05% respectively, with a maximum +2.31%. Raw samples are
+`half-div-fixup-performance.json` and `half-div-fixup-wide-performance.json`
+in the coverage work folder.
+
+Validation: all 1,082 CTests pass with Clang 21 Release and GCC 15 Release;
+34 targeted ASan/UBSan tests pass, including both FIXUP architecture suites,
+existing DPP/aliases, arithmetic exceptions, instruction flags and global-state
+contracts. Logs are `half-div-fixup-tests.log` under `../goc-build/coverage-work/`,
+`../goc-build-gcc/`, and `../goc-build-sanitize/`. All nine audit-tool tests pass.
+A disassembly/undefined-symbol scan of all 192 library objects in each compiler
+build finds no explicit FP-control writes or environment-mutator references
+(`half-div-fixup-fp-environment-audit.json` in the coverage work folder).
+The ledger records 146 contracts; native-state naming resolves 930 of 946
+signatures, with zero mismatches and 16 unresolved. Whole-project completion
+remains unproven.

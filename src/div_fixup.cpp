@@ -10,48 +10,54 @@
 
 namespace {
 
-template <unsigned Width>
+template <unsigned Width, bool Rdna3Half = false>
 int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
         uint32_t *excp_flag_user);
 
 // Flush only denominator/numerator subnormals, retaining their signs and all
 // provisional-quotient bits. All source reads precede the instruction's stores.
-template <unsigned Width>
+template <unsigned Width, bool Rdna3Half>
 [[gnu::noinline]] int run_flushed(uint64_t flags, uint32_t exec_mask, uint32_t mode,
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b, const uint32_t *const *c,
                                   uint32_t *excp_flag_user) {
   using F = goc::DivisionFormat<Width>;
   using T = typename F::Bits;
-  uint32_t words[2][Width / 32][32];
-  const uint32_t *sources[2][Width / 32];
+  uint32_t words[2][(Width == 64 ? 2 : 1)][32];
+  const uint32_t *sources[2][(Width == 64 ? 2 : 1)];
   for (unsigned operand = 0; operand < 2; ++operand) {
     const uint32_t *const *input = operand ? c : b;
     for (unsigned lane = 0; lane < 32; ++lane) {
       T value = input[0][lane];
       if constexpr (Width == 64)
         value |= T(input[1][lane]) << 32;
+      unsigned shift = 0;
+      if constexpr (Width == 16) {
+        shift = mode & (GOC_ALU_HIGH_B << operand) ? 16 : 0;
+        value = (value >> shift) & 65535;
+      }
       if (!(value & F::infinity))
         value &= F::sign;
-      for (unsigned reg = 0; reg < Width / 32; ++reg)
+      if constexpr (Width == 16)
+        value <<= shift;
+      for (unsigned reg = 0; reg < (Width == 64 ? 2 : 1); ++reg)
         words[operand][reg][lane] = uint32_t(value >> (reg * 32));
     }
-    for (unsigned reg = 0; reg < Width / 32; ++reg)
+    for (unsigned reg = 0; reg < (Width == 64 ? 2 : 1); ++reg)
       sources[operand][reg] = words[operand][reg];
   }
-  return run<Width>(flags & ~GOC_FP_FLUSH_INPUT_DENORMALS, exec_mask, mode, d, a, sources[0],
-                    sources[1], excp_flag_user);
+  return run<Width, Rdna3Half>(flags & ~GOC_FP_FLUSH_INPUT_DENORMALS, exec_mask, mode, d, a,
+                               sources[0], sources[1], excp_flag_user);
 }
 
-template <unsigned Width>
+template <unsigned Width, bool Rdna3Half>
 int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
         const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
         uint32_t *excp_flag_user) {
   constexpr uint64_t fp_flags =
-      Width == 16 ? 0
-                  : GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
-  if (Width != 16 && excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE &&
+      GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE &&
       (flags & GOC_FP_FLUSH_INPUT_DENORMALS))
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (int error =
@@ -59,21 +65,20 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
-  if constexpr (Width != 16)
-    if (flags & GOC_FP_FLUSH_INPUT_DENORMALS)
-      return run_flushed<Width>(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+  if (flags & GOC_FP_FLUSH_INPUT_DENORMALS)
+    return run_flushed<Width, Rdna3Half>(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
   bool report = excp_flag_user && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
   uint32_t exceptions = 0;
   bool saturate = flags & GOC_FP16_OVFL;
 #if defined(GOC_HAVE_X86_64_V4)
   if (!report && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
-    goc::fixup_x86_64_v4<Width>(exec_mask, mode, saturate, d, a, b, c);
+    goc::fixup_x86_64_v4<Width, Rdna3Half>(exec_mask, mode, saturate, d, a, b, c);
     return GOC_SUCCESS;
   }
 #endif
 #if defined(GOC_HAVE_X86_64_V3)
   if (!report && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::fixup_x86_64_v3<Width>(exec_mask, mode, saturate, d, a, b, c);
+    goc::fixup_x86_64_v3<Width, Rdna3Half>(exec_mask, mode, saturate, d, a, b, c);
     return GOC_SUCCESS;
   }
 #endif
@@ -91,7 +96,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
       bv = (bv >> (mode & GOC_ALU_HIGH_B ? 16 : 0)) & 65535;
       cv = (cv >> (mode & GOC_ALU_HIGH_C ? 16 : 0)) & 65535;
     }
-    result[lane] = goc::fixup_value<Width>(av, bv, cv, mode, saturate);
+    result[lane] = goc::fixup_value<Width, Rdna3Half>(av, bv, cv, mode, saturate);
     if (report && ((exec_mask >> lane) & 1))
       exceptions |= goc::fixup_exceptions<Width>(av, bv, cv, mode);
   }
@@ -113,10 +118,10 @@ template <unsigned Width, bool Rdna3 = false>
 int run_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
                uint32_t *excp_flag_user) {
-  constexpr auto instruction = Width == 16 ? goc_v_div_fixup_f16
-                               : Width == 32
-                                   ? (Rdna3 ? goc_v_div_fixup_f32 : goc_v_div_fixup_f32_rdna4)
-                                   : (Rdna3 ? goc_v_div_fixup_f64 : goc_v_div_fixup_f64_rdna4);
+  constexpr auto instruction =
+      Width == 16   ? (Rdna3 ? goc_v_div_fixup_f16 : goc_v_div_fixup_f16_rdna4)
+      : Width == 32 ? (Rdna3 ? goc_v_div_fixup_f32 : goc_v_div_fixup_f32_rdna4)
+                    : (Rdna3 ? goc_v_div_fixup_f64 : goc_v_div_fixup_f64_rdna4);
   if (int error = instruction(flags, 0, mode, nullptr, nullptr, nullptr, nullptr, excp_flag_user))
     return error;
   if (!exec_mask)
@@ -149,9 +154,10 @@ int run_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *cons
 
 } // namespace
 
-int goc_v_div_fixup_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c, uint32_t *excp_flag_user) {
+int goc_v_div_fixup_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (instruction_flags >> 32)
@@ -185,10 +191,10 @@ int goc_v_div_fixup_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instr
   return run<64>(flags, exec_mask, instruction_flags, d, a, b, c, excp_flag_user);
 }
 
-int goc_v_div_fixup_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                               uint32_t *const *d, const uint32_t *const *a,
-                               const uint32_t *const *b, const uint32_t *const *c,
-                               uint32_t *excp_flag_user) {
+int goc_v_div_fixup_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c,
+                                     uint32_t *excp_flag_user) {
   return run_wave64<16>(flags, exec_mask, instruction_flags, d, a, b, c, excp_flag_user);
 }
 
@@ -242,4 +248,27 @@ int goc_v_div_fixup_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
                                const uint32_t *const *b, const uint32_t *const *c,
                                uint32_t *trapsts) {
   return run_wave64<64, true>(flags, exec_mask, instruction_flags, d, a, b, c, trapsts);
+}
+
+int goc_v_div_fixup_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *c, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  if (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE))
+    instruction_flags &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  if (instruction_flags >> 32)
+    return goc::execute_dpp(flags, exec_mask, instruction_flags, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return run<16, true>(flags, exec_mask, uint32_t(instruction_flags), d,
+                                                   source, b, c, nullptr);
+                            });
+  return run<16, true>(flags, exec_mask, instruction_flags, d, a, b, c, nullptr);
+}
+
+int goc_v_div_fixup_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *trapsts) {
+  return run_wave64<16, true>(flags, exec_mask, instruction_flags, d, a, b, c, trapsts);
 }

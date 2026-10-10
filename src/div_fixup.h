@@ -16,7 +16,7 @@ namespace goc {
 // Repair provisional quotient P using denominator B and numerator C, preserving
 // denormals and applying nearest-even overflow rules. Applies all source/output
 // modifiers and FP16 saturation without reading or changing host FP state.
-template <unsigned Width>
+template <unsigned Width, bool Rdna3Half = false>
 inline typename DivisionFormat<Width>::Bits
 fixup_value(typename DivisionFormat<Width>::Bits p, typename DivisionFormat<Width>::Bits b,
             typename DivisionFormat<Width>::Bits c, uint32_t mode, bool saturate) {
@@ -49,7 +49,22 @@ fixup_value(typename DivisionFormat<Width>::Bits p, typename DivisionFormat<Widt
            int(cm >> F::fraction) - int(bm >> F::fraction) < -(F::bias + F::fraction))
     result = sign;
   else
-    result = sign | (pm >= F::infinity ? overflow : pm);
+    result = sign | (pm >= F::infinity ? (Rdna3Half ? F::infinity : overflow) : pm);
+  if constexpr (Rdna3Half) {
+    static_assert(Width == 16);
+    // Port the generated RDNA3 handler's promoted-F32 scale, half narrowing
+    // and finalize_omod_f16 stages using integer IEEE bits.
+    unsigned omod = (mode >> 6) & 3;
+    if (omod) {
+      bool finite = (result & (F::sign - 1)) < F::infinity;
+      result = division_scale_bits<16>(result, omod == 3 ? -1 : int(omod));
+      if (saturate && finite && (result & (F::sign - 1)) == F::infinity)
+        result = (result & F::sign) | (F::infinity - 1);
+      if (!(result & F::infinity))
+        result = 0;
+    }
+    return division_output<16>(result, mode & GOC_ALU_CLAMP);
+  }
   return division_output<Width>(result, mode, overflow);
 }
 
@@ -90,11 +105,11 @@ inline uint32_t fixup_exceptions(typename DivisionFormat<Width>::Bits p,
   return exceptions;
 }
 
-template <unsigned Width>
+template <unsigned Width, bool Rdna3Half = false>
 void fixup_x86_64_v3(uint32_t exec_mask, uint32_t mode, bool saturate, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c);
 
-template <unsigned Width>
+template <unsigned Width, bool Rdna3Half = false>
 void fixup_x86_64_v4(uint32_t exec_mask, uint32_t mode, bool saturate, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c);
 

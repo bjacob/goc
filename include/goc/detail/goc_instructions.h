@@ -2855,21 +2855,30 @@ int goc_v_div_scale_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
 // D[0] before D[1], so D[1] wins if both destination pointers alias.
 // Supports all source ABS/NEG, OMOD and CLAMP. Nonzero OMOD flushes subnormals
 // before scaling, maps existing zeros to +0 and preserves signed underflow zero.
-// FP16_OVFL saturates FP16 provisional-quotient overflow before OMOD and finite
+// RDNA4 FP16_OVFL saturates provisional-quotient overflow before OMOD and finite
 // scaling overflow; exceptional B/C cases retain their infinity/NaN behavior.
+// RDNA3 FP16 preserves provisional infinities, scales in the promoted domain,
+// then narrows and saturates finite overflow; active OMOD flushes rounded
+// subnormals and signed zeros to +0. Subnormal inputs can scale to normal results.
 // Loose and empirical exact semantics use fixed nearest-even rounding with
-// preserved denormals by default. FP32/FP64 accept guest input/output-denormal
+// preserved denormals by default. All formats accept guest input/output-denormal
 // flags and IEEE mode. Input flushing applies to B/C, never A; output flushing
 // does not flush the provisional quotient. RDNA3 ignores OMOD with preserved
 // output denormals or IEEE mode, while RDNA4 applies it independently.
-// Unsuffixed FP32/FP64 APIs use RDNA3 TRAPSTS; _rdna4 uses EXCP_FLAG_USER.
+// Unsuffixed APIs use RDNA3 TRAPSTS; _rdna4 uses EXCP_FLAG_USER.
 // Exact non-null reporting is unsupported for RDNA3 and for RDNA4 input flushing.
-// Loose calls leave optional state unchanged. FP16 retains its RDNA4 contract.
-// All EXEC masks and whole-register aliases
-// are supported; results are independent of host FP state and preserve it.
+// Loose calls leave optional state unchanged.
+// All EXEC masks and whole-register aliases are supported. Results are
+// independent of host FP controls, which are preserved; ordinary instructions
+// may raise sticky host exception flags. RDNA3 CLAMP models DX10_CLAMP=1.
 int goc_v_div_fixup_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c, uint32_t *excp_flag_user);
+                        const uint32_t *const *c, uint32_t *trapsts);
+
+int goc_v_div_fixup_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c,
+                              uint32_t *excp_flag_user);
 
 int goc_v_div_fixup_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
@@ -2884,7 +2893,12 @@ int goc_v_div_fixup_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 int goc_v_div_fixup_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c,
-                               uint32_t *excp_flag_user);
+                               uint32_t *trapsts);
+
+int goc_v_div_fixup_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, const uint32_t *const *c,
+                                     uint32_t *excp_flag_user);
 int goc_v_div_fixup_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c,

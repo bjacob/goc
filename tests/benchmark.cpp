@@ -4065,7 +4065,7 @@ bool benchmark_div_scale(uint64_t cpu, int iterations, int min_ms) {
 }
 
 bool benchmark_div_fixup(uint64_t cpu, int iterations, int min_ms) {
-  const Ternary functions[] = {goc_v_div_fixup_f16, goc_v_div_fixup_f32_rdna4,
+  const Ternary functions[] = {goc_v_div_fixup_f16_rdna4, goc_v_div_fixup_f32_rdna4,
                                goc_v_div_fixup_f64_rdna4};
   const char *names[] = {"v_div_fixup_f16", "v_div_fixup_f32", "v_div_fixup_f64"};
   const unsigned widths[] = {16, 32, 64}, fractions[] = {10, 23, 52}, biases[] = {15, 127, 1023};

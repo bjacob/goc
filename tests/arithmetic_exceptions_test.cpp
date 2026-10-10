@@ -20,7 +20,7 @@ int fmac(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
   return goc_v_fmac_f16_rdna4(flags, exec_mask, mode, d, a, b, exceptions);
 }
 
-const Fn functions[] = {goc_v_fma_f16_rdna4, fmac, goc_v_div_fixup_f16};
+const Fn functions[] = {goc_v_fma_f16_rdna4, fmac, goc_v_div_fixup_f16_rdna4};
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 const uint32_t values[] = {0x7c013c00, 0x00017bff, 0x4000fc00, 0x7e003c00,
                            0x80010000, 0x03ff0400, 0x3bffbc00, 0x7bff0001};
@@ -114,7 +114,7 @@ TEST(ArithmeticExceptions, HostEnvironmentAndOptOut) {
 }
 
 TEST(ArithmeticExceptions, LooseModeSkipsReporting) {
-  for (Fn fn : {goc_v_fma_f16_rdna4, fmac, goc_v_div_fixup_f16, goc_v_pk_fma_f16_rdna4})
+  for (Fn fn : {goc_v_fma_f16_rdna4, fmac, goc_v_div_fixup_f16_rdna4, goc_v_pk_fma_f16_rdna4})
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       uint32_t words[5][32];
       for (unsigned reg = 0; reg < 5; ++reg)

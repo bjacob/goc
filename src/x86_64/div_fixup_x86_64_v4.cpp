@@ -6,6 +6,7 @@
 #include "div_fixup.h"
 #include "division.h"
 #include "goc/goc.h"
+#include "x86_64/div_fixup_half.h"
 
 #include <immintrin.h>
 #include <stdint.h>
@@ -22,6 +23,10 @@ template <bool Wide> struct Ops {
     else
       return _mm512_set1_epi32(int32_t(x));
   }
+
+  static V band(V a, V b) { return _mm512_and_si512(a, b); }
+
+  static V bor(V a, V b) { return _mm512_or_si512(a, b); }
 
   static V add(V a, V b) {
     if constexpr (Wide)
@@ -79,7 +84,7 @@ template <bool Wide> struct Ops {
   }
 };
 
-template <unsigned Width>
+template <unsigned Width, bool Rdna3Half>
 __m512i value(__m512i a, __m512i b, __m512i c, uint32_t mode, bool saturate) {
   using F = goc::DivisionFormat<Width>;
   using O = Ops<Width == 64>;
@@ -89,7 +94,7 @@ __m512i value(__m512i a, __m512i b, __m512i c, uint32_t mode, bool saturate) {
        cm = _mm512_and_si512(c, magmask);
   auto sign = _mm512_and_si512(_mm512_xor_si512(b, c), signbit);
   auto overflow = O::set(F::infinity - (Width == 16 && saturate));
-  auto result = _mm512_or_si512(sign, O::select(O::gt(inf, pm), pm, overflow));
+  auto result = _mm512_or_si512(sign, O::select(O::gt(inf, pm), pm, Rdna3Half ? inf : overflow));
   if constexpr (Width != 16) {
     auto delta = O::sub(O::shr(cm, F::fraction), O::shr(bm, F::fraction));
     result =
@@ -104,18 +109,23 @@ __m512i value(__m512i a, __m512i b, __m512i c, uint32_t mode, bool saturate) {
   result = O::select(O::gt(cm, inf), _mm512_or_si512(c, O::set(F::quiet)), result);
   unsigned omod = (mode >> 6) & 3;
   if (omod) {
-    auto exponent = _mm512_and_si512(result, inf), output_sign = _mm512_and_si512(result, signbit),
-         step = O::set(uint64_t(1) << F::fraction);
-    __m512i scaled;
-    if (omod == 3)
-      scaled = O::select(O::eq(exponent, step), output_sign, O::sub(result, step));
+    if constexpr (Rdna3Half)
+      result = goc::fixup_half_omod<O>(result, omod, saturate);
     else {
-      auto increment = O::set(uint64_t(omod) << F::fraction);
-      scaled = O::select(O::inverse(O::gt(O::sub(inf, increment), exponent)),
-                         _mm512_or_si512(output_sign, overflow), O::add(result, increment));
+      auto exponent = _mm512_and_si512(result, inf),
+           output_sign = _mm512_and_si512(result, signbit),
+           step = O::set(uint64_t(1) << F::fraction);
+      __m512i scaled;
+      if (omod == 3)
+        scaled = O::select(O::eq(exponent, step), output_sign, O::sub(result, step));
+      else {
+        auto increment = O::set(uint64_t(omod) << F::fraction);
+        scaled = O::select(O::inverse(O::gt(O::sub(inf, increment), exponent)),
+                           _mm512_or_si512(output_sign, overflow), O::add(result, increment));
+      }
+      result = O::select(O::eq(exponent, inf), result, scaled);
+      result = O::select(O::eq(exponent, zero), zero, result);
     }
-    result = O::select(O::eq(exponent, inf), result, scaled);
-    result = O::select(O::eq(exponent, zero), zero, result);
   }
   if (mode & GOC_ALU_CLAMP) {
     auto negative = O::inverse(O::eq(_mm512_and_si512(result, signbit), zero));
@@ -154,14 +164,15 @@ __m512i load(const uint32_t *const *v, unsigned lane, uint32_t mode, unsigned op
 
 namespace goc {
 
-template <unsigned Width>
+template <unsigned Width, bool Rdna3Half>
 void fixup_x86_64_v4(uint32_t exec_mask, uint32_t mode, bool saturate, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   constexpr unsigned lanes = Width == 64 ? 8 : 16;
   uint32_t staged[2][32];
   for (unsigned lane = 0; lane < 32; lane += lanes) {
-    auto result = value<Width>(load<Width>(a, lane, mode, 0), load<Width>(b, lane, mode, 1),
-                               load<Width>(c, lane, mode, 2), mode, saturate);
+    auto result =
+        value<Width, Rdna3Half>(load<Width>(a, lane, mode, 0), load<Width>(b, lane, mode, 1),
+                                load<Width>(c, lane, mode, 2), mode, saturate);
     if constexpr (Width == 64) {
       _mm256_storeu_si256(reinterpret_cast<__m256i *>(staged[0] + lane),
                           _mm512_cvtepi64_epi32(result));
@@ -195,5 +206,9 @@ template void fixup_x86_64_v4<32>(uint32_t, uint32_t, bool, uint32_t *const *,
 template void fixup_x86_64_v4<64>(uint32_t, uint32_t, bool, uint32_t *const *,
                                   const uint32_t *const *, const uint32_t *const *,
                                   const uint32_t *const *);
+
+template void fixup_x86_64_v4<16, true>(uint32_t, uint32_t, bool, uint32_t *const *,
+                                        const uint32_t *const *, const uint32_t *const *,
+                                        const uint32_t *const *);
 
 } // namespace goc
