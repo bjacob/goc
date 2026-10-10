@@ -22,8 +22,8 @@ using Fn = goc_test::WaveInstruction<decltype(&goc_v_min_u32)>;
 const Fn functions[] = {
     goc_v_cvt_pk_norm_i16_f32,
     goc_v_cvt_pk_norm_u16_f32,
-    goc_v_cvt_pk_norm_i16_f16,
-    goc_v_cvt_pk_norm_u16_f16,
+    goc_v_cvt_pk_norm_i16_f16_rdna4,
+    goc_v_cvt_pk_norm_u16_f16_rdna4,
     +[](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *) { return goc_v_cvt_norm_i16_f16(f, exec_mask, i, d, a); },
     +[](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
@@ -32,8 +32,8 @@ const Fn functions[] = {
 const Fn wave64[] = {
     goc_v_cvt_pk_norm_i16_f32_wave64,
     goc_v_cvt_pk_norm_u16_f32_wave64,
-    goc_v_cvt_pk_norm_i16_f16_wave64,
-    goc_v_cvt_pk_norm_u16_f16_wave64,
+    goc_v_cvt_pk_norm_i16_f16_rdna4_wave64,
+    goc_v_cvt_pk_norm_u16_f16_rdna4_wave64,
     +[](uint64_t f, uint64_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *) { return goc_v_cvt_norm_i16_f16_wave64(f, exec_mask, i, d, a); },
     +[](uint64_t f, uint64_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,

@@ -418,14 +418,14 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_cvt_norm_i16_f16` | output helper | no | 9536, 9556 | review required |
 | `v_cvt_norm_u16_f16` | output helper | no | 9583, 9603 | review required |
 | `v_cvt_off_f32_i4` | IEEE mode, OMOD, architecture query, output helper | yes | 9630, 9648 | review required |
-| `v_cvt_pk_i16_f32` | no direct policy detected | no | not found | review required |
+| `v_cvt_pk_i16_f32` | no direct policy detected | yes | not found | review required |
 | `v_cvt_pk_i16_i32` | SIMD macro, output helper | no | 9676 | review required |
-| `v_cvt_pk_norm_i16_f16` | no direct policy detected | no | not found | review required |
+| `v_cvt_pk_norm_i16_f16` | no direct policy detected | yes | not found | review required |
 | `v_cvt_pk_norm_i16_f32` | SIMD macro, output helper | no | 9706 | review required |
-| `v_cvt_pk_norm_u16_f16` | no direct policy detected | no | not found | review required |
+| `v_cvt_pk_norm_u16_f16` | no direct policy detected | yes | not found | review required |
 | `v_cvt_pk_norm_u16_f32` | SIMD macro, output helper | no | 9754 | review required |
-| `v_cvt_pk_rtz_f16_f32` | SIMD macro, output helper | no | 9800, 9821 | review required |
-| `v_cvt_pk_u16_f32` | no direct policy detected | no | not found | review required |
+| `v_cvt_pk_rtz_f16_f32` | SIMD macro, output helper | yes | 9800, 9821 | review required |
+| `v_cvt_pk_u16_f32` | no direct policy detected | yes | not found | review required |
 | `v_cvt_pk_u16_u32` | SIMD macro, output helper | no | 9860 | review required |
 | `v_cvt_pk_u8_f32` | output helper | no | 9885 | review required |
 | `v_cvt_u16_f16` | SIMD macro, output helper | yes | 10141, 10165 | review required |

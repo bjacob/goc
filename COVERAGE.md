@@ -3568,3 +3568,58 @@ architecture-specific rounding rule or reverse-engineer a new exact model from
 that discrepancy. The three two-source packed conversions and normalized
 conversions also still need their native-state/API review; they are not closed
 by this byte/nibble slice.
+
+## Packed and normalized conversion state/API review
+
+Reviewed against rocjitsu revision `ffc144c564c`: shared packed-RTZ and normalized
+execution helpers; architecture-specific `VCvtPkI16F32Vop3`, `VCvtPkU16F32Vop3`,
+and `VCvtPkNorm{I,U}16F16Vop3` bodies; `util::f32_to_f16_rtz`; and RDNA3 ISA
+packed-conversion descriptions. The architecture-specific bodies matter here:
+the shared-helper scan does not find all of these mnemonics.
+
+| Forms | Numeric implementation | API decision |
+|---|---|---|
+| `v_cvt_pk_rtz_f16_f32` | Existing shared round-toward-zero half conversion; packed OMOD ignored | RDNA3 `trapsts`, `_rdna4` `excp_flag_user` |
+| `v_cvt_pk_i16_f32`, `v_cvt_pk_u16_f32` | Shared saturation and truncation, NaN-to-zero | RDNA3 `trapsts`, `_rdna4` `excp_flag_user` |
+| `v_cvt_pk_norm_i16_f16`, `v_cvt_pk_norm_u16_f16` | Shared double-product normalized conversion, nearest-even | RDNA3 `trapsts`, `_rdna4` `excp_flag_user` |
+| `v_cvt_pk_norm_i16_f32`, `v_cvt_pk_norm_u16_f32` | Same normalized algorithm | Retain shared unsuffixed API, no optional state output |
+| `v_cvt_norm_i16_f16`, `v_cvt_norm_u16_f16` | Same normalized algorithm, selected destination half | Retain shared unsuffixed API, no optional state output |
+
+All decisions also apply to Wave64. The numeric scalar and SIMD kernels remain
+shared. Guest IEEE/input/output-denormal flags are now accepted without numeric
+effect, following the reviewed conversion bodies. Unlike ordinary floating
+results, these forms do not acquire architecture-dependent OMOD scaling.
+The forms' existing supported/ignored modifier rules remain unchanged.
+
+All nine remain loose-only; exact optional reporting remains explicitly
+unsupported regardless of STRICT, and loose calls leave state untouched.
+Rocjitsu's RTZ utility preserves raw NaN payload/signaling bits while GoC's
+existing RDNA4 fixture and loose SIMD contract quiet them. No new hardware
+rule is inferred from that discrepancy and no new exact claim is made.
+The existing safe NaN-to-zero integer behavior is retained rather than copying
+an upstream floating-to-integer cast that may be undefined for NaN. No hardware
+characterization or host FP-control changes were introduced.
+
+New tests compare both architectures and widths with independent integer
+references for all modifiers, eight guest policies, all CPU selections, ordinary
+and DPP8/DPP16 forms, sparse masks, source/destination aliases, unaligned storage,
+and destination guards. Separate tests cover exact rejection, optional-state
+contracts, zero/nonzero EXEC error atomicity, and unchanged host FP controls.
+The original RDNA4 captured/reference suites now call the explicit `_rdna4`
+APIs where a native-state split was needed.
+
+Validation: all 1,043 CTests pass with Clang 21 Release and GCC 15 Release;
+33 targeted ASan/UBSan tests pass. Logs are `packed-architecture-tests.log`
+under `../goc-build/coverage-work/`, `../goc-build-gcc/`, and
+`../goc-build-sanitize/`.
+
+Performance: seven alternating before/after samples per case, pinned to CPU 2,
+using thread CPU time and at least 20 ms. Across nine conversions and their
+plain/modified forms, median time changes are -0.14% scalar, -0.08% AVX2,
+and -0.03% AVX-512. The worst measured slowdown is +1.09%. All four SIMD object
+files are byte-identical to the baseline. Raw samples are in
+`../goc-build/coverage-work/packed-architecture-performance.json`. No per-lane
+policy branches or reporting work were added.
+
+The separate `v_cvt_pk_u8_f32` rounding discrepancy remains open; this slice does
+not resolve it or claim completion of the wider architecture audit.

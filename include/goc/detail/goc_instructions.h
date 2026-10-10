@@ -2684,6 +2684,11 @@ int goc_v_cvt_pk_u16_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t ins
 // OMOD. GOC_FP16_OVFL has no effect. Supports loose semantics, all EXEC masks
 // and whole-register aliases. Host FP exception flags may change.
 
+// Packed-half forms use RDNA3 TRAPSTS by default and RDNA4 EXCP_FLAG_USER with
+// _rdna4. Other normalized forms use the same unsuffixed API on both architectures.
+// Guest IEEE/input/output-denormal flags are accepted without numerical effect.
+// Loose calls leave optional state untouched; exact reporting is unsupported.
+
 int goc_v_cvt_pk_norm_i16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b);
@@ -2694,11 +2699,19 @@ int goc_v_cvt_pk_norm_u16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instr
 
 int goc_v_cvt_pk_norm_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
-                              const uint32_t *const *b, uint32_t *excp_flag_user);
+                              const uint32_t *const *b, uint32_t *trapsts);
+
+int goc_v_cvt_pk_norm_i16_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_cvt_pk_norm_u16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
-                              const uint32_t *const *b, uint32_t *excp_flag_user);
+                              const uint32_t *const *b, uint32_t *trapsts);
+
+int goc_v_cvt_pk_norm_u16_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_cvt_norm_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a);
@@ -2716,10 +2729,22 @@ int goc_v_cvt_pk_norm_u16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_
                                      const uint32_t *const *b);
 int goc_v_cvt_pk_norm_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                      uint32_t *const *d, const uint32_t *const *a,
-                                     const uint32_t *const *b, uint32_t *excp_flag_user);
+                                     const uint32_t *const *b, uint32_t *trapsts);
+
+int goc_v_cvt_pk_norm_i16_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                           uint64_t instruction_flags, uint32_t *const *d,
+                                           const uint32_t *const *a, const uint32_t *const *b,
+                                           uint32_t *excp_flag_user);
+
 int goc_v_cvt_pk_norm_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                      uint32_t *const *d, const uint32_t *const *a,
-                                     const uint32_t *const *b, uint32_t *excp_flag_user);
+                                     const uint32_t *const *b, uint32_t *trapsts);
+
+int goc_v_cvt_pk_norm_u16_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                           uint64_t instruction_flags, uint32_t *const *d,
+                                           const uint32_t *const *a, const uint32_t *const *b,
+                                           uint32_t *excp_flag_user);
+
 int goc_v_cvt_norm_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                   uint32_t *const *d, const uint32_t *const *a);
 int goc_v_cvt_norm_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
@@ -2735,29 +2760,62 @@ int goc_v_cvt_norm_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t i
 // mapping to zero. GOC_FP16_OVFL has no effect. Results do not depend on host
 // rounding mode; host FP exception flags may change.
 
+// Unsuffixed packed APIs use RDNA3 TRAPSTS; _rdna4 APIs use EXCP_FLAG_USER.
+// Guest IEEE/input/output-denormal flags are accepted without numerical effect.
+// Loose calls leave optional state untouched; exact reporting is unsupported.
+
 int goc_v_cvt_pk_rtz_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                             uint32_t *excp_flag_user);
+                             uint32_t *trapsts);
+
+int goc_v_cvt_pk_rtz_f16_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_cvt_pk_i16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                         uint32_t *excp_flag_user);
+                         uint32_t *trapsts);
+
+int goc_v_cvt_pk_i16_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_cvt_pk_u16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                         uint32_t *excp_flag_user);
+                         uint32_t *trapsts);
+
+int goc_v_cvt_pk_u16_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, uint32_t *excp_flag_user);
 
 // Wave64 packed conversions use the same rounding, modifiers and one VGPR
 // per operand. Loose semantics and optional-state restrictions are unchanged.
 int goc_v_cvt_pk_rtz_f16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                     uint32_t *const *d, const uint32_t *const *a,
-                                    const uint32_t *const *b, uint32_t *excp_flag_user);
+                                    const uint32_t *const *b, uint32_t *trapsts);
+
+int goc_v_cvt_pk_rtz_f16_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                          uint64_t instruction_flags, uint32_t *const *d,
+                                          const uint32_t *const *a, const uint32_t *const *b,
+                                          uint32_t *excp_flag_user);
+
 int goc_v_cvt_pk_i16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
-                                const uint32_t *const *b, uint32_t *excp_flag_user);
+                                const uint32_t *const *b, uint32_t *trapsts);
+
+int goc_v_cvt_pk_i16_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      uint32_t *excp_flag_user);
+
 int goc_v_cvt_pk_u16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
-                                const uint32_t *const *b, uint32_t *excp_flag_user);
+                                const uint32_t *const *b, uint32_t *trapsts);
+
+int goc_v_cvt_pk_u16_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      uint32_t *excp_flag_user);
 
 // FP8/BF8 single-result conversion byte selector, an enumeration encoded in
 // instruction_flags bits 16-17. Byte 0 is the least significant byte of A for

@@ -46,7 +46,9 @@ int convert(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
                          (half ? GOC_ALU_HIGH_A : 0) |
                          (unary ? GOC_ALU_HIGH_D | GOC_ALU_OMOD_HALF
                                 : GOC_ALU_ABS_B | GOC_ALU_NEG_B | (half ? GOC_ALU_HIGH_B : 0));
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, false,
+                                GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                                    GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -117,18 +119,18 @@ int goc_v_cvt_pk_norm_u16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instr
                                                          b);
 }
 
-int goc_v_cvt_pk_norm_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *const *d, const uint32_t *const *a,
-                              const uint32_t *const *b, uint32_t *excp_flag_user) {
+int goc_v_cvt_pk_norm_i16_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return convert<false, goc::NormalizedForm::PackedHalf>(flags, exec_mask, instruction_flags, d, a,
                                                          b);
 }
 
-int goc_v_cvt_pk_norm_u16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                              uint32_t *const *d, const uint32_t *const *a,
-                              const uint32_t *const *b, uint32_t *excp_flag_user) {
+int goc_v_cvt_pk_norm_u16_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return convert<true, goc::NormalizedForm::PackedHalf>(flags, exec_mask, instruction_flags, d, a,
@@ -161,18 +163,20 @@ int goc_v_cvt_pk_norm_u16_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_
                                                                 d, a, b);
 }
 
-int goc_v_cvt_pk_norm_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                                     uint32_t *const *d, const uint32_t *const *a,
-                                     const uint32_t *const *b, uint32_t *excp_flag_user) {
+int goc_v_cvt_pk_norm_i16_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                           uint64_t instruction_flags, uint32_t *const *d,
+                                           const uint32_t *const *a, const uint32_t *const *b,
+                                           uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return convert_wave64<false, goc::NormalizedForm::PackedHalf>(flags, exec_mask, instruction_flags,
                                                                 d, a, b);
 }
 
-int goc_v_cvt_pk_norm_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                                     uint32_t *const *d, const uint32_t *const *a,
-                                     const uint32_t *const *b, uint32_t *excp_flag_user) {
+int goc_v_cvt_pk_norm_u16_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                           uint64_t instruction_flags, uint32_t *const *d,
+                                           const uint32_t *const *a, const uint32_t *const *b,
+                                           uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return convert_wave64<true, goc::NormalizedForm::PackedHalf>(flags, exec_mask, instruction_flags,
@@ -189,4 +193,36 @@ int goc_v_cvt_norm_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t i
                                   uint32_t *const *d, const uint32_t *const *a) {
   return convert_wave64<true, goc::NormalizedForm::Half>(flags, exec_mask, instruction_flags, d, a,
                                                          nullptr);
+}
+
+int goc_v_cvt_pk_norm_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return goc_v_cvt_pk_norm_i16_f16_rdna4(flags, exec_mask, mode, d, a, b, nullptr);
+}
+
+int goc_v_cvt_pk_norm_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return goc_v_cvt_pk_norm_i16_f16_rdna4_wave64(flags, exec_mask, mode, d, a, b, nullptr);
+}
+
+int goc_v_cvt_pk_norm_u16_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return goc_v_cvt_pk_norm_u16_f16_rdna4(flags, exec_mask, mode, d, a, b, nullptr);
+}
+
+int goc_v_cvt_pk_norm_u16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                     uint32_t *const *d, const uint32_t *const *a,
+                                     const uint32_t *const *b, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return goc_v_cvt_pk_norm_u16_f16_rdna4_wave64(flags, exec_mask, mode, d, a, b, nullptr);
 }

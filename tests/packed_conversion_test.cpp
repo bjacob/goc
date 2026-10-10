@@ -19,11 +19,13 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_cvt_pk_rtz_f16_f32);
-const Fn functions[] = {goc_v_cvt_pk_rtz_f16_f32, goc_v_cvt_pk_i16_f32, goc_v_cvt_pk_u16_f32};
+using Fn = decltype(&goc_v_cvt_pk_rtz_f16_f32_rdna4);
+const Fn functions[] = {goc_v_cvt_pk_rtz_f16_f32_rdna4, goc_v_cvt_pk_i16_f32_rdna4,
+                        goc_v_cvt_pk_u16_f32_rdna4};
 
-const decltype(&goc_v_cvt_pk_rtz_f16_f32_wave64) wave64[] = {
-    goc_v_cvt_pk_rtz_f16_f32_wave64, goc_v_cvt_pk_i16_f32_wave64, goc_v_cvt_pk_u16_f32_wave64};
+const decltype(&goc_v_cvt_pk_rtz_f16_f32_rdna4_wave64) wave64[] = {
+    goc_v_cvt_pk_rtz_f16_f32_rdna4_wave64, goc_v_cvt_pk_i16_f32_rdna4_wave64,
+    goc_v_cvt_pk_u16_f32_rdna4_wave64};
 
 ::testing::AssertionResult check(unsigned op, uint64_t flags, uint32_t mode, const uint32_t av[32],
                                  const uint32_t bv[32]) {

@@ -4438,8 +4438,8 @@ bool benchmark_normalized(uint64_t cpu, int iterations, int min_ms) {
   const Binary functions[] = {
       goc_v_cvt_pk_norm_i16_f32,
       goc_v_cvt_pk_norm_u16_f32,
-      goc_v_cvt_pk_norm_i16_f16,
-      goc_v_cvt_pk_norm_u16_f16,
+      goc_v_cvt_pk_norm_i16_f16_rdna4,
+      goc_v_cvt_pk_norm_u16_f16_rdna4,
       +[](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
           const uint32_t *const *) { return goc_v_cvt_norm_i16_f16(f, exec_mask, i, d, a); },
       +[](uint64_t f, uint32_t exec_mask, uint64_t i, uint32_t *const *d, const uint32_t *const *a,
@@ -4512,7 +4512,8 @@ bool benchmark_normalized(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_packed_conversion(uint64_t cpu, int iterations, int min_ms) {
   using Binary = goc_test::WaveInstruction<decltype(&goc_v_min_u32)>;
-  const Binary functions[] = {goc_v_cvt_pk_rtz_f16_f32, goc_v_cvt_pk_i16_f32, goc_v_cvt_pk_u16_f32};
+  const Binary functions[] = {goc_v_cvt_pk_rtz_f16_f32_rdna4, goc_v_cvt_pk_i16_f32_rdna4,
+                              goc_v_cvt_pk_u16_f32_rdna4};
   const char *names[] = {"v_cvt_pk_rtz_f16_f32", "v_cvt_pk_i16_f32", "v_cvt_pk_u16_f32"};
   const uint32_t values[] = {0x3fc00000, 0xc7000100, 0x477fff00, 0x7f7fffff,
                              0x387fffff, 0x33800000, 0xbf801fff, 0};
