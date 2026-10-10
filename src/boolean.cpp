@@ -20,7 +20,7 @@ int boolean(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
 
   const uint32_t known =
       Half ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_D | (Op == goc::Boolean::Not ? 0 : GOC_ALU_HIGH_B) : 0;
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -58,6 +58,32 @@ int boolean(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   for (int lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
+  return GOC_SUCCESS;
+}
+
+template <goc::Boolean Op, bool Half>
+int boolean_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b) {
+  if (int error = boolean<Op, Half>(flags, 0, mode, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  // DPP stays within 16-lane rows, so whole-VGPR aliases are safe across halves.
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32;
+    const uint32_t *source_b = nullptr;
+    if constexpr (Op != goc::Boolean::Not)
+      source_b = b[0] + half * 32;
+    if (int error = boolean<Op, Half>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                                      &source_a, &source_b))
+      return error;
+  }
   return GOC_SUCCESS;
 }
 
@@ -106,4 +132,51 @@ int goc_v_not_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
 int goc_v_xnor_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                    uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return boolean<goc::Boolean::Xnor, false>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_and_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return boolean_wave64<goc::Boolean::And, false>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_or_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return boolean_wave64<goc::Boolean::Or, false>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_xor_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return boolean_wave64<goc::Boolean::Xor, false>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_not_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a) {
+  return boolean_wave64<goc::Boolean::Not, false>(flags, exec_mask, instruction_flags, d, a,
+                                                  nullptr);
+}
+
+int goc_v_and_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return boolean_wave64<goc::Boolean::And, true>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_or_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return boolean_wave64<goc::Boolean::Or, true>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_xor_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return boolean_wave64<goc::Boolean::Xor, true>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_not_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a) {
+  return boolean_wave64<goc::Boolean::Not, true>(flags, exec_mask, instruction_flags, d, a,
+                                                 nullptr);
+}
+
+int goc_v_xnor_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return boolean_wave64<goc::Boolean::Xnor, false>(flags, exec_mask, instruction_flags, d, a, b);
 }

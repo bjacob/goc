@@ -232,9 +232,9 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_clz_i32_u32`, `v_ctz_i32_b32`, `v_cls_i32`, `v_bcnt_u32_b32` (wave32 and wave64) | Scalar, x86-64-v3, x86-64-v4 | Same paths, bit-exact |
 | `v_mbcnt_lo_u32_b32` (wave32 and wave64), `v_mbcnt_hi_u32_b32` (wave64) | Scalar, x86-64-v3, x86-64-v4 | Same paths, bit-exact |
 | `v_mbcnt_hi_u32_b32` (wave32) | Scalar, x86-64-v4 | Same paths, bit-exact |
-| `v_and_b16`, `v_or_b16`, `v_xor_b16`, `v_not_b16` | Scalar, x86-64-v4 | Not implemented |
+| `v_and_b16`, `v_or_b16`, `v_xor_b16`, `v_not_b16` | Scalar, x86-64-v4; both wave sizes | Exact bitwise operations |
 | `v_sat_pk_u8_i16`, `v_pack_b32_f16` | Scalar, x86-64-v3, x86-64-v4; all supported modifiers | Not implemented |
-| `v_and_b32`, `v_or_b32`, `v_xor_b32`, `v_not_b32`, `v_xnor_b32` | Scalar, x86-64-v4 | Not implemented |
+| `v_and_b32`, `v_or_b32`, `v_xor_b32`, `v_not_b32`, `v_xnor_b32` | Scalar, x86-64-v4; both wave sizes | Exact bitwise operations |
 | `v_bfe_u32`, `v_bfe_i32`, `v_bfm_b32`, `v_bfrev_b32`, `v_alignbit_b32`, `v_alignbyte_b32`, `v_perm_b32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_bfi_b32` | Scalar, x86-64-v4 | Not implemented |
 | `v_lshl_add_u32`, `v_add_lshl_u32`, `v_lshl_or_b32`, `v_lerp_u8` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
@@ -719,7 +719,8 @@ for v3 (4.41–5.89x scalar) and 15.1–17.1 ns for v4 (4.03–4.89x),
 using seven samples of at least 10 ms each. v3 is faster for these workloads.
 
 Conditional selection (`v_cndmask_b32` and `v_cndmask_b16`) selects B for set
-bits in a separate wave32 condition mask and A for clear bits. EXEC independently
+bits in a separate condition mask and A for clear bits. The `_wave64` forms
+use 64-bit condition and EXEC masks. Both semantics are bit-exact. EXEC independently
 controls destination writes. ABS/NEG modify only source sign bits; all payload
 bits, including signaling NaNs, are preserved. The 16-bit form supports every
 source/destination half selector and preserves the unwritten destination half.

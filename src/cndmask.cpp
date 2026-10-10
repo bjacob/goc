@@ -21,7 +21,7 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
         });
   const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_ABS_B | GOC_ALU_NEG_A | GOC_ALU_NEG_B |
                          (Half ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D : 0);
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -56,6 +56,30 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+template <bool Half>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b, uint64_t condition) {
+  if (int error = run<Half>(flags, 0, mode, nullptr, nullptr, nullptr, 0))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  // DPP stays within 16-lane rows, so whole-VGPR aliases are safe across halves.
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32;
+    const uint32_t *source_b = b[0] + half * 32;
+    if (int error = run<Half>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                              &source_a, &source_b, uint32_t(condition >> (half * 32))))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_cndmask_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -68,4 +92,16 @@ int goc_v_cndmask_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       uint32_t condition) {
   return run<true>(flags, exec_mask, instruction_flags, d, a, b, condition);
+}
+
+int goc_v_cndmask_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint64_t condition) {
+  return run_wave64<false>(flags, exec_mask, instruction_flags, d, a, b, condition);
+}
+
+int goc_v_cndmask_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint64_t condition) {
+  return run_wave64<true>(flags, exec_mask, instruction_flags, d, a, b, condition);
 }

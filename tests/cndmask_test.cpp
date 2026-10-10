@@ -118,9 +118,9 @@ TEST(Cndmask, InvalidFlagsAndHostFpState) {
                   GOC_ERROR_INVALID_FLAGS);
       }
     }
-    EXPECT_EQ(functions[half](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr,
-                              nullptr, nullptr, 0),
-              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(
+        functions[half]((2ULL << 16) | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr, nullptr, 0),
+        GOC_ERROR_UNSUPPORTED_SEMANTICS);
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
         uint32_t a0[32], b0[32], d0[32];

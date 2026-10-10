@@ -1982,7 +1982,7 @@ int goc_v_interp_p2_rtz_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t ins
 // the selected destination half, preserving the other half. No OMOD or CLAMP.
 // DPP8/DPP16 permutes A before source modifiers and half selection; B and
 // the condition mask remain in their original lanes.
-// Loose semantics only; all host FP state is preserved.
+// Both semantics are bit-exact; all host FP state is preserved.
 int goc_v_cndmask_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       uint32_t condition);
@@ -3861,6 +3861,45 @@ int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c);
 
+// Wave64 Boolean operations and conditional selects. EXEC and the CNDMASK
+// condition have one bit per lane. Modifiers, DPP and whole-VGPR aliasing match
+// Wave32; inactive lanes and unselected destination halves are preserved.
+// Both semantics produce exact bitwise results. No FP state is accessed.
+int goc_v_and_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_or_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_xor_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_not_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_and_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_or_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_xor_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_not_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a);
+
+int goc_v_xnor_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_cndmask_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint64_t condition);
+
+int goc_v_cndmask_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             uint64_t condition);
+
 // Wave64 CLASS comparisons. The 64-bit result is masked by EXEC. Classification
 // uses raw input bits, including denormals regardless of FP flushing flags, and
 // produces no FP exceptions. Modifiers and source layouts match Wave32.
@@ -4465,7 +4504,7 @@ int goc_v_mbcnt_hi_u32_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t i
 // DPP8/DPP16 on A. B32 forms have no arithmetic modifiers. B16 forms select A/B/D
 // halves with HIGH_A/B/D after DPP and leave the other D half unchanged. Other
 // modifiers are invalid; NOT has no B.
-// Only loose semantics are implemented. All host FP state is preserved.
+// Both semantics are bit-exact. All host FP state is preserved.
 int goc_v_and_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
 

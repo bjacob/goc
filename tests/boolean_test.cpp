@@ -121,15 +121,14 @@ TEST(Boolean, ValidationBeforeEmptyMaskAndUnchangedOutputs) {
           }
         EXPECT_EQ(goc_test::boolean_functions[op](cpu | (1ULL << 63), exec_mask, known, d, a, b),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(goc_test::boolean_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
-                                                      GOC_SEMANTICS_STRICT,
+        EXPECT_EQ(goc_test::boolean_functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT,
                                                   exec_mask, known, d, a, b),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (const auto &reg : words)
         for (uint32_t value : reg)
           EXPECT_EQ(value, 0x859e43c1);
-      EXPECT_TRUE(check(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_FP16_OVFL, known, words));
+      EXPECT_TRUE(check(op, cpu | (2ULL << 16) | GOC_FP16_OVFL, known, words));
     }
 }
 

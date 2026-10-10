@@ -732,3 +732,29 @@ Validation: all 752 tests pass with Clang 21 and GCC 15 Release. All ten CLASS
 and instruction-flag tests pass under ASan/UBSan. Sanitizer validation caught
 and verified the fix for an initial FP64 adapter overread: the class-selection
 operand occupies one VGPR even though the classified value occupies two.
+
+
+## Wave64 Boolean operations and conditional selects
+
+Added nine Boolean and two CNDMASK Wave64 entry points. They reuse the existing
+portable and x86-64-v4 kernels, remapping DPP row-enable bits per half; CNDMASK
+also consumes the corresponding half of its 64-bit condition. Whole-VGPR source
+aliases remain safe because the supported DPP controls do not cross 16-lane
+rows. Inactive lanes and the unwritten half of 16-bit destinations are preserved.
+Existing v3 policy is unchanged: prior measurements favored the portable paths.
+
+These operations are pure raw-bit logic, so strict exact semantics is now
+accepted at both widths. No arithmetic or SIMD kernel changed. The former
+unsupported-exact validation tests now exercise a genuinely reserved semantics
+value instead. New independent bit-by-bit tests check all eleven operations,
+both semantics, all CPU paths, all half/sign modifiers, DPP8/DPP16, all row
+enables, different upper/lower condition bits, whole-source aliases, masks and
+guards. Existing Wave32 hardware corpora continue to exercise shared kernels;
+no new Wave64 capture or throughput measurement is claimed.
+
+The wave-width inventory now has 325 unresolved candidates. Canonical-name
+counts are unchanged at 806 present and three absent.
+
+Validation: all 755 tests pass on Clang 21 and GCC 15 Release builds. All 24
+Boolean, conditional-selection, integer DPP and instruction-flag tests pass
+under ASan/UBSan, including the existing exhaustive routing suites.
