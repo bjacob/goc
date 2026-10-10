@@ -33,7 +33,9 @@ int dot(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                               return dot<Bf16>(flags, exec_mask, uint32_t(mode), d, source, b, c);
                             });
   // Six ABS/NEG bits, plus C and D half selectors.
-  if (int error = goc::validate(flags, mode & ~(63U | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D)))
+  if (int error = goc::validate(flags, mode & ~(63U | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D), false,
+                                GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS |
+                                    GOC_FP_IEEE_MODE))
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
@@ -92,7 +94,15 @@ int dot_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *cons
 
 int goc_v_dot2_f16_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                        const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
-                       uint32_t *excp_flag_user) {
+                       uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return dot<false>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_dot2_f16_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return dot<false>(flags, exec_mask, mode, d, a, b, c);
@@ -100,7 +110,16 @@ int goc_v_dot2_f16_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32
 
 int goc_v_dot2_bf16_bf16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
-                         const uint32_t *const *c, uint32_t *excp_flag_user) {
+                         const uint32_t *const *c, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return dot<true>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_dot2_bf16_bf16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return dot<true>(flags, exec_mask, mode, d, a, b, c);
@@ -108,7 +127,16 @@ int goc_v_dot2_bf16_bf16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
 
 int goc_v_dot2_f16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, const uint32_t *const *b,
-                              const uint32_t *const *c, uint32_t *excp_flag_user) {
+                              const uint32_t *const *c, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return dot_wave64<false>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_dot2_f16_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c,
+                                    uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return dot_wave64<false>(flags, exec_mask, mode, d, a, b, c);
@@ -117,7 +145,16 @@ int goc_v_dot2_f16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
 int goc_v_dot2_bf16_bf16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b, const uint32_t *const *c,
-                                uint32_t *excp_flag_user) {
+                                uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return dot_wave64<true>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_dot2_bf16_bf16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c,
+                                      uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return dot_wave64<true>(flags, exec_mask, mode, d, a, b, c);

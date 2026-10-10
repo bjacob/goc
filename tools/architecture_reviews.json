@@ -286,5 +286,14 @@
     "mnemonics": [
       "v_mullit_f32"
     ]
+  },
+  {
+    "heading": "Half-result DOT2 architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/half_dot_architecture_test.cpp",
+    "mnemonics": [
+      "v_dot2_f16_f16",
+      "v_dot2_bf16_bf16"
+    ]
   }
 ]

@@ -4407,3 +4407,64 @@ GCC/sanitizer logs use the `mullit-` prefix in their build directories. The ledg
 records 148 architecture contracts, and native-state naming resolves 938 of 950
 signatures with zero mismatches and 12 unresolved. Remaining naming reviews are
 half-result DOT2 and SIN/COS; broader whole-project coverage remains unproven.
+
+## Half-result DOT2 architecture contracts
+
+`v_dot2_f16_f16` and `v_dot2_bf16_bf16` have identical RDNA3/RDNA4 numerical
+handlers in rocjitsu revision `ffc144c564c`: both their ordinary and modifier
+execution bodies compare byte-for-byte equal after extraction from the generated
+per-architecture VOP3 files. Both call shared `fp_mode::dot2_f16`/`dot2_bf16`.
+GoC retains one scalar implementation per format and the existing shared AVX2
+kernel; no architecture-specialized arithmetic is introduced.
+
+The architectural state output is distinct: unsuffixed APIs now name RDNA3
+`trapsts`, and new `_rdna4` APIs name `excp_flag_user`, before `_wave64`.
+These small wrappers are needed for the native-register contract, not because
+DOT2's arithmetic differs. Loose calls continue to skip optional reporting;
+non-null exact requests return `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE` before operand
+access, including empty EXEC. Numerical strict exact semantics remain unsupported.
+
+RDNA3 ISA section 7.2.4 and the shared rocjitsu helpers establish the fixed
+half-result policy: F16 supports denormals; BF16 flushes its input/output
+denormals; both narrow nearest-even. F16 alone honors FP16_OVFL. The exposed
+input/output-denormal and IEEE flags are now accepted without changing this
+policy. Six source ABS/NEG modifiers, C/D half selection, DPP8/DPP16, and
+preservation of the other destination half are retained. OMOD, CLAMP and A/B
+half selectors remain outside the API's supported modifier set. The operand
+interface takes already-expanded VGPR words; instruction-decoder processing of
+inline constants is not added here.
+
+Rocjitsu's helpers change host rounding through `ScopedFenv`. GoC does not copy
+or invoke those guards: these remain loose implementations with a host
+nearest-even/preserve-denormals numerical precondition. Ordinary arithmetic may
+raise sticky flags; no host FP controls are changed. No new empirical exact
+model, numerical reverse-engineering or exception model is introduced.
+
+Four new architecture tests cover all eight guest policies, both formats and
+architectures, all supported modifier/half-selection combinations, DPP, wave
+sizes, masks, shared sources, destination aliases, retained halves and guards.
+They also check every accumulator encoding under every guest policy, literal
+rounding/overflow/denormal behavior including BF16's ignored FP16_OVFL, optional
+state/error contracts and unchanged host rounding/FTZ/DAZ controls. Small-integer
+results provide an independent reference; existing RDNA4 literal, random and
+hardware/DPP fixture tests now call the explicit RDNA4 APIs. The Clang AVX2 object
+is byte-for-byte unchanged from the before archive.
+
+Performance: seven alternating before/after samples with CPU 2 affinity, thread
+CPU time and at least 20 ms per case, covering both formats with plain and
+ABS/NEG/half-selection calls. Modified calls pass a non-null optional state.
+All changes are between -2.03% and +0.96%; both higher CPU selectors use the
+same unchanged AVX2 kernel. Raw samples and harness are
+`half-dot-performance.json` / `half-dot-timing.cpp` in the coverage work folder.
+The upstream handler hashes/locations are in `half-dot-upstream-review.json`.
+
+Validation: all 1,094 CTests pass with Clang 21 Release and GCC 15 Release;
+24 targeted ASan/UBSan tests pass for both half-result DOT2 suites, instruction
+flags and architectural-state contracts. All nine audit-tool tests pass. Scans
+of all 192 library objects for each compiler find no explicit FP-control writes
+or environment-setter references (`half-dot-fp-environment-audit.json`). Clang
+logs use the `half-dot-` prefix under `../goc-build/coverage-work/`; GCC and
+sanitizer logs use that prefix in their build directories. The review ledger
+records 150 contracts. Native-state naming resolves 946 of 954 signatures,
+with zero mismatches and eight unresolved SIN/COS signatures. This does not
+establish whole-project completion.

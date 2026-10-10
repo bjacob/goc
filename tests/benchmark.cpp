@@ -5782,7 +5782,7 @@ bool benchmark_half_dot(uint64_t cpu, int iterations, int min_ms) {
           r.expected[128 * (lane / 16) + lane % 16] =
               modified ? (code << 16) | 0xcafe : 0xface0000 | code;
         }
-        Ternary fn = bf16 ? goc_v_dot2_bf16_bf16 : goc_v_dot2_f16_f16;
+        Ternary fn = bf16 ? goc_v_dot2_bf16_bf16_rdna4 : goc_v_dot2_f16_f16_rdna4;
         const char *name = bf16 ? "v_dot2_bf16_bf16" : "v_dot2_f16_f16";
         const char *label = modified ? "ABS/NEG/hiC/hiD" : "none";
         if (descriptor >= 0)

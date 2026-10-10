@@ -17,10 +17,10 @@
 namespace {
 
 using Fn = decltype(&goc_v_fma_f32_rdna4);
-const Fn functions[] = {goc_v_dot2_f16_f16, goc_v_dot2_bf16_bf16};
+const Fn functions[] = {goc_v_dot2_f16_f16_rdna4, goc_v_dot2_bf16_bf16_rdna4};
 
-const decltype(&goc_v_dot2_f16_f16_wave64) wave64_functions[] = {goc_v_dot2_f16_f16_wave64,
-                                                                 goc_v_dot2_bf16_bf16_wave64};
+const decltype(&goc_v_dot2_f16_f16_rdna4_wave64) wave64_functions[] = {
+    goc_v_dot2_f16_f16_rdna4_wave64, goc_v_dot2_bf16_bf16_rdna4_wave64};
 
 // Exact encoding for the small integer reference results.
 uint16_t encode(int value, bool bf16) {

@@ -5728,24 +5728,51 @@ int goc_v_frexp_mant_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
 // D replaces only its selected half, preserving the other half. Supports all
 // six GOC_ALU ABS/NEG flags and HIGH_C/HIGH_D, without OMOD or CLAMP.
 // Loose semantics use FP32 products and sums followed by nearest-even narrowing.
-// BF16 flushes input/output denormals; F16 honors GOC_FP16_OVFL.
+// Both architectures use the same numerical implementation. F16 preserves
+// denormals and honors GOC_FP16_OVFL; BF16 flushes input/output denormals and
+// ignores that flag. Guest input/output-denormal and IEEE flags are accepted
+// without changing this fixed policy. Host nearest-even with denormals preserved
+// is required for loose arithmetic; host controls are never changed, but ordinary
+// arithmetic may raise sticky flags. NaN payloads are unspecified.
+// Unsuffixed RDNA3 APIs take trapsts; _rdna4 APIs take excp_flag_user. Loose
+// calls leave optional state unchanged. Strict exact semantics and non-null
+// exact reporting remain unsupported.
 int goc_v_dot2_f16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       const uint32_t *const *c, uint32_t *excp_flag_user);
+                       const uint32_t *const *c, uint32_t *trapsts);
+
+int goc_v_dot2_f16_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c, uint32_t *excp_flag_user);
 
 int goc_v_dot2_bf16_bf16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                         const uint32_t *const *c, uint32_t *excp_flag_user);
+                         const uint32_t *const *c, uint32_t *trapsts);
+
+int goc_v_dot2_bf16_bf16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user);
 
 // Wave64 retains the same packed inputs, modifiers and loose numerical contract.
 int goc_v_dot2_f16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                               uint32_t *const *d, const uint32_t *const *a,
                               const uint32_t *const *b, const uint32_t *const *c,
-                              uint32_t *excp_flag_user);
+                              uint32_t *trapsts);
+
+int goc_v_dot2_f16_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *a,
+                                    const uint32_t *const *b, const uint32_t *const *c,
+                                    uint32_t *excp_flag_user);
 int goc_v_dot2_bf16_bf16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b, const uint32_t *const *c,
-                                uint32_t *excp_flag_user);
+                                uint32_t *trapsts);
+
+int goc_v_dot2_bf16_bf16_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, const uint32_t *const *b,
+                                      const uint32_t *const *c, uint32_t *excp_flag_user);
 
 // Unary FP32: one VGPR each for A/D. Supports NEG_A, ABS_A, OMOD and CLAMP;
 // modifiers for absent operands are invalid. CLAMP maps NaNs to +0 and clamps
