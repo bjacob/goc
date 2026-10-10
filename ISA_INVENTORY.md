@@ -1315,11 +1315,11 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_or_b32` | yes | yes | in | `goc_v_or_b32`<br>`goc_v_or_b32_wave64` | — | API present; semantic audit pending |
 | `v_pack_b32_f16` | yes | yes | in | `goc_v_pack_b32_f16`<br>`goc_v_pack_b32_f16_wave64`<br>`goc_v_pack_b32_f16_rdna4`<br>`goc_v_pack_b32_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-pack-and-fp32-byte-pack-architecture-contracts) |
 | `v_perm_b32` | yes | yes | in | `goc_v_perm_b32`<br>`goc_v_perm_b32_wave64` | — | API present; semantic audit pending |
-| `v_permlane16_b32` | yes | yes | in | `goc_v_permlane16_b32`<br>`goc_v_permlane16_b32_wave64` | — | API present; semantic audit pending |
-| `v_permlane16_var_b32` | — | yes | in | `goc_v_permlane16_var_b32`<br>`goc_v_permlane16_var_b32_wave64` | — | API present; semantic audit pending |
+| `v_permlane16_b32` | yes | yes | in | `goc_v_permlane16_b32`<br>`goc_v_permlane16_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#permlane16-architecture-and-simd-contracts) |
+| `v_permlane16_var_b32` | — | yes | in | `goc_v_permlane16_var_b32`<br>`goc_v_permlane16_var_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#permlane16-architecture-and-simd-contracts) |
 | `v_permlane64_b32` | yes | yes | in | `goc_v_permlane64_b32`<br>`goc_v_permlane64_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
-| `v_permlanex16_b32` | yes | yes | in | `goc_v_permlanex16_b32`<br>`goc_v_permlanex16_b32_wave64` | — | API present; semantic audit pending |
-| `v_permlanex16_var_b32` | — | yes | in | `goc_v_permlanex16_var_b32`<br>`goc_v_permlanex16_var_b32_wave64` | — | API present; semantic audit pending |
+| `v_permlanex16_b32` | yes | yes | in | `goc_v_permlanex16_b32`<br>`goc_v_permlanex16_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#permlane16-architecture-and-simd-contracts) |
+| `v_permlanex16_var_b32` | — | yes | in | `goc_v_permlanex16_var_b32`<br>`goc_v_permlanex16_var_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#permlane16-architecture-and-simd-contracts) |
 | `v_pipeflush` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
 | `v_pk_add_f16` | yes | yes | in | `goc_v_pk_add_f16`<br>`goc_v_pk_add_f16_wave64`<br>`goc_v_pk_add_f16_rdna4`<br>`goc_v_pk_add_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#packed-fp16-addmul-architecture-policies) |
 | `v_pk_add_i16` | yes | yes | in | `goc_v_pk_add_i16`<br>`goc_v_pk_add_i16_wave64` | — | API present; semantic audit pending |

@@ -162,3 +162,40 @@ TEST(Permlane, Wave64Validation) {
               GOC_ERROR_INVALID_FLAGS);
   }
 }
+
+TEST(Permlane, EverySelectorAndDestinationWithInactiveSources) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+      for (unsigned lanes : {32U, 64U})
+        for (unsigned op = 0; op < 4; ++op)
+          for (unsigned mode = 0; mode < 4; ++mode)
+            for (unsigned active = 0; active < lanes; ++active)
+              for (unsigned selector = 0; selector < 16; ++selector) {
+                uint32_t input[64], words[66];
+                for (unsigned lane = 0; lane < 64; ++lane)
+                  input[lane] = 0x7f800001U + lane;
+                for (auto &word : words)
+                  word = 0xfffffff0U | selector;
+                uint32_t *d = words + 1;
+                const uint32_t *a = input, *b = d;
+                uint64_t exec_mask = 1ULL << active;
+                uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+                uint32_t packed = selector * 0x11111111U;
+                ASSERT_EQ(lanes == 32 ? goc_test::permlane_call(op, flags, uint32_t(exec_mask),
+                                                                mode, &d, &a, &b, packed, packed)
+                                      : goc_test::permlane_call_wave64(op, flags, exec_mask, mode,
+                                                                       &d, &a, &b, packed, packed),
+                          GOC_SUCCESS);
+                unsigned row = active / 16;
+                if (op & 1)
+                  row ^= 1;
+                unsigned source = row * 16 + selector;
+                uint32_t result = source == active || (mode & GOC_PERMLANE_FI) ? input[source]
+                                  : mode & GOC_PERMLANE_BOUND_CTRL             ? 0
+                                                                   : (0xfffffff0U | selector);
+                for (unsigned word = 0; word < 66; ++word)
+                  ASSERT_EQ(words[word], word == active + 1 ? result : (0xfffffff0U | selector))
+                      << cpu << '/' << lanes << '/' << op << '/' << mode << '/' << active << '/'
+                      << selector;
+              }
+}

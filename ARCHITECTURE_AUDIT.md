@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-367 in-scope mnemonics have explicit contract-review records in
+371 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 442 in-scope mnemonics need a recorded review.
+The remaining 438 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -577,9 +577,9 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_or_b32` | SIMD macro, output helper | no | 17215, 17229 | review required |
 | `v_pack_b32_f16` | SIMD macro, output helper | yes | 17243 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-pack-and-fp32-byte-pack-architecture-contracts) |
 | `v_perm_b32` | SIMD macro, output helper | no | 17260 | review required |
-| `v_permlane16_b32` | no direct policy detected | no | not found | review required |
+| `v_permlane16_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#permlane16-architecture-and-simd-contracts) |
 | `v_permlane64_b32` | output helper | no | 17291 | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
-| `v_permlanex16_b32` | no direct policy detected | no | not found | review required |
+| `v_permlanex16_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#permlane16-architecture-and-simd-contracts) |
 | `v_pk_add_f16` | IEEE mode, SIMD macro, architecture query, output helper | yes | 17313 | [loose contract reviewed; see limitations](COVERAGE.md#packed-fp16-addmul-architecture-policies) |
 | `v_pk_add_i16` | SIMD macro, output helper | no | 17399 | review required |
 | `v_pk_add_u16` | SIMD macro, output helper | no | 17430 | review required |

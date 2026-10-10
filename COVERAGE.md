@@ -5264,3 +5264,40 @@ Validation: all 1,118 CTests pass with Clang and GCC Release; all sixteen
 move/swap tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `swap-review-` in each build directory. The ledger records 367 contracts;
 442 in-scope mnemonics remain without recorded reviews.
+
+## PERMLANE16 architecture and SIMD contracts
+
+Reviewed the four PERMLANE16/PERMLANEX16 fixed and variable selector contracts
+against rocjitsu `ffc144c564c` VOP3 execution bodies, RDNA3 section 16.12 and
+both XML inventories. Fixed-selector handlers agree between RDNA3/RDNA4 apart
+from the spelling of the OPSEL field; variable-selector instructions exist only
+on RDNA4. None requires an architecture suffix. Selectors choose within a
+sixteen-lane row; X switches to the other row of the same thirty-two-lane group,
+including in Wave64. Fixed selectors use sixteen packed nibbles from two scalar
+words; VAR uses the low four bits of the destination lane's index word.
+
+FI permits reading inactive sources. Without FI, an inactive source either
+preserves D or supplies zero according to BOUND_CTRL. Inactive destination lanes
+are always preserved. There are no arithmetic modifiers or implicit global-state
+outputs. All source/index reads precede writes, including when D aliases A or
+the VAR index register. Wave64 halves are independent, so the existing split
+implementation is safe for whole-register aliases.
+
+Reviewed the scalar loop and both SIMD implementations. AVX2 processes eight
+lanes using two source-half permutations and selection; AVX-512 processes one
+sixteen-lane row with a variable permutation. Both handle all FI/BOUND_CTRL
+combinations without falling back to scalar, stage results before stores, and
+use masked stores. No sparse-mask specialization or performance change was added.
+
+Existing tests retain the RDNA4 raw corpus, random selectors, all alias patterns,
+both semantics, upper Wave64 masks and validation. A new test checks every
+selector at every destination in both widths, all four FI/BOUND_CTRL settings,
+both semantics and every available CPU level. Only the destination is active;
+VAR indices have all high bits set and alias the output. It independently checks
+inactive-source fallback, ignored index bits, row pairing and guard preservation.
+No production change was needed.
+
+Validation: all 1,119 CTests pass under Clang and GCC Release; all six PERMLANE
+tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`permlane-review-` in each build directory. The ledger records 371 contracts;
+438 in-scope mnemonics still need recorded reviews.

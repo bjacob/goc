@@ -666,5 +666,16 @@
       "v_swap_b32",
       "v_swaprel_b32"
     ]
+  },
+  {
+    "heading": "PERMLANE16 architecture and SIMD contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/permlane_test.cpp",
+    "mnemonics": [
+      "v_permlane16_b32",
+      "v_permlanex16_b32",
+      "v_permlane16_var_b32",
+      "v_permlanex16_var_b32"
+    ]
   }
 ]
