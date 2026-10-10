@@ -93,3 +93,38 @@ TEST(Swap, ValidationAndEmptyExec) {
   for (uint32_t value : data)
     EXPECT_EQ(value, 0xdeadbeefU);
 }
+
+TEST(Swap, HalfSelectionsBothWavesMasksAndSameRegisterExchange) {
+  for (unsigned lanes : {32U, 64U})
+    for (unsigned halves = 0; halves < 4; ++halves)
+      for (uint64_t exec_mask : masks)
+        for (bool alias : {false, true}) {
+          uint32_t data[2][66], expected[2][66];
+          for (unsigned reg = 0; reg < 2; ++reg)
+            for (unsigned lane = 0; lane < 66; ++lane)
+              data[reg][lane] = expected[reg][lane] =
+                  0xabcd1234U + lane * 0x10001U + reg * 0x76543210U;
+          unsigned sa = halves & 1 ? 16 : 0, sd = halves & 2 ? 16 : 0;
+          unsigned ar = alias ? 0 : 1;
+          for (unsigned lane = 0; lane < lanes; ++lane)
+            if ((exec_mask >> lane) & 1) {
+              uint32_t a = (data[ar][lane + 1] >> sa) & 65535;
+              uint32_t d = (data[0][lane + 1] >> sd) & 65535;
+              expected[0][lane + 1] = (expected[0][lane + 1] & ~(65535U << sd)) | (a << sd);
+              expected[ar][lane + 1] = (expected[ar][lane + 1] & ~(65535U << sa)) | (d << sa);
+            }
+          uint32_t *d = data[0] + 1, *a = data[ar] + 1;
+          uint64_t mode = (sa ? GOC_ALU_HIGH_A : 0) | (sd ? GOC_ALU_HIGH_D : 0);
+          ASSERT_EQ(lanes == 32 ? goc_v_swap_b16(exact, uint32_t(exec_mask), mode, &d, &a)
+                                : goc_v_swap_b16_wave64(exact, exec_mask, mode, &d, &a),
+                    GOC_SUCCESS);
+          EXPECT_EQ(std::memcmp(data, expected, sizeof(data)), 0);
+        }
+  EXPECT_EQ(goc_v_swap_b16(exact, 0, 0, nullptr, nullptr), GOC_SUCCESS);
+  EXPECT_EQ(goc_v_swap_b16_wave64(exact, 0, 0, nullptr, nullptr), GOC_SUCCESS);
+  for (uint64_t mode : {GOC_ALU_NEG_A, GOC_ALU_ABS_A, GOC_ALU_CLAMP, GOC_ALU_HIGH_B}) {
+    EXPECT_EQ(goc_v_swap_b16(exact, UINT32_MAX, mode, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(goc_v_swap_b16_wave64(exact, UINT64_MAX, mode, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+  }
+}

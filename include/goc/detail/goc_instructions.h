@@ -46,6 +46,25 @@ extern "C" {
 int goc_v_mov_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a);
 
+// Wave32 raw half move. HIGH_A/D select source/destination halves; the other
+// destination half is preserved. ABS_A clears and NEG_A toggles the selected
+// sign bit (in that order), with no FP conversion or NaN canonicalization.
+// OMOD and CLAMP are accepted but ignored, matching hardware. DPP8/DPP16 route
+// A before half/sign selection. Both semantics are exact; whole VGPRs may alias.
+// Inactive destinations are preserved; zero EXEC permits null pointers.
+int goc_v_mov_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                  uint32_t *const *d, const uint32_t *const *a);
+
+// Exchange selected halves in active lanes. HIGH_A/D are the only valid flags.
+// Both operands are read/write; unselected halves and inactive lanes survive.
+// Supports exchanging two halves of the same VGPR. Both semantics are exact.
+// Zero EXEC permits null pointers. Shared RDNA3/RDNA4 Wave32/Wave64 operations.
+int goc_v_swap_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                   uint32_t *const *d, uint32_t *const *a);
+
+int goc_v_swap_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, uint32_t *const *a);
+
 // Exchange two read/write VGPRs in active lanes. Both operands use their
 // original values; whole-register aliasing is allowed. Inactive lanes are
 // unchanged. No instruction flags are supported. Both semantics are exact.

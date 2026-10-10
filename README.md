@@ -2329,3 +2329,11 @@ implementations follow the common ISA pseudocode; RX 9070 captures validate both
 wave sizes. RDNA3's inconsistent masked-rotate examples remain an explicit
 hardware-validation gap. Tests cover every 16-bit offset and replay 1,818,624
 hardware-captured output words without requiring a GPU.
+
+`v_mov_b16` supports Wave32 half selection, sign-bit ABS/NEG, and DPP source
+routing. It preserves the other destination half and raw NaN/subnormal bits;
+OMOD and CLAMP are accepted but ignored, as confirmed by RX 9070 captures of
+all encoded modifier combinations. `v_swap_b16` and `_wave64` exchange selected
+halves while preserving the others, including swaps within one VGPR. These are
+exact scalar bit operations shared by RDNA3/RDNA4. Wave64 MOV and dedicated
+SIMD paths remain open.

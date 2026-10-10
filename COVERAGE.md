@@ -218,8 +218,9 @@ Tests cover both wave sizes, full/empty/partial EXEC, lane 31/32 boundaries,
 inactive sources, in-place routing, guard words and rejection of every modifier
 bit. These are specification/reference tests, not new GPU captures. Scalar loops
 provide exact bit operations; dedicated SIMD implementations remain open.
-SWAP_B16 and SWAPREL remain open because their half-register and relative-range
-rules need separate auditing. Missing canonical API names: 67.
+SWAPREL remains open because its relative-range rules need separate auditing.
+The later half-register follow-up below implements SWAP_B16. Missing canonical
+API names at this stage: 67.
 
 Validation for these additions: all 700 tests pass with Clang and GCC; the four
 swap/routing tests also pass under ASan/UBSan.
@@ -289,3 +290,31 @@ Validation: all 708 tests pass with Clang and GCC; all three DS_SWIZZLE tests
 pass under ASan/UBSan. The final capture generator reproduces the Wave64 binary
 capture byte-for-byte; regenerated Wave32 instruction bodies match the original
 probe. Existing arithmetic/SIMD implementations were not changed.
+
+## Half-register moves and swaps
+
+Added shared `v_mov_b16` (Wave32, including DPP) and `v_swap_b16` (Wave32/Wave64).
+MOV applies ABS then NEG directly to the selected half's sign bit. It preserves
+NaN payloads and subnormals without FP conversion. RX 9070 raw-encoding probes
+cover all ABS/NEG/OMOD/CLAMP combinations and half selections: ABS/NEG work,
+while OMOD/CLAMP are ignored. LLVM rejects these modifier spellings even though
+the hardware supports the input bits, and rocjitsu currently omits those input
+modifiers. The implementation follows the captured behavior and the manual's
+statement that MOV supports negation/absolute value. RDNA3 shares that documented
+behavior, but the new capture is RDNA4-only.
+
+SWAP accepts only HIGH_A/HIGH_D; both operands are read/write. Selected halves
+use original values, and each write preserves the other half, including the
+first write when exchanging halves of one VGPR. Tests cover all half selections,
+whole-register aliases, both wave widths, masks, guard words, and invalid flags.
+MOV tests also exhaust all 65,536 half bit patterns with every sign/half choice,
+replay 4,096 captured output words, and cover DPP source filtering and aliases.
+`capture_half_move.py` reproduces the raw VOP3 probe; the fixture includes its
+SHA-256 and word-wise digest. The regenerated probe source matches the captured
+source byte-for-byte.
+
+Wave64 MOV, dedicated half-move/swap SIMD paths, and RDNA3 hardware validation
+remain open. Missing canonical API names: 61.
+
+Validation: all 712 tests pass on Clang/GCC; all ten tests in the move/swap
+binaries pass under ASan/UBSan. Existing SIMD implementations are unchanged.

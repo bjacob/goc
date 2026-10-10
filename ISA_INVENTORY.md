@@ -20,8 +20,8 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 63
-- in, API present: 746
+- in, API absent: 61
+- in, API present: 748
 - out, API absent: 587
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
@@ -1281,7 +1281,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_minmax_num_f16` | — | yes | in | `goc_v_minmax_num_f16` | `v_minmax_f16` | API present; semantic audit pending |
 | `v_minmax_num_f32` | — | yes | in | `goc_v_minmax_num_f32` | `v_minmax_f32` | API present; semantic audit pending |
 | `v_minmax_u32` | yes | yes | in | `goc_v_minmax_u32` | — | API present; semantic audit pending |
-| `v_mov_b16` | yes | yes | in | — | — | missing API |
+| `v_mov_b16` | yes | yes | in | `goc_v_mov_b16` | — | API present; semantic audit pending |
 | `v_mov_b32` | yes | yes | in | `goc_v_mov_b32` | — | API present; semantic audit pending |
 | `v_movreld_b32` | yes | yes | in: register access | `goc_v_movreld_b32` | — | API present; semantic audit pending |
 | `v_movrels_b32` | yes | yes | in: register access | `goc_v_movrels_b32` | — | API present; semantic audit pending |
@@ -1387,7 +1387,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_subrev_f16` | yes | yes | in | `goc_v_subrev_f16` | — | API present; semantic audit pending |
 | `v_subrev_f32` | yes | yes | in | `goc_v_subrev_f32` | — | API present; semantic audit pending |
 | `v_subrev_nc_u32` | yes | yes | in | `goc_v_subrev_nc_u32` | — | API present; semantic audit pending |
-| `v_swap_b16` | yes | yes | in | — | — | missing API |
+| `v_swap_b16` | yes | yes | in | `goc_v_swap_b16`<br>`goc_v_swap_b16_wave64` | — | API present; semantic audit pending |
 | `v_swap_b32` | yes | yes | in | `goc_v_swap_b32`<br>`goc_v_swap_b32_wave64` | — | API present; semantic audit pending |
 | `v_swaprel_b32` | yes | yes | in | — | — | missing API |
 | `v_swmmac_bf16_16x16x32_bf16` | — | yes | in | `goc_v_swmmac_bf16_16x16x32_bf16` | — | API present; semantic audit pending |

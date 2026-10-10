@@ -49,9 +49,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
   bool supports_dpp =
       std::strcmp(name, "goc_v_dot2acc_f32_f16") == 0 ||
       std::strncmp(name, "goc_v_movrel", 12) == 0 || std::strcmp(name, "goc_v_mov_b32") == 0 ||
-      std::strcmp(name, "goc_v_fma_f32") == 0 || std::strcmp(name, "goc_v_fmac_f32") == 0 ||
-      std::strcmp(name, "goc_v_fma_f16") == 0 || std::strcmp(name, "goc_v_fmac_f16") == 0 ||
-      std::strcmp(name, "goc_v_ldexp_f16") == 0 ||
+      std::strcmp(name, "goc_v_mov_b16") == 0 || std::strcmp(name, "goc_v_fma_f32") == 0 ||
+      std::strcmp(name, "goc_v_fmac_f32") == 0 || std::strcmp(name, "goc_v_fma_f16") == 0 ||
+      std::strcmp(name, "goc_v_fmac_f16") == 0 || std::strcmp(name, "goc_v_ldexp_f16") == 0 ||
       std::strcmp(name, "goc_v_frexp_exp_i16_f16") == 0 ||
       std::strcmp(name, "goc_v_frexp_exp_i32_f32") == 0 ||
       std::strcmp(name, "goc_v_ldexp_f32") == 0;
