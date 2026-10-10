@@ -272,3 +272,47 @@ TEST(Interp32, Wave64ValidationAndEmptyExec) {
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
   }
 }
+
+TEST(Interp32, SharedArchitectureContracts) {
+  const Fn narrow[] = {goc_v_interp_p10_f32,         goc_v_interp_p2_f32,
+                       goc_v_interp_p10_f16_f32,     goc_v_interp_p2_f16_f32,
+                       goc_v_interp_p10_rtz_f16_f32, goc_v_interp_p2_rtz_f16_f32};
+  const decltype(&goc_v_interp_p10_f32_wave64) wide[] = {
+      goc_v_interp_p10_f32_wave64,         goc_v_interp_p2_f32_wave64,
+      goc_v_interp_p10_f16_f32_wave64,     goc_v_interp_p2_f16_f32_wave64,
+      goc_v_interp_p10_rtz_f16_f32_wave64, goc_v_interp_p2_rtz_f16_f32_wave64};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned op = 0; op < 6; ++op)
+      for (unsigned width : {32U, 64U})
+        for (uint64_t exec_mask : {0ULL, 0xa55aa55a5aa55aa5ULL, ~0ULL}) {
+          SCOPED_TRACE(::testing::Message()
+                       << cpu << '/' << op << '/' << width << '/' << exec_mask);
+          uint32_t a[64], b[64], c[64], d[64];
+          std::fill(a, a + 64, op < 2 ? 0x3f800000U : 0x3c003c00U);
+          std::fill(b, b + 64, 0x3f800000U);
+          std::fill(c, c + 64, op < 2 || (op & 1) ? 0x3f800000U : 0x3c003c00U);
+          const uint32_t *pa = a, *pb = b, *pc = c;
+          uint32_t *pd = d;
+          auto call = [&](uint64_t flags) {
+            return width == 32 ? narrow[op](flags, uint32_t(exec_mask), 0, &pd, &pa, &pb, &pc)
+                               : wide[op](flags, exec_mask, 0, &pd, &pa, &pb, &pc);
+          };
+          std::fill(d, d + 64, 0xdeadbeefU);
+          // Upstream interpolation handlers are stubs, not an exact model.
+          EXPECT_EQ(call(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT),
+                    GOC_ERROR_UNSUPPORTED_SEMANTICS);
+          for (uint64_t guest :
+               {GOC_FP_IEEE_MODE, GOC_FP_FLUSH_INPUT_DENORMALS, GOC_FP_FLUSH_OUTPUT_DENORMALS})
+            EXPECT_EQ(call(cpu | guest), GOC_ERROR_INVALID_FLAGS);
+          for (auto word : d)
+            EXPECT_EQ(word, 0xdeadbeefU);
+          for (uint64_t semantics : {uint64_t(0), GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+            std::fill(d, d + 64, 0xdeadbeefU);
+            EXPECT_EQ(call(cpu | semantics), GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              uint32_t result = op >= 2 && (op & 1) ? 0xdead4000U : 0x40000000U;
+              EXPECT_EQ(d[lane], lane < width && ((exec_mask >> lane) & 1) ? result : 0xdeadbeefU);
+            }
+          }
+        }
+}

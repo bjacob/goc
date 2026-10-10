@@ -65,7 +65,7 @@ be treated as verified shared semantics. Width completeness does not close this 
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures; confirmed OMOD/IEEE architecture differences | Split differing APIs and implement RDNA3 guest-mode policies; see ARCHITECTURE_AUDIT.md |
 | Transcendentals, reciprocal, division | FP32 RCP/SQRT/RSQ/EXP/LOG exact captured mappings on both architectures; other partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
-| Interpolation | All six APIs at both wave widths; shared quad routing checked against both manuals; RDNA4 captures and independent arithmetic tests | Compare remaining RDNA3 numerical contracts and empirical behavior |
+| Interpolation | Six shared loose contracts reviewed at both wave widths; manual-based routing/modifiers/no-exception rule, RDNA4 captures and independent tests | Upstream numerical handlers are stubs; exact semantics and guest IEEE/denormal controls remain unsupported |
 | Dual-issue VOPD | All 19 canonical operations; shared ordinary kernels, architecture-split floating arithmetic/DOT2ACC; Wave32 only | Direct VOPD hardware captures; inherited exact/global-state gaps |
 
 Keep this checklist conservative: unchecked review work is not made complete by
@@ -6494,3 +6494,63 @@ Validation: all 1,141 tests pass with Clang 21 and GCC 15 Release; all 13
 DIV_SCALE tests pass with ASan/UBSan, and all nine audit-tool tests pass.
 Logs are `../goc-build/coverage-work/div-scale-omod-*`. This change does not alter
 SIMD kernel bodies or add a fallback for supported modifiers.
+
+## DIV_SCALE exception evidence follow-up
+
+TheRock's LLVM `llvm/lib/Target/AMDGPU/VOP3Instructions.td` places both
+DIV_SCALE instructions under `mayRaiseFPException = 0`, with the explicit caveat
+“Seems suspicious but manual doesn't say it does.” The corresponding real
+encodings cover gfx11/gfx12. This corroborates rocjitsu's missing reporting calls
+but also documents uncertainty upstream; it does not prove a hardware rule.
+The XML exposes VDST/SDST without a per-instruction exception specification.
+Meanwhile, the RDNA4 manual's general OMOD section describes exception reporting
+for modified instructions. Keep the applicability question open rather than
+inferring either a faithful empty update or a required register from those
+incomplete/conflicting descriptions. No API parameter or reporting behavior is
+changed on this evidence alone.
+
+## Interpolation architecture contracts
+
+All six canonical interpolation mnemonics share their current loose APIs across
+RDNA3 and RDNA4, including Wave64. Section 12.3/12.3.1 of both manuals specifies
+the same P10/P2 formulas, FP32 versus mixed FP16/FP32 operand/result types,
+quad-local broadcasts, reads from inactive source lanes, NEG/CLAMP, applicable
+half selectors, wait fields and the RTZ override. Their explicit instruction
+restrictions also say interpolation neither detects nor reports exceptions.
+Accordingly these APIs require no optional TRAPSTS/EXCP_FLAG_USER output.
+The wait field is accepted but has no effect on synchronous CPU execution;
+LDS fetches, scheduling and hardware data-forwarding hazards remain outside the
+register-operation API.
+
+At rocjitsu revision `ffc144c564c`, all twelve `execute_impl` bodies in generated
+`rdna3/vinterp_exec.cpp` and `rdna4/vinterp_exec.cpp` are empty compute-simulation
+stubs (six matching pairs). They provide neither numerical implementations nor
+an empirical exact model to borrow. GoC retains its functioning loose arithmetic,
+independent references and existing RDNA4 captures instead of treating upstream
+stubs as completed emulation. There is no numerical architecture distinction in
+the reviewed manual contract requiring a suffix. This does not assert unmeasured
+bit-exact identity between GPUs: strict exact stays unsupported, NaN payloads
+are unspecified, and guest IEEE/input/output denormal controls are rejected.
+Supported host settings remain nearest-even with denormals enabled; the explicit
+RTZ operations use the existing integer rounding helpers without host-control
+writes. This review introduces no new exact semantics or hardware probing.
+
+The existing tests cover every modifier/wait count, half selection, overflow
+policy, rounding boundaries, captured digests, both widths, masks, inactive
+source reads, aliases and unaligned storage. The new
+`Interp32.SharedArchitectureContracts` test covers all twelve public entry
+points and all CPU levels: exact rejection and unsupported guest flags preserve
+outputs for empty/full/partial EXEC, while non-strict exact fallback agrees with
+loose results. Literal 1*1+1 inputs distinguish FP32 results from packed FP16
+results and check preservation of the other half and inactive lanes.
+FP32 retains scalar/AVX2/AVX-512 implementations; mixed FP16 retains scalar/AVX2,
+including on higher CPU levels. No arithmetic kernel changes or throughput claims
+are part of this contract review.
+
+Validation: all 1,142 tests pass with Clang 21 and GCC 15 Release; all 21
+Interp16/Interp32 tests pass with ASan/UBSan; all nine audit-tool tests pass.
+Logs are `../goc-build/coverage-work/interpolation-review-*`. The twelve upstream
+stub bodies and matching handler names were checked directly; source hashes and
+names are recorded in `../goc-build/coverage-work/interpolation-upstream-review.json`.
+The review ledger now records 637 mnemonics, leaving 172 unrecorded; these counts
+are not completion percentages.

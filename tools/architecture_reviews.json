@@ -1112,5 +1112,25 @@
       "v_dual_subrev_f32",
       "v_dual_mul_dx9_zero_f32"
     ]
+  },
+  {
+    "heading": "Interpolation architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/interp32_test.cpp",
+    "mnemonics": [
+      "v_interp_p10_f32",
+      "v_interp_p2_f32"
+    ]
+  },
+  {
+    "heading": "Interpolation architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/interp16_test.cpp",
+    "mnemonics": [
+      "v_interp_p10_f16_f32",
+      "v_interp_p2_f16_f32",
+      "v_interp_p10_rtz_f16_f32",
+      "v_interp_p2_rtz_f16_f32"
+    ]
   }
 ]

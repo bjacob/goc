@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-// Quad broadcasts follow the RDNA4 ISA guide, sections 12.3 and 16.13.
+// Quad broadcasts follow both RDNA3 and RDNA4 ISA guides, section 12.3.
 
 #include "alu.h"
 #include "goc/goc.h"

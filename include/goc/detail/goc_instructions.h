@@ -2380,7 +2380,8 @@ static const uint32_t GOC_INTERP_WAIT_EXP_MASK = 7U << 13;
 // read even if inactive in EXEC. Each operand uses one VGPR; whole VGPRs may
 // alias. Supports NEG_A/B/C, CLAMP and WAIT_EXP, with no ABS or OMOD.
 // Loose semantics only. Requires host nearest-even rounding and denormals
-// enabled; exception flags may change. NaN payloads are unspecified.
+// enabled; host exception flags may change. NaN payloads are unspecified.
+// Both architectures specify that interpolation reports no GPU exceptions.
 int goc_v_interp_p10_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c);
@@ -2405,7 +2406,8 @@ int goc_v_interp_p2_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
 // saturates finite P2 overflow; RTZ P2 already saturates finite overflow.
 // Input infinities remain infinite unless clamped. Loose semantics only;
 // host nearest-even rounding and enabled denormals are required. Host rounding
-// mode is preserved; exception flags may change. NaN payloads are unspecified.
+// mode is preserved; host exception flags may change. NaN payloads are unspecified.
+// Both architectures specify that interpolation reports no GPU exceptions.
 int goc_v_interp_p10_f16_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c);
