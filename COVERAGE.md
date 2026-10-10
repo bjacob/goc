@@ -5862,3 +5862,51 @@ Validation: all 1,128 CTests pass under Clang and GCC Release; all sixteen
 bit-count/DPP regression tests pass under ASan/UBSan. All nine audit-tool tests
 pass. Logs use `bit-count-review-` in each build directory. The ledger records
 555 contracts; 254 in-scope mnemonics remain without recorded reviews.
+
+## Packed and single-result integer16 architecture contracts
+
+Reviewed 24 binary operations at rocjitsu `ffc144c564c`: signed/unsigned
+ADD/SUB and MIN/MAX, low-word multiply and three reverse shifts, each in packed
+and single-result form. The review covers 72 architecture-specific handlers,
+twelve referenced packed helpers, true16 selector/store helpers and signed/
+unsigned saturation helpers. Fourteen handler pairs are identical. Ten true16
+pairs differ only by RDNA4 SIMD shortcuts for unclamped arithmetic. Twelve
+RDNA4 packed handlers inline the same arithmetic as their RDNA3 shared helpers;
+normalizing operand references, selector field spelling and execution-mask
+access makes those bodies identical. Packed encodings reject DPP. Locations,
+bodies, hashes and comparison notes are recorded in
+`../goc-build/coverage-work/integer16-upstream-review.json`.
+
+ADD/SUB wrap to 16 bits unless CLAMP requests signed/unsigned saturation, which
+is computed before narrowing. Signed min/max interpret the selected half as
+int16; unsigned forms compare uint16. Multiply keeps the low sixteen product
+bits. Shift counts use four bits, with A supplying the count and B the value;
+ASHR replicates bit 15. Packed outputs compute both halves from the original
+sources, with independently selected input halves. Single-result forms preserve
+the unselected destination half. These contracts agree across both architectures
+and use shared APIs without optional exception-register outputs.
+
+Fixed the single-result forms' rejection of ignored CLAMP on MIN/MAX, multiply
+and shifts. Packed forms already accepted it. Only ADD/SUB apply saturation;
+other arithmetic modifiers remain invalid. DPP8/16 continues to route A before
+half selection for single-result operations, including Wave64 row masks. The
+existing shared scalar and eight-lane v3 kernels are unchanged. The SIMD path
+uses halfword shuffles, native wrapping/saturating arithmetic, signed/unsigned
+min/max and low products. Variable shifts use separate 32-bit computations for
+the two selected halfwords. All CPU levels above v3 keep that same path, with
+no fallback for CLAMP or selectors.
+
+Expanded single-result boundary/random tests, every-input-encoding tests and
+all whole-register alias tests to CLAMP on every operation. Wave64 tests now
+cover the added settings with both semantics, half selectors, DPP routes/row
+masks, inactive lanes and aliases. Removed the obsolete DPP CLAMP rejection
+expectations. Existing packed tests cover all 32 selector/CLAMP combinations,
+saturation witnesses, shifts with discarded count bits and every half encoding.
+The gfx1201 DPP fixture inputs and hashes remain unchanged. This is a review and
+modifier correction using existing source models, not new hardware inference.
+
+Validation: all 1,128 CTests pass under Clang and GCC Release; all fifteen
+selected integer16, packed, Wave64 and DPP fixture/validation tests pass under
+ASan/UBSan. All nine audit-tool tests pass. Logs use `integer16-review-` in each
+build directory. The ledger records 579 contracts; 230 in-scope mnemonics remain
+without recorded reviews.

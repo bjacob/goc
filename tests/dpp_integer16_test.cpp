@@ -110,10 +110,6 @@ TEST(DppInteger16, ValidationAndHostFpState) {
     for (uint64_t mode : modes(op)) {
       auto fn = goc_test::integer16_functions[op];
       for (uint32_t exec_mask : {0U, UINT32_MAX}) {
-        if (op >= 4) {
-          EXPECT_EQ(fn(0, exec_mask, mode | GOC_ALU_CLAMP, nullptr, nullptr, nullptr),
-                    GOC_ERROR_INVALID_FLAGS);
-        }
         EXPECT_EQ(fn(0, exec_mask, mode | GOC_ALU_NEG_A, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr, nullptr),

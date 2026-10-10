@@ -959,5 +959,36 @@
       "v_mbcnt_hi_u32_b32",
       "v_mbcnt_lo_u32_b32"
     ]
+  },
+  {
+    "heading": "Packed and single-result integer16 architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/integer16_test.cpp",
+    "mnemonics": [
+      "v_add_nc_i16",
+      "v_add_nc_u16",
+      "v_ashrrev_i16",
+      "v_lshlrev_b16",
+      "v_lshrrev_b16",
+      "v_max_i16",
+      "v_max_u16",
+      "v_min_i16",
+      "v_min_u16",
+      "v_mul_lo_u16",
+      "v_pk_add_i16",
+      "v_pk_add_u16",
+      "v_pk_ashrrev_i16",
+      "v_pk_lshlrev_b16",
+      "v_pk_lshrrev_b16",
+      "v_pk_max_i16",
+      "v_pk_max_u16",
+      "v_pk_min_i16",
+      "v_pk_min_u16",
+      "v_pk_mul_lo_u16",
+      "v_pk_sub_i16",
+      "v_pk_sub_u16",
+      "v_sub_nc_i16",
+      "v_sub_nc_u16"
+    ]
   }
 ]

@@ -15,7 +15,7 @@ TEST(Integer16, EveryModifierBoundaryPairsAndRandomInputs) {
   const uint32_t values[] = {0, 1, 2, 0x7ffe, 0x7fff, 0x8000, 0x8001, 0xfffe, 0xffff};
   for (int op = 0; op < 12; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (int mode = 0; mode < (op < 4 ? 16 : 8); ++mode) {
+      for (int mode = 0; mode < 16; ++mode) {
         SCOPED_TRACE(::testing::Message() << op << "/" << cpu << "/" << mode);
         std::mt19937 random(312);
         for (int start = 0; start < 1152; start += 32) {
@@ -42,8 +42,8 @@ TEST(Integer16, EveryInputEncoding) {
   for (int op = 0; op < 12; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int source = 0; source < 2; ++source)
-        for (uint32_t mode : {uint32_t(0), GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D |
-                                               (op < 4 ? GOC_ALU_CLAMP : 0)}) {
+        for (uint32_t mode :
+             {uint32_t(0), GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D | GOC_ALU_CLAMP}) {
           std::mt19937 random(597);
           for (uint32_t start = 0; start < 65536; start += 32) {
             uint32_t words[3][32];
@@ -67,7 +67,7 @@ TEST(Integer16, MasksModifiersAndAllWholeRegisterAliases) {
   const int layouts[][3] = {{0, 1, 2}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 0, 0}};
   for (int op = 0; op < 12; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-      for (int mode = 0; mode < (op < 4 ? 16 : 8); ++mode)
+      for (int mode = 0; mode < 16; ++mode)
         for (uint32_t exec_mask : exec_masks())
           for (const auto &layout : layouts) {
             uint32_t words[3][32], saved[3][32];
@@ -140,8 +140,7 @@ TEST(Integer16, ValidationAndFloatingEnvironment) {
     std::memcpy(saved, d, sizeof(d));
     const uint32_t *ap[] = {a}, *bp[] = {b};
     uint32_t *dp[] = {d};
-    const uint32_t known =
-        GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D | (op < 4 ? GOC_ALU_CLAMP : 0);
+    const uint32_t known = GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D | GOC_ALU_CLAMP;
     for (int bit = 0; bit < 32; ++bit) {
       uint32_t invalid = 1U << bit;
       if (invalid & known)

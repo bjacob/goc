@@ -4155,7 +4155,7 @@ int goc_v_pk_maximum_f16(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 // Ordinary 16-bit integer binary arithmetic: one VGPR per operand. HIGH_A/B/D
 // select the input and output halves; the other destination half is preserved.
 // ADD/SUB accept GOC_ALU_CLAMP for signed/unsigned saturation; otherwise they
-// wrap. Other forms do not accept CLAMP. Multiply retains its low 16 bits.
+// wrap. Other forms accept and ignore CLAMP. Multiply retains its low 16 bits.
 // Shifts use B as the value and A modulo 16 as the count. All forms support
 // DPP8/DPP16 on A before half selection. Other instruction flags are invalid.
 // Both semantics are exact; independent of host FP state.
