@@ -53,7 +53,7 @@ paths must retain their existing performance and may skip optional state outputs
 | Floating min/max/median | Existing RDNA4 NUM forms | RDNA3 names and NaN/zero policies, signaling NaNs, all widths and packed forms |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV B32/B64 and MOVK/CMOVK implemented for both architectures; exhaustive immediate/condition tests | Relative addressing and hardware-register access; SAVEEXEC/WREXEC implemented at both register widths |
-| Vector/register routing | READLANE/WRITELANE/READFIRSTLANE now shared for Wave32/64, including lane-index wrapping and zero EXEC; existing DPP/permlane/move coverage | Swaps, relative moves, permlane64, broader cross-width behavior |
+| Vector/register routing | READLANE/WRITELANE/READFIRSTLANE now shared for Wave32/64, including lane-index wrapping and zero EXEC; existing DPP/permlane/move coverage | Wave32 vector-relative moves now implemented with bounded views; swaps, permlane64 and broader cross-width behavior remain |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests | RDNA3 integer true/false forms now implemented; floating constant forms, Wave64, and architecture-specific floating policies remain |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
 | Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
@@ -149,3 +149,22 @@ substitute for RDNA3 hardware evidence. No min/max API was added by this audit.
   from its encoding. Captured results, DPP aliases, masks, loose SIMD and optional
   reporting contracts are tested. All 691 tests pass on Clang/GCC and all five
   architectural DOT2 tests pass under ASan/UBSan. Missing API names: 75.
+
+Relative VGPR move range rules were checked against section 3.3.2.2 and the
+VGPR-indexing tables of AMD's [RDNA3 ISA](https://www.amd.com/content/dam/amd/en/documents/radeon-tech-docs/instruction-set-architectures/rdna3-shader-instruction-set-architecture-feb-2023_0.pdf)
+and [RDNA4 ISA](https://www.amd.com/content/dam/amd/en/documents/radeon-tech-docs/instruction-set-architectures/rdna4-instruction-set-architecture.pdf).
+Both specify VGPR0 substitution for out-of-range VALU sources and discarded
+out-of-range destination writes. Both specify an index limit of 255; rocjitsu
+currently checks 1023. GoC follows the published 255 rule and records this
+upstream discrepancy rather than treating the upstream code as hardware evidence.
+The split instruction still extracts the documented 10-bit M0 fields before
+range checking. No new hardware capture establishes behavior in that disputed
+range. API views begin at VGPR0 with explicit base indices and bounds so fallback
+reads are possible; 64-bit intermediate sums prevent accidental index wrapping.
+
+- Wave32 vector-relative moves: four shared APIs implemented with bounded full
+  register-file views, explicit base indices, VGPR0 fallback and DPP routing.
+  Tests cover aliases, masks, empty ranges, split offsets, the documented index
+  limit and widened address calculations. All 694 tests pass on Clang/GCC;
+  all three relative-move tests also pass under ASan/UBSan. Missing API names: 71.
+  Scalar-relative operations and Wave64 vector-relative variants remain open.

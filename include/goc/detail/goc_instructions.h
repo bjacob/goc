@@ -186,6 +186,32 @@ int goc_s_wqm_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint6
 // Finite operand pairs accumulate INPUT_DENORM if either input is subnormal and
 // input flushing is disabled. Loose mode leaves excp_flag_user unchanged.
 
+// Wave32 relative VGPR moves shared by RDNA3/RDNA4. d/a are full register-file
+// views starting at VGPR0, bounded by d_count/a_count. d_base/a_base are encoded
+// register indices. RELS adds M0 to source; RELD to destination; RELSD to both.
+// RELSD_2 uses M0[9:0] for source and M0[25:16] for destination. Per ISA section
+// 3.3.2.2, offsets above 255 or resolved indices outside the allocation are out
+// of range: sources redirect to VGPR0, and destination writes are discarded.
+// A source allocation of zero returns zero. Zero counts permit null arrays.
+// No indexing wraps; addition uses widened arithmetic. Whole VGPRs may alias.
+// Both semantics are exact; DPP routes the selected source with MOV_B32 flags.
+// Invalid flags leave all outputs unchanged.
+int goc_v_movrels_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
+                      uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
+
+int goc_v_movreld_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
+                      uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
+
+int goc_v_movrelsd_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
+                       uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
+
+int goc_v_movrelsd_2_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t d_count,
+                         uint32_t a_count, uint32_t d_base, uint32_t a_base, uint32_t m0);
+
 // Scalar lane transfers shared by RDNA3/RDNA4; one VGPR input/output.
 // READFIRSTLANE reads the first active lane, or lane 0 for zero EXEC.
 // READLANE/WRITELANE ignore EXEC; lane indices wrap modulo 32 or 64.

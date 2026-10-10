@@ -2292,3 +2292,10 @@ RDNA3 `v_dot2acc_f32_f16` uses its destination as the FP32 accumulator. It
 shares the GFX11 exact DOT2 model and loose SIMD path, supports DPP8/DPP16 on A,
 and rejects sign/half-selection modifiers absent from its VOP2 encoding. Exact
 exception reporting remains unsupported; a null output pointer opts out.
+
+Wave32 `v_movrels_b32`, `v_movreld_b32`, `v_movrelsd_b32` and
+`v_movrelsd_2_b32` share RDNA3/RDNA4 relative-index rules. Their source and
+destination arrays start at VGPR0, with explicit encoded base indices and
+allocation counts. Out-of-range reads redirect to VGPR0; out-of-range writes
+are discarded, and indices never wrap. DPP routes the selected source
+after relative indexing. Scalar-relative addressing remains unimplemented.

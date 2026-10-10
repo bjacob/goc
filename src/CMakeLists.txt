@@ -2,6 +2,7 @@ add_library(goc STATIC
   scalar_exec.cpp
   scalar_move.cpp
   lane_transfer.cpp
+  relative_move.cpp
   move.cpp
   wmma_replicated.cpp
   dpp.cpp
