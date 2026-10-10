@@ -635,6 +635,10 @@ VOPD, exception-register and instruction-flag tests pass under ASan/UBSan.
 
 ## Hardware-register access audit (implementation still open)
 
+See [the detailed HWREG audit](HWREG_AUDIT.md) for the complete XML register-ID
+inventory, privilege differences, snapshot-read side effects, clock-input needs
+and implementation gates. The three APIs remain missing.
+
 The three remaining canonical names, `s_getreg_b32`, `s_setreg_b32` and
 `s_setreg_imm32_b32`, cannot be completed by adding a generic bitfield helper.
 RDNA3 ISA section 3.4 and SOPK definitions specify a six-bit register ID,
@@ -2077,3 +2081,21 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   38.987 -> 35.408 ns and 41.941 -> 39.066 ns. These finite-input timings are a
   limited regression check, not a whole-library performance claim. Artifacts:
   `../goc-build/coverage-work/half-ternary-*`, including `half-ternary-timing.json`.
+
+## HWREG state and side-effect follow-up
+
+- Added `HWREG_AUDIT.md`, cross-checking all 24 RDNA3 and 19 RDNA4 XML IDs plus
+  the RDNA4 manual-only IB_STS2 entry. No API-presence counts changed.
+- Identified RDNA4 GETREG's snapshot-PC-high read-unlock effect and sampled-wave
+  visibility requirement. A read-only raw snapshot API alone cannot represent
+  that complete behavior. The manual does not name a lock register or fully
+  specify post-read values; the audit does not invent them.
+- Recorded the RDNA3 STATUS privileged writable-bit list, scratch-write
+  privilege differences from rocjitsu, exception-register replacement versus
+  arithmetic accumulation, FLUSH_IB scope ambiguity, and shader-versus-host
+  clock-read protocols. These are explicit implementation gates.
+- Validation: extracted both OPR_HWREG maps from the machine-readable ISA XML,
+  checked all table IDs/names against them, and checked the behavioral notes
+  against manual sections 3.4/16.2 and rocjitsu's HWREG implementation. This was
+  documentation-only; the last production gates remain 950 Clang/GCC tests and
+  12 FP16 ternary sanitizer tests from `422fbfd`.
