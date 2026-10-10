@@ -38,7 +38,8 @@ extern "C" {
 
 // Bit-preserving Wave32/Wave64 moves, shared by RDNA3 and RDNA4. One VGPR per operand.
 // Supports loose and exact semantics, EXEC masking, and DPP8/DPP16 source routing.
-// Low instruction-flag bits must be zero (arithmetic modifiers are not implemented).
+// ABS_A clears and NEG_A toggles bit 31, in that order, after DPP routing.
+// Other low instruction flags, including OMOD and CLAMP, are unsupported.
 // No FP interpretation or exceptions; inactive destinations remain unchanged.
 int goc_v_mov_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a);

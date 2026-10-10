@@ -5189,3 +5189,40 @@ Validation: all 1,116 CTests pass in Clang and GCC Release builds; all five
 scalar-relative tests pass under ASan/UBSan. All nine audit-tool tests pass.
 Logs use `scalar-relative-review-` in each build directory. The ledger records
 357 contracts; 452 in-scope mnemonics still need recorded reviews.
+
+## Vector move and relative-move architecture contracts
+
+Reviewed MOV_B32 and all four vector relative moves against rocjitsu
+`ffc144c564c`, both ISA manuals' sections 3.3.2.2 and 7.2.2.1, and the
+instruction descriptions. VOP1/VOP3 ordinary and modifier execution bodies
+for the four relative moves are identical across RDNA3/RDNA4 (hashes recorded
+in `../goc-build/coverage-work/vector-relative-upstream-review.json`).
+Both select registers before DPP. The ISA's offset limit remains 255, whereas
+rocjitsu permits 1023; GoC retains the documented 255 bound. Invalid sources
+redirect to VGPR0; invalid destinations suppress writes. Split M0 fields occupy
+bits [9:0] and [25:16], but extracting ten bits does not waive the offset limit.
+Widened addition prevents wrap, and caller counts additionally bound storage.
+
+This review found and fixed missing ABS_A/NEG_A support in MOV_B32, inherited
+by all relative forms. Both manuals explicitly permit these input modifiers:
+see RDNA3 section 7.2.2.1 and [RDNA4 section 7.2.2.1, page 70](https://www.amd.com/content/dam/amd/en/documents/radeon-tech-docs/instruction-set-architectures/rdna4-instruction-set-architecture.pdf).
+ABS clears bit 31, then NEG toggles it, after DPP routing. No FP conversion,
+NaN quieting or exception calculation is needed. The unmodified copy loop is
+retained separately, selected by one uniform modifier check. Wave64 and relative
+moves reuse this implementation; no new abstraction or architecture suffix is
+needed. OMOD/CLAMP remain explicitly unsupported for these B32 APIs; this review
+does not establish their behavior or claim complete encoding support.
+
+Existing tests cover both wave widths, register bounds, aliases, masks and DPP.
+New coverage combines all five operations, both semantics and widths, all four
+sign-modifier combinations, seven DPP descriptors plus direct execution,
+sparse/full/empty EXEC, in-place routing and guard words. Inputs include signed
+zeros, subnormals, infinities and signaling/quiet NaNs with preserved payloads.
+Error tests now distinguish the newly supported sign bits from invalid modifiers.
+
+Validation: all 1,117 CTests pass under Clang and GCC Release; all thirteen
+move/relative-move/instruction-flag tests pass under ASan/UBSan. All nine
+audit-tool tests pass. Logs use `vector-relative-review-` in each build directory.
+Clang disassembly confirms that the unmodified case branches around sign-bit
+processing; no timing-based performance claim is made. Existing SIMD kernels
+are unchanged. The ledger records 362 contracts; 447 remain unrecorded.

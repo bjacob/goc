@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-357 in-scope mnemonics have explicit contract-review records in
+362 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 452 in-scope mnemonics need a recorded review.
+The remaining 447 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -549,11 +549,11 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_minmax_i32` | output helper | no | 16343 | review required |
 | `v_minmax_u32` | output helper | no | 16409 | review required |
 | `v_mov_b16` | no direct policy detected | no | not found | review required |
-| `v_mov_b32` | SIMD macro, output helper | no | 16423, 16435 | review required |
-| `v_movreld_b32` | no direct policy detected | no | not found | review required |
-| `v_movrels_b32` | no direct policy detected | no | not found | review required |
-| `v_movrelsd_2_b32` | no direct policy detected | no | not found | review required |
-| `v_movrelsd_b32` | no direct policy detected | no | not found | review required |
+| `v_mov_b32` | SIMD macro, output helper | no | 16423, 16435 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
+| `v_movreld_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
+| `v_movrels_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
+| `v_movrelsd_2_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
+| `v_movrelsd_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-move-and-relative-move-architecture-contracts) |
 | `v_mqsad_pk_u16_u8` | no direct policy detected | no | not found | review required |
 | `v_mqsad_u32_u8` | no direct policy detected | no | not found | review required |
 | `v_msad_u8` | SIMD macro, output helper | no | 16472 | review required |

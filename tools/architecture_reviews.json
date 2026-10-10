@@ -635,5 +635,17 @@
       "s_movrels_b64",
       "s_movrelsd_2_b32"
     ]
+  },
+  {
+    "heading": "Vector move and relative-move architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/relative_move_test.cpp",
+    "mnemonics": [
+      "v_mov_b32",
+      "v_movreld_b32",
+      "v_movrels_b32",
+      "v_movrelsd_b32",
+      "v_movrelsd_2_b32"
+    ]
   }
 ]

@@ -40,7 +40,7 @@ TEST(Move, DppReadsBeforeAliasedStores) {
   for (unsigned lane = 0; lane < 32; ++lane)
     EXPECT_EQ(data[lane], lane ^ 7);
   EXPECT_EQ(goc_v_mov_b32(0, 0, 0, nullptr, nullptr), GOC_SUCCESS);
-  EXPECT_EQ(goc_v_mov_b32(0, 0, 1, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+  EXPECT_EQ(goc_v_mov_b32(0, 0, GOC_ALU_NEG_B, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
 }
 
 TEST(Move, HalfHardwareModifierCorpus) {

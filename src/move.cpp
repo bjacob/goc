@@ -14,10 +14,20 @@ int goc_v_mov_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
                               return goc_v_mov_b32(flags, exec_mask, uint32_t(instruction_flags), d,
                                                    source);
                             });
-  if (int error = goc::validate(flags, instruction_flags, true))
+  const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_NEG_A;
+  if (int error = goc::validate(flags, instruction_flags & ~known, true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
+  if (instruction_flags) {
+    // ABS precedes NEG; all other bits, including NaN payloads, are preserved.
+    uint32_t keep = instruction_flags & GOC_ALU_ABS_A ? 0x7fffffffU : UINT32_MAX;
+    uint32_t toggle = instruction_flags & GOC_ALU_NEG_A ? 0x80000000U : 0;
+    for (unsigned lane = 0; lane < 32; ++lane)
+      if ((exec_mask >> lane) & 1)
+        d[0][lane] = (a[0][lane] & keep) ^ toggle;
+    return GOC_SUCCESS;
+  }
   for (unsigned lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
       d[0][lane] = a[0][lane];

@@ -57,7 +57,9 @@ TEST(RelativeMove, EmptyRangesAndValidation) {
     for (auto x : data)
       EXPECT_EQ(x, 0U);
     for (unsigned bit = 0; bit < 32; ++bit)
-      EXPECT_EQ(fn(0, 0, 1ULL << bit, nullptr, nullptr, 0, 0, 0, 0, 0), GOC_ERROR_INVALID_FLAGS);
+      if (!((1ULL << bit) & (GOC_ALU_ABS_A | GOC_ALU_NEG_A))) {
+        EXPECT_EQ(fn(0, 0, 1ULL << bit, nullptr, nullptr, 0, 0, 0, 0, 0), GOC_ERROR_INVALID_FLAGS);
+      }
   }
 }
 
@@ -122,4 +124,62 @@ TEST(RelativeMove, Wave64IndicesDppAndUpperLaneMasks) {
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, 256, 256, 0, 0, 0), GOC_SUCCESS);
   }
+}
+
+TEST(RelativeMove, SignModifiersAfterRegisterSelectionAndDpp) {
+  const decltype(&goc_v_movrels_b32) wave32[] = {goc_v_movrels_b32, goc_v_movreld_b32,
+                                                 goc_v_movrelsd_b32, goc_v_movrelsd_2_b32};
+  const decltype(&goc_v_movrels_b32_wave64) wave64[] = {
+      goc_v_movrels_b32_wave64, goc_v_movreld_b32_wave64, goc_v_movrelsd_b32_wave64,
+      goc_v_movrelsd_2_b32_wave64};
+  const uint32_t patterns[] = {0,           0x80000000U, 1,           0x80000001U,
+                               0x7f800000U, 0xff800000U, 0x7f800001U, 0xff800001U,
+                               0x7fc12345U, 0xffc12345U, 0x3f800000U, 0xbf800000U};
+  for (unsigned lanes : {32U, 64U})
+    for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+      for (unsigned op = 0; op < 5; ++op)
+        for (unsigned modifiers = 0; modifiers < 4; ++modifiers)
+          for (int routing = -1; routing < 7; ++routing)
+            for (uint64_t exec_mask : {0ULL, 1ULL << 63, 0xaaaaaaaaaaaaaaaaULL, ~0ULL}) {
+              uint32_t storage[3][66], before[3][66];
+              uint32_t *v[3];
+              for (unsigned r = 0; r < 3; ++r) {
+                v[r] = storage[r] + 1;
+                for (unsigned lane = 0; lane < 66; ++lane)
+                  before[r][lane] = storage[r][lane] = patterns[(lane + r) % 12];
+              }
+              uint64_t mode = routing < 0 ? 0 : goc_test::dpp_modes[routing];
+              mode |= (modifiers & 1 ? GOC_ALU_ABS_A : 0) | (modifiers & 2 ? GOC_ALU_NEG_A : 0);
+              uint32_t m0 = op == 3 ? 0x00010001U : 1;
+              unsigned dst = op == 0 ? 0 : 1, src = op == 1 || op == 4 ? 1 : 2;
+              uint64_t flags = semantics | GOC_SEMANTICS_STRICT;
+              int status;
+              if (op == 4) // Ordinary MOV, with an in-place source.
+                status = lanes == 32 ? goc_v_mov_b32(flags, uint32_t(exec_mask), mode, v + 1, v + 1)
+                                     : goc_v_mov_b32_wave64(flags, exec_mask, mode, v + 1, v + 1);
+              else
+                status = lanes == 32
+                             ? wave32[op](flags, uint32_t(exec_mask), mode, v, v, 3, 3, 0, 1, m0)
+                             : wave64[op](flags, exec_mask, mode, v, v, 3, 3, 0, 1, m0);
+              ASSERT_EQ(status, GOC_SUCCESS);
+              for (unsigned r = 0; r < 3; ++r)
+                for (unsigned word = 0; word < 66; ++word) {
+                  uint32_t expected = before[r][word];
+                  if (r == dst && word > 0 && word <= lanes) {
+                    unsigned lane = word - 1;
+                    int source = lane;
+                    bool write = routing < 0 ? bool((exec_mask >> lane) & 1)
+                                             : goc_test::dpp_source(mode, exec_mask, lane, source);
+                    if (write) {
+                      expected = source < 0 ? 0 : before[src][source + 1];
+                      if (modifiers & 1)
+                        expected &= 0x7fffffffU;
+                      if (modifiers & 2)
+                        expected ^= 0x80000000U;
+                    }
+                  }
+                  ASSERT_EQ(storage[r][word], expected)
+                      << lanes << '/' << op << '/' << modifiers << '/' << routing << '/' << word;
+                }
+            }
 }
