@@ -72,6 +72,35 @@ int ldexp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+template <bool Fp64>
+int ldexp_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                 const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
+  constexpr auto instruction = Fp64 ? goc_v_ldexp_f64 : goc_v_ldexp_f32;
+  if (int error = instruction(flags, 0, mode, nullptr, nullptr, nullptr, excp_flag_user))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest[Fp64 ? 2 : 1];
+    const uint32_t *source[Fp64 ? 2 : 1];
+    for (unsigned reg = 0; reg < (Fp64 ? 2U : 1U); ++reg) {
+      dest[reg] = d[reg] + half * 32;
+      source[reg] = a[reg] + half * 32;
+    }
+    // The signed integer exponent occupies one VGPR even for FP64.
+    const uint32_t *exponent = b[0] + half * 32;
+    if (int error = instruction(flags, uint32_t(exec_mask >> (half * 32)), half_mode, dest, source,
+                                &exponent, excp_flag_user))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_ldexp_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -93,4 +122,16 @@ int goc_v_ldexp_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t 
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return ldexp<true>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_ldexp_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                           const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user) {
+  return ldexp_wave64<false>(flags, exec_mask, mode, d, a, b, excp_flag_user);
+}
+
+int goc_v_ldexp_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                           const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user) {
+  return ldexp_wave64<true>(flags, exec_mask, mode, d, a, b, excp_flag_user);
 }

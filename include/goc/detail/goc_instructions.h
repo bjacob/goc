@@ -3921,9 +3921,19 @@ int goc_v_ldexp_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fla
                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                     uint32_t *excp_flag_user);
 
+// Wave64 retains the same operand layout, modifiers and loose semantics.
+int goc_v_ldexp_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user);
+
 int goc_v_ldexp_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                     uint32_t *excp_flag_user);
+
+// Wave64 retains the same operand layout, modifiers and loose semantics.
+int goc_v_ldexp_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user);
 
 // Signed/unsigned 32-bit integer selection. Each operand uses one VGPR;
 // D may alias any whole source VGPR. These instructions have no arithmetic

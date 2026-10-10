@@ -1186,8 +1186,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_interp_p2_f32` | yes | yes | in | `goc_v_interp_p2_f32` | `v_interp_p2_new_f32` | API present; semantic audit pending |
 | `v_interp_p2_rtz_f16_f32` | yes | yes | in | `goc_v_interp_p2_rtz_f16_f32` | — | API present; semantic audit pending |
 | `v_ldexp_f16` | yes | yes | in | `goc_v_ldexp_f16`<br>`goc_v_ldexp_f16_wave64` | — | API present; semantic audit pending |
-| `v_ldexp_f32` | yes | yes | in | `goc_v_ldexp_f32` | — | API present; semantic audit pending |
-| `v_ldexp_f64` | yes | yes | in | `goc_v_ldexp_f64` | — | API present; semantic audit pending |
+| `v_ldexp_f32` | yes | yes | in | `goc_v_ldexp_f32`<br>`goc_v_ldexp_f32_wave64` | — | API present; semantic audit pending |
+| `v_ldexp_f64` | yes | yes | in | `goc_v_ldexp_f64`<br>`goc_v_ldexp_f64_wave64` | — | API present; semantic audit pending |
 | `v_lerp_u8` | yes | yes | in | `goc_v_lerp_u8`<br>`goc_v_lerp_u8_wave64` | — | API present; semantic audit pending |
 | `v_log_f16` | yes | yes | in | `goc_v_log_f16`<br>`goc_v_log_f16_wave64` | — | API present; semantic audit pending |
 | `v_log_f32` | yes | yes | in | `goc_v_log_f32`<br>`goc_v_log_f32_wave64` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 33 Wave32 EXEC-taking APIs without a corresponding
+There are 31 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1445,7 +1445,6 @@ SAVEEXEC/WREXEC consume EXEC as data and already have distinct `_b32` and
 | [`half_dot.cpp`](src/half_dot.cpp) | `goc_v_dot2_bf16_bf16`, `goc_v_dot2_f16_f16` |
 | [`interp16.cpp`](src/interp16.cpp) | `goc_v_interp_p10_f16_f32`, `goc_v_interp_p10_rtz_f16_f32`, `goc_v_interp_p2_f16_f32`, `goc_v_interp_p2_rtz_f16_f32` |
 | [`interp32.cpp`](src/interp32.cpp) | `goc_v_interp_p10_f32`, `goc_v_interp_p2_f32` |
-| [`ldexp.cpp`](src/ldexp.cpp) | `goc_v_ldexp_f32`, `goc_v_ldexp_f64` |
 | [`mullit.cpp`](src/mullit.cpp) | `goc_v_mullit_f32` |
 | [`rcp_iflag.cpp`](src/rcp_iflag.cpp) | `goc_v_rcp_iflag_f32` |
 | [`trig_preop.cpp`](src/trig_preop.cpp) | `goc_v_trig_preop_f64` |

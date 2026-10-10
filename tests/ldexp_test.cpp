@@ -21,6 +21,8 @@ namespace {
 
 using Fn = decltype(&goc_v_ldexp_f32);
 const Fn functions[] = {goc_v_ldexp_f32, goc_v_ldexp_f64};
+const decltype(&goc_v_ldexp_f32_wave64) wave64_functions[] = {goc_v_ldexp_f32_wave64,
+                                                              goc_v_ldexp_f64_wave64};
 
 uint32_t modifiers(int variant) {
   return (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
@@ -334,5 +336,198 @@ TEST(Ldexp, DppValidation) {
     EXPECT_EQ(functions[0](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
                            descriptor, nullptr, nullptr, nullptr, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
+  }
+}
+
+TEST(Ldexp, Wave64AllModifiersMasksAndAliases) {
+  const int aliases[][2] = {{3, 4}, {0, 1}, {2, 0}, {1, 0}, {0, 2}, {2, 1}, {3, 3}};
+  for (int fp64 = 0; fp64 < 2; ++fp64) {
+    const int width = fp64 ? 52 : 23, bias = fp64 ? 1023 : 127;
+    const uint64_t sign = 1ULL << (fp64 ? 63 : 31);
+    const uint64_t normal = 1ULL << width, inf = uint64_t(2 * bias + 1) << width;
+    const uint64_t values[] = {0,
+                               sign,
+                               1,
+                               sign | 1,
+                               normal - 1,
+                               sign | (normal - 1),
+                               normal,
+                               sign | normal,
+                               normal + 1,
+                               sign | (normal + 1),
+                               inf - 1,
+                               sign | (inf - 1),
+                               inf,
+                               sign | inf,
+                               uint64_t(bias) << width,
+                               sign | (uint64_t(bias) << width)};
+    const int powers[] = {0,   1,   -1,   2,    -2,    23,        -23,       52,
+                          -52, 126, -126, 1022, -1022, INT32_MIN, INT32_MAX, -4096};
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (int variant = 0; variant < 32; ++variant)
+        for (uint64_t exec_mask : {uint64_t(UINT64_MAX), uint64_t(0xffffffff00000000ULL),
+                                   uint64_t(0x87654321fedcba98ULL)})
+          for (const auto &alias : aliases) {
+            SCOPED_TRACE(::testing::Message() << fp64 << "/" << cpu << "/" << variant << "/"
+                                              << exec_mask << "/" << alias[0] << "/" << alias[1]);
+            uint32_t storage[5][66], want[5][66];
+            for (auto &reg : storage)
+              std::fill(reg, reg + 66, 0xdeadbeef);
+            uint32_t *a[] = {storage[0] + 1, storage[1] + 1}, *b = storage[2] + 1;
+            uint32_t *d[] = {storage[alias[0]] + 1, storage[alias[1]] + 1};
+            uint64_t results[64];
+            for (int lane = 0; lane < 64; ++lane) {
+              uint64_t input = values[(lane + 3 * (lane / 32)) % 16];
+              int power = powers[(lane + lane / 16) % 16];
+              a[0][lane] = uint32_t(input);
+              a[1][lane] = uint32_t(input >> 32);
+              b[lane] = uint32_t(power);
+              results[lane] = expected(fp64, input, power, modifiers(variant));
+            }
+            std::memcpy(want, storage, sizeof(want));
+            for (int reg = 0; reg <= fp64; ++reg)
+              for (int lane = 0; lane < 64; ++lane)
+                if (exec_mask >> lane & 1)
+                  want[alias[reg]][lane + 1] = uint32_t(results[lane] >> (32 * reg));
+            ASSERT_EQ(wave64_functions[fp64](cpu, exec_mask, modifiers(variant), d, a, &b, nullptr),
+                      GOC_SUCCESS);
+            for (int reg = 0; reg < 5; ++reg)
+              for (int lane = 0; lane < 66; ++lane)
+                EXPECT_EQ(storage[reg][lane], want[reg][lane]);
+          }
+  }
+}
+
+TEST(Ldexp, Wave64LiteralRoundingAndValidation) {
+  struct Case {
+    uint64_t input;
+    int power;
+    uint64_t output;
+  };
+
+  const Case cases[][8] = {{{1, -1, 0},
+                            {3, -1, 2},
+                            {5, -1, 2},
+                            {0x80000001, -1, 0x80000000},
+                            {0x007fffff, 1, 0x00fffffe},
+                            {0x00ffffff, -1, 0x00800000},
+                            {0x7f7fffff, 1, 0x7f800000},
+                            {0x3f800000, -149, 1}},
+                           {{1, -1, 0},
+                            {3, -1, 2},
+                            {5, -1, 2},
+                            {0x8000000000000001, -1, 0x8000000000000000},
+                            {0x000fffffffffffff, 1, 0x001ffffffffffffe},
+                            {0x001fffffffffffff, -1, 0x0010000000000000},
+                            {0x7fefffffffffffff, 1, 0x7ff0000000000000},
+                            {0x3ff0000000000000, -1074, 1}}};
+  for (int fp64 = 0; fp64 < 2; ++fp64)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      uint32_t a[2][64], b[64], d[2][64];
+      uint32_t *pa[] = {a[0], a[1]}, *pb = b, *pd[] = {d[0], d[1]};
+      for (int lane = 0; lane < 64; ++lane) {
+        const auto &test = cases[fp64][lane % 8];
+        a[0][lane] = uint32_t(test.input);
+        a[1][lane] = uint32_t(test.input >> 32);
+        b[lane] = uint32_t(test.power);
+      }
+      ASSERT_EQ(wave64_functions[fp64](cpu, UINT64_MAX, 0, pd, pa, &pb, nullptr), GOC_SUCCESS);
+      for (int lane = 0; lane < 64; ++lane) {
+        EXPECT_EQ(d[0][lane], uint32_t(cases[fp64][lane % 8].output));
+        if (fp64) {
+          EXPECT_EQ(d[1][lane], uint32_t(cases[fp64][lane % 8].output >> 32));
+        }
+      }
+      for (auto &reg : d)
+        std::fill(reg, reg + 64, 0xdeadbeef);
+      for (uint64_t exec_mask : {uint64_t(0), uint64_t(UINT64_MAX)}) {
+        for (uint32_t invalid :
+             {GOC_ALU_NEG_B, GOC_ALU_ABS_B, GOC_ALU_NEG_C, GOC_ALU_HIGH_D, 1U << 31})
+          EXPECT_EQ(wave64_functions[fp64](cpu, exec_mask, invalid, pd, pa, &pb, nullptr),
+                    GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(wave64_functions[fp64](cpu | (1ULL << 63), exec_mask, 0, pd, pa, &pb, nullptr),
+                  GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(wave64_functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                         exec_mask, 0, pd, pa, &pb, nullptr),
+                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      }
+      for (auto &reg : d)
+        for (uint32_t value : reg)
+          EXPECT_EQ(value, 0xdeadbeef);
+      EXPECT_EQ(wave64_functions[fp64](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, pd, pa,
+                                       &pb, nullptr),
+                GOC_SUCCESS);
+    }
+}
+
+TEST(Ldexp, Wave64DppModifiersMasksAliasesAndRandomWords) {
+  const uint32_t special[] = {0,          0x80000000, 1,          0x807fffff, 0x00800000,
+                              0x80800001, 0x3f800000, 0xff7fffff, 0x7f800000, 0xff800001};
+  const int exponents[] = {INT32_MIN, -149, -126, -1, 0, 1, 127, INT32_MAX};
+  std::mt19937 random(628);
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t descriptor_base : goc_test::dpp_modes)
+      for (unsigned variant = 0; variant < 32; ++variant)
+        for (uint64_t exec_mask : {uint64_t(UINT64_MAX), uint64_t(0xffffffff00000000ULL),
+                                   uint64_t(0x87654321fedcba98ULL)})
+          for (unsigned layout = 0; layout < 5; ++layout) {
+            uint64_t descriptor = descriptor_base;
+            if (descriptor & GOC_DPP16)
+              descriptor =
+                  (descriptor & ~GOC_DPP_ROW_MASK) | (uint64_t(variant & 15) << GOC_DPP_ROW_SHIFT);
+            uint32_t words[3][66], before[3][66];
+            for (auto &reg : words)
+              for (auto &word : reg)
+                word = random();
+            for (unsigned lane = 1; lane <= 64; ++lane) {
+              if (lane & 1)
+                words[0][lane] = special[(lane / 2) % 10];
+              words[1][lane] = uint32_t(exponents[lane % 8]);
+            }
+            std::memcpy(before, words, sizeof(words));
+            unsigned dest = layout % 3 == 0 ? 2 : layout % 3 - 1;
+            unsigned breg = layout >= 3 ? 0 : 1;
+            auto a = words[0] + 1, b = words[breg] + 1, d = words[dest] + 1;
+            ASSERT_EQ(wave64_functions[0](cpu, exec_mask, descriptor | modifiers(variant), &d, &a,
+                                          &b, nullptr),
+                      GOC_SUCCESS);
+            for (unsigned reg = 0; reg < 3; ++reg)
+              for (unsigned lane = 0; lane < 66; ++lane) {
+                int source;
+                uint32_t want = before[reg][lane];
+                bool active = reg == dest && lane >= 1 && lane <= 64 &&
+                              goc_test::dpp_source(descriptor, exec_mask, lane - 1, source);
+                if (active) {
+                  int32_t exponent;
+                  std::memcpy(&exponent, &before[breg][lane], sizeof(exponent));
+                  want = reference<float>(source < 0 ? 0u : before[0][source + 1], exponent,
+                                          modifiers(variant));
+                }
+                if (active && nan_bits(false, want))
+                  EXPECT_TRUE(nan_bits(false, words[reg][lane]));
+                else
+                  EXPECT_EQ(words[reg][lane], want);
+              }
+          }
+}
+
+TEST(Ldexp, Wave64OptionalStateAndEmptyExec) {
+  for (auto fn : wave64_functions)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      uint32_t a[2][64] = {}, b[64] = {}, d[2][64] = {};
+      const uint32_t *pa[] = {a[0], a[1]}, *pb = b;
+      uint32_t *pd[] = {d[0], d[1]}, exceptions = 0x80000000;
+      EXPECT_EQ(fn(cpu, UINT64_MAX, 0, pd, pa, &pb, &exceptions), GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu, 0, 0, nullptr, nullptr, nullptr, &exceptions), GOC_SUCCESS);
+      EXPECT_EQ(fn(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, nullptr,
+                   &exceptions),
+                GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+      EXPECT_EQ(exceptions, 0x80000000U);
+    }
+  for (uint64_t descriptor : goc_test::dpp_modes) {
+    EXPECT_EQ(goc_v_ldexp_f32_wave64(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr),
+              GOC_SUCCESS);
+    EXPECT_EQ(goc_v_ldexp_f64_wave64(0, 0, descriptor, nullptr, nullptr, nullptr, nullptr),
+              GOC_ERROR_INVALID_FLAGS);
   }
 }

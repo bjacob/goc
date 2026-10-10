@@ -50,7 +50,7 @@ paths must retain their existing performance and may skip optional state outputs
 | RDNA3 WMMA | All six mnemonics, both widths, exact rocjitsu GFX11 model; `wmma_replicated_exact_test.cpp`; 103 DOT2 captures and 28 packed matrices | Scalar implementations; verify inventory integration as other APIs evolve |
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting and ordinary Wave64 forms remain |
-| Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms and SIMD dispatch | Exact IEEE-mode NaN policies, exception reporting and Wave64 |
+| Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms, Wave64 and SIMD dispatch | Exact IEEE-mode NaN policies and exception reporting |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
 | Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
@@ -1454,3 +1454,23 @@ throughput claim is made. The vector width queue is 33 APIs.
 Validation: all 839 tests pass on Clang 21 and GCC 15 Release. All eight
 Wave64 trig and instruction-flag tests pass under ASan/UBSan, including the
 complete exception corpus and exhaustive FP16 input sweep.
+
+
+## Wave64 FP32/FP64 LDEXP
+
+Added both Wave64 LDEXP APIs using the existing scalar/v3/v4 kernels and loose
+numerical semantics. FP64 A/D retain low/high VGPR pairs while B remains one
+signed integer VGPR. FP32 routes A through four independent DPP rows without
+permuting B; FP64 continues to reject DPP. Exact reporting remains unsupported,
+and loose optional state remains unchanged.
+
+Independent higher-precision references cover all modifiers, upper-only/sparse
+EXEC, crossed source/destination words, shared destination words and guards.
+Literal rounding witnesses check subnormal ties, minimum-normal boundaries and
+overflow. FP32 DPP tests cover all row-enable patterns, random source words,
+integer exponent extremes, source sharing and destination aliases. Validation
+checks errors, empty EXEC and optional-state contracts. No new exactness,
+native Wave64 capture or performance claim is made. The width queue is 31 APIs.
+
+Validation: all 843 tests pass on Clang 21 and GCC 15 Release. All five
+Wave64 LDEXP and instruction-flag tests pass under ASan/UBSan.
