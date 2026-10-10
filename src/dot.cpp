@@ -143,7 +143,9 @@ int goc_v_dot2acc_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instructi
                           uint32_t *trapsts) {
   // The RDNA3 VOP2 form only encodes routing modifiers, unlike VOP3P DOT2.
   if (uint32_t(instruction_flags))
-    return GOC_ERROR_INVALID_FLAGS;
+    return trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE
+               ? GOC_ERROR_UNSUPPORTED_GLOBAL_STATE
+               : GOC_ERROR_INVALID_FLAGS;
   return goc_v_dot2_f32_f16(flags, exec_mask, instruction_flags, d, a, b, d, trapsts);
 }
 
@@ -190,6 +192,8 @@ int goc_v_dot2acc_f32_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t in
                                  const uint32_t *const *b, uint32_t *trapsts) {
   // The RDNA3 VOP2 form only encodes routing modifiers, unlike VOP3P DOT2.
   if (uint32_t(instruction_flags))
-    return GOC_ERROR_INVALID_FLAGS;
+    return trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE
+               ? GOC_ERROR_UNSUPPORTED_GLOBAL_STATE
+               : GOC_ERROR_INVALID_FLAGS;
   return goc_v_dot2_f32_f16_wave64(flags, exec_mask, instruction_flags, d, a, b, d, trapsts);
 }

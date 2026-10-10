@@ -7266,3 +7266,62 @@ instruction-flag tests. All nine inventory/audit tooling tests pass. Final
 logs are `coverage-work/half-frexp-contract-final-{build,tests}.log` in each
 build directory. The review ledger now records 683 in-scope mnemonics, with
 126 remaining; this is not a completeness percentage.
+
+## FP32-result DOT2 architecture contracts
+
+Reviewed the FP16/BF16 `v_dot2_f32_*`, RDNA3 `v_dot2acc_f32_f16`, and
+`v_dual_dot2acc_f32_*` forms against rocjitsu revision `ffc144c564c`, including
+its shared VOP3P handlers, architecture-specific VOPD handlers,
+`gfx11_dot2.h`, `gfx12_dot.h`, and borrowed GFX1100 fixture words. Also checked
+the RDNA3/RDNA4 packed-math, VOPD and instruction descriptions and LLVM's
+`VOP3PInstDotWithDual`/DOT2 profiles.
+
+- Ordinary forms consume two packed half factors from each A/B VGPR and an
+  FP32 C; D is FP32. VOP2/VOPD accumulator forms use old D as C. Exact results
+  retain the existing GFX11 and GFX12 integer accumulation models, including
+  their differing alignment/rounding and special-value behavior; the
+  architecture suffix is required. The GFX12 two-product wrapper calls the
+  same upstream model as GoC's two-element `gfx12_dot_bits` specialization.
+  Upstream's generic shared non-GFX11 scalar fallback instead uses host
+  arithmetic; it is not the source of GoC's exact GFX12 implementation.
+- VOP3P allows independent low/high sign and half selection for A/B, plus C
+  negation. Floating DOT2 CLAMP is ignored, consistent with the manuals and
+  upstream handlers. ABS and OMOD are not VOP3P fields. Guest IEEE, denormal
+  and directed-rounding flags remain unsupported; FP16_OVFL is accepted but
+  does not change this FP32-result model.
+- Ordinary and VOP2 forms support DPP8/DPP16 on the complete A word before
+  selection/negation, and both wave widths. B/C stay in their own lanes.
+  VOP2 accepts no low arithmetic modifier bits. VOPD is Wave32-only and accepts
+  no instruction flags or DPP. Caller-side slot/bank/parity/literal and
+  scalar-source expansion requirements remain as documented under VOPD decoded
+  operations; a per-slot GoC call does not decode or execute a whole pair.
+- Whole-VGPR aliases and inactive-lane preservation are covered. Loose scalar
+  and eight-lane AVX2 arithmetic remain shared across architectures and skip
+  optional state reporting. Exact arithmetic remains scalar. Existing tests
+  cover selectors/signs, ignored CLAMP, DPP, all available CPU levels, masks,
+  aliases, borrowed GFX1100 results and retained gfx1201 numerical/status
+  corpora. Wave64 fixture reuse is not a claim of new native Wave64 captures.
+- RDNA3 non-null exact `trapsts` reporting is unsupported. RDNA4 keeps the
+  previously implemented no-update `excp_flag_user` contract under supported
+  modes, tested with the retained RX 9070 status corpus (524,288 reads, all
+  zero). This review adds neither an exception model nor a hardware probe,
+  and that corpus does not characterize unsupported guest modes.
+
+Fixed a validation-order bug in the two RDNA3 VOP2 accumulator wrappers:
+invalid low instruction bits previously returned INVALID_FLAGS before checking
+an exact request for unsupported global state. That error path now returns
+UNSUPPORTED_GLOBAL_STATE first, matching the ordinary/VOPD APIs and standing
+contract, even without STRICT or active EXEC. Null state pointers and loose
+semantics retain INVALID_FLAGS. New tests cover both widths, every instruction
+flag bit, exact/reserved semantics, STRICT on/off, empty/nonempty EXEC, null
+operands and preservation of all register/state storage. The successful-call
+branch and arithmetic kernels are unchanged; no performance benchmark was
+rerun for this error-path correction.
+
+Validation: all **32** DOT2, DOT2-architecture, VOPD and instruction-flag tests
+pass with Clang 21 Release, GCC 15 Release and Clang ASan/UBSan; all nine
+audit/inventory tooling tests pass. Logs are
+`coverage-work/dot2-contract-{build,tests}.log` in each build directory.
+Corrected the RDNA3 public comment to name `trapsts` instead of
+`excp_flag_user`. The ledger records 688 contracts, with 121 remaining;
+this is not an overall completion percentage.

@@ -377,3 +377,42 @@ TEST(Dot2Architecture, Wave64AccumulateLooseSimdAndReportingOptOut) {
     EXPECT_EQ(state, 0x80000055U);
   }
 }
+
+TEST(Dot2Architecture, AccumulateStateReportingPrecedesFlagValidation) {
+  for (bool wide : {false, true})
+    for (bool strict : {false, true})
+      for (uint64_t semantics : {GOC_SEMANTICS_EXACT_EMPIRICAL, uint64_t(2) << 16})
+        for (uint64_t exec_mask : {uint64_t(0), uint64_t(1), UINT64_MAX})
+          for (unsigned bit = 0; bit < 64; ++bit) {
+            uint32_t words[3][64], before[3][64], state = 0x8badf00d;
+            for (unsigned reg = 0; reg < 3; ++reg)
+              for (unsigned lane = 0; lane < 64; ++lane)
+                words[reg][lane] = 0x12340000U + 64 * reg + lane;
+            std::memcpy(before, words, sizeof words);
+            const uint64_t flags = semantics | (strict ? GOC_SEMANTICS_STRICT : 0);
+            const uint64_t mode = 1ULL << bit;
+            auto call = [&](uint64_t f, bool null_operands, uint32_t *state_output) {
+              uint32_t *d = words[2];
+              const uint32_t *a = words[0], *b = words[1];
+              return wide ? goc_v_dot2acc_f32_f16_wave64(f, exec_mask, mode,
+                                                         null_operands ? nullptr : &d,
+                                                         null_operands ? nullptr : &a,
+                                                         null_operands ? nullptr : &b, state_output)
+                          : goc_v_dot2acc_f32_f16(f, uint32_t(exec_mask), mode,
+                                                  null_operands ? nullptr : &d,
+                                                  null_operands ? nullptr : &a,
+                                                  null_operands ? nullptr : &b, state_output);
+            };
+            for (bool null_operands : {false, true})
+              EXPECT_EQ(call(flags, null_operands, &state), GOC_ERROR_UNSUPPORTED_GLOBAL_STATE)
+                  << wide << '/' << strict << '/' << bit;
+            // Low bits are all invalid for this VOP2 form. Opting out of
+            // reporting, or requesting loose semantics, retains that error.
+            if (bit < 32) {
+              EXPECT_EQ(call(flags, false, nullptr), GOC_ERROR_INVALID_FLAGS);
+              EXPECT_EQ(call(0, false, &state), GOC_ERROR_INVALID_FLAGS);
+            }
+            EXPECT_EQ(state, 0x8badf00dU);
+            EXPECT_EQ(std::memcmp(words, before, sizeof words), 0);
+          }
+}

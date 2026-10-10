@@ -1283,5 +1283,24 @@
     "mnemonics": [
       "v_frexp_mant_f16"
     ]
+  },
+  {
+    "heading": "FP32-result DOT2 architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/dot2_architecture_test.cpp",
+    "mnemonics": [
+      "v_dot2_f32_f16",
+      "v_dot2_f32_bf16",
+      "v_dot2acc_f32_f16"
+    ]
+  },
+  {
+    "heading": "FP32-result DOT2 architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/dual_test.cpp",
+    "mnemonics": [
+      "v_dual_dot2acc_f32_f16",
+      "v_dual_dot2acc_f32_bf16"
+    ]
   }
 ]

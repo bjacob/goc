@@ -1125,9 +1125,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_div_scale_f64` | yes | yes | in | `goc_v_div_scale_f64`<br>`goc_v_div_scale_f64_wave64`<br>`goc_v_div_scale_f64_rdna4`<br>`goc_v_div_scale_f64_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_dot2_bf16_bf16` | yes | yes | in | `goc_v_dot2_bf16_bf16`<br>`goc_v_dot2_bf16_bf16_wave64`<br>`goc_v_dot2_bf16_bf16_rdna4`<br>`goc_v_dot2_bf16_bf16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#half-result-dot2-architecture-contracts) |
 | `v_dot2_f16_f16` | yes | yes | in | `goc_v_dot2_f16_f16`<br>`goc_v_dot2_f16_f16_wave64`<br>`goc_v_dot2_f16_f16_rdna4`<br>`goc_v_dot2_f16_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#half-result-dot2-architecture-contracts) |
-| `v_dot2_f32_bf16` | yes | yes | in | `goc_v_dot2_f32_bf16`<br>`goc_v_dot2_f32_bf16_wave64`<br>`goc_v_dot2_f32_bf16_rdna4`<br>`goc_v_dot2_f32_bf16_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_dot2_f32_f16` | yes | yes | in | `goc_v_dot2_f32_f16`<br>`goc_v_dot2_f32_f16_wave64`<br>`goc_v_dot2_f32_f16_rdna4`<br>`goc_v_dot2_f32_f16_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_dot2acc_f32_f16` | yes | — | in | `goc_v_dot2acc_f32_f16`<br>`goc_v_dot2acc_f32_f16_wave64` | `v_dot2c_f32_f16` | API present; semantic audit pending |
+| `v_dot2_f32_bf16` | yes | yes | in | `goc_v_dot2_f32_bf16`<br>`goc_v_dot2_f32_bf16_wave64`<br>`goc_v_dot2_f32_bf16_rdna4`<br>`goc_v_dot2_f32_bf16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-result-dot2-architecture-contracts) |
+| `v_dot2_f32_f16` | yes | yes | in | `goc_v_dot2_f32_f16`<br>`goc_v_dot2_f32_f16_wave64`<br>`goc_v_dot2_f32_f16_rdna4`<br>`goc_v_dot2_f32_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-result-dot2-architecture-contracts) |
+| `v_dot2acc_f32_f16` | yes | — | in | `goc_v_dot2acc_f32_f16`<br>`goc_v_dot2acc_f32_f16_wave64` | `v_dot2c_f32_f16` | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-result-dot2-architecture-contracts) |
 | `v_dot4_f32_bf8_bf8` | — | yes | in | `goc_v_dot4_f32_bf8_bf8`<br>`goc_v_dot4_f32_bf8_bf8_wave64` | — | API present; semantic audit pending |
 | `v_dot4_f32_bf8_fp8` | — | yes | in | `goc_v_dot4_f32_bf8_fp8`<br>`goc_v_dot4_f32_bf8_fp8_wave64` | — | API present; semantic audit pending |
 | `v_dot4_f32_fp8_bf8` | — | yes | in | `goc_v_dot4_f32_fp8_bf8`<br>`goc_v_dot4_f32_fp8_bf8_wave64` | — | API present; semantic audit pending |
@@ -1140,8 +1140,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_dual_add_nc_u32` | yes | yes | in | `goc_v_dual_add_nc_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
 | `v_dual_and_b32` | yes | yes | in | `goc_v_dual_and_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
 | `v_dual_cndmask_b32` | yes | yes | in | `goc_v_dual_cndmask_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#integer-vopd-architecture-contracts) |
-| `v_dual_dot2acc_f32_bf16` | yes | yes | in | `goc_v_dual_dot2acc_f32_bf16`<br>`goc_v_dual_dot2acc_f32_bf16_rdna4` | — | API present; semantic audit pending |
-| `v_dual_dot2acc_f32_f16` | yes | yes | in | `goc_v_dual_dot2acc_f32_f16`<br>`goc_v_dual_dot2acc_f32_f16_rdna4` | — | API present; semantic audit pending |
+| `v_dual_dot2acc_f32_bf16` | yes | yes | in | `goc_v_dual_dot2acc_f32_bf16`<br>`goc_v_dual_dot2acc_f32_bf16_rdna4` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-result-dot2-architecture-contracts) |
+| `v_dual_dot2acc_f32_f16` | yes | yes | in | `goc_v_dual_dot2acc_f32_f16`<br>`goc_v_dual_dot2acc_f32_f16_rdna4` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#fp32-result-dot2-architecture-contracts) |
 | `v_dual_fmaak_f32` | yes | yes | in | `goc_v_dual_fmaak_f32`<br>`goc_v_dual_fmaak_f32_rdna4` | — | API present; semantic audit pending |
 | `v_dual_fmac_f32` | yes | yes | in | `goc_v_dual_fmac_f32`<br>`goc_v_dual_fmac_f32_rdna4` | — | API present; semantic audit pending |
 | `v_dual_fmamk_f32` | yes | yes | in | `goc_v_dual_fmamk_f32`<br>`goc_v_dual_fmamk_f32_rdna4` | — | API present; semantic audit pending |

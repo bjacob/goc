@@ -5987,7 +5987,7 @@ int goc_v_dot2_f32_bf16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instr
 
 // RDNA3 DOT2 has the same register layout, sign/half selection and ignored
 // CLAMP, but different empirical accumulation. Exact result bits are supported;
-// exact requests with non-null excp_flag_user return UNSUPPORTED_GLOBAL_STATE.
+// exact requests with non-null trapsts return UNSUPPORTED_GLOBAL_STATE.
 // Loose semantics share the RDNA4 SIMD path and leave optional state unchanged.
 int goc_v_dot2_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
