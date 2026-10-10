@@ -7438,3 +7438,57 @@ Clang 21 Release, GCC 15 Release and Clang ASan/UBSan; all nine tooling tests
 pass. Logs are `coverage-work/sfu-contract-{build,tests}.log` in each build
 directory. The ledger records 696 mnemonic contracts, with 113 remaining;
 these counts do not establish overall completion.
+
+## FP32 EXP and LOG architecture contracts
+
+Reviewed `v_exp_f32` and `v_log_f32` against rocjitsu revision `ffc144c564c`'s
+`util/amdgpu_exp.h`, `util/amdgpu_log.h`, transcendental wrappers and shared
+VOP1/VOP3 execution handlers, plus the RDNA3/RDNA4 instruction descriptions.
+The existing GoC coefficient tables and integer reductions are ports of those
+empirical models. No new approximation, residual table or hardware probe was
+introduced.
+
+- EXP is base two. Both signed zeros and flushed tiny inputs yield one;
+  negative infinity yields zero and positive infinity yields infinity.
+  The borrowed mapping handles its finite overflow/underflow boundaries.
+  LOG is also base two: either signed zero or flushed input subnormal yields
+  negative infinity, negative normal values/negative infinity yield a
+  canonical negative NaN, one yields positive zero, and positive infinity
+  is preserved. Exact evaluation preserves NaN sign/payload, with quieting
+  controlled by RDNA3 IEEE mode and unconditional on RDNA4.
+- Input/output flushing follows the forced-flush FP32 instruction policy,
+  independently of the accepted guest denormal flags. RDNA3 OMOD is disabled
+  by IEEE mode; preserved output-denormal mode does not disable it for these
+  forced-flush instructions. RDNA4 applies OMOD independently. These policies
+  require the existing architecture-specific APIs despite shared numerical
+  models. ABS precedes NEG; OMOD/CLAMP follow the operation. RDNA3 supports
+  DX10-clamp-off, whereas RDNA4 always maps arithmetic NaNs to zero through
+  CLAMP and rejects that setting.
+- Both wave widths, DPP8/DPP16, whole-VGPR aliases and inactive-lane
+  preservation are supported. Guest directed rounding remains unsupported.
+  FP16_OVFL is accepted without an effect on FP32 results. Non-null exact
+  optional-state reporting is unsupported, regardless of STRICT, EXEC or
+  invalid modifier bits. Loose paths skip reporting.
+- Both numerical semantics are supported, but **these FP32 EXP/LOG paths
+  are scalar at every CPU tier**: loose uses host `exp2`/`log2` and exact uses
+  the borrowed integer mappings. The SIMD implementations for other unary
+  operations and for half EXP/LOG do not imply FP32 EXP/LOG SIMD coverage.
+  Exact evaluation does not call upstream's FP-environment guards. Loose
+  semantics retain their documented host-arithmetic preconditions.
+
+Added literal tests for signed zeros, both signs of subnormal inputs, infinity,
+negative LOG inputs, EXP at 128 and -127, and NaN payload/quieting behavior.
+They cover both architectures and wave widths, every available CPU tier,
+all guest denormal/IEEE policies, in-place output and inactive lanes. Expanded
+all five parameterized exact-unary reporting tests to include empty/nonempty
+EXEC and invalid low/high modifier bits with null operands, proving rejection
+before operand access or flag validation. Existing dense normalized-domain
+hashes and exponent/modifier corpora remain the numerical evidence for the
+borrowed mappings; retained gfx1201 fixtures are not new native RDNA3 captures.
+No production code changed, so no performance benchmark was needed.
+
+Validation: all **14** selected EXP/LOG and unsupported-reporting tests pass
+with Clang 21 Release, GCC 15 Release and Clang ASan/UBSan; all nine tooling
+tests pass. Logs are `coverage-work/exp-log-contract-{build,tests}.log` in each
+build directory. The ledger records 698 mnemonic contracts, with 111 remaining;
+these counts are not an overall completion percentage.

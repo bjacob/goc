@@ -11,6 +11,7 @@
 #include <cfenv>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <stdint.h>
 
 namespace {
@@ -176,13 +177,47 @@ TEST_P(UnaryExact, ReportingRemainsExplicitlyUnsupported) {
   for (bool rdna3 : {false, true})
     for (bool wide : {false, true}) {
       uint32_t state = 0x80000001;
-      for (uint64_t strict : {uint64_t(0), uint64_t(GOC_SEMANTICS_STRICT)}) {
-        EXPECT_EQ(invoke(op, rdna3, wide, GOC_SEMANTICS_EXACT_EMPIRICAL | strict, UINT64_MAX, 0,
-                         nullptr, nullptr, &state),
-                  GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
-        EXPECT_EQ(state, 0x80000001U);
-      }
+      for (uint64_t strict : {uint64_t(0), uint64_t(GOC_SEMANTICS_STRICT)})
+        for (uint64_t exec_mask : {uint64_t(0), uint64_t(1), UINT64_MAX})
+          for (uint64_t mode : {uint64_t(0), uint64_t(GOC_ALU_NEG_B), uint64_t(1) << 63}) {
+            EXPECT_EQ(invoke(op, rdna3, wide, GOC_SEMANTICS_EXACT_EMPIRICAL | strict, exec_mask,
+                             mode, nullptr, nullptr, &state),
+                      GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+            EXPECT_EQ(state, 0x80000001U);
+          }
     }
 }
 
 INSTANTIATE_TEST_SUITE_P(Captured, UnaryExact, ::testing::Values(0U, 1U, 2U, 3U, 4U));
+
+TEST(UnaryExpLog, SpecialValuesAndForcedDenormalPolicy) {
+  const uint32_t inputs[2][10] = {{0, 0x80000000, 1, 0x80000001, 0x7f800000, 0xff800000, 0x43000000,
+                                   0xc2fe0000, 0x7f800123, 0xffc04567},
+                                  {0, 0x80000000, 1, 0x80000001, 0x3f800000, 0xbf800000, 0x7f800000,
+                                   0xff800000, 0x7f800123, 0xffc04567}};
+  const uint32_t results[2][10] = {{0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000, 0x7f800000, 0,
+                                    0x7f800000, 0, 0x7fc00123, 0xffc04567},
+                                   {0xff800000, 0xff800000, 0xff800000, 0xff800000, 0, 0xffc00000,
+                                    0x7f800000, 0xffc00000, 0x7fc00123, 0xffc04567}};
+  for (unsigned op = 0; op < 2; ++op)
+    for (bool rdna3 : {false, true})
+      for (bool wide : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned policy = 0; policy < 8; ++policy) {
+            const uint64_t flags = cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                                   (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                   (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                   (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+            const uint64_t exec_mask = wide ? 0x9192a5a571abcdefULL : 0x71abcdef;
+            uint32_t words[64], expected[64];
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              const unsigned i = lane % 10;
+              expected[lane] = words[lane] = inputs[op][i];
+              if ((exec_mask >> lane) & 1)
+                expected[lane] = rdna3 && !(policy & 4) && i == 8 ? inputs[op][i] : results[op][i];
+            }
+            ASSERT_EQ(invoke(op + 3, rdna3, wide, flags, exec_mask, 0, words, words), GOC_SUCCESS);
+            EXPECT_TRUE(std::equal(words, words + 64, expected))
+                << op << '/' << rdna3 << '/' << wide << '/' << policy;
+          }
+}

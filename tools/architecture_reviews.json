@@ -1331,5 +1331,14 @@
       "v_rsq_f16",
       "v_sqrt_f16"
     ]
+  },
+  {
+    "heading": "FP32 EXP and LOG architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/unary_exact_test.cpp",
+    "mnemonics": [
+      "v_exp_f32",
+      "v_log_f32"
+    ]
   }
 ]
