@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-526 in-scope mnemonics have explicit contract-review records in
+534 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 283 in-scope mnemonics need a recorded review.
+The remaining 275 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -212,8 +212,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_add_nc_i32` | SIMD macro, output helper | no | 3287 | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |
 | `v_add_nc_u16` | output helper | no | 3302 | review required |
 | `v_add_nc_u32` | SIMD macro, output helper | no | 3317, 3331 | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |
-| `v_alignbit_b32` | SIMD macro, output helper | no | 3449 | review required |
-| `v_alignbyte_b32` | SIMD macro, output helper | no | 3474 | review required |
+| `v_alignbit_b32` | SIMD macro, output helper | no | 3449 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
+| `v_alignbyte_b32` | SIMD macro, output helper | no | 3474 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_and_b16` | no direct policy detected | no | not found | review required |
 | `v_and_b32` | SIMD macro, output helper | no | 3499, 3513 | review required |
 | `v_and_or_b32` | SIMD macro, output helper | no | 3527 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
@@ -221,11 +221,11 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_ashrrev_i32` | SIMD macro, output helper | no | 3590, 3607 | review required |
 | `v_ashrrev_i64` | SIMD macro | no | 3624 | review required |
 | `v_bcnt_u32_b32` | SIMD macro, output helper | no | 3642 | review required |
-| `v_bfe_i32` | SIMD macro, output helper | no | 3658 | review required |
-| `v_bfe_u32` | SIMD macro, output helper | no | 3686 | review required |
-| `v_bfi_b32` | SIMD macro, output helper | no | 3706 | review required |
-| `v_bfm_b32` | SIMD macro, output helper | no | 3723 | review required |
-| `v_bfrev_b32` | SIMD macro, output helper | no | 3738, 3762 | review required |
+| `v_bfe_i32` | SIMD macro, output helper | no | 3658 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
+| `v_bfe_u32` | SIMD macro, output helper | no | 3686 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
+| `v_bfi_b32` | SIMD macro, output helper | no | 3706 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
+| `v_bfm_b32` | SIMD macro, output helper | no | 3723 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
+| `v_bfrev_b32` | SIMD macro, output helper | no | 3738, 3762 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_ceil_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3786, 3810 | review required |
 | `v_ceil_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3855, 3869 | review required |
 | `v_ceil_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 3899, 3913 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
@@ -576,7 +576,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_or_b16` | no direct policy detected | no | not found | review required |
 | `v_or_b32` | SIMD macro, output helper | no | 17215, 17229 | review required |
 | `v_pack_b32_f16` | SIMD macro, output helper | yes | 17243 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-pack-and-fp32-byte-pack-architecture-contracts) |
-| `v_perm_b32` | SIMD macro, output helper | no | 17260 | review required |
+| `v_perm_b32` | SIMD macro, output helper | no | 17260 | [loose and exact contract reviewed; see limitations](COVERAGE.md#bitfield-and-alignment-architecture-contracts) |
 | `v_permlane16_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#permlane16-architecture-and-simd-contracts) |
 | `v_permlane64_b32` | output helper | no | 17291 | [loose and exact contract reviewed; see limitations](COVERAGE.md#half-moves-and-swap-architecture-contracts) |
 | `v_permlanex16_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#permlane16-architecture-and-simd-contracts) |

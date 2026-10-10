@@ -5700,3 +5700,44 @@ Validation: all 1,128 CTests pass under Clang and GCC Release; all fourteen
 compound-integer/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests
 pass. Logs use `integer-ternary-review-` in each build directory. The ledger records
 526 contracts; 283 in-scope mnemonics remain without recorded reviews.
+
+## Bitfield and alignment architecture contracts
+
+Reviewed BFE_I32/U32, BFI, BFM, BFREV, ALIGNBIT/ALIGNBYTE and PERM at rocjitsu
+`ffc144c564c`. All eighteen architecture-specific execution/modifier pairs are
+identical (36 bodies), covering eight VOP3 forms and BFREV's VOP1 form. Nine
+shared helpers were checked. Locations, hashes and delegates are recorded in
+`../goc-build/coverage-work/bitfield-upstream-review.json`. No architecture suffix
+or optional exception-register output is needed.
+
+BFE/BFM mask offset/width to five bits; width zero yields zero. Signed BFE
+sign-extends the source before extraction, so fields crossing bit 31 include
+copies of the source sign, then sign-extends the field itself. ALIGN uses A as
+the high word and B as the low word, with five-bit bit counts or two-bit byte
+counts. PERM selectors 0..7 copy bytes, 8..11 replicate selected halfword sign
+bits, 12 yields zero, and 13..255 yield all ones. BFI is bitwise selection and
+BFREV reverses all 32 bits. Existing GoC scalar/SIMD code agrees with upstream.
+
+Fixed unnecessary rejection of CLAMP, which upstream ignores. The ISA's
+ignored-CLAMP table includes bitwise operations, ALIGN and PERM. Other low flags
+remain invalid. All eight operations retain DPP8/DPP16 on A, with B/C local;
+Wave64 maps row-enable bits to each half. Validation precedes null-operand-safe
+empty EXEC, and aliases/inactive destinations retain their existing behavior.
+
+The v3 paths use eight lanes except BFI, whose previously benchmark-selected
+baseline path is preserved. v4 uses sixteen lanes for every operation. Signed
+extraction uses arithmetic shifts; ALIGN combines opposite-direction shifts;
+PERM and BFREV use byte lookup/shuffle operations. CLAMP acceptance changes only
+validation, not any arithmetic kernel or SIMD dispatch.
+
+Expanded existing per-bit reference checks to both CLAMP settings, including
+all offset/width/source-bit combinations, concatenated-bit/shift combinations,
+PERM selectors and boundary/random words. Expanded Wave64 DPP/alias tests to
+both settings, checking DPP bits explicitly for CLAMP-only calls. Existing
+hardware-corpus hashes remain unchanged. These additions validate the existing
+upstream modifier contract without new hardware experiments.
+
+Validation: all 1,128 CTests pass under Clang and GCC Release; all seventeen
+bitfield/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests pass.
+Logs use `bitfield-review-` in each build directory. The ledger records
+534 contracts; 275 in-scope mnemonics remain without recorded reviews.

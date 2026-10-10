@@ -7661,7 +7661,7 @@ int goc_v_not_b16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
                   uint32_t *const *d, const uint32_t *const *a);
 
 // Wave32 bit operations: every operand holds one VGPR. Supports DPP8/DPP16 on A;
-// low 32 instruction-flag bits must be zero. Both semantics are exact.
+// CLAMP is accepted and ignored; other low flags are invalid. Both semantics are exact.
 // BFE offsets and widths, and BFM widths and offsets, use their low five bits;
 // a zero width produces zero.
 // Signed BFE sign-extends A before extraction and sign-extends the extracted field.

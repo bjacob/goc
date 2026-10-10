@@ -70,10 +70,14 @@ TEST(BitwiseWave64, ShiftsCountsBitsMasksRoutingAndAliases) {
 }
 
 TEST(BitwiseWave64, BitfieldsOffsetsWidthsSelectorsDppAndAliases) {
+  auto modes = routes();
+  const auto unclamped_modes = modes;
+  for (auto mode : unclamped_modes)
+    modes.push_back(mode | GOC_ALU_CLAMP);
   for (unsigned op = 0; op < 8; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
-        for (uint64_t mode : routes())
+        for (uint64_t mode : modes)
           for (unsigned batch = 0; batch < 16; ++batch)
             for (unsigned alias = 0; alias < 4; ++alias) {
               uint32_t words[4][66], initial[4][66];
@@ -95,7 +99,7 @@ TEST(BitwiseWave64, BitfieldsOffsetsWidthsSelectorsDppAndAliases) {
               for (unsigned lane = 0; lane < 64; ++lane) {
                 int source = int(lane);
                 bool enabled = (exec_mask >> lane) & 1;
-                if (mode)
+                if (mode & (GOC_DPP8 | GOC_DPP16))
                   enabled = goc_test::dpp_source(mode, exec_mask, lane, source);
                 uint32_t av = source < 0 ? 0 : initial[0][source + 1];
                 uint32_t want = enabled ? goc_test::bitfield_reference(op, av, initial[1][lane + 1],
