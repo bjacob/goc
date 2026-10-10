@@ -1242,6 +1242,10 @@ FP32 `FRACT` computes `x - floor(x)` and caps it at `0x3f7fffff` before
 output modifiers, so tiny negative inputs stay strictly below one. Scalar/v3
 paths support all 32 modifiers, with literal boundary and signed-zero tests.
 
+FP16 and FP32 `SIN`/`COS` support Wave32 and Wave64, sharing their existing
+empirical exact models and loose SIMD kernels. Wave64 supports four independent
+DPP rows and accumulates optional exception flags only after both halves finish.
+
 FP32 `SIN` and `COS` take inputs in turns (`sin(2*pi*x)` and `cos(2*pi*x)`).
 Integer range reduction handles all finite FP32 encodings, including values too
 large for a float-to-integer conversion. Empirical exact semantics borrow

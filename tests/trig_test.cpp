@@ -304,3 +304,75 @@ TEST(Trig, DppHardwareCorpus) {
       EXPECT_EQ(hash, 0xeeebc98ab70cbf25ULL) << cpu << "/" << semantics;
     }
 }
+
+TEST(Trig, Wave64CapturedResultsWithEveryModifier) {
+  const decltype(&goc_v_sin_f32_wave64) wave64_functions[] = {goc_v_sin_f32_wave64,
+                                                              goc_v_cos_f32_wave64};
+  for (int op = 0; op < 2; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (int mode = 0; mode < 32; ++mode)
+        for (const auto &golden : goc_test::trig_golden) {
+          // Construct a source whose modified value has the captured sign.
+          // ABS constrains that sign, so omit negative captures in that case.
+          uint32_t input = golden[0];
+          if (mode & 1)
+            input ^= 0x80000000;
+          if ((mode & 2) && (input >> 31))
+            continue;
+          uint32_t a[64], d[64];
+          for (int lane = 0; lane < 64; ++lane)
+            a[lane] = input | ((mode & 2) && (lane & 1) ? 0x80000000 : 0);
+          const uint32_t *ap[] = {a};
+          uint32_t *dp[] = {d};
+          ASSERT_EQ(wave64_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                         UINT64_MAX, modifiers(mode), dp, ap, nullptr),
+                    GOC_SUCCESS);
+          uint32_t expected = scale_reference(golden[op + 1], mode);
+          for (uint32_t value : d)
+            ASSERT_EQ(value, expected) << op << "/" << cpu << "/" << mode << "/" << input;
+        }
+}
+
+TEST(Trig, Wave64ExactPreservesHostEnvironment) {
+  const decltype(&goc_v_sin_f32_wave64) wave64_functions[] = {goc_v_sin_f32_wave64,
+                                                              goc_v_cos_f32_wave64};
+  uint32_t source[64], expected[2][32][64];
+  for (int lane = 0; lane < 64; ++lane)
+    source[lane] = goc_test::trig_golden[(lane + 7 * (lane / 32)) % 32][0];
+  const uint32_t *source_pointer[] = {source};
+  for (int op = 0; op < 2; ++op)
+    for (int mode = 0; mode < 32; ++mode) {
+      uint32_t *destination[] = {expected[op][mode]};
+      ASSERT_EQ(wave64_functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, modifiers(mode),
+                                     destination, source_pointer, nullptr),
+                GOC_SUCCESS);
+    }
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO})
+    for (int flush = 0; flush < 2; ++flush) {
+      std::fesetround(rounding);
+      std::feclearexcept(FE_ALL_EXCEPT);
+      std::feraiseexcept(FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+      _mm_setcsr((_mm_getcsr() & ~0x8040u) | (flush ? 0x8040u : 0));
+      unsigned before = _mm_getcsr();
+#endif
+      for (int op = 0; op < 2; ++op)
+        for (int mode = 0; mode < 32; ++mode) {
+          uint32_t d[64];
+          uint32_t *dp[] = {d};
+          EXPECT_EQ(wave64_functions[op](goc_init_cpu_flags() | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                             GOC_SEMANTICS_STRICT,
+                                         UINT64_MAX, modifiers(mode), dp, source_pointer, nullptr),
+                    GOC_SUCCESS);
+          for (int lane = 0; lane < 64; ++lane)
+            EXPECT_EQ(d[lane], expected[op][mode][lane]);
+        }
+      EXPECT_EQ(std::fegetround(), rounding);
+      EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+      EXPECT_EQ(_mm_getcsr(), before);
+#endif
+    }
+}

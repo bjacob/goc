@@ -383,3 +383,47 @@ TEST(HalfTrig, DppHardwareCorpus) {
       EXPECT_EQ(hash, 0x622b2df3f3bc9b25ULL) << cpu << "/" << semantics;
     }
 }
+
+TEST(HalfTrig, Wave64EveryEncodingMatchesRocjitsuDigestAndLoosePaths) {
+  const decltype(&goc_v_sin_f16_wave64) wave64_functions[] = {goc_v_sin_f16_wave64,
+                                                              goc_v_cos_f16_wave64};
+  // FNV-1a over uint16_t results in ascending input-encoding order. Generated
+  // directly from rocjitsu util/amdgpu_trig.h with compiler _Float16 conversion,
+  // independently of GoC's C++17 adaptation and half conversion implementation.
+  const uint64_t digests[] = {0xb6245e65a23f99f9ULL, 0xc6c3112c531e4391ULL};
+  for (int op = 0; op < 2; ++op) {
+    const auto table = reference_table(op);
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (bool saturate : {false, true}) {
+        uint64_t digest = goc_test::capture_hash_seed;
+        for (unsigned start = 0; start < 65536; start += 64) {
+          uint32_t a[64], exact[64], loose[64];
+          const uint32_t *ap[] = {a};
+          uint32_t *ep[] = {exact}, *lp[] = {loose};
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            a[lane] = 0xbadc0000 | (start + lane);
+            exact[lane] = loose[lane] = 0xdeadbeef;
+          }
+          uint64_t flags = cpu | (saturate ? GOC_FP16_OVFL : 0);
+          ASSERT_EQ(
+              wave64_functions[op](flags | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                   UINT64_MAX, 0, ep, ap, nullptr),
+              GOC_SUCCESS);
+          ASSERT_EQ(wave64_functions[op](flags, UINT64_MAX, 0, lp, ap, nullptr), GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            ASSERT_EQ(exact[lane], 0xdead0000u | table[start + lane]);
+            EXPECT_EQ(loose[lane] >> 16, 0xdeadu);
+            expect_near(uint16_t(loose[lane]), table[start + lane]);
+            digest = goc_test::capture_hash_word(digest, uint16_t(exact[lane]));
+            if ((a[lane] & 0x7fff) < 0x7c00) {
+              double phase = std::remainder(goc_test::half_value(uint16_t(a[lane])), 1.0);
+              double angle = phase * 6.283185307179586476925286766559;
+              EXPECT_NEAR(goc_test::half_value(uint16_t(loose[lane])),
+                          op ? std::cos(angle) : std::sin(angle), 0.0005);
+            }
+          }
+        }
+        EXPECT_EQ(digest, digests[op]) << op << "/" << cpu << "/" << saturate;
+      }
+  }
+}

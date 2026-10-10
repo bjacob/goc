@@ -2882,6 +2882,12 @@ int goc_v_sin_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
 int goc_v_cos_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
+// Wave64 retains the same contract, with four independent DPP rows.
+int goc_v_sin_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+int goc_v_cos_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
 // FP16 sine/cosine of inputs measured in turns. Supports ABS_A, NEG_A, OMOD,
 // CLAMP and HIGH_A/D; preserves the unselected D half. Rounds to FP16 before
 // OMOD. Active OMOD flushes tiny inputs to scaling and tiny scaled results to
@@ -2894,6 +2900,12 @@ int goc_v_sin_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 int goc_v_cos_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+
+// Wave64 retains the same contract, with four independent DPP rows.
+int goc_v_sin_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+int goc_v_cos_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 // FP16 fused multiply-add: selected halves of A/B/C/D, all ALU source/output
 // modifiers and GOC_FP16_OVFL. Preserves the other D half and inactive lanes.

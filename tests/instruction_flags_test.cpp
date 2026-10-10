@@ -56,7 +56,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
     EXPECT_TRUE((std::is_same_v<Mask, uint64_t>));
     base_name.resize(base_name.size() - 7);
     // Only these audited families currently share DPP support across widths.
-    if (base_name == "goc_v_trunc_f32" || base_name == "goc_v_ceil_f32" ||
+    if (base_name == "goc_v_sin_f32" || base_name == "goc_v_cos_f32" ||
+        base_name == "goc_v_sin_f16" || base_name == "goc_v_cos_f16" ||
+        base_name == "goc_v_trunc_f32" || base_name == "goc_v_ceil_f32" ||
         base_name == "goc_v_rndne_f32" || base_name == "goc_v_floor_f32" ||
         base_name == "goc_v_sqrt_f32" || base_name == "goc_v_rcp_f32" ||
         base_name == "goc_v_rsq_f32" || base_name == "goc_v_exp_f32" ||

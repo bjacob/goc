@@ -1431,3 +1431,26 @@ The vector width queue is 37 APIs. No new throughput claim is made.
 
 Validation: all 832 tests pass on Clang 21 and GCC 15 Release. All six new
 Wave64 unary and instruction-flag tests pass under ASan/UBSan.
+
+
+## Wave64 empirical SIN/COS and exceptions
+
+Added FP16 and FP32 SIN/COS Wave64 APIs, reusing the existing rocjitsu-derived
+empirical model and loose AVX2 paths. Family-local wrappers remap DPP row enables
+and stage exception accumulation until all source reads and destination writes
+finish. This preserves reporting-pointer aliases with upper source lanes.
+Loose semantics still skip reporting and retain SIMD dispatch.
+
+Tests replay all existing exception hardware corpora with only lane 63 active,
+repeat the FP32 raw result captures with every modifier across 64 lanes, and
+check every FP16 encoding against the independent rocjitsu result digests.
+DPP tests vary every modifier/half selector and row-enable pattern, upper-only
+and sparse EXEC, whole-register aliases and exception accumulation. Additional
+tests check aliased reporting, loose opt-out, error atomicity and exact FP32
+results under host rounding/denormal controls without mutating those controls.
+These reuse existing hardware observations; no new native Wave64 capture or
+throughput claim is made. The vector width queue is 33 APIs.
+
+Validation: all 839 tests pass on Clang 21 and GCC 15 Release. All eight
+Wave64 trig and instruction-flag tests pass under ASan/UBSan, including the
+complete exception corpus and exhaustive FP16 input sweep.
