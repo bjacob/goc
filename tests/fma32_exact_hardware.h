@@ -24,4 +24,20 @@ static const uint64_t fma32_exact_hashes[2][2][4] = {
     },
 };
 
+// Same records and ordering, word-wise FNV over exception flags.
+static const uint64_t fma32_exception_hashes[2][2][4] = {
+    {
+        {0x3e1d3009a948f9f5ULL, 0x4ad51e0d99e86765ULL, 0x610168abb03b6835ULL,
+         0x4ad51e0d99e86765ULL},
+        {0xfae300bed3828925ULL, 0x2329fa64596318a5ULL, 0x916e9abf6a0f7e25ULL,
+         0x7609f4d8a5cf87a5ULL},
+    },
+    {
+        {0xdeb526185fb66f05ULL, 0xab8abd78c789ff85ULL, 0xda1b2656656ba885ULL,
+         0xab8abd78c789ff85ULL},
+        {0x18be22aa6f4136e5ULL, 0x9439bbf3ba6b0fa5ULL, 0xddc92cfc58f0ec85ULL,
+         0xe719b66806d77ea5ULL},
+    },
+};
+
 } // namespace goc_test

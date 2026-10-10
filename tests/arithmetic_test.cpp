@@ -612,9 +612,9 @@ TEST(Arithmetic, Wave64FmaValidation) {
                 GOC_SUCCESS);
     if (op < 2) {
       uint32_t excp_flag_user = 0x12345678;
-      EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr,
-                                nullptr, nullptr, 0, &excp_flag_user),
-                GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+      EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr,
+                                nullptr, 0, &excp_flag_user),
+                GOC_SUCCESS);
       EXPECT_EQ(excp_flag_user, 0x12345678U);
     }
   }

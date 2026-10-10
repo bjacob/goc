@@ -2544,3 +2544,43 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   changed by less than 1%. All eight measured changes were under 4%; this is
   a dispatch-regression check, not an exact-path or whole-library speed claim.
   Artifacts use `../goc-build/coverage-work/fma32-exact-*`.
+
+## RDNA4 ordinary FP32 FMA/FMAC exception reporting
+
+- Exact RDNA4 FMA/FMAC now accumulate EXCP_FLAG_USER for all four exposed
+  denormal policies, both wave sizes, source/output modifiers and DPP routing.
+  The shared integer FMA classifier supplies invalid, input-denormal, overflow,
+  underflow and inexact. OMOD suppresses underflow/inexact and reports newly
+  scaled overflow; CLAMP suppresses every exception. Only participating lanes
+  after DPP routing contribute. Updates OR into existing wave-wide state.
+- Native flag records from the preceding 2,097,152-result RX 9070 capture corpus
+  now have their own regression digests. API tests compare every flag record
+  with a single participating lane, rotating its position and CPU level and
+  varying strictness. Inactive lanes contain signaling NaNs to expose accidental
+  contributions. Both Wave32 and Wave64 match all native digests.
+- DPP/mask/alias tests independently stage each lane to check accumulated state
+  against unrouted calls, in addition to the independent result oracle. These
+  run with every host rounding/FTZ/DAZ setting and preserve host controls and
+  sticky flags. Validation tests preserve every output on invalid calls and
+  verify empty EXEC and loose non-null reporting behavior.
+- Loose dispatch still bypasses reporting; RDNA3 reporting remains unsupported.
+  VOPD FMAC keeps its explicit unsupported-reporting guard pending separate
+  architectural validation, as the literal VOPD wrappers already do. DX9 exact
+  numerical semantics remain unfinished.
+- No new native capture was needed: flag digests were derived from the saved
+  records in `../goc-build/coverage-work/fma32-exact-captures/`. The checked-in
+  capture generator reproduces both result and exception records; the new local
+  manifest is `exception-hashes.json` alongside the original result manifest.
+- Validation: all 972 tests pass under Clang 21 and GCC 15 Release; all 48
+  FmaExact/Arithmetic/Fmac/Dpp8/Dpp16/ExecMask/Api/ExceptionRegisters/Dual tests
+  pass under ASan/UBSan. The final DPP test additionally seeds low exception
+  bits to verify that reporting, including CLAMP suppression, never clears
+  existing flags; it passes again in all three builds.
+- Eleven alternating CPU-2-pinned samples of at least 50 ms thread CPU time
+  compare loose FMA against `201f8b1`, using default and nondefault modifiers,
+  AVX2/AVX512 and null/non-null state pointers. The eight FMA changes ranged
+  from -0.4% to +4.3%, at most 0.5 ns absolute; default AVX512 was
+  7.369 -> 7.480 ns (null) and 7.340 -> 7.656 ns (non-null). DX9 controls changed
+  by less than 1.6%. No reporting classifier runs in these loose paths. These
+  measurements cover dispatch overhead, not exact-reporting performance or the
+  whole library. Artifacts use `../goc-build/coverage-work/fma32-reporting-*`.

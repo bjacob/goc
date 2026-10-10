@@ -423,8 +423,11 @@ Packed results accumulate exceptions from both selected halves. Loose SIMD
 paths skip all of this work.
 
 Ordinary FP32 `FMA`/`FMAC` implement exact nearest-even results with DPP,
-source modifiers, OMOD and CLAMP using the shared integer FMA model. Their
-optional exact exception reporting remains unsupported. Loose SIMD paths are
+source modifiers, OMOD and CLAMP using the shared integer FMA model. RDNA4 exact
+exception reporting is checked against 2,097,152 RX 9070 records across all
+four exposed denormal policies. OMOD suppresses underflow/inexact, CLAMP
+suppresses all flags, and only participating lanes contribute after DPP routing.
+RDNA3 exact TRAPSTS reporting remains unsupported. Loose SIMD paths are
 retained; DX9 forms still only implement loose results. RDNA3 exact CLAMP models
 `DX10_CLAMP=1`; the alternative NaN-preserving setting is not exposed.
 

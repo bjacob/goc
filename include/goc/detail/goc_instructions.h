@@ -3092,7 +3092,8 @@ int goc_v_fma_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 // and output denormals, while retaining the architecture's OMOD gating rule.
 // Ordinary FMA/FMAC have exact integer RNE paths, including NaN payload priority,
 // DPP and all source/output modifiers, independent of host FP controls. RDNA3
-// exact CLAMP uses DX10_CLAMP=1. Faithful optional exception output is unsupported.
+// exact CLAMP uses DX10_CLAMP=1. RDNA4 exact calls accumulate EXCP_FLAG_USER;
+// RDNA3 non-null exact TRAPSTS reporting remains unsupported.
 // Loose calls retain scalar, eight-lane AVX2 and sixteen-lane AVX512 paths and
 // skip optional output. They require host nearest-even arithmetic and enabled
 // denormals. DX9 exact requests still fall back to loose unless STRICT is set.

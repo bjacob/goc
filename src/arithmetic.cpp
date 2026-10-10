@@ -18,8 +18,10 @@ namespace {
 template <bool Rdna3>
 [[gnu::noinline]] int fma_exact(uint64_t flags, uint32_t exec_mask, uint32_t mode,
                                 uint32_t *const *d, const uint32_t *const *a,
-                                const uint32_t *const *b, const uint32_t *const *c) {
+                                const uint32_t *const *b, const uint32_t *const *c,
+                                uint32_t *exceptions = nullptr) {
   uint32_t result[32];
+  uint32_t produced = 0;
   unsigned omod = (mode >> 6) & 3;
   for (unsigned lane = 0; lane < 32; ++lane) {
     uint32_t input[] = {a[0][lane], b[0][lane], c[0][lane]};
@@ -31,9 +33,12 @@ template <bool Rdna3>
       if ((flags & GOC_FP_FLUSH_INPUT_DENORMALS) && !(input[operand] & 0x7f800000))
         input[operand] &= 0x80000000;
     }
+    uint32_t lane_exceptions = 0;
+    bool report = exceptions && ((exec_mask >> lane) & 1) && !(mode & GOC_ALU_CLAMP);
     // OMOD flushes a tiny intermediate before scaling, independently of MODE.
     uint32_t value = goc::fma_value_f32(input[0], input[1], input[2], false,
-                                        flags | (omod ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0), Rdna3);
+                                        flags | (omod ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0), Rdna3,
+                                        report ? &lane_exceptions : nullptr);
     uint32_t magnitude = value & 0x7fffffff;
     if (omod && magnitude < 0x7f800000) {
       unsigned exponent = magnitude >> 23;
@@ -46,6 +51,14 @@ template <bool Rdna3>
       else
         value = omod == 3 ? value - 0x800000 : value + (omod << 23);
     }
+    if (report) {
+      if (omod) {
+        lane_exceptions &= ~(GOC_EXCEPTION_UNDERFLOW | GOC_EXCEPTION_INEXACT);
+        if (magnitude < 0x7f800000 && (value & 0x7fffffff) == 0x7f800000)
+          lane_exceptions |= GOC_EXCEPTION_OVERFLOW;
+      }
+      produced |= lane_exceptions;
+    }
     if (mode & GOC_ALU_CLAMP)
       value = (value & 0x80000000) || (value & 0x7fffffff) > 0x7f800000 ? 0
               : value > 0x3f800000                                      ? 0x3f800000
@@ -55,19 +68,22 @@ template <bool Rdna3>
   for (unsigned lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
+  if (exceptions)
+    *exceptions |= produced;
   return GOC_SUCCESS;
 }
 
 template <bool Dx9Zero, bool Rdna3 = false>
 int fma(uint64_t flags, uint32_t exec_mask, uint32_t instruction_flags, uint32_t *const *d,
-        const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+        const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+        uint32_t *exceptions = nullptr) {
   if constexpr (Rdna3)
     if (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE))
       instruction_flags &= ~GOC_ALU_OMOD_HALF;
 
   if constexpr (!Dx9Zero)
     if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
-      return fma_exact<Rdna3>(flags, exec_mask, instruction_flags, d, a, b, c);
+      return fma_exact<Rdna3>(flags, exec_mask, instruction_flags, d, a, b, c, exceptions);
 
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
@@ -121,7 +137,7 @@ int fma(uint64_t flags, uint32_t exec_mask, uint32_t instruction_flags, uint32_t
 template <bool Rdna3, bool Dx9Zero>
 [[gnu::noinline]] int fma_dpp(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                               const uint32_t *const *a, const uint32_t *const *b,
-                              const uint32_t *const *c) {
+                              const uint32_t *const *c, uint32_t *exceptions = nullptr) {
   if (!goc::valid_dpp(mode))
     return GOC_ERROR_INVALID_FLAGS;
   if (!exec_mask)
@@ -134,13 +150,13 @@ template <bool Rdna3, bool Dx9Zero>
     exec_mask = goc::dpp16_source(flags, exec_mask, mode, permuted, a[0]);
   if (!exec_mask)
     return GOC_SUCCESS;
-  return fma<Dx9Zero, Rdna3>(flags, exec_mask, uint32_t(mode), d, &source, b, c);
+  return fma<Dx9Zero, Rdna3>(flags, exec_mask, uint32_t(mode), d, &source, b, c, exceptions);
 }
 
 template <bool Rdna3 = false, bool Dx9Zero = false>
 int fma_with_dpp(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                  const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
-                 uint32_t known) {
+                 uint32_t known, uint32_t *exceptions = nullptr) {
   if (uint32_t(mode) & ~known)
     return GOC_ERROR_INVALID_FLAGS;
   constexpr uint64_t fp_flags =
@@ -148,10 +164,10 @@ int fma_with_dpp(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *co
   if (int error = goc::validate(flags, 0, !Dx9Zero, fp_flags))
     return error;
   if (mode >> 32)
-    return fma_dpp<Rdna3, Dx9Zero>(flags, exec_mask, mode, d, a, b, c);
+    return fma_dpp<Rdna3, Dx9Zero>(flags, exec_mask, mode, d, a, b, c, exceptions);
   if (!exec_mask)
     return GOC_SUCCESS;
-  return fma<Dx9Zero, Rdna3>(flags, exec_mask, uint32_t(mode), d, a, b, c);
+  return fma<Dx9Zero, Rdna3>(flags, exec_mask, uint32_t(mode), d, a, b, c, exceptions);
 }
 
 // Keep the scalar scratch space and integer FMA work off the SIMD dispatch path.
@@ -224,9 +240,10 @@ int literal_fma(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *con
 
 template <bool Dx9Zero, bool Rdna3 = false>
 int fma_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
-               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  int error =
-      fma_with_dpp<Rdna3, Dx9Zero>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr, 0x1ff);
+               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+               uint32_t *exceptions = nullptr) {
+  int error = fma_with_dpp<Rdna3, Dx9Zero>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr,
+                                           0x1ff, exceptions);
   if (error || !exec_mask)
     return error;
   for (unsigned half = 0; half < 2; ++half) {
@@ -238,8 +255,8 @@ int fma_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *cons
     uint32_t *dest = d[0] + half * 32;
     const uint32_t *x = a[0] + half * 32, *y = b[0] + half * 32, *z = c[0] + half * 32;
     uint32_t half_exec_mask = uint32_t(exec_mask >> (half * 32));
-    error =
-        fma_with_dpp<Rdna3, Dx9Zero>(flags, half_exec_mask, half_mode, &dest, &x, &y, &z, 0x1ff);
+    error = fma_with_dpp<Rdna3, Dx9Zero>(flags, half_exec_mask, half_mode, &dest, &x, &y, &z, 0x1ff,
+                                         exceptions);
     if (error)
       return error;
   }
@@ -270,9 +287,9 @@ int literal_fma_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32
 int goc_v_fma_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                         const uint32_t *const *c, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return fma_with_dpp(flags, exec_mask, instruction_flags, d, a, b, c, 0x1ff);
+  return fma_with_dpp(flags, exec_mask, instruction_flags, d, a, b, c, 0x1ff, excp_flag_user);
 }
 
 int goc_v_fma_dx9_zero_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -284,11 +301,11 @@ int goc_v_fma_dx9_zero_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t in
 int goc_v_fmac_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  return fma_with_dpp(flags, exec_mask, mode, d, a, b, d, known);
+  return fma_with_dpp(flags, exec_mask, mode, d, a, b, d, known, excp_flag_user);
 }
 
 int goc_v_fmamk_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -315,9 +332,9 @@ int goc_v_fma_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t inst
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c,
                                uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return fma_wave64<false>(flags, exec_mask, instruction_flags, d, a, b, c);
+  return fma_wave64<false>(flags, exec_mask, instruction_flags, d, a, b, c, excp_flag_user);
 }
 
 int goc_v_fma_dx9_zero_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
@@ -330,13 +347,13 @@ int goc_v_fma_dx9_zero_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
 int goc_v_fmac_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if (uint32_t(mode) & ~known)
     return GOC_ERROR_INVALID_FLAGS;
-  return fma_wave64<false>(flags, exec_mask, mode, d, a, b, d);
+  return fma_wave64<false>(flags, exec_mask, mode, d, a, b, d, excp_flag_user);
 }
 
 int goc_v_fmamk_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,

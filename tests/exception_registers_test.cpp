@@ -95,26 +95,26 @@ TEST(ExceptionRegisters, LooseComputesResultsAndPreservesPriorFlags) {
 TEST(ExceptionRegisters, UnsupportedLeavesAllOutputsUntouched) {
   uint32_t data[32] = {0xdeadbeef};
   uint32_t *d[] = {data};
-  uint32_t excp_flag_user = 0x80000021;
-  EXPECT_EQ(goc_v_fma_f32_rdna4(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, d, nullptr, nullptr,
-                                nullptr, &excp_flag_user),
+  uint32_t state = 0x80000021;
+  EXPECT_EQ(goc_v_fma_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT32_MAX, 0, d, nullptr, nullptr,
+                          nullptr, &state),
             GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(data[0], 0xdeadbeefU);
-  EXPECT_EQ(excp_flag_user, 0x80000021U);
+  EXPECT_EQ(state, 0x80000021U);
   uint32_t scc = 1;
-  EXPECT_EQ(goc_s_add_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, &scc, 0, 0, &excp_flag_user),
+  EXPECT_EQ(goc_s_add_f32(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, &scc, 0, 0, &state),
             GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
   EXPECT_EQ(scc, 1U);
-  EXPECT_EQ(excp_flag_user, 0x80000021U);
+  EXPECT_EQ(state, 0x80000021U);
   // Opting out keeps validation and zero-EXEC behavior unchanged.
   EXPECT_EQ(goc_v_fma_f32_rdna4(0, 0, 0, nullptr, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
   EXPECT_EQ(goc_v_fma_f32_rdna4(0, 0, 1ULL << 63, nullptr, nullptr, nullptr, nullptr, nullptr),
             GOC_ERROR_INVALID_FLAGS);
   // Reporting rejection takes precedence over other unsupported options.
-  EXPECT_EQ(goc_v_fma_f32_rdna4(UINT64_MAX, 0, UINT64_MAX, nullptr, nullptr, nullptr, nullptr,
-                                &excp_flag_user),
-            GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
-  EXPECT_EQ(excp_flag_user, 0x80000021U);
+  EXPECT_EQ(
+      goc_v_fma_f32_rdna4(UINT64_MAX, 0, UINT64_MAX, nullptr, nullptr, nullptr, nullptr, &state),
+      GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+  EXPECT_EQ(state, 0x80000021U);
 }
 
 TEST(ExceptionRegisters, NonReportingInstructionsKeepTheirSignatures) {
