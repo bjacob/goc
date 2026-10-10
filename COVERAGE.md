@@ -4927,3 +4927,50 @@ tests pass. The scalar comparison object is byte-identical to the pre-change
 audit builds under both release compilers (`scalar-compare-production-objects.json`).
 Logs use `scalar-compare-review-` in each build directory. The ledger records
 277 contracts, with 532 in-scope mnemonics still awaiting recorded review.
+
+
+## Scalar field and count architecture contracts
+
+Reviewed all twenty instructions in [`scalar_field.cpp`](src/scalar_field.cpp):
+four BFE, two BFM, four population counts, six leading/trailing/sign counts, and
+four in-place BITSET forms. Both architecture XML sets and all per-architecture
+SOP1/SOP2 handlers map to the same rocjitsu shared helpers at revision
+`ffc144c564c`. Review followed the BFM helper in `shared/simd_glue.h`, the count
+and mask expressions, and GoC's `bits.h` primitives. Canonical CTZ/CLZ/CLS names
+already cover both architectures; FF1/FLBIT are assembly aliases, not distinct
+semantics. Hashes, handler lines, descriptions and aliases are retained in
+`scalar-field-upstream-review.json` in `../goc-build/coverage-work/`.
+
+BFE uses a five/six-bit offset and seven-bit width, clips to the source word,
+returns zero for zero width, and sign-extends the clipped field for signed forms.
+Unused descriptor bits are ignored. BFM masks both width and offset to five/six
+bits, so a width equal to the word size produces zero, unlike BFE's full-width
+extraction. Overflowing mask bits are discarded. BFE and population counts
+write SCC from nonzero results; BFM, scans and BITSET do not write SCC. BITSET
+reads its ordinary destination before modifying the selected bit. Count scans
+return UINT32_MAX on zero; sign counts complement negative inputs first and
+also return that sentinel for all ones. These are the upstream integer models,
+not newly inferred numerical or exception models.
+
+Both semantics are exact, with scalar implementations at every CPU selector.
+There is no EXEC predicate or optional implicit output. Required D/SCC output
+aliasing follows the documented last-write order, and invalid flags fail before
+output access. The count helpers guard zero before compiler CLZ/CTZ builtins;
+full-width extraction avoids a shift by the word size. No host FP control is
+read or written by these implementations.
+
+Existing tests retain captured result/SCC hashes, all field widths/offsets,
+bit positions and sentinel cases, aliases and host-state preservation. The BFE
+test now also sets every ignored descriptor bit, checking the same result and
+SCC in exact semantics. A new test composes BFM, unsigned BFE and population
+count across all low-seven-bit width/offset encodings in both word sizes and
+both semantics, with high garbage bits on BFM operands. It checks clipping,
+zero-width behavior, expected population and SCC preservation/update. No
+production changes were required.
+
+Validation: all 1,109 CTests pass with Clang 21 Release and GCC 15 Release;
+all seven scalar field tests pass under ASan/UBSan. All nine audit-tool tests
+pass. The production scalar field object is byte-identical to the pre-change
+audit builds under both compilers (`scalar-field-production-objects.json`).
+Logs use `scalar-field-review-` in each build directory. The ledger records
+297 contracts; 512 in-scope mnemonics still need recorded reviews.

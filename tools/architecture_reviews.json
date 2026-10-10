@@ -492,5 +492,32 @@
       "s_cmpk_lt_i32",
       "s_cmpk_lt_u32"
     ]
+  },
+  {
+    "heading": "Scalar field and count architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/scalar_field_test.cpp",
+    "mnemonics": [
+      "s_bcnt0_i32_b32",
+      "s_bcnt0_i32_b64",
+      "s_bcnt1_i32_b32",
+      "s_bcnt1_i32_b64",
+      "s_bfe_i32",
+      "s_bfe_i64",
+      "s_bfe_u32",
+      "s_bfe_u64",
+      "s_bfm_b32",
+      "s_bfm_b64",
+      "s_bitset0_b32",
+      "s_bitset0_b64",
+      "s_bitset1_b32",
+      "s_bitset1_b64",
+      "s_cls_i32",
+      "s_cls_i32_i64",
+      "s_clz_i32_u32",
+      "s_clz_i32_u64",
+      "s_ctz_i32_b32",
+      "s_ctz_i32_b64"
+    ]
   }
 ]

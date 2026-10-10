@@ -523,25 +523,25 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_barrier_signal` | — | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |
 | `s_barrier_signal_isfirst` | — | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |
 | `s_barrier_wait` | — | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
-| `s_bcnt0_i32_b32` | yes | yes | in | `goc_s_bcnt0_i32_b32` | — | API present; semantic audit pending |
-| `s_bcnt0_i32_b64` | yes | yes | in | `goc_s_bcnt0_i32_b64` | — | API present; semantic audit pending |
-| `s_bcnt1_i32_b32` | yes | yes | in | `goc_s_bcnt1_i32_b32` | — | API present; semantic audit pending |
-| `s_bcnt1_i32_b64` | yes | yes | in | `goc_s_bcnt1_i32_b64` | — | API present; semantic audit pending |
-| `s_bfe_i32` | yes | yes | in | `goc_s_bfe_i32` | — | API present; semantic audit pending |
-| `s_bfe_i64` | yes | yes | in | `goc_s_bfe_i64` | — | API present; semantic audit pending |
-| `s_bfe_u32` | yes | yes | in | `goc_s_bfe_u32` | — | API present; semantic audit pending |
-| `s_bfe_u64` | yes | yes | in | `goc_s_bfe_u64` | — | API present; semantic audit pending |
-| `s_bfm_b32` | yes | yes | in | `goc_s_bfm_b32` | — | API present; semantic audit pending |
-| `s_bfm_b64` | yes | yes | in | `goc_s_bfm_b64` | — | API present; semantic audit pending |
+| `s_bcnt0_i32_b32` | yes | yes | in | `goc_s_bcnt0_i32_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bcnt0_i32_b64` | yes | yes | in | `goc_s_bcnt0_i32_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bcnt1_i32_b32` | yes | yes | in | `goc_s_bcnt1_i32_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bcnt1_i32_b64` | yes | yes | in | `goc_s_bcnt1_i32_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bfe_i32` | yes | yes | in | `goc_s_bfe_i32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bfe_i64` | yes | yes | in | `goc_s_bfe_i64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bfe_u32` | yes | yes | in | `goc_s_bfe_u32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bfe_u64` | yes | yes | in | `goc_s_bfe_u64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bfm_b32` | yes | yes | in | `goc_s_bfm_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bfm_b64` | yes | yes | in | `goc_s_bfm_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_bitcmp0_b32` | yes | yes | in | `goc_s_bitcmp0_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_bitcmp0_b64` | yes | yes | in | `goc_s_bitcmp0_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_bitcmp1_b32` | yes | yes | in | `goc_s_bitcmp1_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_bitcmp1_b64` | yes | yes | in | `goc_s_bitcmp1_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-integer-comparison-architecture-contracts) |
 | `s_bitreplicate_b64_b32` | yes | yes | in | `goc_s_bitreplicate_b64_b32` | — | API present; semantic audit pending |
-| `s_bitset0_b32` | yes | yes | in | `goc_s_bitset0_b32` | — | API present; semantic audit pending |
-| `s_bitset0_b64` | yes | yes | in | `goc_s_bitset0_b64` | — | API present; semantic audit pending |
-| `s_bitset1_b32` | yes | yes | in | `goc_s_bitset1_b32` | — | API present; semantic audit pending |
-| `s_bitset1_b64` | yes | yes | in | `goc_s_bitset1_b64` | — | API present; semantic audit pending |
+| `s_bitset0_b32` | yes | yes | in | `goc_s_bitset0_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bitset0_b64` | yes | yes | in | `goc_s_bitset0_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bitset1_b32` | yes | yes | in | `goc_s_bitset1_b32` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_bitset1_b64` | yes | yes | in | `goc_s_bitset1_b64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_branch` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_brev_b32` | yes | yes | in | `goc_s_brev_b32` | — | API present; semantic audit pending |
 | `s_brev_b64` | yes | yes | in | `goc_s_brev_b64` | — | API present; semantic audit pending |
@@ -570,10 +570,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_ceil_f16` | — | yes | in | `goc_s_ceil_f16` | — | API present; semantic audit pending |
 | `s_ceil_f32` | — | yes | in | `goc_s_ceil_f32` | — | API present; semantic audit pending |
 | `s_clause` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
-| `s_cls_i32` | yes | yes | in | `goc_s_cls_i32` | `s_flbit_i32` | API present; semantic audit pending |
-| `s_cls_i32_i64` | yes | yes | in | `goc_s_cls_i32_i64` | `s_flbit_i32_i64` | API present; semantic audit pending |
-| `s_clz_i32_u32` | yes | yes | in | `goc_s_clz_i32_u32` | `s_flbit_i32_b32` | API present; semantic audit pending |
-| `s_clz_i32_u64` | yes | yes | in | `goc_s_clz_i32_u64` | `s_flbit_i32_b64` | API present; semantic audit pending |
+| `s_cls_i32` | yes | yes | in | `goc_s_cls_i32` | `s_flbit_i32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_cls_i32_i64` | yes | yes | in | `goc_s_cls_i32_i64` | `s_flbit_i32_i64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_clz_i32_u32` | yes | yes | in | `goc_s_clz_i32_u32` | `s_flbit_i32_b32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_clz_i32_u64` | yes | yes | in | `goc_s_clz_i32_u64` | `s_flbit_i32_b64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_cmov_b32` | yes | yes | in | `goc_s_cmov_b32` | — | API present; semantic audit pending |
 | `s_cmov_b64` | yes | yes | in | `goc_s_cmov_b64` | — | API present; semantic audit pending |
 | `s_cmovk_i32` | yes | yes | in | `goc_s_cmovk_i32` | — | API present; semantic audit pending |
@@ -634,8 +634,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_code_end` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_cselect_b32` | yes | yes | in | `goc_s_cselect_b32` | — | API present; semantic audit pending |
 | `s_cselect_b64` | yes | yes | in | `goc_s_cselect_b64` | — | API present; semantic audit pending |
-| `s_ctz_i32_b32` | yes | yes | in | `goc_s_ctz_i32_b32` | `s_ff1_i32_b32` | API present; semantic audit pending |
-| `s_ctz_i32_b64` | yes | yes | in | `goc_s_ctz_i32_b64` | `s_ff1_i32_b64` | API present; semantic audit pending |
+| `s_ctz_i32_b32` | yes | yes | in | `goc_s_ctz_i32_b32` | `s_ff1_i32_b32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
+| `s_ctz_i32_b64` | yes | yes | in | `goc_s_ctz_i32_b64` | `s_ff1_i32_b64` | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-field-and-count-architecture-contracts) |
 | `s_cvt_f16_f32` | — | yes | in | `goc_s_cvt_f16_f32` | — | API present; semantic audit pending |
 | `s_cvt_f32_f16` | — | yes | in | `goc_s_cvt_f32_f16` | — | API present; semantic audit pending |
 | `s_cvt_f32_i32` | — | yes | in | `goc_s_cvt_f32_i32` | — | API present; semantic audit pending |

@@ -100,6 +100,13 @@ TEST(ScalarField, EveryFieldWidthAndOffset) {
                 GOC_SUCCESS);
             EXPECT_EQ(width == 64 ? d64 : d, expected);
             EXPECT_EQ(cc, unsigned(expected != 0));
+            // All descriptor bits outside the offset and seven-bit width are ignored.
+            uint32_t ignored = ~(0x7f0000U | (width - 1));
+            ASSERT_EQ(goc_test::scalar_field_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, &d, &d64, a,
+                                                  (count << 16) | offset | ignored, &cc),
+                      GOC_SUCCESS);
+            EXPECT_EQ(width == 64 ? d64 : d, expected);
+            EXPECT_EQ(cc, unsigned(expected != 0));
           }
 }
 
@@ -190,4 +197,35 @@ TEST(ScalarField, BitUtilitiesAtEveryWordPosition) {
         EXPECT_EQ(output[lane], uint32_t(1) << (31 - ((bit + lane) % 32)));
     }
   }
+}
+
+TEST(ScalarField, MaskGenerationAndExtractionAgreeOnClippedFields) {
+  for (unsigned width : {32U, 64U})
+    for (unsigned count = 0; count < 128; ++count)
+      for (unsigned offset = 0; offset < 128; ++offset)
+        for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+          const uint64_t flags = semantics | GOC_SEMANTICS_STRICT;
+          uint32_t narrow = 0, cc = 0x12345678;
+          uint64_t wide = 0;
+          ASSERT_EQ(goc_test::scalar_field_call(width == 32 ? 4 : 5, flags, 0, &narrow, &wide,
+                                                0xffff0000U | count, 0xffff0000U | offset, &cc),
+                    GOC_SUCCESS);
+          EXPECT_EQ(cc, 0x12345678U); // BFM does not write SCC.
+          uint64_t generated = width == 32 ? narrow : wide;
+          unsigned field_width = count % width, field_offset = offset % width;
+          unsigned surviving =
+              field_width < width - field_offset ? field_width : width - field_offset;
+          // Extracting all ones must produce exactly BFM's mask shifted to bit zero.
+          ASSERT_EQ(goc_test::scalar_field_call(width == 32 ? 0 : 2, flags, 0, &narrow, &wide,
+                                                UINT64_MAX, (field_width << 16) | offset, &cc),
+                    GOC_SUCCESS);
+          EXPECT_EQ(width == 32 ? narrow : wide, generated >> field_offset);
+          EXPECT_EQ(cc, unsigned(surviving != 0));
+          uint64_t unused = 0;
+          ASSERT_EQ(goc_test::scalar_field_call(width == 32 ? 8 : 9, flags, 0, &narrow, &unused,
+                                                generated, 0, &cc),
+                    GOC_SUCCESS);
+          EXPECT_EQ(narrow, surviving);
+          EXPECT_EQ(cc, unsigned(surviving != 0));
+        }
 }
