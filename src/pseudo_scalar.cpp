@@ -8,6 +8,7 @@
 #include "half_fma_scalar.h"
 #include "internal.h"
 #include "unary.h"
+#include "unary_exact.h"
 
 #include <algorithm>
 #include <cmath>
@@ -18,9 +19,15 @@ namespace {
 template <goc::Unary Op, bool Half>
 int run(uint64_t flags, uint32_t mode, uint32_t *d, uint32_t raw) {
   const uint32_t known = GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  if (int error = goc::validate(flags, mode & ~known, false,
+  if (int error = goc::validate(flags, mode & ~known, !Half,
                                 GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS))
     return error;
+  if constexpr (!Half) {
+    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
+      *d = goc::unary_exact_value<Op>(flags, mode, raw, false);
+      return GOC_SUCCESS;
+    }
+  }
   constexpr uint32_t sign = Half ? 0x8000 : 0x80000000, mag = sign - 1,
                      inf = Half ? 0x7c00 : 0x7f800000;
   if constexpr (Half)

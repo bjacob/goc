@@ -1378,13 +1378,15 @@ int goc_v_rcp_iflag_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_
 // of EXEC, including zero. a is a scalar value; d must always be writable.
 // FP16 reads a's low half, ignores its high half, and zeros d's upper half.
 // Supports ABS_A, NEG_A, OMOD and CLAMP, with ABS before NEG. No half selectors.
-// Loose semantics only; strict empirical-exact requests fail without writing d.
+// FP32 supports loose and empirical-exact semantics; FP16 remains loose-only.
+// Non-null exact state reporting is unsupported. Loose calls leave state unchanged.
 // FP32 always flushes input/output denormals. FP16 follows the guest input/output
 // flush flags and FP16_OVFL. Rounding precedes OMOD; nonzero OMOD flushes tiny
 // values before and after scaling. A zero created by negative underflow retains
 // its sign; pre-existing zero becomes positive with OMOD. CLAMP maps NaN and
-// negative results to zero. Requires host nearest-even rounding and enabled
-// denormals. Host rounding is preserved; exception flags may change.
+// negative results to zero. Loose semantics require host nearest-even rounding
+// and enabled denormals; exact FP32 uses integer arithmetic. Host rounding is
+// preserved; ordinary arithmetic exception flags may change.
 int goc_v_s_exp_f32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
                     uint32_t *excp_flag_user);
 int goc_v_s_exp_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,

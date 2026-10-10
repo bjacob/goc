@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "pseudo_scalar_hardware.h"
 #include "pseudo_scalar_reference.h"
+#include "unary_exact_hardware.h"
 
 #include <cfenv>
 #include <gtest/gtest.h>
@@ -100,10 +102,12 @@ TEST(PseudoScalar, ValidationSemanticsAndHostRounding) {
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(d, 0xdeadbeef);
       }
-    EXPECT_EQ(goc_test::pseudo_scalar_functions[op](
-                  GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, known, &d, 0, nullptr),
-              GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    EXPECT_EQ(d, 0xdeadbeef);
+    if (op & 1) {
+      EXPECT_EQ(goc_test::pseudo_scalar_functions[op](
+                    GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, known, &d, 0, nullptr),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      EXPECT_EQ(d, 0xdeadbeef);
+    }
     EXPECT_EQ(goc_test::pseudo_scalar_functions[op](1ULL << 63, known, &d, 0, nullptr),
               GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(d, 0xdeadbeef);
@@ -112,5 +116,60 @@ TEST(PseudoScalar, ValidationSemanticsAndHostRounding) {
                                                     nullptr),
               GOC_SUCCESS);
     EXPECT_EQ(std::fegetround(), FE_TONEAREST);
+  }
+}
+
+TEST(PseudoScalar, ExactFp32HardwareEveryModifierAndFpState) {
+  const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+  for (unsigned state = 0; state < 8; ++state)
+    for (unsigned op = 0; op < 10; op += 2)
+      for (unsigned m = 0; m < 32; ++m) {
+        const auto &gold =
+            goc_test::pseudo_scalar_outputs[goc_test::pseudo_scalar_blocks[(state * 10 + op) * 32 +
+                                                                           m]];
+        for (unsigned sample = 0; sample < 48; ++sample)
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            uint32_t words[] = {
+                0x12345678,
+                goc_test::pseudo_scalar_input(0, goc_test::pseudo_scalar_samples[sample]),
+                0x87654321};
+            ASSERT_EQ(goc_test::pseudo_scalar_functions[op](
+                          exact | cpu | goc_test::pseudo_scalar_flags(state),
+                          goc_test::pseudo_scalar_mode(m), words + 1, words[1], nullptr),
+                      GOC_SUCCESS);
+            ASSERT_EQ(words[1], gold[sample]) << state << "/" << op << "/" << m << "/" << sample;
+            ASSERT_EQ(words[0], 0x12345678U);
+            ASSERT_EQ(words[2], 0x87654321U);
+          }
+      }
+}
+
+TEST(PseudoScalar, ExactGlobalStateRemainsExplicitlyUnsupported) {
+  for (auto fn : goc_test::pseudo_scalar_functions)
+    for (uint64_t strict : {uint64_t(0), GOC_SEMANTICS_STRICT})
+      for (uint64_t mode : {uint64_t(0), uint64_t(GOC_ALU_NEG_B), uint64_t(1) << 63}) {
+        uint32_t output = 0xdeadbeef, state = 0x12345678;
+        EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | strict, mode, &output, 0, &state),
+                  GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+        EXPECT_EQ(output, 0xdeadbeefU);
+        EXPECT_EQ(state, 0x12345678U);
+      }
+}
+
+TEST(PseudoScalar, ExactFp32BorrowedDenseDomains) {
+  const goc_test::PseudoScalarFn functions[] = {goc_v_s_rcp_f32, goc_v_s_sqrt_f32, goc_v_s_rsq_f32,
+                                                goc_v_s_exp_f32, goc_v_s_log_f32};
+  const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
+  for (unsigned op = 0; op < 5; ++op) {
+    uint64_t hash = goc_test::capture_hash_seed;
+    for (unsigned index = 0; index < (1U << (op == 0 ? 23 : op == 3 ? 25 : 24)); ++index) {
+      uint32_t input = op == 3   ? (0x3f000000 + (index & 0xffffff)) | ((index >> 24) << 31)
+                       : op == 4 ? 0x3f000000 + index
+                                 : 0x3f800000 + index;
+      uint32_t result;
+      ASSERT_EQ(functions[op](exact, 0, &result, input, nullptr), GOC_SUCCESS);
+      hash = goc_test::capture_hash_word(hash, result);
+    }
+    EXPECT_EQ(hash, goc_test::unary_normalized_hashes[op]) << op;
   }
 }

@@ -1348,5 +1348,17 @@
     "mnemonics": [
       "v_rcp_iflag_f32"
     ]
+  },
+  {
+    "heading": "FP32 pseudo-scalar exact port and architecture contract",
+    "semantics": "loose and exact",
+    "tests": "tests/pseudo_scalar_test.cpp",
+    "mnemonics": [
+      "v_s_exp_f32",
+      "v_s_log_f32",
+      "v_s_rcp_f32",
+      "v_s_rsq_f32",
+      "v_s_sqrt_f32"
+    ]
   }
 ]

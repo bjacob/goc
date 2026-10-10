@@ -7560,3 +7560,71 @@ future organization improvement, not part of this port.
 
 The review ledger records 699 mnemonic contracts, with 110 remaining; this is
 not an overall completion percentage.
+
+
+## FP32 pseudo-scalar exact port and architecture contract
+
+Reviewed `v_s_{exp,log,rcp,rsq,sqrt}_f32` against the RDNA3/RDNA4 XML
+inventories, RDNA4 ISA sections 7.10 and 16.12, and rocjitsu revision
+`ffc144c564c`'s generated shared handlers and `shared/pseudo_scalar.h`.
+These five names are RDNA4-only VOP3 operations, with optional literal source
+encoding. They read and write one SGPR, execute independently of EXEC, and
+support ABS-before-NEG, OMOD and CLAMP. DPP, half selectors and wave-width
+variants do not apply. Register-number restrictions (including forbidden VCC
+and EXEC destinations) belong to the emulator's decoder, not these raw-value APIs.
+
+GoC now supports empirical-exact FP32 results by reusing the same borrowed
+RCP/SQRT/RSQ/EXP/LOG integer mappings as vector execution. The scalar calculation
+and source/output modifiers moved from the vector lane loop to `unary_exact.h`;
+the vector implementation retains validation, architecture OMOD adjustment,
+DPP routing and masked stores. The pseudo-scalar implementation calls that
+calculation once, with the RDNA4 NaN policy. This centralizes existing numerical
+rules without calling a 32-lane API or adding a policy framework. Loose kernels
+remain unchanged apart from exact dispatch; FP16 pseudo-scalar exact support
+is still pending.
+
+- FP32 always flushes input/output subnormals and quiets signaling NaNs while
+  retaining payload/sign. Nonzero OMOD maps existing zero to positive zero;
+  newly produced negative underflow retains its sign. Output overflow becomes
+  infinity; CLAMP maps NaN/negative results to zero and values above one to one.
+  Guest denormal flags and FP16_OVFL do not change FP32 results. Directed guest
+  rounding and IEEE/DX10-clamp-off flags remain unsupported by these entry points.
+- The manual explicitly says these instructions produce exceptions like their
+  vector counterparts. Each retains trailing optional `excp_flag_user`.
+  Exact non-null state reporting remains unsupported, before other validation
+  and without writes; loose execution leaves state unchanged.
+- The retained pseudo-scalar GFX1201 fixture now receives raw-word equality
+  checks for all five FP32 operations, 48 input samples, all 32 modifier
+  combinations, eight denormal/overflow configurations and every supported CPU
+  tier, with aliased source/destination storage and adjacent-word guards.
+  Dense vector capture hashes separately exercise the common borrowed mappings
+  over their original full input domains. They are reused evidence for the
+  common numerical model, not new pseudo-scalar hardware captures.
+
+The review ledger records 704 mnemonic contracts, with 105 remaining; this
+is not an overall completion percentage.
+
+
+Validation: all **1,167** tests pass under Clang 21 Release and GCC 15 Release;
+all **58** selected pseudo-scalar, vector unary, rounding, FREXP and RCP_IFLAG
+tests pass under Clang ASan/UBSan. Nine tooling tests pass. Logs use
+`coverage-work/pseudo-exact-{build,tests}.log` in each build directory.
+
+Performance versus `026617f`: 20 cases (five operations, loose pseudo-scalar
+and exact 32-lane vector execution, default and NEG/OMOD modifiers), seven
+alternating paired repetitions pinned to CPU 2, at least 50 ms thread CPU time
+per sample. Median change is **1.64% faster**, range **8.87% faster to 7.08%
+slower**. Loose pseudo-scalar cases are 1.59–8.87% faster in this run. The
+remaining worst case is exact vector LOG on negative inputs with OMOD,
+50.70 to 54.29 ns per 32-lane call; other exact vector cases range from 5.89%
+faster to 1.03% slower. No SIMD kernel changed. Samples are under
+`../goc-build/coverage-work/pseudo-exact-performance/`.
+
+The extracted helper is explicitly always-inline: leaving that to the compiler
+introduced per-lane calls and substantial LOG/RSQ regressions in the first
+measurement, which was rejected. Final object text sizes are 83,087 to 82,799
+bytes for `unary.cpp.o`, and 10,693 to 31,835 for `pseudo_scalar.cpp.o`, which
+now contains the five exact paths. Object sizes include model data and do not
+represent the linked-library increase after COMDAT deduplication. The added
+header centralizes existing scalar numerical behavior for two actual callers;
+validation, wave routing and stores stay visible in their implementation files.
