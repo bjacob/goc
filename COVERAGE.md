@@ -8695,3 +8695,35 @@ pseudo-scalar FP16 reciprocal. These are scalar paths, not SIMD regressions.
 Per-family timing evidence and rejected slower implementations remain recorded
 with their respective changes. These measurements are workload-specific; they
 do not establish a whole-library speedup or an overall before/after percentage.
+
+## Upstream exception-classifier availability review
+
+Rechecked rocjitsu `shared/alu_exceptions.h`, its generated shared call sites,
+and `tests/shared_infra_test.cpp` at `ffc144c564c` as part of the completion
+audit. Presence of a classifier is not sufficient evidence for accepting a
+non-null exact global-state request:
+
+- `classify_mul_f32` computes input-denormal, overflow, underflow and inexact
+  using host products. It never sets the invalid-operation bit. Its VOP3 wrapper
+  accounts for source signs and architecture-dependent OMOD suppression, but
+  this is not a complete guest-policy/exception model for GoC's exact MUL API.
+  Upstream unit tests cover selected products, scaling and host rounding;
+  they do not fill the missing classification branches.
+- SQRT's VOP1/VOP3 classifiers only test whether a modified input is negative.
+  They do not supply a complete signaling-NaN, denormal or rounding exception
+  model. The numerical SQRT port remains usable with optional state omitted.
+- RCP_IFLAG's classifier compares the original operand to host `0.0f`. Its
+  generated callers classify before `dpp::execution_lane_mask` and routing,
+  and the classifier does not apply CLAMP or explicit guest input flushing.
+  It therefore cannot replace GoC's retained RDNA4 capture-backed classifier
+  or establish complete RDNA3 reporting for the supported API modes.
+- DIV_FIXUP's existing classifier and division model are already represented
+  by the retained implementation and per-format architecture reviews. Its
+  documented empirical recovery evidence is gfx1201, not independent evidence
+  for every RDNA3 reporting policy.
+
+No new classifier is inferred from these omissions, and no optional reporting
+work is added to loose SIMD paths. Unsupported exact reporting remains an
+explicit error under the existing API contracts. This review adds source-based
+reasons for the limitations; it is not new hardware characterization or a
+repeat audit of production host FP-environment writes.
