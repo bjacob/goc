@@ -36,6 +36,11 @@ template <bool Bf16, int Lanes, bool Rdna3>
 void wmma_f32_x86_64_v3(uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
                         const uint32_t *const *b, const uint32_t *const *c);
 
+template <bool Bf16, int Lanes, bool Rdna3>
+void wmma_packed_x86_64_v3(uint32_t modifiers, bool saturate, uint32_t *const *d,
+                           const uint32_t *const *a, const uint32_t *const *b,
+                           const uint32_t *const *c);
+
 template <bool Multiply>
 void literal_fma_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t literal, uint32_t *d,
                            const uint32_t *a, const uint32_t *b);

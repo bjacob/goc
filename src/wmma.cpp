@@ -38,12 +38,14 @@ int wmma(uint64_t flags, uint32_t instruction_flags, uint32_t *const *d, const u
 #endif
 
 #if defined(GOC_HAVE_X86_64_V3)
-  if constexpr (!Packed) {
-    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
-        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL) {
-      goc::wmma_f32_x86_64_v3<Bf16, WaveSize, false>(instruction_flags, d, a, b, c);
-      return GOC_SUCCESS;
-    }
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
+      (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL) {
+    if constexpr (Packed)
+      goc::wmma_packed_x86_64_v3<Bf16, WaveSize, false>(uint32_t(instruction_flags),
+                                                        flags & GOC_FP16_OVFL, d, a, b, c);
+    else
+      goc::wmma_f32_x86_64_v3<Bf16, WaveSize, false>(uint32_t(instruction_flags), d, a, b, c);
+    return GOC_SUCCESS;
   }
 #endif
 
@@ -69,7 +71,7 @@ int wmma(uint64_t flags, uint32_t instruction_flags, uint32_t *const *d, const u
         c_bits &= Packed ? 0x7fff : 0x7fffffff;
       if (instruction_flags & GOC_WMMA_NEG_C)
         c_bits ^= Packed ? 0x8000 : 0x80000000;
-      if (Packed || (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
+      if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
         uint32_t acc = c_bits;
         for (int k = 0; k < 16; k += 4) {
           std::array<uint16_t, 4> left, right;
@@ -92,14 +94,27 @@ int wmma(uint64_t flags, uint32_t instruction_flags, uint32_t *const *d, const u
         else
           result[reg][lane] = acc;
       } else {
-        float acc = goc::as_float(c_bits);
-        for (int k = 0; k < 16; ++k) {
+        float acc = goc::as_float(Packed ? goc::packed16::widen<Bf16>(uint16_t(c_bits)) : c_bits);
+        uint32_t packed = 0;
+        for (int step = 0; step < 16; ++step) {
+          int k =
+              Packed && WaveSize == 32 ? (step & 3) | ((step & 4) << 1) | ((step & 8) >> 1) : step;
           auto left = read_bits(a, row, k, 0), right = read_bits(b, col, k, 1);
           float x = Bf16 ? goc::bf16_to_float(left) : goc::f16_to_float(left);
           float y = Bf16 ? goc::bf16_to_float(right) : goc::f16_to_float(right);
           acc = std::fma(x, y, acc);
+          if constexpr (Packed) {
+            if ((step + 1) % 4 == 0) {
+              packed =
+                  Bf16 ? goc::as_bits(acc) >> 16 : goc::float_to_f16(acc, flags & GOC_FP16_OVFL);
+              acc = goc::as_float(goc::packed16::widen<Bf16>(uint16_t(packed)));
+            }
+          }
         }
-        result[reg][lane] = goc::as_bits(acc);
+        if constexpr (Packed)
+          result[reg / 2][lane] |= packed << (16 * (reg % 2));
+        else
+          result[reg][lane] = goc::as_bits(acc);
       }
     }
 

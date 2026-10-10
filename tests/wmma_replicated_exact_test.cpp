@@ -450,3 +450,171 @@ TEST(WmmaReplicatedExact, FloatingArchitectureRoundingBoundaries) {
                 EXPECT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0);
               }
 }
+
+TEST(WmmaPackedLoose, LayoutsModifiersAliasesAndGuards) {
+  for (bool rdna4 : {false, true})
+    for (int lanes : {32, 64})
+      for (bool bf16 : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned mode = 0; mode < (rdna4 ? 64U : 128U); ++mode)
+            for (int dst : {0, 8, 16, 24}) {
+              Registers r;
+              auto encode = [bf16](int value) -> uint16_t {
+                return bf16 ? uint16_t(goc::as_bits(float(value)) >> 16)
+                            : goc::packed16::pack_f16(value, 0);
+              };
+              auto av = [](int row, int k, int group) { return (row + 3 * k + group) % 5 - 2; };
+              auto bv = [](int k, int col, int group) { return (2 * k + col + 2 * group) % 5 - 2; };
+              int registers = (rdna4 ? 128 : 256) / lanes;
+              int input_regs = rdna4 ? 128 / lanes : 8;
+              for (int lane = 0; lane < lanes; ++lane) {
+                for (int reg = 0; reg < input_regs; ++reg) {
+                  uint32_t a = 0, b = 0;
+                  for (int half = 0; half < 2; ++half) {
+                    int k = reg * 2 + half + (rdna4 ? (lane / 16) * (256 / lanes) : 0);
+                    int group = rdna4 ? 0 : lane / 16;
+                    a |= uint32_t(encode(av(lane % 16, k, group))) << (16 * half);
+                    b |= uint32_t(encode(bv(k, lane % 16, group))) << (16 * half);
+                  }
+                  r.v[reg][lane] = a;
+                  r.v[8 + reg][lane] = b;
+                }
+                for (int reg = 0; reg < registers; ++reg)
+                  r.v[16 + reg][lane] = uint32_t(encode(-3)) | (uint32_t(encode(5)) << 16);
+              }
+              uint32_t expected[32][66];
+              std::memcpy(expected, r.data, sizeof(expected));
+              for (int row = 0; row < 16; ++row)
+                for (int col = 0; col < 16; ++col) {
+                  int group = rdna4 ? 0 : row % (lanes / 16);
+                  int reg = rdna4 ? (row % (256 / lanes)) / 2 : row / (lanes / 16);
+                  int lane = rdna4 ? col + 16 * (row / 8) + (lanes == 64 ? 32 * ((row / 4) % 2) : 0)
+                                   : col + 16 * group;
+                  int shift = rdna4 ? 16 * (row % 2) : (mode & 64 ? 16 : 0);
+                  int sum = shift ? 5 : -3;
+                  if (mode & GOC_WMMA_ABS_C)
+                    sum = std::abs(sum);
+                  if (mode & GOC_WMMA_NEG_C)
+                    sum = -sum;
+                  for (int k = 0; k < 16; ++k) {
+                    int x = av(row, k, group), y = bv(k, col, group);
+                    if (mode & (k % 2 ? GOC_WMMA_NEG_HI_A : GOC_WMMA_NEG_LO_A))
+                      x = -x;
+                    if (mode & (k % 2 ? GOC_WMMA_NEG_HI_B : GOC_WMMA_NEG_LO_B))
+                      y = -y;
+                    sum += x * y;
+                  }
+                  auto &word = expected[31 - dst - reg][lane + 1];
+                  word = (word & ~(65535U << shift)) | (uint32_t(encode(sum)) << shift);
+                }
+              uint64_t modifiers = (mode & 63) | ((mode & 64) ? GOC_WMMA_HIGH_C_D : 0);
+              ASSERT_EQ(floating(bf16, true, lanes, rdna4)(cpu, modifiers, r.v + dst, r.v, r.v + 8,
+                                                           r.v + 16),
+                        GOC_SUCCESS);
+              EXPECT_EQ(std::memcmp(r.data, expected, sizeof(expected)), 0)
+                  << rdna4 << '/' << lanes << '/' << bf16 << '/' << cpu << '/' << mode << '/'
+                  << dst;
+            }
+}
+
+TEST(WmmaPackedLoose, IntermediateNarrowingAndOverflow) {
+  for (bool rdna4 : {false, true})
+    for (int lanes : {32, 64})
+      for (bool bf16 : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned high = 0; high < (rdna4 ? 1U : 2U); ++high)
+            for (int scenario = 0; scenario < (bf16 ? 1 : 5); ++scenario) {
+              Registers r;
+              // Sixteen 0.5 products: RDNA3 discards each two-product update;
+              // RDNA4 retains each four-product update. This distinguishes
+              // intermediate narrowing from narrowing just once at the end.
+              uint16_t a = bf16 ? 0x3f00 : 0x3800;
+              uint16_t b = bf16 ? 0x3f80 : 0x3c00;
+              uint16_t c = bf16 ? 0x4380 : 0x6800;
+              uint16_t want = rdna4 ? (bf16 ? 0x4384 : 0x6804) : c;
+              bool saturate = scenario == 2 || scenario == 4;
+              if (scenario) {
+                a = scenario >= 3 ? 0x7c00 : 0x7bff;
+                c = 0;
+                want = saturate && scenario < 3 ? 0x7bff : 0x7c00;
+              }
+              for (int lane = 0; lane < lanes; ++lane) {
+                for (int reg = 0; reg < (rdna4 ? 128 / lanes : 8); ++reg) {
+                  r.v[reg][lane] = uint32_t(a) | (uint32_t(a) << 16);
+                  r.v[8 + reg][lane] = uint32_t(b) | (uint32_t(b) << 16);
+                }
+                for (int reg = 0; reg < (rdna4 ? 128 : 256) / lanes; ++reg)
+                  r.v[16 + reg][lane] = uint32_t(c) | (uint32_t(c) << 16);
+              }
+              ASSERT_EQ(floating(bf16, true, lanes, rdna4)(cpu | (saturate ? GOC_FP16_OVFL : 0),
+                                                           high ? GOC_WMMA_HIGH_C_D : 0, r.v + 24,
+                                                           r.v, r.v + 8, r.v + 16),
+                        GOC_SUCCESS);
+              for (int reg = 0; reg < (rdna4 ? 128 : 256) / lanes; ++reg)
+                for (int lane = 0; lane < lanes; ++lane) {
+                  uint32_t word = r.v[24 + reg][lane];
+                  EXPECT_EQ((word >> (16 * high)) & 65535U, want);
+                  if (rdna4) {
+                    EXPECT_EQ(word >> 16, want);
+                  }
+                }
+            }
+}
+
+TEST(WmmaPackedLoose, ScalarSimdSpecialAndRandomInputs) {
+  const uint16_t half[] = {0,      0x8000, 1,      0x3ff,  0x400,  0x3c00,
+                           0xbc00, 0x7bff, 0x7c00, 0xfc00, 0x7c01, 0x7e37};
+  const uint16_t bfloat[] = {0,      0x8000, 1,      0x7f,   0x80,   0x3f80,
+                             0xbf80, 0x7f7f, 0x7f80, 0xff80, 0x7f81, 0x7fe3};
+  for (bool rdna4 : {false, true})
+    for (int lanes : {32, 64})
+      for (bool bf16 : {false, true})
+        for (bool saturate : {false, true})
+          for (unsigned batch = 0; batch < 8; ++batch)
+            for (uint64_t mode : {0ULL, 1ULL, 32ULL, 63ULL}) {
+              Registers original;
+              uint32_t rng = 0x12345678U + batch;
+              for (int reg = 0; reg < 32; ++reg)
+                for (int lane = 0; lane < lanes; ++lane) {
+                  uint32_t word = 0;
+                  for (int part = 0; part < 2; ++part) {
+                    rng = rng * 1664525U + 1013904223U;
+                    uint16_t bits = batch < 4
+                                        ? (bf16 ? bfloat : half)[(lane + reg + part + batch) % 12]
+                                        : uint16_t(rng >> 16);
+                    word |= uint32_t(bits) << (16 * part);
+                  }
+                  original.v[reg][lane] = word;
+                }
+              const int regs = (rdna4 ? 128 : 256) / lanes;
+              const int shift = !rdna4 && (batch & 1) ? 16 : 0;
+              const uint64_t modifiers = mode | (shift ? GOC_WMMA_HIGH_C_D : 0);
+              const uint64_t flags = saturate ? GOC_FP16_OVFL : 0;
+              Registers reference;
+              std::memcpy(reference.data, original.data, sizeof(original.data));
+              auto fn = floating(bf16, true, lanes, rdna4);
+              ASSERT_EQ(fn(flags, modifiers, reference.v + 24, reference.v, reference.v + 8,
+                           reference.v + 16),
+                        GOC_SUCCESS);
+              for (uint64_t cpu = 1; cpu <= goc_init_cpu_flags(); ++cpu) {
+                Registers actual;
+                std::memcpy(actual.data, original.data, sizeof(original.data));
+                ASSERT_EQ(fn(flags | cpu, modifiers, actual.v + 24, actual.v, actual.v + 8,
+                             actual.v + 16),
+                          GOC_SUCCESS);
+                for (int reg = 0; reg < regs; ++reg)
+                  for (int lane = 0; lane < lanes; ++lane)
+                    for (int part = 0; part < (rdna4 ? 2 : 1); ++part) {
+                      uint16_t want = reference.v[24 + reg][lane] >> (shift + 16 * part);
+                      uint16_t got = actual.v[24 + reg][lane] >> (shift + 16 * part);
+                      unsigned infinity = bf16 ? 0x7f80 : 0x7c00;
+                      if ((want & 0x7fffU) > infinity) {
+                        EXPECT_GT(got & 0x7fffU, infinity);
+                      } else {
+                        EXPECT_EQ(got, want) << rdna4 << '/' << lanes << '/' << bf16 << '/' << batch
+                                             << '/' << mode << '/' << cpu;
+                      }
+                    }
+              }
+            }
+}

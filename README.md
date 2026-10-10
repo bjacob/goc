@@ -181,7 +181,9 @@ final CLAMP. RDNA4 instead clamps at two stage boundaries.
 Loose FP32 output uses scalar or eight-lane AVX2 FMA in both wave sizes,
 including all six sign modifiers. IU4/IU8 also use scalar or eight-lane AVX2
 in both semantics and wave sizes, preserving final-only saturation. Exact
-floating and packed-output paths use scalar integer arithmetic. All results are staged before stores so whole-VGPR aliases are supported.
+floating paths use scalar integer arithmetic. Packed-output loose paths use
+scalar or AVX2 arithmetic, narrowing after every DOT2 stage. All results are
+staged before stores so whole-VGPR aliases are supported.
 EXEC is ignored. No new GPU captures were made: tests reuse rocjitsu's GFX1100
 captures (103 DOT2 cases, a 256-element FP32 matrix, and 28 packed matrices),
 plus independent integer references, all modifiers, half selectors, aliasing,
@@ -314,7 +316,9 @@ NaN payloads are unspecified in loose mode. Zen4 first tries the AVX-512 BF16
 path, falling back to v3 for exceptional values and extreme product exponents,
 or to scalar if v3 was not compiled. The Zen4 BF16 path applies to RDNA4
 Wave32; both architectures and wave sizes have an AVX2 path. Packed outputs
-and floating-point empirical exact modes use scalar arithmetic.
+also have scalar/AVX2 loose paths, with narrowing after each
+architecture-specific dot stage (two products on RDNA3, four on RDNA4).
+Floating-point empirical exact modes retain the borrowed scalar integer models.
 Integer WMMA uses SIMD in both semantics, for every signedness and CLAMP
 combination.
 Its v3 path uses signed 16-bit pairwise multiply-adds; Zen4 uses AVX-512 VNNI

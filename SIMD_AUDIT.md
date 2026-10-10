@@ -13,7 +13,7 @@ The active follow-up covers the actionable gaps below. Historical findings and
 timings later in this document describe the initial audit pass.
 
 - [x] SIMD RDNA3 IU4/IU8 WMMA in both widths, all signs and final CLAMP.
-- [ ] SIMD loose packed-result FP16/BF16 WMMA with intermediate narrowing.
+- [x] SIMD loose packed-result FP16/BF16 WMMA with intermediate narrowing.
 - [ ] AVX2 coverage for Boolean/CNDMASK, bitfield insert, non-saturating
   integer add, and the remaining ternary/count/conversion gaps listed below.
 - [ ] Review incomplete exact-state families against rocjitsu and the ISA;
@@ -177,3 +177,36 @@ Seven paired pinned measurements (same timing protocol as above) put RDNA3 at
 cases changed by −4.2% to +4.7%, within the agreed 5% trade-off threshold.
 Artifacts: `../goc-build/coverage-work/audit-integer-performance/` and the
 `audit-integer-*` validation logs in each build directory.
+
+## Follow-up: packed-result WMMA
+
+Both architectures and wave sizes now have loose scalar/AVX2 paths for packed
+FP16/BF16 results. They share the existing WMMA vector widening, source modifiers,
+FMA, and staged destination writes. Packed output adds explicit accumulator
+narrowing and output packing, not a separate matrix executor. RDNA3 narrows after
+each two products and preserves the unselected destination half; RDNA4 narrows
+after four products, follows its physical K-stage order, and packs adjacent rows.
+BF16 narrowing truncates; FP16 uses nearest-even and the finite-overflow policy.
+All sign modifiers, RDNA3 high-half selection, and FP16 saturation retain SIMD.
+
+Scalar loose calls previously happened to use the exact model. They now use the
+same staged host-FMA approximation as SIMD. Consequently loose results can differ
+from those old empirical results, especially around cancellation. Exact calls
+retain the borrowed integer model unchanged; no bit-exact promise was weakened.
+
+New tests cover all modifiers, layouts, aliases, untouched halves, and guards;
+an independent small-integer reference; architecture-distinguishing intermediate
+rounding; finite overflow versus input infinity; and scalar/SIMD comparisons on
+random encodings, subnormals, NaNs, and infinities. Clang and GCC each pass all
+1,188 tests. ASan/UBSan and no-SIMD builds each pass 85 matrix tests.
+
+Packed loose timings now range from 168–615 ns/wave versus 20.2–34.5 µs before,
+a 49.8–188.3× improvement in the targeted small-value cases. The old baseline
+used the empirical integer model even in loose mode, so these numbers include
+both selecting loose arithmetic and vectorization. Seven paired samples use the
+same pinned/thread-time protocol above. Artifacts live in
+`../goc-build/coverage-work/audit-packed-performance/`.
+
+The sixteen existing FP32-result WMMA control cases changed by −4.0% to +0.9%
+(median −1.1% time), with no material regression. Their paired samples are in
+`../goc-build/coverage-work/audit-packed-f32-control/`.

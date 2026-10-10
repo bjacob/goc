@@ -25,12 +25,14 @@ int wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32_t *cons
   if (int error = goc::validate(flags, 0, true))
     return error;
 #if defined(GOC_HAVE_X86_64_V3)
-  if constexpr (!Packed) {
-    if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
-        (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL) {
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&
+      (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_EXACT_EMPIRICAL) {
+    if constexpr (Packed)
+      goc::wmma_packed_x86_64_v3<Bf16, Lanes, true>(uint32_t(mode), flags & GOC_FP16_OVFL, d, a, b,
+                                                    c);
+    else
       goc::wmma_f32_x86_64_v3<Bf16, Lanes, true>(uint32_t(mode), d, a, b, c);
-      return GOC_SUCCESS;
-    }
+    return GOC_SUCCESS;
   }
 #endif
   constexpr int Groups = Lanes / 16, Registers = 256 / Lanes;
@@ -46,7 +48,7 @@ int wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32_t *cons
         acc &= Packed ? 0x7fff : 0x7fffffff;
       if (mode & GOC_WMMA_NEG_C)
         acc ^= Packed ? 0x8000 : 0x80000000;
-      float loose = goc::as_float(acc);
+      float loose = goc::as_float(Packed ? goc::packed16::widen<Bf16>(uint16_t(acc)) : acc);
       for (int k = 0; k < 16; k += 2) {
         uint32_t av = a[k / 2][group * 16 + row];
         uint32_t bv = b[k / 2][group * 16 + col];
@@ -54,17 +56,23 @@ int wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32_t *cons
               ((mode & GOC_WMMA_NEG_HI_A) ? 0x80000000U : 0);
         bv ^= ((mode & GOC_WMMA_NEG_LO_B) ? 0x8000U : 0) |
               ((mode & GOC_WMMA_NEG_HI_B) ? 0x80000000U : 0);
-        if constexpr (Packed) {
-          // RDNA3 narrows after every two products, not after four as on RDNA4.
-          acc = goc::gfx11_dot2_packed16<Bf16>(av, bv, av >> 16, bv >> 16, acc,
-                                               flags & GOC_FP16_OVFL);
-        } else if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
-          acc = goc::gfx11_dot2_f32<Bf16>(av, bv, av >> 16, bv >> 16, acc);
+        if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
+          if constexpr (Packed)
+            acc = goc::gfx11_dot2_packed16<Bf16>(av, bv, av >> 16, bv >> 16, acc,
+                                                 flags & GOC_FP16_OVFL);
+          else
+            acc = goc::gfx11_dot2_f32<Bf16>(av, bv, av >> 16, bv >> 16, acc);
         } else {
           for (int half = 0; half < 2; ++half) {
             uint16_t x = uint16_t(av >> (16 * half)), y = uint16_t(bv >> (16 * half));
             loose = std::fma(Bf16 ? goc::bf16_to_float(x) : goc::f16_to_float(x),
                              Bf16 ? goc::bf16_to_float(y) : goc::f16_to_float(y), loose);
+          }
+          if constexpr (Packed) {
+            // RDNA3 narrows after every two products, RDNA4 after four.
+            acc =
+                Bf16 ? goc::as_bits(loose) >> 16 : goc::float_to_f16(loose, flags & GOC_FP16_OVFL);
+            loose = goc::as_float(goc::packed16::widen<Bf16>(uint16_t(acc)));
           }
         }
       }
