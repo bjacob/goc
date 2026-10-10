@@ -184,10 +184,13 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_mad_i32_i16" || base_name == "goc_v_mad_u32_u24" ||
         base_name == "goc_v_mad_i32_i24" || base_name == "goc_v_mad_co_u64_u32" ||
         base_name == "goc_v_mad_co_i64_i32" || base_name == "goc_v_mad_u64_u32" ||
-        base_name == "goc_v_mad_i64_i32" || base_name == "goc_v_cvt_f16_i16" ||
-        base_name == "goc_v_cvt_f16_u16" || base_name == "goc_v_cvt_i16_f16" ||
-        base_name == "goc_v_cvt_u16_f16" || base_name == "goc_v_cvt_f16_f32" ||
-        base_name == "goc_v_cvt_f32_f16" ||
+        base_name == "goc_v_mad_i64_i32" ||
+        (base_name == "goc_v_cvt_f16_i16" || base_name == "goc_v_cvt_f16_i16_rdna4") ||
+        (base_name == "goc_v_cvt_f16_u16" || base_name == "goc_v_cvt_f16_u16_rdna4") ||
+        (base_name == "goc_v_cvt_i16_f16" || base_name == "goc_v_cvt_i16_f16_rdna4") ||
+        (base_name == "goc_v_cvt_u16_f16" || base_name == "goc_v_cvt_u16_f16_rdna4") ||
+        (base_name == "goc_v_cvt_f16_f32" || base_name == "goc_v_cvt_f16_f32_rdna4") ||
+        (base_name == "goc_v_cvt_f32_f16" || base_name == "goc_v_cvt_f32_f16_rdna4") ||
         (base_name == "goc_v_cvt_f32_i32" || base_name == "goc_v_cvt_f32_i32_rdna4") ||
         (base_name == "goc_v_cvt_f32_u32" || base_name == "goc_v_cvt_f32_u32_rdna4") ||
         (base_name == "goc_v_cvt_i32_f32" || base_name == "goc_v_cvt_i32_f32_rdna4") ||
@@ -287,6 +290,9 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
        {"v_cvt_f32_i32_rdna4", "v_cvt_f32_u32_rdna4", "v_cvt_i32_f32_rdna4", "v_cvt_u32_f32_rdna4"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : goc_test::conversion32_names)
+    supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
+  for (auto mnemonic : {"v_cvt_f16_i16_rdna4", "v_cvt_f16_u16_rdna4", "v_cvt_i16_f16_rdna4",
+                        "v_cvt_u16_f16_rdna4", "v_cvt_f16_f32_rdna4", "v_cvt_f32_f16_rdna4"})
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;
   for (auto mnemonic : goc_test::conversion16_names)
     supports_dpp |= std::strcmp(name + sizeof("goc_") - 1, mnemonic) == 0;

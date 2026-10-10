@@ -18,13 +18,13 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_cvt_f16_i16);
-const Fn functions[] = {goc_v_cvt_f16_i16, goc_v_cvt_f16_u16, goc_v_cvt_i16_f16,
-                        goc_v_cvt_u16_f16, goc_v_cvt_f16_f32, goc_v_cvt_f32_f16};
+using Fn = decltype(&goc_v_cvt_f16_i16_rdna4);
+const Fn functions[] = {goc_v_cvt_f16_i16_rdna4, goc_v_cvt_f16_u16_rdna4, goc_v_cvt_i16_f16_rdna4,
+                        goc_v_cvt_u16_f16_rdna4, goc_v_cvt_f16_f32_rdna4, goc_v_cvt_f32_f16_rdna4};
 
-const decltype(&goc_v_cvt_f16_i16_wave64) wave64[] = {
-    goc_v_cvt_f16_i16_wave64, goc_v_cvt_f16_u16_wave64, goc_v_cvt_i16_f16_wave64,
-    goc_v_cvt_u16_f16_wave64, goc_v_cvt_f16_f32_wave64, goc_v_cvt_f32_f16_wave64};
+const decltype(&goc_v_cvt_f16_i16_rdna4_wave64) wave64[] = {
+    goc_v_cvt_f16_i16_rdna4_wave64, goc_v_cvt_f16_u16_rdna4_wave64, goc_v_cvt_i16_f16_rdna4_wave64,
+    goc_v_cvt_u16_f16_rdna4_wave64, goc_v_cvt_f16_f32_rdna4_wave64, goc_v_cvt_f32_f16_rdna4_wave64};
 
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t mode, const uint32_t input[32]) {
   uint32_t output[32];

@@ -1288,6 +1288,13 @@ four AVX2 arithmetic paths (1.9–5.1× scalar speed) and 8.3–12.5 ns for all 
 AVX-512 paths (3.5–10.4×), including combined modifiers. Measurements use seven
 pinned-core samples of at least 10 ms each.
 
+FP16 conversion APIs now select RDNA3 by default, with `_rdna4` variants for
+RDNA4 and native optional `trapsts`/`excp_flag_user` outputs. Floating-result
+conversions honor RDNA3's conditional output scaling. FP16-to-FP32 widening
+supports guest input flushing and the architecture's IEEE-dependent NaN policy
+on scalar, AVX2 and AVX-512 paths. These remain loose-only conversions; exact
+state reporting and arbitrary guest rounding modes are not supported.
+
 FP32/integer conversion APIs distinguish architecture policy where needed.
 `v_cvt_f32_i32` and `v_cvt_f32_u32` select RDNA3: output scaling is disabled
 when output denormals are preserved or IEEE mode is set. Their `_rdna4`

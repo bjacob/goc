@@ -27,11 +27,9 @@ __m256i narrow(__m256 x, bool saturate) {
   return result;
 }
 
-} // namespace
-
-template <Conversion16 Op>
-void conversion16_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
-                            const uint32_t *a) {
+template <Conversion16 Op, bool GuestWidening = false>
+void convert(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d, const uint32_t *a,
+             uint64_t flags = 0) {
   constexpr bool from_integer =
       Op == Conversion16::SignedToHalf || Op == Conversion16::UnsignedToHalf;
   constexpr bool to_half = from_integer || Op == Conversion16::FloatToHalf;
@@ -57,8 +55,29 @@ void conversion16_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, ui
       raw = _mm256_xor_si256(raw, _mm256_set1_epi32(int(mode & GOC_ALU_NEG_A ? sign : 0)));
       if constexpr (Op == Conversion16::FloatToHalf)
         value = _mm256_castsi256_ps(raw);
-      else
+      else {
+        if constexpr (Op == Conversion16::HalfToFloat && GuestWidening) {
+          if (flags & GOC_FP_FLUSH_INPUT_DENORMALS) {
+            auto tiny = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x400),
+                                           _mm256_and_si256(raw, _mm256_set1_epi32(0x7fff)));
+            raw = _mm256_blendv_epi8(raw, _mm256_and_si256(raw, _mm256_set1_epi32(0x8000)), tiny);
+          }
+        }
         value = widen(raw);
+        if constexpr (Op == Conversion16::HalfToFloat && GuestWidening) {
+          // F16C quiets NaNs; restore the raw encoding for RDNA3 IEEE=0.
+          if (!(flags & GOC_FP_IEEE_MODE)) {
+            auto nan = _mm256_cmpgt_epi32(_mm256_and_si256(raw, _mm256_set1_epi32(0x7fff)),
+                                          _mm256_set1_epi32(0x7c00));
+            auto bits = _mm256_or_si256(
+                _mm256_set1_epi32(0x7f800000),
+                _mm256_or_si256(
+                    _mm256_slli_epi32(_mm256_and_si256(raw, _mm256_set1_epi32(0x8000)), 16),
+                    _mm256_slli_epi32(_mm256_and_si256(raw, _mm256_set1_epi32(0x3ff)), 13)));
+            value = _mm256_castsi256_ps(_mm256_blendv_epi8(_mm256_castps_si256(value), bits, nan));
+          }
+        }
+      }
     }
     __m256i result;
     if constexpr (to_half) {
@@ -85,7 +104,8 @@ void conversion16_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, ui
         result = _mm256_min_epi32(_mm256_andnot_si256(discard, result), _mm256_set1_epi32(0x3c00));
       }
     } else if constexpr (Op == Conversion16::HalfToFloat) {
-      value = _mm256_mul_ps(value, scale);
+      if (!GuestWidening || omod || (flags & GOC_FP_IEEE_MODE))
+        value = _mm256_mul_ps(value, scale);
       if (mode & GOC_ALU_CLAMP)
         value = _mm256_min_ps(_mm256_max_ps(value, zero), _mm256_set1_ps(1));
       if (omod)
@@ -110,6 +130,19 @@ void conversion16_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, ui
                                             _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
     _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
+}
+
+} // namespace
+
+template <Conversion16 Op>
+void conversion16_x86_64_v3(bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+                            const uint32_t *a) {
+  convert<Op>(saturate, exec_mask, mode, d, a);
+}
+
+void conversion16_widen_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+                                  const uint32_t *a) {
+  convert<Conversion16::HalfToFloat, true>(false, exec_mask, mode, d, a, flags);
 }
 
 template void conversion16_x86_64_v3<Conversion16::SignedToHalf>(bool, uint32_t, uint32_t,

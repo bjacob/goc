@@ -3424,3 +3424,58 @@ Next architecture review: FP16 conversions. Rocjitsu's `cvt_f32_f16` helper
 applies guest input flushing and architecture-dependent signaling-NaN quieting;
 its `effective_f16_omod` gates RDNA3 scaling. The existing GoC conversion family
 still needs that review and implementation; this slice does not close it.
+
+## FP16 conversion architecture policies
+
+- Reviewed all six `conversion16.cpp` mnemonics against rocjitsu revision
+  `ffc144c564c`: generated conversion execution helpers, `fp_mode::effective_omod`,
+  `fp_mode::cvt_f32_f16`, and `simd_glue.h::cvt_f32_f16_mode_simd`. No hardware
+  characterization or new bit-exact model was developed.
+- Added unsuffixed RDNA3 APIs with native `trapsts` outputs; preserved established
+  RDNA4 behavior and fixtures under `_rdna4`, before `_wave64`. All six still
+  provide loose semantics; strict exact and non-null exact reporting remain
+  explicitly unsupported. Loose state outputs remain untouched.
+- Floating-result conversions gate RDNA3 OMOD on output flushing and IEEE=0.
+  RDNA4 OMOD remains independent. Integer-result conversions share the same
+  saturation/truncation kernels and ignore these guest controls numerically.
+- Widening FP16 to FP32 honors guest input flushing and preserves signaling NaNs
+  on RDNA3 IEEE=0 when no arithmetic modifier is applied. RDNA4 and RDNA3 IEEE=1
+  quiet them. Scalar, AVX2 and AVX-512 paths implement this policy. Native x86
+  half widening quiets NaNs, so SIMD restores raw NaN encodings for RDNA3 IEEE=0
+  before applying output modifiers. Host controls are never changed.
+- Existing FP16-result loose rounding and CLAMP behavior are retained. This does
+  not add arbitrary guest rounding modes, DX10_CLAMP control, or exact exception
+  reporting. These limits must not be confused with a hardware-exact conversion
+  claim. In particular, the upstream output helpers are broader than this loose
+  implementation and are not copied wholesale.
+- New tests cover all six operations, both architectures and wave widths, all
+  low modifiers, 16 guest flag combinations, DPP, unaligned arrays, in-place
+  aliases, sparse EXEC masks, destination guards, unchanged optional state,
+  error atomicity, and unchanged host FP controls. Widening additionally checks
+  every half encoding against an integer-only reference at every CPU level,
+  including signed zeros, subnormals and NaN payload/signaling bits.
+
+Validation: all 1,034 CTests pass with Clang 21 Release and GCC 15 Release;
+23 targeted ASan/UBSan tests pass. Final logs are `conversion16-tests4.log`
+under `../goc-build/coverage-work/`, and `conversion16-tests3.log` under the
+GCC and sanitizer build directories.
+
+Performance: seven alternating before/after runs, pinned to CPU 2, using thread
+CPU time and at least 20 ms per case. Median time changes across six operations
+and plain/modified forms are +0.18% scalar, +1.08% AVX2, and +0.17% AVX-512.
+The worst case is plain unsigned-half-to-half AVX-512: 5.529 to 5.827 ns (+5.4%).
+Raw samples are in `../goc-build/coverage-work/conversion16-performance.json`.
+
+The initial runtime-policy loop slowed default widening by about 20% scalar
+and 6–8% SIMD. The final code uses a separate guest-widening specialization:
+one shared source algorithm, with policy checks compiled out of the ordinary
+RDNA4 path. Existing SIMD entry signatures are preserved. All six AVX2 default
+kernels retain identical instruction bytes; AVX-512 kernels retain their sizes,
+with some compiler scheduling/register-allocation differences. This adds one
+internal specialization and one named guest-widening entry per SIMD level,
+rather than duplicating source algorithms or burdening unrelated conversions.
+The remaining small timing changes are recorded rather than hidden.
+
+The broader goal is still active. FP64 conversions and the remaining unresolved
+cross-architecture families still require review; this is not a whole-ISA
+completion claim.
