@@ -24,7 +24,7 @@ for arch in (3, 4):
     assert len(instructions[arch]) == len(entries), "duplicate canonical mnemonic"
 
 # These use the data-share encoding but only route register values, with no LDS access.
-register_routing = {"ds_swizzle_b32", "ds_bpermute_b32", "ds_permute_b32",
+register_routing = {"ds_bpermute_fi_b32", "ds_swizzle_b32", "ds_bpermute_b32", "ds_permute_b32",
                     "ds_permute_b64", "ds_bpermute_b64"}
 outside = {"VMEM", "SMEM", "EXPORT", "BRANCH", "MESSAGE", "TRAP", "WAVE_CONTROL"}
 rows = []

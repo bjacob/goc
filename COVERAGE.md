@@ -191,13 +191,14 @@ wide-MAD tests exercise the new spelling where applicable, including an
 independent 128-bit reference and the existing **RDNA4** hardware corpus.
 This reuse does not turn that corpus into an RDNA3 hardware capture.
 
-The signed RDNA3 spelling remains open. rocjitsu's RDNA3 and RDNA4 handlers
+The initial signed RDNA3 review found a discrepancy (resolved by the full ISA
+pseudocode below). rocjitsu's RDNA3 and RDNA4 handlers
 both report signed overflow, whereas GoC's RDNA4 hardware captures establish
 that the scalar output is bit 64 of the full mathematical sum (its extended
 sign). These differ even without overflow: `0 * 0 + (-1)` has scalar bit 1
 in the RDNA4 capture model but bit 0 in rocjitsu. XML's prose says
-"overflow/carryout" and does not resolve the discrepancy. Do not add a signed
-alias or copy rocjitsu's overflow result without RDNA3-specific evidence.
+"overflow/carryout" and does not resolve the discrepancy. The subsequent RDNA3 pseudocode review below supplies the missing evidence;
+rocjitsu's overflow result was not copied.
 
 All 696 tests pass on Clang/GCC; all six wide-MAD tests pass under ASan/UBSan.
 Missing canonical API names: 69. Wave64 MAD variants remain open.
@@ -222,3 +223,40 @@ rules need separate auditing. Missing canonical API names: 67.
 
 Validation for these additions: all 700 tests pass with Clang and GCC; the four
 swap/routing tests also pass under ASan/UBSan.
+
+## DS register permutations and resolved signed MAD
+
+Implemented DS_PERMUTE/BPERMUTE for shared Wave32, RDNA3 Wave64 and RDNA4
+Wave64. AMD's RDNA3 manual section 12.5.2 explicitly restricts routing to each
+32-lane half, whereas RDNA4 section 12.5.2 permits full-wave routing. The RDNA4
+Wave64 APIs therefore use `_rdna4_wave64`. The RDNA3 detailed pseudocode omits
+the half-wave base, but its explicit prose and rocjitsu agree on independent
+halves; the implementation follows those. Both masks apply to reads and writes.
+Scatter selects the highest active source on collisions, following rocjitsu and
+the pseudocode, while documenting that hardware prose does not guarantee a winner.
+Inputs and addresses are consumed before output stores for alias safety.
+
+The scope audit also corrected `ds_bpermute_fi_b32`: despite its XML VMEM label,
+it only routes registers and belongs in scope. Its new Wave32/Wave64 APIs read
+inactive source lanes. Total in-scope canonical names are now 809, with 64 missing.
+DS_SWIZZLE remains open: rocjitsu's simple quad/bit implementation does not cover
+all rotate/FFT modes described in the RDNA4 manual, so copying it alone would
+not establish complete coverage.
+
+The previously open signed MAD question is resolved by RDNA3 section 16.12's
+explicit 65-bit concatenation: the scalar output is bit 64 of the full signed
+sum, matching GoC's existing model rather than rocjitsu's signed-overflow flag.
+`goc_v_mad_i64_i32` now shares the existing scalar/v3/v4 implementation. Both
+signed spellings run the extended-sign witnesses, wide-reference random cases,
+mask/alias tests and host-FP checks. Captures remain RDNA4-only.
+
+Sources: AMD [RDNA3 ISA](https://www.amd.com/content/dam/amd/en/documents/radeon-tech-docs/instruction-set-architectures/rdna3-shader-instruction-set-architecture-feb-2023_0.pdf)
+(downloaded from a [mirror](https://llm-tracker.info/rdna3-shader-instruction-set-architecture-feb-2023_0.pdf)
+when AMD's endpoint returned 401), AMD RDNA4 ISA sections 12.5.2/16.15, and
+rocjitsu `ffc144c564c` shared DS execution handlers. No new hardware captures.
+
+Validation: all 705 tests pass with Clang and GCC. All five DS permutation tests
+and all six wide-MAD tests pass under ASan/UBSan. The DS tests use an independent
+destination-centric reference, explicit cross-half witnesses, byte-offset overflow,
+collisions, masks, inactive reads, aliases and guard words. Dedicated DS SIMD
+paths are not yet implemented; existing MAD SIMD implementations are unchanged.

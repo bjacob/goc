@@ -5,6 +5,7 @@ add_library(goc STATIC
   relative_move.cpp
   move.cpp
   swap.cpp
+  ds_permute.cpp
   wmma_replicated.cpp
   dpp.cpp
   permlane.cpp

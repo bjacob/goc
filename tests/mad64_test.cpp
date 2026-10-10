@@ -17,16 +17,16 @@
 namespace {
 
 using Fn = decltype(&goc_v_mad_co_u64_u32);
-// Alternate unsigned/signed reference indices; the third entry exercises the
-// RDNA3 unsigned spelling against the same independent arithmetic reference.
-const Fn functions[] = {goc_v_mad_co_u64_u32, goc_v_mad_co_i64_i32, goc_v_mad_u64_u32};
+// Alternate unsigned/signed reference indices for RDNA4 and RDNA3 spellings.
+const Fn functions[] = {goc_v_mad_co_u64_u32, goc_v_mad_co_i64_i32, goc_v_mad_u64_u32,
+                        goc_v_mad_i64_i32};
 const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
 
 } // namespace
 
 TEST(Mad64, HardwareCartesianCorpus) {
   const uint32_t masks[] = {UINT32_MAX, 0x33333333, 0};
-  for (unsigned op = 0; op < 3; ++op)
+  for (unsigned op = 0; op < 4; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned clamp = 0; clamp < 2; ++clamp)
         for (unsigned m = 0; m < 3; ++m) {
@@ -59,36 +59,36 @@ TEST(Mad64, HardwareCartesianCorpus) {
 }
 
 TEST(Mad64, SignedScalarOutputIsTheExtendedSign) {
-  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-    for (bool clamp : {false, true}) {
-      uint32_t data[6][32];
-      const uint32_t av[] = {0, 0x80000000, 0x80000000, 1}, bv[] = {0, 0x80000000, 0x7fffffff, 1};
-      const uint64_t cv[] = {UINT64_MAX, UINT64_MAX >> 1, 1ULL << 63, 0};
-      const uint64_t wrapped[] = {UINT64_MAX, 0xbfffffffffffffffULL, 0x4000000080000000ULL, 1};
-      const uint64_t saturated[] = {UINT64_MAX, UINT64_MAX >> 1, 1ULL << 63, 1};
-      for (unsigned lane = 0; lane < 32; ++lane) {
-        data[0][lane] = av[lane % 4];
-        data[1][lane] = bv[lane % 4];
-        data[2][lane] = uint32_t(cv[lane % 4]);
-        data[3][lane] = uint32_t(cv[lane % 4] >> 32);
+  for (Fn fn : {goc_v_mad_co_i64_i32, goc_v_mad_i64_i32})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (bool clamp : {false, true}) {
+        uint32_t data[6][32];
+        const uint32_t av[] = {0, 0x80000000, 0x80000000, 1}, bv[] = {0, 0x80000000, 0x7fffffff, 1};
+        const uint64_t cv[] = {UINT64_MAX, UINT64_MAX >> 1, 1ULL << 63, 0};
+        const uint64_t wrapped[] = {UINT64_MAX, 0xbfffffffffffffffULL, 0x4000000080000000ULL, 1};
+        const uint64_t saturated[] = {UINT64_MAX, UINT64_MAX >> 1, 1ULL << 63, 1};
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          data[0][lane] = av[lane % 4];
+          data[1][lane] = bv[lane % 4];
+          data[2][lane] = uint32_t(cv[lane % 4]);
+          data[3][lane] = uint32_t(cv[lane % 4] >> 32);
+        }
+        const uint32_t *a[] = {data[0]}, *b[] = {data[1]}, *c[] = {data[2], data[3]};
+        uint32_t *d[] = {data[4], data[5]}, carry;
+        ASSERT_EQ(fn(cpu | exact, UINT32_MAX, clamp ? GOC_ALU_CLAMP : 0, d, &carry, a, b, c),
+                  GOC_SUCCESS);
+        // Lane 0 is negative without overflow; lane 1 overflows positively but has
+        // a clear scalar bit. Lane 2 overflows negatively and retains a set bit.
+        EXPECT_EQ(carry, 0x55555555u);
+        for (unsigned lane = 0; lane < 32; ++lane)
+          EXPECT_EQ(data[4][lane] | (uint64_t(data[5][lane]) << 32),
+                    (clamp ? saturated : wrapped)[lane % 4]);
       }
-      const uint32_t *a[] = {data[0]}, *b[] = {data[1]}, *c[] = {data[2], data[3]};
-      uint32_t *d[] = {data[4], data[5]}, carry;
-      ASSERT_EQ(
-          functions[1](cpu | exact, UINT32_MAX, clamp ? GOC_ALU_CLAMP : 0, d, &carry, a, b, c),
-          GOC_SUCCESS);
-      // Lane 0 is negative without overflow; lane 1 overflows positively but has
-      // a clear scalar bit. Lane 2 overflows negatively and retains a set bit.
-      EXPECT_EQ(carry, 0x55555555u);
-      for (unsigned lane = 0; lane < 32; ++lane)
-        EXPECT_EQ(data[4][lane] | (uint64_t(data[5][lane]) << 32),
-                  (clamp ? saturated : wrapped)[lane % 4]);
-    }
 }
 
 TEST(Mad64, IndependentWideReferenceAndRandomInputs) {
   std::mt19937 random(784193);
-  for (unsigned op = 0; op < 3; ++op)
+  for (unsigned op = 0; op < 4; ++op)
     for (bool clamp : {false, true})
       for (unsigned sample = 0; sample < 128; ++sample) {
         uint32_t data[6][32], expected[2][32], expected_carry = 0;
@@ -120,7 +120,7 @@ TEST(Mad64, IndependentWideReferenceAndRandomInputs) {
 
 TEST(Mad64, MasksAndCrossRegisterAliases) {
   std::mt19937 random(126923);
-  for (unsigned op = 0; op < 3; ++op)
+  for (unsigned op = 0; op < 4; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool clamp : {false, true})
         for (uint32_t exec_mask : exec_masks())
@@ -160,7 +160,7 @@ TEST(Mad64, MasksAndCrossRegisterAliases) {
 TEST(Mad64, SharedSourcesScalarOutputAliasAndHostEnvironment) {
   goc_test::ScopedFpEnvironment saved;
   ASSERT_TRUE(saved.saved());
-  for (unsigned op = 0; op < 3; ++op)
+  for (unsigned op = 0; op < 4; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool clamp : {false, true})
         for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {

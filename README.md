@@ -789,9 +789,9 @@ one VGPR each; C/D use low/high pairs. CLAMP saturates to the corresponding
 64-bit integer range. The scalar output contains bit 64 of the full sum. For
 signed MAD this is its extended sign, not a signed-overflow indication; GPU
 captures establish this distinction from rocjitsu's current handler.
-The RDNA3 unsigned spelling `v_mad_u64_u32` uses the same implementation.
-The RDNA3 signed spelling remains unimplemented pending resolution of its
-scalar-result semantics; the existing hardware captures are RDNA4-only.
+The RDNA3 spellings `v_mad_u64_u32` and `v_mad_i64_i32` use the same
+implementations. RDNA3's full-width pseudocode agrees with the signed scalar
+result above; the existing hardware captures are RDNA4-only.
 
 Scalar and v3/v4 paths support loose and empirical exact semantics, CLAMP,
 every EXEC mask and all whole-register aliases. V3 processes four lanes and v4
@@ -2310,3 +2310,13 @@ source lane is inactive. It supports in-place operation. The unsuffixed Wave32
 `v_permlane64_b32` is a no-op and therefore has no EXEC parameter. These APIs
 are shared by RDNA3/RDNA4, operate on raw bits, and support exact semantics;
 they accept no instruction modifiers. Implementations currently use scalar loops.
+
+`ds_permute_b32` (scatter) and `ds_bpermute_b32` (gather) route register data
+without accessing LDS storage. Their Wave32 APIs are shared. RDNA3 `_wave64`
+forms route independently within each half-wave; RDNA4 `_rdna4_wave64` forms
+route across all 64 lanes. Both apply EXEC to sources and destinations; empty
+active destinations receive zero. RDNA4 `ds_bpermute_fi_b32` and its `_wave64`
+form read inactive sources too. All accept a 16-bit byte offset, preserve original
+inputs when operands alias, and support exact bit operations using scalar loops.
+For scatter collisions GoC chooses the highest active source lane, as in the ISA
+pseudocode and rocjitsu; the hardware prose leaves the winner unspecified.

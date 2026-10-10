@@ -20,9 +20,9 @@ Relative register addressing and hardware-register access remain in scope.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 67
-- in, API present: 741
-- out, API absent: 588
+- in, API absent: 64
+- in, API present: 745
+- out, API absent: 587
 
 | Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |
 |---|---|---|---|---|---|---|
@@ -117,8 +117,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `ds_and_rtn_b32` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_and_rtn_b64` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_append` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
-| `ds_bpermute_b32` | yes | yes | in: register routing | — | — | missing API |
-| `ds_bpermute_fi_b32` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
+| `ds_bpermute_b32` | yes | yes | in: register routing | `goc_ds_bpermute_b32`<br>`goc_ds_bpermute_b32_wave64`<br>`goc_ds_bpermute_b32_rdna4_wave64` | — | API present; semantic audit pending |
+| `ds_bpermute_fi_b32` | — | yes | in: register routing | `goc_ds_bpermute_fi_b32`<br>`goc_ds_bpermute_fi_b32_wave64` | — | API present; semantic audit pending |
 | `ds_bvh_stack_push4_pop1_rtn_b32` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_bvh_stack_push8_pop1_rtn_b32` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_bvh_stack_push8_pop2_rtn_b64` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
@@ -212,7 +212,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `ds_or_rtn_b64` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_ordered_count` | yes | — | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_param_load` | — | yes | out: VMEM | — | `lds_param_load` | excluded: memory/control/scheduling |
-| `ds_permute_b32` | yes | yes | in: register routing | — | — | missing API |
+| `ds_permute_b32` | yes | yes | in: register routing | `goc_ds_permute_b32`<br>`goc_ds_permute_b32_wave64`<br>`goc_ds_permute_b32_rdna4_wave64` | — | API present; semantic audit pending |
 | `ds_pk_add_bf16` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_pk_add_f16` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `ds_pk_add_rtn_bf16` | — | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
@@ -1204,7 +1204,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_mad_i16` | yes | yes | in | `goc_v_mad_i16` | — | API present; semantic audit pending |
 | `v_mad_i32_i16` | yes | yes | in | `goc_v_mad_i32_i16` | — | API present; semantic audit pending |
 | `v_mad_i32_i24` | yes | yes | in | `goc_v_mad_i32_i24` | — | API present; semantic audit pending |
-| `v_mad_i64_i32` | yes | — | in | — | — | missing API |
+| `v_mad_i64_i32` | yes | — | in | `goc_v_mad_i64_i32` | — | API present; semantic audit pending |
 | `v_mad_u16` | yes | yes | in | `goc_v_mad_u16` | — | API present; semantic audit pending |
 | `v_mad_u32_u16` | yes | yes | in | `goc_v_mad_u32_u16` | — | API present; semantic audit pending |
 | `v_mad_u32_u24` | yes | yes | in | `goc_v_mad_u32_u24` | — | API present; semantic audit pending |

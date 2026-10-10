@@ -67,6 +67,54 @@ int goc_v_permlane64_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *c
 int goc_v_permlane64_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a);
 
+// Register-only DS permutations; no LDS storage or global-state updates.
+// ADDR and DATA each use one VGPR. Add the 16-bit byte offset to ADDR, then
+// select address bits [6:2] within each 32-lane group. Wave32 is shared;
+// RDNA3 Wave64 operates independently in each half. RDNA4 Wave64 instead uses
+// bits [7:2] to route across all 64 lanes. BPERMUTE gathers DATA from the selected
+// source; PERMUTE scatters DATA to the selected destination. EXEC applies to
+// both reads and writes: inactive sources contribute zero, unfilled active
+// destinations receive zero, and inactive destinations are preserved.
+// For PERMUTE collisions GoC chooses the highest active source lane, following
+// the ISA pseudocode; hardware prose does not guarantee a particular winner.
+// All inputs are read before output stores; whole-register aliases are allowed.
+// Both semantics are exact within this collision rule. No instruction flags
+// are supported; errors preserve D. Zero EXEC permits null VGPR pointers.
+int goc_ds_permute_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                       uint32_t *const *d, const uint32_t *const *addr, const uint32_t *const *data,
+                       uint16_t offset);
+
+int goc_ds_permute_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *addr,
+                              const uint32_t *const *data, uint16_t offset);
+
+int goc_ds_permute_b32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                    uint32_t *const *d, const uint32_t *const *addr,
+                                    const uint32_t *const *data, uint16_t offset);
+
+int goc_ds_bpermute_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *addr,
+                        const uint32_t *const *data, uint16_t offset);
+
+int goc_ds_bpermute_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *addr,
+                               const uint32_t *const *data, uint16_t offset);
+
+int goc_ds_bpermute_b32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                     uint32_t *const *d, const uint32_t *const *addr,
+                                     const uint32_t *const *data, uint16_t offset);
+
+// RDNA4 FI backward permutation: same byte addressing as BPERMUTE, but reads
+// inactive source lanes too. EXEC only controls destination writes. Wave64
+// routes across all 64 lanes. The other DS permutation contracts apply.
+int goc_ds_bpermute_fi_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *addr,
+                           const uint32_t *const *data, uint16_t offset);
+
+int goc_ds_bpermute_fi_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *addr,
+                                  const uint32_t *const *data, uint16_t offset);
+
 // DPP8 permutes source A within each group of eight lanes before arithmetic
 // modifiers. Pack eight 3-bit lane indices into bits 40..63, index 0 first, and
 // set GOC_DPP8. Without FI, an inactive source supplies positive zero; FI reads
@@ -1805,6 +1853,12 @@ int goc_v_mad_co_i64_i32(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 // RDNA3 spelling of unsigned 32x32+64 multiply-add. Same carry, CLAMP,
 // aliasing and execution-mask contract as goc_v_mad_co_u64_u32.
 int goc_v_mad_u64_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
+                      const uint32_t *const *b, const uint32_t *const *c);
+
+// RDNA3 signed spelling. The scalar result is bit 64 of the full signed sum,
+// with the same contract as goc_v_mad_co_i64_i32 (not a signed-overflow bit).
+int goc_v_mad_i64_i32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, uint32_t *carry, const uint32_t *const *a,
                       const uint32_t *const *b, const uint32_t *const *c);
 
