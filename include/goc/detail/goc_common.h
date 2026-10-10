@@ -32,18 +32,23 @@ static const uint64_t GOC_SEMANTICS_STRICT = 1ULL << 18;
 static const uint64_t GOC_FP16_OVFL = 1ULL << 19;
 
 // Flush guest input subnormals to signed zero. Supported by floating comparisons
-// and pseudo-scalar FP16 math. CLASS accepts it without changing classification;
-// pseudo-scalar FP32 math, RCP_IFLAG, and DX9 FMA always flush. Other instructions reject it.
-// Independent of host FP settings; zero preserves inputs where configurable.
+// and pseudo-scalar FP16 math, plus FP32 ADD/SUB/SUBREV/MUL. CLASS accepts it without changing
+// classification; pseudo-scalar FP32 math, RCP_IFLAG, and DX9 FMA always flush. Other instructions
+// reject it. Independent of host FP settings; zero preserves inputs where configurable.
 static const uint64_t GOC_FP_FLUSH_INPUT_DENORMALS = 1ULL << 20;
 
 // Flush guest output subnormals to signed zero. Supported by pseudo-scalar FP16
-// math. Pseudo-scalar FP32 math, RCP_IFLAG, and DX9 FMA always flush; floating and CLASS
-// comparisons
-// accept this bit without effect because they produce integer masks. Other
-// instructions currently reject it. Independent of host FTZ; zero preserves
-// outputs where configurable. Nonzero OMOD may require flushing independently.
+// math and FP32 ADD/SUB/SUBREV/MUL. Pseudo-scalar FP32 math, RCP_IFLAG, and DX9 FMA always flush;
+// floating and CLASS comparisons accept this bit without effect because they produce integer masks.
+// Other instructions currently reject it. Independent of host FTZ; zero preserves outputs where
+// configurable. Nonzero OMOD may require flushing independently.
 static const uint64_t GOC_FP_FLUSH_OUTPUT_DENORMALS = 1ULL << 21;
+
+// Guest MODE.IEEE for the FP32 ADD/SUB/SUBREV/MUL APIs. On RDNA3 this disables
+// OMOD; RDNA4 accepts it without changing OMOD. These APIs support only loose
+// arithmetic, so signaling-NaN payload/quieting is not guaranteed. Other APIs
+// currently reject this flag. It never changes the host FP environment.
+static const uint64_t GOC_FP_IEEE_MODE = 1ULL << 22;
 
 // Status codes returned by instruction emulation functions.
 static const int GOC_SUCCESS = 0;

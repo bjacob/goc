@@ -3435,7 +3435,10 @@ static const uint32_t GOC_ALU_OMOD_HALF = 3U << 6;
 // integer results to the representable signed/unsigned destination range.
 static const uint32_t GOC_ALU_CLAMP = 1U << 8;
 
-// Binary FP32 arithmetic: one VGPR per operand. OMOD flushes unscaled tiny
+// Binary FP32 arithmetic: one VGPR per operand. Unsuffixed APIs model RDNA3:
+// OMOD is ignored unless output flushing is enabled and GOC_FP_IEEE_MODE is clear.
+// The _rdna4 APIs apply OMOD regardless of these flags. Both architectures support
+// GOC_FP_FLUSH_INPUT_DENORMALS and GOC_FP_FLUSH_OUTPUT_DENORMALS. Active OMOD flushes tiny
 // results to +0; halving a normal result below twice minimum normal gives
 // signed zero. Supports ABS/NEG for A/B, OMOD, CLAMP, and DPP8/DPP16.
 // Flags for C and half selection are invalid. Loose semantics only.
@@ -3443,17 +3446,33 @@ int goc_v_add_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   uint32_t *excp_flag_user);
 
+int goc_v_add_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        uint32_t *excp_flag_user);
+
 int goc_v_sub_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   uint32_t *excp_flag_user);
+
+int goc_v_sub_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        uint32_t *excp_flag_user);
 
 int goc_v_subrev_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                      uint32_t *excp_flag_user);
 
+int goc_v_subrev_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user);
+
 int goc_v_mul_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   uint32_t *excp_flag_user);
+
+int goc_v_mul_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        uint32_t *excp_flag_user);
 
 // FP32 min/max: one VGPR per operand; supports A/B ABS/NEG, OMOD and CLAMP.
 // Loose semantics only. Number variants prefer numeric operands over NaNs;
@@ -3504,17 +3523,33 @@ int goc_v_add_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instructio
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user);
 
+int goc_v_add_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, uint32_t *excp_flag_user);
+
 int goc_v_sub_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user);
+
+int goc_v_sub_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_subrev_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                             uint32_t *excp_flag_user);
 
+int goc_v_subrev_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, uint32_t *excp_flag_user);
+
 int goc_v_mul_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user);
+
+int goc_v_mul_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_min_num_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,

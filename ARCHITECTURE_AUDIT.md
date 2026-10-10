@@ -27,10 +27,13 @@ Source SHA-256 (`execute_shared.h`): `ba4a6d7ed23c10d22459d7bb5243042ec41226c403
   pseudocode omits that shift. The general field-write description and rocjitsu
   support shifted insertion, so the omission is not evidence of a GPU difference.
 
-GoC currently has no guest IEEE-mode flag. Existing RDNA4-based floating APIs
-must not be advertised as complete RDNA3 implementations merely because their
-mnemonics match. Preserve their established tests under `_rdna4` when splitting;
-implement the unsuffixed RDNA3 policy and appropriate guest-state flags explicitly.
+GoC now separates FP32 ADD/SUB/SUBREV/MUL into unsuffixed RDNA3 and `_rdna4`
+APIs, with guest IEEE/denormal flags and scalar/SIMD OMOD-policy tests in both
+wave sizes. They remain loose-only: this does not establish exact NaN behavior,
+rounding modes or exception reporting. Other RDNA4-based floating APIs must not
+be advertised as complete RDNA3 implementations merely because mnemonics match.
+Preserve established tests under `_rdna4` when splitting other families and
+implement their RDNA3 policy and appropriate guest-state flags explicitly.
 The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
@@ -188,7 +191,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_add_co_ci_u32` | SIMD macro, output helper | no | 2881, 2911 | review required |
 | `v_add_co_u32` | SIMD macro, output helper | no | 2942, 2967 | review required |
 | `v_add_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 2992, 3024 | review required |
-| `v_add_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 3093, 3114 | review required |
+| `v_add_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3093, 3114 | review required |
 | `v_add_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 3168, 3187 | review required |
 | `v_add_lshl_u32` | SIMD macro, output helper | no | 3255 | review required |
 | `v_add_nc_i16` | output helper | no | 3272 | review required |
@@ -542,7 +545,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_msad_u8` | SIMD macro, output helper | no | 16472 | review required |
 | `v_mul_dx9_zero_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 16489, 16513 | review required |
 | `v_mul_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 16563, 16595 | review required |
-| `v_mul_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 16664, 16689 | review required |
+| `v_mul_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 16664, 16689 | review required |
 | `v_mul_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 16747, 16766 | review required |
 | `v_mul_hi_i32` | SIMD macro, output helper | no | 16819 | review required |
 | `v_mul_hi_i32_i24` | SIMD macro, output helper | no | 16837, 16860 | review required |
@@ -607,7 +610,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_sub_co_ci_u32` | SIMD macro, output helper | no | 19279, 19309 | review required |
 | `v_sub_co_u32` | SIMD macro, output helper | no | 19340, 19363 | review required |
 | `v_sub_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 19386, 19418 | review required |
-| `v_sub_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 19487, 19513 | review required |
+| `v_sub_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 19487, 19513 | review required |
 | `v_sub_nc_i16` | output helper | no | 19582 | review required |
 | `v_sub_nc_i32` | SIMD macro, output helper | no | 19597 | review required |
 | `v_sub_nc_u16` | output helper | no | 19612 | review required |
@@ -615,7 +618,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_subrev_co_ci_u32` | SIMD macro, output helper | no | 19820, 19850 | review required |
 | `v_subrev_co_u32` | SIMD macro, output helper | no | 19881, 19905 | review required |
 | `v_subrev_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 19929, 19961 | review required |
-| `v_subrev_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 20030, 20056 | review required |
+| `v_subrev_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20030, 20056 | review required |
 | `v_subrev_nc_u32` | SIMD macro, output helper | no | 20110, 20125 | review required |
 | `v_swap_b16` | no direct policy detected | no | not found | review required |
 | `v_swap_b32` | no direct policy detected | no | not found | review required |

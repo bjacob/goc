@@ -2548,3 +2548,11 @@ exact semantics. Wide forms use two VGPRs for C/D, one each for A/B, and a
 required 64-bit carry result committed after vector writes. Carry records the
 extended sum's bit 64 before saturation, including for signed MAD. Narrow-factor
 forms retain DPP and v3 paths; wide forms reject DPP and retain v3/v4 paths.
+
+FP32 `v_add_f32`, `v_sub_f32`, `v_subrev_f32`, and `v_mul_f32` now use the
+unsuffixed APIs for RDNA3 and `_rdna4` variants for RDNA4 (before `_wave64`).
+RDNA3 ignores OMOD unless `GOC_FP_FLUSH_OUTPUT_DENORMALS` is set and
+`GOC_FP_IEEE_MODE` is clear; RDNA4 always applies it. These APIs also accept
+`GOC_FP_FLUSH_INPUT_DENORMALS`. Both architectures retain the eight-lane AVX2
+path with these flags, DPP, and masked stores. Arithmetic remains loose-only;
+IEEE-mode support here does not promise exact signaling-NaN behavior.

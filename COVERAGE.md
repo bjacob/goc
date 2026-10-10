@@ -1840,3 +1840,21 @@ strings, missing/truncated input, and architecture-exclusive inventory rows.
 The report regenerates deterministically from the recorded source fingerprint.
 The unchanged 935-test suites also pass on Clang 21 and GCC 15 Release;
 those passing tests do not cover or resolve the newly identified RDNA3 gap.
+
+## FP32 binary architecture-policy split
+
+- ADD/SUB/SUBREV/MUL retain RDNA4 behavior under `_rdna4`, before `_wave64`.
+  Unsuffixed APIs implement RDNA3's conditional OMOD rule. Shared arithmetic
+  kernels receive the effective modifier; no duplicate SIMD implementation.
+- Guest input/output denormal flushing and MODE.IEEE are accepted by these four
+  families. Both scalar and eight-lane v3 kernels flush values explicitly; no
+  host FP-control writes. Other families still reject the new IEEE flag.
+- Tests preserve the existing RDNA4 modifier/special-value corpus and add both
+  architectures, both wave sizes, guest flag combinations, OMOD, DPP, masks,
+  aliases, literal signed denormal cases and unsupported exact/state contracts.
+- These APIs remain loose-only. Exact NaN quieting/payloads, guest rounding modes
+  and exception reporting remain unsupported; this closes an OMOD policy gap,
+  not the entire arithmetic semantic audit.
+- Validation: all 937 tests pass under Clang 21 and GCC 15 Release; all 10
+  Binary/InstructionFlags tests pass under ASan/UBSan; four audit-tool tests pass.
+  Logs: `../goc-build/coverage-work/binary-policy-*-tests.log`.

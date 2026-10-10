@@ -33,11 +33,11 @@ inline const char *const dpp_arithmetic_names[] = {"v_add_f32",
 inline int dpp_arithmetic_call(unsigned op, uint64_t flags, uint32_t exec_mask, uint64_t mode,
                                uint32_t *const *d, const uint32_t *const *a,
                                const uint32_t *const *b, const uint32_t *const *c) {
-  using Binary = decltype(&goc_v_add_f32);
+  using Binary = decltype(&goc_v_add_f32_rdna4);
   using Ternary = decltype(&goc_v_min3_num_f32);
-  static const Binary binary[] = {goc_v_add_f32,     goc_v_sub_f32,     goc_v_subrev_f32,
-                                  goc_v_mul_f32,     goc_v_min_num_f32, goc_v_max_num_f32,
-                                  goc_v_minimum_f32, goc_v_maximum_f32, goc_v_mul_dx9_zero_f32};
+  static const Binary binary[] = {goc_v_add_f32_rdna4, goc_v_sub_f32_rdna4, goc_v_subrev_f32_rdna4,
+                                  goc_v_mul_f32_rdna4, goc_v_min_num_f32,   goc_v_max_num_f32,
+                                  goc_v_minimum_f32,   goc_v_maximum_f32,   goc_v_mul_dx9_zero_f32};
   static const Ternary ternary[] = {
       goc_v_min3_num_f32,       goc_v_max3_num_f32,       goc_v_minmax_num_f32,
       goc_v_maxmin_num_f32,     goc_v_minimum3_f32,       goc_v_maximum3_f32,

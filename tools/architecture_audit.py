@@ -100,10 +100,13 @@ Source SHA-256 (`execute_shared.h`): `{hashlib.sha256(source.encode()).hexdigest
   pseudocode omits that shift. The general field-write description and rocjitsu
   support shifted insertion, so the omission is not evidence of a GPU difference.
 
-GoC currently has no guest IEEE-mode flag. Existing RDNA4-based floating APIs
-must not be advertised as complete RDNA3 implementations merely because their
-mnemonics match. Preserve their established tests under `_rdna4` when splitting;
-implement the unsuffixed RDNA3 policy and appropriate guest-state flags explicitly.
+GoC now separates FP32 ADD/SUB/SUBREV/MUL into unsuffixed RDNA3 and `_rdna4`
+APIs, with guest IEEE/denormal flags and scalar/SIMD OMOD-policy tests in both
+wave sizes. They remain loose-only: this does not establish exact NaN behavior,
+rounding modes or exception reporting. Other RDNA4-based floating APIs must not
+be advertised as complete RDNA3 implementations merely because mnemonics match.
+Preserve established tests under `_rdna4` when splitting other families and
+implement their RDNA3 policy and appropriate guest-state flags explicitly.
 The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
