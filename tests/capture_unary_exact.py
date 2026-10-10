@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: MIT
 """Generate a gfx1201 HIP raw unary-result probe.
 
-Arguments: OUTPUT_DIR [rcp|sqrt|rsq], default rcp.
-Compile probe.cpp with hipcc. Run `probe normalized` for all mantissas
-at exponent 127 (also 128 for sqrt/rsq), or `probe` for [4 denormal policies][32 modifiers][8192 inputs].
+Arguments: OUTPUT_DIR [rcp|sqrt|rsq|exp|log], default rcp.
+Compile probe.cpp with hipcc. `probe normalized` covers every FP32 value in
+[1,2) for RCP, [1,4) for SQRT/RSQ, [0.5,2) for LOG, and both signs of [0.5,2)
+for EXP. `probe` covers [4 denormal policies][32 modifiers][8192 inputs].
 Writes little-endian uint32 results to capture.bin. Modifiers: NEG bit0, ABS
 bit1, OMOD bits2:3, CLAMP bit4. Guest rounding is nearest-even.
 """
@@ -12,8 +13,8 @@ import json
 from pathlib import Path
 import sys
 op = sys.argv[2] if len(sys.argv) > 2 else "rcp"
-if op not in ("rcp", "sqrt", "rsq"):
-    raise SystemExit("expected rcp, sqrt or rsq")
+if op not in ("rcp", "sqrt", "rsq", "exp", "log"):
+    raise SystemExit("expected rcp, sqrt, rsq, exp or log")
 out = Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
 s = r'''#include <hip/hip_runtime.h>
 #include <cstdio>
@@ -53,4 +54,14 @@ int main(int argc,char **argv){bool normalized=argc==2&&!strcmp(argv[1],"normali
  if(fwrite(host,4,n,f)!=n)return 3;}
  if(fclose(f))return 4;HIP(hipFree(device));delete[]host;}
 '''
-(out/'probe.cpp').write_text(s.replace('1U<<23:8192', '1U<<'+str(23 if op == 'rcp' else 24)+':8192'))
+if op == "exp":
+    # All mantissas in [0.5, 2), with both signs; finite-input boundaries.
+    s = s.replace("0x3f800000+i", "(0x3f000000+(i&0xffffff)) | ((i>>24)<<31)")
+    s = s.replace("0x7e800000,0xfe800000,0x7e7fffff,0x7e800001", "0x43000000,0x42ffffff,0xc2fc0000,0xc2fc0001")
+    s = s.replace("0x00800001,0x00ffffff,0x01000000,0x7e000000", "0x33800000,0x337fffff,0xb3800000,0xb37fffff")
+    s = s.replace("if(i<4096)return (i-32)*0x9e3779b9U;", "if(i<4096)return ((i&1)<<31) | (0x33800000+((i*0x7395a831U)%(0x43000000-0x33800000)));")
+if op == "log":
+    # Both sides of one, including every cancellation-path input.
+    s = s.replace("0x3f800000+i", "0x3f000000+i")
+count_bits = 23 if op == "rcp" else 25 if op == "exp" else 24
+(out/'probe.cpp').write_text(s.replace('1U<<23:8192', '1U<<'+str(count_bits)+':8192'))

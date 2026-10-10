@@ -14,15 +14,22 @@
 
 namespace {
 
-uint32_t input_word(unsigned i) {
+uint32_t input_word(unsigned op, unsigned i) {
   const uint32_t edge[] = {0,          0x80000000, 1,          0x80000001, 0x7fffff,   0x807fffff,
                            0x800000,   0x80800000, 0x3f800000, 0xbf800000, 0x40000000, 0xc0000000,
                            0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000, 0x7f800001, 0xff800001,
                            0x7fc12345, 0xffc12345, 0x7e800000, 0xfe800000, 0x7e7fffff, 0x7e800001,
                            0x00800001, 0x00ffffff, 0x01000000, 0x7e000000, 0x7dffffff, 0x7e000001,
                            0x3f7fffff, 0x3f800001};
+  if (op == 3 && i >= 20 && i < 28) {
+    const uint32_t exp_edge[] = {0x43000000, 0x42ffffff, 0xc2fc0000, 0xc2fc0001,
+                                 0x33800000, 0x337fffff, 0xb3800000, 0xb37fffff};
+    return exp_edge[i - 20];
+  }
   if (i < 32)
     return edge[i];
+  if (op == 3 && i < 4096)
+    return ((i & 1) << 31) | (0x33800000 + ((i * 0x7395a831U) % (0x43000000 - 0x33800000)));
   if (i < 4096)
     return (i - 32) * 0x9e3779b9U;
   return ((i - 4096) & 1 ? 0x80000000 : 0) | ((((i - 4096) >> 1) % 254 + 1) << 23) |
@@ -36,12 +43,15 @@ uint32_t modifiers(unsigned m) {
 
 int invoke(unsigned op, bool rdna3, bool wide, uint64_t flags, uint64_t exec_mask, uint64_t mode,
            uint32_t *d, const uint32_t *a, uint32_t *state = nullptr) {
-  const decltype(&goc_v_rcp_f32) narrow[2][3] = {
-      {goc_v_rcp_f32_rdna4, goc_v_sqrt_f32_rdna4, goc_v_rsq_f32_rdna4},
-      {goc_v_rcp_f32, goc_v_sqrt_f32, goc_v_rsq_f32}};
-  const decltype(&goc_v_rcp_f32_wave64) wave64[2][3] = {
-      {goc_v_rcp_f32_rdna4_wave64, goc_v_sqrt_f32_rdna4_wave64, goc_v_rsq_f32_rdna4_wave64},
-      {goc_v_rcp_f32_wave64, goc_v_sqrt_f32_wave64, goc_v_rsq_f32_wave64}};
+  const decltype(&goc_v_rcp_f32) narrow[2][5] = {
+      {goc_v_rcp_f32_rdna4, goc_v_sqrt_f32_rdna4, goc_v_rsq_f32_rdna4, goc_v_exp_f32_rdna4,
+       goc_v_log_f32_rdna4},
+      {goc_v_rcp_f32, goc_v_sqrt_f32, goc_v_rsq_f32, goc_v_exp_f32, goc_v_log_f32}};
+  const decltype(&goc_v_rcp_f32_wave64) wave64[2][5] = {
+      {goc_v_rcp_f32_rdna4_wave64, goc_v_sqrt_f32_rdna4_wave64, goc_v_rsq_f32_rdna4_wave64,
+       goc_v_exp_f32_rdna4_wave64, goc_v_log_f32_rdna4_wave64},
+      {goc_v_rcp_f32_wave64, goc_v_sqrt_f32_wave64, goc_v_rsq_f32_wave64, goc_v_exp_f32_wave64,
+       goc_v_log_f32_wave64}};
   return wide ? wave64[rdna3][op](flags, exec_mask, mode, &d, &a, state)
               : narrow[rdna3][op](flags, uint32_t(exec_mask), mode, &d, &a, state);
 }
@@ -50,13 +60,20 @@ class UnaryExact : public ::testing::TestWithParam<unsigned> {};
 
 } // namespace
 
-TEST_P(UnaryExact, EveryNormalizedMantissaHardwareCapture) {
+TEST_P(UnaryExact, DenseDomainHardwareCapture) {
   const unsigned op = GetParam();
   uint64_t hash = goc_test::capture_hash_seed;
-  for (unsigned base = 0; base < (1U << (op == 0 ? 23 : 24)); base += 64) {
+  for (unsigned base = 0; base < (1U << (op == 0 ? 23 : op == 3 ? 25 : 24)); base += 64) {
     uint32_t input[64], output[64];
-    for (unsigned lane = 0; lane < 64; ++lane)
-      input[lane] = 0x3f800000 + base + lane;
+    for (unsigned lane = 0; lane < 64; ++lane) {
+      unsigned index = base + lane;
+      if (op == 3)
+        input[lane] = (0x3f000000 + (index & 0xffffff)) | ((index >> 24) << 31);
+      else if (op == 4)
+        input[lane] = 0x3f000000 + index;
+      else
+        input[lane] = 0x3f800000 + index;
+    }
     bool wide = (base >> 6) & 1, rdna3 = (base >> 7) & 1;
     uint64_t flags = ((base >> 8) % (goc_init_cpu_flags() + 1)) | GOC_SEMANTICS_EXACT_EMPIRICAL |
                      GOC_SEMANTICS_STRICT;
@@ -81,7 +98,7 @@ TEST_P(UnaryExact, ModifiersExponentsSpecialValuesHardwareCapture) {
         for (unsigned base = 0; base < 8192; base += lanes) {
           uint32_t input[64], output[64];
           for (unsigned lane = 0; lane < lanes; ++lane)
-            input[lane] = input_word(base + lane);
+            input[lane] = input_word(op, base + lane);
           uint64_t flags = ((base / lanes) % (goc_init_cpu_flags() + 1)) |
                            GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                            (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
@@ -108,8 +125,8 @@ TEST_P(UnaryExact, ArchitectureNaNPriorityAndOmod) {
             GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT | (ieee ? GOC_FP_IEEE_MODE : 0);
         ASSERT_EQ(invoke(op, rdna3, wide, flags, UINT64_MAX, GOC_ALU_OMOD_2, output, input),
                   GOC_SUCCESS);
-        const uint32_t unscaled[] = {0x3e800000, 0x40000000, 0x3f000000};
-        const uint32_t scaled[] = {0x3f000000, 0x40800000, 0x3f800000};
+        const uint32_t unscaled[] = {0x3e800000, 0x40000000, 0x3f000000, 0x41800000, 0x40000000};
+        const uint32_t scaled[] = {0x3f000000, 0x40800000, 0x3f800000, 0x42000000, 0x40800000};
         uint32_t finite = rdna3 && ieee ? unscaled[op] : scaled[op];
         uint32_t nan = rdna3 && !ieee ? 0xff800123 : 0xffc00123;
         for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane)
@@ -128,7 +145,7 @@ TEST_P(UnaryExact, DppAliasesMasksAndHostEnvironment) {
           for (auto descriptor : goc_test::dpp_modes) {
             uint32_t original[64], expected[64];
             for (unsigned lane = 0; lane < 64; ++lane)
-              original[lane] = input_word(lane % 32);
+              original[lane] = input_word(op, lane % 32);
             unsigned lanes = wide ? 64 : 32;
             uint64_t exec_mask = wide ? 0x9192a5a571abcdefULL : 0x71abcdef;
             uint64_t flags = (m % (goc_init_cpu_flags() + 1)) | GOC_SEMANTICS_EXACT_EMPIRICAL |
@@ -184,4 +201,4 @@ TEST_P(UnaryExact, ReportingRemainsExplicitlyUnsupported) {
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(Captured, UnaryExact, ::testing::Values(0U, 1U, 2U));
+INSTANTIATE_TEST_SUITE_P(Captured, UnaryExact, ::testing::Values(0U, 1U, 2U, 3U, 4U));

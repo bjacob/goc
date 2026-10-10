@@ -5,8 +5,10 @@
 #include "unary.h"
 #include "alu.h"
 #include "dpp.h"
+#include "exp_model.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "log_model.h"
 #include "rcp_model.h"
 #include "rsq_model.h"
 #include "sqrt_model.h"
@@ -47,8 +49,14 @@ template <goc::Unary Op>
       value = goc::rcp_f32_bits(input, quiet_snan);
     else if constexpr (Op == goc::Unary::Sqrt)
       value = goc::sqrt_f32_bits(input, quiet_snan);
-    else
+    else if constexpr (Op == goc::Unary::Rsq)
       value = goc::rsq_f32_bits(input, quiet_snan);
+    else if constexpr (Op == goc::Unary::Exp)
+      value = goc::exp_f32_bits(input, quiet_snan);
+    else
+      value = goc::log_f32_bits(input, quiet_snan);
+    if (!(value & 0x7f800000))
+      value &= 0x80000000;
     uint32_t magnitude = value & 0x7fffffff;
     if (omod && magnitude < 0x7f800000) {
       unsigned exponent = magnitude >> 23;
@@ -76,7 +84,8 @@ template <goc::Unary Op>
 template <goc::Unary Op, bool Rdna3 = false>
 int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
           const uint32_t *const *a) {
-  if constexpr (Op == goc::Unary::Rcp || Op == goc::Unary::Sqrt || Op == goc::Unary::Rsq)
+  if constexpr (Op == goc::Unary::Rcp || Op == goc::Unary::Sqrt || Op == goc::Unary::Rsq ||
+                Op == goc::Unary::Exp || Op == goc::Unary::Log)
     if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
       return unary_exact<Op>(flags, exec_mask, modifiers, d, a, Rdna3);
   if constexpr (Rdna3) {

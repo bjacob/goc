@@ -61,7 +61,7 @@ be treated as verified shared semantics. Width completeness does not close this 
 | Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented at both wave widths | RDNA3 floating constant exception reporting and architecture-specific floating-policy audit |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures; confirmed OMOD/IEEE architecture differences | Split differing APIs and implement RDNA3 guest-mode policies; see ARCHITECTURE_AUDIT.md |
-| Transcendentals, reciprocal, division | FP32 reciprocal/square-root/reciprocal-square-root exact captured mappings on both architectures; other partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
+| Transcendentals, reciprocal, division | FP32 RCP/SQRT/RSQ/EXP/LOG exact captured mappings on both architectures; other partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
 | Interpolation | All six APIs at both wave widths; shared quad routing checked against both manuals; RDNA4 captures and independent arithmetic tests | Compare remaining RDNA3 numerical contracts and empirical behavior |
 | Dual-issue VOPD | All 19 canonical operations; shared ordinary kernels, architecture-split floating arithmetic/DOT2ACC; Wave32 only | Direct VOPD hardware captures; inherited exact/global-state gaps |
@@ -2797,3 +2797,41 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   SIMD kernels remain unchanged. Artifacts use
   `../goc-build/coverage-work/roots-exact-*`; these do not measure exact throughput
   or whole-library performance.
+
+## Captured exact FP32 exponential and logarithm
+
+- Borrowed rocjitsu `util/amdgpu_exp.h` and `util/amdgpu_log.h` at revision
+  `ffc144c564c`, retaining their integer reduction, coefficients and staged
+  rounding. LOG's C++20 bit-width operations use GoC's existing portable zero
+  counter through a small C++17 equivalent. No host floating arithmetic or
+  environment manipulation is used by the exact path.
+- Enabled exact EXP/LOG on both architectures and wave sizes through the same
+  unary execution helper as RCP/SQRT/RSQ. All five share source modifiers,
+  integer OMOD/CLAMP, forced output flushing, DPP and alias handling. Only their
+  core mappings differ. RDNA3 IEEE-off signaling-NaN preservation and IEEE-on
+  OMOD suppression remain explicit. Exact exception reporting remains unsupported.
+- New RX 9070 captures cover every positive and negative FP32 input with magnitude
+  in [0.5,2) for EXP (33,554,432), and every input in [0.5,2) for LOG (16,777,216),
+  including both cancellation branches near one. Each also has 1,048,576
+  modifier/guest-policy records; EXP inputs add overflow, underflow, tiny-input
+  and finite fractional-domain boundaries. All 52,428,800 new result records
+  match through public APIs. This is dense-domain validation, not an exhaustive
+  sweep of every FP32 encoding; RDNA3 additionally relies on borrowed provenance.
+- Extended the existing parameterized exact tests to all five operations,
+  including host rounding/FTZ variations, unchanged controls/sticky flags,
+  architecture witnesses, DPP, sparse EXEC and aliases. The capture generator
+  now accepts `exp` and `log`. Raw records and probes are under
+  `../goc-build/coverage-work/{exp,log}-exact-captures/`.
+- Validation: all 1,005 tests pass with Clang 21 and GCC 15 Release; all 45
+  UnaryExact/Unary/DppUnary/ExecMask/InstructionFlags/ExceptionRegisters tests
+  pass under ASan/UBSan. The final explicit exact-operation dispatch list also
+  passes all 25 parameterized exact tests again in Clang.
+- Eleven alternating CPU-2-pinned samples, minimum 50 ms thread CPU time,
+  compare twenty loose cases against `ad30bb4`: EXP/LOG plus SQRT/RSQ/RCP
+  controls, AVX2 CPU tier, default/combined modifiers and null/non-null reporting.
+  SIMD controls change by less than 0.8%. Scalar EXP/LOG range from -1.11% to
+  +4.95%; the largest change is EXP with modifiers, 107.202 -> 112.510 ns.
+  Default EXP changes 90.610 -> 91.423 ns, and LOG 91.551 -> 91.900 ns.
+  The loose arithmetic bodies are unchanged; exact evaluation stays out of line.
+  Artifacts use `../goc-build/coverage-work/exp-log-exact-*`; these measurements
+  do not characterize exact throughput or whole-library performance.
