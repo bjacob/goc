@@ -3654,8 +3654,8 @@ int goc_v_cvt_floor_i32_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t 
 
 // Combined three-input integer operations, one VGPR per operand. Shift
 // counts wrap modulo 32; all addition and shifting wrap to 32 bits. Supports
-// DPP8/DPP16 on A; low 32 instruction-flag bits must be zero. Both semantics
-// are exact; preserves all host FP state.
+// DPP8/DPP16 on A. CLAMP is accepted and ignored; other low instruction flags
+// are invalid. Both semantics are exact; preserves all host FP state.
 
 // (A << (B & 31)) + C.
 int goc_v_lshl_add_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,

@@ -848,7 +848,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_add_f16` | yes | yes | in | `goc_v_add_f16`<br>`goc_v_add_f16_wave64`<br>`goc_v_add_f16_rdna4`<br>`goc_v_add_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_add_f32` | yes | yes | in | `goc_v_add_f32`<br>`goc_v_add_f32_wave64`<br>`goc_v_add_f32_rdna4`<br>`goc_v_add_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_add_f64` | yes | yes | in | `goc_v_add_f64`<br>`goc_v_add_f64_wave64`<br>`goc_v_add_f64_rdna4`<br>`goc_v_add_f64_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_add_lshl_u32` | yes | yes | in | `goc_v_add_lshl_u32`<br>`goc_v_add_lshl_u32_wave64` | — | API present; semantic audit pending |
+| `v_add_lshl_u32` | yes | yes | in | `goc_v_add_lshl_u32`<br>`goc_v_add_lshl_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_add_nc_i16` | yes | yes | in | `goc_v_add_nc_i16`<br>`goc_v_add_nc_i16_wave64` | — | API present; semantic audit pending |
 | `v_add_nc_i32` | yes | yes | in | `goc_v_add_nc_i32`<br>`goc_v_add_nc_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |
 | `v_add_nc_u16` | yes | yes | in | `goc_v_add_nc_u16`<br>`goc_v_add_nc_u16_wave64` | — | API present; semantic audit pending |
@@ -857,7 +857,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_alignbyte_b32` | yes | yes | in | `goc_v_alignbyte_b32`<br>`goc_v_alignbyte_b32_wave64` | — | API present; semantic audit pending |
 | `v_and_b16` | yes | yes | in | `goc_v_and_b16`<br>`goc_v_and_b16_wave64` | — | API present; semantic audit pending |
 | `v_and_b32` | yes | yes | in | `goc_v_and_b32`<br>`goc_v_and_b32_wave64` | — | API present; semantic audit pending |
-| `v_and_or_b32` | yes | yes | in | `goc_v_and_or_b32`<br>`goc_v_and_or_b32_wave64` | — | API present; semantic audit pending |
+| `v_and_or_b32` | yes | yes | in | `goc_v_and_or_b32`<br>`goc_v_and_or_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_ashrrev_i16` | yes | yes | in | `goc_v_ashrrev_i16`<br>`goc_v_ashrrev_i16_wave64` | — | API present; semantic audit pending |
 | `v_ashrrev_i32` | yes | yes | in | `goc_v_ashrrev_i32`<br>`goc_v_ashrrev_i32_wave64` | — | API present; semantic audit pending |
 | `v_ashrrev_i64` | yes | yes | in | `goc_v_ashrrev_i64`<br>`goc_v_ashrrev_i64_wave64` | — | API present; semantic audit pending |
@@ -1192,11 +1192,11 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_ldexp_f16` | yes | yes | in | `goc_v_ldexp_f16`<br>`goc_v_ldexp_f16_wave64`<br>`goc_v_ldexp_f16_rdna4`<br>`goc_v_ldexp_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-exponent-architecture-review) |
 | `v_ldexp_f32` | yes | yes | in | `goc_v_ldexp_f32`<br>`goc_v_ldexp_f32_wave64`<br>`goc_v_ldexp_f32_rdna4`<br>`goc_v_ldexp_f32_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#ldexp-fp32fp64-architecture-review) |
 | `v_ldexp_f64` | yes | yes | in | `goc_v_ldexp_f64`<br>`goc_v_ldexp_f64_wave64`<br>`goc_v_ldexp_f64_rdna4`<br>`goc_v_ldexp_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#ldexp-fp32fp64-architecture-review) |
-| `v_lerp_u8` | yes | yes | in | `goc_v_lerp_u8`<br>`goc_v_lerp_u8_wave64` | — | API present; semantic audit pending |
+| `v_lerp_u8` | yes | yes | in | `goc_v_lerp_u8`<br>`goc_v_lerp_u8_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_log_f16` | yes | yes | in | `goc_v_log_f16`<br>`goc_v_log_f16_wave64`<br>`goc_v_log_f16_rdna4`<br>`goc_v_log_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-explog-architecture-policies) |
 | `v_log_f32` | yes | yes | in | `goc_v_log_f32`<br>`goc_v_log_f32_wave64`<br>`goc_v_log_f32_rdna4`<br>`goc_v_log_f32_rdna4_wave64` | — | API present; semantic audit pending |
-| `v_lshl_add_u32` | yes | yes | in | `goc_v_lshl_add_u32`<br>`goc_v_lshl_add_u32_wave64` | — | API present; semantic audit pending |
-| `v_lshl_or_b32` | yes | yes | in | `goc_v_lshl_or_b32`<br>`goc_v_lshl_or_b32_wave64` | — | API present; semantic audit pending |
+| `v_lshl_add_u32` | yes | yes | in | `goc_v_lshl_add_u32`<br>`goc_v_lshl_add_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
+| `v_lshl_or_b32` | yes | yes | in | `goc_v_lshl_or_b32`<br>`goc_v_lshl_or_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_lshlrev_b16` | yes | yes | in | `goc_v_lshlrev_b16`<br>`goc_v_lshlrev_b16_wave64` | — | API present; semantic audit pending |
 | `v_lshlrev_b32` | yes | yes | in | `goc_v_lshlrev_b32`<br>`goc_v_lshlrev_b32_wave64` | — | API present; semantic audit pending |
 | `v_lshlrev_b64` | yes | yes | in | `goc_v_lshlrev_b64`<br>`goc_v_lshlrev_b64_wave64` | — | API present; semantic audit pending |
@@ -1310,7 +1310,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_nop` | yes | yes | out: pipeline scheduling | — | — | excluded: memory/control/scheduling |
 | `v_not_b16` | yes | yes | in | `goc_v_not_b16`<br>`goc_v_not_b16_wave64` | — | API present; semantic audit pending |
 | `v_not_b32` | yes | yes | in | `goc_v_not_b32`<br>`goc_v_not_b32_wave64` | — | API present; semantic audit pending |
-| `v_or3_b32` | yes | yes | in | `goc_v_or3_b32`<br>`goc_v_or3_b32_wave64` | — | API present; semantic audit pending |
+| `v_or3_b32` | yes | yes | in | `goc_v_or3_b32`<br>`goc_v_or3_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_or_b16` | yes | yes | in | `goc_v_or_b16`<br>`goc_v_or_b16_wave64` | — | API present; semantic audit pending |
 | `v_or_b32` | yes | yes | in | `goc_v_or_b32`<br>`goc_v_or_b32_wave64` | — | API present; semantic audit pending |
 | `v_pack_b32_f16` | yes | yes | in | `goc_v_pack_b32_f16`<br>`goc_v_pack_b32_f16_wave64`<br>`goc_v_pack_b32_f16_rdna4`<br>`goc_v_pack_b32_f16_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp16-pack-and-fp32-byte-pack-architecture-contracts) |
@@ -1421,9 +1421,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_wmma_i32_16x16x16_iu8` | yes | yes | in | `goc_v_wmma_i32_16x16x16_iu8`<br>`goc_v_wmma_i32_16x16x16_iu8_wave64`<br>`goc_v_wmma_i32_16x16x16_iu8_rdna4`<br>`goc_v_wmma_i32_16x16x16_iu8_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_wmma_i32_16x16x32_iu4` | — | yes | in | `goc_v_wmma_i32_16x16x32_iu4`<br>`goc_v_wmma_i32_16x16x32_iu4_wave64` | — | API present; semantic audit pending |
 | `v_writelane_b32` | yes | yes | in | `goc_v_writelane_b32`<br>`goc_v_writelane_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
-| `v_xad_u32` | yes | yes | in | `goc_v_xad_u32`<br>`goc_v_xad_u32_wave64` | `v_xor_add_u32` | API present; semantic audit pending |
+| `v_xad_u32` | yes | yes | in | `goc_v_xad_u32`<br>`goc_v_xad_u32_wave64` | `v_xor_add_u32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_xnor_b32` | yes | yes | in | `goc_v_xnor_b32`<br>`goc_v_xnor_b32_wave64` | — | API present; semantic audit pending |
-| `v_xor3_b32` | yes | yes | in | `goc_v_xor3_b32`<br>`goc_v_xor3_b32_wave64` | — | API present; semantic audit pending |
+| `v_xor3_b32` | yes | yes | in | `goc_v_xor3_b32`<br>`goc_v_xor3_b32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_xor_b16` | yes | yes | in | `goc_v_xor_b16`<br>`goc_v_xor_b16_wave64` | — | API present; semantic audit pending |
 | `v_xor_b32` | yes | yes | in | `goc_v_xor_b32`<br>`goc_v_xor_b32_wave64` | — | API present; semantic audit pending |
 

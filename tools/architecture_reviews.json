@@ -887,5 +887,20 @@
       "v_subrev_co_ci_u32",
       "v_subrev_co_u32"
     ]
+  },
+  {
+    "heading": "Compound integer architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/integer_ternary_test.cpp",
+    "mnemonics": [
+      "v_add_lshl_u32",
+      "v_and_or_b32",
+      "v_lerp_u8",
+      "v_lshl_add_u32",
+      "v_lshl_or_b32",
+      "v_or3_b32",
+      "v_xad_u32",
+      "v_xor3_b32"
+    ]
   }
 ]

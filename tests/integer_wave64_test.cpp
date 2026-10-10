@@ -111,6 +111,9 @@ TEST(IntegerWave64, SelectionAndTernaryBoundariesRoutingAndAliases) {
   for (unsigned rows = 0; rows < 16; ++rows)
     routes.push_back((goc_test::dpp_modes[2] & ~GOC_DPP_ROW_MASK) |
                      (uint64_t(rows) << GOC_DPP_ROW_SHIFT));
+  const auto unclamped_routes = routes;
+  for (auto route : unclamped_routes)
+    routes.push_back(route | GOC_ALU_CLAMP);
   for (unsigned op = 0; op < 22; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
@@ -138,7 +141,7 @@ TEST(IntegerWave64, SelectionAndTernaryBoundariesRoutingAndAliases) {
               for (unsigned lane = 0; lane < 64; ++lane) {
                 int source = int(lane);
                 bool enabled = (exec_mask >> lane) & 1;
-                if (mode)
+                if (mode & (GOC_DPP8 | GOC_DPP16))
                   enabled = goc_test::dpp_source(mode, exec_mask, lane, source);
                 uint32_t av = source < 0 ? 0 : initial[0][source + 1];
                 uint32_t bv = initial[1][lane + 1], cv = initial[2][lane + 1];
@@ -161,7 +164,7 @@ TEST(IntegerWave64, SelectionAndTernaryValidation) {
                  nullptr, nullptr),
               GOC_SUCCESS);
     for (unsigned bit = 0; bit < 32; ++bit) {
-      if (op < 14 && (1ULL << bit) == GOC_ALU_CLAMP)
+      if ((1ULL << bit) == GOC_ALU_CLAMP)
         continue;
       EXPECT_EQ(fn(0, UINT64_MAX, 1ULL << bit, nullptr, nullptr, nullptr, nullptr),
                 GOC_ERROR_INVALID_FLAGS);

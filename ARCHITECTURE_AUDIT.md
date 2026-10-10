@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-518 in-scope mnemonics have explicit contract-review records in
+526 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 291 in-scope mnemonics need a recorded review.
+The remaining 283 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -207,7 +207,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_add_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 2992, 3024 | review required |
 | `v_add_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3093, 3114 | review required |
 | `v_add_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 3168, 3187 | review required |
-| `v_add_lshl_u32` | SIMD macro, output helper | no | 3255 | review required |
+| `v_add_lshl_u32` | SIMD macro, output helper | no | 3255 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_add_nc_i16` | output helper | no | 3272 | review required |
 | `v_add_nc_i32` | SIMD macro, output helper | no | 3287 | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |
 | `v_add_nc_u16` | output helper | no | 3302 | review required |
@@ -216,7 +216,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_alignbyte_b32` | SIMD macro, output helper | no | 3474 | review required |
 | `v_and_b16` | no direct policy detected | no | not found | review required |
 | `v_and_b32` | SIMD macro, output helper | no | 3499, 3513 | review required |
-| `v_and_or_b32` | SIMD macro, output helper | no | 3527 | review required |
+| `v_and_or_b32` | SIMD macro, output helper | no | 3527 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_ashrrev_i16` | SIMD macro, output helper | no | 3542, 3566 | review required |
 | `v_ashrrev_i32` | SIMD macro, output helper | no | 3590, 3607 | review required |
 | `v_ashrrev_i64` | SIMD macro | no | 3624 | review required |
@@ -505,11 +505,11 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_ldexp_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12812, 12851 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-exponent-architecture-review) |
 | `v_ldexp_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12921 | [loose contract reviewed; see limitations](COVERAGE.md#ldexp-fp32fp64-architecture-review) |
 | `v_ldexp_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 12959 | [loose contract reviewed; see limitations](COVERAGE.md#ldexp-fp32fp64-architecture-review) |
-| `v_lerp_u8` | SIMD macro, output helper | no | 12997 | review required |
+| `v_lerp_u8` | SIMD macro, output helper | no | 12997 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_log_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 13021, 13053 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-explog-architecture-policies) |
 | `v_log_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 13099, 13117 | review required |
-| `v_lshl_add_u32` | SIMD macro, output helper | no | 13155 | review required |
-| `v_lshl_or_b32` | SIMD macro, output helper | no | 13189 | review required |
+| `v_lshl_add_u32` | SIMD macro, output helper | no | 13155 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
+| `v_lshl_or_b32` | SIMD macro, output helper | no | 13189 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_lshlrev_b16` | SIMD macro, output helper | no | 13206, 13224 | review required |
 | `v_lshlrev_b32` | SIMD macro, output helper | no | 13242, 13258 | review required |
 | `v_lshlrev_b64` | SIMD macro | no | 13274, 13288 | review required |
@@ -572,7 +572,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_mullit_f32` | IEEE mode, OMOD, architecture query, output helper | yes | 17127 | [loose contract reviewed; see limitations](COVERAGE.md#mullit-architecture-policies) |
 | `v_not_b16` | no direct policy detected | no | not found | review required |
 | `v_not_b32` | SIMD macro, output helper | no | 17176, 17188 | review required |
-| `v_or3_b32` | SIMD macro, output helper | no | 17200 | review required |
+| `v_or3_b32` | SIMD macro, output helper | no | 17200 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_or_b16` | no direct policy detected | no | not found | review required |
 | `v_or_b32` | SIMD macro, output helper | no | 17215, 17229 | review required |
 | `v_pack_b32_f16` | SIMD macro, output helper | yes | 17243 | [loose contract reviewed; see limitations](COVERAGE.md#fp16-pack-and-fp32-byte-pack-architecture-contracts) |
@@ -648,8 +648,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_wmma_i32_16x16x16_iu4` | no direct policy detected | yes | not found | review required |
 | `v_wmma_i32_16x16x16_iu8` | no direct policy detected | yes | not found | review required |
 | `v_writelane_b32` | no direct policy detected | no | not found | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-lane-transfer-architecture-contracts) |
-| `v_xad_u32` | SIMD macro, output helper | no | 20402 | review required |
+| `v_xad_u32` | SIMD macro, output helper | no | 20402 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_xnor_b32` | SIMD macro, output helper | no | 20417, 20431 | review required |
-| `v_xor3_b32` | SIMD macro, output helper | no | 20445 | review required |
+| `v_xor3_b32` | SIMD macro, output helper | no | 20445 | [loose and exact contract reviewed; see limitations](COVERAGE.md#compound-integer-architecture-contracts) |
 | `v_xor_b16` | no direct policy detected | no | not found | review required |
 | `v_xor_b32` | SIMD macro, output helper | no | 20460, 20474 | review required |

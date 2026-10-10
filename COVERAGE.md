@@ -5655,3 +5655,48 @@ Validation: all 1,128 CTests pass under Clang and GCC Release; all twelve carry
 tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `carry-review-` in each build directory. The ledger records 518 contracts;
 291 in-scope mnemonics remain without recorded reviews.
+
+## Compound integer architecture contracts
+
+Reviewed eight three-input integer operations at rocjitsu `ffc144c564c`:
+LSHL_ADD/ADD_LSHL, LSHL_OR/AND_OR/OR3/XOR3, XAD and LERP. All sixteen
+architecture-specific execution/modifier pairs are identical (32 bodies),
+and all eight shared helpers were checked. Locations, hashes and delegates
+are recorded in `../goc-build/coverage-work/integer-ternary-upstream-review.json`.
+XAD also covers the RDNA4 XOR_ADD spelling. No architecture suffix or optional
+exception-register output is needed.
+
+Shift counts use the low five bits; arithmetic stages wrap to 32 bits. LSHL_ADD
+shifts A before adding C; ADD_LSHL adds A/B before shifting by C. AND_OR and XAD
+likewise combine A/B first. LERP averages each unsigned byte independently,
+using only that byte's low C bit for rounding; no carry leaks between bytes.
+GoC's implementations match those existing upstream models.
+
+Fixed rejection of CLAMP, which all eight upstream helpers ignore. The RDNA3
+XAD instruction note explicitly specifies no saturation, and the ignored-CLAMP
+table includes bitwise operations and ADD_LSHL. This change ports upstream's
+existing behavior; it is not based on new hardware experimentation. All other
+low flags remain unsupported. DPP8/DPP16 route A before the operation, preserving
+lane-local B/C; Wave64 remaps row-enable bits per half. Empty EXEC and validation
+precedence remain unchanged.
+
+The existing v3 kernel handles shifts and byte LERP in eight lanes; simple
+Boolean/XAD operations retain the baseline path selected by prior benchmarks.
+The v4 kernel handles all eight operations in sixteen lanes, using ternary-logic
+instructions for Boolean results and native byte average plus correction for
+LERP. Accepting CLAMP does not introduce any per-lane work or alter dispatch.
+
+Expanded the existing Wave32 reference checks to run both CLAMP settings,
+including every shift count/bit position, Boolean truth tables, every byte pair
+and rounding control, and boundary/random values. Literal stage-order witnesses
+remain in place.
+Expanded Wave64 selection/ternary routing tests to include CLAMP for every DPP
+route, alias and semantics combination. Existing hardware hashes remain unchanged;
+the added modifier cases are upstream/specification checks.
+The Wave64 test oracle now checks DPP flag bits explicitly instead of treating
+any nonzero instruction flag as routing; CLAMP-only calls exposed that assumption.
+
+Validation: all 1,128 CTests pass under Clang and GCC Release; all fourteen
+compound-integer/DPP/Wave64 tests pass under ASan/UBSan. All nine audit-tool tests
+pass. Logs use `integer-ternary-review-` in each build directory. The ledger records
+526 contracts; 283 in-scope mnemonics remain without recorded reviews.

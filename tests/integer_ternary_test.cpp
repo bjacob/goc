@@ -24,13 +24,15 @@ namespace {
         goc_test::integer_ternary_reference(op, words[0][lane], words[1][lane], words[2][lane]);
   const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
   uint32_t *d[] = {words[3]};
-  int status = goc_test::integer_ternary_functions[op](flags, UINT32_MAX, 0, d, a, b, c);
-  if (status != GOC_SUCCESS)
-    return ::testing::AssertionFailure() << "status " << status;
-  for (int lane = 0; lane < 32; ++lane)
-    if (words[3][lane] != expected[lane])
-      return ::testing::AssertionFailure() << op << "/" << flags << "/" << lane << ": "
-                                           << words[3][lane] << " != " << expected[lane];
+  for (uint64_t mode : {uint64_t(0), uint64_t(GOC_ALU_CLAMP)}) {
+    int status = goc_test::integer_ternary_functions[op](flags, UINT32_MAX, mode, d, a, b, c);
+    if (status != GOC_SUCCESS)
+      return ::testing::AssertionFailure() << "status " << status;
+    for (int lane = 0; lane < 32; ++lane)
+      if (words[3][lane] != expected[lane])
+        return ::testing::AssertionFailure() << op << "/" << flags << "/" << mode << "/" << lane
+                                             << ": " << words[3][lane] << " != " << expected[lane];
+  }
   return ::testing::AssertionSuccess();
 }
 
@@ -183,10 +185,13 @@ TEST(IntegerTernary, ValidationAndHostFpState) {
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
           for (uint32_t exec_mask : {0U, UINT32_MAX}) {
-            for (int bit = 0; bit < 32; ++bit)
+            for (int bit = 0; bit < 32; ++bit) {
+              if ((1U << bit) == GOC_ALU_CLAMP)
+                continue;
               EXPECT_EQ(goc_test::integer_ternary_functions[op](cpu, exec_mask, uint32_t(1) << bit,
                                                                 d, a, b, c),
                         GOC_ERROR_INVALID_FLAGS);
+            }
             EXPECT_EQ(goc_test::integer_ternary_functions[op](cpu | (1ULL << 63), exec_mask, 0, d,
                                                               a, b, c),
                       GOC_ERROR_INVALID_FLAGS);
