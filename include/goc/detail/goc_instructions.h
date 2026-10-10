@@ -5067,6 +5067,7 @@ int goc_v_med3_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
 // set; RDNA4 applies it regardless. These three families accept guest input/output
 // denormal flushing, also in Wave64. They remain loose-only: IEEE-mode support
 // does not promise exact NaN behavior or exception reporting.
+// CLAMP maps NaNs to +0 (fixed DX10_CLAMP-enabled policy on RDNA3).
 int goc_v_add_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   uint32_t *trapsts);

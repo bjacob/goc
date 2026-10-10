@@ -6608,3 +6608,60 @@ The largest increase was TC on AVX-512 without modifiers (11.522 -> 11.988 ns).
 These limited cases show no large regression; they do not establish whole-library
 performance or a new-architecture throughput claim. Driver, parent objects and
 raw samples are under `../goc-build/coverage-work/cube-architecture-performance/`.
+
+## FP64 ADD MUL FMA contract review
+
+Reviewed the three ordinary FP64 arithmetic mnemonics through rocjitsu's shared
+execution helpers, `fp_mode::arithmetic`/`arithmetic_with_policy`,
+`fma_f64`/`finish_f64`, `effective_omod`, floating clamp policy and GoC scalar/AVX2
+paths. Both architectures use two VGPRs per source/result. Source ABS/NEG,
+input-denormal flushing (including FMA's third source), fused versus separate
+arithmetic, RDNA3 OMOD gating, RDNA4 independent scaling, output flushing and
+masked low/high destination stores are represented by the existing loose APIs.
+The existing architecture test combines guest settings, modifiers, both widths,
+masks and cross-word/duplicate destination aliases. Four-double AVX2 remains the
+SIMD implementation on all higher CPU levels.
+
+This review preserves the explicit numerical limits: host nearest-even rounding
+and enabled host denormals are required; guest directed rounding is unsupported;
+NaN payloads are unspecified. CLAMP-to-zero corresponds to RDNA3 DX10_CLAMP
+being enabled, with no current API flag for the disabled setting. IEEE affects
+RDNA3 OMOD but does not turn loose native arithmetic into a GPU-exact NaN model.
+The public comment now makes the fixed clamp policy explicit.
+
+At upstream revision `ffc144c564c`, the ordinary FP64 path evaluates host
+ADD/MUL under `ScopedFenv`; FMA uses the separate `fma_f64` helper, which also
+wraps `std::fma` in `ScopedFenv`, followed by `finish_f64` for output modifiers.
+Guest denormal policy surrounds those operations. These guards cannot be imported
+into GoC. Unlike the specialized FP32
+`arithmetic` overload, the generic FP64 path does not delegate ADD/MUL to the
+borrowed FP32 empirical FMA model. No compliant exact implementation is supplied
+by this review; strict exact continues to fail, and non-strict exact can fall
+back only when optional state is disabled. Existing arithmetic and captured
+output-modifier tests are not treated as proof of universal bit-exact behavior.
+
+Optional arithmetic-state outputs remain native-named trailing pointers:
+TRAPSTS for RDNA3, EXCP_FLAG_USER for RDNA4. A non-null exact request fails with
+`GOC_ERROR_UNSUPPORTED_GLOBAL_STATE` before modifier validation, EXEC handling or
+operand access, irrespective of strictness. Null opts out; loose SIMD execution
+leaves the state unchanged and performs no reporting work. The new
+`Fp64.ArithmeticOptionalStateAndExactFallback` test exercises all twelve APIs,
+both semantics/strictness choices, all guest IEEE/denormal combinations and CPU
+paths, empty/partial/full EXEC, null operands on rejected calls and unchanged
+outputs/state on errors. Literal integer-valued arithmetic checks successful
+fallback and loose execution without a rounding-dependent oracle.
+
+This records the reviewed loose contract and its unsupported exact/state cases;
+no arithmetic implementation or fast path changes in this review.
+
+The machine-readable encodings were checked as well: both targets list VOP3 and
+literal-source forms for all three mnemonics; RDNA4 additionally has VOP2 forms
+for ADD/MUL. Neither XML lists DPP for these instructions, consistent with the
+current rejection of high instruction-flag bits. Literal decoding remains the
+caller's responsibility; the APIs consume the resulting low/high operand words.
+
+Validation: all 1,144 tests pass with Clang 21 and GCC 15 Release; all 14
+Fp64/Fp64Output tests pass with ASan/UBSan; all nine audit-tool tests pass.
+Logs are `../goc-build/coverage-work/fp64-arithmetic-review-*`.
+The ledger records 640 reviewed mnemonics and 169 remain unrecorded; these are
+review counts, not a completion percentage.

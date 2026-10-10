@@ -685,3 +685,79 @@ TEST(Fp64, MinmaxGuestIeeeLiteralNaNSelection) {
           }
         }
 }
+
+TEST(Fp64, ArithmeticOptionalStateAndExactFallback) {
+  const decltype(&goc_v_add_f64) narrow[][2] = {{goc_v_add_f64, goc_v_mul_f64},
+                                                {goc_v_add_f64_rdna4, goc_v_mul_f64_rdna4}};
+  const decltype(&goc_v_add_f64_wave64) wide[][2] = {
+      {goc_v_add_f64_wave64, goc_v_mul_f64_wave64},
+      {goc_v_add_f64_rdna4_wave64, goc_v_mul_f64_rdna4_wave64}};
+  const decltype(&goc_v_fma_f64) fma[] = {goc_v_fma_f64, goc_v_fma_f64_rdna4};
+  const decltype(&goc_v_fma_f64_wave64) fma_wide[] = {goc_v_fma_f64_wave64,
+                                                      goc_v_fma_f64_rdna4_wave64};
+  // NEG_A applied to 2, 3, 1 gives ADD=1, MUL=-6, FMA=-5 (all low words zero).
+  const uint32_t expected_high[] = {0x3ff00000, 0xc0180000, 0xc0140000};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned arch = 0; arch < 2; ++arch)
+      for (unsigned op = 0; op < 3; ++op)
+        for (unsigned width : {32U, 64U})
+          for (unsigned settings = 0; settings < 8; ++settings)
+            for (uint64_t exec_mask : {0ULL, 0xa55aa55a5aa55aa5ULL, ~0ULL}) {
+              SCOPED_TRACE(::testing::Message() << cpu << '/' << arch << '/' << op << '/' << width
+                                                << '/' << settings << '/' << exec_mask);
+              uint32_t words[8][64];
+              const uint32_t initial[] = {0, 0x40000000, 0,          0x40080000,
+                                          0, 0x3ff00000, 0xdeadbeef, 0xdeadbeef};
+              for (unsigned reg = 0; reg < 8; ++reg)
+                std::fill(words[reg], words[reg] + 64, initial[reg]);
+              const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]},
+                             *c[] = {words[4], words[5]};
+              uint32_t *d[] = {words[6], words[7]};
+              uint64_t flags = cpu | (settings & 1 ? GOC_FP_IEEE_MODE : 0) |
+                               (settings & 2 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                               (settings & 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+              uint32_t state = 0x81234567;
+              auto call = [&](uint64_t semantics, uint64_t mode, uint32_t *output,
+                              bool operands = true) {
+                auto dst = operands ? d : nullptr;
+                auto aa = operands ? a : nullptr, bb = operands ? b : nullptr,
+                     cc = operands ? c : nullptr;
+                if (width == 32)
+                  return op == 2 ? fma[arch](flags | semantics, uint32_t(exec_mask), mode, dst, aa,
+                                             bb, cc, output)
+                                 : narrow[arch][op](flags | semantics, uint32_t(exec_mask), mode,
+                                                    dst, aa, bb, output);
+                return op == 2 ? fma_wide[arch](flags | semantics, exec_mask, mode, dst, aa, bb, cc,
+                                                output)
+                               : wide[arch][op](flags | semantics, exec_mask, mode, dst, aa, bb,
+                                                output);
+              };
+              for (bool strict : {false, true}) {
+                uint64_t semantics =
+                    GOC_SEMANTICS_EXACT_EMPIRICAL | (strict ? GOC_SEMANTICS_STRICT : 0);
+                for (uint64_t mode : {uint64_t(GOC_ALU_NEG_A), uint64_t(1) << 63}) {
+                  EXPECT_EQ(call(semantics, mode, &state, false),
+                            GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+                  EXPECT_EQ(state, 0x81234567U);
+                }
+              }
+              EXPECT_EQ(call(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, GOC_ALU_NEG_A,
+                             nullptr, false),
+                        GOC_ERROR_UNSUPPORTED_SEMANTICS);
+              for (unsigned reg : {6U, 7U})
+                for (auto word : words[reg])
+                  EXPECT_EQ(word, 0xdeadbeefU);
+              for (uint64_t semantics : {uint64_t(0), GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+                for (unsigned reg : {6U, 7U})
+                  std::fill(words[reg], words[reg] + 64, 0xdeadbeefU);
+                EXPECT_EQ(call(semantics, GOC_ALU_NEG_A, semantics ? nullptr : &state),
+                          GOC_SUCCESS);
+                EXPECT_EQ(state, 0x81234567U);
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  bool active = lane < width && ((exec_mask >> lane) & 1);
+                  EXPECT_EQ(d[0][lane], active ? 0 : 0xdeadbeefU);
+                  EXPECT_EQ(d[1][lane], active ? expected_high[op] : 0xdeadbeefU);
+                }
+              }
+            }
+}
