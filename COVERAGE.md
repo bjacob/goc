@@ -1235,3 +1235,23 @@ Validation: all 799 tests pass on Clang 21 and GCC 15 Release. All fifteen
 FP16 exponent and instruction-flag tests pass under ASan/UBSan. Inventory
 regeneration is deterministic, and all twelve scalar exclusions have `_b64`
 API counterparts.
+
+## Wave64 FP32 FMA forms
+
+Added Wave64 FMA, FMAC, their DX9-zero forms, and literal FMAMK/FMAAK.
+The wrappers retain each form's source/output modifier restrictions, literal
+placement, accumulator aliasing, optional-state contract and existing scalar,
+AVX2 and AVX-512 dispatch. Ordinary and DX9 forms route A through DPP within
+each half; literal forms reject DPP. Existing loose semantics and exact
+reporting rejection are unchanged.
+
+Tests combine special-value inputs from the DX9 hardware corpus with independent
+source-modifier, fused arithmetic and output-scaling references. They cover all
+six forms, source/destination aliases, upper EXEC bits, every DPP descriptor
+and row enable, literal placement, guards and unchanged loose exception state.
+Invalid modes and exact requests reject before accessing null operands. Existing
+Wave32 hardware tests remain; no native Wave64 capture or exactness claim is
+added. The vector width-review queue is now 143 APIs.
+
+Validation: all 801 tests pass on Clang 21 and GCC 15 Release. All nineteen
+arithmetic and instruction-flag tests pass under ASan/UBSan.

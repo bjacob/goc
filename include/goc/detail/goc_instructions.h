@@ -2912,6 +2912,32 @@ int goc_v_fma_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                   const uint32_t *const *c, uint32_t *excp_flag_user);
 
+// Wave64 FP32 FMA forms retain the corresponding Wave32 modifier, literal,
+// DX9-zero, loose-semantics and optional-state contracts. DPP routes only A.
+int goc_v_fma_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c, uint32_t *excp_flag_user);
+
+int goc_v_fma_dx9_zero_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_fmac_dx9_zero_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b);
+
+int goc_v_fmac_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t *excp_flag_user);
+
+int goc_v_fmamk_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
+                           const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_fmaak_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t literal, uint32_t *excp_flag_user);
+
 // FP16 fused multiply-accumulate into D. Supports A/B ABS/NEG, OMOD, CLAMP,
 // HIGH_A/B/D and GOC_FP16_OVFL, with the same rounding and exact-semantics
 // contract as FP16 FMA. HIGH_D selects both the accumulator and result half;

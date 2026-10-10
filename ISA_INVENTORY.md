@@ -1156,20 +1156,20 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_floor_f16` | yes | yes | in | `goc_v_floor_f16` | — | API present; semantic audit pending |
 | `v_floor_f32` | yes | yes | in | `goc_v_floor_f32` | — | API present; semantic audit pending |
 | `v_floor_f64` | yes | yes | in | `goc_v_floor_f64` | — | API present; semantic audit pending |
-| `v_fma_dx9_zero_f32` | yes | yes | in | `goc_v_fma_dx9_zero_f32` | `v_fma_legacy_f32` | API present; semantic audit pending |
+| `v_fma_dx9_zero_f32` | yes | yes | in | `goc_v_fma_dx9_zero_f32`<br>`goc_v_fma_dx9_zero_f32_wave64` | `v_fma_legacy_f32` | API present; semantic audit pending |
 | `v_fma_f16` | yes | yes | in | `goc_v_fma_f16` | — | API present; semantic audit pending |
-| `v_fma_f32` | yes | yes | in | `goc_v_fma_f32` | — | API present; semantic audit pending |
+| `v_fma_f32` | yes | yes | in | `goc_v_fma_f32`<br>`goc_v_fma_f32_wave64` | — | API present; semantic audit pending |
 | `v_fma_f64` | yes | yes | in | `goc_v_fma_f64` | — | API present; semantic audit pending |
 | `v_fma_mix_f32` | yes | yes | in | `goc_v_fma_mix_f32` | — | API present; semantic audit pending |
 | `v_fma_mixhi_f16` | yes | yes | in | `goc_v_fma_mixhi_f16` | — | API present; semantic audit pending |
 | `v_fma_mixlo_f16` | yes | yes | in | `goc_v_fma_mixlo_f16` | — | API present; semantic audit pending |
 | `v_fmaak_f16` | yes | yes | in | `goc_v_fmaak_f16` | — | API present; semantic audit pending |
-| `v_fmaak_f32` | yes | yes | in | `goc_v_fmaak_f32` | — | API present; semantic audit pending |
-| `v_fmac_dx9_zero_f32` | yes | — | in | `goc_v_fmac_dx9_zero_f32` | `v_fmac_legacy_f32` | API present; semantic audit pending |
+| `v_fmaak_f32` | yes | yes | in | `goc_v_fmaak_f32`<br>`goc_v_fmaak_f32_wave64` | — | API present; semantic audit pending |
+| `v_fmac_dx9_zero_f32` | yes | — | in | `goc_v_fmac_dx9_zero_f32`<br>`goc_v_fmac_dx9_zero_f32_wave64` | `v_fmac_legacy_f32` | API present; semantic audit pending |
 | `v_fmac_f16` | yes | yes | in | `goc_v_fmac_f16` | — | API present; semantic audit pending |
-| `v_fmac_f32` | yes | yes | in | `goc_v_fmac_f32` | — | API present; semantic audit pending |
+| `v_fmac_f32` | yes | yes | in | `goc_v_fmac_f32`<br>`goc_v_fmac_f32_wave64` | — | API present; semantic audit pending |
 | `v_fmamk_f16` | yes | yes | in | `goc_v_fmamk_f16` | — | API present; semantic audit pending |
-| `v_fmamk_f32` | yes | yes | in | `goc_v_fmamk_f32` | — | API present; semantic audit pending |
+| `v_fmamk_f32` | yes | yes | in | `goc_v_fmamk_f32`<br>`goc_v_fmamk_f32_wave64` | — | API present; semantic audit pending |
 | `v_fract_f16` | yes | yes | in | `goc_v_fract_f16` | — | API present; semantic audit pending |
 | `v_fract_f32` | yes | yes | in | `goc_v_fract_f32` | — | API present; semantic audit pending |
 | `v_fract_f64` | yes | yes | in | `goc_v_fract_f64` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 149 Wave32 EXEC-taking APIs without a corresponding
+There are 143 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1436,7 +1436,6 @@ SAVEEXEC/WREXEC consume EXEC as data and already have distinct `_b32` and
 
 | Implementation | APIs lacking a Wave64 counterpart |
 |---|---|
-| [`arithmetic.cpp`](src/arithmetic.cpp) | `goc_v_fma_dx9_zero_f32`, `goc_v_fma_f32`, `goc_v_fmaak_f32`, `goc_v_fmac_dx9_zero_f32`, `goc_v_fmac_f32`, `goc_v_fmamk_f32` |
 | [`binary.cpp`](src/binary.cpp) | `goc_v_add_f32`, `goc_v_max_f32`, `goc_v_max_num_f32`, `goc_v_maximum_f32`, `goc_v_min_f32`, `goc_v_min_num_f32`, `goc_v_minimum_f32`, `goc_v_mul_dx9_zero_f32`, `goc_v_mul_f32`, `goc_v_sub_f32`, `goc_v_subrev_f32` |
 | [`cube.cpp`](src/cube.cpp) | `goc_v_cubeid_f32`, `goc_v_cubema_f32`, `goc_v_cubesc_f32`, `goc_v_cubetc_f32` |
 | [`div_fixup.cpp`](src/div_fixup.cpp) | `goc_v_div_fixup_f16`, `goc_v_div_fixup_f32`, `goc_v_div_fixup_f64` |

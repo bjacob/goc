@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <random>
@@ -478,5 +479,131 @@ TEST(Arithmetic, Dx9FmacZeroProductAndErrors) {
     for (uint32_t value : d)
       EXPECT_EQ(value, 0x3f800000U);
     EXPECT_EQ(goc_v_fmac_dx9_zero_f32(cpu, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
+  }
+}
+
+namespace {
+
+int fma_wave64_call(unsigned op, uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                    uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                    const uint32_t *const *c, uint32_t literal, uint32_t *excp_flag_user) {
+  switch (op) {
+  case 0:
+    return goc_v_fma_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+  case 1:
+    return goc_v_fmac_f32_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  case 2:
+    return goc_v_fma_dx9_zero_f32_wave64(flags, exec_mask, mode, d, a, b, c);
+  case 3:
+    return goc_v_fmac_dx9_zero_f32_wave64(flags, exec_mask, mode, d, a, b);
+  case 4:
+    return goc_v_fmamk_f32_wave64(flags, exec_mask, mode, d, a, literal, b, excp_flag_user);
+  default:
+    return goc_v_fmaak_f32_wave64(flags, exec_mask, mode, d, a, b, literal, excp_flag_user);
+  }
+}
+
+} // namespace
+
+TEST(Arithmetic, Wave64FmaFormsDppModifiersAndAliases) {
+  const uint32_t modes[] = {0, 1, 2, 4, 8, 16, 32, 63, 64, 128, 192, 256, 511};
+  for (unsigned op = 0; op < 6; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint32_t mode : modes) {
+        if ((op == 1 || op == 3) && (mode & (GOC_ALU_NEG_C | GOC_ALU_ABS_C)))
+          continue;
+        if (op >= 4 && mode)
+          continue;
+        for (unsigned route_index = 0; route_index < 8; ++route_index) {
+          uint64_t route = route_index ? goc_test::dpp_modes[route_index - 1] : 0;
+          if (op >= 4 && route)
+            continue;
+          for (unsigned rows = 0; rows < 16; ++rows)
+            for (unsigned alias = 0; alias < 4; ++alias) {
+              uint64_t descriptor = route;
+              if (route & GOC_DPP16)
+                descriptor = (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+              uint32_t words[4][66], before[4][66];
+              for (unsigned lane = 0; lane < 66; ++lane) {
+                goc_test::dx9_hardware_inputs(lane / 32, lane % 32, words[0][lane], words[1][lane],
+                                              words[2][lane]);
+                words[3][lane] = 0x3f800001;
+              }
+              std::memcpy(before, words, sizeof words);
+              uint32_t *d = words[alias] + 1;
+              const uint32_t *a = words[0] + 1, *b = words[1] + 1, *c = words[2] + 1;
+              const uint32_t literal = 0x3f800001;
+              uint64_t exec_mask = 0x87654321fedcba98ULL;
+              uint32_t excp_flag_user = 0x12345678;
+              ASSERT_EQ(fma_wave64_call(op, cpu, exec_mask, descriptor | mode, &d, &a, &b, &c,
+                                        literal, &excp_flag_user),
+                        GOC_SUCCESS);
+              EXPECT_EQ(excp_flag_user, 0x12345678U);
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                int source = int(lane);
+                bool enabled = route ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
+                                     : ((exec_mask >> lane) & 1);
+                if (!enabled) {
+                  EXPECT_EQ(d[lane], before[alias][lane + 1]);
+                  continue;
+                }
+                uint32_t inputs[] = {source < 0 ? 0 : before[0][source + 1], before[1][lane + 1],
+                                     before[(op == 1 || op == 3) ? alias : 2][lane + 1]};
+                if (op == 4) {
+                  inputs[2] = inputs[1];
+                  inputs[1] = literal;
+                } else if (op == 5) {
+                  inputs[2] = literal;
+                }
+                float v[3];
+                for (unsigned j = 0; j < 3; ++j) {
+                  uint32_t bits = inputs[j];
+                  if (mode & (GOC_ALU_ABS_A << j))
+                    bits &= 0x7fffffff;
+                  if (mode & (GOC_ALU_NEG_A << j))
+                    bits ^= 0x80000000;
+                  if ((op == 2 || op == 3) && (bits & 0x7fffffff) < 0x800000)
+                    bits &= 0x80000000;
+                  v[j] = goc::as_float(bits);
+                }
+                float value = (op == 2 || op == 3) && (v[0] == 0 || v[1] == 0)
+                                  ? 0.0f + v[2]
+                                  : std::fma(v[0], v[1], v[2]);
+                if ((op == 2 || op == 3) && std::abs(value) < 0x1p-126f)
+                  value = std::copysign(0.0f, value);
+                value = goc_test::omod_f32_reference(value, mode);
+                if (mode & GOC_ALU_CLAMP)
+                  value = !(value > 0) ? 0 : std::min(value, 1.0f);
+                if (std::isnan(value))
+                  EXPECT_TRUE(std::isnan(goc::as_float(d[lane])));
+                else
+                  EXPECT_EQ(d[lane], goc::as_bits(value)) << op << '/' << mode << '/' << lane;
+              }
+              for (unsigned reg = 0; reg < 4; ++reg) {
+                EXPECT_EQ(words[reg][0], before[reg][0]);
+                EXPECT_EQ(words[reg][65], before[reg][65]);
+              }
+            }
+        }
+      }
+}
+
+TEST(Arithmetic, Wave64FmaValidation) {
+  for (unsigned op = 0; op < 6; ++op) {
+    EXPECT_EQ(fma_wave64_call(op, 0, 0, 0, nullptr, nullptr, nullptr, nullptr, 0, nullptr),
+              GOC_SUCCESS);
+    EXPECT_EQ(fma_wave64_call(op, 0, UINT64_MAX, 1ULL << 36, nullptr, nullptr, nullptr, nullptr, 0,
+                              nullptr),
+              GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX,
+                              0, nullptr, nullptr, nullptr, nullptr, 0, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    if (op != 2 && op != 3) {
+      uint32_t excp_flag_user = 0x12345678;
+      EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr,
+                                nullptr, nullptr, 0, &excp_flag_user),
+                GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+      EXPECT_EQ(excp_flag_user, 0x12345678U);
+    }
   }
 }

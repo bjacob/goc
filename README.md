@@ -1917,6 +1917,10 @@ On the Ryzen 9 7950X3D, pinned CPU-8 Wave32 measurements (seven samples, at leas
 10 ms each) show AVX2 at 11.8–13.2 ns/wave (2.3–3.3× scalar) and AVX-512
 at 2.4–5.2 ns/wave (5.9–14.3×), including FI/BOUND_CTRL configurations.
 
+FP32 FMA, FMAC, their DX9-zero forms, and literal FMAMK/FMAAK have Wave32
+and `_wave64` APIs with the same scalar/AVX2/AVX-512 kernels and loose
+semantics. Exact optional-state reporting remains unsupported.
+
 FP32 `v_fma_f32` and `v_fmac_f32` now accept DPP8 lane permutations. Set
 `GOC_DPP8` and pack eight 3-bit selectors at `GOC_DPP8_SELECT_SHIFT`; add
 `GOC_DPP_FI` to fetch inactive source lanes instead of substituting positive
