@@ -44,16 +44,24 @@ supersede earlier findings, including the removal of newly inferred exact models
 - [x] Enumerate both XML instruction sets and identify matching public API names.
 - [x] Resolve the initial boundary rows: relative addressing and hardware-register
   access remain in scope; pipeline no-ops/flushes are scheduling exclusions.
-- [ ] Map XML aliases and dual-issue operations; distinguish assembly aliases
-  from missing semantics and define simultaneous-read behavior for paired outputs.
-- [ ] Review every shared mnemonic for architectural differences, including
-  special values, rounding, denormals, exceptions, modifiers, and implicit state.
-- [ ] Fill every in-scope missing API or record a concrete implementation blocker.
+- [x] Map XML aliases and dual-issue operations: 88 canonical inventory rows
+  list aliases; all 19 VOPD operations and architecture-specific paired-source
+  staging are covered by the [VOPD contract](#vopd-decoded-operations).
+- [x] Record architecture-contract reviews for all 587 shared mnemonics,
+  including numerical policies, modifiers, widths and state limitations. The
+  remaining DX9 FMAC review is architecture-exclusive; see the open checks below.
+- [x] Fill the canonical API inventory: all 809 in-scope mnemonics are present;
+  all public functions link and all instruction APIs have compiled test references.
+  This does not imply every encoding or guest numerical mode is implemented.
 - [ ] Borrow all applicable rocjitsu empirical models and captures; document any
   unsupported exact behavior and optional global-state reporting.
-- [ ] Audit Wave32/Wave64 contracts, especially comparisons, lane routing, and EXEC.
+- [x] Review Wave32/Wave64 contracts, including comparisons, routing and EXEC.
+  The generated inventory has no eligible vector or matrix width gaps; VOPD
+  remains Wave32-only, and scalar/pseudo-scalar instructions omit EXEC.
 - [ ] Preserve existing SIMD dispatch; compare performance for affected hot paths.
-- [ ] Validate complete Clang/GCC suites and targeted ASan/UBSan tests.
+- [x] Validate complete Clang/GCC suites and targeted ASan/UBSan tests; also
+  validate the complete build without specialized SIMD implementations. See the
+  [latest fallback validation](#build-without-specialized-simd-implementations).
 - [ ] Final requirement-by-requirement audit; unresolved items prevent completion.
 
 ## Family checklist
@@ -8634,3 +8642,30 @@ Clang ASan/UBSan; the log is
 `../goc-build-sanitize/coverage-work/no-simd-fix-tests.log`. All ten tooling
 tests pass. An initially over-escaped CTest filter selected no sanitizer tests;
 the corrected filter selected and ran the 44 tests reported here.
+
+## Borrowed numerical-model map
+
+This map connects the existing rocjitsu sources at `ffc144c564c` to the GoC
+ports and tests. It supplements the instruction-level reviews; a model's presence
+alone does not establish support for every format, guest policy or instruction.
+Upstream paths below are relative to rocjitsu's `lib/`; `shared/` abbreviates
+`rocjitsu/src/rocjitsu/isa/arch/amdgpu/shared/`.
+
+| Upstream model | GoC implementation | Representative validation and limitations |
+|---|---|---|
+| `util/include/util/amdgpu_rcp.h`, `amdgpu_sqrt.h`, `amdgpu_rsq.h` | [RCP](src/rcp_model.h), [SQRT](src/sqrt_model.h), [RSQ](src/rsq_model.h), shared [FP32](src/unary_exact.h) and [FP16](src/half_unary_exact.h) evaluation | [FP32 captures](tests/unary_exact_test.cpp), [FP16 tests](tests/half_unary_exact_test.cpp); reused by pseudo-scalar and RCP_IFLAG paths; exact optional reporting remains limited |
+| `util/include/util/amdgpu_exp.h`, `amdgpu_log.h` | [EXP](src/exp_model.h), [LOG](src/log_model.h) | [Unary tests](tests/unary_exact_test.cpp); FP32 numerical ports, including pseudo-scalar use; FP16 EXP/LOG remain loose-only |
+| `util/include/util/amdgpu_trig.h` | [Trig model](src/trig_model.h), [coefficients](src/trig_coefficients.h) | [FP32](tests/trig_test.cpp) and [FP16](tests/half_trig_test.cpp) tests; architecture policies and optional reporting have separate restrictions |
+| `shared/gfx11_dot2.h`, `shared/mma_exec.h` | [GFX11 DOT2](src/gfx11_dot2.h), [RDNA3 WMMA](src/wmma_replicated.cpp) | [RDNA3 WMMA captures](tests/wmma_replicated_exact_test.cpp), [DOT2 architecture tests](tests/dot2_architecture_test.cpp); fixed numerical modes and scalar exact paths |
+| `shared/gfx12_dot.h`, `shared/dot_packed16.h` | [GFX12 dot model](src/dot.h), [packed formats](src/packed16.h) | [WMMA](tests/wmma_test.cpp), [packed WMMA](tests/packed_wmma_test.cpp), [DOT2](tests/dot2_test.cpp); does not supply exact FP8 dense or floating sparse WMMA |
+| `shared/fp_mode.h` fused arithmetic and mixed-result handling | [Integer intermediate](src/fma_integer.h), [FP32 finishing](src/fma_scalar.h), [FP16](src/half_fma_scalar.h), [mixed](src/mixed_fma_scalar.h) | [FMA](tests/fma_exact_test.cpp), [mixed FMA](tests/mixed_fma_test.cpp), [scalar FMA](tests/scalar_fma_test.cpp); reused by FP32 ADD/MUL and literal/dual forms; nearest-even, with per-family reporting limits |
+| `shared/division.h` | [Division helpers](src/division.h), [DIV_FMAS](src/div_fmas.cpp), [DIV_SCALE](src/div_scale.cpp), [DIV_FIXUP](src/div_fixup.cpp) | Corresponding division tests and architecture reviews; accepted guest modes are narrower than the upstream interface |
+| `shared/cube.h` | [Cube model](src/cube.h), [wrappers](src/cube.cpp) | [Cube tests](tests/cube_test.cpp); architecture NaN/OMOD/CLAMP policies, nearest-even overflow behavior |
+
+The six `amdgpu_*` numerical-model headers currently present in upstream's util
+library all have corresponding ports above. Shared arithmetic/execution helpers
+also contain generic host operations; those are not automatically empirical
+bit-exact models. Their instruction-level reviews explain why FP64 arithmetic,
+floating selection, most conversions, and other listed operations remain
+loose-only. The standing prohibition on host-control mutation takes precedence
+over copying any upstream implementation. This map adds no new empirical model.
