@@ -65,6 +65,43 @@ int run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+template <unsigned Width>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
+               uint32_t *excp_flag_user) {
+  constexpr auto instruction = Width == 16   ? goc_v_div_fixup_f16
+                               : Width == 32 ? goc_v_div_fixup_f32
+                                             : goc_v_div_fixup_f64;
+  if (int error = instruction(flags, 0, mode, nullptr, nullptr, nullptr, nullptr, excp_flag_user))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  bool report = excp_flag_user && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
+  // Delay the global-register write until all potentially aliased inputs are read.
+  uint32_t exceptions = 0;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest[Width == 64 ? 2 : 1];
+    const uint32_t *av[Width == 64 ? 2 : 1], *bv[Width == 64 ? 2 : 1], *cv[Width == 64 ? 2 : 1];
+    for (unsigned reg = 0; reg < (Width == 64 ? 2U : 1U); ++reg) {
+      dest[reg] = d[reg] + half * 32;
+      av[reg] = a[reg] + half * 32;
+      bv[reg] = b[reg] + half * 32;
+      cv[reg] = c[reg] + half * 32;
+    }
+    if (int error = instruction(flags, uint32_t(exec_mask >> (half * 32)), half_mode, dest, av, bv,
+                                cv, report ? &exceptions : nullptr))
+      return error;
+  }
+  if (report)
+    *excp_flag_user |= exceptions;
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_div_fixup_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -99,4 +136,25 @@ int goc_v_div_fixup_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction
   if (instruction_flags >> 32)
     return GOC_ERROR_INVALID_FLAGS;
   return run<64>(flags, exec_mask, instruction_flags, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_div_fixup_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user) {
+  return run_wave64<16>(flags, exec_mask, instruction_flags, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_div_fixup_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user) {
+  return run_wave64<32>(flags, exec_mask, instruction_flags, d, a, b, c, excp_flag_user);
+}
+
+int goc_v_div_fixup_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b, const uint32_t *const *c,
+                               uint32_t *excp_flag_user) {
+  return run_wave64<64>(flags, exec_mask, instruction_flags, d, a, b, c, excp_flag_user);
 }

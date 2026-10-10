@@ -876,7 +876,10 @@ show 2.21–3.97x speedups for v3 and 3.66–6.40x for v4, including modified fo
 (seven samples per case, each at least 10 ms).
 
 Division fixup covers `v_div_fixup_f16`, `v_div_fixup_f32`, and
-`v_div_fixup_f64`. A supplies a provisional quotient, B the original denominator,
+`v_div_fixup_f64`, each in Wave32 and Wave64. Both widths share the exact
+scalar/v3/v4 kernels; Wave64 stages exception accumulation until all source
+reads finish. FP16 supports DPP across four independent Wave64 rows.
+A supplies a provisional quotient, B the original denominator,
 and C the original numerator. These instructions repair the quotient's sign and
 exceptional cases; they do not compute a general division. C's NaN takes priority
 over B's NaN. FP32/FP64 also implement the extreme encoded-exponent underflow

@@ -1496,3 +1496,26 @@ than claiming native Wave64 captures or new throughput. The width queue is
 Validation: all 850 tests pass on Clang 21 and GCC 15 Release. All eight
 Wave64 DIV_FMAS and instruction-flag tests pass under ASan/UBSan, including
 the complete result/exception corpora and reporting-alias witness.
+
+
+## Wave64 exact DIV_FIXUP
+
+Added FP16/FP32/FP64 DIV_FIXUP Wave64 APIs with existing exact scalar/v3/v4
+kernels, format-specific layouts and optional exception accumulation. FP16
+supports four independent DPP rows and preserves the unselected destination
+half. FP32/FP64 reject DPP. A family-local wrapper consumes both halves before
+writing optional state, preserving aliases with upper-lane source operands.
+Loose reporting remains skipped; exact opt-out retains SIMD dispatch.
+
+Tests replay existing Cartesian result captures across 64 lanes and exception
+captures with only lane 63 active. Independent references cover every modifier
+and half selector, overflow policies, random inputs, whole-register/cross-word
+aliases, shared sources, guards, sparse/upper-only EXEC and host rounding modes.
+FP16 DPP tests cover all row enables, source routing and masked exception
+accumulation. A separate zero/zero witness checks delayed reporting with an
+upper input alias. This adds no native Wave64 capture or throughput claim.
+The vector width queue is 26 APIs.
+
+Validation: all 859 tests pass on Clang 21 and GCC 15 Release. All ten
+Wave64 DIV_FIXUP and instruction-flag tests pass under ASan/UBSan, including
+the exhaustive modifier/FP16 DPP sweeps and result/exception corpora.
