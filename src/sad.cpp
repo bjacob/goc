@@ -36,7 +36,7 @@ int sad(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                                 return sad<Op>(flags, exec_mask, uint32_t(mode), d, source, b, c);
                               });
   }
-  if (int error = goc::validate(flags, mode & ~GOC_ALU_CLAMP))
+  if (int error = goc::validate(flags, mode & ~GOC_ALU_CLAMP, true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -75,6 +75,36 @@ int sad(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
     for (int lane = 0; lane < 32; ++lane)
       if ((exec_mask >> lane) & 1)
         d[reg][lane] = result[reg][lane];
+  return GOC_SUCCESS;
+}
+
+template <goc::Sad Op>
+int sad_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (int error = sad<Op>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  constexpr int inputs = goc::sad_quad(Op) ? 2 : 1;
+  constexpr int outputs = goc::sad_outputs(Op);
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    const uint32_t *source_a[inputs], *source_b = b[0] + half * 32, *source_c[outputs];
+    uint32_t *dest[outputs];
+    for (int reg = 0; reg < inputs; ++reg)
+      source_a[reg] = a[reg] + half * 32;
+    for (int reg = 0; reg < outputs; ++reg) {
+      source_c[reg] = c[reg] + half * 32;
+      dest[reg] = d[reg] + half * 32;
+    }
+    if (int error = sad<Op>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, dest, source_a,
+                            &source_b, source_c))
+      return error;
+  }
   return GOC_SUCCESS;
 }
 
@@ -121,4 +151,52 @@ int goc_v_mqsad_u32_u8(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32
                        const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c) {
   return sad<goc::Sad::MaskedQuadU32>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_sad_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                        const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *c) {
+  return sad_wave64<goc::Sad::U8>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_sad_hi_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                           const uint32_t *const *a, const uint32_t *const *b,
+                           const uint32_t *const *c) {
+  return sad_wave64<goc::Sad::HighU8>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_sad_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
+  return sad_wave64<goc::Sad::U16>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_sad_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
+  return sad_wave64<goc::Sad::U32>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_msad_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
+  return sad_wave64<goc::Sad::MaskedU8>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_qsad_pk_u16_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c) {
+  return sad_wave64<goc::Sad::QuadU16>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_mqsad_pk_u16_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c) {
+  return sad_wave64<goc::Sad::MaskedQuadU16>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_mqsad_u32_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              const uint32_t *const *c) {
+  return sad_wave64<goc::Sad::MaskedQuadU32>(flags, exec_mask, mode, d, a, b, c);
 }

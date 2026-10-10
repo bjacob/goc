@@ -1287,9 +1287,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_movrels_b32` | yes | yes | in: register access | `goc_v_movrels_b32`<br>`goc_v_movrels_b32_wave64` | — | API present; semantic audit pending |
 | `v_movrelsd_2_b32` | yes | yes | in: register access | `goc_v_movrelsd_2_b32`<br>`goc_v_movrelsd_2_b32_wave64` | — | API present; semantic audit pending |
 | `v_movrelsd_b32` | yes | yes | in: register access | `goc_v_movrelsd_b32`<br>`goc_v_movrelsd_b32_wave64` | — | API present; semantic audit pending |
-| `v_mqsad_pk_u16_u8` | yes | yes | in | `goc_v_mqsad_pk_u16_u8` | — | API present; semantic audit pending |
-| `v_mqsad_u32_u8` | yes | yes | in | `goc_v_mqsad_u32_u8` | — | API present; semantic audit pending |
-| `v_msad_u8` | yes | yes | in | `goc_v_msad_u8` | — | API present; semantic audit pending |
+| `v_mqsad_pk_u16_u8` | yes | yes | in | `goc_v_mqsad_pk_u16_u8`<br>`goc_v_mqsad_pk_u16_u8_wave64` | — | API present; semantic audit pending |
+| `v_mqsad_u32_u8` | yes | yes | in | `goc_v_mqsad_u32_u8`<br>`goc_v_mqsad_u32_u8_wave64` | — | API present; semantic audit pending |
+| `v_msad_u8` | yes | yes | in | `goc_v_msad_u8`<br>`goc_v_msad_u8_wave64` | — | API present; semantic audit pending |
 | `v_mul_dx9_zero_f32` | yes | yes | in | `goc_v_mul_dx9_zero_f32` | `v_mul_legacy_f32` | API present; semantic audit pending |
 | `v_mul_f16` | yes | yes | in | `goc_v_mul_f16` | — | API present; semantic audit pending |
 | `v_mul_f32` | yes | yes | in | `goc_v_mul_f32` | — | API present; semantic audit pending |
@@ -1341,7 +1341,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_pk_mul_lo_u16` | yes | yes | in | `goc_v_pk_mul_lo_u16`<br>`goc_v_pk_mul_lo_u16_wave64` | — | API present; semantic audit pending |
 | `v_pk_sub_i16` | yes | yes | in | `goc_v_pk_sub_i16`<br>`goc_v_pk_sub_i16_wave64` | — | API present; semantic audit pending |
 | `v_pk_sub_u16` | yes | yes | in | `goc_v_pk_sub_u16`<br>`goc_v_pk_sub_u16_wave64` | — | API present; semantic audit pending |
-| `v_qsad_pk_u16_u8` | yes | yes | in | `goc_v_qsad_pk_u16_u8` | — | API present; semantic audit pending |
+| `v_qsad_pk_u16_u8` | yes | yes | in | `goc_v_qsad_pk_u16_u8`<br>`goc_v_qsad_pk_u16_u8_wave64` | — | API present; semantic audit pending |
 | `v_rcp_f16` | yes | yes | in | `goc_v_rcp_f16` | — | API present; semantic audit pending |
 | `v_rcp_f32` | yes | yes | in | `goc_v_rcp_f32` | — | API present; semantic audit pending |
 | `v_rcp_f64` | yes | yes | in | `goc_v_rcp_f64` | — | API present; semantic audit pending |
@@ -1364,10 +1364,10 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_s_rsq_f32` | — | yes | in | `goc_v_s_rsq_f32` | — | API present; semantic audit pending |
 | `v_s_sqrt_f16` | — | yes | in | `goc_v_s_sqrt_f16` | — | API present; semantic audit pending |
 | `v_s_sqrt_f32` | — | yes | in | `goc_v_s_sqrt_f32` | — | API present; semantic audit pending |
-| `v_sad_hi_u8` | yes | yes | in | `goc_v_sad_hi_u8` | — | API present; semantic audit pending |
-| `v_sad_u16` | yes | yes | in | `goc_v_sad_u16` | — | API present; semantic audit pending |
-| `v_sad_u32` | yes | yes | in | `goc_v_sad_u32` | — | API present; semantic audit pending |
-| `v_sad_u8` | yes | yes | in | `goc_v_sad_u8` | — | API present; semantic audit pending |
+| `v_sad_hi_u8` | yes | yes | in | `goc_v_sad_hi_u8`<br>`goc_v_sad_hi_u8_wave64` | — | API present; semantic audit pending |
+| `v_sad_u16` | yes | yes | in | `goc_v_sad_u16`<br>`goc_v_sad_u16_wave64` | — | API present; semantic audit pending |
+| `v_sad_u32` | yes | yes | in | `goc_v_sad_u32`<br>`goc_v_sad_u32_wave64` | — | API present; semantic audit pending |
+| `v_sad_u8` | yes | yes | in | `goc_v_sad_u8`<br>`goc_v_sad_u8_wave64` | — | API present; semantic audit pending |
 | `v_sat_pk_u8_i16` | yes | yes | in | `goc_v_sat_pk_u8_i16` | — | API present; semantic audit pending |
 | `v_sin_f16` | yes | yes | in | `goc_v_sin_f16` | — | API present; semantic audit pending |
 | `v_sin_f32` | yes | yes | in | `goc_v_sin_f32` | — | API present; semantic audit pending |
@@ -1425,7 +1425,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 228 Wave32 EXEC-taking APIs without a corresponding
+There are 220 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
@@ -1471,7 +1471,6 @@ this screen; their width requirements remain a separate audit.
 | [`packed_fma.cpp`](src/packed_fma.cpp) | `goc_v_pk_fma_f16`, `goc_v_pk_fmac_f16` |
 | [`permlane.cpp`](src/permlane.cpp) | `goc_v_permlane16_b32`, `goc_v_permlane16_var_b32`, `goc_v_permlanex16_b32`, `goc_v_permlanex16_var_b32` |
 | [`rcp_iflag.cpp`](src/rcp_iflag.cpp) | `goc_v_rcp_iflag_f32` |
-| [`sad.cpp`](src/sad.cpp) | `goc_v_mqsad_pk_u16_u8`, `goc_v_mqsad_u32_u8`, `goc_v_msad_u8`, `goc_v_qsad_pk_u16_u8`, `goc_v_sad_hi_u8`, `goc_v_sad_u16`, `goc_v_sad_u32`, `goc_v_sad_u8` |
 | [`scalar_exec.cpp`](src/scalar_exec.cpp) | `goc_s_and_not0_saveexec_b32`, `goc_s_and_not0_wrexec_b32`, `goc_s_and_not1_saveexec_b32`, `goc_s_and_not1_wrexec_b32`, `goc_s_and_saveexec_b32`, `goc_s_nand_saveexec_b32`, `goc_s_nor_saveexec_b32`, `goc_s_or_not0_saveexec_b32`, `goc_s_or_not1_saveexec_b32`, `goc_s_or_saveexec_b32`, `goc_s_xnor_saveexec_b32`, `goc_s_xor_saveexec_b32` |
 | [`trig.cpp`](src/trig.cpp) | `goc_v_cos_f32`, `goc_v_sin_f32` |
 | [`trig_preop.cpp`](src/trig_preop.cpp) | `goc_v_trig_preop_f64` |

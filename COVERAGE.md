@@ -891,3 +891,23 @@ claim is made. The width-review queue is now 228 candidates.
 Validation: all 770 tests pass on Clang 21 and GCC 15 Release. All twenty
 integer/wide MAD, Wave64, DPP, zero-EXEC and instruction-flag tests pass under
 ASan/UBSan.
+
+## Wave64 SAD and exact integer semantics
+
+Added all eight SAD/MSAD/QSAD/MQSAD Wave64 APIs. Both wave widths now accept
+strict exact semantics, using the existing integer arithmetic and scalar/v3
+kernels. Ordinary forms route A through DPP; quad forms reject DPP, read two
+A VGPRs and one B VGPR, and produce either two packed or four full-width
+accumulator VGPRs. The Wave64 wrapper remaps row enables for each half without
+changing the arithmetic kernels or adding sparse-mask paths.
+
+Independent reference tests cover sliding byte windows, unsigned extremes,
+zero-byte suppression, independent packed/full-width saturation, all CPU paths
+and both semantics, upper/lower EXEC bits, DPP row masks, source/output aliases
+and guard words. Invalid and zero-EXEC calls are tested without operands.
+Existing Wave32 exhaustive arithmetic tests and the RX 9070 DPP capture remain
+numerical evidence for the shared kernels; no new Wave64 hardware capture or
+throughput measurement is claimed. The width-review queue is now 220 candidates.
+
+Validation: all 772 tests pass on Clang 21 and GCC 15 Release. All thirteen
+SAD, Wave64 SAD and instruction-flag tests pass under ASan/UBSan.

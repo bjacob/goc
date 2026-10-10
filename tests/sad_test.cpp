@@ -259,9 +259,9 @@ TEST(Sad, ValidationAndHostFpState) {
             }
           EXPECT_EQ(functions[op](cpu | (1ULL << 63), exec_mask, 0, d, a, b, c),
                     GOC_ERROR_INVALID_FLAGS);
-          EXPECT_EQ(functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                  exec_mask, 0, d, a, b, c),
-                    GOC_ERROR_UNSUPPORTED_SEMANTICS);
+          EXPECT_EQ(
+              functions[op](cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, d, a, b, c),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
         }
         for (auto &reg : words)
           for (uint32_t word : reg)

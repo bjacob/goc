@@ -239,8 +239,8 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_bfi_b32` | Scalar, x86-64-v4 | Exact integer operations; both wave sizes |
 | `v_lshl_add_u32`, `v_add_lshl_u32`, `v_lshl_or_b32`, `v_lerp_u8` | Scalar, x86-64-v3, x86-64-v4 | Exact integer operations; both wave sizes |
 | `v_and_or_b32`, `v_or3_b32`, `v_xor3_b32`, `v_xad_u32` | Scalar, x86-64-v4 | Exact integer operations; both wave sizes |
-| `v_sad_u8`, `v_sad_hi_u8`, `v_sad_u16`, `v_sad_u32`, `v_msad_u8` | Scalar, x86-64-v3; saturation | Not implemented |
-| `v_qsad_pk_u16_u8`, `v_mqsad_pk_u16_u8`, `v_mqsad_u32_u8` | Scalar, x86-64-v3; independent packed/full-width saturation | Not implemented |
+| `v_sad_u8`, `v_sad_hi_u8`, `v_sad_u16`, `v_sad_u32`, `v_msad_u8` | Scalar, x86-64-v3; saturation | Exact integer arithmetic |
+| `v_qsad_pk_u16_u8`, `v_mqsad_pk_u16_u8`, `v_mqsad_u32_u8` | Scalar, x86-64-v3; independent packed/full-width saturation | Exact integer arithmetic |
 | `v_lshlrev_b32`, `v_lshrrev_b32`, `v_ashrrev_i32` | Scalar, x86-64-v3 | Exact integer operations; both wave sizes |
 | `v_lshlrev_b64`, `v_lshrrev_b64`, `v_ashrrev_i64` | Scalar, x86-64-v3 | Exact integer operations; both wave sizes |
 | `v_lshlrev_b16`, `v_lshrrev_b16`, `v_ashrrev_i16` | Scalar, x86-64-v3; half selectors | Exact integer operations; both wave sizes |
@@ -1357,7 +1357,8 @@ Tests cover truth tables
 at every bit position, wrapped counts and arithmetic, every byte pair and all
 sixteen rounding-control combinations, EXEC masks, and whole-register aliases.
 
-All eight SAD-family instructions have scalar and eight-lane v3 paths,
+All eight SAD-family instructions support Wave32 and Wave64 with exact integer
+semantics and shared scalar and eight-lane v3 paths,
 including `CLAMP` saturation. Ordinary SAD sums unsigned byte, halfword or
 full-word differences and adds `C`; `SAD_HI_U8` shifts the byte sum left by 16
 before that addition. `MSAD` ignores positions whose `B` byte is zero.

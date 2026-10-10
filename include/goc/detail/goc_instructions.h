@@ -2607,7 +2607,7 @@ int goc_v_lerp_u8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
 // byte is zero. These forms use one VGPR for each operand.
 // GOC_ALU_CLAMP saturates the final unsigned accumulation. DPP8/DPP16 permute
 // A before arithmetic; B and C stay in their original lanes. Other instruction
-// flags are invalid. Loose semantics only; preserves all host FP state.
+// flags are invalid. Both semantics are exact; preserves all host FP state.
 int goc_v_sad_u8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *const *d,
                  const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c);
 int goc_v_sad_hi_u8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -2629,7 +2629,7 @@ int goc_v_msad_u8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
 // independent 16-bit accumulations into two C/D VGPRs. U32 uses four C/D VGPRs.
 // GOC_ALU_CLAMP saturates each accumulation to its destination width; otherwise
 // each wraps independently. The high byte of A's second VGPR is unused.
-// All other instruction flags are invalid. Loose semantics only; preserves
+// All other instruction flags are invalid. Both semantics are exact; preserves
 // all host floating-point state.
 int goc_v_qsad_pk_u16_u8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
@@ -2640,6 +2640,33 @@ int goc_v_mqsad_pk_u16_u8(uint64_t flags, uint32_t exec_mask, uint64_t instructi
 int goc_v_mqsad_u32_u8(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                        const uint32_t *const *c);
+
+// Wave64 SAD forms have the same VGPR layouts and arithmetic as above.
+// EXEC and DPP row enables cover all 64 lanes.
+int goc_v_sad_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                        const uint32_t *const *c);
+int goc_v_sad_hi_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           const uint32_t *const *c);
+int goc_v_sad_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c);
+int goc_v_sad_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c);
+int goc_v_msad_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c);
+int goc_v_qsad_pk_u16_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_mqsad_pk_u16_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *c);
+int goc_v_mqsad_u32_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                              uint32_t *const *d, const uint32_t *const *a,
+                              const uint32_t *const *b, const uint32_t *const *c);
 
 // Reverse shifts: shift B by the count in A. A is one VGPR. B and D are one
 // VGPR for 32-bit forms or two VGPRs (low word first) for 64-bit forms. Counts
