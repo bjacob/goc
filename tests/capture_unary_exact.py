@@ -3,7 +3,7 @@
 """Generate a gfx1201 HIP raw unary-result probe.
 
 Arguments: OUTPUT_DIR MNEMONIC [--exceptions], default rcp.
-MNEMONIC: rcp, sqrt, rsq, exp, log, trunc, ceil, rndne, floor or frexp_mant.
+MNEMONIC: rcp, sqrt, rsq, exp, log, trunc, ceil, rndne, floor, frexp_mant or frexp_exp_i32.
 Compile probe.cpp with hipcc. `probe normalized` covers every FP32 value in
 [1,2) for RCP, [1,4) for SQRT/RSQ, [0.5,2) for LOG, and both signs of [0.5,2)
 for EXP. Rounding normalized probes cover [1,4). `probe` covers [4 denormal policies][32 modifiers][8192 inputs].
@@ -12,6 +12,7 @@ bit1, OMOD bits2:3, CLAMP bit4. Guest rounding is nearest-even.
 --exceptions uses one identical-input Wave32 per case, clears EXCP_FLAG_USER,
 and writes (result, flags) pairs. It supports only the modifier corpus.
 Add --exactness for concentrated exact/inexact and range-boundary operands.
+FREXP_EXP uses raw VOP3 encoding to probe OMOD fields rejected by LLVM syntax.
 """
 import json
 import re
@@ -19,7 +20,7 @@ import struct
 from pathlib import Path
 import sys
 op = sys.argv[2] if len(sys.argv) > 2 else "rcp"
-if op not in ("rcp", "sqrt", "rsq", "exp", "log", "trunc", "ceil", "rndne", "floor", "frexp_mant"):
+if op not in ("rcp", "sqrt", "rsq", "exp", "log", "trunc", "ceil", "rndne", "floor", "frexp_mant", "frexp_exp_i32"):
     raise SystemExit("expected a supported FP32 unary mnemonic")
 report = "--exceptions" in sys.argv[3:]
 exactness = "--exactness" in sys.argv[3:]
@@ -50,8 +51,19 @@ for m in range(32):
     operand='abs(%2)' if m&2 else '%2'
     if m&1: operand='-'+operand
     inst='v_'+op+'_f32 %0, '+operand+(' clamp' if m&16 else '')+['',' mul:2',' mul:4',' div:2'][(m>>2)&3]
+    clobbers = ""
+    if op == "frexp_exp_i32" and not (m & 12):
+        inst = "v_frexp_exp_i32_f32_e64 %0, " + operand + (" clamp" if m & 16 else "")
+    elif op == "frexp_exp_i32":
+        # LLVM rejects OMOD on this integer-output opcode. Encode its VOP3
+        # fields explicitly to check the existing ignored-OMOD API contract.
+        # Fixed v0/v1 are declared clobbered; allocated operands cannot overlap.
+        word0 = 0xd5bf0000 | (0x100 if m & 2 else 0) | (0x8000 if m & 16 else 0)
+        word1 = 0x02010101 | ((m & 1) << 29) | (((m >> 2) & 3) << 27)
+        inst = f"v_mov_b32 v1, %2\n.long {word0:#x}, {word1:#x}\nv_mov_b32 %0, v0"
+        clobbers = ':"v0","v1"'
     assembly='s_getreg_b32 %1, hwreg(HW_REG_MODE)\ns_setreg_b32 hwreg(HW_REG_MODE), %3\n'+inst+'\ns_setreg_b32 hwreg(HW_REG_MODE), %1\n'
-    s+=f'case {m}:{{uint32_t saved; asm volatile({json.dumps(assembly)} : "=&v"(result),"=&s"(saved):"v"(a),"s"(fp_mode));break;}}\n'
+    s+=f'case {m}:{{uint32_t saved; asm volatile({json.dumps(assembly)} : "=&v"(result),"=&s"(saved):"v"(a),"s"(fp_mode){clobbers});break;}}\n'
 s+=r'''}out[i]=result;}
 int main(int argc,char **argv){bool normalized=argc==2&&!strcmp(argv[1],"normalized");
  if(argc>2||(argc==2&&!normalized))return 2;

@@ -3036,3 +3036,37 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   input/null-state changes 72.458 -> 55.284 ns; default subnormal input/null-state
   changes 86.164 -> 57.219 ns. Eleven alternating samples use the same timing
   protocol; scalar artifacts use `frexp-mant-scalar-*`.
+
+### FREXP_EXP FP32 encoding and status evidence
+
+- Extended `tests/capture_unary_exact.py` with `frexp_exp_i32`. Normal OMOD-zero
+  cases use LLVM's `v_frexp_exp_i32_f32_e64` syntax. Nonzero OMOD cases use raw
+  VOP3 fields because LLVM rejects those spellings for this integer-result
+  instruction. Fixed vector registers are declared clobbered. This records
+  empirical handling of those fields, not a claim that LLVM accepts them or
+  that every encoding is architecturally specified across generations.
+- Native gfx1201 captures cover 8192 inputs, all 32 NEG/ABS/OMOD/CLAMP
+  combinations and four denormal policies: **1,048,576 result/status pairs**.
+  A second capture using ordinary assembly for OMOD-zero cases is byte-identical
+  to the all-raw probe. Capture SHA256:
+  `ff03fa74576a6928eb67533d6b6ac49207bfb8b5e463b512090d8599ef2a25ee`.
+- Every pair also matches an independent integer model: zero and NaN/infinity
+  produce zero; a finite normal produces exponent-field minus 126; a preserved
+  subnormal produces magnitude-bit-length minus 149. Guest input flushing makes
+  subnormal results zero. NEG, ABS, OMOD and CLAMP do not change the integer
+  result. Guest output-denormal policy has no effect on either result or status.
+- Without CLAMP, infinity and signaling NaN raise INVALID (bit 0), and preserved
+  subnormal input raises INPUT_DENORM (bit 1). Quiet NaNs produce no exception.
+  CLAMP suppresses all generated flags, while OMOD does not suppress them.
+  No other exception flags occurred in this corpus. This distinction from
+  floating-result output modifiers must remain visible in the implementation.
+- FNV word hashes of interleaved raw result/status pairs, using the existing
+  capture-hash convention, are `0x26533113a2ffed63` (preserve input, no CLAMP),
+  `0x92ccb1ca2a1f00a9` (preserve, CLAMP), `0xd89de8c37c933d32` (flush, no CLAMP),
+  and `0xff2ec24730195ec6` (flush, CLAMP). Each is over 8192 pairs.
+- Probe generation, HIP compilation and execution passed. Artifacts are under
+  `../goc-build/coverage-work/frexp_exp_i32-{,checked-}report-captures/`;
+  `/tmp/goc-check-frexp-exp.py` checks every pair and the encoding cross-check.
+  This is evidence preparation: production FREXP_EXP still needs guest-input
+  flushing, exact semantics, architecture/state API review, and regression tests.
+  No RDNA3 hardware claim or FP64 conclusion follows from this capture.
