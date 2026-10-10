@@ -51,7 +51,7 @@ paths must retain their existing performance and may skip optional state outputs
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | Add accumulator/dual forms; RDNA3 reporting uncharacterized; Wave64 |
 | Floating min/max/median | Existing RDNA4 NUM forms | RDNA3 names and NaN/zero policies, signaling NaNs, all widths and packed forms |
-| Scalar integer arithmetic | Existing RDNA4 CO forms and captured SCC tests | RDNA3 names, immediate comparisons/add, all carry/borrow/overflow contracts |
+| Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | Incomplete API inventory | Moves, conditional moves, immediate and relative addressing, saveexec/wrexec |
 | Vector/register routing | Existing DPP/permlane/move coverage | Read/write lane, first lane, swaps, relative moves, permlane64, cross-width behavior |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests | RDNA3 always-true/false forms; Wave64; architecture-specific floating policies |
@@ -74,3 +74,11 @@ a green test suite that exercises only the current implementation.
   Existing RDNA4 tests and benchmark rows now use the suffixed names. The loose
   SIMD kernel and its dispatch conditions are unchanged; no performance gain is
   claimed for this increment.
+- Scalar RDNA3 spellings/immediates: 19 APIs added, reusing the existing scalar
+  integer and comparison implementations. RDNA4 XML explicitly aliases all seven
+  arithmetic spellings; rocjitsu's SOPK implementation confirms signed versus
+  unsigned immediate extension for the twelve comparisons. Tests exhaust every
+  16-bit immediate against boundary/equal operands and independently check carry,
+  borrow, overflow, aliases and error atomicity. All 680 tests pass with Clang
+  and GCC; the three new tests pass under ASan/UBSan. Missing in-scope API names
+  are now 121; semantic audits remain distinct from name coverage.

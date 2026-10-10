@@ -2257,3 +2257,9 @@ non-null pointer, regardless of
 `GOC_ERROR_UNSUPPORTED_GLOBAL_STATE` before operand access or other validation,
 leaving all outputs unchanged, including for empty EXEC. The host FP environment
 is not used to collect guest exception state. See the [design plan](https://github.com/bjacob/goc/blob/main/PLAN.md#implicit-architectural-register-outputs).
+
+RDNA3 scalar add/subtract spellings (`s_add_u32`, `s_sub_u32`, `s_add_i32`,
+`s_sub_i32`, `s_addc_u32`, `s_subb_u32`, and `s_addk_i32`) share the existing
+RDNA4 carry/overflow implementations. The twelve `s_cmpk_*_{i32,u32}` forms
+compare against a 16-bit immediate: sign-extended for I32, zero-extended for U32.
+All support both semantics with exact integer results and preserve host FP state.

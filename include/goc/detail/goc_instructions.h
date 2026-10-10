@@ -186,6 +186,45 @@ int goc_s_wqm_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint6
 // Finite operand pairs accumulate INPUT_DENORM if either input is subnormal and
 // input flushing is disabled. Loose mode leaves excp_flag_user unchanged.
 
+// RDNA3 immediate comparisons set SCC to 0 or 1. I32 forms sign-extend the
+// 16-bit immediate; U32 forms zero-extend it. Both semantics are exact, EXEC
+// is ignored, instruction_flags must be zero, and errors preserve SCC.
+int goc_s_cmpk_eq_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
+int goc_s_cmpk_lg_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
+int goc_s_cmpk_gt_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
+int goc_s_cmpk_ge_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
+int goc_s_cmpk_lt_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
+int goc_s_cmpk_le_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
+int goc_s_cmpk_eq_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
+int goc_s_cmpk_lg_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
+int goc_s_cmpk_gt_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
+int goc_s_cmpk_ge_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
+int goc_s_cmpk_lt_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
+int goc_s_cmpk_le_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate);
+
 // SCC is a == b (signed).
 int goc_s_cmp_eq_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
                      uint32_t b);
@@ -784,6 +823,30 @@ int goc_s_add_co_ci_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d,
 // Unsigned difference minus input_scc bit 0; SCC is borrow-out.
 int goc_s_sub_co_ci_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
                         uint32_t b, uint32_t *scc, uint32_t input_scc);
+
+// RDNA3 scalar add/sub spellings. Unsigned SCC is carry/borrow; signed SCC
+// is overflow. ADDC/SUBB consume input_scc bit 0. ADDK sign-extends immediate
+// and adds to old *d. Both semantics are exact; flags and alias rules above apply.
+int goc_s_add_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                  uint32_t *scc);
+
+int goc_s_sub_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                  uint32_t *scc);
+
+int goc_s_add_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                  uint32_t *scc);
+
+int goc_s_sub_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                  uint32_t *scc);
+
+int goc_s_addc_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                   uint32_t input_scc, uint32_t *scc);
+
+int goc_s_subb_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                   uint32_t input_scc, uint32_t *scc);
+
+int goc_s_addk_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint16_t immediate,
+                   uint32_t *scc);
 
 // Sign-extend the low 8 bits to 32 bits; preserves SCC.
 int goc_s_sext_i32_i8(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a);

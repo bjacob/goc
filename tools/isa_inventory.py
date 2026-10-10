@@ -44,6 +44,9 @@ for name in sorted(set(instructions[3]) | set(instructions[4])):
     if scope == "in" and (name.startswith(("s_wait", "s_setreg", "s_getreg", "s_movrel", "v_movrel"))
                            or name in {"s_nop", "v_nop", "s_version", "v_pipeflush"}):
         scope = "review: control/register boundary"
+    aliases = sorted({a.text.lower() for e in entries
+                      for a in e.findall("AliasedInstructionNames/*")})
+    alias_text = ", ".join(f"`{a}`" for a in aliases) or "—"
     symbols = []
     for suffix in ("", "_wave64", "_rdna4", "_rdna4_wave64"):
         if name + suffix in apis:
@@ -54,7 +57,7 @@ for name in sorted(set(instructions[3]) | set(instructions[4])):
     counts[(scope.split(":")[0], bool(symbols))] += 1
     rows.append(f"| `{name}` | {'yes' if name in instructions[3] else '—'} | "
                 f"{'yes' if name in instructions[4] else '—'} | {scope} | "
-                f"{'<br>'.join(symbols) or '—'} | {status} |")
+                f"{'<br>'.join(symbols) or '—'} | {alias_text} | {status} |")
 
 text = """# RDNA3/RDNA4 ISA inventory
 
@@ -75,6 +78,6 @@ are included. SALU/VALU register/control boundaries are not silently excluded.
 text += f"RDNA3: {len(instructions[3])} canonical instructions; RDNA4: {len(instructions[4])}.\n\n"
 for (scope, present), count in sorted(counts.items()):
     text += f"- {scope}, API {'present' if present else 'absent'}: {count}\n"
-text += "\n| Mnemonic | RDNA3 | RDNA4 | Scope | APIs | Audit status |\n|---|---|---|---|---|---|\n"
+text += "\n| Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit status |\n|---|---|---|---|---|---|---|\n"
 (root / "ISA_INVENTORY.md").write_text(text + "\n".join(rows) + "\n")
 print('\n'.join(text.splitlines()[16:28]))

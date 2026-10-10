@@ -264,3 +264,39 @@ int goc_s_sext_i32_i16(uint64_t flags, uint64_t instruction_flags, uint32_t *d, 
   *d = goc::sign_extend_word<16>(a);
   return GOC_SUCCESS;
 }
+
+// RDNA3 spellings share the RDNA4 carry/overflow implementations.
+int goc_s_add_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                  uint32_t *scc) {
+  return goc_s_add_co_u32(flags, instruction_flags, d, a, b, scc);
+}
+
+int goc_s_sub_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                  uint32_t *scc) {
+  return goc_s_sub_co_u32(flags, instruction_flags, d, a, b, scc);
+}
+
+int goc_s_add_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                  uint32_t *scc) {
+  return goc_s_add_co_i32(flags, instruction_flags, d, a, b, scc);
+}
+
+int goc_s_sub_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                  uint32_t *scc) {
+  return goc_s_sub_co_i32(flags, instruction_flags, d, a, b, scc);
+}
+
+int goc_s_addc_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                   uint32_t input_scc, uint32_t *scc) {
+  return goc_s_add_co_ci_u32(flags, instruction_flags, d, a, b, scc, input_scc);
+}
+
+int goc_s_subb_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a, uint32_t b,
+                   uint32_t input_scc, uint32_t *scc) {
+  return goc_s_sub_co_ci_u32(flags, instruction_flags, d, a, b, scc, input_scc);
+}
+
+int goc_s_addk_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint16_t immediate,
+                   uint32_t *scc) {
+  return goc_s_addk_co_i32(flags, instruction_flags, d, immediate, scc);
+}

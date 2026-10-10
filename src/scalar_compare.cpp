@@ -451,3 +451,70 @@ int goc_s_cmp_nlt_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *scc,
     return GOC_ERROR_INVALID_FLAGS;
   return floating<16, 14>(flags, instruction_flags, scc, a, b, excp_flag_user);
 }
+
+// RDNA3 SOPK immediate comparisons: signed extends, unsigned zero-extends.
+int goc_s_cmpk_eq_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_eq_i32(flags, instruction_flags, scc, a,
+                          uint32_t(immediate) | ((immediate & 0x8000U) ? 0xffff0000U : 0));
+}
+
+int goc_s_cmpk_lg_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_lg_i32(flags, instruction_flags, scc, a,
+                          uint32_t(immediate) | ((immediate & 0x8000U) ? 0xffff0000U : 0));
+}
+
+int goc_s_cmpk_gt_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_gt_i32(flags, instruction_flags, scc, a,
+                          uint32_t(immediate) | ((immediate & 0x8000U) ? 0xffff0000U : 0));
+}
+
+int goc_s_cmpk_ge_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_ge_i32(flags, instruction_flags, scc, a,
+                          uint32_t(immediate) | ((immediate & 0x8000U) ? 0xffff0000U : 0));
+}
+
+int goc_s_cmpk_lt_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_lt_i32(flags, instruction_flags, scc, a,
+                          uint32_t(immediate) | ((immediate & 0x8000U) ? 0xffff0000U : 0));
+}
+
+int goc_s_cmpk_le_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_le_i32(flags, instruction_flags, scc, a,
+                          uint32_t(immediate) | ((immediate & 0x8000U) ? 0xffff0000U : 0));
+}
+
+int goc_s_cmpk_eq_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_eq_u32(flags, instruction_flags, scc, a, uint32_t(immediate));
+}
+
+int goc_s_cmpk_lg_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_lg_u32(flags, instruction_flags, scc, a, uint32_t(immediate));
+}
+
+int goc_s_cmpk_gt_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_gt_u32(flags, instruction_flags, scc, a, uint32_t(immediate));
+}
+
+int goc_s_cmpk_ge_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_ge_u32(flags, instruction_flags, scc, a, uint32_t(immediate));
+}
+
+int goc_s_cmpk_lt_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_lt_u32(flags, instruction_flags, scc, a, uint32_t(immediate));
+}
+
+int goc_s_cmpk_le_u32(uint64_t flags, uint64_t instruction_flags, uint32_t *scc, uint32_t a,
+                      uint16_t immediate) {
+  return goc_s_cmp_le_u32(flags, instruction_flags, scc, a, uint32_t(immediate));
+}
