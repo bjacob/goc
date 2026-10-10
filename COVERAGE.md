@@ -55,6 +55,7 @@ be treated as verified shared semantics. Width completeness does not close this 
 | RDNA3 WMMA | All six mnemonics, both widths, exact rocjitsu GFX11 model; `wmma_replicated_exact_test.cpp`; 103 DOT2 captures and 28 packed matrices | Scalar implementations; verify inventory integration as other APIs evolve |
 | RDNA4 WMMA/SWMMAC | Existing layouts, SIMD paths, exact FP16/BF16 tests | Audit current rocjitsu against existing implementation; FP8 exact availability and state |
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | DOT2ACC and dual forms reuse the same models and SIMD; RDNA3 reporting remains unsupported; ordinary forms support both wave widths |
+| FP32 unary | Ten operations have exact RDNA3/RDNA4 results and captured RDNA4 reporting, with separate architecture policies and loose SIMD | FRACT review; native RDNA3 reporting; FP16/FP64 counterparts |
 | Floating min/max/median | RDNA3 names share existing RDNA4 NUM loose paths, including packed forms, Wave64 and SIMD dispatch | Exact IEEE-mode NaN policies and exception reporting |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
 | Scalar/register moves | MOV/CMOV, MOVK/CMOVK, SAVEEXEC/WREXEC, relative moves, GETPC and round/denorm MODE updates; scalar-relative RX 9070 captures | General GETREG/SETREG access and continued semantic audit |
@@ -2970,3 +2971,68 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   2.50–15.43% in this local run (default null-state 72.648 -> 68.096 ns;
   combined modifiers 109.030 -> 92.367 ns). Scalar artifacts use
   `../goc-build/coverage-work/round-exact-scalar-*`.
+
+### FP32 FREXP_MANT architecture, exactness and denormal handling
+
+- Split `v_frexp_mant_f32` in both wave sizes: unsuffixed RDNA3 and `_rdna4`.
+  RDNA3 suppresses OMOD when IEEE mode is enabled or output denormals are
+  preserved; RDNA4 scales independently. Both now honor guest input flushing
+  and support exact numerical results. Exact RDNA3 `TRAPSTS` reporting remains
+  explicitly unsupported without matching status evidence.
+- Borrowed rocjitsu `amdgpu::frexp_f32`'s raw-bit significand algorithm from
+  `shared/fp_mode.h`, revision `ffc144c564c`, adapting C++20 leading-zero count
+  to the existing C++17 helper. Exact evaluation and the loose scalar path share
+  that small function. Zeros/infinities survive; signaling NaNs are quieted.
+  This follows rocjitsu's common numerical model, not a new native RDNA3 capture.
+- Fresh gfx1201 capture: 1,048,576 raw result/status pairs, four denormal policies,
+  32 modifiers, 8192 operands. RDNA4 reports INVALID for **infinity as well as
+  signaling NaNs**, and INPUT_DENORM for preserved subnormal inputs. CLAMP
+  suppresses new status; no INEXACT is generated. Tests retain raw pair hashes
+  for exact reporting and canonical-NaN result hashes for loose comparisons.
+- Fixed AVX2 significand normalization: convert the 23-bit integer fraction
+  exactly rather than multiplying a subnormal floating input by a power of two.
+  The old multiplication lost inputs when host DAZ was set; the new path works
+  under every tested host rounding/FTZ/DAZ setting. Sign bits remain explicit.
+  Guest input flushing stays in the SIMD path; loose mode still skips reporting.
+- Tests cover both architectures/widths/semantics, every available CPU tier,
+  guest denormal/IEEE policy, DPP8/DPP16, sparse/full masks, in-place aliases,
+  accumulated flags, validation and empty EXEC. An old loose test's strict
+  signaling-NaN passthrough requirement was corrected to allow quieting, while
+  preserving its checks on signs, payloads and non-NaN values.
+- Updated the generated audits: 668 exception-output signatures, 378 resolved
+  names matching, zero mismatches, 290 pending. Canonical-name inventory remains
+  806/809; this is not a claim of completed cross-architecture review.
+- Follow-up evidence: LLVM rejects the OMOD assembly spelling on
+  `v_frexp_exp_i32_f32`. Its existing ignored-OMOD API contract needs a separate
+  encoding/ISA review before borrowing FREXP_MANT's modifier corpus. The failed
+  exponent probe produced no fixture; it did not affect the mantissa captures.
+- Clang 21 and GCC 15 Release each pass **1,024/1,024** tests. Targeted Clang
+  ASan/UBSan passes **60/60** FREXP_MANT, unary, DPP and FP16-unary tests (the
+  AVX2 helper is shared with widened FP16 code). Logs use
+  `/tmp/goc-frexp-mant-{clang,gcc,san}-tests.log`.
+- Refreshed README entries for the ten exact FP32 unary operations and their
+  architecture/state contracts. Unary benchmark labels now explicitly identify
+  the RDNA4 APIs they call, matching the existing WMMA naming convention.
+- Final AVX2 normalization uses the signed integer magnitude for subnormal lanes;
+  converted normal encodings are discarded. This avoids redundant fraction/sign
+  reconstruction without adding data-dependent fast-path branches. The existing
+  boolean input-flush argument is retained; passing full flags did not establish
+  a useful performance benefit.
+- Eleven alternating CPU-2-pinned samples, at least 50 ms thread CPU time per
+  case, compare against `0a77735`. Four normal-input FREXP_MANT cases cost
+  4.95–7.41% more; across normal/subnormal cases the largest added time is
+  1.251 ns (15.116 -> 16.367 ns). Subnormal inputs with combined modifiers improve
+  15.69–27.76%. Twenty-four RNDNE/SQRT/RCP control cases range from -2.71% to
+  +1.59%. This is a measured small correctness cost, not a claim of unchanged
+  FREXP throughput. SIMD remains eight lanes, including guest input flushing;
+  loose reporting remains skipped. No larger special-case dispatch was added.
+  Final samples/binaries use `../goc-build/coverage-work/frexp-mant-*` and
+  `/tmp/goc-frexp-mant-final-timing.log`.
+- Revalidated the final normalization and benchmark labels: Clang/GCC again pass
+  1,024 tests each; ASan/UBSan again passes 60 targeted tests. Final logs use
+  `/tmp/goc-frexp-mant-final-{clang,gcc,san}-tests.log`.
+- The corresponding eight loose scalar cases improve by 1.25–33.59% after
+  replacing the library `frexp` call with the borrowed bit model. Default normal
+  input/null-state changes 72.458 -> 55.284 ns; default subnormal input/null-state
+  changes 86.164 -> 57.219 ns. Eleven alternating samples use the same timing
+  protocol; scalar artifacts use `frexp-mant-scalar-*`.

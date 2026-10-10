@@ -23,7 +23,7 @@ void run(uint32_t exec_mask, uint32_t modifiers, uint32_t *d, const uint32_t *a,
         flip));
     if constexpr (unary_flushes_f32<Op>)
       value = flush_denorm_f32(value);
-    else if constexpr (unary_rounds_f32<Op>) {
+    else if constexpr (unary_rounds_f32<Op> || Op == Unary::FrexpMant) {
       if (flush_input)
         value = flush_denorm_f32(value);
     }

@@ -87,8 +87,12 @@ template <Unary Op, bool Half = false> __m256 unary_value(__m256 value) {
     auto normalized = value;
     if constexpr (!Half) {
       auto subnormal = _mm256_cmpgt_epi32(_mm256_set1_epi32(0x00800000), magnitude);
-      normalized = _mm256_blendv_ps(value, _mm256_mul_ps(value, _mm256_set1_ps(0x1p24f)),
-                                    _mm256_castsi256_ps(subnormal));
+      // Subnormal magnitudes are 23-bit integers and convert exactly under
+      // every host FP mode. Conversions of normal encodings are discarded.
+      // Never consume a subnormal float that host DAZ can erase.
+      normalized =
+          _mm256_blendv_ps(value, _mm256_cvtepi32_ps(_mm256_sign_epi32(magnitude, original)),
+                           _mm256_castsi256_ps(subnormal));
     }
     auto mantissa = _mm256_or_si256(
         _mm256_and_si256(_mm256_castps_si256(normalized), _mm256_set1_epi32(int(0x807fffff))),

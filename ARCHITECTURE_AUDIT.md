@@ -487,7 +487,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_frexp_exp_i32_f32` | SIMD macro, output helper | no | 12489, 12514 | review required |
 | `v_frexp_exp_i32_f64` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 12546, 12566 | review required |
 | `v_frexp_mant_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 12613, 12643 | review required |
-| `v_frexp_mant_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 12693, 12715 | review required |
+| `v_frexp_mant_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 12693, 12715 | review required |
 | `v_frexp_mant_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 12753, 12770 | review required |
 | `v_interp_p10_f16_f32` | no direct policy detected | no | not found | review required |
 | `v_interp_p10_f32` | no direct policy detected | no | not found | review required |

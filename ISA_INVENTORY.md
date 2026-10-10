@@ -1177,7 +1177,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_frexp_exp_i32_f32` | yes | yes | in | `goc_v_frexp_exp_i32_f32`<br>`goc_v_frexp_exp_i32_f32_wave64` | — | API present; semantic audit pending |
 | `v_frexp_exp_i32_f64` | yes | yes | in | `goc_v_frexp_exp_i32_f64`<br>`goc_v_frexp_exp_i32_f64_wave64` | — | API present; semantic audit pending |
 | `v_frexp_mant_f16` | yes | yes | in | `goc_v_frexp_mant_f16`<br>`goc_v_frexp_mant_f16_wave64` | — | API present; semantic audit pending |
-| `v_frexp_mant_f32` | yes | yes | in | `goc_v_frexp_mant_f32`<br>`goc_v_frexp_mant_f32_wave64` | — | API present; semantic audit pending |
+| `v_frexp_mant_f32` | yes | yes | in | `goc_v_frexp_mant_f32`<br>`goc_v_frexp_mant_f32_wave64`<br>`goc_v_frexp_mant_f32_rdna4`<br>`goc_v_frexp_mant_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_frexp_mant_f64` | yes | yes | in | `goc_v_frexp_mant_f64`<br>`goc_v_frexp_mant_f64_wave64` | — | API present; semantic audit pending |
 | `v_interp_p10_f16_f32` | yes | yes | in | `goc_v_interp_p10_f16_f32`<br>`goc_v_interp_p10_f16_f32_wave64` | — | API present; semantic audit pending |
 | `v_interp_p10_f32` | yes | yes | in | `goc_v_interp_p10_f32`<br>`goc_v_interp_p10_f32_wave64` | — | API present; semantic audit pending |

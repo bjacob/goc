@@ -16,10 +16,10 @@
 namespace {
 
 const decltype(&goc_v_trunc_f32_rdna4_wave64) wave64[] = {
-    goc_v_trunc_f32_rdna4_wave64, goc_v_ceil_f32_rdna4_wave64, goc_v_rndne_f32_rdna4_wave64,
-    goc_v_floor_f32_rdna4_wave64, goc_v_sqrt_f32_rdna4_wave64, goc_v_rcp_f32_rdna4_wave64,
-    goc_v_rsq_f32_rdna4_wave64,   goc_v_exp_f32_rdna4_wave64,  goc_v_log_f32_rdna4_wave64,
-    goc_v_fract_f32_wave64,       goc_v_frexp_mant_f32_wave64};
+    goc_v_trunc_f32_rdna4_wave64, goc_v_ceil_f32_rdna4_wave64,      goc_v_rndne_f32_rdna4_wave64,
+    goc_v_floor_f32_rdna4_wave64, goc_v_sqrt_f32_rdna4_wave64,      goc_v_rcp_f32_rdna4_wave64,
+    goc_v_rsq_f32_rdna4_wave64,   goc_v_exp_f32_rdna4_wave64,       goc_v_log_f32_rdna4_wave64,
+    goc_v_fract_f32_wave64,       goc_v_frexp_mant_f32_rdna4_wave64};
 
 } // namespace
 
@@ -81,7 +81,7 @@ TEST(Unary, ValidationAndEmptyMask) {
           (fn == goc_v_rcp_f32_rdna4 || fn == goc_v_trunc_f32_rdna4 || fn == goc_v_ceil_f32_rdna4 ||
            fn == goc_v_rndne_f32_rdna4 || fn == goc_v_floor_f32_rdna4 ||
            fn == goc_v_sqrt_f32_rdna4 || fn == goc_v_rsq_f32_rdna4 || fn == goc_v_exp_f32_rdna4 ||
-           fn == goc_v_log_f32_rdna4)
+           fn == goc_v_log_f32_rdna4 || fn == goc_v_frexp_mant_f32_rdna4)
               ? 2ULL << 16
               : GOC_SEMANTICS_EXACT_EMPIRICAL;
       EXPECT_EQ(fn(unsupported | GOC_SEMANTICS_STRICT, exec_mask, 0, &pd, &pa, nullptr),
@@ -122,7 +122,7 @@ TEST(Unary, FractLiteralBoundaries) {
     }
 }
 
-TEST(Unary, MantissaLiteralSubnormalsAndPassthrough) {
+TEST(Unary, MantissaLiteralSubnormalsAndSpecialValues) {
   const uint32_t cases[][2] = {
       {1, 0x3f000000},          {0x80000001, 0xbf000000}, {0x007fffff, 0x3f7ffffe},
       {0x00800000, 0x3f000000}, {0x40c00000, 0x3f400000}, {0, 0},
@@ -133,9 +133,15 @@ TEST(Unary, MantissaLiteralSubnormalsAndPassthrough) {
       uint32_t a[32], d[32];
       std::fill(a, a + 32, test[0]);
       auto pa = a, pd = d;
-      ASSERT_EQ(goc_v_frexp_mant_f32(cpu, UINT32_MAX, 0, &pd, &pa, nullptr), GOC_SUCCESS);
-      for (uint32_t value : d)
-        EXPECT_EQ(value, test[1]);
+      ASSERT_EQ(goc_v_frexp_mant_f32_rdna4(cpu, UINT32_MAX, 0, &pd, &pa, nullptr), GOC_SUCCESS);
+      for (uint32_t value : d) {
+        if ((test[1] & 0x7fffffff) > 0x7f800000) {
+          // Loose implementations may preserve or quiet a signaling NaN.
+          EXPECT_EQ(value | 0x400000U, test[1] | 0x400000U);
+        } else {
+          EXPECT_EQ(value, test[1]);
+        }
+      }
     }
 }
 
@@ -242,7 +248,7 @@ TEST(Unary, Wave64ModifiersDppSelectorsAndAliases) {
 
 TEST(Unary, Wave64ValidationAndOptionalState) {
   for (auto fn : wave64) {
-    bool exact = fn != goc_v_fract_f32_wave64 && fn != goc_v_frexp_mant_f32_wave64;
+    bool exact = fn != goc_v_fract_f32_wave64;
     EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(fn(0, UINT64_MAX, GOC_ALU_NEG_B, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(

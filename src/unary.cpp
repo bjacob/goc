@@ -27,7 +27,10 @@ uint32_t unary_exceptions(uint32_t input, uint32_t result, unsigned omod, bool f
   uint32_t fraction = magnitude & 0x7fffff;
   if (magnitude > 0x7f800000)
     return fraction & 0x400000 ? 0 : GOC_EXCEPTION_INVALID;
-  if constexpr (goc::unary_rounds_f32<Op>)
+  if constexpr (Op == goc::Unary::FrexpMant)
+    if (magnitude == 0x7f800000)
+      return GOC_EXCEPTION_INVALID;
+  if constexpr (goc::unary_rounds_f32<Op> || Op == goc::Unary::FrexpMant)
     return !exponent && fraction && !flush_input ? GOC_EXCEPTION_INPUT_DENORM : 0;
   if constexpr (Op == goc::Unary::Sqrt || Op == goc::Unary::Rsq || Op == goc::Unary::Log)
     if ((input >> 31) && exponent)
@@ -81,8 +84,9 @@ template <goc::Unary Op>
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
-  if (rdna3 && ((flags & GOC_FP_IEEE_MODE) ||
-                (goc::unary_rounds_f32<Op> && !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))))
+  if (rdna3 &&
+      ((flags & GOC_FP_IEEE_MODE) || ((goc::unary_rounds_f32<Op> || Op == goc::Unary::FrexpMant) &&
+                                      !(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))))
     mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
   unsigned omod = (mode >> 6) & 3;
   uint32_t result[32];
@@ -102,7 +106,9 @@ template <goc::Unary Op>
                                                           : goc::IntegralRound::Nearest;
       value =
           goc::round_integral_bits<rounding, false>(input, flags & GOC_FP_FLUSH_INPUT_DENORMALS);
-    } else if constexpr (Op == goc::Unary::Rcp)
+    } else if constexpr (Op == goc::Unary::FrexpMant)
+      value = goc::frexp_mant_f32_bits(input, flags & GOC_FP_FLUSH_INPUT_DENORMALS);
+    else if constexpr (Op == goc::Unary::Rcp)
       value = goc::rcp_f32_bits(input, quiet_snan);
     else if constexpr (Op == goc::Unary::Sqrt)
       value = goc::sqrt_f32_bits(input, quiet_snan);
@@ -152,7 +158,8 @@ template <goc::Unary Op, bool Rdna3 = false>
 int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
           const uint32_t *const *a, uint32_t *excp_flag_user = nullptr) {
   if constexpr (Op == goc::Unary::Rcp || Op == goc::Unary::Sqrt || Op == goc::Unary::Rsq ||
-                Op == goc::Unary::Exp || Op == goc::Unary::Log || goc::unary_rounds_f32<Op>)
+                Op == goc::Unary::Exp || Op == goc::Unary::Log || goc::unary_rounds_f32<Op> ||
+                Op == goc::Unary::FrexpMant)
     if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
       return unary_exact<Op>(flags, exec_mask, modifiers, d, a, Rdna3, excp_flag_user);
   if constexpr (Rdna3) {
@@ -173,7 +180,7 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
 
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   constexpr uint64_t fp_flags =
-      (goc::unary_flushes_f32<Op> || goc::unary_rounds_f32<Op>)
+      (goc::unary_flushes_f32<Op> || goc::unary_rounds_f32<Op> || Op == goc::Unary::FrexpMant)
           ? GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE
           : 0;
   if (int error = goc::validate(flags, modifiers & ~known, false, fp_flags))
@@ -194,7 +201,7 @@ int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *cons
     float value = goc::alu_input(a[0][lane], modifiers);
     if constexpr (goc::unary_flushes_f32<Op>)
       value = goc::flush_denorm_f32(value);
-    else if constexpr (goc::unary_rounds_f32<Op>) {
+    else if constexpr (goc::unary_rounds_f32<Op> || Op == goc::Unary::FrexpMant) {
       if (flags & GOC_FP_FLUSH_INPUT_DENORMALS)
         value = goc::flush_denorm_f32(value);
     }
@@ -372,10 +379,18 @@ int goc_v_fract_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fla
 }
 
 int goc_v_frexp_mant_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                         const uint32_t *const *a, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                         const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return unary<goc::Unary::FrexpMant>(flags, exec_mask, mode, d, a);
+  return unary<goc::Unary::FrexpMant, true>(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_frexp_mant_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary<goc::Unary::FrexpMant>(flags, exec_mask, mode, d, a, excp_flag_user);
 }
 
 int goc_v_trunc_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
@@ -526,9 +541,16 @@ int goc_v_fract_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruct
 }
 
 int goc_v_frexp_mant_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
-                                uint32_t *const *d, const uint32_t *const *a,
-                                uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                                uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
-  return unary_wave64<goc::Unary::FrexpMant>(flags, exec_mask, mode, d, a);
+  return unary_wave64<goc::Unary::FrexpMant, true>(flags, exec_mask, mode, d, a);
+}
+
+int goc_v_frexp_mant_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) > GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return unary_wave64<goc::Unary::FrexpMant>(flags, exec_mask, mode, d, a, excp_flag_user);
 }

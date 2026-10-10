@@ -4890,13 +4890,14 @@ bool benchmark_conversion32(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
   using Unary = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
-  const Unary functions[] = {goc_v_trunc_f32_rdna4, goc_v_ceil_f32_rdna4, goc_v_rndne_f32_rdna4,
-                             goc_v_floor_f32_rdna4, goc_v_sqrt_f32_rdna4, goc_v_rcp_f32_rdna4,
-                             goc_v_rsq_f32_rdna4,   goc_v_exp_f32_rdna4,  goc_v_log_f32_rdna4,
-                             goc_v_fract_f32,       goc_v_frexp_mant_f32};
-  const char *names[] = {"v_trunc_f32", "v_ceil_f32",  "v_rndne_f32",     "v_floor_f32",
-                         "v_sqrt_f32",  "v_rcp_f32",   "v_rsq_f32",       "v_exp_f32",
-                         "v_log_f32",   "v_fract_f32", "v_frexp_mant_f32"};
+  const Unary functions[] = {
+      goc_v_trunc_f32_rdna4, goc_v_ceil_f32_rdna4, goc_v_rndne_f32_rdna4,     goc_v_floor_f32_rdna4,
+      goc_v_sqrt_f32_rdna4,  goc_v_rcp_f32_rdna4,  goc_v_rsq_f32_rdna4,       goc_v_exp_f32_rdna4,
+      goc_v_log_f32_rdna4,   goc_v_fract_f32,      goc_v_frexp_mant_f32_rdna4};
+  const char *names[] = {"v_trunc_f32_rdna4", "v_ceil_f32_rdna4",      "v_rndne_f32_rdna4",
+                         "v_floor_f32_rdna4", "v_sqrt_f32_rdna4",      "v_rcp_f32_rdna4",
+                         "v_rsq_f32_rdna4",   "v_exp_f32_rdna4",       "v_log_f32_rdna4",
+                         "v_fract_f32",       "v_frexp_mant_f32_rdna4"};
   const float inputs[] = {0.25f, 1, 4, 16};
   const float exp_inputs[] = {0, 1, 2, 4};
   const float golden[][4] = {{0, 1, 4, 16},       {1, 1, 4, 16},       {0, 1, 4, 16},

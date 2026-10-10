@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 // rndne is adapted from rocjitsu util::rndne_scalar (MIT).
+// frexp_mant_f32_bits uses amdgpu::frexp_f32 (ffc144c564c), with raw bits.
 
 #pragma once
 
+#include "bits.h"
 #include "goc/goc.h"
 #include "internal.h"
 #include "round_integral.h"
@@ -28,14 +30,22 @@ inline float rndne(float value) {
   return as_float(round_integral_bits<IntegralRound::Nearest, false>(as_bits(value), false));
 }
 
+// Return the signed mantissa with magnitude in [0.5, 1) for finite nonzero inputs. Preserve
+// zeros/infinities, quiet signaling NaNs, and honor guest input flushing.
+inline uint32_t frexp_mant_f32_bits(uint32_t bits, bool flush_input) {
+  uint32_t magnitude = bits & 0x7fffffff;
+  unsigned exponent = magnitude >> 23;
+  if (exponent == 255)
+    return bits | (magnitude > 0x7f800000 ? 0x400000 : 0);
+  if (!magnitude || (!exponent && flush_input))
+    return bits & 0x80000000;
+  unsigned shift = exponent ? 0 : bit_count_zero<false>(magnitude) - 8;
+  return (bits & 0x80000000) | 0x3f000000 | ((magnitude << shift) & 0x7fffff);
+}
+
 template <Unary Op> inline float unary_value(float value) {
-  if constexpr (Op == Unary::FrexpMant) {
-    uint32_t magnitude = as_bits(value) & 0x7fffffff;
-    if (magnitude == 0 || magnitude >= 0x7f800000)
-      return value;
-    int exponent;
-    return std::frexp(value, &exponent);
-  }
+  if constexpr (Op == Unary::FrexpMant)
+    return as_float(frexp_mant_f32_bits(as_bits(value), false));
   if constexpr (Op == Unary::Trunc)
     return std::trunc(value);
   if constexpr (Op == Unary::Ceil)

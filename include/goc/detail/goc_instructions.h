@@ -4222,11 +4222,20 @@ int goc_v_rsq_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
                   uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 // Binary-significand extraction: finite nonzero inputs produce magnitude in
-// [0.5,1); zeros, infinities and NaN bits pass through before output modifiers.
-// Supports A ABS/NEG, OMOD and CLAMP, with loose semantics. FP32 uses one VGPR
-// per operand; FP64 uses low/high VGPR pairs with the FP64 alias contract.
+// [0.5,1); zeros and infinities pass through before output modifiers. FP32
+// quiets signaling NaNs in exact semantics and supports guest input flushing.
+// Supports A ABS/NEG, OMOD and CLAMP. FP32 uses one VGPR per operand and supports
+// both semantics; FP64 uses low/high VGPR pairs with loose semantics and the
+// FP64 alias contract. RDNA3 FP32 suppresses OMOD when IEEE mode is enabled or
+// output denormals are preserved; RDNA4 scales independently. RDNA4 exact
+// reporting accumulates INVALID for infinities/signaling NaNs and INPUT_DENORM
+// for preserved subnormals. CLAMP suppresses new flags. RDNA3 exact reporting
+// remains unsupported; loose calls leave optional state untouched.
 int goc_v_frexp_mant_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_frexp_mant_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 // Wave64 F32 unary forms retain Wave32 modifiers, DPP routing,
 // numerical behavior, destination preservation and optional-state contracts.
@@ -4288,8 +4297,10 @@ int goc_v_fract_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruct
                            uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_frexp_mant_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                                uint32_t *const *d, const uint32_t *const *a,
-                                uint32_t *excp_flag_user);
+                                uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+int goc_v_frexp_mant_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                      uint64_t instruction_flags, uint32_t *const *d,
+                                      const uint32_t *const *a, uint32_t *excp_flag_user);
 
 int goc_v_frexp_mant_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
