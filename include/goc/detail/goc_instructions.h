@@ -3784,23 +3784,43 @@ int goc_v_ashrrev_i64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
 
 // FP32 sine/cosine of inputs measured in turns: sin(2*pi*A), cos(2*pi*A).
-// Supports ABS_A, NEG_A, OMOD and CLAMP. Empirical exact semantics use the
-// captured RDNA3/4 integer model with denormals preserved and NaNs quieted;
-// all host floating-point state is preserved. Output scaling uses nearest-even
-// rounding, followed by CLAMP. Active OMOD flushes subnormal outputs and both
-// signed zeros to +0. Loose SIMD semantics approximate the captured polynomial
-// and require host nearest-even rounding with denormals enabled.
-// DPP8/DPP16 permutes A before source modifiers.
+// Supports ABS_A, NEG_A, OMOD, CLAMP and DPP8/DPP16. Empirical exact semantics
+// use rocjitsu's RDNA3/4 integer model. Guest input/output denormal flushing
+// applies before output scaling. RDNA3 quiets NaNs only with IEEE mode enabled;
+// IEEE also disables RDNA3 OMOD independently of guest output-denormal mode.
+// RDNA3 OMOD flushes tiny inputs before scaling, and halving a normal result
+// into the subnormal range produces signed zero. RDNA4 retains RNE scaling
+// followed by flushing tiny results and signed zeros to +0. CLAMP models
+// DX10_CLAMP=1. All three guest FP flags are accepted.
+// Exact arithmetic preserves host FP state. Loose SIMD arithmetic requires
+// host nearest-even with denormals preserved; it never changes host controls.
+// Unsuffixed APIs take RDNA3 trapsts; _rdna4 takes excp_flag_user. Exact non-null
+// reporting is unsupported on RDNA3 and with guest flushing on RDNA4. Existing
+// RDNA4 reporting with denormals preserved is retained; loose reporting is skipped.
 int goc_v_sin_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_sin_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 int goc_v_cos_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                  uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                  uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_cos_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                        uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
 // Wave64 retains the same contract, with four independent DPP rows.
 int goc_v_sin_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_sin_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 int goc_v_cos_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
-                         uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
+                         uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
+
+int goc_v_cos_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               uint32_t *excp_flag_user);
 
 // FP16 sine/cosine of inputs measured in turns. Supports ABS_A, NEG_A, OMOD,
 // CLAMP and HIGH_A/D; preserves the unselected D half. Rounds to FP16 before

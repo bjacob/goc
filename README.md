@@ -1333,7 +1333,8 @@ and guest input/output flushing.
 
 FP16 and FP32 `SIN`/`COS` support Wave32 and Wave64, sharing their existing
 empirical exact models and loose SIMD kernels. Wave64 supports four independent
-DPP rows and accumulates optional exception flags only after both halves finish.
+DPP rows. Where reporting is supported, optional exception flags accumulate
+only after both halves finish.
 
 FP32 `SIN` and `COS` take inputs in turns (`sin(2*pi*x)` and `cos(2*pi*x)`).
 Integer range reduction handles all finite FP32 encodings, including values too
@@ -1341,8 +1342,14 @@ large for a float-to-integer conversion. Empirical exact semantics borrow
 rocjitsu's captured RDNA3/4 staged integer model and preserve the entire host
 floating-point environment. The eight-lane v3 loose path shares its coefficients
 but evaluates the cubic polynomials with vector FMA. All 32 ABS/NEG/OMOD/CLAMP
-combinations stay on SIMD. Active OMOD flushes subnormal outputs and signed
-zeros to positive zero. Tests include 35 hardware-captured cases, interval
+combinations stay on SIMD. Unsuffixed FP32 APIs use RDNA3 `trapsts`; `_rdna4`
+variants use `excp_flag_user`. RDNA3 IEEE mode quiets signaling NaNs and disables
+OMOD; otherwise OMOD flushes tiny values before scaling and preserves the sign
+when halving a normal into the subnormal range. RDNA4 retains post-scaling
+flushing to +0. Guest input/output flushing applies before either output stage;
+loose guest-policy calls retain SIMD evaluation. Exact reporting is unsupported
+on RDNA3 and with guest flushing on RDNA4; preserved-denormal RDNA4 reporting
+is unchanged. Tests include 35 hardware-captured cases, interval
 boundaries, random raw encodings, all modifiers, masks and aliases, and exact
 results under every host rounding mode and x86 denormal-control setting.
 Benchmarks compare full-wave default and modified calls against independent
@@ -2436,8 +2443,9 @@ FMA/FMAC, plus direct FMAC and literal-form captures. API tests cover DPP,
 masks, aliases, and host FP controls. `CLAMP` suppresses all flags; output scaling suppresses underflow/inexact.
 Loose SIMD paths retain their existing dispatch and skip reporting.
 
-FP16/32
-`SIN`/`COS` reporting is also implemented, with exhaustive FP16 inputs, a broad
+Existing RDNA4 FP16/32 `SIN`/`COS` reporting is implemented with preserved
+denormals. The explicit FP32 RDNA3 variants and FP32 RDNA4 guest-flushing modes
+reject non-null exact reporting. Tests cover exhaustive FP16 inputs, a broad
 FP32 corpus, and FP32 boundary neighborhoods (12,582,912 captured flag reads).
 Quarter turns are exact; other finite inputs report inexact. FP32 cosine treats
 subnormal inputs as exact zero for reporting, unlike FP16 cosine. `CLAMP` and

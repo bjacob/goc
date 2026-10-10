@@ -4468,3 +4468,75 @@ sanitizer logs use that prefix in their build directories. The review ledger
 records 150 contracts. Native-state naming resolves 946 of 954 signatures,
 with zero mismatches and eight unresolved SIN/COS signatures. This does not
 establish whole-project completion.
+
+## FP32 SIN/COS architecture policies
+
+`v_sin_f32` and `v_cos_f32` now expose unsuffixed RDNA3 `trapsts` and explicit
+`_rdna4` `excp_flag_user` APIs in both wave sizes. Both share the existing integer
+range reduction and captured approximation ported from rocjitsu
+`util/amdgpu_trig.h`. Its already-supported denormal and NaN-policy parameters
+are now wired to the exposed guest flags. No coefficients or numerical model
+were inferred from new hardware work.
+
+The RDNA3 policy follows rocjitsu revision `ffc144c564c`, generated shared SIN/COS
+VOP3 handlers, `transcendental::{sin,cos}_f32`, `quiets_nan`, `effective_omod` and
+`apply_omod_f32`. IEEE mode enables NaN quieting and disables OMOD. FP32 trig
+uses the forced-flush OMOD policy independently of guest output-denormal mode:
+tiny results become +0 before scaling, while halving a normal result into the
+subnormal range produces signed zero. The existing RDNA4 result model retains
+its validated RNE scaling followed by a tiny-result/+0 flush. Guest denormal
+handling precedes either output stage. CLAMP models DX10_CLAMP=1; alternative
+DX10 behavior is not added.
+
+Numerical empirical-exact semantics work with all three guest FP flags. RDNA3
+non-null exact reporting remains unsupported; RDNA4 exact reporting with guest
+input/output flushing is also rejected before operand access. Existing RDNA4
+reporting with preserved denormals remains unchanged. Loose calls skip reporting.
+Upstream generated handlers use a host-environment guard, but the borrowed
+integer evaluator needs none: GoC does not copy or call those guards.
+
+The scalar/exact loop is shared through compile-time architecture and SIN/COS
+choices. A small integer output stage expresses the RDNA3/RDNA4 distinction.
+The existing eight-lane AVX2 approximation is unchanged byte-for-byte. RDNA3 and
+explicit guest-flush loose calls stage input/output policies around that same
+SIMD kernel; default RDNA4 calls retain direct dispatch. These calls do not fall
+back to scalar transcendental evaluation. DPP, Wave64 row handling, masks and
+alias staging remain shared. No sparse-mask optimization or host-state helper
+is introduced.
+
+Three architecture tests combine existing captured golden results with independent
+output scaling, all guest policies and supported modifiers, both wave sizes,
+DPP8/DPP16, masks, aliases, guard preservation, signaling-NaN/IEEE and denormal
+witnesses, reporting errors and host rounding/FTZ/DAZ controls. Approximate
+comparisons apply only to participating loose numerical results; guards,
+inactive lanes, zero policies and NaNs are checked as bits. Existing RDNA4
+numerical and exception hardware fixtures use the explicit RDNA4 APIs and retain
+their original expectations.
+
+A standalone C++20 harness directly includes rocjitsu's `util/amdgpu_trig.h` and
+`fp_mode.h`, applying the actual integer evaluator and RDNA3 output helpers at
+host nearest-even without using any environment guard. All 8,388,608 lane
+comparisons match, across both operations, eight guest policies, all source/output
+modifiers, random/denormal/NaN/normalization witnesses and all available CPU
+selectors. Source and output are `trig32-upstream.cpp` and `.log` in the coverage
+work folder. Production GoC and committed tests remain independent C++17 code.
+
+Seven alternating before/after timing samples, CPU 2 affinity, thread CPU time,
+at least 20 ms per case: RDNA4 SIN/COS plain and OMOD+CLAMP cases change between
+-1.58% and +1.58% across scalar and both AVX2-dispatch CPU selectors. Modified
+calls pass a non-null optional-state pointer. Raw timing data and harness are
+`trig32-performance.json` / `trig32-timing.cpp` in `../goc-build/coverage-work/`.
+
+Validation: all 1,097 CTests pass with Clang 21 Release and GCC 15 Release;
+27 targeted ASan/UBSan tests pass, including both numerical/architecture suites,
+the original exception hardware corpora, instruction flags and native-state
+contracts. The generated reporting-test exclusion now names only the reporting
+RDNA4 FP32 variants, so new RDNA3 variants enter the exhaustive rejection test.
+All nine audit-tool tests pass. Scans of all 192 library objects per compiler
+find no explicit FP-control writes or environment-setter references
+(`trig32-fp-environment-audit.json`). Logs use the `trig32-` prefix in the Clang
+coverage work folder and GCC/sanitizer build directories. README and PLAN now
+state the architecture-specific reporting limits. The review ledger records
+152 contracts; native-state naming resolves 954 of 958 signatures, with zero
+mismatches and four unresolved FP16 SIN/COS signatures. Whole-project completion
+remains unproven.

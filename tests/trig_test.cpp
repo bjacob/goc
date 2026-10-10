@@ -22,8 +22,8 @@
 
 namespace {
 
-using Fn = decltype(&goc_v_sin_f32);
-const Fn functions[] = {goc_v_sin_f32, goc_v_cos_f32};
+using Fn = decltype(&goc_v_sin_f32_rdna4);
+const Fn functions[] = {goc_v_sin_f32_rdna4, goc_v_cos_f32_rdna4};
 
 uint32_t modifiers(int mode) {
   return (mode & 1 ? GOC_ALU_NEG_A : 0) | (mode & 2 ? GOC_ALU_ABS_A : 0) |
@@ -306,8 +306,8 @@ TEST(Trig, DppHardwareCorpus) {
 }
 
 TEST(Trig, Wave64CapturedResultsWithEveryModifier) {
-  const decltype(&goc_v_sin_f32_wave64) wave64_functions[] = {goc_v_sin_f32_wave64,
-                                                              goc_v_cos_f32_wave64};
+  const decltype(&goc_v_sin_f32_rdna4_wave64) wave64_functions[] = {goc_v_sin_f32_rdna4_wave64,
+                                                                    goc_v_cos_f32_rdna4_wave64};
   for (int op = 0; op < 2; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (int mode = 0; mode < 32; ++mode)
@@ -334,8 +334,8 @@ TEST(Trig, Wave64CapturedResultsWithEveryModifier) {
 }
 
 TEST(Trig, Wave64ExactPreservesHostEnvironment) {
-  const decltype(&goc_v_sin_f32_wave64) wave64_functions[] = {goc_v_sin_f32_wave64,
-                                                              goc_v_cos_f32_wave64};
+  const decltype(&goc_v_sin_f32_rdna4_wave64) wave64_functions[] = {goc_v_sin_f32_rdna4_wave64,
+                                                                    goc_v_cos_f32_rdna4_wave64};
   uint32_t source[64], expected[2][32][64];
   for (int lane = 0; lane < 64; ++lane)
     source[lane] = goc_test::trig_golden[(lane + 7 * (lane / 32)) % 32][0];

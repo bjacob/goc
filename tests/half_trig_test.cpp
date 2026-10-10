@@ -24,7 +24,7 @@ namespace {
 
 using Fn = decltype(&goc_v_sin_f16);
 const Fn functions[] = {goc_v_sin_f16, goc_v_cos_f16};
-const Fn wide_functions[] = {goc_v_sin_f32, goc_v_cos_f32};
+const Fn wide_functions[] = {goc_v_sin_f32_rdna4, goc_v_cos_f32_rdna4};
 
 uint32_t modifiers(int mode) {
   return (mode & 1 ? GOC_ALU_NEG_A : 0) | (mode & 2 ? GOC_ALU_ABS_A : 0) |

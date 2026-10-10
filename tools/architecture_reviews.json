@@ -295,5 +295,14 @@
       "v_dot2_f16_f16",
       "v_dot2_bf16_bf16"
     ]
+  },
+  {
+    "heading": "FP32 SIN/COS architecture policies",
+    "semantics": "loose and exact",
+    "tests": "tests/trig_architecture_test.cpp",
+    "mnemonics": [
+      "v_sin_f32",
+      "v_cos_f32"
+    ]
   }
 ]

@@ -1494,7 +1494,7 @@ bool benchmark_half_trig(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_trig(uint64_t cpu, int iterations, int min_ms) {
   using Unary = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
-  const Unary functions[] = {goc_v_sin_f32, goc_v_cos_f32};
+  const Unary functions[] = {goc_v_sin_f32_rdna4, goc_v_cos_f32_rdna4};
   const char *names[] = {"v_sin_f32", "v_cos_f32"};
   for (int op = 0; op < 2; ++op)
     for (uint32_t modifiers : {0U, GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP})

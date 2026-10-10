@@ -428,8 +428,10 @@ Their newly hardware-derived exception classifiers have been removed. Both
 architectures reject non-null exact reporting; loose paths skip state updates.
 DX9 forms retain their numerical model and have no optional state output.
 
-FP16/32 `SIN`/`COS` report invalid, input-denormal, underflow, and inexact flags.
-Their hardware corpora cover every FP16 encoding, FP32 exponent/mantissa patterns,
+Existing RDNA4 FP16/32 `SIN`/`COS` report invalid, input-denormal, underflow,
+and inexact flags with denormals preserved. FP32 unsuffixed RDNA3 APIs and FP32
+RDNA4 guest-flushing modes reject non-null exact reporting; loose calls skip
+reporting. Their hardware corpora cover every FP16 encoding, FP32 exponent/mantissa patterns,
 and FP32 neighborhoods around underflow, quarter turns, zeros, and NaNs.
 
 FP32/64 `DIV_FMAS` report overflow, underflow and inexact after conditional
