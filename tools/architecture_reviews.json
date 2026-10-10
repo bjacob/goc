@@ -1071,5 +1071,22 @@
       "v_dual_lshlrev_b32",
       "v_dual_mov_b32"
     ]
+  },
+  {
+    "heading": "FP32 binary and dual minmax architecture contracts",
+    "semantics": "loose",
+    "tests": "tests/binary_test.cpp",
+    "mnemonics": [
+      "v_min_f32",
+      "v_max_f32",
+      "v_min_num_f32",
+      "v_max_num_f32",
+      "v_minimum_f32",
+      "v_maximum_f32",
+      "v_dual_min_f32",
+      "v_dual_max_f32",
+      "v_dual_min_num_f32",
+      "v_dual_max_num_f32"
+    ]
   }
 ]

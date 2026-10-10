@@ -6182,3 +6182,61 @@ operation tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `dual-integer-review-` in each build directory. GCC's initial build hit the
 `/tmp` quota; the retry succeeded using build-local compiler temporary files.
 The ledger records 611 contracts; 198 in-scope mnemonics remain unrecorded.
+
+## FP32 binary and dual minmax architecture contracts
+
+Reviewed six ordinary FP32 min/max mnemonics and four dual spellings at
+rocjitsu `ffc144c564c`: twenty ordinary normal/modifier handler bodies, ten
+shared execution helpers, four VOPD cases, output scaling and the GoC scalar/SIMD
+selection paths. The ordinary handlers delegate to the named shared helpers;
+DPP stages A and applies source modifiers before selection. Bodies, locations,
+hashes and limitations are in
+`../goc-build/coverage-work/fp32-minmax-upstream-review.json`.
+
+RDNA3 MIN/MAX have IEEE-dependent signaling-NaN priority. Outside IEEE mode,
+a lone NaN loses to a number and two NaNs select A unchanged. RDNA4 MIN_NUM/
+MAX_NUM always prefer a numeric operand and quiet A when both are NaNs.
+RDNA4 MINIMUM/MAXIMUM propagate NaNs, preferring signaling A, signaling B,
+quiet A, then quiet B. All variants order negative zero below positive zero.
+These ISA names already distinguish the families; no architecture suffix is
+needed. Dual MIN/MAX exist on RDNA3 and dual MIN_NUM/MAX_NUM on RDNA4.
+
+The instruction-specific VALU notes make input flushing precede selection and
+make output flushing irrelevant to the unscaled result. The RDNA3 atomic
+chapter's separate rule about returning an unflushed selected operand must not
+be substituted for these VALU notes. Ordinary forms apply source ABS before NEG,
+then selection, effective OMOD, then CLAMP. RDNA3 OMOD is disabled by IEEE mode
+or preserved output denormals; RDNA4 OMOD is independent of those flags.
+Active scaling follows the borrowed tiny-value rules in `apply_omod_f32`.
+Dual forms have no modifier fields and continue to reject every nonzero mode.
+Ordinary forms support both wave sizes and DPP; dual forms remain Wave32-only.
+
+Upstream's number/legacy implementations use host `fmin`/`fmax`; their bodies
+do not implement all guest IEEE/denormal or payload rules. Its propagating
+scalar helper produces a canonical NaN, while GoC retains the existing explicit
+manual-based selection policy. These upstream paths do not establish a faithful
+bit-exact implementation or exception model. GoC therefore remains loose-only:
+strict exact numerical requests fail, non-strict null-reporting calls may fall
+back, and any requested non-loose global state fails before operands or EXEC are
+examined. Loose mode leaves the optional state unchanged. No new exact model,
+numerical support claim or hardware characterization was introduced.
+
+No production change was needed. The existing eight-lane v3 kernel handles all
+selection kinds, source/output modifiers and guest settings; newer CPU levels
+use the same path. SIMD corrects x86 NaN/zero selection with explicit bit masks
+and preserves inactive destinations with masked stores. Scalar and vector
+helpers retain the same RDNA3 IEEE branch. Optional loose reporting adds no
+arithmetic work.
+
+Extended the literal NaN/zero/denormal matrix to all four dual min/max APIs,
+including guest modes, CPU levels, source aliases and mixed EXEC. Added checks
+for all six ordinary and four dual forms that exact reporting rejects empty
+EXEC and invalid modes without modifying outputs, regardless of strictness;
+null permits numerical fallback only when strictness is absent. The same tests
+verify loose non-null reporting succeeds and preserves the register. Existing
+ordinary tests cover source/output modifiers, both wave sizes, DPP and aliases.
+
+Validation: all 1,136 CTests pass under Clang and GCC Release; all twenty-four
+Binary/Dual/MinmaxSpellings tests pass under ASan/UBSan. Logs use
+`fp32-minmax-review-` in each build directory. The ledger records 621 contracts;
+188 in-scope mnemonics remain without recorded reviews.

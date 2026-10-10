@@ -351,15 +351,19 @@ TEST(Binary, MinmaxGuestIeeeNaNsAndDenormalSelection) {
       {0, 0x80000000, 0x80000000, 0, 0x80000000, 0, 0x80000000, 0},
       {0x80000001, 1, 0x80000001, 1, 0x80000001, 1, 0x80000001, 1},
   };
-  const Fn narrow[] = {goc_v_min_f32, goc_v_max_f32, goc_v_min_num_f32, goc_v_max_num_f32};
+  const Fn narrow[] = {goc_v_min_f32,          goc_v_max_f32,         goc_v_min_num_f32,
+                       goc_v_max_num_f32,      goc_v_dual_min_f32,    goc_v_dual_max_f32,
+                       goc_v_dual_min_num_f32, goc_v_dual_max_num_f32};
   const decltype(&goc_v_min_f32_wave64) wide[] = {goc_v_min_f32_wave64, goc_v_max_f32_wave64,
                                                   goc_v_min_num_f32_wave64,
                                                   goc_v_max_num_f32_wave64};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-    for (unsigned op = 0; op < 4; ++op)
+    for (unsigned op = 0; op < 8; ++op)
       for (unsigned settings = 0; settings < 8; ++settings)
         for (unsigned width : {32U, 64U})
           for (unsigned alias = 0; alias < 3; ++alias) {
+            if (op >= 4 && width == 64)
+              continue;
             uint32_t words[3][64], before[3][64];
             for (unsigned lane = 0; lane < 64; ++lane) {
               words[0][lane] = cases[lane % 9][0];
@@ -378,7 +382,7 @@ TEST(Binary, MinmaxGuestIeeeNaNsAndDenormalSelection) {
                                   : wide[op](flags, exec_mask, 0, &d, &a, &b, &state),
                       GOC_SUCCESS);
             EXPECT_EQ(state, 0x12345678U);
-            unsigned column = 2 + (op >= 2 ? 4 : settings & 4 ? 2 : 0) + (op & 1);
+            unsigned column = 2 + (op % 4 >= 2 ? 4 : settings & 4 ? 2 : 0) + (op & 1);
             for (unsigned lane = 0; lane < width; ++lane) {
               uint32_t expected = cases[lane % 9][column];
               if ((settings & 1) && lane % 9 == 8)
@@ -412,4 +416,53 @@ TEST(Binary, Dx9GuestInputFlushPrecedesZeroOverride) {
           for (unsigned lane = 0; lane < width; ++lane)
             EXPECT_EQ(d[lane], 0U);
         }
+}
+
+TEST(Binary, MinmaxExactOptOutFallbackAndErrorOrdering) {
+  const Fn narrow[] = {goc_v_min_f32,         goc_v_max_f32,      goc_v_min_num_f32,
+                       goc_v_max_num_f32,     goc_v_minimum_f32,  goc_v_maximum_f32,
+                       goc_v_dual_min_f32,    goc_v_dual_max_f32, goc_v_dual_min_num_f32,
+                       goc_v_dual_max_num_f32};
+  const decltype(&goc_v_min_f32_wave64) wide[] = {
+      goc_v_min_f32_wave64,     goc_v_max_f32_wave64,     goc_v_min_num_f32_wave64,
+      goc_v_max_num_f32_wave64, goc_v_minimum_f32_wave64, goc_v_maximum_f32_wave64};
+  for (unsigned op = 0; op < 10; ++op)
+    for (unsigned width : {32U, 64U}) {
+      if (width == 64 && op >= 6)
+        continue;
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (bool strict : {false, true}) {
+          uint32_t a[64], b[64], output[64];
+          std::fill_n(a, 64, 0xc0000000U); // -2
+          std::fill_n(b, 64, 0x40400000U); // 3
+          std::fill_n(output, 64, 0xdeadbeefU);
+          const uint32_t *pa = a, *pb = b;
+          uint32_t *d = output, state = 0x12345678U;
+          auto call = [&](uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *report) {
+            return width == 32 ? narrow[op](flags, uint32_t(exec_mask), mode, &d, &pa, &pb, report)
+                               : wide[op](flags, exec_mask, mode, &d, &pa, &pb, report);
+          };
+          uint64_t flags =
+              cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | (strict ? GOC_SEMANTICS_STRICT : 0);
+          // Requested exact state must fail even with empty EXEC, invalid
+          // instruction flags, or non-strict numerical fallback allowed.
+          for (uint64_t exec_mask : {0ULL, 0xffffffffffffffffULL}) {
+            EXPECT_EQ(call(flags, exec_mask, 0, &state), GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+            EXPECT_EQ(call(flags, exec_mask, 1ULL << 63, &state),
+                      GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+          }
+          EXPECT_EQ(state, 0x12345678U);
+          for (auto word : output)
+            EXPECT_EQ(word, 0xdeadbeefU);
+          int result = call(flags, 0xffffffffffffffffULL, 0, nullptr);
+          EXPECT_EQ(result, strict ? GOC_ERROR_UNSUPPORTED_SEMANTICS : GOC_SUCCESS);
+          for (unsigned lane = 0; lane < width; ++lane)
+            EXPECT_EQ(output[lane], strict ? 0xdeadbeefU : op & 1 ? 0x40400000U : 0xc0000000U);
+          // Loose reporting is optional and never blocks the SIMD calculation.
+          EXPECT_EQ(call(cpu, 0xffffffffffffffffULL, 0, &state), GOC_SUCCESS);
+          EXPECT_EQ(state, 0x12345678U);
+          for (unsigned lane = 0; lane < width; ++lane)
+            EXPECT_EQ(output[lane], op & 1 ? 0x40400000U : 0xc0000000U);
+        }
+    }
 }
