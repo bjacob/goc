@@ -212,9 +212,9 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_frexp_exp_i32_f32`, `v_frexp_exp_i32_f64` | Scalar, x86-64-v3 | Not implemented |
 | `v_ldexp_f32`, `v_ldexp_f64` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_min_i32`, `v_max_i32`, `v_min_u32`, `v_max_u32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
-| `v_mul_lo_u32`, `v_mul_hi_u32`, `v_mul_hi_i32` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
-| `v_add_nc_u32`, `v_sub_nc_u32`, `v_subrev_nc_u32`, `v_add_nc_i32`, `v_sub_nc_i32`, `v_add3_u32` | Scalar, x86-64-v3 (saturation), x86-64-v4 | Not implemented |
-| `v_mul_i32_i24`, `v_mul_hi_i32_i24`, `v_mul_u32_u24`, `v_mul_hi_u32_u24` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
+| `v_mul_lo_u32`, `v_mul_hi_u32`, `v_mul_hi_i32` | Scalar, x86-64-v3, x86-64-v4 | Exact integer operations; both wave sizes |
+| `v_add_nc_u32`, `v_sub_nc_u32`, `v_subrev_nc_u32`, `v_add_nc_i32`, `v_sub_nc_i32`, `v_add3_u32` | Scalar, x86-64-v3 (saturation), x86-64-v4 | Exact integer operations; both wave sizes |
+| `v_mul_i32_i24`, `v_mul_hi_i32_i24`, `v_mul_u32_u24`, `v_mul_hi_u32_u24` | Scalar, x86-64-v3, x86-64-v4 | Exact integer operations; both wave sizes |
 | `v_min3_{i32,u32}`, `v_max3_{i32,u32}`, `v_minmax_{i32,u32}`, `v_maxmin_{i32,u32}`, `v_med3_{i32,u32}` | Scalar, x86-64-v3, x86-64-v4 | Not implemented |
 | `v_trunc_f32`, `v_ceil_f32`, `v_rndne_f32`, `v_floor_f32`, `v_fract_f32` | Scalar, x86-64-v3 | Not implemented |
 | `v_sqrt_f32`, `v_rcp_f32`, `v_rsq_f32` | Scalar, x86-64-v3 | Not implemented |
@@ -2423,3 +2423,10 @@ have `_wave64` forms. Both semantics are exact at both wave sizes. DPP is
 supported on the first source for bitfields and 32-bit shifts; 64-bit shifts
 require zero instruction flags and retain one count VGPR plus two value and
 destination VGPRs. Existing scalar/v3/v4 dispatch policies are retained.
+
+
+Non-carry 32-bit integer ADD/SUB/SUBREV/ADD3 and the seven 24/32-bit MUL forms
+provide `_wave64` APIs. Both wave sizes accept strict exact semantics. Saturation,
+signed 24-bit truncation/extension and high-product extraction reuse the existing
+integer kernels. DPP remains limited to addition and 24-bit multiplication;
+SUBREV routes B, while the other supported operations route A.

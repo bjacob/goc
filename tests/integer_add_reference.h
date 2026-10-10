@@ -25,6 +25,23 @@ inline const IntegerAddFn integer_add_functions[] = {
     integer_add_binary<goc_v_subrev_nc_u32>, integer_add_binary<goc_v_add_nc_i32>,
     integer_add_binary<goc_v_sub_nc_i32>,    goc_v_add3_u32};
 
+using IntegerAddWave64Fn = decltype(&goc_v_add3_u32_wave64);
+
+template <auto Function>
+int integer_add_binary_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              const uint32_t *const *) {
+  return Function(flags, exec_mask, mode, d, a, b);
+}
+
+inline const IntegerAddWave64Fn integer_add_wave64_functions[] = {
+    integer_add_binary_wave64<goc_v_add_nc_u32_wave64>,
+    integer_add_binary_wave64<goc_v_sub_nc_u32_wave64>,
+    integer_add_binary_wave64<goc_v_subrev_nc_u32_wave64>,
+    integer_add_binary_wave64<goc_v_add_nc_i32_wave64>,
+    integer_add_binary_wave64<goc_v_sub_nc_i32_wave64>,
+    goc_v_add3_u32_wave64};
+
 inline uint32_t integer_add_reference(int op, uint32_t a, uint32_t b, uint32_t c, bool clamp) {
   int64_t x = a, y = b;
   bool signed_op = op == 3 || op == 4;

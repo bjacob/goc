@@ -27,7 +27,7 @@ int multiply(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const 
   }
 
   const uint32_t known = Bits == 24 && !High ? GOC_ALU_CLAMP : 0;
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
@@ -63,6 +63,28 @@ int multiply(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const 
   for (int lane = 0; lane < 32; ++lane)
     if (exec_mask >> lane & 1)
       d[0][lane] = result[lane];
+  return GOC_SUCCESS;
+}
+
+template <int Bits, bool Signed, bool High>
+int multiply_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                    const uint32_t *const *a, const uint32_t *const *b) {
+  if (int error = multiply<Bits, Signed, High>(flags, 0, mode, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32;
+    if (int error = multiply<Bits, Signed, High>(flags, uint32_t(exec_mask >> (half * 32)),
+                                                 half_mode, &dest, &source_a, &source_b))
+      return error;
+  }
   return GOC_SUCCESS;
 }
 
@@ -107,4 +129,52 @@ int goc_v_mul_u32_u24(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
 int goc_v_mul_hi_u32_u24(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return multiply<24, false, true>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_mul_lo_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return multiply_wave64<32, false, false>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_mul_hi_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return multiply_wave64<32, false, true>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_mul_hi_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return multiply_wave64<32, true, true>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_mul_i32_i24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             const uint32_t *const *b) {
+  return multiply_wave64<24, true, false>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_mul_hi_i32_i24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b) {
+  return multiply_wave64<24, true, true>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_mul_u32_u24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             const uint32_t *const *b) {
+  return multiply_wave64<24, false, false>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_mul_hi_u32_u24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b) {
+  return multiply_wave64<24, false, true>(flags, exec_mask, instruction_flags, d, a, b);
 }

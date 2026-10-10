@@ -17,6 +17,12 @@ inline const IntegerMulFn integer_mul_functions[] = {
     goc_v_mul_lo_u32,     goc_v_mul_hi_u32,  goc_v_mul_hi_i32,    goc_v_mul_i32_i24,
     goc_v_mul_hi_i32_i24, goc_v_mul_u32_u24, goc_v_mul_hi_u32_u24};
 
+using IntegerMulWave64Fn = decltype(&goc_v_mul_lo_u32_wave64);
+inline const IntegerMulWave64Fn integer_mul_wave64_functions[] = {
+    goc_v_mul_lo_u32_wave64,    goc_v_mul_hi_u32_wave64,     goc_v_mul_hi_i32_wave64,
+    goc_v_mul_i32_i24_wave64,   goc_v_mul_hi_i32_i24_wave64, goc_v_mul_u32_u24_wave64,
+    goc_v_mul_hi_u32_u24_wave64};
+
 inline bool integer_mul_can_clamp(int op) { return op == 3 || op == 5; }
 
 inline uint32_t integer_mul_reference(int op, uint32_t a, uint32_t b, bool clamp) {

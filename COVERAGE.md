@@ -801,3 +801,25 @@ or throughput measurement is claimed. The width-review queue now contains
 
 Validation: all 761 tests pass on Clang 21 and GCC 15 Release. All 23 shift,
 bitfield, Wave64, DPP and instruction-flag tests pass under ASan/UBSan.
+
+
+## Wave64 non-carry integer addition and multiplication
+
+Added six ADD/SUB/SUBREV/ADD3 and seven MUL Wave64 APIs, reusing existing
+portable, x86-64-v3 and x86-64-v4 kernels and dispatch policy. Ordinary 32-bit
+multiply still rejects DPP; 24-bit multiply supports it, and only low-product
+24-bit forms accept saturation. ADD3 still wraps and rejects CLAMP; SUBREV's
+DPP source remains B. Whole-VGPR aliases are preserved with row-local DPP.
+
+Both wave sizes now accept strict exact semantics for these integer kernels.
+Tests independently cover signed/unsigned 24/32-bit boundary pairs, random
+words with discarded upper bytes, high/low products, saturation, ADD3 overflow,
+all CPU paths, both semantics, DPP8/DPP16 and every row mask, different masks
+across halves, whole-source aliases, guards and validation before operand
+access. Existing Wave32 captures continue validating shared numerical/routing
+logic; no new Wave64 GPU capture or throughput measurement is claimed.
+The width-review queue now has 292 candidates.
+
+Validation: all 763 tests pass with Clang 21 and GCC 15 Release. All nineteen
+integer arithmetic, Wave64, DPP, instruction-flag and zero-EXEC tests pass under
+ASan/UBSan. The zero-EXEC support table now records the expanded exact support.

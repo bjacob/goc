@@ -75,7 +75,14 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_bfe_u32" || base_name == "goc_v_bfe_i32" ||
         base_name == "goc_v_bfi_b32" || base_name == "goc_v_bfm_b32" ||
         base_name == "goc_v_bfrev_b32" || base_name == "goc_v_alignbit_b32" ||
-        base_name == "goc_v_alignbyte_b32" || base_name == "goc_v_perm_b32")
+        base_name == "goc_v_alignbyte_b32" || base_name == "goc_v_perm_b32" ||
+        base_name == "goc_v_add_nc_u32" || base_name == "goc_v_sub_nc_u32" ||
+        base_name == "goc_v_subrev_nc_u32" || base_name == "goc_v_add_nc_i32" ||
+        base_name == "goc_v_sub_nc_i32" || base_name == "goc_v_add3_u32" ||
+        base_name == "goc_v_mul_lo_u32" || base_name == "goc_v_mul_hi_u32" ||
+        base_name == "goc_v_mul_hi_i32" || base_name == "goc_v_mul_i32_i24" ||
+        base_name == "goc_v_mul_hi_i32_i24" || base_name == "goc_v_mul_u32_u24" ||
+        base_name == "goc_v_mul_hi_u32_u24")
       name = base_name.c_str();
   } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));

@@ -3332,7 +3332,7 @@ int goc_v_med3_u32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *
 // MUL_I32_I24 and MUL_U32_U24 support GOC_ALU_CLAMP to saturate to the signed
 // or unsigned 32-bit range; otherwise low results wrap. All four 24-bit forms
 // support DPP8/DPP16 on A; other instruction flags are invalid. The 32-bit forms
-// require zero instruction_flags. Loose semantics; preserves the host FP environment.
+// require zero instruction_flags. Both semantics are exact; preserves the host FP environment.
 int goc_v_mul_lo_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
 
@@ -3358,8 +3358,8 @@ int goc_v_mul_hi_u32_u24(uint64_t flags, uint32_t exec_mask, uint64_t instructio
 // D may alias any whole source VGPR. The two-input forms accept GOC_ALU_CLAMP
 // to saturate in the signed/unsigned result domain; otherwise results wrap.
 // ADD3 wraps modulo 2^32 and requires zero low instruction-flag bits. All forms
-// support DPP8/DPP16 on A, except SUBREV_NC_U32 which permutes B. Supports loose
-// semantics and preserves the host FP environment. No carry mask is produced.
+// support DPP8/DPP16 on A, except SUBREV_NC_U32 which permutes B. Both semantics
+// are exact and preserve the host FP environment. No carry mask is produced.
 int goc_v_add_nc_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
 
@@ -3860,6 +3860,55 @@ int goc_v_wmma_i32_16x16x16_iu4_rdna4(uint64_t flags, uint64_t instruction_flags
 int goc_v_wmma_i32_16x16x32_iu4(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c);
+
+// Wave64 non-carry integer addition/subtraction and multiplication. EXEC has
+// 64 bits; each operand uses one VGPR. Saturation, signed extension, truncation,
+// modifiers, DPP restrictions and whole-VGPR aliases match Wave32. Both
+// semantics are exact. No carry mask or floating exception state is produced.
+int goc_v_add_nc_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_sub_nc_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_subrev_nc_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b);
+
+int goc_v_add_nc_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_sub_nc_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_add3_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c);
+
+int goc_v_mul_lo_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_mul_hi_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_mul_hi_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
+
+int goc_v_mul_i32_i24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             const uint32_t *const *b);
+
+int goc_v_mul_hi_i32_i24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
+
+int goc_v_mul_u32_u24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             const uint32_t *const *b);
+
+int goc_v_mul_hi_u32_u24_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b);
 
 // Wave64 shifts and bitfields. EXEC has 64 bits; operand VGPR counts, count
 // wrapping, modifiers and whole-VGPR aliases match Wave32. Shifts of 64-bit

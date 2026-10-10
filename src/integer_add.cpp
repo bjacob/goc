@@ -30,7 +30,7 @@ int arithmetic(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *cons
 
   constexpr bool three = Op == goc::IntegerAdd::Add3;
   const uint32_t known = three ? 0 : GOC_ALU_CLAMP;
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
@@ -73,6 +73,32 @@ int arithmetic(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *cons
   return GOC_SUCCESS;
 }
 
+template <goc::IntegerAdd Op, bool Signed>
+int arithmetic_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                      const uint32_t *const *a, const uint32_t *const *b,
+                      const uint32_t *const *c) {
+  if (int error = arithmetic<Op, Signed>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32;
+    const uint32_t *source_c = nullptr;
+    if constexpr (Op == goc::IntegerAdd::Add3)
+      source_c = c[0] + half * 32;
+    if (int error = arithmetic<Op, Signed>(flags, uint32_t(exec_mask >> (half * 32)), half_mode,
+                                           &dest, &source_a, &source_b, &source_c))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_add_nc_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -109,4 +135,46 @@ int goc_v_add3_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flag
                    uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                    const uint32_t *const *c) {
   return arithmetic<goc::IntegerAdd::Add3, false>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_add_nc_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  return arithmetic_wave64<goc::IntegerAdd::Add, false>(flags, exec_mask, instruction_flags, d, a,
+                                                        b, nullptr);
+}
+
+int goc_v_sub_nc_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  return arithmetic_wave64<goc::IntegerAdd::Sub, false>(flags, exec_mask, instruction_flags, d, a,
+                                                        b, nullptr);
+}
+
+int goc_v_subrev_nc_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b) {
+  return arithmetic_wave64<goc::IntegerAdd::Subrev, false>(flags, exec_mask, instruction_flags, d,
+                                                           a, b, nullptr);
+}
+
+int goc_v_add_nc_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  return arithmetic_wave64<goc::IntegerAdd::Add, true>(flags, exec_mask, instruction_flags, d, a, b,
+                                                       nullptr);
+}
+
+int goc_v_sub_nc_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  return arithmetic_wave64<goc::IntegerAdd::Sub, true>(flags, exec_mask, instruction_flags, d, a, b,
+                                                       nullptr);
+}
+
+int goc_v_add3_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return arithmetic_wave64<goc::IntegerAdd::Add3, false>(flags, exec_mask, instruction_flags, d, a,
+                                                         b, c);
 }
