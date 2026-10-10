@@ -3477,7 +3477,9 @@ int goc_v_mul_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 // FP32 min/max: one VGPR per operand; supports A/B ABS/NEG, OMOD and CLAMP.
 // Loose semantics only. Number variants prefer numeric operands over NaNs;
 // minimum/maximum propagate NaNs, preferring signaling NaNs and quieting them.
-// Both families order -0 below +0.
+// Both families order -0 below +0. Guest input flushing applies before selection;
+// output flushing is ignored except as required by OMOD. GOC_FP_IEEE_MODE is
+// accepted without changing RDNA4's selection or OMOD rules.
 int goc_v_min_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       uint32_t *excp_flag_user);
@@ -3494,7 +3496,12 @@ int goc_v_maximum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                       uint32_t *excp_flag_user);
 
-// RDNA3 floating min/max/median spellings. Share the corresponding *_num_*
+// RDNA3 FP32 MIN/MAX use guest IEEE mode: signaling NaNs take priority when set;
+// otherwise a lone NaN is ignored and two NaNs select A unchanged. OMOD is ignored
+// when IEEE is set or output denormals are preserved. Input flushing precedes
+// selection; output flushing otherwise has no effect. Both widths use SIMD.
+//
+// Other RDNA3 floating min/max/median spellings share the corresponding *_num_*
 // loose implementations, operand widths, modifiers, alias rules and SIMD paths.
 // Number selection ignores a lone NaN and orders -0 below +0; exact IEEE-mode
 // signaling-NaN behavior is not implemented. Strict exact requests fail; non-null
@@ -3518,7 +3525,7 @@ int goc_v_max_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags
                   uint32_t *excp_flag_user);
 
 // Wave64 FP32 binary forms preserve the Wave32 source/output modifiers, DPP
-// routing, loose semantics and optional-state contract. MIN/MAX alias MIN_NUM/MAX_NUM.
+// routing, loose semantics and optional-state contract, including RDNA3 MIN/MAX policy.
 int goc_v_add_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user);
@@ -3570,6 +3577,11 @@ int goc_v_maximum_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instru
 int goc_v_mul_dx9_zero_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                                   uint32_t *const *d, const uint32_t *const *a,
                                   const uint32_t *const *b, uint32_t *excp_flag_user);
+
+int goc_v_mul_dx9_zero_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask,
+                                        uint64_t instruction_flags, uint32_t *const *d,
+                                        const uint32_t *const *a, const uint32_t *const *b,
+                                        uint32_t *excp_flag_user);
 
 int goc_v_min_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
@@ -3952,9 +3964,16 @@ int goc_v_maximumminimum_f32(uint64_t flags, uint32_t exec_mask, uint64_t instru
 // DX9 multiplication: one VGPR per operand, with A/B ABS/NEG, OMOD and CLAMP.
 // Either signed-zero input forces a positive-zero product, including with NaN
 // or infinity as the other input. Loose semantics only.
+// Unsuffixed DX9 multiply uses RDNA3's conditional OMOD rule; _rdna4 applies OMOD
+// regardless of guest IEEE/output-denormal mode. Both accept guest input/output
+// flushing and remain loose-only. A zero input forces positive zero.
 int goc_v_mul_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                            uint32_t *excp_flag_user);
+
+int goc_v_mul_dx9_zero_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, uint32_t *excp_flag_user);
 
 // FP32 fractional part: x - floor(x), capped at the largest FP32 value below one
 // before output scaling/CLAMP. Supports A ABS/NEG, OMOD and CLAMP, loose semantics.

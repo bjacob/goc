@@ -52,14 +52,37 @@ void run(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d, const u
       value = minmax<false, true>(x, y);
     if constexpr (Op == Binary::Maximum)
       value = minmax<true, true>(x, y);
+    if constexpr (Op == Binary::MinLegacy || Op == Binary::MaxLegacy) {
+      value = minmax<Op == Binary::MaxLegacy, false>(x, y);
+      auto a_bits = _mm256_castps_si256(x), b_bits = _mm256_castps_si256(y);
+      auto magnitude = _mm256_set1_epi32(INT32_MAX);
+      auto infinity = _mm256_set1_epi32(0x7f800000);
+      auto quiet = _mm256_set1_epi32(0x00400000);
+      auto an = _mm256_cmpgt_epi32(_mm256_and_si256(a_bits, magnitude), infinity);
+      auto bn = _mm256_cmpgt_epi32(_mm256_and_si256(b_bits, magnitude), infinity);
+      if (flags & GOC_FP_IEEE_MODE) {
+        auto sna =
+            _mm256_andnot_si256(_mm256_cmpeq_epi32(_mm256_and_si256(a_bits, quiet), quiet), an);
+        auto snb =
+            _mm256_andnot_si256(_mm256_cmpeq_epi32(_mm256_and_si256(b_bits, quiet), quiet), bn);
+        value = _mm256_blendv_ps(value, _mm256_castsi256_ps(_mm256_or_si256(b_bits, quiet)),
+                                 _mm256_castsi256_ps(snb));
+        value = _mm256_blendv_ps(value, _mm256_castsi256_ps(_mm256_or_si256(a_bits, quiet)),
+                                 _mm256_castsi256_ps(sna));
+      } else {
+        value = _mm256_blendv_ps(value, x, _mm256_castsi256_ps(_mm256_and_si256(an, bn)));
+      }
+    }
     if (mode & GOC_ALU_OMOD_HALF) {
       value = prepare_omod_f32(value, mode);
       value = _mm256_mul_ps(value, scale);
     }
     if (mode & GOC_ALU_CLAMP)
       value = _mm256_min_ps(_mm256_max_ps(value, _mm256_setzero_ps()), _mm256_set1_ps(1));
-    if (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)
-      value = flush_denorm_f32(value);
+    if constexpr (Op == Binary::Add || Op == Binary::Sub || Op == Binary::Subrev ||
+                  Op == Binary::Mul || Op == Binary::MulDx9Zero)
+      if (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)
+        value = flush_denorm_f32(value);
     auto lane_exec_mask = _mm256_sllv_epi32(_mm256_set1_epi32(int(exec_mask >> lane)),
                                             _mm256_setr_epi32(31, 30, 29, 28, 27, 26, 25, 24));
     _mm256_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask,
@@ -88,6 +111,10 @@ void binary_x86_64_v3(Binary op, uint64_t flags, uint32_t exec_mask, uint32_t mo
     return run<Binary::Maximum>(flags, exec_mask, mode, d, a, b);
   case Binary::MulDx9Zero:
     return run<Binary::MulDx9Zero>(flags, exec_mask, mode, d, a, b);
+  case Binary::MinLegacy:
+    return run<Binary::MinLegacy>(flags, exec_mask, mode, d, a, b);
+  case Binary::MaxLegacy:
+    return run<Binary::MaxLegacy>(flags, exec_mask, mode, d, a, b);
   case Binary::Mul:
     return run<Binary::Mul>(flags, exec_mask, mode, d, a, b);
   }

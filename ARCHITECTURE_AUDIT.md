@@ -543,7 +543,7 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_mqsad_pk_u16_u8` | no direct policy detected | no | not found | review required |
 | `v_mqsad_u32_u8` | no direct policy detected | no | not found | review required |
 | `v_msad_u8` | SIMD macro, output helper | no | 16472 | review required |
-| `v_mul_dx9_zero_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 16489, 16513 | review required |
+| `v_mul_dx9_zero_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 16489, 16513 | review required |
 | `v_mul_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | no | 16563, 16595 | review required |
 | `v_mul_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 16664, 16689 | review required |
 | `v_mul_f64` | IEEE mode, OMOD, SIMD macro, architecture query | no | 16747, 16766 | review required |

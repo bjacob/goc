@@ -2012,11 +2012,26 @@ EXEC masks and aliases, plus a 65,536-result GFX1201 hardware corpus. The
 AVX2 (3.9–5.4× scalar) and 11.8–12.0 ns/wave on AVX-512 (7.6–10.2×),
 including FI/NEG/output scaling.
 
-Binary FP32 arithmetic and min/max (including the MIN/MAX aliases) have
+Binary FP32 arithmetic and min/max have
 Wave32 and `_wave64` APIs with the same scalar/AVX2 paths, loose semantics,
 and optional-state contract.
 
-DPP8/DPP16 also cover all nine binary FP32 arithmetic operations and all nine
+FP32 `v_add_f32`, `v_sub_f32`, `v_subrev_f32`, and `v_mul_f32` now use the
+unsuffixed APIs for RDNA3 and `_rdna4` variants for RDNA4 (before `_wave64`).
+RDNA3 ignores OMOD unless `GOC_FP_FLUSH_OUTPUT_DENORMALS` is set and
+`GOC_FP_IEEE_MODE` is clear; RDNA4 always applies it. These APIs also accept
+`GOC_FP_FLUSH_INPUT_DENORMALS`. Both architectures retain the eight-lane AVX2
+path with these flags, DPP, and masked stores. Arithmetic remains loose-only;
+IEEE-mode support here does not promise exact signaling-NaN behavior.
+
+FP32 `v_mul_dx9_zero_f32` likewise has RDNA3 and `_rdna4` variants in both wave
+sizes. RDNA3 `v_min_f32`/`v_max_f32` use guest IEEE mode for signaling-NaN
+selection and obey RDNA3 OMOD gating; RDNA4 `v_min_num_f32`/`v_max_num_f32`
+retain number preference. All FP32 binary min/max variants accept guest input
+flushing; output-denormal flushing has no effect on selection itself. These
+policies remain SIMD implementations and do not change host FP controls.
+
+DPP8/DPP16 also cover all nine RDNA4 binary FP32 arithmetic operations and all nine
 three-input FP32 min/max/median operations. They retain their AVX2 arithmetic
 paths, using AVX-512 source permutation on x86-64-v4 hosts. A shared adapter
 validates each instruction's own flags before reading sources and snapshots
@@ -2548,11 +2563,3 @@ exact semantics. Wide forms use two VGPRs for C/D, one each for A/B, and a
 required 64-bit carry result committed after vector writes. Carry records the
 extended sum's bit 64 before saturation, including for signed MAD. Narrow-factor
 forms retain DPP and v3 paths; wide forms reject DPP and retain v3/v4 paths.
-
-FP32 `v_add_f32`, `v_sub_f32`, `v_subrev_f32`, and `v_mul_f32` now use the
-unsuffixed APIs for RDNA3 and `_rdna4` variants for RDNA4 (before `_wave64`).
-RDNA3 ignores OMOD unless `GOC_FP_FLUSH_OUTPUT_DENORMALS` is set and
-`GOC_FP_IEEE_MODE` is clear; RDNA4 always applies it. These APIs also accept
-`GOC_FP_FLUSH_INPUT_DENORMALS`. Both architectures retain the eight-lane AVX2
-path with these flags, DPP, and masked stores. Arithmetic remains loose-only;
-IEEE-mode support here does not promise exact signaling-NaN behavior.

@@ -1858,3 +1858,24 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
 - Validation: all 937 tests pass under Clang 21 and GCC 15 Release; all 10
   Binary/InstructionFlags tests pass under ASan/UBSan; four audit-tool tests pass.
   Logs: `../goc-build/coverage-work/binary-policy-*-tests.log`.
+
+## FP32 binary selection and DX9 policy follow-up
+
+- RDNA3 MIN/MAX now have their own explicit selection rules: in IEEE mode an
+  sNaN wins over a numeric value (and is quieted); outside IEEE mode a lone NaN
+  is ignored and two NaNs select A unchanged. RDNA4 MIN_NUM/MAX_NUM keep number
+  preference. The manuals' V_MIN_F32/V_MAX_F32 pseudocode is stronger evidence
+  here than rocjitsu's shared host `fmin`/`fmax` implementation.
+- Both architectures' min/max apply input flushing before selection and ignore
+  output flushing except through OMOD. This follows the instruction-specific
+  denormal notes, not the different memory-atomic rules. RDNA3 additionally gates
+  OMOD on guest IEEE/output-denormal mode.
+- DX9 multiply is split into unsuffixed RDNA3 and `_rdna4`, in both wave widths.
+  It shares the existing arithmetic kernels and adds guest denormal/IEEE flags.
+- Tests extend the architecture-policy matrix to MIN/MAX and DX9 multiply, and
+  use literal NaN/sign/denormal expectations across CPUs, guest flags, widths,
+  masks and aliases. Existing RDNA4 tests/benchmark calls retain their behavior
+  under the suffixed DX9 names. Exact arithmetic/state requests remain unsupported.
+- Validation: all 939 tests pass under Clang 21 and GCC 15 Release, and all 16
+  Binary/MinmaxSpellings/InstructionFlags tests pass under ASan/UBSan. Four audit
+  tool tests pass. Logs: `../goc-build/coverage-work/binary-selection-*-tests.log`.

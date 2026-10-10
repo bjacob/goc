@@ -1290,7 +1290,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_mqsad_pk_u16_u8` | yes | yes | in | `goc_v_mqsad_pk_u16_u8`<br>`goc_v_mqsad_pk_u16_u8_wave64` | — | API present; semantic audit pending |
 | `v_mqsad_u32_u8` | yes | yes | in | `goc_v_mqsad_u32_u8`<br>`goc_v_mqsad_u32_u8_wave64` | — | API present; semantic audit pending |
 | `v_msad_u8` | yes | yes | in | `goc_v_msad_u8`<br>`goc_v_msad_u8_wave64` | — | API present; semantic audit pending |
-| `v_mul_dx9_zero_f32` | yes | yes | in | `goc_v_mul_dx9_zero_f32`<br>`goc_v_mul_dx9_zero_f32_wave64` | `v_mul_legacy_f32` | API present; semantic audit pending |
+| `v_mul_dx9_zero_f32` | yes | yes | in | `goc_v_mul_dx9_zero_f32`<br>`goc_v_mul_dx9_zero_f32_wave64`<br>`goc_v_mul_dx9_zero_f32_rdna4`<br>`goc_v_mul_dx9_zero_f32_rdna4_wave64` | `v_mul_legacy_f32` | API present; semantic audit pending |
 | `v_mul_f16` | yes | yes | in | `goc_v_mul_f16`<br>`goc_v_mul_f16_wave64` | — | API present; semantic audit pending |
 | `v_mul_f32` | yes | yes | in | `goc_v_mul_f32`<br>`goc_v_mul_f32_wave64`<br>`goc_v_mul_f32_rdna4`<br>`goc_v_mul_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_mul_f64` | yes | yes | in | `goc_v_mul_f64`<br>`goc_v_mul_f64_wave64` | — | API present; semantic audit pending |

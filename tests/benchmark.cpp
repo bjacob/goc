@@ -4940,9 +4940,10 @@ bool benchmark_unary(uint64_t cpu, int iterations, int min_ms) {
 
 bool benchmark_binary(uint64_t cpu, int iterations, int min_ms) {
   using Binary = goc_test::WaveInstruction<decltype(&goc_v_min_u32)>;
-  const Binary functions[] = {goc_v_add_f32_rdna4, goc_v_sub_f32_rdna4, goc_v_subrev_f32_rdna4,
-                              goc_v_mul_f32_rdna4, goc_v_min_num_f32,   goc_v_max_num_f32,
-                              goc_v_minimum_f32,   goc_v_maximum_f32,   goc_v_mul_dx9_zero_f32};
+  const Binary functions[] = {
+      goc_v_add_f32_rdna4, goc_v_sub_f32_rdna4, goc_v_subrev_f32_rdna4,
+      goc_v_mul_f32_rdna4, goc_v_min_num_f32,   goc_v_max_num_f32,
+      goc_v_minimum_f32,   goc_v_maximum_f32,   goc_v_mul_dx9_zero_f32_rdna4};
   const char *names[] = {"v_add_f32",     "v_sub_f32",     "v_subrev_f32",
                          "v_mul_f32",     "v_min_num_f32", "v_max_num_f32",
                          "v_minimum_f32", "v_maximum_f32", "v_mul_dx9_zero_f32"};

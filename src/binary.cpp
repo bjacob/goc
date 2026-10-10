@@ -23,11 +23,8 @@ int binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d
 
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_NEG_B | GOC_ALU_ABS_A | GOC_ALU_ABS_B |
                          GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
-  constexpr bool arithmetic = Op == goc::Binary::Add || Op == goc::Binary::Sub ||
-                              Op == goc::Binary::Subrev || Op == goc::Binary::Mul;
   constexpr uint64_t fp_flags =
-      arithmetic ? GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE
-                 : 0;
+      GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
   if (int error = goc::validate(flags, mode & ~known, false, fp_flags))
     return error;
   // RDNA3 ignores output scaling when denormal outputs are preserved or IEEE
@@ -69,9 +66,27 @@ int binary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d
       value = goc::minmax<false, true>(x, y);
     if constexpr (Op == goc::Binary::Maximum)
       value = goc::minmax<true, true>(x, y);
+    if constexpr (Op == goc::Binary::MinLegacy || Op == goc::Binary::MaxLegacy) {
+      value = goc::minmax<Op == goc::Binary::MaxLegacy, false>(x, y);
+      uint32_t a_bits = goc::as_bits(x), b_bits = goc::as_bits(y);
+      bool an = (a_bits & 0x7fffffffU) > 0x7f800000U;
+      bool bn = (b_bits & 0x7fffffffU) > 0x7f800000U;
+      // RDNA3 IEEE mode gives signaling NaNs priority. Otherwise two NaNs
+      // select A unchanged, including its signaling bit.
+      if (flags & GOC_FP_IEEE_MODE) {
+        if (an && !(a_bits & 0x00400000U))
+          value = goc::as_float(a_bits | 0x00400000U);
+        else if (bn && !(b_bits & 0x00400000U))
+          value = goc::as_float(b_bits | 0x00400000U);
+      } else if (an && bn) {
+        value = x;
+      }
+    }
     value = goc::alu_output_f32(value, mode);
-    if (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)
-      value = goc::flush_denorm_f32(value);
+    if constexpr (Op == goc::Binary::Add || Op == goc::Binary::Sub || Op == goc::Binary::Subrev ||
+                  Op == goc::Binary::Mul || Op == goc::Binary::MulDx9Zero)
+      if (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS)
+        value = goc::flush_denorm_f32(value);
     result[lane] = goc::as_bits(value);
   }
   for (int lane = 0; lane < 32; ++lane)
@@ -201,17 +216,29 @@ int goc_v_mul_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, ui
                            uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return binary<goc::Binary::MulDx9Zero, true>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_mul_dx9_zero_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return binary<goc::Binary::MulDx9Zero>(flags, exec_mask, mode, d, a, b);
 }
 
 int goc_v_min_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                   const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
-  return goc_v_min_num_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return binary<goc::Binary::MinLegacy, true>(flags, exec_mask, mode, d, a, b);
 }
 
 int goc_v_max_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                   const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
-  return goc_v_max_num_f32(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return binary<goc::Binary::MaxLegacy, true>(flags, exec_mask, mode, d, a, b);
 }
 
 int goc_v_add_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -315,17 +342,29 @@ int goc_v_mul_dx9_zero_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t m
                                   const uint32_t *const *b, uint32_t *excp_flag_user) {
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return binary_wave64<goc::Binary::MulDx9Zero, true>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_mul_dx9_zero_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                        uint32_t *const *d, const uint32_t *const *a,
+                                        const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return binary_wave64<goc::Binary::MulDx9Zero>(flags, exec_mask, mode, d, a, b);
 }
 
 int goc_v_min_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user) {
-  return goc_v_min_num_f32_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return binary_wave64<goc::Binary::MinLegacy, true>(flags, exec_mask, mode, d, a, b);
 }
 
 int goc_v_max_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
                          uint32_t *excp_flag_user) {
-  return goc_v_max_num_f32_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user);
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return binary_wave64<goc::Binary::MaxLegacy, true>(flags, exec_mask, mode, d, a, b);
 }

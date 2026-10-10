@@ -17,12 +17,12 @@ namespace {
 using Fn = decltype(&goc_v_add_f32_rdna4);
 const Fn functions[] = {goc_v_add_f32_rdna4, goc_v_sub_f32_rdna4, goc_v_subrev_f32_rdna4,
                         goc_v_mul_f32_rdna4, goc_v_min_num_f32,   goc_v_max_num_f32,
-                        goc_v_minimum_f32,   goc_v_maximum_f32,   goc_v_mul_dx9_zero_f32};
+                        goc_v_minimum_f32,   goc_v_maximum_f32,   goc_v_mul_dx9_zero_f32_rdna4};
 
 const decltype(&goc_v_add_f32_rdna4_wave64) wave64[] = {
     goc_v_add_f32_rdna4_wave64, goc_v_sub_f32_rdna4_wave64, goc_v_subrev_f32_rdna4_wave64,
     goc_v_mul_f32_rdna4_wave64, goc_v_min_num_f32_wave64,   goc_v_max_num_f32_wave64,
-    goc_v_minimum_f32_wave64,   goc_v_maximum_f32_wave64,   goc_v_mul_dx9_zero_f32_wave64,
+    goc_v_minimum_f32_wave64,   goc_v_maximum_f32_wave64,   goc_v_mul_dx9_zero_f32_rdna4_wave64,
     goc_v_min_f32_wave64,       goc_v_max_f32_wave64};
 
 } // namespace
@@ -136,7 +136,7 @@ TEST(Binary, Dx9ZeroOverridesEveryOtherOperand) {
             b[lane] = reverse ? zero : values[lane % 14];
           }
           auto pa = a, pb = b, pd = d;
-          ASSERT_EQ(goc_v_mul_dx9_zero_f32(cpu, UINT32_MAX, mode, &pd, &pa, &pb, nullptr),
+          ASSERT_EQ(goc_v_mul_dx9_zero_f32_rdna4(cpu, UINT32_MAX, mode, &pd, &pa, &pb, nullptr),
                     GOC_SUCCESS);
           for (uint32_t value : d)
             EXPECT_EQ(value, 0u) << cpu << "/" << mode << "/" << zero << "/" << reverse;
@@ -149,7 +149,8 @@ TEST(Binary, Dx9NonzeroUnderflowRetainsSign) {
   std::fill(b, b + 32, 1);
   auto pa = a, pb = b, pd = d;
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    ASSERT_EQ(goc_v_mul_dx9_zero_f32(cpu, UINT32_MAX, 0, &pd, &pa, &pb, nullptr), GOC_SUCCESS);
+    ASSERT_EQ(goc_v_mul_dx9_zero_f32_rdna4(cpu, UINT32_MAX, 0, &pd, &pa, &pb, nullptr),
+              GOC_SUCCESS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0x80000000);
   }
@@ -192,7 +193,7 @@ TEST(Binary, Wave64ModifiersDppMasksAndAliases) {
               }
               float expected = goc_test::binary_reference(
                   op >= 9 ? op - 5 : op, goc::as_float(source < 0 ? 0 : before[0][source + 1]),
-                  goc::as_float(before[1][lane + 1]), mode);
+                  goc::as_float(before[1][lane + 1]), op >= 9 ? mode & ~GOC_ALU_OMOD_HALF : mode);
               if (std::isnan(expected))
                 EXPECT_TRUE(std::isnan(goc::as_float(d[lane])));
               else
@@ -224,12 +225,16 @@ TEST(Binary, Wave64ValidationAndOptionalState) {
 TEST(Binary, ArchitectureOutputScalingGuestModesAndDpp) {
   // RDNA3 ISA 7.2.3.1: OMOD is disabled by preserved output denormals or IEEE.
   // RDNA4 applies OMOD regardless. Finite powers of two avoid rounding ambiguity.
-  const Fn rdna3[] = {goc_v_add_f32, goc_v_sub_f32, goc_v_subrev_f32, goc_v_mul_f32};
+  const Fn rdna3[] = {goc_v_add_f32, goc_v_sub_f32, goc_v_subrev_f32,      goc_v_mul_f32,
+                      goc_v_min_f32, goc_v_max_f32, goc_v_mul_dx9_zero_f32};
+  const unsigned rdna4_index[] = {0, 1, 2, 3, 4, 5, 8};
   const decltype(&goc_v_add_f32_wave64) rdna3_wide[] = {
-      goc_v_add_f32_wave64, goc_v_sub_f32_wave64, goc_v_subrev_f32_wave64, goc_v_mul_f32_wave64};
+      goc_v_add_f32_wave64,         goc_v_sub_f32_wave64, goc_v_subrev_f32_wave64,
+      goc_v_mul_f32_wave64,         goc_v_min_f32_wave64, goc_v_max_f32_wave64,
+      goc_v_mul_dx9_zero_f32_wave64};
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned arch = 0; arch < 2; ++arch)
-      for (unsigned op = 0; op < 4; ++op)
+      for (unsigned op = 0; op < 7; ++op)
         for (unsigned settings = 0; settings < 8; ++settings)
           for (unsigned scale = 0; scale < 4; ++scale)
             for (unsigned route = 0; route < 8; ++route)
@@ -253,10 +258,10 @@ TEST(Binary, ArchitectureOutputScalingGuestModesAndDpp) {
                   uint64_t mode = descriptor | (uint64_t(scale) << 6) | GOC_ALU_NEG_B;
                   uint32_t state = 0x12345678;
                   int status = width == 32
-                                   ? (arch ? functions[op] : rdna3[op])(flags, uint32_t(exec_mask),
-                                                                        mode, &d, &a, &b, &state)
-                                   : (arch ? wave64[op] : rdna3_wide[op])(flags, exec_mask, mode,
-                                                                          &d, &a, &b, &state);
+                                   ? (arch ? functions[rdna4_index[op]] : rdna3[op])(
+                                         flags, uint32_t(exec_mask), mode, &d, &a, &b, &state)
+                                   : (arch ? wave64[rdna4_index[op]] : rdna3_wide[op])(
+                                         flags, exec_mask, mode, &d, &a, &b, &state);
                   ASSERT_EQ(status, GOC_SUCCESS);
                   EXPECT_EQ(state, 0x12345678U);
                   const float scales[] = {1, 2, 4, 0.5f};
@@ -270,7 +275,14 @@ TEST(Binary, ArchitectureOutputScalingGuestModesAndDpp) {
                     if (enabled) {
                       float x = source < 0 ? 0 : goc::as_float(before[0][source + 1]);
                       float y = -goc::as_float(before[1][lane + 1]);
-                      float value = op == 0 ? x + y : op == 1 ? x - y : op == 2 ? y - x : x * y;
+                      float value = op == 0   ? x + y
+                                    : op == 1 ? x - y
+                                    : op == 2 ? y - x
+                                    : op == 4 ? std::min(x, y)
+                                    : op == 5 ? std::max(x, y)
+                                              : x * y;
+                      if (op == 6 && (x == 0 || y == 0))
+                        value = 0;
                       // Active OMOD maps an unscaled zero (including -0) to +0.
                       bool active_omod = scale && (arch || ((settings & 2) && !(settings & 4)));
                       expected = active_omod && value == 0 ? 0 : goc::as_bits(value * factor);
@@ -316,4 +328,88 @@ TEST(Binary, GuestDenormalFlushingAndUnsupportedExactState) {
                           0, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
+}
+
+TEST(Binary, MinmaxGuestIeeeNaNsAndDenormalSelection) {
+  // Columns A, B, RDNA3 IEEE=0 min/max, RDNA3 IEEE=1 min/max, RDNA4 min/max.
+  // Manual V_MIN_F32/V_MAX_F32 pseudocode gives sNaNs priority only in IEEE mode.
+  const uint32_t cases[][8] = {
+      {0x7f812345, 0x3f800000, 0x3f800000, 0x3f800000, 0x7fc12345, 0x7fc12345, 0x3f800000,
+       0x3f800000},
+      {0xbf800000, 0xff812346, 0xbf800000, 0xbf800000, 0xffc12346, 0xffc12346, 0xbf800000,
+       0xbf800000},
+      {0x7fc12345, 0xff812346, 0x7fc12345, 0x7fc12345, 0xffc12346, 0xffc12346, 0x7fc12345,
+       0x7fc12345},
+      {0x7f812345, 0xff812346, 0x7f812345, 0x7f812345, 0x7fc12345, 0x7fc12345, 0x7fc12345,
+       0x7fc12345},
+      {0x7f812345, 0xffc12346, 0x7f812345, 0x7f812345, 0x7fc12345, 0x7fc12345, 0x7fc12345,
+       0x7fc12345},
+      {0x7fc12345, 0xffc12346, 0x7fc12345, 0x7fc12345, 0x7fc12345, 0x7fc12345, 0x7fc12345,
+       0x7fc12345},
+      {0x7fc12345, 0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000,
+       0x3f800000},
+      {0, 0x80000000, 0x80000000, 0, 0x80000000, 0, 0x80000000, 0},
+      {0x80000001, 1, 0x80000001, 1, 0x80000001, 1, 0x80000001, 1},
+  };
+  const Fn narrow[] = {goc_v_min_f32, goc_v_max_f32, goc_v_min_num_f32, goc_v_max_num_f32};
+  const decltype(&goc_v_min_f32_wave64) wide[] = {goc_v_min_f32_wave64, goc_v_max_f32_wave64,
+                                                  goc_v_min_num_f32_wave64,
+                                                  goc_v_max_num_f32_wave64};
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned op = 0; op < 4; ++op)
+      for (unsigned settings = 0; settings < 8; ++settings)
+        for (unsigned width : {32U, 64U})
+          for (unsigned alias = 0; alias < 3; ++alias) {
+            uint32_t words[3][64], before[3][64];
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              words[0][lane] = cases[lane % 9][0];
+              words[1][lane] = cases[lane % 9][1];
+              words[2][lane] = 0xdeadbeef;
+            }
+            std::memcpy(before, words, sizeof words);
+            uint32_t *d = words[alias];
+            const uint32_t *a = words[0], *b = words[1];
+            uint64_t flags = cpu | (settings & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                             (settings & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                             (settings & 4 ? GOC_FP_IEEE_MODE : 0);
+            uint64_t exec_mask = 0x87654321fedcba98ULL;
+            uint32_t state = 0x12345678;
+            ASSERT_EQ(width == 32 ? narrow[op](flags, uint32_t(exec_mask), 0, &d, &a, &b, &state)
+                                  : wide[op](flags, exec_mask, 0, &d, &a, &b, &state),
+                      GOC_SUCCESS);
+            EXPECT_EQ(state, 0x12345678U);
+            unsigned column = 2 + (op >= 2 ? 4 : settings & 4 ? 2 : 0) + (op & 1);
+            for (unsigned lane = 0; lane < width; ++lane) {
+              uint32_t expected = cases[lane % 9][column];
+              if ((settings & 1) && lane % 9 == 8)
+                expected &= 0x80000000U;
+              if (!((exec_mask >> lane) & 1))
+                expected = before[alias][lane];
+              EXPECT_EQ(d[lane], expected) << cpu << '/' << op << '/' << settings << '/' << lane;
+            }
+          }
+}
+
+TEST(Binary, Dx9GuestInputFlushPrecedesZeroOverride) {
+  const Fn narrow[] = {goc_v_mul_dx9_zero_f32, goc_v_mul_dx9_zero_f32_rdna4};
+  const decltype(&goc_v_mul_dx9_zero_f32_wave64) wide[] = {goc_v_mul_dx9_zero_f32_wave64,
+                                                           goc_v_mul_dx9_zero_f32_rdna4_wave64};
+  // A negative subnormal becomes -0 when flushed; DX9 then overrides infinity
+  // and NaN with +0, rather than producing an invalid multiplication result.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned arch = 0; arch < 2; ++arch)
+      for (unsigned width : {32U, 64U})
+        for (uint32_t other : {0x7f800000U, 0xff800000U, 0x7f812345U, 0xffc12345U}) {
+          uint32_t a[64], b[64], d[64];
+          std::fill(a, a + 64, 0x80000001U);
+          std::fill(b, b + 64, other);
+          uint32_t *pd = d;
+          const uint32_t *pa = a, *pb = b;
+          uint64_t flags = cpu | GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_IEEE_MODE;
+          ASSERT_EQ(width == 32 ? narrow[arch](flags, UINT32_MAX, 0, &pd, &pa, &pb, nullptr)
+                                : wide[arch](flags, UINT64_MAX, 0, &pd, &pa, &pb, nullptr),
+                    GOC_SUCCESS);
+          for (unsigned lane = 0; lane < width; ++lane)
+            EXPECT_EQ(d[lane], 0U);
+        }
 }
