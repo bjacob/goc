@@ -44,8 +44,8 @@ inline bool bit(const Magnitude &a, int position) {
   return position >= 0 && ((a[unsigned(position) / 64] >> (unsigned(position) % 64)) & 1);
 }
 
-inline uint32_t pack(const Magnitude &a, bool negative, bool half, bool saturate,
-                     bool rtz = false) {
+inline uint32_t pack(const Magnitude &a, bool negative, bool half, bool saturate, bool rtz = false,
+                     bool flush_output = false) {
   uint32_t sign = negative ? (half ? 0x8000 : 0x80000000) : 0;
   int top = 639;
   while (top >= 0 && !bit(a, top))
@@ -54,7 +54,10 @@ inline uint32_t pack(const Magnitude &a, bool negative, bool half, bool saturate
     return sign;
   int precision = half ? 11 : 24, min_exp = half ? -14 : -126, max_exp = half ? 15 : 127;
   int exponent = top - 298;
-  int shift = std::max(top - precision + 1, min_exp - precision + 1 + 298);
+  if (flush_output && exponent < min_exp - 1)
+    return sign;
+  int shift = flush_output ? top - precision + 1
+                           : std::max(top - precision + 1, min_exp - precision + 1 + 298);
   uint32_t significand = 0;
   for (int i = top; i >= shift; --i)
     significand = (significand << 1) | unsigned(bit(a, i));
@@ -73,7 +76,7 @@ inline uint32_t pack(const Magnitude &a, bool negative, bool half, bool saturate
   if (exponent > max_exp)
     return sign | (half ? ((saturate || rtz) ? 0x7bff : 0x7c00) : (rtz ? 0x7f7fffff : 0x7f800000));
   if (exponent < min_exp)
-    return sign | significand;
+    return flush_output ? sign : sign | significand;
   return sign | (uint32_t(exponent + (half ? 15 : 127)) << (precision - 1)) |
          (significand & ((uint32_t(1) << (precision - 1)) - 1));
 }
@@ -85,13 +88,15 @@ struct Number {
   uint32_t nan;
 };
 
-inline Number decode(uint32_t raw, uint32_t mode, int operand) {
+inline Number decode(uint32_t raw, uint32_t mode, int operand, bool flush_input = false) {
   bool half = mode & (GOC_MIX_F16_A << operand);
   if (half)
     raw = uint16_t(raw >> (mode & (GOC_ALU_HIGH_A << operand) ? 16 : 0));
   unsigned fraction_bits = half ? 10 : 23, exponent_bits = half ? 5 : 8;
   uint32_t fraction = raw & ((uint32_t(1) << fraction_bits) - 1);
   unsigned exponent = (raw >> fraction_bits) & ((1u << exponent_bits) - 1);
+  if (flush_input && !exponent)
+    fraction = 0;
   bool negative = (raw >> (half ? 15 : 31)) & 1;
   if (mode & (GOC_ALU_ABS_A << operand))
     negative = false;
@@ -106,8 +111,10 @@ inline Number decode(uint32_t raw, uint32_t mode, int operand) {
 }
 
 inline uint32_t evaluate(int output, uint32_t a, uint32_t b, uint32_t c, uint32_t before,
-                         uint32_t mode, bool saturate, bool rtz = false) {
-  auto x = decode(a, mode, 0), y = decode(b, mode, 1), z = decode(c, mode, 2);
+                         uint32_t mode, bool saturate, bool rtz = false, uint64_t fp_flags = 0) {
+  bool flush_input = fp_flags & GOC_FP_FLUSH_INPUT_DENORMALS;
+  auto x = decode(a, mode, 0, flush_input), y = decode(b, mode, 1, flush_input),
+       z = decode(c, mode, 2, flush_input);
   uint32_t special = 0;
   if ((!x.significand && !x.infinity && !x.nan && y.infinity) ||
       (!y.significand && !y.infinity && !y.nan && x.infinity))
@@ -136,7 +143,8 @@ inline uint32_t evaluate(int output, uint32_t a, uint32_t b, uint32_t c, uint32_
       negative = compare(product, addend) < 0 ? z.negative : false;
       sum = add(addend, product, true);
     }
-    result = pack(sum, negative, output != 0, saturate, rtz);
+    result =
+        pack(sum, negative, output != 0, saturate, rtz, fp_flags & GOC_FP_FLUSH_OUTPUT_DENORMALS);
   }
   if (mode & GOC_ALU_CLAMP) {
     uint32_t sign = output ? 0x8000 : 0x80000000;

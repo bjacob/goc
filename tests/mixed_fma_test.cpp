@@ -6,6 +6,7 @@
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "half_reference.h"
+#include "mixed_fma_guest_hardware.h"
 #include "mixed_fma_reference.h"
 
 #include <algorithm>
@@ -57,9 +58,9 @@ bool equal(int op, uint32_t got, uint32_t want, bool exact) {
   if (status != GOC_SUCCESS)
     return ::testing::AssertionFailure() << "status " << status;
   for (int lane = 0; lane < 32; ++lane) {
-    uint32_t want =
-        goc_test::mixed_fma_reference::evaluate(op, input[0][lane], input[1][lane], input[2][lane],
-                                                input[3][lane], mode, flags & GOC_FP16_OVFL);
+    uint32_t want = goc_test::mixed_fma_reference::evaluate(op, input[0][lane], input[1][lane],
+                                                            input[2][lane], input[3][lane], mode,
+                                                            flags & GOC_FP16_OVFL, false, flags);
     if (!equal(op, out[lane], want,
                op && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL))
       return ::testing::AssertionFailure()
@@ -412,8 +413,12 @@ TEST(MixedFma, ExactPreservesHostStateAndErrorsPrecedeEmptyMask) {
           EXPECT_TRUE(std::equal(words[3], words[3] + 32, original));
           if (op) {
             for (uint32_t mode : {0U, known, GOC_MIX_F16_A | GOC_ALU_HIGH_A})
-              EXPECT_TRUE(check(op, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                mode, words));
+              for (uint64_t guest :
+                   {uint64_t(0), GOC_FP_FLUSH_INPUT_DENORMALS, GOC_FP_FLUSH_OUTPUT_DENORMALS,
+                    GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS})
+                EXPECT_TRUE(
+                    check(op, cpu | guest | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                          mode, words));
             std::fill_n(words[0], 32, 0x3f800000);
             std::fill_n(words[1], 32, 0x3f801000);
             std::fill_n(words[2], 32, 1);
@@ -668,25 +673,18 @@ TEST(MixedFma, ArchitectureGuestPolicies) {
                     return wide ? f64(flags, exec_mask, mode, &dest, &x, &y, &z, output)
                                 : f32(flags, uint32_t(exec_mask), mode, &dest, &x, &y, &z, output);
                   };
-                  ASSERT_EQ(invoke(exact && (rdna3 || policy) ? nullptr : &state), GOC_SUCCESS);
+                  ASSERT_EQ(invoke(exact && rdna3 ? nullptr : &state), GOC_SUCCESS);
                   EXPECT_EQ(state, 0x12345678U);
                   for (int lane = 0; lane < 64; ++lane) {
                     if (lane >= (wide ? 64 : 32) || !((exec_mask >> lane) & 1)) {
                       EXPECT_EQ(d[lane], 0xdeadbeefU);
                       continue;
                     }
-                    uint32_t inputs[] = {a[lane], b[lane], c[lane]};
-                    if (!op && (policy & 1))
-                      for (int operand = 0; operand < 3; ++operand)
-                        if (!(formats & (1U << operand)) && !(inputs[operand] & 0x7f800000))
-                          inputs[operand] &= 0x80000000;
                     uint32_t expected = goc_test::mixed_fma_reference::evaluate(
-                        op, inputs[0], inputs[1], inputs[2], 0xdeadbeef, mode, false);
-                    if (!op && (policy & 2) && !(expected & 0x7f800000))
-                      expected &= 0x80000000;
+                        op, a[lane], b[lane], c[lane], 0xdeadbeef, mode, false, false, flags);
                     EXPECT_TRUE(equal(op, d[lane], expected, exact));
                   }
-                  if (exact && (rdna3 || policy)) {
+                  if (exact && rdna3) {
                     uint32_t before[64];
                     std::memcpy(before, d, sizeof(d));
                     EXPECT_EQ(invoke(&state), GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
@@ -694,5 +692,85 @@ TEST(MixedFma, ArchitectureGuestPolicies) {
                     EXPECT_EQ(std::memcmp(before, d, sizeof(d)), 0);
                   }
                 }
+        }
+}
+
+TEST(MixedFma, DenormalHardwareCorpus) {
+  const uint32_t edge[] = {0,          0x80000000, 1,          0x80000001, 0x7fffff,   0x800000,
+                           0x3f800000, 0xbf800000, 0x40000000, 0x7f7fffff, 0x7effffff, 0x7f800000,
+                           0xff800000, 0x7f800001, 0xffc00003, 0x1000000};
+  for (bool exact : {false, true})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned op = 1; op <= 2; ++op)
+        for (unsigned high = 0; high < 2; ++high)
+          for (unsigned policy = 0; policy < 4; ++policy) {
+            uint64_t hash = goc_test::capture_hash_seed;
+            for (unsigned sat = 0; sat < 2; ++sat)
+              for (unsigned variant = 0; variant < 16; ++variant) {
+                uint32_t mode =
+                    ((variant & 7) << 13) | (variant & 8 ? GOC_ALU_CLAMP : 0) |
+                    (high ? GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_NEG_A |
+                                GOC_ALU_NEG_C | GOC_ALU_ABS_B | GOC_ALU_ABS_C
+                          : 0);
+                uint64_t flags =
+                    cpu | (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0) |
+                    (sat ? GOC_FP16_OVFL : 0) | (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                    (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+                for (unsigned base = 0; base < 8192; base += 32) {
+                  uint32_t input[3][32], d[32] = {};
+                  for (unsigned lane = 0; lane < 32; ++lane) {
+                    unsigned i = base + lane;
+                    uint64_t state = uint64_t(i) * 0x9e3779b97f4a7c15ULL;
+                    for (unsigned operand = 0; operand < 3; ++operand) {
+                      state ^= state >> 12;
+                      state ^= state << 25;
+                      state ^= state >> 27;
+                      input[operand][lane] = i < 4096 ? edge[(i >> (8 - operand * 4)) & 15]
+                                                      : uint32_t(state * 0x2545f4914f6cdd1dULL);
+                    }
+                  }
+                  const uint32_t *a = input[0], *b = input[1], *c = input[2];
+                  uint32_t *dest = d, exceptions = 0;
+                  ASSERT_EQ(functions[op](flags, UINT32_MAX, mode, &dest, &a, &b, &c, &exceptions),
+                            GOC_SUCCESS);
+                  EXPECT_EQ(exceptions, 0U);
+                  for (uint32_t word : d) {
+                    hash = goc_test::capture_hash_word(hash, word);
+                    hash = goc_test::capture_hash_word(hash, 0);
+                    hash = goc_test::capture_hash_word(hash, 0);
+                  }
+                }
+              }
+            EXPECT_EQ(hash, goc_test::mixed_guest_hashes[op - 1][high][policy])
+                << op << '/' << high << '/' << policy;
+          }
+}
+
+TEST(MixedFma, CapturedDenormalRoundingBoundary) {
+  // RX 9070 gfx1201, MODE 0xf0 versus 0x50. The flush boundary is
+  // 2^-14 - 2^-26, above the ordinary subnormal-to-normal rounding midpoint.
+  const uint32_t input[] = {0x387fdfff, 0x387fe000, 0x387fe001, 0x387fefff,
+                            0x387ff000, 0x387ff001, 0x387fffff, 0x38800000};
+  for (bool exact : {false, true})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (bool flush : {false, true})
+        for (int op : {1, 2}) {
+          uint32_t a[32], b[32], c[32] = {}, d[32];
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            a[lane] = 0x3f800000;
+            b[lane] = input[lane % 8] | (lane & 8 ? 0x80000000 : 0);
+            d[lane] = 0xdeadbeef;
+          }
+          const uint32_t *x = a, *y = b, *z = c;
+          uint32_t *dest = d, state = 0x12345678;
+          uint64_t flags = cpu | (flush ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                           (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0);
+          ASSERT_EQ(functions[op](flags, UINT32_MAX, 0, &dest, &x, &y, &z, &state), GOC_SUCCESS);
+          EXPECT_EQ(state, 0x12345678U);
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            uint32_t half = (flush ? (lane % 8 < 4 ? 0 : 0x400) : (lane % 8 == 0 ? 0x3ff : 0x400)) |
+                            (lane & 8 ? 0x8000 : 0);
+            EXPECT_EQ(d[lane], op == 1 ? 0xdead0000 | half : (half << 16) | 0xbeef);
+          }
         }
 }

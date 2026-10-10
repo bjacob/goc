@@ -18,4 +18,8 @@ void mixed_fma_float_guest_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_
 void mixed_fma_half_x86_64_v3(bool high, bool saturate, uint32_t exec_mask, uint32_t mode,
                               uint32_t *d, const uint32_t *a, const uint32_t *b, const uint32_t *c);
 
+void mixed_fma_half_guest_x86_64_v3(bool high, uint64_t flags, uint32_t exec_mask, uint32_t mode,
+                                    uint32_t *d, const uint32_t *a, const uint32_t *b,
+                                    const uint32_t *c);
+
 } // namespace goc

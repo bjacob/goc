@@ -50,7 +50,8 @@ template <bool Rtz> inline __m128i mixed_half_narrow4(__m256d value, bool satura
 }
 
 template <bool Rtz>
-inline __m128i mixed_half_value4(__m128 a, __m128 b, __m128 c, bool saturate, bool clamp) {
+inline __m128i mixed_half_value4(__m128 a, __m128 b, __m128 c, bool saturate, bool clamp,
+                                 bool flush_output = false) {
   auto x = _mm256_cvtps_pd(a), y = _mm256_cvtps_pd(b), z = _mm256_cvtps_pd(c);
   auto product = _mm256_mul_pd(x, y);
   auto value = _mm256_add_pd(product, z);
@@ -69,6 +70,16 @@ inline __m128i mixed_half_value4(__m128 a, __m128 b, __m128 c, bool saturate, bo
   bits = _mm256_add_epi64(bits, _mm256_and_si256(adjust, step));
   auto result = mixed_half_narrow4<Rtz>(_mm256_castsi256_pd(bits), saturate);
 
+  if (flush_output) {
+    auto magnitude = _mm256_and_pd(_mm256_castsi256_pd(bits),
+                                   _mm256_castsi256_pd(_mm256_set1_epi64x(INT64_MAX)));
+    auto tiny = _mm256_castpd_si256(
+        _mm256_cmp_pd(magnitude, _mm256_set1_pd(0x1p-14 - 0x1p-26), _CMP_LT_OQ));
+    auto packed = _mm256_shuffle_epi32(tiny, _MM_SHUFFLE(2, 0, 2, 0));
+    auto mask =
+        _mm_unpacklo_epi64(_mm256_castsi256_si128(packed), _mm256_extracti128_si256(packed, 1));
+    result = _mm_blendv_epi8(result, _mm_and_si128(result, _mm_set1_epi32(0x8000)), mask);
+  }
   auto aa = _mm_and_si128(_mm_castps_si128(a), _mm_set1_epi32(INT32_MAX));
   auto ab = _mm_and_si128(_mm_castps_si128(b), _mm_set1_epi32(INT32_MAX));
   auto ac = _mm_and_si128(_mm_castps_si128(c), _mm_set1_epi32(INT32_MAX));

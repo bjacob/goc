@@ -10,12 +10,21 @@
 #include "half_fma_scalar.h"
 #include "internal.h"
 
+#include <cmath>
 #include <stdint.h>
 
 namespace goc {
 
 // Decode one mixed source, with its flags shifted to the A positions.
-inline uint32_t mixed_fma_input(uint32_t raw, uint32_t mode) {
+inline uint32_t mixed_fma_input(uint32_t raw, uint32_t mode, bool flush_input = false) {
+  if (flush_input) {
+    if (mode & GOC_MIX_F16_A) {
+      unsigned shift = mode & GOC_ALU_HIGH_A ? 16 : 0;
+      if (!((raw >> shift) & 0x7c00))
+        raw &= ~(0x7fffU << shift);
+    } else if (!(raw & 0x7f800000))
+      raw &= 0x80000000;
+  }
   if (mode & GOC_MIX_F16_A)
     raw = as_bits(f16_to_float(uint16_t(raw >> (mode & GOC_ALU_HIGH_A ? 16 : 0))));
   if (mode & GOC_ALU_ABS_A)
@@ -45,13 +54,17 @@ inline uint16_t mixed_fma_special(uint32_t a, uint32_t b, uint32_t c) {
 
 // Fuse FP32 inputs and round once to FP16, independently of host FP controls.
 inline uint16_t mixed_fma_half_value(uint32_t a, uint32_t b, uint32_t c, bool clamp,
-                                     bool saturate) {
+                                     uint64_t flags) {
+  bool saturate = flags & GOC_FP16_OVFL;
   uint16_t result;
   if ((a & 0x7fffffff) >= 0x7f800000 || (b & 0x7fffffff) >= 0x7f800000 ||
       (c & 0x7fffffff) >= 0x7f800000) {
     result = mixed_fma_special(a, b, c);
   } else {
-    result = half_fma_narrow(as_double(fma_finite_round_odd(a, b, c)), saturate);
+    double value = as_double(fma_finite_round_odd(a, b, c));
+    result = half_fma_narrow(value, saturate);
+    if ((flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) && std::abs(value) < 0x1p-14 - 0x1p-26)
+      result &= 0x8000;
   }
   return clamp ? half_fma_clamp(result) : result;
 }

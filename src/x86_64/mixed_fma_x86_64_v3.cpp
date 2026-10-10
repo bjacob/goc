@@ -48,9 +48,17 @@ void mixed_float(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d,
     auto x = input8(a + lane, mode), y = input8(b + lane, mode >> 1),
          z = input8(c + lane, mode >> 2);
     if (GuestPolicy && (flags & GOC_FP_FLUSH_INPUT_DENORMALS)) {
-      x = flush_denorm_f32(x);
-      y = flush_denorm_f32(y);
-      z = flush_denorm_f32(z);
+      auto flush = [](__m256 input, uint32_t source_mode) {
+        auto bits = _mm256_castps_si256(input);
+        auto tiny = _mm256_cmpgt_epi32(
+            _mm256_set1_epi32(source_mode & GOC_MIX_F16_A ? 0x38800000 : 0x00800000),
+            _mm256_and_si256(bits, _mm256_set1_epi32(INT32_MAX)));
+        return _mm256_castsi256_ps(
+            _mm256_blendv_epi8(bits, _mm256_and_si256(bits, _mm256_set1_epi32(INT32_MIN)), tiny));
+      };
+      x = flush(x, mode);
+      y = flush(y, mode >> 1);
+      z = flush(z, mode >> 2);
     }
     auto result = _mm256_fmadd_ps(x, y, z);
     if (GuestPolicy && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS))
@@ -76,13 +84,29 @@ void mixed_fma_float_guest_x86_64_v3(uint64_t flags, uint32_t exec_mask, uint32_
   mixed_float<true>(flags, exec_mask, mode, d, a, b, c);
 }
 
-void mixed_fma_half_x86_64_v3(bool high, bool saturate, uint32_t exec_mask, uint32_t mode,
-                              uint32_t *d, const uint32_t *a, const uint32_t *b,
-                              const uint32_t *c) {
+namespace {
+
+template <bool GuestPolicy>
+void mixed_half(bool high, uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *d,
+                const uint32_t *a, const uint32_t *b, const uint32_t *c) {
   for (int lane = 0; lane < 32; lane += 4) {
     auto x = input4(a + lane, mode), y = input4(b + lane, mode >> 1),
          z = input4(c + lane, mode >> 2);
-    auto result = mixed_half_value4<false>(x, y, z, saturate, mode & GOC_ALU_CLAMP);
+    if (GuestPolicy && (flags & GOC_FP_FLUSH_INPUT_DENORMALS)) {
+      auto flush = [](__m128 input, uint32_t source_mode) {
+        auto bits = _mm_castps_si128(input);
+        auto tiny =
+            _mm_cmplt_epi32(_mm_and_si128(bits, _mm_set1_epi32(INT32_MAX)),
+                            _mm_set1_epi32(source_mode & GOC_MIX_F16_A ? 0x38800000 : 0x00800000));
+        return _mm_castsi128_ps(
+            _mm_blendv_epi8(bits, _mm_and_si128(bits, _mm_set1_epi32(INT32_MIN)), tiny));
+      };
+      x = flush(x, mode);
+      y = flush(y, mode >> 1);
+      z = flush(z, mode >> 2);
+    }
+    auto result = mixed_half_value4<false>(x, y, z, flags & GOC_FP16_OVFL, mode & GOC_ALU_CLAMP,
+                                           GuestPolicy && (flags & GOC_FP_FLUSH_OUTPUT_DENORMALS));
     unsigned shift = high ? 16 : 0;
     auto original = _mm_loadu_si128(reinterpret_cast<const __m128i *>(d + lane));
     auto output_mask = _mm_set1_epi32(int(uint32_t(65535) << shift));
@@ -92,6 +116,20 @@ void mixed_fma_half_x86_64_v3(bool high, bool saturate, uint32_t exec_mask, uint
         _mm_sllv_epi32(_mm_set1_epi32(int(exec_mask >> lane)), _mm_setr_epi32(31, 30, 29, 28));
     _mm_maskstore_epi32(reinterpret_cast<int *>(d + lane), lane_exec_mask, result);
   }
+}
+
+} // namespace
+
+void mixed_fma_half_x86_64_v3(bool high, bool saturate, uint32_t exec_mask, uint32_t mode,
+                              uint32_t *d, const uint32_t *a, const uint32_t *b,
+                              const uint32_t *c) {
+  mixed_half<false>(high, saturate ? GOC_FP16_OVFL : 0, exec_mask, mode, d, a, b, c);
+}
+
+void mixed_fma_half_guest_x86_64_v3(bool high, uint64_t flags, uint32_t exec_mask, uint32_t mode,
+                                    uint32_t *d, const uint32_t *a, const uint32_t *b,
+                                    const uint32_t *c) {
+  mixed_half<true>(high, flags, exec_mask, mode, d, a, b, c);
 }
 
 } // namespace goc

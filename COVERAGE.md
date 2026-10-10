@@ -2296,6 +2296,12 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
 
 ## Mixed FMA architecture and guest-policy audit
 
+The denormal-policy assumptions in this initial rocjitsu-derived slice were
+superseded by the native hardware correction below. In particular, MIXLO/MIXHI
+do honor denormal controls, and FP16 input flushing occurs before widening in
+all mixed FMA forms. The initial nondefault reporting restriction is now removed
+for RDNA4 MIXLO/MIXHI following the new captures.
+
 - `v_fma_mix_f32`, `v_fma_mixlo_f16`, and `v_fma_mixhi_f16` now distinguish
   unsuffixed RDNA3 and `_rdna4` APIs, in both wave widths. The distinction
   includes their native implicit register contracts (`trapsts` versus
@@ -2339,3 +2345,49 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   MixedFma/ExceptionRegisters/InstructionFlags tests pass under ASan/UBSan.
   Seven audit-tool tests pass. The reporting-name audit now has 638 signatures,
   318 resolved names, zero mismatches and 320 pending architecture review.
+
+## Native mixed-FMA denormal policies and exception reporting
+
+- Extended `tests/capture_arithmetic_exceptions.py` so the generated probe accepts
+  a runtime FP_DENORM nibble (0..15); default captures remain unchanged. Added
+  the FP32 mixed-FMA family to the generator. RX 9070/gfx1201 captures exercise
+  all sixteen independent FP32/FP16 input/output-denormal settings, both output
+  halves, source formats/half selections, ABS/NEG/CLAMP, FP16 saturation, 4,096
+  edge triples and 4,096 pseudorandom triples.
+- All 16,777,216 MIXLO/MIXHI exception reads were zero. RDNA4 optional exact
+  reporting therefore now accepts guest denormal flags and leaves the register
+  unchanged. RDNA3 reporting remains unverified and explicitly unsupported.
+- The captures contradicted rocjitsu's ignored-denormal mixed-half model. Input
+  flushing uses each selected source's original FP16/FP32 type; output flushing
+  uses the destination type. Corrected scalar and SIMD paths accordingly,
+  including FP16 sources of MIX_F32. Output-half rounding retains the integer
+  exact intermediate; the four-lane loose kernel implements the same flushing.
+- `tests/mixed_fma_guest_hardware.h` stores word-wise result/exception digests
+  for all 4,194,304 records with the four coupled denormal policies exposed by
+  GoC. Tests reproduce those digests on exact scalar and loose SIMD paths at all
+  available CPU levels. Another native probe covers both signs around the FP16
+  normal boundary: flushing begins below `2^-14 - 2^-26`, rather than merely
+  testing whether the final FP16 encoding is subnormal. Literal boundary tests
+  and an independent integer oracle cover this distinction. Host-FP-control
+  preservation tests now include guest denormal flags.
+- Default SIMD kernels remain separate compiled specializations of the same
+  source loops; the new checks run only for nondefault policies. Independent
+  FP16 versus FP32 denormal selections are not yet exposed by the public flags.
+  A further 8,388,608 MIX_F32 flag reads were zero; its general exact numerical
+  and reporting contracts remain unfinished. No RDNA3 hardware claim follows
+  from these RDNA4 captures.
+- Raw capture summaries, generated probes and boundary values are in
+  `../goc-build/coverage-work/mixed-fma-guest-captures/`; the source generator
+  and compact regression fixtures are checked in. The implementation continues
+  to leave host FP controls untouched; only the GPU capture probes set MODE.
+- Default-path performance against `13f6238`: eleven alternating CPU-2-pinned
+  samples, at least 50 ms thread CPU time. MIX_F32 AVX2 medians were
+  18.688 -> 18.679 ns and 21.444 -> 21.465 ns; MIXLO medians were
+  72.021 -> 71.169 ns and 80.396 -> 80.205 ns. Changes are within about 1.2%
+  and do not establish a meaningful regression. These finite-input timings
+  cover existing default loose paths; they are not a whole-library result.
+  Timing artifacts use `../goc-build/coverage-work/mixed-guest-fix-*`.
+- Validation: all 961 tests pass under Clang 21 and GCC 15 Release. All 35
+  MixedFma/Interp16/ExceptionRegisters tests pass under ASan/UBSan, including
+  the shared interpolation users of the modified rounding helper. Capture
+  generator syntax and generated GPU probes were also exercised successfully.

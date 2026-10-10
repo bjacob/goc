@@ -3,16 +3,18 @@
 """Generate a gfx1201 HIP exception probe and its deterministic input corpus.
 
 Usage: capture_arithmetic_exceptions.py OUTPUT_DIR FAMILY WIDTH
-Families: div_fixup (16/32/64), div_fmas (32/64), sin/cos (16/32).
+Families: div_fixup (16/32/64), div_fmas (32/64), sin/cos (16/32), fma_mix (32).
 All other families use WIDTH=16: fma/fmac/fmamk/fmaak, pk_fma/pk_fmac,
 fma_mixlo/fma_mixhi, dot2_f32_f16/dot2_f32_bf16.
-Compile probe.cpp with hipcc for gfx1201 and run from OUTPUT_DIR.
+Compile probe.cpp with hipcc for gfx1201 and run from OUTPUT_DIR. The probe
+accepts an optional FP_DENORM nibble (0..15, default 15), allowing independent
+FP32 and FP16/64 input/output-denormal settings without recompilation.
 
 capture.bin contains little-endian uint32 records:
 [2 saturation settings][16 modifiers][case count][result_lo,result_hi,flags].
-Case count is 65,536 for sin/cos, otherwise 8,192. MODE preserves denormals and
-selects nearest-even. All 32 lanes use identical inputs. The probe restores MODE
-and clears EXCP_FLAG_USER before each instruction.
+Case count is 65,536 for sin/cos, otherwise 8,192. MODE defaults to preserved
+denormals and always selects nearest-even. All 32 lanes use identical inputs.
+The probe restores MODE and clears EXCP_FLAG_USER before each instruction.
 
 Ordinary modifier index: bits 0:1 OMOD, bit 2 CLAMP, bit 3 -abs(A)/abs(B)/-C.
 For DIV_FMAS the outer setting selects condition=false/true (FP16_OVFL is irrelevant).
@@ -33,7 +35,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("output", type=Path)
 parser.add_argument(
     "family", choices=("div_fixup", "div_fmas", "dot2_f32_f16", "dot2_f32_bf16",
-                       "fma_mixlo", "fma_mixhi", "fma", "fmac", "fmamk", "fmaak",
+                       "fma_mix", "fma_mixlo", "fma_mixhi", "fma", "fmac", "fmamk", "fmaak",
                        "pk_fma", "pk_fmac", "sin", "cos"))
 parser.add_argument("width", type=int, choices=(16, 32, 64))
 parser.add_argument("--boundaries", action="store_true", help="FP32 SIN/COS boundary corpus")
@@ -42,7 +44,7 @@ parser.add_argument("--mix-high", action="store_true", help="mixed FMA high halv
 args = parser.parse_args()
 out, family, width = args.output, args.family, args.width
 allowed_widths = {"div_fixup": (16, 32, 64), "div_fmas": (32, 64),
-                  "sin": (16, 32), "cos": (16, 32)}
+                  "sin": (16, 32), "cos": (16, 32), "fma_mix": (32,)}
 if width not in allowed_widths.get(family, (16,)):
     parser.error("unsupported family/width combination")
 if args.boundaries and (family not in ("sin", "cos") or width != 32):
@@ -154,7 +156,7 @@ for m in range(16):
         instruction += " clamp" if m & 4 else ""
     elif family.startswith("fma_mix"):
         sources = "-v0, |v2|, -|v4|" if args.mix_high else "v0, v2, v4"
-        instruction = f"v_{family}_f16 v6, {sources}"
+        instruction = f"v_{family}_f{width} v6, {sources}"
         instruction += " op_sel:[1,1,1]" if args.mix_high else ""
         instruction += f" op_sel_hi:[{m & 1},{(m >> 1) & 1},{(m >> 2) & 1}]"
         instruction += " clamp" if m & 8 else ""
@@ -195,7 +197,10 @@ for m in range(16):
 }}
 """
 source += r'''}
-int main() {
+int main(int argc, char **argv) {
+  char *end=nullptr;
+  unsigned long denorm=argc==2?strtoul(argv[1],&end,0):15;
+  if(argc>2 || denorm>15 || (argc==2 && (!argv[1][0] || *end))) return 2;
   constexpr size_t n=INPUT_COUNT, size=n*16*3;
   uint64_t input[n*3];
   FILE *f=fopen("inputs.bin","rb");
@@ -210,7 +215,7 @@ int main() {
   f=fopen("capture.bin","wb");
   if(!f) return 2;
   for(unsigned sat=0;sat<2;++sat) {
-    hipLaunchKernelGGL(probe,dim3(n),dim3(32),0,0,a,out,0xf0u|(sat<<23));
+    hipLaunchKernelGGL(probe,dim3(n),dim3(32),0,0,a,out,(uint32_t(denorm)<<4)|(sat<<23));
     HIP(hipGetLastError());
     HIP(hipDeviceSynchronize());
     HIP(hipMemcpy(host,out,size*4,hipMemcpyDeviceToHost));
