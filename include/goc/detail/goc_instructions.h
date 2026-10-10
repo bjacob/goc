@@ -4747,7 +4747,7 @@ int goc_v_dot2_bf16_bf16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t ins
 // Unary FP32: one VGPR each for A/D. Supports NEG_A, ABS_A, OMOD and CLAMP;
 // modifiers for absent operands are invalid. CLAMP maps NaNs to +0 and clamps
 // to [0, 1]. EXP and LOG use base 2; RSQ computes reciprocal square root.
-// RNDNE rounds ties to even. Only loose semantics are implemented.
+// RNDNE rounds ties to even. Only loose semantics are implemented except RCP.
 int goc_v_trunc_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
@@ -4762,13 +4762,16 @@ int goc_v_floor_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fla
 
 // SQRT/RCP/RSQ/EXP/LOG force input/output flushing regardless of guest flush
 // flags. Unsuffixed RDNA3 forms disable OMOD when GOC_FP_IEEE_MODE is set;
-// _rdna4 forms apply OMOD independently. Exact numerical semantics and non-null
-// exact state reporting remain unsupported. Loose calls leave state untouched.
+// _rdna4 forms apply OMOD independently. Non-null exact state reporting remains
+// unsupported. Loose calls leave state untouched. Only RCP has exact results.
 int goc_v_sqrt_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                    uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
 int goc_v_sqrt_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
+// Exact RCP uses the captured gfx1100/gfx1201 reciprocal mapping. RDNA3 preserves
+// signaling NaNs with IEEE mode off; RDNA4 always quiets them. Exact arithmetic,
+// OMOD and CLAMP are independent of host rounding and denormal controls.
 int goc_v_rcp_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, uint32_t *trapsts);
 int goc_v_rcp_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,

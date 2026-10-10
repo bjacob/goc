@@ -61,7 +61,7 @@ be treated as verified shared semantics. Width completeness does not close this 
 | Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented at both wave widths | RDNA3 floating constant exception reporting and architecture-specific floating-policy audit |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures; confirmed OMOD/IEEE architecture differences | Split differing APIs and implement RDNA3 guest-mode policies; see ARCHITECTURE_AUDIT.md |
-| Transcendentals, reciprocal, division | Existing partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
+| Transcendentals, reciprocal, division | FP32 reciprocal exact captured mapping on both architectures; other partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
 | Interpolation | All six APIs at both wave widths; shared quad routing checked against both manuals; RDNA4 captures and independent arithmetic tests | Compare remaining RDNA3 numerical contracts and empirical behavior |
 | Dual-issue VOPD | All 19 canonical operations; shared ordinary kernels, architecture-split floating arithmetic/DOT2ACC; Wave32 only | Direct VOPD hardware captures; inherited exact/global-state gaps |
@@ -2725,3 +2725,40 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   does not establish its cause. No speculative padding or alignment tuning was
   added. Raw samples use `../goc-build/coverage-work/unary-arch-*`; measurements
   cover these calls only, not whole-library performance.
+
+## Captured exact FP32 reciprocal results
+
+- Borrowed rocjitsu `util/amdgpu_rcp.h` at revision `ffc144c564c`, preserving
+  its normalized cubic mapping and sparse residual tables. GoC adapts it to raw
+  integer bits, C++17 and the existing portable `Uint128` helper. The source
+  records exhaustive normalized gfx1100/gfx1201 fitting; no model coefficients
+  were independently reinvented here.
+- Enabled exact RCP results on RDNA3/RDNA4 in both wave sizes, including source
+  modifiers, OMOD, CLAMP, DPP and aliases. The exact kernel uses integer bits
+  throughout. RDNA3 IEEE-off preserves signaling NaNs; IEEE-on quiets them and
+  disables OMOD. RDNA4 always quiets and applies OMOD. RDNA3 CLAMP models the
+  existing DX10_CLAMP=1 contract. Non-null exact reporting still fails explicitly;
+  this slice does not infer flags from the newly exact numerical result.
+- Fresh RX 9070 gfx1201 captures cover every one of the 8,388,608 normalized
+  mantissas and 1,048,576 edge/random/exponent/modifier records across four guest
+  denormal policies. All raw result hashes match. The normalized API test rotates
+  architectures, CPU levels and wave sizes; modifier captures are checked in both
+  wave sizes. These fresh captures establish RDNA4 evidence; RDNA3 also relies
+  on rocjitsu's original model provenance and direct policy witnesses.
+- DPP/EXEC/alias tests run under all four host rounding modes and both FTZ/DAZ
+  settings, checking unchanged controls and pre-existing sticky flags. Validation
+  tests retain explicit rejection of unimplemented reporting and reserved semantics.
+  Capture generation is checked in as `tests/capture_rcp_exact.py`; native binaries
+  and raw records are in `../goc-build/coverage-work/rcp-exact-captures/`.
+- Validation: all 985 tests pass under Clang 21 and GCC 15 Release; all 25
+  RcpExact/Unary/DppUnary/ExecMask/InstructionFlags/ExceptionRegisters tests
+  pass under ASan/UBSan. The final EXEC-variable naming cleanup also passes
+  the five exact reciprocal tests again in Clang.
+- Eleven alternating CPU-2-pinned samples, minimum 50 ms thread CPU time,
+  compare loose RDNA4 reciprocal against `8a67f39`: AVX2, default/combined
+  modifiers and null/non-null state pointers. Median slowdowns are 0.59–1.47%,
+  at most 0.284 ns. Default medians are 14.974 -> 15.062 ns without reporting
+  and 15.162 -> 15.269 ns with reporting. Exact arithmetic is dispatched out of
+  line; the loose SIMD kernel is unchanged. Artifacts use
+  `../goc-build/coverage-work/rcp-exact-*`; these measurements do not characterize
+  exact-mode throughput or whole-library performance.

@@ -7,14 +7,68 @@
 #include "dpp.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "rcp_model.h"
 
 #include <stdint.h>
 
 namespace {
 
+// Exact captured reciprocal mapping; all arithmetic here is on integer bits.
+[[gnu::noinline]] int rcp_exact(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                                uint32_t *const *d, const uint32_t *const *a, bool rdna3) {
+  if (mode >> 32)
+    return goc::execute_dpp(flags, exec_mask, mode, a,
+                            [&](uint32_t exec_mask, const uint32_t *const *source) {
+                              return rcp_exact(flags, exec_mask, uint32_t(mode), d, source, rdna3);
+                            });
+  const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
+  if (int error = goc::validate(flags, mode & ~known, true,
+                                GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
+                                    GOC_FP_FLUSH_OUTPUT_DENORMALS))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  if (rdna3 && (flags & GOC_FP_IEEE_MODE))
+    mode &= ~uint64_t(GOC_ALU_OMOD_HALF);
+  unsigned omod = (mode >> 6) & 3;
+  uint32_t result[32];
+  for (unsigned lane = 0; lane < 32; ++lane) {
+    uint32_t input = a[0][lane];
+    if (mode & GOC_ALU_ABS_A)
+      input &= 0x7fffffff;
+    if (mode & GOC_ALU_NEG_A)
+      input ^= 0x80000000;
+    uint32_t value = goc::rcp_f32_bits(input, !rdna3 || (flags & GOC_FP_IEEE_MODE));
+    uint32_t magnitude = value & 0x7fffffff;
+    if (omod && magnitude < 0x7f800000) {
+      unsigned exponent = magnitude >> 23;
+      if (!exponent)
+        value = 0;
+      else if (omod == 3 && exponent == 1)
+        value &= 0x80000000;
+      else if (omod != 3 && exponent + omod >= 255)
+        value = (value & 0x80000000) | 0x7f800000;
+      else
+        value = omod == 3 ? value - 0x800000 : value + (omod << 23);
+    }
+    if (mode & GOC_ALU_CLAMP)
+      value = (value & 0x80000000) || (value & 0x7fffffff) > 0x7f800000 ? 0
+              : value > 0x3f800000                                      ? 0x3f800000
+                                                                        : value;
+    result[lane] = value;
+  }
+  for (unsigned lane = 0; lane < 32; ++lane)
+    if ((exec_mask >> lane) & 1)
+      d[0][lane] = result[lane];
+  return GOC_SUCCESS;
+}
+
 template <goc::Unary Op, bool Rdna3 = false>
 int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
           const uint32_t *const *a) {
+  if constexpr (Op == goc::Unary::Rcp)
+    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
+      return rcp_exact(flags, exec_mask, modifiers, d, a, Rdna3);
   if constexpr (Rdna3) {
     // These transcendental operations use forced-flush OMOD policy, regardless
     // of guest denormal flags. Only RDNA3 IEEE mode disables output scaling.
