@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 
 #include "frexp_exp.h"
+#include "bits.h"
 #include "dpp.h"
-#include "fp64.h"
 #include "goc/goc.h"
 #include "internal.h"
 
-#include <cmath>
 #include <stdint.h>
 
 namespace {
@@ -32,9 +31,13 @@ int frexp_exp(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const
     // Match rocjitsu's frexp exponent model, including zero for NaNs/infinities.
     int exponent = 0;
     if constexpr (Fp64) {
-      double value = goc::as_double(uint64_t(a[0][lane]) | (uint64_t(a[1][lane]) << 32));
-      if (value != 0 && std::isfinite(value))
-        std::frexp(value, &exponent);
+      uint64_t magnitude = (uint64_t(a[0][lane]) | (uint64_t(a[1][lane]) << 32)) & INT64_MAX;
+      unsigned field = unsigned(magnitude >> 52);
+      if (field && field != 2047)
+        exponent = int(field) - 1022;
+      else if (!field && magnitude)
+        // The leading bit is 63-clz; a subnormal exponent is that position-1073.
+        exponent = -1010 - int(goc::bit_count_zero<false>(magnitude));
     } else {
       uint32_t magnitude = a[0][lane] & 0x7fffffffu;
       unsigned field = magnitude >> 23;

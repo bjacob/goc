@@ -987,3 +987,37 @@ hardware capture. The width-review queue is 208 APIs.
 
 Validation: all 777 tests pass on Clang 21 and GCC 15 Release. All nine
 exponent-extraction and instruction-flag tests pass under ASan/UBSan.
+
+## Host-independent FP64 exponent extraction
+
+Removed the FP64 host-denormal dependency identified above. Scalar extraction
+now uses integer exponent fields and the existing leading-zero helper. AVX2
+constructs 2^52 plus the integer significand and subtracts 2^52 exactly; it never
+consumes a subnormal floating-point input. Normal and exceptional results keep
+their previous rules. No host control-register writes or mask-density dispatch
+were added. Exact guest semantics/reporting remain a separate open gate.
+
+Tests cross every subnormal leading-bit position, boundary significands,
+normals, signed zeros, infinities and signaling NaNs with all host rounding
+modes and DAZ/FTZ combinations on every CPU path through Wave64. The results
+match an independent integer reference and preserve the complete MXCSR and
+preexisting exception flags. Existing Wave32 and DPP tests continue to pass.
+
+A pinned thread-CPU-time microbenchmark used five samples of four million
+Wave32 calls per case, with identical saved-before and rebuilt-after harnesses.
+After the test workloads finished, median ns/wave were:
+
+| Inputs | Path | Before | After |
+|---|---|---:|---:|
+| Normal | Scalar | 80.141 | 33.025 |
+| Normal | AVX2 | 20.530 | 20.702 |
+| Subnormal | Scalar | 98.198 | 40.705 |
+| Subnormal | AVX2 | 33.294 | 20.699 |
+
+These are local focused measurements, not a whole-library performance claim.
+The normal SIMD difference is below 1%; subnormal SIMD avoids the previous
+floating-point denormal cost. Logs and harness are in the build directory's
+`coverage-work/frexp-speed-*` files.
+
+Validation: all 778 tests pass on Clang 21 and GCC 15 Release. All nine
+exponent-extraction tests pass under ASan/UBSan.

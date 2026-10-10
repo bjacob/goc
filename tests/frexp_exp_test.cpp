@@ -362,3 +362,47 @@ TEST(FrexpExp, Wave64ExponentFieldsModifiersDppAndAliases) {
       EXPECT_EQ(excp_flag_user, 0x12345678U);
     }
 }
+
+TEST(FrexpExp, Fp64HostDenormalControlsAndRoundingDoNotAffectResults) {
+  goc_test::ScopedFpEnvironment saved;
+  ASSERT_TRUE(saved.saved());
+  for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO})
+    for (unsigned controls = 0; controls < 4; ++controls) {
+      ASSERT_EQ(std::fesetround(rounding), 0);
+      ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
+      ASSERT_EQ(std::feraiseexcept(FE_DIVBYZERO), 0);
+#if defined(__x86_64__) || defined(_M_X64)
+      unsigned csr =
+          (_mm_getcsr() & ~0x8040U) | (controls & 1 ? 0x40U : 0) | (controls & 2 ? 0x8000U : 0);
+      _mm_setcsr(csr);
+#endif
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (unsigned bit = 0; bit < 52; ++bit) {
+          uint32_t input[2][64], output[64];
+          uint64_t cases[] = {1ULL << bit,
+                              (1ULL << (bit + 1)) - 1,
+                              0x000fffffffffffffULL,
+                              0x0010000000000000ULL,
+                              0x7ff0000000000001ULL,
+                              0x7ff0000000000000ULL,
+                              0,
+                              0x7fefffffffffffffULL};
+          for (unsigned lane = 0; lane < 64; ++lane) {
+            uint64_t bits = cases[lane % 8] | (lane & 8 ? 1ULL << 63 : 0);
+            input[0][lane] = uint32_t(bits);
+            input[1][lane] = uint32_t(bits >> 32);
+          }
+          const uint32_t *a[] = {input[0], input[1]};
+          uint32_t *d = output;
+          ASSERT_EQ(goc_v_frexp_exp_i32_f64_wave64(cpu, UINT64_MAX, 0, &d, a, nullptr),
+                    GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 64; ++lane)
+            ASSERT_EQ(output[lane], reference(cases[lane % 8], true));
+          EXPECT_EQ(std::fegetround(), rounding);
+          EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
+#if defined(__x86_64__) || defined(_M_X64)
+          EXPECT_EQ(_mm_getcsr(), csr);
+#endif
+        }
+    }
+}

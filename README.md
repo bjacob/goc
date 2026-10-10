@@ -1403,8 +1403,8 @@ and exceptional-value bit preservation, including signaling NaNs.
 `FREXP_EXP_I32_F32` and `FREXP_EXP_I32_F64` return a signed binary exponent
 in one destination VGPR, using one or two source VGPRs respectively, at both
 wave sizes with shared scalar/v3 kernels. Exact semantics and exact optional
-exception reporting remain unsupported. The FP64 SIMD subnormal path requires
-host denormal inputs enabled. Zero,
+exception reporting remain unsupported. Both FP64 paths extract subnormal
+exponents independently of host DAZ/FTZ and rounding settings. Zero,
 infinity and NaN inputs return zero. Both scalar and v3 paths handle subnormals;
 ABS/NEG, OMOD and CLAMP are accepted without changing the integer result.
 Tests cover all 32 modifier combinations, every exponent field and subnormal

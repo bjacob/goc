@@ -20,13 +20,16 @@ template <bool Fp64> void run(uint32_t exec_mask, uint32_t *d, const uint32_t *c
                                         _mm256_set1_epi64x(INT64_MAX));
       auto subnormal =
           _mm256_cmpgt_epi64(_mm256_set1_epi64x(INT64_C(0x0010000000000000)), magnitude);
-      // Scale only subnormal magnitudes, avoiding overflow on large normals.
+      // Convert the integer significand exactly: encoding it as the fraction
+      // of 2^52 forms 2^52 + significand. Subtraction recovers an ordinary
+      // integer-valued double, even with host DAZ/FTZ enabled, in every rounding mode.
       auto small = _mm256_and_si256(magnitude, subnormal);
-      auto scaled =
-          _mm256_castpd_si256(_mm256_mul_pd(_mm256_castsi256_pd(small), _mm256_set1_pd(0x1p54)));
-      auto normalized = _mm256_blendv_epi8(magnitude, scaled, subnormal);
+      auto biased = _mm256_or_si256(small, _mm256_set1_epi64x(0x4330000000000000LL));
+      auto significand =
+          _mm256_castpd_si256(_mm256_sub_pd(_mm256_castsi256_pd(biased), _mm256_set1_pd(0x1p52)));
+      auto normalized = _mm256_blendv_epi8(magnitude, significand, subnormal);
       auto exponent = _mm256_sub_epi64(_mm256_srli_epi64(normalized, 52), _mm256_set1_epi64x(1022));
-      exponent = _mm256_sub_epi64(exponent, _mm256_and_si256(subnormal, _mm256_set1_epi64x(54)));
+      exponent = _mm256_sub_epi64(exponent, _mm256_and_si256(subnormal, _mm256_set1_epi64x(1074)));
       auto special = _mm256_or_si256(
           _mm256_cmpeq_epi64(magnitude, _mm256_setzero_si256()),
           _mm256_cmpgt_epi64(magnitude, _mm256_set1_epi64x(INT64_C(0x7ff0000000000000) - 1)));
