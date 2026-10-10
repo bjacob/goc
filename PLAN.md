@@ -494,8 +494,8 @@ FP32 `SQRT`, `RCP`, `RSQ`, `EXP`, and `LOG` likewise distinguish unsuffixed
 RDNA3 and `_rdna4` APIs in both wave sizes. These five operations use forced-flush
 OMOD policy: RDNA3 IEEE mode disables scaling, independently of the guest
 denormal flags (unlike `RCP_IFLAG`). Their loose scalar/SIMD implementations share
-kernels. `RCP` additionally implements exact results using rocjitsu's captured
-gfx1100/gfx1201 reciprocal mapping, with integer source/output processing and
-no host FP-environment dependence. Numerical exactness for the other four and
+kernels. `RCP`, `SQRT`, and `RSQ` additionally implement exact results using
+rocjitsu's captured gfx1100/gfx1201 mappings, with integer source/output processing
+and no host FP-environment dependence. Numerical exactness for `EXP`/`LOG` and
 non-null exact reporting for all five remain unsupported. Loose calls skip
 optional state updates.

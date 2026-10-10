@@ -105,7 +105,9 @@ TEST(DppUnary, ValidationBeforeOperandAccess) {
         EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
         uint64_t unsupported =
-            fn == goc_v_rcp_f32_rdna4 ? 2ULL << 16 : GOC_SEMANTICS_EXACT_EMPIRICAL;
+            (fn == goc_v_rcp_f32_rdna4 || fn == goc_v_sqrt_f32_rdna4 || fn == goc_v_rsq_f32_rdna4)
+                ? 2ULL << 16
+                : GOC_SEMANTICS_EXACT_EMPIRICAL;
         EXPECT_EQ(
             fn(unsupported | GOC_SEMANTICS_STRICT, exec_mask, mode, nullptr, nullptr, nullptr),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);

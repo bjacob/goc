@@ -4,7 +4,7 @@
 #include "dpp_reference.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
-#include "rcp_exact_hardware.h"
+#include "unary_exact_hardware.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -34,36 +34,45 @@ uint32_t modifiers(unsigned m) {
          (m & 16 ? GOC_ALU_CLAMP : 0);
 }
 
-int invoke(bool rdna3, bool wide, uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *d,
-           const uint32_t *a, uint32_t *state = nullptr) {
-  return wide ? (rdna3 ? goc_v_rcp_f32_wave64 : goc_v_rcp_f32_rdna4_wave64)(flags, exec_mask, mode,
-                                                                            &d, &a, state)
-              : (rdna3 ? goc_v_rcp_f32 : goc_v_rcp_f32_rdna4)(flags, uint32_t(exec_mask), mode, &d,
-                                                              &a, state);
+int invoke(unsigned op, bool rdna3, bool wide, uint64_t flags, uint64_t exec_mask, uint64_t mode,
+           uint32_t *d, const uint32_t *a, uint32_t *state = nullptr) {
+  const decltype(&goc_v_rcp_f32) narrow[2][3] = {
+      {goc_v_rcp_f32_rdna4, goc_v_sqrt_f32_rdna4, goc_v_rsq_f32_rdna4},
+      {goc_v_rcp_f32, goc_v_sqrt_f32, goc_v_rsq_f32}};
+  const decltype(&goc_v_rcp_f32_wave64) wave64[2][3] = {
+      {goc_v_rcp_f32_rdna4_wave64, goc_v_sqrt_f32_rdna4_wave64, goc_v_rsq_f32_rdna4_wave64},
+      {goc_v_rcp_f32_wave64, goc_v_sqrt_f32_wave64, goc_v_rsq_f32_wave64}};
+  return wide ? wave64[rdna3][op](flags, exec_mask, mode, &d, &a, state)
+              : narrow[rdna3][op](flags, uint32_t(exec_mask), mode, &d, &a, state);
 }
+
+class UnaryExact : public ::testing::TestWithParam<unsigned> {};
 
 } // namespace
 
-TEST(RcpExact, EveryNormalizedMantissaHardwareCapture) {
+TEST_P(UnaryExact, EveryNormalizedMantissaHardwareCapture) {
+  const unsigned op = GetParam();
   uint64_t hash = goc_test::capture_hash_seed;
-  for (unsigned base = 0; base < (1U << 23); base += 64) {
+  for (unsigned base = 0; base < (1U << (op == 0 ? 23 : 24)); base += 64) {
     uint32_t input[64], output[64];
     for (unsigned lane = 0; lane < 64; ++lane)
       input[lane] = 0x3f800000 + base + lane;
     bool wide = (base >> 6) & 1, rdna3 = (base >> 7) & 1;
     uint64_t flags = ((base >> 8) % (goc_init_cpu_flags() + 1)) | GOC_SEMANTICS_EXACT_EMPIRICAL |
                      GOC_SEMANTICS_STRICT;
-    ASSERT_EQ(invoke(rdna3, wide, flags, UINT64_MAX, 0, output, input), GOC_SUCCESS);
+    ASSERT_EQ(invoke(op, rdna3, wide, flags, UINT64_MAX, 0, output, input), GOC_SUCCESS);
     if (!wide) {
-      ASSERT_EQ(invoke(rdna3, false, flags, UINT32_MAX, 0, output + 32, input + 32), GOC_SUCCESS);
+      ASSERT_EQ(invoke(op, rdna3, false, flags, UINT32_MAX, 0, output + 32, input + 32),
+                GOC_SUCCESS);
     }
     for (auto value : output)
       hash = goc_test::capture_hash_word(hash, value);
   }
-  EXPECT_EQ(hash, goc_test::rcp_normalized_hash);
+  EXPECT_EQ(hash, goc_test::unary_normalized_hashes[op]);
 }
 
-TEST(RcpExact, ModifiersExponentsSpecialValuesHardwareCapture) {
+TEST_P(UnaryExact, ModifiersExponentsSpecialValuesHardwareCapture) {
+  const unsigned op = GetParam();
   for (bool wide : {false, true})
     for (unsigned policy = 0; policy < 4; ++policy)
       for (unsigned m = 0; m < 32; ++m) {
@@ -77,17 +86,18 @@ TEST(RcpExact, ModifiersExponentsSpecialValuesHardwareCapture) {
                            GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                            (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
                            (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
-          ASSERT_EQ(invoke(false, wide, flags, UINT64_MAX, modifiers(m), output, input),
+          ASSERT_EQ(invoke(op, false, wide, flags, UINT64_MAX, modifiers(m), output, input),
                     GOC_SUCCESS);
           for (unsigned lane = 0; lane < lanes; ++lane)
             hash = goc_test::capture_hash_word(hash, output[lane]);
         }
-        EXPECT_EQ(hash, goc_test::rcp_modifier_hashes[policy][m])
+        EXPECT_EQ(hash, goc_test::unary_modifier_hashes[op][policy][m])
             << wide << '/' << policy << '/' << m;
       }
 }
 
-TEST(RcpExact, ArchitectureNaNPriorityAndOmod) {
+TEST_P(UnaryExact, ArchitectureNaNPriorityAndOmod) {
+  const unsigned op = GetParam();
   for (bool rdna3 : {false, true})
     for (bool ieee : {false, true})
       for (bool wide : {false, true}) {
@@ -96,16 +106,19 @@ TEST(RcpExact, ArchitectureNaNPriorityAndOmod) {
           input[lane] = lane & 1 ? 0xff800123 : 0x40800000;
         uint64_t flags =
             GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT | (ieee ? GOC_FP_IEEE_MODE : 0);
-        ASSERT_EQ(invoke(rdna3, wide, flags, UINT64_MAX, GOC_ALU_OMOD_2, output, input),
+        ASSERT_EQ(invoke(op, rdna3, wide, flags, UINT64_MAX, GOC_ALU_OMOD_2, output, input),
                   GOC_SUCCESS);
+        const uint32_t unscaled[] = {0x3e800000, 0x40000000, 0x3f000000};
+        const uint32_t scaled[] = {0x3f000000, 0x40800000, 0x3f800000};
+        uint32_t finite = rdna3 && ieee ? unscaled[op] : scaled[op];
+        uint32_t nan = rdna3 && !ieee ? 0xff800123 : 0xffc00123;
         for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane)
-          EXPECT_EQ(output[lane], lane & 1        ? rdna3 && !ieee ? 0xff800123U : 0xffc00123U
-                                  : rdna3 && ieee ? 0x3e800000U
-                                                  : 0x3f000000U);
+          EXPECT_EQ(output[lane], lane & 1 ? nan : finite);
       }
 }
 
-TEST(RcpExact, DppAliasesMasksAndHostEnvironment) {
+TEST_P(UnaryExact, DppAliasesMasksAndHostEnvironment) {
+  const unsigned op = GetParam();
   goc_test::ScopedFpEnvironment saved;
   ASSERT_TRUE(saved.saved());
   for (bool rdna3 : {false, true})
@@ -126,7 +139,8 @@ TEST(RcpExact, DppAliasesMasksAndHostEnvironment) {
               if (goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
                 uint32_t input[32] = {}, output[32];
                 input[0] = source < 0 ? 0 : original[source];
-                ASSERT_EQ(invoke(rdna3, false, flags, 1, modifiers(m), output, input), GOC_SUCCESS);
+                ASSERT_EQ(invoke(op, rdna3, false, flags, 1, modifiers(m), output, input),
+                          GOC_SUCCESS);
                 expected[lane] = output[0];
               }
             }
@@ -144,7 +158,7 @@ TEST(RcpExact, DppAliasesMasksAndHostEnvironment) {
                 std::fill(output, output + 64, 0xdeadbeef);
                 uint32_t *d = alias ? input : output;
                 ASSERT_EQ(
-                    invoke(rdna3, wide, flags, exec_mask, modifiers(m) | descriptor, d, input),
+                    invoke(op, rdna3, wide, flags, exec_mask, modifiers(m) | descriptor, d, input),
                     GOC_SUCCESS);
                 EXPECT_EQ(std::memcmp(d, expected, lanes * sizeof(uint32_t)), 0);
                 EXPECT_EQ(std::fegetround(), rounding);
@@ -156,15 +170,18 @@ TEST(RcpExact, DppAliasesMasksAndHostEnvironment) {
           }
 }
 
-TEST(RcpExact, ReportingRemainsExplicitlyUnsupported) {
+TEST_P(UnaryExact, ReportingRemainsExplicitlyUnsupported) {
+  const unsigned op = GetParam();
   for (bool rdna3 : {false, true})
     for (bool wide : {false, true}) {
       uint32_t state = 0x80000001;
       for (uint64_t strict : {uint64_t(0), uint64_t(GOC_SEMANTICS_STRICT)}) {
-        EXPECT_EQ(invoke(rdna3, wide, GOC_SEMANTICS_EXACT_EMPIRICAL | strict, UINT64_MAX, 0,
+        EXPECT_EQ(invoke(op, rdna3, wide, GOC_SEMANTICS_EXACT_EMPIRICAL | strict, UINT64_MAX, 0,
                          nullptr, nullptr, &state),
                   GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
         EXPECT_EQ(state, 0x80000001U);
       }
     }
 }
+
+INSTANTIATE_TEST_SUITE_P(Captured, UnaryExact, ::testing::Values(0U, 1U, 2U));

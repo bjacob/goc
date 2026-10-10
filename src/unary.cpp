@@ -8,19 +8,22 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "rcp_model.h"
+#include "rsq_model.h"
+#include "sqrt_model.h"
 
 #include <stdint.h>
 
 namespace {
 
-// Exact captured reciprocal mapping; all arithmetic here is on integer bits.
-[[gnu::noinline]] int rcp_exact(uint64_t flags, uint32_t exec_mask, uint64_t mode,
-                                uint32_t *const *d, const uint32_t *const *a, bool rdna3) {
+// Exact captured unary mappings; all arithmetic here is on integer bits.
+template <goc::Unary Op>
+[[gnu::noinline]] int unary_exact(uint64_t flags, uint32_t exec_mask, uint64_t mode,
+                                  uint32_t *const *d, const uint32_t *const *a, bool rdna3) {
   if (mode >> 32)
-    return goc::execute_dpp(flags, exec_mask, mode, a,
-                            [&](uint32_t exec_mask, const uint32_t *const *source) {
-                              return rcp_exact(flags, exec_mask, uint32_t(mode), d, source, rdna3);
-                            });
+    return goc::execute_dpp(
+        flags, exec_mask, mode, a, [&](uint32_t exec_mask, const uint32_t *const *source) {
+          return unary_exact<Op>(flags, exec_mask, uint32_t(mode), d, source, rdna3);
+        });
   const uint32_t known = GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP;
   if (int error = goc::validate(flags, mode & ~known, true,
                                 GOC_FP_IEEE_MODE | GOC_FP_FLUSH_INPUT_DENORMALS |
@@ -38,7 +41,14 @@ namespace {
       input &= 0x7fffffff;
     if (mode & GOC_ALU_NEG_A)
       input ^= 0x80000000;
-    uint32_t value = goc::rcp_f32_bits(input, !rdna3 || (flags & GOC_FP_IEEE_MODE));
+    bool quiet_snan = !rdna3 || (flags & GOC_FP_IEEE_MODE);
+    uint32_t value;
+    if constexpr (Op == goc::Unary::Rcp)
+      value = goc::rcp_f32_bits(input, quiet_snan);
+    else if constexpr (Op == goc::Unary::Sqrt)
+      value = goc::sqrt_f32_bits(input, quiet_snan);
+    else
+      value = goc::rsq_f32_bits(input, quiet_snan);
     uint32_t magnitude = value & 0x7fffffff;
     if (omod && magnitude < 0x7f800000) {
       unsigned exponent = magnitude >> 23;
@@ -66,9 +76,9 @@ namespace {
 template <goc::Unary Op, bool Rdna3 = false>
 int unary(uint64_t flags, uint32_t exec_mask, uint64_t modifiers, uint32_t *const *d,
           const uint32_t *const *a) {
-  if constexpr (Op == goc::Unary::Rcp)
+  if constexpr (Op == goc::Unary::Rcp || Op == goc::Unary::Sqrt || Op == goc::Unary::Rsq)
     if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
-      return rcp_exact(flags, exec_mask, modifiers, d, a, Rdna3);
+      return unary_exact<Op>(flags, exec_mask, modifiers, d, a, Rdna3);
   if constexpr (Rdna3) {
     // These transcendental operations use forced-flush OMOD policy, regardless
     // of guest denormal flags. Only RDNA3 IEEE mode disables output scaling.

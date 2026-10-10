@@ -77,7 +77,10 @@ TEST(Unary, ValidationAndEmptyMask) {
       EXPECT_EQ(fn(0, exec_mask, GOC_ALU_ABS_B, &pd, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(0, exec_mask, 1u << 31, &pd, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &pd, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
-      uint64_t unsupported = fn == goc_v_rcp_f32_rdna4 ? 2ULL << 16 : GOC_SEMANTICS_EXACT_EMPIRICAL;
+      uint64_t unsupported =
+          (fn == goc_v_rcp_f32_rdna4 || fn == goc_v_sqrt_f32_rdna4 || fn == goc_v_rsq_f32_rdna4)
+              ? 2ULL << 16
+              : GOC_SEMANTICS_EXACT_EMPIRICAL;
       EXPECT_EQ(fn(unsupported | GOC_SEMANTICS_STRICT, exec_mask, 0, &pd, &pa, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
@@ -240,7 +243,10 @@ TEST(Unary, Wave64ValidationAndOptionalState) {
     EXPECT_EQ(fn(0, UINT64_MAX, GOC_ALU_NEG_B, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(
         fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr, nullptr),
-        fn == goc_v_rcp_f32_rdna4_wave64 ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        (fn == goc_v_rcp_f32_rdna4_wave64 || fn == goc_v_sqrt_f32_rdna4_wave64 ||
+         fn == goc_v_rsq_f32_rdna4_wave64)
+            ? GOC_SUCCESS
+            : GOC_ERROR_UNSUPPORTED_SEMANTICS);
     uint32_t exceptions = 0x80000055;
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr, &exceptions),
               GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);

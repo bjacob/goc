@@ -61,7 +61,7 @@ be treated as verified shared semantics. Width completeness does not close this 
 | Vector/register routing | Lane transfers, MOV/MOVREL, SWAP/SWAPREL, PERMLANE64 and DS permutations at both wave sizes; RX 9070 half-move, SWAPREL and DS_SWIZZLE captures | Broader cross-width/modifier audit; RDNA3 hardware confirmation |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests; integer relational predicates now have Wave64 scalar/SIMD paths; RDNA3 true/false results implemented at both wave widths | RDNA3 floating constant exception reporting and architecture-specific floating-policy audit |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures; confirmed OMOD/IEEE architecture differences | Split differing APIs and implement RDNA3 guest-mode policies; see ARCHITECTURE_AUDIT.md |
-| Transcendentals, reciprocal, division | FP32 reciprocal exact captured mapping on both architectures; other partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
+| Transcendentals, reciprocal, division | FP32 reciprocal/square-root/reciprocal-square-root exact captured mappings on both architectures; other partial exact coverage | Review newer rocjitsu models/captures, differing semantics and state outputs |
 | Integer/vector arithmetic and bit operations | Existing broad RDNA4 coverage; bit-count family has exact scalar/SIMD paths and DPP at both wave sizes | Check RDNA3 spellings, modifier encodings, widths, carry outputs and all aliases |
 | Interpolation | All six APIs at both wave widths; shared quad routing checked against both manuals; RDNA4 captures and independent arithmetic tests | Compare remaining RDNA3 numerical contracts and empirical behavior |
 | Dual-issue VOPD | All 19 canonical operations; shared ordinary kernels, architecture-split floating arithmetic/DOT2ACC; Wave32 only | Direct VOPD hardware captures; inherited exact/global-state gaps |
@@ -2748,7 +2748,7 @@ for RDNA4 MIXLO/MIXHI following the new captures.
 - DPP/EXEC/alias tests run under all four host rounding modes and both FTZ/DAZ
   settings, checking unchanged controls and pre-existing sticky flags. Validation
   tests retain explicit rejection of unimplemented reporting and reserved semantics.
-  Capture generation is checked in as `tests/capture_rcp_exact.py`; native binaries
+  Capture generation is checked in as `tests/capture_unary_exact.py`; native binaries
   and raw records are in `../goc-build/coverage-work/rcp-exact-captures/`.
 - Validation: all 985 tests pass under Clang 21 and GCC 15 Release; all 25
   RcpExact/Unary/DppUnary/ExecMask/InstructionFlags/ExceptionRegisters tests
@@ -2762,3 +2762,38 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   line; the loose SIMD kernel is unchanged. Artifacts use
   `../goc-build/coverage-work/rcp-exact-*`; these measurements do not characterize
   exact-mode throughput or whole-library performance.
+
+## Captured exact FP32 square root and reciprocal square root
+
+- Borrowed rocjitsu `util/amdgpu_sqrt.h` and `util/amdgpu_rsq.h` at revision
+  `ffc144c564c`. Their fitted integer mappings and sparse residual tables are
+  retained, with raw-bit C++17 interfaces and GoC's portable `Uint128` where
+  needed. Both source models record exhaustive gfx1100/gfx1201 provenance.
+- SQRT and RSQ now implement exact results on RDNA3/RDNA4 and both wave sizes.
+  They use the same exact unary execution helper as RCP for source modifiers,
+  integer OMOD/CLAMP, DPP, masks and aliases. Only the core mapping differs;
+  there is no separate modifier or routing implementation for each new operation.
+  RDNA3 IEEE/NaN policy remains explicit. Requested exact reporting is still
+  rejected; numerical exactness alone does not certify exception classification.
+- Fresh RX 9070 captures cover 16,777,216 normalized inputs per operation (all
+  mantissas, both exponent parities), plus 1,048,576 modifier/special/exponent
+  records per operation over four denormal policies. All 35,651,584 new raw
+  result records match through the public APIs. RDNA3 additionally relies on
+  the borrowed model's provenance; no new RDNA3 hardware capture is claimed.
+- Renamed the reciprocal-only harness/generator to `unary_exact_test.cpp` and
+  `capture_unary_exact.py`. The five shared tests are parameterized over RCP,
+  SQRT and RSQ, retaining full normalized coverage, NaN/IEEE witnesses, DPP,
+  aliases and unchanged host controls/sticky flags under all rounding/FTZ modes.
+  Artifacts are in `../goc-build/coverage-work/{sqrt,rsq}-exact-captures/`.
+- Validation: all 995 tests pass under Clang 21 and GCC 15 Release; all 35
+  UnaryExact/Unary/DppUnary/ExecMask/InstructionFlags/ExceptionRegisters tests
+  pass under ASan/UBSan. The renamed parameterized binary runs each of its five
+  tests independently for all three operations.
+- Eleven alternating CPU-2-pinned samples, minimum 50 ms thread CPU time,
+  compare loose SQRT/RSQ and reciprocal controls against `221b29d`. Twelve AVX2
+  cases cover default/combined modifiers and null/non-null state pointers.
+  Median changes range from -1.51% to +2.74%, at most 0.531 ns slower. Default
+  SQRT changes 15.046 -> 14.960 ns (null), and default RSQ 16.729 -> 16.785 ns.
+  SIMD kernels remain unchanged. Artifacts use
+  `../goc-build/coverage-work/roots-exact-*`; these do not measure exact throughput
+  or whole-library performance.
