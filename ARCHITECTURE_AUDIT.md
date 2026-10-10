@@ -45,12 +45,12 @@ The shared helpers identify candidates, not a mechanically safe renaming set.
 
 ## Review coverage and limitations
 
-512 in-scope mnemonics have explicit contract-review records in
+518 in-scope mnemonics have explicit contract-review records in
 [`tools/architecture_reviews.json`](tools/architecture_reviews.json), linking to
 family evidence and limitations. These records describe the reviewed API contract,
 not full encoding coverage or unsupported exact behavior. Older reviews not yet
 transcribed into this ledger remain unrecorded; counts are not a completion percentage.
-The remaining 297 in-scope mnemonics need a recorded review.
+The remaining 291 in-scope mnemonics need a recorded review.
 
 89 common mnemonics have direct architecture/IEEE/OMOD/NaN policy
 references in at least one matched execution helper. All other common mnemonics
@@ -202,8 +202,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `s_xor_saveexec_b32` | no direct policy detected | no | 2820 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `s_xor_saveexec_b64` | no direct policy detected | no | 2830 | [loose and exact contract reviewed; see limitations](COVERAGE.md#scalar-exec-boolean-architecture-contracts) |
 | `v_add3_u32` | SIMD macro, output helper | no | 2866 | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |
-| `v_add_co_ci_u32` | SIMD macro, output helper | no | 2881, 2911 | review required |
-| `v_add_co_u32` | SIMD macro, output helper | no | 2942, 2967 | review required |
+| `v_add_co_ci_u32` | SIMD macro, output helper | no | 2881, 2911 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
+| `v_add_co_u32` | SIMD macro, output helper | no | 2942, 2967 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
 | `v_add_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 2992, 3024 | review required |
 | `v_add_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 3093, 3114 | review required |
 | `v_add_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 3168, 3187 | review required |
@@ -621,16 +621,16 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_sqrt_f16` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 19083, 19117 | review required |
 | `v_sqrt_f32` | IEEE mode, NaN quieting, OMOD, SIMD macro, architecture query, output helper | yes | 19163, 19185 | review required |
 | `v_sqrt_f64` | IEEE mode, OMOD, SIMD macro, architecture query | yes | 19228, 19242 | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
-| `v_sub_co_ci_u32` | SIMD macro, output helper | no | 19279, 19309 | review required |
-| `v_sub_co_u32` | SIMD macro, output helper | no | 19340, 19363 | review required |
+| `v_sub_co_ci_u32` | SIMD macro, output helper | no | 19279, 19309 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
+| `v_sub_co_u32` | SIMD macro, output helper | no | 19340, 19363 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
 | `v_sub_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 19386, 19418 | review required |
 | `v_sub_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 19487, 19513 | review required |
 | `v_sub_nc_i16` | output helper | no | 19582 | review required |
 | `v_sub_nc_i32` | SIMD macro, output helper | no | 19597 | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |
 | `v_sub_nc_u16` | output helper | no | 19612 | review required |
 | `v_sub_nc_u32` | SIMD macro, output helper | no | 19627, 19641 | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |
-| `v_subrev_co_ci_u32` | SIMD macro, output helper | no | 19820, 19850 | review required |
-| `v_subrev_co_u32` | SIMD macro, output helper | no | 19881, 19905 | review required |
+| `v_subrev_co_ci_u32` | SIMD macro, output helper | no | 19820, 19850 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
+| `v_subrev_co_u32` | SIMD macro, output helper | no | 19881, 19905 | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
 | `v_subrev_f16` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 19929, 19961 | review required |
 | `v_subrev_f32` | IEEE mode, OMOD, SIMD macro, architecture query, output helper | yes | 20030, 20056 | review required |
 | `v_subrev_nc_u32` | SIMD macro, output helper | no | 20110, 20125 | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |

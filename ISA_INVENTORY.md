@@ -843,8 +843,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `tbuffer_store_format_xyz` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `tbuffer_store_format_xyzw` | yes | yes | out: VMEM | — | — | excluded: memory/control/scheduling |
 | `v_add3_u32` | yes | yes | in | `goc_v_add3_u32`<br>`goc_v_add3_u32_wave64` | `v_add3_nc_u32` | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |
-| `v_add_co_ci_u32` | yes | yes | in | `goc_v_add_co_ci_u32`<br>`goc_v_add_co_ci_u32_wave64` | — | API present; semantic audit pending |
-| `v_add_co_u32` | yes | yes | in | `goc_v_add_co_u32`<br>`goc_v_add_co_u32_wave64` | — | API present; semantic audit pending |
+| `v_add_co_ci_u32` | yes | yes | in | `goc_v_add_co_ci_u32`<br>`goc_v_add_co_ci_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
+| `v_add_co_u32` | yes | yes | in | `goc_v_add_co_u32`<br>`goc_v_add_co_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
 | `v_add_f16` | yes | yes | in | `goc_v_add_f16`<br>`goc_v_add_f16_wave64`<br>`goc_v_add_f16_rdna4`<br>`goc_v_add_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_add_f32` | yes | yes | in | `goc_v_add_f32`<br>`goc_v_add_f32_wave64`<br>`goc_v_add_f32_rdna4`<br>`goc_v_add_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_add_f64` | yes | yes | in | `goc_v_add_f64`<br>`goc_v_add_f64_wave64`<br>`goc_v_add_f64_rdna4`<br>`goc_v_add_f64_rdna4_wave64` | — | API present; semantic audit pending |
@@ -1378,16 +1378,16 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_sqrt_f16` | yes | yes | in | `goc_v_sqrt_f16`<br>`goc_v_sqrt_f16_wave64`<br>`goc_v_sqrt_f16_rdna4`<br>`goc_v_sqrt_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_sqrt_f32` | yes | yes | in | `goc_v_sqrt_f32`<br>`goc_v_sqrt_f32_wave64`<br>`goc_v_sqrt_f32_rdna4`<br>`goc_v_sqrt_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_sqrt_f64` | yes | yes | in | `goc_v_sqrt_f64`<br>`goc_v_sqrt_f64_wave64`<br>`goc_v_sqrt_f64_rdna4`<br>`goc_v_sqrt_f64_rdna4_wave64` | — | [loose contract reviewed; see limitations](COVERAGE.md#fp64-unary-architecture-policies) |
-| `v_sub_co_ci_u32` | yes | yes | in | `goc_v_sub_co_ci_u32`<br>`goc_v_sub_co_ci_u32_wave64` | — | API present; semantic audit pending |
-| `v_sub_co_u32` | yes | yes | in | `goc_v_sub_co_u32`<br>`goc_v_sub_co_u32_wave64` | — | API present; semantic audit pending |
+| `v_sub_co_ci_u32` | yes | yes | in | `goc_v_sub_co_ci_u32`<br>`goc_v_sub_co_ci_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
+| `v_sub_co_u32` | yes | yes | in | `goc_v_sub_co_u32`<br>`goc_v_sub_co_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
 | `v_sub_f16` | yes | yes | in | `goc_v_sub_f16`<br>`goc_v_sub_f16_wave64`<br>`goc_v_sub_f16_rdna4`<br>`goc_v_sub_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_sub_f32` | yes | yes | in | `goc_v_sub_f32`<br>`goc_v_sub_f32_wave64`<br>`goc_v_sub_f32_rdna4`<br>`goc_v_sub_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_sub_nc_i16` | yes | yes | in | `goc_v_sub_nc_i16`<br>`goc_v_sub_nc_i16_wave64` | — | API present; semantic audit pending |
 | `v_sub_nc_i32` | yes | yes | in | `goc_v_sub_nc_i32`<br>`goc_v_sub_nc_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |
 | `v_sub_nc_u16` | yes | yes | in | `goc_v_sub_nc_u16`<br>`goc_v_sub_nc_u16_wave64` | — | API present; semantic audit pending |
 | `v_sub_nc_u32` | yes | yes | in | `goc_v_sub_nc_u32`<br>`goc_v_sub_nc_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |
-| `v_subrev_co_ci_u32` | yes | yes | in | `goc_v_subrev_co_ci_u32`<br>`goc_v_subrev_co_ci_u32_wave64` | — | API present; semantic audit pending |
-| `v_subrev_co_u32` | yes | yes | in | `goc_v_subrev_co_u32`<br>`goc_v_subrev_co_u32_wave64` | — | API present; semantic audit pending |
+| `v_subrev_co_ci_u32` | yes | yes | in | `goc_v_subrev_co_ci_u32`<br>`goc_v_subrev_co_ci_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
+| `v_subrev_co_u32` | yes | yes | in | `goc_v_subrev_co_u32`<br>`goc_v_subrev_co_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-carry-and-borrow-architecture-contracts) |
 | `v_subrev_f16` | yes | yes | in | `goc_v_subrev_f16`<br>`goc_v_subrev_f16_wave64`<br>`goc_v_subrev_f16_rdna4`<br>`goc_v_subrev_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_subrev_f32` | yes | yes | in | `goc_v_subrev_f32`<br>`goc_v_subrev_f32_wave64`<br>`goc_v_subrev_f32_rdna4`<br>`goc_v_subrev_f32_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_subrev_nc_u32` | yes | yes | in | `goc_v_subrev_nc_u32`<br>`goc_v_subrev_nc_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#non-carry-integer-addition-architecture-contracts) |

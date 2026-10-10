@@ -380,3 +380,58 @@ TEST(Carry, Wave64ScalarOutputAliasAndErrors) {
     EXPECT_EQ(carry, 0U);
   }
 }
+
+TEST(Carry, ChainedWordsFormFullWidthArithmetic) {
+  const uint64_t values[] = {0,
+                             1,
+                             0xffffffffULL,
+                             0x100000000ULL,
+                             0x7fffffffffffffffULL,
+                             0x8000000000000000ULL,
+                             0xffffffff00000000ULL,
+                             UINT64_MAX};
+  for (unsigned op = 0; op < 3; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (unsigned lanes : {32U, 64U})
+          for (uint64_t exec_mask : {UINT64_MAX, uint64_t(0x87654321fedcba98ULL)})
+            for (unsigned batch = 0; batch < 2; ++batch) {
+              uint32_t a[2][64], b[2][64];
+              uint64_t expected[64], expected_carry = 0;
+              for (unsigned lane = 0; lane < lanes; ++lane) {
+                unsigned index = batch * 32 + lane;
+                uint64_t av = values[(index / 8) % 8], bv = values[index % 8];
+                a[0][lane] = uint32_t(av);
+                a[1][lane] = uint32_t(av >> 32);
+                b[0][lane] = uint32_t(bv);
+                b[1][lane] = uint32_t(bv >> 32);
+                uint64_t first = op == 2 ? bv : av, second = op == 2 ? av : bv;
+                uint64_t result = op == 0 ? first + second : first - second;
+                bool carry = op == 0 ? result < first : first < second;
+                bool active = (exec_mask >> lane) & 1;
+                expected[lane] = active ? result : av;
+                if (active && carry)
+                  expected_carry |= 1ULL << lane;
+              }
+              uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+              uint32_t carry32 = UINT32_MAX;
+              uint64_t carry64 = UINT64_MAX;
+              for (unsigned word = 0; word < 2; ++word) {
+                const uint32_t *pa = a[word], *pb = b[word];
+                uint32_t *d = a[word];
+                unsigned instruction = op + (word ? 3 : 0);
+                if (lanes == 32) {
+                  ASSERT_EQ(goc_test::carry_functions[instruction](flags, uint32_t(exec_mask), 0,
+                                                                   &d, &carry32, &pa, &pb, carry32),
+                            GOC_SUCCESS);
+                } else {
+                  ASSERT_EQ(goc_test::carry_wave64_functions[instruction](
+                                flags, exec_mask, 0, &d, &carry64, &pa, &pb, carry64),
+                            GOC_SUCCESS);
+                }
+              }
+              EXPECT_EQ(lanes == 32 ? uint64_t(carry32) : carry64, expected_carry);
+              for (unsigned lane = 0; lane < lanes; ++lane)
+                EXPECT_EQ(a[0][lane] | (uint64_t(a[1][lane]) << 32), expected[lane]);
+            }
+}

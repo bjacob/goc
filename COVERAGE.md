@@ -5616,3 +5616,42 @@ Validation: all 1,127 CTests pass under Clang and GCC Release; all ten wide-MAD/
 Wave64 tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `mad64-review-` in each build directory. The ledger records 512 contracts;
 297 in-scope mnemonics remain without recorded reviews.
+
+## Vector carry and borrow architecture contracts
+
+Reviewed all six 32-bit ADD/SUB/SUBREV carry-output forms, with and without
+carry/borrow input, at rocjitsu `ffc144c564c`. All 18 architecture-specific
+execution/modifier body pairs are identical (36 bodies): three VOP2 carry-input
+forms and six VOP3 forms. Locations, hashes and delegates are recorded in
+`../goc-build/coverage-work/carry-upstream-review.json`. Shared helpers agree on
+unsigned carry/borrow, subtracting the incoming borrow, reversed operand order,
+and CLAMP after the full operation. No architecture suffix or optional
+floating-state output is needed.
+
+The required scalar result reports carry for addition or borrow for subtraction,
+independently of CLAMP. Saturated ADD yields UINT32_MAX and saturated subtraction
+yields zero. Input mask bits belong to their destination lanes; DPP does not
+route them. GoC retains its fixture-backed SUBREV routing of B, with other forms
+routing A, as already documented for non-carry arithmetic. This review adds no
+RDNA3 hardware capture. Masked-off scalar result bits are zero; masked-off vector
+lanes are preserved. Empty EXEC writes scalar zero without requiring VGPRs.
+Wave64 defers the scalar write until both halves have read their inputs.
+
+The eight-lane v3 and sixteen-lane v4 paths compute overflow/borrow separately
+for the A/B operation and incoming bit, OR those conditions, and then apply
+optional saturation. Scalar and SIMD paths already agree; no production change
+was required and SIMD dispatch is unchanged.
+
+Added an integration test chaining a no-input-carry low-word instruction into
+its carry-input high-word counterpart. It reconstructs full unsigned 64-bit
+ADD/SUB/SUBREV results and compares the final carry/borrow against independent
+64-bit arithmetic. The test covers the Cartesian boundary values, both wave
+sizes and semantics, all available CPU levels, full/mixed EXEC, an in-place
+vector destination and reuse of the scalar carry variable. Existing tests cover
+CLAMP, arbitrary input masks, DPP, scalar-output aliases, validation and retained
+RDNA4 hardware fixtures.
+
+Validation: all 1,128 CTests pass under Clang and GCC Release; all twelve carry
+tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`carry-review-` in each build directory. The ledger records 518 contracts;
+291 in-scope mnemonics remain without recorded reviews.
