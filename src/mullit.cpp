@@ -47,7 +47,7 @@ template <bool Rdna3>
 }
 
 template <bool Rdna3>
-void compute(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
+void compute([[maybe_unused]] uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *const *d,
              const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {

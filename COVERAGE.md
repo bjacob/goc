@@ -8606,3 +8606,31 @@ mnemonic contracts and **one** pending: RDNA3 DX9 FMAC's global-state contract.
 Validation: all **13** DivScale tests pass with Clang 21 Release, GCC 15 Release
 and Clang ASan/UBSan, as do all nine tooling tests. Logs use
 `coverage-work/div-scale-contract-{build,tests}.log` in each build directory.
+
+## Build without specialized SIMD implementations
+
+The completion audit configured the Clang Release build in
+`../goc-build-no-simd` with the four compiler-probe cache values
+`GOC_COMPILER_X86_64_V3`, `GOC_COMPILER_X86_64_V4`,
+`GOC_COMPILER_AVX512BF16`, and `GOC_COMPILER_AVX512VNNI` set to `OFF`.
+This exercises the existing fallback configuration without adding a public
+SIMD-disable option. Its compile database contains no `src/x86_64/` translation
+units; ordinary compiler optimization of scalar C++ remains enabled.
+
+This uncovered two warnings-as-errors: MULLIT's CPU-selection parameter and
+literal FP32 FMA's exact-mode dispatch local were unused when SIMD kernels were
+not compiled. Both are now annotated `[[maybe_unused]]`. No arithmetic,
+validation, dispatch condition, or instruction contract changes.
+
+All **1,184** tests pass in the fallback configuration. Full normal Clang 21
+and GCC 15 Release suites also pass all **1,184** tests after rebuilding.
+Fallback configure/build/test logs use `coverage-work/completion-no-simd-`
+in `../goc-build`; normal compiler logs use `coverage-work/no-simd-fix-`
+in their respective directories. These checks validate fallback compilation and
+execution on this x86-64 host, not cross-platform portability.
+
+All **44** targeted Arithmetic/FmaExact/LiteralFma/Mullit tests pass under
+Clang ASan/UBSan; the log is
+`../goc-build-sanitize/coverage-work/no-simd-fix-tests.log`. All ten tooling
+tests pass. An initially over-escaped CTest filter selected no sanitizer tests;
+the corrected filter selected and ran the 44 tests reported here.

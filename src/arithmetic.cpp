@@ -205,7 +205,7 @@ int literal_fma(uint64_t flags, uint32_t exec_mask, uint32_t mode, uint32_t *con
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
-  bool exact = (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
+  [[maybe_unused]] bool exact = (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL;
 #if defined(GOC_HAVE_X86_64_V4)
   if (!exact && (flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
     goc::literal_fma_x86_64_v4<Multiply>(flags, exec_mask, literal, d[0], a[0], b[0]);
