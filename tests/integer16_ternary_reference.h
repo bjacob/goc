@@ -12,6 +12,11 @@ using Integer16TernaryFn = decltype(&goc_v_mad_i16);
 const Integer16TernaryFn integer16_ternary_functions[] = {
     goc_v_mad_u16,  goc_v_mad_i16,  goc_v_min3_u16, goc_v_min3_i16,
     goc_v_max3_u16, goc_v_max3_i16, goc_v_med3_u16, goc_v_med3_i16};
+
+using Integer16TernaryWave64Fn = decltype(&goc_v_mad_i16_wave64);
+const Integer16TernaryWave64Fn integer16_ternary_wave64_functions[] = {
+    goc_v_mad_u16_wave64,  goc_v_mad_i16_wave64,  goc_v_min3_u16_wave64, goc_v_min3_i16_wave64,
+    goc_v_max3_u16_wave64, goc_v_max3_i16_wave64, goc_v_med3_u16_wave64, goc_v_med3_i16_wave64};
 const char *const integer16_ternary_names[] = {"v_mad_u16",  "v_mad_i16",  "v_min3_u16",
                                                "v_min3_i16", "v_max3_u16", "v_max3_i16",
                                                "v_med3_u16", "v_med3_i16"};

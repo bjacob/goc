@@ -845,3 +845,25 @@ The width-review queue now contains 270 candidates.
 Validation: all 765 tests pass with Clang 21 and GCC 15 Release. All 24
 selection, ternary, Wave64, DPP, zero-EXEC and instruction-flag tests pass under
 ASan/UBSan. The zero-EXEC table reflects the expanded exact support.
+
+
+## Wave64 ordinary and packed 16-bit integer arithmetic
+
+Added 34 APIs: twelve ordinary binary/shift operations, eight ordinary ternary
+operations, twelve packed binary/shift operations and two packed MAD forms.
+The existing shared scalar/v3 kernels serve both widths. Ordinary forms preserve
+the unselected D half and permit DPP on A before half selection; packed forms
+compute both halves from original sources and reject DPP. Both widths now
+accept strict exact semantics for this integer arithmetic.
+
+New independent tests cover every supported half-selector and saturation
+combination, signed/unsigned boundaries and random words, both semantics and
+all CPU paths, whole-source aliases, masks/guards, and all ordinary DPP row
+masks plus DPP8. They check packed DPP rejection and validation before operand
+access. Existing exhaustive Wave32 operand tests and hardware captures remain
+in place for the shared kernels; no new Wave64 captures or throughput numbers
+are claimed. The width-review queue is now 236 candidates.
+
+Validation: all 767 tests pass on Clang 21 and GCC 15 Release. All 31 ordinary
+and packed integer16, Wave64, DPP, zero-EXEC and instruction-flag tests pass
+under ASan/UBSan, including both exhaustive ordinary DPP suites.

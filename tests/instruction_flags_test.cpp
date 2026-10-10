@@ -93,7 +93,24 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_add_lshl_u32" || base_name == "goc_v_lshl_or_b32" ||
         base_name == "goc_v_and_or_b32" || base_name == "goc_v_or3_b32" ||
         base_name == "goc_v_xor3_b32" || base_name == "goc_v_xad_u32" ||
-        base_name == "goc_v_lerp_u8")
+        base_name == "goc_v_lerp_u8" || base_name == "goc_v_pk_add_i16" ||
+        base_name == "goc_v_pk_sub_i16" || base_name == "goc_v_pk_add_u16" ||
+        base_name == "goc_v_pk_sub_u16" || base_name == "goc_v_pk_min_i16" ||
+        base_name == "goc_v_pk_max_i16" || base_name == "goc_v_pk_min_u16" ||
+        base_name == "goc_v_pk_max_u16" || base_name == "goc_v_pk_mul_lo_u16" ||
+        base_name == "goc_v_pk_lshlrev_b16" || base_name == "goc_v_pk_lshrrev_b16" ||
+        base_name == "goc_v_pk_ashrrev_i16" || base_name == "goc_v_add_nc_i16" ||
+        base_name == "goc_v_sub_nc_i16" || base_name == "goc_v_add_nc_u16" ||
+        base_name == "goc_v_sub_nc_u16" || base_name == "goc_v_min_i16" ||
+        base_name == "goc_v_max_i16" || base_name == "goc_v_min_u16" ||
+        base_name == "goc_v_max_u16" || base_name == "goc_v_mul_lo_u16" ||
+        base_name == "goc_v_lshlrev_b16" || base_name == "goc_v_lshrrev_b16" ||
+        base_name == "goc_v_ashrrev_i16" || base_name == "goc_v_pk_mad_i16" ||
+        base_name == "goc_v_pk_mad_u16" || base_name == "goc_v_mad_u16" ||
+        base_name == "goc_v_mad_i16" || base_name == "goc_v_min3_u16" ||
+        base_name == "goc_v_min3_i16" || base_name == "goc_v_max3_u16" ||
+        base_name == "goc_v_max3_i16" || base_name == "goc_v_med3_u16" ||
+        base_name == "goc_v_med3_i16")
       name = base_name.c_str();
   } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));

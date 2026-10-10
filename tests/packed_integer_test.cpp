@@ -180,9 +180,8 @@ TEST(PackedInteger, ValidationAndFloatingEnvironment) {
       EXPECT_EQ(fn(0, 0, invalid, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
     }
     EXPECT_EQ(std::memcmp(saved, d, sizeof(d)), 0);
-    EXPECT_EQ(
-        fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr, nullptr),
-        GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr, nullptr),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(fn(0, 0U, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
     goc_test::ScopedFpEnvironment environment;
     ASSERT_TRUE(environment.saved());

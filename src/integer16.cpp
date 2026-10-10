@@ -29,7 +29,7 @@ int arithmetic(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *cons
       Packed
           ? GOC_PK_LO_A_HIGH | GOC_PK_LO_B_HIGH | GOC_PK_HI_A_LOW | GOC_PK_HI_B_LOW | GOC_PK_CLAMP
           : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D | (saturating ? GOC_ALU_CLAMP : 0);
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
@@ -91,6 +91,28 @@ int arithmetic(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *cons
         d[0][lane] = (d[0][lane] & ~(65535U << shift)) | (result[lane] << shift);
       }
     }
+  return GOC_SUCCESS;
+}
+
+template <goc::Integer16 Op, bool Signed, bool Packed = true>
+int arithmetic_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                      const uint32_t *const *a, const uint32_t *const *b) {
+  if (int error = arithmetic<Op, Signed, Packed>(flags, 0, mode, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32;
+    if (int error = arithmetic<Op, Signed, Packed>(flags, uint32_t(exec_mask >> (half * 32)),
+                                                   half_mode, &dest, &source_a, &source_b))
+      return error;
+  }
   return GOC_SUCCESS;
 }
 
@@ -247,4 +269,188 @@ int goc_v_ashrrev_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_f
                       uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
   return arithmetic<goc::Integer16::ShiftRight, true, false>(flags, exec_mask, instruction_flags, d,
                                                              a, b);
+}
+
+int goc_v_pk_add_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::Add, true>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_pk_sub_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::Sub, true>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_pk_add_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::Add, false>(flags, exec_mask, instruction_flags, d, a,
+                                                       b);
+}
+
+int goc_v_pk_sub_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::Sub, false>(flags, exec_mask, instruction_flags, d, a,
+                                                       b);
+}
+
+int goc_v_pk_min_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::Min, true>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_pk_max_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::Max, true>(flags, exec_mask, instruction_flags, d, a, b);
+}
+
+int goc_v_pk_min_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::Min, false>(flags, exec_mask, instruction_flags, d, a,
+                                                       b);
+}
+
+int goc_v_pk_max_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::Max, false>(flags, exec_mask, instruction_flags, d, a,
+                                                       b);
+}
+
+int goc_v_pk_mul_lo_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                               uint32_t *const *d, const uint32_t *const *a,
+                               const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::Mul, false>(flags, exec_mask, instruction_flags, d, a,
+                                                       b);
+}
+
+int goc_v_pk_lshlrev_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::ShiftLeft, false>(flags, exec_mask, instruction_flags, d,
+                                                             a, b);
+}
+
+int goc_v_pk_lshrrev_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::ShiftRight, false>(flags, exec_mask, instruction_flags,
+                                                              d, a, b);
+}
+
+int goc_v_pk_ashrrev_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                uint32_t *const *d, const uint32_t *const *a,
+                                const uint32_t *const *b) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return arithmetic_wave64<goc::Integer16::ShiftRight, true>(flags, exec_mask, instruction_flags, d,
+                                                             a, b);
+}
+
+int goc_v_add_nc_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::Add, true, false>(flags, exec_mask, instruction_flags, d,
+                                                             a, b);
+}
+
+int goc_v_sub_nc_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::Sub, true, false>(flags, exec_mask, instruction_flags, d,
+                                                             a, b);
+}
+
+int goc_v_add_nc_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::Add, false, false>(flags, exec_mask, instruction_flags,
+                                                              d, a, b);
+}
+
+int goc_v_sub_nc_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::Sub, false, false>(flags, exec_mask, instruction_flags,
+                                                              d, a, b);
+}
+
+int goc_v_min_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::Min, true, false>(flags, exec_mask, instruction_flags, d,
+                                                             a, b);
+}
+
+int goc_v_max_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::Max, true, false>(flags, exec_mask, instruction_flags, d,
+                                                             a, b);
+}
+
+int goc_v_min_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::Min, false, false>(flags, exec_mask, instruction_flags,
+                                                              d, a, b);
+}
+
+int goc_v_max_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::Max, false, false>(flags, exec_mask, instruction_flags,
+                                                              d, a, b);
+}
+
+int goc_v_mul_lo_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a,
+                            const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::Mul, false, false>(flags, exec_mask, instruction_flags,
+                                                              d, a, b);
+}
+
+int goc_v_lshlrev_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::ShiftLeft, false, false>(flags, exec_mask,
+                                                                    instruction_flags, d, a, b);
+}
+
+int goc_v_lshrrev_b16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::ShiftRight, false, false>(flags, exec_mask,
+                                                                     instruction_flags, d, a, b);
+}
+
+int goc_v_ashrrev_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                             uint32_t *const *d, const uint32_t *const *a,
+                             const uint32_t *const *b) {
+  return arithmetic_wave64<goc::Integer16::ShiftRight, true, false>(flags, exec_mask,
+                                                                    instruction_flags, d, a, b);
 }

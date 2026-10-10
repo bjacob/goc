@@ -20,6 +20,13 @@ inline const Integer16Fn integer16_functions[] = {
     goc_v_min_i16,    goc_v_max_i16,     goc_v_min_u16,     goc_v_max_u16,
     goc_v_mul_lo_u16, goc_v_lshlrev_b16, goc_v_lshrrev_b16, goc_v_ashrrev_i16};
 
+using Integer16Wave64Fn = decltype(&goc_v_add_nc_i16_wave64);
+inline const Integer16Wave64Fn integer16_wave64_functions[] = {
+    goc_v_add_nc_i16_wave64,  goc_v_sub_nc_i16_wave64,  goc_v_add_nc_u16_wave64,
+    goc_v_sub_nc_u16_wave64,  goc_v_min_i16_wave64,     goc_v_max_i16_wave64,
+    goc_v_min_u16_wave64,     goc_v_max_u16_wave64,     goc_v_mul_lo_u16_wave64,
+    goc_v_lshlrev_b16_wave64, goc_v_lshrrev_b16_wave64, goc_v_ashrrev_i16_wave64};
+
 inline uint32_t integer16_mode_bits(int mode) {
   return (mode & 1 ? GOC_ALU_HIGH_A : 0) | (mode & 2 ? GOC_ALU_HIGH_B : 0) |
          (mode & 4 ? GOC_ALU_HIGH_D : 0) | (mode & 8 ? GOC_ALU_CLAMP : 0);

@@ -222,13 +222,13 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_sin_f32`, `v_cos_f32` | Scalar, x86-64-v3 | Captured RDNA3/4 integer model |
 | `v_exp_f32`, `v_log_f32` | Scalar `exp2` / `log2` | Not implemented |
 | `v_dot4_f32_{fp8,bf8}_{fp8,bf8}` (all four combinations) | Scalar, x86-64-v3 | Not implemented |
-| `v_pk_add_i16`, `v_pk_sub_i16`, `v_pk_add_u16`, `v_pk_sub_u16` | Scalar, x86-64-v3; all half selectors and saturation | Not implemented |
+| `v_pk_add_i16`, `v_pk_sub_i16`, `v_pk_add_u16`, `v_pk_sub_u16` | Scalar, x86-64-v3; all half selectors and saturation | Exact integer operations; both wave sizes |
 | `v_mad_i32_i16`, `v_mad_u32_u16` | Scalar, x86-64-v3; factor half selectors and saturation | Not implemented |
 | `v_mad_i32_i24`, `v_mad_u32_u24` | Scalar, x86-64-v3; saturation | Not implemented |
-| `v_mad_i16`, `v_mad_u16` | Scalar, x86-64-v3; half selectors and saturation | Not implemented |
-| `v_min3_i16`, `v_min3_u16`, `v_max3_i16`, `v_max3_u16`, `v_med3_i16`, `v_med3_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
-| `v_add_nc_i16`, `v_sub_nc_i16`, `v_add_nc_u16`, `v_sub_nc_u16` | Scalar, x86-64-v3; half selectors and saturation | Not implemented |
-| `v_min_i16`, `v_max_i16`, `v_min_u16`, `v_max_u16`, `v_mul_lo_u16` | Scalar, x86-64-v3; half selectors | Not implemented |
+| `v_mad_i16`, `v_mad_u16` | Scalar, x86-64-v3; half selectors and saturation | Exact integer operations; both wave sizes |
+| `v_min3_i16`, `v_min3_u16`, `v_max3_i16`, `v_max3_u16`, `v_med3_i16`, `v_med3_u16` | Scalar, x86-64-v3; half selectors | Exact integer operations; both wave sizes |
+| `v_add_nc_i16`, `v_sub_nc_i16`, `v_add_nc_u16`, `v_sub_nc_u16` | Scalar, x86-64-v3; half selectors and saturation | Exact integer operations; both wave sizes |
+| `v_min_i16`, `v_max_i16`, `v_min_u16`, `v_max_u16`, `v_mul_lo_u16` | Scalar, x86-64-v3; half selectors | Exact integer operations; both wave sizes |
 | `v_clz_i32_u32`, `v_ctz_i32_b32`, `v_cls_i32`, `v_bcnt_u32_b32` (wave32 and wave64) | Scalar, x86-64-v3, x86-64-v4 | Same paths, bit-exact |
 | `v_mbcnt_lo_u32_b32` (wave32 and wave64), `v_mbcnt_hi_u32_b32` (wave64) | Scalar, x86-64-v3, x86-64-v4 | Same paths, bit-exact |
 | `v_mbcnt_hi_u32_b32` (wave32) | Scalar, x86-64-v4 | Same paths, bit-exact |
@@ -243,10 +243,10 @@ The FP16/BF16 WMMA forms additionally have scalar wave64 variants named
 | `v_qsad_pk_u16_u8`, `v_mqsad_pk_u16_u8`, `v_mqsad_u32_u8` | Scalar, x86-64-v3; independent packed/full-width saturation | Not implemented |
 | `v_lshlrev_b32`, `v_lshrrev_b32`, `v_ashrrev_i32` | Scalar, x86-64-v3 | Exact integer operations; both wave sizes |
 | `v_lshlrev_b64`, `v_lshrrev_b64`, `v_ashrrev_i64` | Scalar, x86-64-v3 | Exact integer operations; both wave sizes |
-| `v_lshlrev_b16`, `v_lshrrev_b16`, `v_ashrrev_i16` | Scalar, x86-64-v3; half selectors | Not implemented |
-| `v_pk_mad_i16`, `v_pk_mad_u16` | Scalar, x86-64-v3; all half selectors and saturation | Not implemented |
-| `v_pk_lshlrev_b16`, `v_pk_lshrrev_b16`, `v_pk_ashrrev_i16` | Scalar, x86-64-v3; all half selectors | Not implemented |
-| `v_pk_min_i16`, `v_pk_max_i16`, `v_pk_min_u16`, `v_pk_max_u16`, `v_pk_mul_lo_u16` | Scalar, x86-64-v3; all half selectors | Not implemented |
+| `v_lshlrev_b16`, `v_lshrrev_b16`, `v_ashrrev_i16` | Scalar, x86-64-v3; half selectors | Exact integer operations; both wave sizes |
+| `v_pk_mad_i16`, `v_pk_mad_u16` | Scalar, x86-64-v3; all half selectors and saturation | Exact integer operations; both wave sizes |
+| `v_pk_lshlrev_b16`, `v_pk_lshrrev_b16`, `v_pk_ashrrev_i16` | Scalar, x86-64-v3; all half selectors | Exact integer operations; both wave sizes |
+| `v_pk_min_i16`, `v_pk_max_i16`, `v_pk_min_u16`, `v_pk_max_u16`, `v_pk_mul_lo_u16` | Scalar, x86-64-v3; all half selectors | Exact integer operations; both wave sizes |
 | `v_dot4_i32_iu8`, `v_dot4_u32_u8` | Scalar, x86-64-v3 | Same integer result |
 | `v_dot8_i32_iu4`, `v_dot8_u32_u4` | Scalar, x86-64-v3 | Same integer result |
 | `v_dot2_f16_f16`, `v_dot2_bf16_bf16` | Scalar, x86-64-v3 | Not implemented |
@@ -2437,3 +2437,10 @@ operations provide `_wave64` APIs and accept strict exact semantics at both
 widths. They retain DPP on A, whole-VGPR aliases, and existing scalar/v3/v4
 selection. Mixed min/max preserves its specified A/B-first ordering; byte LERP
 rounds independently in each byte using the corresponding C low bit.
+
+
+Ordinary and packed 16-bit integer arithmetic now provides `_wave64` forms and
+strict exact semantics at both widths. Ordinary operations preserve the other
+half of D and apply DPP before selecting A's half. Packed operations compute
+both halves using their independent selectors and reject DPP. Both reuse the
+existing scalar and x86-64-v3 kernels, including saturation and whole-VGPR aliases.

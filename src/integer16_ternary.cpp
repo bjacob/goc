@@ -36,7 +36,7 @@ int ternary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
                    GOC_PK_HI_B_LOW | GOC_PK_HI_C_LOW | GOC_PK_CLAMP
              : GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_C | GOC_ALU_HIGH_D |
                    (Op == goc::Integer16Ternary::Mad ? GOC_ALU_CLAMP : 0);
-  if (int error = goc::validate(flags, mode & ~known))
+  if (int error = goc::validate(flags, mode & ~known, true))
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
@@ -83,6 +83,29 @@ int ternary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
         d[0][lane] = (d[0][lane] & ~(65535U << shift)) | (result[lane] << shift);
       }
     }
+  return GOC_SUCCESS;
+}
+
+template <bool Signed, goc::Integer16Ternary Op = goc::Integer16Ternary::Mad, bool Packed = true>
+int ternary_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (int error = ternary<Signed, Op, Packed>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32;
+    const uint32_t *source_c = c[0] + half * 32;
+    if (int error = ternary<Signed, Op, Packed>(flags, uint32_t(exec_mask >> (half * 32)),
+                                                half_mode, &dest, &source_a, &source_b, &source_c))
+      return error;
+  }
   return GOC_SUCCESS;
 }
 
@@ -158,4 +181,76 @@ int goc_v_med3_i16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flag
                    const uint32_t *const *c) {
   return ternary<true, goc::Integer16Ternary::Median, false>(flags, exec_mask, instruction_flags, d,
                                                              a, b, c);
+}
+
+int goc_v_pk_mad_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return ternary_wave64<true>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_pk_mad_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c) {
+  if (instruction_flags >> 32)
+    return GOC_ERROR_INVALID_FLAGS;
+  return ternary_wave64<false>(flags, exec_mask, instruction_flags, d, a, b, c);
+}
+
+int goc_v_mad_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
+  return ternary_wave64<false, goc::Integer16Ternary::Mad, false>(flags, exec_mask,
+                                                                  instruction_flags, d, a, b, c);
+}
+
+int goc_v_mad_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                         uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
+  return ternary_wave64<true, goc::Integer16Ternary::Mad, false>(flags, exec_mask,
+                                                                 instruction_flags, d, a, b, c);
+}
+
+int goc_v_min3_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return ternary_wave64<false, goc::Integer16Ternary::Min, false>(flags, exec_mask,
+                                                                  instruction_flags, d, a, b, c);
+}
+
+int goc_v_min3_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return ternary_wave64<true, goc::Integer16Ternary::Min, false>(flags, exec_mask,
+                                                                 instruction_flags, d, a, b, c);
+}
+
+int goc_v_max3_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return ternary_wave64<false, goc::Integer16Ternary::Max, false>(flags, exec_mask,
+                                                                  instruction_flags, d, a, b, c);
+}
+
+int goc_v_max3_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return ternary_wave64<true, goc::Integer16Ternary::Max, false>(flags, exec_mask,
+                                                                 instruction_flags, d, a, b, c);
+}
+
+int goc_v_med3_u16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return ternary_wave64<false, goc::Integer16Ternary::Median, false>(flags, exec_mask,
+                                                                     instruction_flags, d, a, b, c);
+}
+
+int goc_v_med3_i16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return ternary_wave64<true, goc::Integer16Ternary::Median, false>(flags, exec_mask,
+                                                                    instruction_flags, d, a, b, c);
 }
