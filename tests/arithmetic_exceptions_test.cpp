@@ -114,7 +114,7 @@ TEST(ArithmeticExceptions, HostEnvironmentAndOptOut) {
 }
 
 TEST(ArithmeticExceptions, LooseModeSkipsReporting) {
-  for (Fn fn : {goc_v_fma_f16_rdna4, fmac, goc_v_div_fixup_f16, goc_v_pk_fma_f16})
+  for (Fn fn : {goc_v_fma_f16_rdna4, fmac, goc_v_div_fixup_f16, goc_v_pk_fma_f16_rdna4})
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
       uint32_t words[5][32];
       for (unsigned reg = 0; reg < 5; ++reg)

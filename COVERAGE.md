@@ -2184,3 +2184,38 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   now has 624 reporting signatures, 290 resolved names, zero mismatches and
   334 unresolved shared signatures. Logs:
   `../goc-build/coverage-work/half-fma-architecture-*-tests.log`.
+
+## Packed FP16 FMA architecture policies
+
+- Split `v_pk_fma_f16` and `v_pk_fmac_f16` into unsuffixed RDNA3 and
+  `_rdna4` APIs for both wave sizes. rocjitsu's generated shared handlers
+  (lines 17495 and 17594/17627, source hash in `ARCHITECTURE_AUDIT.md`) use
+  the same `fp_mode::fma_f16` model as ordinary FP16 FMA, including
+  architecture/IEEE-dependent NaN quieting. Both packed halves now use GoC's
+  existing architecture-aware result helper, rather than duplicating its rules.
+- Guest input/output denormal flags and IEEE mode are accepted. The existing
+  eight-lane loose SIMD kernel handles flushing without falling back to scalar.
+  Selected signaling NaNs remain unquieted in RDNA3 exact mode with IEEE off;
+  RDNA4 quiets them. Existing RDNA4 result/exception fixtures retain their raw
+  expectations and now call the suffixed APIs. No new native RDNA3 capture is
+  claimed; that policy is derived from rocjitsu.
+- New tests exercise both architectures, wave widths, FMA/FMAC, both semantics,
+  baseline/AVX2, all eight guest-policy combinations, packed selectors,
+  negation/clamp, masks and unchanged outputs on unsupported reporting errors.
+  Exact RDNA3 reporting and RDNA4 reporting with flushing remain explicitly
+  unsupported. Null reporting works; loose reporting is skipped. Wave64
+  preflight checks these limits before any writes.
+- Packed FMAC still exposes the unmodified operand form. Its VOP3 ABS/NEG/CLAMP
+  support (and applicable encoding-specific behavior) remains to be implemented;
+  this policy split is not a completeness claim for all encodings or FP modes.
+- Against `7a33d4b`, eleven alternating CPU-2-pinned samples with at least 50 ms
+  thread CPU time measured RDNA4 packed FMA loose AVX2 at 38.278 -> 39.470 ns
+  (+3.1%) unmodified and 43.724 -> 44.572 ns (+1.9%) with packed selectors,
+  negation and clamp. Exact scalar medians were 1633.945 -> 1642.266 ns (+0.5%)
+  and 1655.012 -> 1670.885 ns (+1.0%). These finite-input measurements are not a
+  whole-library performance claim. Raw samples and drivers are under
+  `../goc-build/coverage-work/packed-fma-policy-*`.
+- Validation: 955/955 tests pass with Clang 21 and GCC 15 Release; 17/17
+  PackedFma/ExceptionRegisters tests pass with ASan/UBSan. Seven audit-tool
+  tests pass. The refreshed global-state audit has 628 signatures, 298 resolved
+  register names, zero mismatches and 330 still requiring architecture review.

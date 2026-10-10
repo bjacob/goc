@@ -5281,9 +5281,9 @@ bool benchmark_packed_fma(uint64_t cpu, int iterations, int min_ms) {
         if (accumulate) {
           // Include the fixed-input accumulator reset in all FMAC timings.
           std::memcpy(d[0], c[0], 32 * sizeof(uint32_t));
-          return goc_v_pk_fmac_f16(flags, exec_mask, modifiers, d, a, b, nullptr);
+          return goc_v_pk_fmac_f16_rdna4(flags, exec_mask, modifiers, d, a, b, nullptr);
         }
-        return goc_v_pk_fma_f16(flags, exec_mask, modifiers, d, a, b, c, nullptr);
+        return goc_v_pk_fma_f16_rdna4(flags, exec_mask, modifiers, d, a, b, c, nullptr);
       };
       const char *name = accumulate ? "v_pk_fmac_f16" : "v_pk_fma_f16";
       const char *label = modified ? "NEG/select/clamp" : "none";

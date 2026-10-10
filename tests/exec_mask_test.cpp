@@ -60,8 +60,8 @@ const Case cases[] = {
     {binary<goc_v_pk_maximum_f16>, false,
      GOC_PK_NEG_LO_B | GOC_PK_NEG_HI_A | GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW | GOC_PK_CLAMP},
 
-    {goc_v_pk_fma_f16, true, 0x1fff},
-    {binary<goc_v_pk_fmac_f16>, true, 0},
+    {goc_v_pk_fma_f16_rdna4, true, 0x1fff},
+    {binary<goc_v_pk_fmac_f16_rdna4>, true, 0},
     {literal_fma<true, true>, true, GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
     {literal_fma<true, false>, true, GOC_ALU_HIGH_A | GOC_ALU_HIGH_B | GOC_ALU_HIGH_D},
     {literal_fma<false, true>, false, 0},

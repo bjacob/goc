@@ -574,8 +574,8 @@ hardware captures and test suite are independent evidence, not replacements.
 | `v_pk_add_i16` | SIMD macro, output helper | no | 17399 | review required |
 | `v_pk_add_u16` | SIMD macro, output helper | no | 17430 | review required |
 | `v_pk_ashrrev_i16` | SIMD macro, output helper | no | 17461 | review required |
-| `v_pk_fma_f16` | IEEE mode, NaN quieting, SIMD macro, architecture query, output helper | no | 17495 | review required |
-| `v_pk_fmac_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | no | 17594, 17627 | review required |
+| `v_pk_fma_f16` | IEEE mode, NaN quieting, SIMD macro, architecture query, output helper | yes | 17495 | review required |
+| `v_pk_fmac_f16` | IEEE mode, NaN quieting, OMOD, architecture query, output helper | yes | 17594, 17627 | review required |
 | `v_pk_lshlrev_b16` | SIMD macro, output helper | no | 17665 | review required |
 | `v_pk_lshrrev_b16` | SIMD macro, output helper | no | 17694 | review required |
 | `v_pk_mad_i16` | SIMD macro, output helper | no | 17723 | review required |

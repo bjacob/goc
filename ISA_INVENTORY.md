@@ -1321,8 +1321,8 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_pk_add_i16` | yes | yes | in | `goc_v_pk_add_i16`<br>`goc_v_pk_add_i16_wave64` | — | API present; semantic audit pending |
 | `v_pk_add_u16` | yes | yes | in | `goc_v_pk_add_u16`<br>`goc_v_pk_add_u16_wave64` | — | API present; semantic audit pending |
 | `v_pk_ashrrev_i16` | yes | yes | in | `goc_v_pk_ashrrev_i16`<br>`goc_v_pk_ashrrev_i16_wave64` | — | API present; semantic audit pending |
-| `v_pk_fma_f16` | yes | yes | in | `goc_v_pk_fma_f16`<br>`goc_v_pk_fma_f16_wave64` | — | API present; semantic audit pending |
-| `v_pk_fmac_f16` | yes | yes | in | `goc_v_pk_fmac_f16`<br>`goc_v_pk_fmac_f16_wave64` | — | API present; semantic audit pending |
+| `v_pk_fma_f16` | yes | yes | in | `goc_v_pk_fma_f16`<br>`goc_v_pk_fma_f16_wave64`<br>`goc_v_pk_fma_f16_rdna4`<br>`goc_v_pk_fma_f16_rdna4_wave64` | — | API present; semantic audit pending |
+| `v_pk_fmac_f16` | yes | yes | in | `goc_v_pk_fmac_f16`<br>`goc_v_pk_fmac_f16_wave64`<br>`goc_v_pk_fmac_f16_rdna4`<br>`goc_v_pk_fmac_f16_rdna4_wave64` | — | API present; semantic audit pending |
 | `v_pk_lshlrev_b16` | yes | yes | in | `goc_v_pk_lshlrev_b16`<br>`goc_v_pk_lshlrev_b16_wave64` | — | API present; semantic audit pending |
 | `v_pk_lshrrev_b16` | yes | yes | in | `goc_v_pk_lshrrev_b16`<br>`goc_v_pk_lshrrev_b16_wave64` | — | API present; semantic audit pending |
 | `v_pk_mad_i16` | yes | yes | in | `goc_v_pk_mad_i16`<br>`goc_v_pk_mad_i16_wave64` | — | API present; semantic audit pending |

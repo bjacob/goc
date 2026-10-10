@@ -3240,31 +3240,51 @@ int goc_v_fma_dx9_zero_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t in
 int goc_v_fmac_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
 
-// Packed FP16 FMA: two independent fused results per lane. All GOC_PK_* flags
-// below are supported. With no flags, corresponding input halves are multiplied
-// and added. Each result rounds to FP16; CLAMP applies last. Supports
-// GOC_FP16_OVFL and empirical exact semantics with the FP16 FMA environment
-// contract. Both halves use the original inputs, including when D aliases A/B/C.
-int goc_v_pk_fma_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                     const uint32_t *const *c, uint32_t *excp_flag_user);
+// Packed FP16 FMA (RDNA3 unsuffixed; RDNA4 suffixed): two independent fused results per lane. All
+// GOC_PK_* flags below are supported. With no flags, corresponding input halves are multiplied and
+// added. Each result rounds to FP16; CLAMP applies last. Supports GOC_FP16_OVFL and empirical exact
+// semantics with the FP16 FMA environment contract, guest input/output flushing and IEEE mode.
+// RDNA3 preserves selected signaling NaNs with IEEE mode off; RDNA4 quiets them. Both halves use
+// the original inputs, including when D aliases A/B/C.
+int goc_v_pk_fma_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           const uint32_t *const *c, uint32_t *excp_flag_user);
 
 // Packed FP16 FMAC: component-wise A * B + D. No instruction flags are valid.
 // Supports GOC_FP16_OVFL and the same loose/exact semantics as packed FMA.
-int goc_v_pk_fmac_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
-                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                      uint32_t *excp_flag_user);
+int goc_v_pk_fmac_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                            uint32_t *excp_flag_user);
 
 // Wave64 packed FMA forms retain the Wave32 selectors and exact/loose contracts.
 // Exact exceptions accumulate from both components and wave halves; the global
 // output is updated after source reads and destination writes. Loose reporting is skipped.
+int goc_v_pk_fma_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                  uint32_t *const *d, const uint32_t *const *a,
+                                  const uint32_t *const *b, const uint32_t *const *c,
+                                  uint32_t *excp_flag_user);
+
+int goc_v_pk_fmac_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, uint32_t *excp_flag_user);
+
+// RDNA3 exact global-state reporting is not yet supported. RDNA4 exact
+// reporting supports preserved denormals only; pass null to omit reporting.
+int goc_v_pk_fma_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                     const uint32_t *const *c, uint32_t *trapsts);
+
+int goc_v_pk_fmac_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                      uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                      uint32_t *trapsts);
+
 int goc_v_pk_fma_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                            const uint32_t *const *c, uint32_t *excp_flag_user);
+                            const uint32_t *const *c, uint32_t *trapsts);
 
 int goc_v_pk_fmac_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                             uint32_t *excp_flag_user);
+                             uint32_t *trapsts);
 
 // Packed FP16 binary arithmetic: supports GOC_PK_* negation and half selectors
 // for A/B, plus GOC_PK_CLAMP and GOC_FP16_OVFL. Flags for C are invalid. Each

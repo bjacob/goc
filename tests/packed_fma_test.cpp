@@ -23,18 +23,20 @@ const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3c0
 
 int call(bool accumulate, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
          const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  return accumulate ? goc_v_pk_fmac_f16(flags, exec_mask, mode, d, a, b, nullptr)
-                    : goc_v_pk_fma_f16(flags, exec_mask, mode, d, a, b, c, nullptr);
+  return accumulate ? goc_v_pk_fmac_f16_rdna4(flags, exec_mask, mode, d, a, b, nullptr)
+                    : goc_v_pk_fma_f16_rdna4(flags, exec_mask, mode, d, a, b, c, nullptr);
 }
 
 int call_wave64(bool accumulate, uint64_t flags, uint64_t exec_mask, uint64_t mode,
                 uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                 const uint32_t *const *c, uint32_t *excp_flag_user = nullptr) {
-  return accumulate ? goc_v_pk_fmac_f16_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user)
-                    : goc_v_pk_fma_f16_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+  return accumulate
+             ? goc_v_pk_fmac_f16_rdna4_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user)
+             : goc_v_pk_fma_f16_rdna4_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
 }
 
-uint32_t reference(uint32_t a, uint32_t b, uint32_t c, uint32_t mode, bool saturate) {
+uint32_t reference(uint32_t a, uint32_t b, uint32_t c, uint32_t mode, bool saturate,
+                   uint64_t guest = 0, bool rdna3 = false) {
   const uint32_t words[] = {a, b, c};
   const uint32_t low_select[] = {GOC_PK_LO_A_HIGH, GOC_PK_LO_B_HIGH, GOC_PK_LO_C_HIGH};
   const uint32_t high_select[] = {GOC_PK_HI_A_LOW, GOC_PK_HI_B_LOW, GOC_PK_HI_C_LOW};
@@ -49,8 +51,8 @@ uint32_t reference(uint32_t a, uint32_t b, uint32_t c, uint32_t mode, bool satur
       if (mode & (half ? high_neg[reg] : low_neg[reg]))
         inputs[reg] ^= 0x8000;
     }
-    uint16_t value =
-        goc_test::half_fma_reference::evaluate(inputs[0], inputs[1], inputs[2], 0, saturate);
+    uint16_t value = goc_test::half_fma_reference::evaluate(inputs[0], inputs[1], inputs[2], 0,
+                                                            saturate, guest, rdna3);
     if (mode & GOC_PK_CLAMP)
       value = (value & 0x8000) || (value & 0x7fff) > 0x7c00 ? 0 : std::min<uint16_t>(value, 0x3c00);
     result |= uint32_t(value) << (16 * half);
@@ -191,8 +193,9 @@ TEST(PackedFma, BothResultsReadOriginalHalves) {
         std::fill(words[1], words[1] + 32, 0x44004200);
         std::fill(words[2], words[2] + 32, 0x48004500);
         std::fill(words[3], words[3] + 32, 0xfacecafe);
-        ASSERT_EQ(goc_v_pk_fma_f16(cpu, UINT32_MAX, test.mode, p + d, p, p + 1, p + 2, nullptr),
-                  GOC_SUCCESS);
+        ASSERT_EQ(
+            goc_v_pk_fma_f16_rdna4(cpu, UINT32_MAX, test.mode, p + d, p, p + 1, p + 2, nullptr),
+            GOC_SUCCESS);
         for (auto word : words[d])
           EXPECT_EQ(word, test.want);
       }
@@ -284,8 +287,8 @@ TEST(PackedFma, ExceptionHardwareCorpus) {
           uint32_t exceptions = 0x80000000;
           uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                            (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
-          int status = op ? goc_v_pk_fmac_f16(flags, 1, 0, d, a, b, &exceptions)
-                          : goc_v_pk_fma_f16(flags, 1, mode, d, a, b, c, &exceptions);
+          int status = op ? goc_v_pk_fmac_f16_rdna4(flags, 1, 0, d, a, b, &exceptions)
+                          : goc_v_pk_fma_f16_rdna4(flags, 1, mode, d, a, b, c, &exceptions);
           ASSERT_EQ(status, GOC_SUCCESS);
           ASSERT_TRUE(exceptions & 0x80000000);
           hash = goc_test::capture_hash_word(hash, exceptions & 127);
@@ -323,8 +326,8 @@ TEST(PackedFma, Wave64UpperLaneExceptionHardwareCorpus) {
           uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                            (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
           int status =
-              op ? goc_v_pk_fmac_f16_wave64(flags, 1ULL << 63, 0, d, a, b, &exceptions)
-                 : goc_v_pk_fma_f16_wave64(flags, 1ULL << 63, mode, d, a, b, c, &exceptions);
+              op ? goc_v_pk_fmac_f16_rdna4_wave64(flags, 1ULL << 63, 0, d, a, b, &exceptions)
+                 : goc_v_pk_fma_f16_rdna4_wave64(flags, 1ULL << 63, mode, d, a, b, c, &exceptions);
           ASSERT_EQ(status, GOC_SUCCESS);
           ASSERT_TRUE(exceptions & 0x80000000);
           hash = goc_test::capture_hash_word(hash, exceptions & 127);
@@ -439,4 +442,68 @@ TEST(PackedFma, Wave64ExceptionUnionAliasesAndValidation) {
                 GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(exceptions, 0x80000000U);
     }
+}
+
+TEST(PackedFma, ArchitectureGuestModes) {
+  uint64_t detected = goc_init_cpu_flags();
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (bool accumulate : {false, true})
+        for (bool exact : {false, true})
+          for (uint64_t cpu : {GOC_CPU_BASELINE, GOC_CPU_X86_64_V3}) {
+            if (cpu > detected)
+              continue;
+            for (unsigned policy = 0; policy < 8; ++policy) {
+              uint64_t guest = (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                               (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                               (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+              uint64_t flags =
+                  cpu | guest | (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0);
+              for (uint32_t mode : {0U, GOC_PK_LO_A_HIGH | GOC_PK_HI_B_LOW | GOC_PK_NEG_HI_C,
+                                    GOC_PK_NEG_LO_A | GOC_PK_CLAMP}) {
+                if (accumulate && mode)
+                  continue;
+                uint32_t a[64], b[64], c[64], d[64], before[64];
+                for (int lane = 0; lane < 64; ++lane) {
+                  a[lane] = values[lane % 20] | (uint32_t(values[(lane + 7) % 20]) << 16);
+                  b[lane] =
+                      values[(lane / 3 + 6) % 20] | (uint32_t(values[(lane + 11) % 20]) << 16);
+                  c[lane] =
+                      values[(lane + 13) % 20] | (uint32_t(values[(lane / 2 + 9) % 20]) << 16);
+                  before[lane] = d[lane] = accumulate ? c[lane] : 0xdeadbeef;
+                }
+                uint32_t *dest = d;
+                const uint32_t *x = a, *y = b, *z = c;
+                uint64_t exec_mask = 0xa3958acee37f5a91ULL;
+                auto fma32 = rdna3 ? goc_v_pk_fma_f16 : goc_v_pk_fma_f16_rdna4;
+                auto fma64 = rdna3 ? goc_v_pk_fma_f16_wave64 : goc_v_pk_fma_f16_rdna4_wave64;
+                auto fmac32 = rdna3 ? goc_v_pk_fmac_f16 : goc_v_pk_fmac_f16_rdna4;
+                auto fmac64 = rdna3 ? goc_v_pk_fmac_f16_wave64 : goc_v_pk_fmac_f16_rdna4_wave64;
+                uint32_t state = 0x12345678;
+                auto invoke = [&](uint32_t *output) {
+                  if (accumulate)
+                    return wide ? fmac64(flags, exec_mask, mode, &dest, &x, &y, output)
+                                : fmac32(flags, uint32_t(exec_mask), mode, &dest, &x, &y, output);
+                  return wide ? fma64(flags, exec_mask, mode, &dest, &x, &y, &z, output)
+                              : fma32(flags, uint32_t(exec_mask), mode, &dest, &x, &y, &z, output);
+                };
+                ASSERT_EQ(invoke(exact ? nullptr : &state), GOC_SUCCESS);
+                EXPECT_EQ(state, 0x12345678U);
+                for (int lane = 0; lane < 64; ++lane) {
+                  if (lane >= (wide ? 64 : 32) || !((exec_mask >> lane) & 1)) {
+                    EXPECT_EQ(d[lane], before[lane]);
+                    continue;
+                  }
+                  check(d[lane], reference(a[lane], b[lane], c[lane], mode, false, guest, rdna3),
+                        exact);
+                }
+                if (exact && (rdna3 || (policy & 3))) {
+                  std::memcpy(before, d, sizeof(d));
+                  EXPECT_EQ(invoke(&state), GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+                  EXPECT_EQ(state, 0x12345678U);
+                  EXPECT_EQ(std::memcmp(before, d, sizeof(d)), 0);
+                }
+              }
+            }
+          }
 }
