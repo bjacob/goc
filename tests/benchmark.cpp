@@ -86,7 +86,7 @@
 namespace {
 
 using Ternary = goc_test::WaveInstruction<decltype(&goc_v_sad_u8)>;
-using Wmma = decltype(&goc_v_wmma_f32_16x16x16_f16);
+using Wmma = decltype(&goc_v_wmma_f32_16x16x16_f16_rdna4);
 
 uint32_t bits(float value) {
   uint32_t result;
@@ -346,13 +346,56 @@ void print_result(const char *instruction, const char *semantics, const char *in
                 wave == 64 ? "64" : "32", fp_state);
 }
 
+// RDNA3's replicated inputs and interleaved output rows use different backing
+// registers from the compact RDNA4 operands used by Registers.
+bool benchmark_replicated(int iterations, int min_ms) {
+  struct ReplicatedRegisters {
+    uint32_t data[32][64] = {};
+    uint32_t *v[32];
+    int lanes;
+
+    bool correct() const {
+      for (int reg = 24; reg < 24 + 256 / lanes; ++reg)
+        for (int lane = 0; lane < lanes; ++lane)
+          if (v[reg][lane] != bits(16.0f))
+            return false;
+      return true;
+    }
+  };
+
+  for (int lanes : {32, 64})
+    for (bool bf16 : {false, true}) {
+      ReplicatedRegisters r;
+      r.lanes = lanes;
+      for (int reg = 0; reg < 32; ++reg) {
+        r.v[reg] = r.data[reg];
+        if (reg < 16)
+          std::fill(r.v[reg], r.v[reg] + lanes, bf16 ? 0x3f803f80U : 0x3c003c00U);
+      }
+      Wmma instruction =
+          lanes == 64
+              ? (bf16 ? goc_v_wmma_f32_16x16x16_bf16_wave64 : goc_v_wmma_f32_16x16x16_f16_wave64)
+              : (bf16 ? goc_v_wmma_f32_16x16x16_bf16 : goc_v_wmma_f32_16x16x16_f16);
+      auto call = [&](uint64_t flags, uint64_t mode, uint32_t *const *, const uint32_t *const *,
+                      const uint32_t *const *, const uint32_t *const *) {
+        return instruction(flags, mode, r.v + 24, r.v, r.v + 8, r.v + 16);
+      };
+      double time = measure(call, GOC_CPU_BASELINE, r, iterations, min_ms, 0);
+      if (time < 0)
+        return false;
+      print_result(bf16 ? "v_wmma_f32_16x16x16_bf16" : "v_wmma_f32_16x16x16_f16", "loose", "none",
+                   "scalar", time, 1, lanes);
+    }
+  return true;
+}
+
 bool benchmark(bool bf16, uint64_t cpu, int iterations, int min_ms, uint32_t modifiers) {
   Registers r(bf16, modifiers);
   const char *instruction_flags = modifiers == 0                   ? "none"
                                   : modifiers == GOC_WMMA_NEG_LO_A ? "NEG_LO_A"
                                                                    : "mixed";
-  const char *format = bf16 ? "v_wmma_f32_16x16x16_bf16" : "v_wmma_f32_16x16x16_f16";
-  Wmma fn = bf16 ? goc_v_wmma_f32_16x16x16_bf16 : goc_v_wmma_f32_16x16x16_f16;
+  const char *format = bf16 ? "v_wmma_f32_16x16x16_bf16_rdna4" : "v_wmma_f32_16x16x16_f16_rdna4";
+  Wmma fn = bf16 ? goc_v_wmma_f32_16x16x16_bf16_rdna4 : goc_v_wmma_f32_16x16x16_f16_rdna4;
   double scalar = measure(fn, GOC_CPU_BASELINE, r, iterations, min_ms, modifiers);
   if (scalar < 0)
     return false;
@@ -6053,6 +6096,8 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "Unary benchmark failed: API/result error or iteration overflow.\n");
     return 1;
   }
+  if (!benchmark_replicated(iterations, min_ms))
+    return 1;
   for (uint32_t modifiers : {0U, GOC_ALU_NEG_A | GOC_ALU_ABS_A | GOC_ALU_NEG_C | GOC_ALU_OMOD_HALF})
     if (!benchmark_fma(cpu, iterations, min_ms, modifiers, false) ||
         !benchmark_fma(cpu, iterations, min_ms, modifiers, true)) {

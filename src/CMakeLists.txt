@@ -1,4 +1,6 @@
 add_library(goc STATIC
+  move.cpp
+  wmma_replicated.cpp
   dpp.cpp
   permlane.cpp
   scalar_pack.cpp

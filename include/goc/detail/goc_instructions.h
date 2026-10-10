@@ -39,6 +39,13 @@ extern "C" {
 // before operand access, even for empty EXEC, before other validation. NULL opts
 // out of reporting in every mode and preserves numerical paths and validation.
 
+// Bit-preserving Wave32 move, shared by RDNA3 and RDNA4. One VGPR per operand.
+// Supports loose and exact semantics, EXEC masking, and DPP8/DPP16 source routing.
+// Low instruction-flag bits must be zero (arithmetic modifiers are not implemented).
+// No FP interpretation or exceptions; inactive destinations remain unchanged.
+int goc_v_mov_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                  uint32_t *const *d, const uint32_t *const *a);
+
 // DPP8 permutes source A within each group of eight lanes before arithmetic
 // modifiers. Pack eight 3-bit lane indices into bits 40..63, index 0 first, and
 // set GOC_DPP8. Without FI, an inactive source supplies positive zero; FI reads
@@ -2939,27 +2946,51 @@ static const uint32_t GOC_WMMA_ABS_C = 1U << 5;
 // Sparse WMMA metadata selector. This bit selects the upper half of each index VGPR lane.
 static const uint32_t GOC_SWMMAC_INDEX_KEY_1 = 1U << 7;
 
-// Wave32 16x16x16 WMMA: A/B each contain 4 VGPRs of packed 16-bit
-// elements; C/D each contain 8 VGPRs of FP32 elements. WMMA and SWMMAC ignore
-// architectural EXEC, including zero, and write every destination lane.
-// Both loose and empirical exact semantics are supported for these WMMA forms.
+// RDNA3 FP16/BF16 WMMA with FP32 accumulators. A/B each hold 8 VGPRs,
+// with the full 16-element K vector in every lane. Replicate A/B across the
+// two (Wave32) or four (Wave64) groups of 16 lanes. C/D hold 8 or 4 VGPRs:
+// row = reg * (wave_size / 16) + lane / 16, column = lane % 16.
+// EXEC is ignored and all operands must be valid. Whole-VGPR aliasing is allowed.
+// Only loose semantics are implemented; strict exact requests fail without writes.
+// Supports NEG_C/ABS_C; other modifiers are not implemented. Host nearest-even
+// rounding with denormals enabled is required. GOC_FP16_OVFL has no effect.
 int goc_v_wmma_f32_16x16x16_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
                                 const uint32_t *const *a, const uint32_t *const *b,
                                 const uint32_t *const *c);
+
+int goc_v_wmma_f32_16x16x16_f16_wave64(uint64_t flags, uint64_t instruction_flags,
+                                       uint32_t *const *d, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *c);
 
 int goc_v_wmma_f32_16x16x16_bf16(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
                                  const uint32_t *const *a, const uint32_t *const *b,
                                  const uint32_t *const *c);
 
-// Wave64 variants: 64 words per VGPR; 2 VGPRs for A/B, 4 for C/D.
-// Both semantics and all WMMA modifiers are supported through scalar paths.
-int goc_v_wmma_f32_16x16x16_f16_wave64(uint64_t flags, uint64_t instruction_flags,
-                                       uint32_t *const *d, const uint32_t *const *a,
-                                       const uint32_t *const *b, const uint32_t *const *c);
-
 int goc_v_wmma_f32_16x16x16_bf16_wave64(uint64_t flags, uint64_t instruction_flags,
                                         uint32_t *const *d, const uint32_t *const *a,
                                         const uint32_t *const *b, const uint32_t *const *c);
+
+// RDNA4 Wave32 16x16x16 WMMA: A/B each contain 4 VGPRs of packed 16-bit
+// elements; C/D each contain 8 VGPRs of FP32 elements. WMMA and SWMMAC ignore
+// architectural EXEC, including zero, and write every destination lane.
+// Both loose and empirical exact semantics are supported for these WMMA forms.
+int goc_v_wmma_f32_16x16x16_f16_rdna4(uint64_t flags, uint64_t instruction_flags,
+                                      uint32_t *const *d, const uint32_t *const *a,
+                                      const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_wmma_f32_16x16x16_bf16_rdna4(uint64_t flags, uint64_t instruction_flags,
+                                       uint32_t *const *d, const uint32_t *const *a,
+                                       const uint32_t *const *b, const uint32_t *const *c);
+
+// Wave64 variants: 64 words per VGPR; 2 VGPRs for A/B, 4 for C/D.
+// Both semantics and all WMMA modifiers are supported through scalar paths.
+int goc_v_wmma_f32_16x16x16_f16_rdna4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                             uint32_t *const *d, const uint32_t *const *a,
+                                             const uint32_t *const *b, const uint32_t *const *c);
+
+int goc_v_wmma_f32_16x16x16_bf16_rdna4_wave64(uint64_t flags, uint64_t instruction_flags,
+                                              uint32_t *const *d, const uint32_t *const *a,
+                                              const uint32_t *const *b, const uint32_t *const *c);
 
 // Packed-output WMMA: A/B hold 4 VGPRs (wave32) or 2 (wave64);
 // C/D hold 4 or 2 VGPRs respectively, with adjacent rows in low/high halves.

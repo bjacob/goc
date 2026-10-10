@@ -55,8 +55,8 @@ Where:
 
 * Shared instruction semantics use the same entry point across architectures.
   If a newer architecture changes the semantics of an existing mnemonic, its
-  variant gets an architecture suffix, such as `_rdna4`. No current entry point
-  needs an architecture suffix. Wave32 is the default; dedicated Wave64 variants
+  variant gets an architecture suffix, such as `_rdna4`. FP32-output FP16/BF16
+  WMMA uses unsuffixed RDNA3 layouts and `_rdna4` for the newer layout. Wave32 is the default; dedicated Wave64 variants
   append `_wave64` after the mnemonic (and after any architecture suffix).
 * `<mnemonic>` is the instruction mnemonic like `v_wmma_f32_16x16x16_f16`. We follow
   instruction mnemonics, not intrinsic names, because the API model here really
@@ -65,7 +65,7 @@ Where:
 
 Example:
 
-`goc_v_wmma_f32_16x16x16_f16`
+`goc_v_wmma_f32_16x16x16_f16_rdna4`
 
 The API shall provide an umbrella C header, [`goc/goc.h`](https://github.com/bjacob/goc/blob/main/include/goc/goc.h), directly including
 [`goc/detail/goc_common.h`](https://github.com/bjacob/goc/blob/main/include/goc/detail/goc_common.h) for common flags, error codes and CPU initialization, and
@@ -131,7 +131,7 @@ validation must happen before computation.
 Example:
 
 ```c
-int goc_v_wmma_f32_16x16x16_f16(
+int goc_v_wmma_f32_16x16x16_f16_rdna4(
   uint64_t flags,
   uint64_t instruction_flags,  // NEG and NEG_HI bits go here.
   uint32_t *const * vgpr_d,
@@ -147,7 +147,7 @@ Notes:
   - Typical lane-wise instructions can just use two calls to the wave32 function.
   - For instructions like WMMA or lane-index-dependent `MBCNT`, we may have a
     separate dedicated wave64 entry point with a `_wave64` suffix, e.g.
-    `goc_v_wmma_f32_16x16x16_f16_wave64`.
+    `goc_v_wmma_f32_16x16x16_f16_rdna4_wave64`.
 * For instructions that obey EXEC, why make `exec_mask` part of GoC instead of letting the caller handle it?
   - For the caller to handle it correctly w.r.t. input-output aliasing, they
     would need to save destination registers before calling GoC.

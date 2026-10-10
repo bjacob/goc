@@ -124,7 +124,7 @@ TEST(ExceptionRegisters, NonReportingInstructionsKeepTheirSignatures) {
   static_assert(std::is_same_v<decltype(&goc_v_cvt_f32_ubyte0), Unary>);
   using Matrix = int (*)(uint64_t, uint64_t, uint32_t *const *, const uint32_t *const *,
                          const uint32_t *const *, const uint32_t *const *);
-  static_assert(std::is_same_v<decltype(&goc_v_wmma_f32_16x16x16_f16), Matrix>);
+  static_assert(std::is_same_v<decltype(&goc_v_wmma_f32_16x16x16_f16_rdna4), Matrix>);
   static_assert(std::is_same_v<decltype(&goc_v_dot4_f32_fp8_fp8), Ternary>);
   static_assert(std::is_same_v<decltype(&goc_v_interp_p10_f32), Ternary>);
 }
