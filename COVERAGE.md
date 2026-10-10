@@ -2258,3 +2258,38 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   PackedFma/ExceptionRegisters tests pass under ASan/UBSan. `PLAN.md` now also
   explicitly distinguishes implemented RDNA4 no-flush FP16 reporting from
   unsupported RDNA3/flushing requests. Logs use the artifact prefix above.
+
+## FP32 literal FMA architecture names and guest denormals
+
+- Split FMAMK/FMAAK FP32 into unsuffixed RDNA3 and `_rdna4` entry points,
+  including Wave64. Their architectural exception outputs are `trapsts` and
+  `excp_flag_user`, respectively. rocjitsu's shared handlers (lines 11899 and
+  12194, fingerprint in `ARCHITECTURE_AUDIT.md`) route both through its
+  architecture/IEEE-aware FMA model. Existing callers now explicitly select
+  the RDNA4 forms.
+- Guest input/output-denormal flushing is implemented in the shared scalar,
+  eight-lane AVX2 and sixteen-lane AVX-512 literal paths, including flushing
+  the scalar literal before arithmetic. IEEE mode is accepted. The result
+  contract remains loose: NaN payload/quieting need not match the architecture;
+  both architecture APIs currently share that approximate arithmetic kernel.
+  Exact arithmetic and faithful reporting remain unimplemented, rather than
+  inferred from matching finite-input results. Non-null exact reporting rejects
+  before writes; loose reporting leaves the state untouched.
+- New tests cover all guest-policy combinations, both literal placements,
+  architectures and wave sizes, every CPU level, normal/subnormal/NaN/infinity
+  inputs and literals, masks, destination aliases, and unchanged results/state
+  on rejected reporting. The reference flushes raw encodings around host FMA
+  under the documented loose host-environment requirements. No native RDNA3
+  bit-exact result claim is made by these tests.
+- Performance against `c82cab2`: eleven alternating CPU-2-pinned samples,
+  minimum 50 ms thread CPU time. AVX2 FMAMK/FMAAK medians changed
+  13.117 -> 13.518 ns (+3.1%) and 12.602 -> 13.192 ns (+4.7%); AVX-512 changed
+  4.712 -> 4.913 ns (+4.3%) and 3.615 -> 3.899 ns (+7.9%). Guest-control checks
+  add a fraction of a nanosecond to these short no-modifier kernels. No additional
+  duplicate fast kernel was introduced for that sub-nanosecond cost. These
+  finite-input results are not a whole-library performance claim. Artifacts:
+  `../goc-build/coverage-work/literal-fma32-policy-*`.
+- Validation: 958/958 tests pass under Clang 21 and GCC 15 Release; 30/30
+  LiteralFma/Arithmetic/ExceptionRegisters tests pass under ASan/UBSan. Seven
+  audit-tool tests pass. The reporting-name audit has 632 signatures, 306
+  resolved names, zero mismatches and 326 awaiting architecture review.

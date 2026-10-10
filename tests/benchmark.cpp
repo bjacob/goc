@@ -5343,8 +5343,10 @@ bool benchmark_literal_fma(uint64_t cpu, int iterations, int min_ms) {
                                                     uint16_t(literal), b, nullptr)
                             : goc_v_fmaak_f16_rdna4(flags, exec_mask, modifiers, d, a, b,
                                                     uint16_t(literal), nullptr);
-          return multiply ? goc_v_fmamk_f32(flags, exec_mask, modifiers, d, a, literal, b, nullptr)
-                          : goc_v_fmaak_f32(flags, exec_mask, modifiers, d, a, b, literal, nullptr);
+          return multiply
+                     ? goc_v_fmamk_f32_rdna4(flags, exec_mask, modifiers, d, a, literal, b, nullptr)
+                     : goc_v_fmaak_f32_rdna4(flags, exec_mask, modifiers, d, a, b, literal,
+                                             nullptr);
         };
         const char *name = half ? (multiply ? "v_fmamk_f16" : "v_fmaak_f16")
                                 : (multiply ? "v_fmamk_f32" : "v_fmaak_f32");

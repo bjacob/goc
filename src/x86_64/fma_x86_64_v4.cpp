@@ -77,15 +77,15 @@ void fma_dx9_zero_x86_64_v4(uint32_t exec_mask, uint32_t modifiers, uint32_t *d,
 }
 
 template <bool Multiply>
-void literal_fma_x86_64_v4(uint32_t exec_mask, uint32_t literal, uint32_t *d, const uint32_t *a,
-                           const uint32_t *b) {
+void literal_fma_x86_64_v4(uint64_t flags, uint32_t exec_mask, uint32_t literal, uint32_t *d,
+                           const uint32_t *a, const uint32_t *b) {
   run<false, Multiply ? FmaOperands::MultiplyLiteral : FmaOperands::AddLiteral>(
-      exec_mask, 0, d, a, b, nullptr, literal);
+      exec_mask, 0, d, a, b, nullptr, literal, flags);
 }
 
-template void literal_fma_x86_64_v4<false>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
-                                           const uint32_t *);
-template void literal_fma_x86_64_v4<true>(uint32_t, uint32_t, uint32_t *, const uint32_t *,
-                                          const uint32_t *);
+template void literal_fma_x86_64_v4<false>(uint64_t, uint32_t, uint32_t, uint32_t *,
+                                           const uint32_t *, const uint32_t *);
+template void literal_fma_x86_64_v4<true>(uint64_t, uint32_t, uint32_t, uint32_t *,
+                                          const uint32_t *, const uint32_t *);
 
 } // namespace goc

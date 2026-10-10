@@ -503,9 +503,9 @@ int fma_wave64_call(unsigned op, uint64_t flags, uint64_t exec_mask, uint64_t mo
     return goc_v_fmac_dx9_zero_f32_wave64(flags | GOC_FP_FLUSH_OUTPUT_DENORMALS, exec_mask, mode, d,
                                           a, b);
   case 4:
-    return goc_v_fmamk_f32_wave64(flags, exec_mask, mode, d, a, literal, b, excp_flag_user);
+    return goc_v_fmamk_f32_rdna4_wave64(flags, exec_mask, mode, d, a, literal, b, excp_flag_user);
   default:
-    return goc_v_fmaak_f32_wave64(flags, exec_mask, mode, d, a, b, literal, excp_flag_user);
+    return goc_v_fmaak_f32_rdna4_wave64(flags, exec_mask, mode, d, a, b, literal, excp_flag_user);
   }
 }
 

@@ -35,8 +35,8 @@ int literal_fma(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *con
     return goc_v_fmaak_f16_rdna4(flags, exec_mask, mode, d, a, b, 0x3800, nullptr);
   } else {
     if constexpr (Multiply)
-      return goc_v_fmamk_f32(flags, exec_mask, mode, d, a, 0x3f000000, b, nullptr);
-    return goc_v_fmaak_f32(flags, exec_mask, mode, d, a, b, 0x3f000000, nullptr);
+      return goc_v_fmamk_f32_rdna4(flags, exec_mask, mode, d, a, 0x3f000000, b, nullptr);
+    return goc_v_fmaak_f32_rdna4(flags, exec_mask, mode, d, a, b, 0x3f000000, nullptr);
   }
 }
 

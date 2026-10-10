@@ -31,8 +31,8 @@ int call(bool half, bool multiply, uint64_t flags, uint32_t exec_mask, uint64_t 
     return multiply
                ? goc_v_fmamk_f16_rdna4(flags, exec_mask, mode, d, a, uint16_t(literal), b, nullptr)
                : goc_v_fmaak_f16_rdna4(flags, exec_mask, mode, d, a, b, uint16_t(literal), nullptr);
-  return multiply ? goc_v_fmamk_f32(flags, exec_mask, mode, d, a, literal, b, nullptr)
-                  : goc_v_fmaak_f32(flags, exec_mask, mode, d, a, b, literal, nullptr);
+  return multiply ? goc_v_fmamk_f32_rdna4(flags, exec_mask, mode, d, a, literal, b, nullptr)
+                  : goc_v_fmaak_f32_rdna4(flags, exec_mask, mode, d, a, b, literal, nullptr);
 }
 
 float as_float(uint32_t bits) {
@@ -266,4 +266,61 @@ TEST(LiteralFma, ValidationAndZeroMasks) {
       EXPECT_EQ(call(half, multiply, 0, 0U, 0, nullptr, nullptr, nullptr, 0), GOC_SUCCESS);
       EXPECT_EQ(call(half, multiply, 2ULL << 16, UINT32_MAX, 0, &p, &p, &p, 0), GOC_SUCCESS);
     }
+}
+
+TEST(LiteralFma, Fp32ArchitectureGuestModes) {
+  auto flush = [](uint32_t bits) { return (bits & 0x7f800000) ? bits : bits & 0x80000000; };
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (bool multiply : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (unsigned policy = 0; policy < 8; ++policy)
+            for (uint32_t literal : special32)
+              for (int alias = 0; alias < 3; ++alias) {
+                uint64_t flags = cpu | (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
+                                 (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
+                                 (policy & 4 ? GOC_FP_IEEE_MODE : 0);
+                uint32_t words[3][64], before[3][64];
+                for (int reg = 0; reg < 3; ++reg)
+                  for (int lane = 0; lane < 64; ++lane)
+                    words[reg][lane] = special32[(lane * (reg + 1) + 7 * reg) % 20];
+                std::memcpy(before, words, sizeof(words));
+                const uint32_t *a = words[0], *b = words[1];
+                uint32_t *d = words[alias], state = 0x12345678;
+                uint64_t exec_mask = 0xa7109efae12ce36dULL;
+                auto mk32 = rdna3 ? goc_v_fmamk_f32 : goc_v_fmamk_f32_rdna4;
+                auto ak32 = rdna3 ? goc_v_fmaak_f32 : goc_v_fmaak_f32_rdna4;
+                auto mk64 = rdna3 ? goc_v_fmamk_f32_wave64 : goc_v_fmamk_f32_rdna4_wave64;
+                auto ak64 = rdna3 ? goc_v_fmaak_f32_wave64 : goc_v_fmaak_f32_rdna4_wave64;
+                auto invoke = [&](uint64_t f) {
+                  if (multiply)
+                    return wide ? mk64(f, exec_mask, 0, &d, &a, literal, &b, &state)
+                                : mk32(f, uint32_t(exec_mask), 0, &d, &a, literal, &b, &state);
+                  return wide ? ak64(f, exec_mask, 0, &d, &a, &b, literal, &state)
+                              : ak32(f, uint32_t(exec_mask), 0, &d, &a, &b, literal, &state);
+                };
+                ASSERT_EQ(invoke(flags), GOC_SUCCESS);
+                EXPECT_EQ(state, 0x12345678U);
+                for (int lane = 0; lane < 64; ++lane) {
+                  if (lane >= (wide ? 64 : 32) || !((exec_mask >> lane) & 1)) {
+                    EXPECT_EQ(d[lane], before[alias][lane]);
+                    continue;
+                  }
+                  float x = as_float(policy & 1 ? flush(before[0][lane]) : before[0][lane]);
+                  float y = as_float(policy & 1 ? flush(before[1][lane]) : before[1][lane]);
+                  float k = as_float(policy & 1 ? flush(literal) : literal);
+                  uint32_t expected = as_bits(multiply ? std::fma(x, k, y) : std::fma(x, y, k));
+                  if (policy & 2)
+                    expected = flush(expected);
+                  if ((expected & 0x7fffffff) > 0x7f800000)
+                    EXPECT_GT(d[lane] & 0x7fffffff, 0x7f800000U);
+                  else
+                    EXPECT_EQ(d[lane], expected);
+                }
+                std::memcpy(before, words, sizeof(words));
+                EXPECT_EQ(invoke(flags | GOC_SEMANTICS_EXACT_EMPIRICAL),
+                          GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+                EXPECT_EQ(std::memcmp(before, words, sizeof(words)), 0);
+                EXPECT_EQ(state, 0x12345678U);
+              }
 }

@@ -3133,11 +3133,18 @@ int goc_v_fmac_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t ins
 
 int goc_v_fmamk_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
-                           const uint32_t *const *b, uint32_t *excp_flag_user);
+                           const uint32_t *const *b, uint32_t *trapsts);
+int goc_v_fmamk_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
+                                 const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_fmaak_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                           uint32_t literal, uint32_t *excp_flag_user);
+                           uint32_t literal, uint32_t *trapsts);
+int goc_v_fmaak_f32_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, uint32_t literal,
+                                 uint32_t *excp_flag_user);
 
 // FP16 fused multiply-accumulate into D. Supports A/B ABS/NEG, OMOD, CLAMP,
 // HIGH_A/B/D and GOC_FP16_OVFL, with the same rounding and exact-semantics
@@ -3213,14 +3220,23 @@ int goc_v_fmaak_f16_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t in
 
 // Literal FP32 FMA: FMAMK computes A * literal + B; FMAAK computes A * B +
 // literal. The literal is a raw FP32 encoding. No instruction flags are valid.
+// Unsuffixed forms are RDNA3; suffixed forms are RDNA4. Guest input/output
+// denormal flushing and IEEE mode are accepted. Loose semantics only; NaN
+// payload/quieting is approximate and faithful global-state reporting is unavailable.
 // Loose semantics only; requires host nearest-even rounding and denormals enabled.
 int goc_v_fmamk_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
-                    const uint32_t *const *b, uint32_t *excp_flag_user);
+                    const uint32_t *const *b, uint32_t *trapsts);
+int goc_v_fmamk_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, uint32_t literal,
+                          const uint32_t *const *b, uint32_t *excp_flag_user);
 
 int goc_v_fmaak_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                     uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                    uint32_t literal, uint32_t *excp_flag_user);
+                    uint32_t literal, uint32_t *trapsts);
+int goc_v_fmaak_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                          uint32_t literal, uint32_t *excp_flag_user);
 
 // DX9 FMA: one VGPR per operand, all ALU source/output modifiers, loose semantics.
 // Flush source/result subnormals. If either modified factor is signed zero,
