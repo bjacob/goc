@@ -364,3 +364,52 @@ TEST(IntegerCompare, Wave64ValidationBeforeOperandAccess) {
     }
   }
 }
+
+TEST(IntegerCompare, ChainedCmpxCannotReactivateLanes) {
+  for (unsigned group = 0; group < 6; ++group)
+    for (unsigned predicate = 0; predicate < 6; ++predicate)
+      for (unsigned halves = 0; halves < (group < 2 ? 4U : 1U); ++halves) {
+        unsigned op = group * 12 + predicate;
+        unsigned reverse_halves = ((halves & 1) << 1) | ((halves & 2) >> 1);
+        uint32_t words[4][64];
+        uint64_t first = 0, second = 0;
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          uint32_t w[4];
+          goc_test::integer_compare_inputs(group / 2, 240 + lane, w);
+          for (unsigned r = 0; r < 4; ++r)
+            words[r][lane] = w[r];
+          first |= uint64_t(goc_test::integer_compare_reference(op, halves, w)) << lane;
+          uint32_t reversed[] = {w[2], w[3], w[0], w[1]};
+          second |= uint64_t(goc_test::integer_compare_reference(op, reverse_halves, reversed))
+                    << lane;
+        }
+        const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]};
+        for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+            for (uint64_t initial : {0ULL, 0x8000000180000001ULL, ~0ULL}) {
+              uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+              uint64_t exec_mask = initial;
+              ASSERT_EQ(
+                  goc_test::integer_compare_wave64_functions[op](
+                      flags, exec_mask, goc_test::integer_compare_mode(halves), &exec_mask, a, b),
+                  GOC_SUCCESS);
+              EXPECT_EQ(exec_mask, initial & first);
+              ASSERT_EQ(goc_test::integer_compare_wave64_functions[op + 6](
+                            flags, exec_mask, goc_test::integer_compare_mode(reverse_halves),
+                            &exec_mask, b, a),
+                        GOC_SUCCESS);
+              EXPECT_EQ(exec_mask, initial & first & second);
+              uint32_t exec_mask32 = uint32_t(initial);
+              ASSERT_EQ(goc_test::integer_compare_functions[op](
+                            flags, exec_mask32, goc_test::integer_compare_mode(halves),
+                            &exec_mask32, a, b),
+                        GOC_SUCCESS);
+              EXPECT_EQ(exec_mask32, uint32_t(initial & first));
+              ASSERT_EQ(goc_test::integer_compare_functions[op + 6](
+                            flags, exec_mask32, goc_test::integer_compare_mode(reverse_halves),
+                            &exec_mask32, b, a),
+                        GOC_SUCCESS);
+              EXPECT_EQ(exec_mask32, uint32_t(initial & first & second));
+            }
+      }
+}

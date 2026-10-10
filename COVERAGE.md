@@ -5301,3 +5301,44 @@ Validation: all 1,119 CTests pass under Clang and GCC Release; all six PERMLANE
 tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `permlane-review-` in each build directory. The ledger records 371 contracts;
 438 in-scope mnemonics still need recorded reviews.
+
+## Vector integer comparison architecture contracts
+
+Reviewed all 72 relational integer CMP/CMPX mnemonics: six predicates, signed
+and unsigned 16/32/64-bit inputs, and both output forms. Checked 288 ordinary
+VOPC/VOP3 architecture handlers at rocjitsu `ffc144c564c`, resolving delegated
+shared helpers and verifying each predicate's operand type, comparison operator
+and result destination. Handler hashes and checks are saved in
+`../goc-build/coverage-work/integer-compare-upstream-review.json`. Representative
+true16, CMPX and DPP paths were inspected directly, together with RDNA3 section
+16.9. No differing RDNA3/RDNA4 value semantics were found; the APIs stay shared.
+
+CMP's required output is the scalar condition mask; CMPX's is replacement EXEC,
+not an additional VCC write. Both clear inactive result bits and return zero
+for empty EXEC. The mask output remains required in both semantics; it is not
+an optional global-state report. Integer bit patterns do not generate floating
+exception outputs. Sixteen-bit forms select each source half independently;
+64-bit inputs combine low/high VGPR words. Signed ordering is two's-complement.
+DPP8/DPP16 routes A before half selection for 16/32-bit forms, leaving B in its
+lane; filtered output bits are zero. DPP on 64-bit forms remains unsupported.
+
+Reviewed the scalar predicate construction and SIMD implementations: AVX2 uses
+eight-lane comparisons and sign-bit biasing, AVX-512 sixteen-lane unsigned
+comparisons with the appropriate bias. The 64-bit paths compare high words
+first and use unsigned low words to break ties. Both compute full masks before
+applying EXEC. Wave64 computes both halves before publishing an aliasable scalar
+output. Existing SIMD dispatch and performance are unchanged.
+
+Existing tests cover independent boundary/random values, retained RDNA4 captures,
+all predicates and widths, half selectors, DPP, masks, output/source aliases and
+validation. The added chained CMP/CMPX test updates the caller's EXEC variable
+in place, then compares reversed operands with reversed half selectors. It checks
+that the second result cannot reactivate filtered lanes, across all types and
+predicates, both wave sizes and semantics, and all available CPU levels.
+No production change was required. Constant F/T comparisons are a separate
+family and are not included in these 72 review records.
+
+Validation: all 1,120 CTests pass under Clang and GCC Release; all eleven integer
+comparison tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
+`vector-integer-compare-review-` in each build directory. The ledger records
+443 contracts; 366 in-scope mnemonics still need recorded reviews.

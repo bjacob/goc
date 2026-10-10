@@ -878,12 +878,12 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cmp_eq_f16` | yes | yes | in | `goc_v_cmp_eq_f16`<br>`goc_v_cmp_eq_f16_wave64`<br>`goc_v_cmp_eq_f16_rdna4`<br>`goc_v_cmp_eq_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_eq_f32` | yes | yes | in | `goc_v_cmp_eq_f32`<br>`goc_v_cmp_eq_f32_wave64`<br>`goc_v_cmp_eq_f32_rdna4`<br>`goc_v_cmp_eq_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_eq_f64` | yes | yes | in | `goc_v_cmp_eq_f64`<br>`goc_v_cmp_eq_f64_wave64`<br>`goc_v_cmp_eq_f64_rdna4`<br>`goc_v_cmp_eq_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmp_eq_i16` | yes | yes | in | `goc_v_cmp_eq_i16`<br>`goc_v_cmp_eq_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_eq_i32` | yes | yes | in | `goc_v_cmp_eq_i32`<br>`goc_v_cmp_eq_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_eq_i64` | yes | yes | in | `goc_v_cmp_eq_i64`<br>`goc_v_cmp_eq_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmp_eq_u16` | yes | yes | in | `goc_v_cmp_eq_u16`<br>`goc_v_cmp_eq_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_eq_u32` | yes | yes | in | `goc_v_cmp_eq_u32`<br>`goc_v_cmp_eq_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_eq_u64` | yes | yes | in | `goc_v_cmp_eq_u64`<br>`goc_v_cmp_eq_u64_wave64` | — | API present; semantic audit pending |
+| `v_cmp_eq_i16` | yes | yes | in | `goc_v_cmp_eq_i16`<br>`goc_v_cmp_eq_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_eq_i32` | yes | yes | in | `goc_v_cmp_eq_i32`<br>`goc_v_cmp_eq_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_eq_i64` | yes | yes | in | `goc_v_cmp_eq_i64`<br>`goc_v_cmp_eq_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_eq_u16` | yes | yes | in | `goc_v_cmp_eq_u16`<br>`goc_v_cmp_eq_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_eq_u32` | yes | yes | in | `goc_v_cmp_eq_u32`<br>`goc_v_cmp_eq_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_eq_u64` | yes | yes | in | `goc_v_cmp_eq_u64`<br>`goc_v_cmp_eq_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
 | `v_cmp_f_f16` | yes | — | in | `goc_v_cmp_f_f16`<br>`goc_v_cmp_f_f16_wave64` | — | API present; semantic audit pending |
 | `v_cmp_f_f32` | yes | — | in | `goc_v_cmp_f_f32`<br>`goc_v_cmp_f_f32_wave64` | — | API present; semantic audit pending |
 | `v_cmp_f_f64` | yes | — | in | `goc_v_cmp_f_f64`<br>`goc_v_cmp_f_f64_wave64` | — | API present; semantic audit pending |
@@ -894,48 +894,48 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cmp_ge_f16` | yes | yes | in | `goc_v_cmp_ge_f16`<br>`goc_v_cmp_ge_f16_wave64`<br>`goc_v_cmp_ge_f16_rdna4`<br>`goc_v_cmp_ge_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_ge_f32` | yes | yes | in | `goc_v_cmp_ge_f32`<br>`goc_v_cmp_ge_f32_wave64`<br>`goc_v_cmp_ge_f32_rdna4`<br>`goc_v_cmp_ge_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_ge_f64` | yes | yes | in | `goc_v_cmp_ge_f64`<br>`goc_v_cmp_ge_f64_wave64`<br>`goc_v_cmp_ge_f64_rdna4`<br>`goc_v_cmp_ge_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmp_ge_i16` | yes | yes | in | `goc_v_cmp_ge_i16`<br>`goc_v_cmp_ge_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_ge_i32` | yes | yes | in | `goc_v_cmp_ge_i32`<br>`goc_v_cmp_ge_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_ge_i64` | yes | yes | in | `goc_v_cmp_ge_i64`<br>`goc_v_cmp_ge_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmp_ge_u16` | yes | yes | in | `goc_v_cmp_ge_u16`<br>`goc_v_cmp_ge_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_ge_u32` | yes | yes | in | `goc_v_cmp_ge_u32`<br>`goc_v_cmp_ge_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_ge_u64` | yes | yes | in | `goc_v_cmp_ge_u64`<br>`goc_v_cmp_ge_u64_wave64` | — | API present; semantic audit pending |
+| `v_cmp_ge_i16` | yes | yes | in | `goc_v_cmp_ge_i16`<br>`goc_v_cmp_ge_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_ge_i32` | yes | yes | in | `goc_v_cmp_ge_i32`<br>`goc_v_cmp_ge_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_ge_i64` | yes | yes | in | `goc_v_cmp_ge_i64`<br>`goc_v_cmp_ge_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_ge_u16` | yes | yes | in | `goc_v_cmp_ge_u16`<br>`goc_v_cmp_ge_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_ge_u32` | yes | yes | in | `goc_v_cmp_ge_u32`<br>`goc_v_cmp_ge_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_ge_u64` | yes | yes | in | `goc_v_cmp_ge_u64`<br>`goc_v_cmp_ge_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
 | `v_cmp_gt_f16` | yes | yes | in | `goc_v_cmp_gt_f16`<br>`goc_v_cmp_gt_f16_wave64`<br>`goc_v_cmp_gt_f16_rdna4`<br>`goc_v_cmp_gt_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_gt_f32` | yes | yes | in | `goc_v_cmp_gt_f32`<br>`goc_v_cmp_gt_f32_wave64`<br>`goc_v_cmp_gt_f32_rdna4`<br>`goc_v_cmp_gt_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_gt_f64` | yes | yes | in | `goc_v_cmp_gt_f64`<br>`goc_v_cmp_gt_f64_wave64`<br>`goc_v_cmp_gt_f64_rdna4`<br>`goc_v_cmp_gt_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmp_gt_i16` | yes | yes | in | `goc_v_cmp_gt_i16`<br>`goc_v_cmp_gt_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_gt_i32` | yes | yes | in | `goc_v_cmp_gt_i32`<br>`goc_v_cmp_gt_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_gt_i64` | yes | yes | in | `goc_v_cmp_gt_i64`<br>`goc_v_cmp_gt_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmp_gt_u16` | yes | yes | in | `goc_v_cmp_gt_u16`<br>`goc_v_cmp_gt_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_gt_u32` | yes | yes | in | `goc_v_cmp_gt_u32`<br>`goc_v_cmp_gt_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_gt_u64` | yes | yes | in | `goc_v_cmp_gt_u64`<br>`goc_v_cmp_gt_u64_wave64` | — | API present; semantic audit pending |
+| `v_cmp_gt_i16` | yes | yes | in | `goc_v_cmp_gt_i16`<br>`goc_v_cmp_gt_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_gt_i32` | yes | yes | in | `goc_v_cmp_gt_i32`<br>`goc_v_cmp_gt_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_gt_i64` | yes | yes | in | `goc_v_cmp_gt_i64`<br>`goc_v_cmp_gt_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_gt_u16` | yes | yes | in | `goc_v_cmp_gt_u16`<br>`goc_v_cmp_gt_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_gt_u32` | yes | yes | in | `goc_v_cmp_gt_u32`<br>`goc_v_cmp_gt_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_gt_u64` | yes | yes | in | `goc_v_cmp_gt_u64`<br>`goc_v_cmp_gt_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
 | `v_cmp_le_f16` | yes | yes | in | `goc_v_cmp_le_f16`<br>`goc_v_cmp_le_f16_wave64`<br>`goc_v_cmp_le_f16_rdna4`<br>`goc_v_cmp_le_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_le_f32` | yes | yes | in | `goc_v_cmp_le_f32`<br>`goc_v_cmp_le_f32_wave64`<br>`goc_v_cmp_le_f32_rdna4`<br>`goc_v_cmp_le_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_le_f64` | yes | yes | in | `goc_v_cmp_le_f64`<br>`goc_v_cmp_le_f64_wave64`<br>`goc_v_cmp_le_f64_rdna4`<br>`goc_v_cmp_le_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmp_le_i16` | yes | yes | in | `goc_v_cmp_le_i16`<br>`goc_v_cmp_le_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_le_i32` | yes | yes | in | `goc_v_cmp_le_i32`<br>`goc_v_cmp_le_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_le_i64` | yes | yes | in | `goc_v_cmp_le_i64`<br>`goc_v_cmp_le_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmp_le_u16` | yes | yes | in | `goc_v_cmp_le_u16`<br>`goc_v_cmp_le_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_le_u32` | yes | yes | in | `goc_v_cmp_le_u32`<br>`goc_v_cmp_le_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_le_u64` | yes | yes | in | `goc_v_cmp_le_u64`<br>`goc_v_cmp_le_u64_wave64` | — | API present; semantic audit pending |
+| `v_cmp_le_i16` | yes | yes | in | `goc_v_cmp_le_i16`<br>`goc_v_cmp_le_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_le_i32` | yes | yes | in | `goc_v_cmp_le_i32`<br>`goc_v_cmp_le_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_le_i64` | yes | yes | in | `goc_v_cmp_le_i64`<br>`goc_v_cmp_le_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_le_u16` | yes | yes | in | `goc_v_cmp_le_u16`<br>`goc_v_cmp_le_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_le_u32` | yes | yes | in | `goc_v_cmp_le_u32`<br>`goc_v_cmp_le_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_le_u64` | yes | yes | in | `goc_v_cmp_le_u64`<br>`goc_v_cmp_le_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
 | `v_cmp_lg_f16` | yes | yes | in | `goc_v_cmp_lg_f16`<br>`goc_v_cmp_lg_f16_wave64`<br>`goc_v_cmp_lg_f16_rdna4`<br>`goc_v_cmp_lg_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_lg_f32` | yes | yes | in | `goc_v_cmp_lg_f32`<br>`goc_v_cmp_lg_f32_wave64`<br>`goc_v_cmp_lg_f32_rdna4`<br>`goc_v_cmp_lg_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_lg_f64` | yes | yes | in | `goc_v_cmp_lg_f64`<br>`goc_v_cmp_lg_f64_wave64`<br>`goc_v_cmp_lg_f64_rdna4`<br>`goc_v_cmp_lg_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_lt_f16` | yes | yes | in | `goc_v_cmp_lt_f16`<br>`goc_v_cmp_lt_f16_wave64`<br>`goc_v_cmp_lt_f16_rdna4`<br>`goc_v_cmp_lt_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_lt_f32` | yes | yes | in | `goc_v_cmp_lt_f32`<br>`goc_v_cmp_lt_f32_wave64`<br>`goc_v_cmp_lt_f32_rdna4`<br>`goc_v_cmp_lt_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_lt_f64` | yes | yes | in | `goc_v_cmp_lt_f64`<br>`goc_v_cmp_lt_f64_wave64`<br>`goc_v_cmp_lt_f64_rdna4`<br>`goc_v_cmp_lt_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmp_lt_i16` | yes | yes | in | `goc_v_cmp_lt_i16`<br>`goc_v_cmp_lt_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_lt_i32` | yes | yes | in | `goc_v_cmp_lt_i32`<br>`goc_v_cmp_lt_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_lt_i64` | yes | yes | in | `goc_v_cmp_lt_i64`<br>`goc_v_cmp_lt_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmp_lt_u16` | yes | yes | in | `goc_v_cmp_lt_u16`<br>`goc_v_cmp_lt_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_lt_u32` | yes | yes | in | `goc_v_cmp_lt_u32`<br>`goc_v_cmp_lt_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_lt_u64` | yes | yes | in | `goc_v_cmp_lt_u64`<br>`goc_v_cmp_lt_u64_wave64` | — | API present; semantic audit pending |
-| `v_cmp_ne_i16` | yes | yes | in | `goc_v_cmp_ne_i16`<br>`goc_v_cmp_ne_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_ne_i32` | yes | yes | in | `goc_v_cmp_ne_i32`<br>`goc_v_cmp_ne_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_ne_i64` | yes | yes | in | `goc_v_cmp_ne_i64`<br>`goc_v_cmp_ne_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmp_ne_u16` | yes | yes | in | `goc_v_cmp_ne_u16`<br>`goc_v_cmp_ne_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmp_ne_u32` | yes | yes | in | `goc_v_cmp_ne_u32`<br>`goc_v_cmp_ne_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmp_ne_u64` | yes | yes | in | `goc_v_cmp_ne_u64`<br>`goc_v_cmp_ne_u64_wave64` | — | API present; semantic audit pending |
+| `v_cmp_lt_i16` | yes | yes | in | `goc_v_cmp_lt_i16`<br>`goc_v_cmp_lt_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_lt_i32` | yes | yes | in | `goc_v_cmp_lt_i32`<br>`goc_v_cmp_lt_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_lt_i64` | yes | yes | in | `goc_v_cmp_lt_i64`<br>`goc_v_cmp_lt_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_lt_u16` | yes | yes | in | `goc_v_cmp_lt_u16`<br>`goc_v_cmp_lt_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_lt_u32` | yes | yes | in | `goc_v_cmp_lt_u32`<br>`goc_v_cmp_lt_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_lt_u64` | yes | yes | in | `goc_v_cmp_lt_u64`<br>`goc_v_cmp_lt_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_ne_i16` | yes | yes | in | `goc_v_cmp_ne_i16`<br>`goc_v_cmp_ne_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_ne_i32` | yes | yes | in | `goc_v_cmp_ne_i32`<br>`goc_v_cmp_ne_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_ne_i64` | yes | yes | in | `goc_v_cmp_ne_i64`<br>`goc_v_cmp_ne_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_ne_u16` | yes | yes | in | `goc_v_cmp_ne_u16`<br>`goc_v_cmp_ne_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_ne_u32` | yes | yes | in | `goc_v_cmp_ne_u32`<br>`goc_v_cmp_ne_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmp_ne_u64` | yes | yes | in | `goc_v_cmp_ne_u64`<br>`goc_v_cmp_ne_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
 | `v_cmp_neq_f16` | yes | yes | in | `goc_v_cmp_neq_f16`<br>`goc_v_cmp_neq_f16_wave64`<br>`goc_v_cmp_neq_f16_rdna4`<br>`goc_v_cmp_neq_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_neq_f32` | yes | yes | in | `goc_v_cmp_neq_f32`<br>`goc_v_cmp_neq_f32_wave64`<br>`goc_v_cmp_neq_f32_rdna4`<br>`goc_v_cmp_neq_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmp_neq_f64` | yes | yes | in | `goc_v_cmp_neq_f64`<br>`goc_v_cmp_neq_f64_wave64`<br>`goc_v_cmp_neq_f64_rdna4`<br>`goc_v_cmp_neq_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
@@ -973,12 +973,12 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cmpx_eq_f16` | yes | yes | in | `goc_v_cmpx_eq_f16`<br>`goc_v_cmpx_eq_f16_wave64`<br>`goc_v_cmpx_eq_f16_rdna4`<br>`goc_v_cmpx_eq_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_eq_f32` | yes | yes | in | `goc_v_cmpx_eq_f32`<br>`goc_v_cmpx_eq_f32_wave64`<br>`goc_v_cmpx_eq_f32_rdna4`<br>`goc_v_cmpx_eq_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_eq_f64` | yes | yes | in | `goc_v_cmpx_eq_f64`<br>`goc_v_cmpx_eq_f64_wave64`<br>`goc_v_cmpx_eq_f64_rdna4`<br>`goc_v_cmpx_eq_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmpx_eq_i16` | yes | yes | in | `goc_v_cmpx_eq_i16`<br>`goc_v_cmpx_eq_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_eq_i32` | yes | yes | in | `goc_v_cmpx_eq_i32`<br>`goc_v_cmpx_eq_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_eq_i64` | yes | yes | in | `goc_v_cmpx_eq_i64`<br>`goc_v_cmpx_eq_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_eq_u16` | yes | yes | in | `goc_v_cmpx_eq_u16`<br>`goc_v_cmpx_eq_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_eq_u32` | yes | yes | in | `goc_v_cmpx_eq_u32`<br>`goc_v_cmpx_eq_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_eq_u64` | yes | yes | in | `goc_v_cmpx_eq_u64`<br>`goc_v_cmpx_eq_u64_wave64` | — | API present; semantic audit pending |
+| `v_cmpx_eq_i16` | yes | yes | in | `goc_v_cmpx_eq_i16`<br>`goc_v_cmpx_eq_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_eq_i32` | yes | yes | in | `goc_v_cmpx_eq_i32`<br>`goc_v_cmpx_eq_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_eq_i64` | yes | yes | in | `goc_v_cmpx_eq_i64`<br>`goc_v_cmpx_eq_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_eq_u16` | yes | yes | in | `goc_v_cmpx_eq_u16`<br>`goc_v_cmpx_eq_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_eq_u32` | yes | yes | in | `goc_v_cmpx_eq_u32`<br>`goc_v_cmpx_eq_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_eq_u64` | yes | yes | in | `goc_v_cmpx_eq_u64`<br>`goc_v_cmpx_eq_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
 | `v_cmpx_f_f16` | yes | — | in | `goc_v_cmpx_f_f16`<br>`goc_v_cmpx_f_f16_wave64` | — | API present; semantic audit pending |
 | `v_cmpx_f_f32` | yes | — | in | `goc_v_cmpx_f_f32`<br>`goc_v_cmpx_f_f32_wave64` | — | API present; semantic audit pending |
 | `v_cmpx_f_f64` | yes | — | in | `goc_v_cmpx_f_f64`<br>`goc_v_cmpx_f_f64_wave64` | — | API present; semantic audit pending |
@@ -989,48 +989,48 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_cmpx_ge_f16` | yes | yes | in | `goc_v_cmpx_ge_f16`<br>`goc_v_cmpx_ge_f16_wave64`<br>`goc_v_cmpx_ge_f16_rdna4`<br>`goc_v_cmpx_ge_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_ge_f32` | yes | yes | in | `goc_v_cmpx_ge_f32`<br>`goc_v_cmpx_ge_f32_wave64`<br>`goc_v_cmpx_ge_f32_rdna4`<br>`goc_v_cmpx_ge_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_ge_f64` | yes | yes | in | `goc_v_cmpx_ge_f64`<br>`goc_v_cmpx_ge_f64_wave64`<br>`goc_v_cmpx_ge_f64_rdna4`<br>`goc_v_cmpx_ge_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmpx_ge_i16` | yes | yes | in | `goc_v_cmpx_ge_i16`<br>`goc_v_cmpx_ge_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_ge_i32` | yes | yes | in | `goc_v_cmpx_ge_i32`<br>`goc_v_cmpx_ge_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_ge_i64` | yes | yes | in | `goc_v_cmpx_ge_i64`<br>`goc_v_cmpx_ge_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_ge_u16` | yes | yes | in | `goc_v_cmpx_ge_u16`<br>`goc_v_cmpx_ge_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_ge_u32` | yes | yes | in | `goc_v_cmpx_ge_u32`<br>`goc_v_cmpx_ge_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_ge_u64` | yes | yes | in | `goc_v_cmpx_ge_u64`<br>`goc_v_cmpx_ge_u64_wave64` | — | API present; semantic audit pending |
+| `v_cmpx_ge_i16` | yes | yes | in | `goc_v_cmpx_ge_i16`<br>`goc_v_cmpx_ge_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_ge_i32` | yes | yes | in | `goc_v_cmpx_ge_i32`<br>`goc_v_cmpx_ge_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_ge_i64` | yes | yes | in | `goc_v_cmpx_ge_i64`<br>`goc_v_cmpx_ge_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_ge_u16` | yes | yes | in | `goc_v_cmpx_ge_u16`<br>`goc_v_cmpx_ge_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_ge_u32` | yes | yes | in | `goc_v_cmpx_ge_u32`<br>`goc_v_cmpx_ge_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_ge_u64` | yes | yes | in | `goc_v_cmpx_ge_u64`<br>`goc_v_cmpx_ge_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
 | `v_cmpx_gt_f16` | yes | yes | in | `goc_v_cmpx_gt_f16`<br>`goc_v_cmpx_gt_f16_wave64`<br>`goc_v_cmpx_gt_f16_rdna4`<br>`goc_v_cmpx_gt_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_gt_f32` | yes | yes | in | `goc_v_cmpx_gt_f32`<br>`goc_v_cmpx_gt_f32_wave64`<br>`goc_v_cmpx_gt_f32_rdna4`<br>`goc_v_cmpx_gt_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_gt_f64` | yes | yes | in | `goc_v_cmpx_gt_f64`<br>`goc_v_cmpx_gt_f64_wave64`<br>`goc_v_cmpx_gt_f64_rdna4`<br>`goc_v_cmpx_gt_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmpx_gt_i16` | yes | yes | in | `goc_v_cmpx_gt_i16`<br>`goc_v_cmpx_gt_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_gt_i32` | yes | yes | in | `goc_v_cmpx_gt_i32`<br>`goc_v_cmpx_gt_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_gt_i64` | yes | yes | in | `goc_v_cmpx_gt_i64`<br>`goc_v_cmpx_gt_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_gt_u16` | yes | yes | in | `goc_v_cmpx_gt_u16`<br>`goc_v_cmpx_gt_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_gt_u32` | yes | yes | in | `goc_v_cmpx_gt_u32`<br>`goc_v_cmpx_gt_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_gt_u64` | yes | yes | in | `goc_v_cmpx_gt_u64`<br>`goc_v_cmpx_gt_u64_wave64` | — | API present; semantic audit pending |
+| `v_cmpx_gt_i16` | yes | yes | in | `goc_v_cmpx_gt_i16`<br>`goc_v_cmpx_gt_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_gt_i32` | yes | yes | in | `goc_v_cmpx_gt_i32`<br>`goc_v_cmpx_gt_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_gt_i64` | yes | yes | in | `goc_v_cmpx_gt_i64`<br>`goc_v_cmpx_gt_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_gt_u16` | yes | yes | in | `goc_v_cmpx_gt_u16`<br>`goc_v_cmpx_gt_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_gt_u32` | yes | yes | in | `goc_v_cmpx_gt_u32`<br>`goc_v_cmpx_gt_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_gt_u64` | yes | yes | in | `goc_v_cmpx_gt_u64`<br>`goc_v_cmpx_gt_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
 | `v_cmpx_le_f16` | yes | yes | in | `goc_v_cmpx_le_f16`<br>`goc_v_cmpx_le_f16_wave64`<br>`goc_v_cmpx_le_f16_rdna4`<br>`goc_v_cmpx_le_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_le_f32` | yes | yes | in | `goc_v_cmpx_le_f32`<br>`goc_v_cmpx_le_f32_wave64`<br>`goc_v_cmpx_le_f32_rdna4`<br>`goc_v_cmpx_le_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_le_f64` | yes | yes | in | `goc_v_cmpx_le_f64`<br>`goc_v_cmpx_le_f64_wave64`<br>`goc_v_cmpx_le_f64_rdna4`<br>`goc_v_cmpx_le_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmpx_le_i16` | yes | yes | in | `goc_v_cmpx_le_i16`<br>`goc_v_cmpx_le_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_le_i32` | yes | yes | in | `goc_v_cmpx_le_i32`<br>`goc_v_cmpx_le_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_le_i64` | yes | yes | in | `goc_v_cmpx_le_i64`<br>`goc_v_cmpx_le_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_le_u16` | yes | yes | in | `goc_v_cmpx_le_u16`<br>`goc_v_cmpx_le_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_le_u32` | yes | yes | in | `goc_v_cmpx_le_u32`<br>`goc_v_cmpx_le_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_le_u64` | yes | yes | in | `goc_v_cmpx_le_u64`<br>`goc_v_cmpx_le_u64_wave64` | — | API present; semantic audit pending |
+| `v_cmpx_le_i16` | yes | yes | in | `goc_v_cmpx_le_i16`<br>`goc_v_cmpx_le_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_le_i32` | yes | yes | in | `goc_v_cmpx_le_i32`<br>`goc_v_cmpx_le_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_le_i64` | yes | yes | in | `goc_v_cmpx_le_i64`<br>`goc_v_cmpx_le_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_le_u16` | yes | yes | in | `goc_v_cmpx_le_u16`<br>`goc_v_cmpx_le_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_le_u32` | yes | yes | in | `goc_v_cmpx_le_u32`<br>`goc_v_cmpx_le_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_le_u64` | yes | yes | in | `goc_v_cmpx_le_u64`<br>`goc_v_cmpx_le_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
 | `v_cmpx_lg_f16` | yes | yes | in | `goc_v_cmpx_lg_f16`<br>`goc_v_cmpx_lg_f16_wave64`<br>`goc_v_cmpx_lg_f16_rdna4`<br>`goc_v_cmpx_lg_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_lg_f32` | yes | yes | in | `goc_v_cmpx_lg_f32`<br>`goc_v_cmpx_lg_f32_wave64`<br>`goc_v_cmpx_lg_f32_rdna4`<br>`goc_v_cmpx_lg_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_lg_f64` | yes | yes | in | `goc_v_cmpx_lg_f64`<br>`goc_v_cmpx_lg_f64_wave64`<br>`goc_v_cmpx_lg_f64_rdna4`<br>`goc_v_cmpx_lg_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_lt_f16` | yes | yes | in | `goc_v_cmpx_lt_f16`<br>`goc_v_cmpx_lt_f16_wave64`<br>`goc_v_cmpx_lt_f16_rdna4`<br>`goc_v_cmpx_lt_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_lt_f32` | yes | yes | in | `goc_v_cmpx_lt_f32`<br>`goc_v_cmpx_lt_f32_wave64`<br>`goc_v_cmpx_lt_f32_rdna4`<br>`goc_v_cmpx_lt_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_lt_f64` | yes | yes | in | `goc_v_cmpx_lt_f64`<br>`goc_v_cmpx_lt_f64_wave64`<br>`goc_v_cmpx_lt_f64_rdna4`<br>`goc_v_cmpx_lt_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
-| `v_cmpx_lt_i16` | yes | yes | in | `goc_v_cmpx_lt_i16`<br>`goc_v_cmpx_lt_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_lt_i32` | yes | yes | in | `goc_v_cmpx_lt_i32`<br>`goc_v_cmpx_lt_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_lt_i64` | yes | yes | in | `goc_v_cmpx_lt_i64`<br>`goc_v_cmpx_lt_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_lt_u16` | yes | yes | in | `goc_v_cmpx_lt_u16`<br>`goc_v_cmpx_lt_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_lt_u32` | yes | yes | in | `goc_v_cmpx_lt_u32`<br>`goc_v_cmpx_lt_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_lt_u64` | yes | yes | in | `goc_v_cmpx_lt_u64`<br>`goc_v_cmpx_lt_u64_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_ne_i16` | yes | yes | in | `goc_v_cmpx_ne_i16`<br>`goc_v_cmpx_ne_i16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_ne_i32` | yes | yes | in | `goc_v_cmpx_ne_i32`<br>`goc_v_cmpx_ne_i32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_ne_i64` | yes | yes | in | `goc_v_cmpx_ne_i64`<br>`goc_v_cmpx_ne_i64_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_ne_u16` | yes | yes | in | `goc_v_cmpx_ne_u16`<br>`goc_v_cmpx_ne_u16_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_ne_u32` | yes | yes | in | `goc_v_cmpx_ne_u32`<br>`goc_v_cmpx_ne_u32_wave64` | — | API present; semantic audit pending |
-| `v_cmpx_ne_u64` | yes | yes | in | `goc_v_cmpx_ne_u64`<br>`goc_v_cmpx_ne_u64_wave64` | — | API present; semantic audit pending |
+| `v_cmpx_lt_i16` | yes | yes | in | `goc_v_cmpx_lt_i16`<br>`goc_v_cmpx_lt_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_lt_i32` | yes | yes | in | `goc_v_cmpx_lt_i32`<br>`goc_v_cmpx_lt_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_lt_i64` | yes | yes | in | `goc_v_cmpx_lt_i64`<br>`goc_v_cmpx_lt_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_lt_u16` | yes | yes | in | `goc_v_cmpx_lt_u16`<br>`goc_v_cmpx_lt_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_lt_u32` | yes | yes | in | `goc_v_cmpx_lt_u32`<br>`goc_v_cmpx_lt_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_lt_u64` | yes | yes | in | `goc_v_cmpx_lt_u64`<br>`goc_v_cmpx_lt_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_ne_i16` | yes | yes | in | `goc_v_cmpx_ne_i16`<br>`goc_v_cmpx_ne_i16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_ne_i32` | yes | yes | in | `goc_v_cmpx_ne_i32`<br>`goc_v_cmpx_ne_i32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_ne_i64` | yes | yes | in | `goc_v_cmpx_ne_i64`<br>`goc_v_cmpx_ne_i64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_ne_u16` | yes | yes | in | `goc_v_cmpx_ne_u16`<br>`goc_v_cmpx_ne_u16_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_ne_u32` | yes | yes | in | `goc_v_cmpx_ne_u32`<br>`goc_v_cmpx_ne_u32_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
+| `v_cmpx_ne_u64` | yes | yes | in | `goc_v_cmpx_ne_u64`<br>`goc_v_cmpx_ne_u64_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#vector-integer-comparison-architecture-contracts) |
 | `v_cmpx_neq_f16` | yes | yes | in | `goc_v_cmpx_neq_f16`<br>`goc_v_cmpx_neq_f16_wave64`<br>`goc_v_cmpx_neq_f16_rdna4`<br>`goc_v_cmpx_neq_f16_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_neq_f32` | yes | yes | in | `goc_v_cmpx_neq_f32`<br>`goc_v_cmpx_neq_f32_wave64`<br>`goc_v_cmpx_neq_f32_rdna4`<br>`goc_v_cmpx_neq_f32_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
 | `v_cmpx_neq_f64` | yes | yes | in | `goc_v_cmpx_neq_f64`<br>`goc_v_cmpx_neq_f64_wave64`<br>`goc_v_cmpx_neq_f64_rdna4`<br>`goc_v_cmpx_neq_f64_rdna4_wave64` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#floating-relational-comparison-architecture-review) |
