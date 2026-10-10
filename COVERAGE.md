@@ -6105,3 +6105,36 @@ Validation: all 1,132 CTests pass under Clang and GCC Release; all ten packing
 tests pass under ASan/UBSan. All nine audit-tool tests pass. Logs use
 `sat-pack-review-` in each build directory. The ledger records 604 contracts;
 205 in-scope mnemonics remain without recorded reviews.
+
+## Guest-mode architecture contracts
+
+Reviewed `s_round_mode` and `s_denorm_mode` against both ISA manuals and
+rocjitsu `ffc144c564c`. All four architecture handlers delegate to the same
+two shared helpers, but those helpers are empty stubs. They cannot serve as
+correctness references. Bodies, hashes and locations are recorded in
+`../goc-build/coverage-work/guest-mode-upstream-review.json`.
+
+GoC's existing implementation follows the manuals' hardware-register field
+layout and instruction descriptions: immediate bits [3:0] replace MODE bits
+[3:0] for rounding or [7:4] for denormals; all other bits are preserved.
+The selected nibble contains independent FP32 and FP16/FP64 settings, so all
+sixteen values are meaningful. The two architectures agree and need no suffix.
+These are guest-register operations with no EXEC dependence. The nullable MODE
+pointer supplies old state and receives the replacement; null opts out. Both
+semantics perform this inexpensive update. No numerical algorithm, new exact
+floating-point model or hardware characterization is involved.
+
+The existing tests exhaust all 65,536 immediate values and verify unselected
+bits, null opt-out and error preservation. Added an integration test for all
+round/denormal nibble combinations in either write order, both semantics and
+all CPU levels. On each architecture, each update must agree with equivalent
+SGPR and literal SETREG field writes, and GETREG must read back both nibbles.
+High immediate/source bits are deliberately nonzero. This checks the agreement
+of dedicated mode instructions with the separately implemented register APIs;
+it does not claim anything about unimplemented HWREG side effects or the
+numerical completeness of instructions that consume guest FP flags.
+
+Validation: all 1,133 CTests pass under Clang and GCC Release; all seventeen
+guest-mode/HWREG tests pass under ASan/UBSan. All nine audit-tool tests pass.
+Logs use `guest-mode-review-` in each build directory. The ledger records
+606 contracts; 203 in-scope mnemonics remain without recorded reviews.

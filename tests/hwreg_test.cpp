@@ -471,3 +471,50 @@ TEST(Hwreg, ArchitectureSpecificWritableFieldsAndExceptionClearing) {
             GOC_SUCCESS);
   EXPECT_EQ(status, 32U);
 }
+
+TEST(Hwreg, ModeInstructionsAgreeWithFieldAccess) {
+  for (bool rdna4 : {false, true})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (unsigned rounding = 0; rounding < 16; ++rounding)
+          for (unsigned denorm = 0; denorm < 16; ++denorm)
+            for (bool reverse : {false, true}) {
+              uint64_t flags = cpu | semantics | GOC_SEMANTICS_STRICT;
+              uint32_t initial = (0xcafebe00U | (rounding * 17)) ^ (denorm * 0x01030709U);
+              uint32_t direct = initial, field = initial;
+              for (unsigned step = 0; step < 2; ++step) {
+                bool set_denorm = (step != 0) != reverse;
+                unsigned value = set_denorm ? denorm : rounding;
+                unsigned offset = set_denorm ? 4 : 0;
+                auto fn = set_denorm ? goc_s_denorm_mode : goc_s_round_mode;
+                // High immediate bits are ignored, as are source bits outside
+                // the four-bit field in the equivalent SETREG operation.
+                ASSERT_EQ(fn(flags, 0, uint16_t(0xa5f0U | value), &direct), GOC_SUCCESS);
+                for (bool literal : {false, true}) {
+                  uint32_t result = field;
+                  if (rdna4) {
+                    auto set = literal ? goc_s_setreg_imm32_b32_rdna4 : goc_s_setreg_b32_rdna4;
+                    ASSERT_EQ(set(flags, 0, descriptor(1, offset, 4), 0xfffffff0U | value, 0,
+                                  &result, nullptr, nullptr, nullptr, nullptr, nullptr),
+                              GOC_SUCCESS);
+                  } else {
+                    auto set = literal ? goc_s_setreg_imm32_b32 : goc_s_setreg_b32;
+                    ASSERT_EQ(set(flags, 0, descriptor(1, offset, 4), 0xfffffff0U | value, 0,
+                                  &result, nullptr, nullptr, nullptr, nullptr),
+                              GOC_SUCCESS);
+                  }
+                  EXPECT_EQ(result, direct);
+                }
+                field = direct;
+              }
+              EXPECT_EQ(direct, (initial & 0xffffff00U) | (denorm << 4) | rounding);
+              std::array<uint32_t, 64> registers{};
+              registers[1] = direct;
+              for (unsigned offset : {0U, 4U}) {
+                uint32_t result = 0;
+                ASSERT_EQ(read(rdna4, flags, 0, descriptor(1, offset, 4), &result, registers),
+                          GOC_SUCCESS);
+                EXPECT_EQ(result, offset ? denorm : rounding);
+              }
+            }
+}

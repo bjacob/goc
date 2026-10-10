@@ -1050,5 +1050,14 @@
     "mnemonics": [
       "v_sat_pk_u8_i16"
     ]
+  },
+  {
+    "heading": "Guest-mode architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/guest_mode_test.cpp",
+    "mnemonics": [
+      "s_round_mode",
+      "s_denorm_mode"
+    ]
   }
 ]

@@ -647,7 +647,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_dcache_inv` | yes | yes | out: SMEM | — | — | excluded: memory/control/scheduling |
 | `s_decperflevel` | yes | yes | out: BRANCH | — | — | excluded: memory/control/scheduling |
 | `s_delay_alu` | yes | yes | out: WAVE_CONTROL | — | — | excluded: memory/control/scheduling |
-| `s_denorm_mode` | yes | yes | in | `goc_s_denorm_mode` | — | API present; semantic audit pending |
+| `s_denorm_mode` | yes | yes | in | `goc_s_denorm_mode` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#guest-mode-architecture-contracts) |
 | `s_endpgm` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_endpgm_ordered_ps_done` | yes | — | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_endpgm_saved` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
@@ -741,7 +741,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_rfe_b64` | yes | yes | out: branch/termination | — | — | excluded: memory/control/scheduling |
 | `s_rndne_f16` | — | yes | in | `goc_s_rndne_f16` | — | API present; semantic audit pending |
 | `s_rndne_f32` | — | yes | in | `goc_s_rndne_f32` | — | API present; semantic audit pending |
-| `s_round_mode` | yes | yes | in | `goc_s_round_mode` | — | API present; semantic audit pending |
+| `s_round_mode` | yes | yes | in | `goc_s_round_mode` | — | [loose and exact contract reviewed; see limitations](COVERAGE.md#guest-mode-architecture-contracts) |
 | `s_sendmsg` | yes | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |
 | `s_sendmsg_rtn_b32` | yes | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |
 | `s_sendmsg_rtn_b64` | yes | yes | out: MESSAGE | — | — | excluded: memory/control/scheduling |
