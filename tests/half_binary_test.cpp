@@ -547,3 +547,61 @@ TEST(HalfBinary, LegacySelectionPreservesEveryHalfEncoding) {
           EXPECT_EQ(d[lane], 0x7c110000U | (base + lane)) << cpu;
       }
 }
+
+TEST(HalfBinary, ArithmeticRetainsCapturedOmodBoundaryPolicy) {
+  // Preserve the current loose policy, backed collectively by the existing
+  // DppHalfBinary.HardwareOmodBoundaries capture. These individual literals
+  // describe that policy; they are not new per-case hardware observations.
+  const goc_test::HalfBinaryFn narrow[] = {
+      goc_v_add_f16,       goc_v_sub_f16,       goc_v_subrev_f16,       goc_v_mul_f16,
+      goc_v_add_f16_rdna4, goc_v_sub_f16_rdna4, goc_v_subrev_f16_rdna4, goc_v_mul_f16_rdna4};
+  const decltype(&goc_v_add_f16_wave64) wide[] = {
+      goc_v_add_f16_wave64,          goc_v_sub_f16_wave64,       goc_v_subrev_f16_wave64,
+      goc_v_mul_f16_wave64,          goc_v_add_f16_rdna4_wave64, goc_v_sub_f16_rdna4_wave64,
+      goc_v_subrev_f16_rdna4_wave64, goc_v_mul_f16_rdna4_wave64};
+
+  struct Case {
+    uint16_t value, scaled;
+    uint32_t mode;
+  };
+
+  const Case cases[] = {
+      {0x0200, 0, GOC_ALU_OMOD_4}, // Flush the unscaled tiny intermediate.
+      {0x8200, 0, GOC_ALU_OMOD_4},         {0x0100, 0, GOC_ALU_OMOD_4},
+      {0x00ff, 0, GOC_ALU_OMOD_4},         // Tiny before scaling.
+      {0x8400, 0x8000, GOC_ALU_OMOD_HALF}, // Halving a normal retains its sign.
+      {0x8000, 0, GOC_ALU_OMOD_2},         {0x7bff, 0x77ff, GOC_ALU_OMOD_HALF},
+  };
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (unsigned api = 0; api < 8; ++api)
+      for (unsigned width : {32U, 64U})
+        for (const auto &sample : cases) {
+          uint32_t words[3][64];
+          // RDNA3 enables OMOD only with output flushing and IEEE disabled.
+          uint64_t flags = cpu | (api < 4 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
+          unsigned op = api % 4;
+          uint16_t a = sample.value, b = op == 3 ? 0x3c00 : 0;
+          if (op == 0)
+            b = sample.value & 0x8000; // Preserve a negative zero sum.
+          if (op == 2) {
+            b = a;
+            a = 0;
+          }
+          std::fill(words[0], words[0] + 64, 0xaaaa0000U | a);
+          std::fill(words[1], words[1] + 64, 0xbbbb0000U | b);
+          std::fill(words[2], words[2] + 64, 0xdeadbeef);
+          const uint32_t *x = words[0], *y = words[1];
+          uint32_t *d = words[2], state = 0x80000000;
+          const uint64_t exec_mask = 0xa55aa55a5aa55aa5ULL;
+          ASSERT_EQ(width == 32
+                        ? narrow[api](flags, uint32_t(exec_mask), sample.mode, &d, &x, &y, &state)
+                        : wide[api](flags, exec_mask, sample.mode, &d, &x, &y, &state),
+                    GOC_SUCCESS);
+          EXPECT_EQ(state, 0x80000000U);
+          for (unsigned lane = 0; lane < 64; ++lane)
+            EXPECT_EQ(d[lane], lane < width && ((exec_mask >> lane) & 1)
+                                   ? 0xdead0000U | sample.scaled
+                                   : 0xdeadbeefU)
+                << "api=" << api << " input=" << sample.value;
+        }
+}

@@ -6351,10 +6351,10 @@ OMOD x4 yields `0x0800` if scaling precedes flushing, but zero if the unscaled
 tiny value is flushed first. `finalize_omod_f64` does not resolve that difference:
 it only flushes double subnormals. GoC's existing reference tests repeat the
 pre-scaling rule and therefore cannot independently settle it. No production
-behavior is changed or new exact model inferred from this discrepancy. The four
-ordinary arithmetic mnemonics remain outside the completed architecture-review
-ledger pending reconciliation with the manuals and existing upstream fixtures;
-no new hardware reverse-engineering is required or authorized.
+behavior is changed or new exact model inferred from this discrepancy. At that point the four ordinary arithmetic mnemonics remained outside the
+architecture-review ledger. The later [contract resolution](#ordinary-fp16-arithmetic-architecture-contract-resolution)
+uses the existing hardware hash to reject the incompatible upstream ordering;
+no new hardware reverse-engineering was performed.
 
 The manuals’ output-operand-modifier sections establish architecture gating,
 output-denormal flushing and negative-zero behavior, but do not explicitly settle
@@ -7139,11 +7139,11 @@ recognizes these DPP-capable APIs at both widths.
 Rocjitsu's current generated DOT4 handlers decode *both* sources as E4M3 even
 for BF8 forms, omit C modifiers and use a generic reduction. GoC retains its
 existing mixed-format scalar/AVX2 implementation and exhaustive byte-pair tests;
-there is no borrowed general exact DOT4 model to enable. Optional exception
-output applicability still needs resolution: unlike FP8 conversions and WMMA,
-LLVM's DOT4 profile inherits the generic FP exception flag, and the reviewed
-manual instruction entries do not explicitly settle reporting. The four DOT4
-mnemonics therefore remain outside the completed contract-review ledger.
+there is no borrowed general exact DOT4 model to enable. At this stage optional exception output applicability remained unresolved:
+LLVM's DOT4 profile inherits the generic FP exception flag, and the individual
+instruction entries do not settle reporting. The later
+[contract resolution](#fp8-dot4-architecture-contract-resolution) locates the
+explicit no-exceptions rule in the manual's packed-math section.
 
 Validation: all 1,155 tests pass on Clang 21 and GCC 15 Release. All 32 targeted
 FP8 conversion/narrowing/DOT4 and instruction-flag tests pass under ASan/UBSan.
@@ -8039,3 +8039,89 @@ each build directory. No production code changed, so this review changes
 neither performance nor library size. The ledger now records **777** reviewed
 mnemonic contracts with **32** remaining; these counts are not a completion
 percentage.
+
+
+## Ordinary FP16 arithmetic architecture contract resolution
+
+Reviewed `v_add_f16`, `v_sub_f16`, `v_subrev_f16` and `v_mul_f16` using the
+existing architecture/encoding inventory, both manuals' output-modifier policies,
+rocjitsu revision `ffc144c564c`'s shared VOP2/VOP3 handlers, and GoC's existing
+gfx1201 DPP capture. The unsuffixed APIs retain RDNA3's IEEE/output-denormal
+OMOD gating; `_rdna4` variants apply OMOD independently of that gating. Both
+architectures have Wave32/Wave64 forms, selected input/output halves, ABS/NEG,
+CLAMP, FP16 overflow saturation, input/output flushing and DPP routing. Packed
+arithmetic has a separate contract and does not inherit ordinary OMOD rules.
+
+The previously recorded scaling discrepancy is now resolved for this loose
+implementation by an existing regression fixture, rather than by assuming
+rocjitsu's generic scalar handler is an empirical model. Upstream
+`ValuFpModeHelpers.OutputScalePrecedesF16Rounding` explicitly tests scaling before
+narrowing and normalization of negative zero. Its arithmetic handlers scale a
+wide result and use `finalize_omod_f16` after narrowing. A trial applying that
+ordering to GoC's scalar and AVX2 arithmetic passed their mutual comparisons but
+**failed `DppHalfBinary.HardwareOmodBoundaries`**: the stored gfx1201 hash
+`0x0306a62849f129db` was not reproduced on any CPU tier. The trial was discarded;
+the capture and production kernels are unchanged. A generic upstream handler
+therefore cannot justify promoting these instructions to empirical exact mode.
+This evidence does not establish that every uncaptured case is hardware-exact.
+
+The retained loose policy flushes an unscaled tiny arithmetic intermediate before
+OMOD; halving a normal into the subnormal range retains the zero sign. New
+literal regressions exercise positive/negative tiny values, the normal threshold,
+negative zero and finite scaling across all sixteen operation/architecture/wave
+APIs and available CPU tiers, checking partial EXEC and untouched destination
+halves. These literals describe the existing policy and are not new hardware
+observations. Existing exhaustive/modifier/DPP/alias tests and the independent
+stored hardware hash remain authoritative regression checks.
+
+All four contracts remain loose-only. Strict exact arithmetic and non-null
+non-loose optional reporting are explicitly unsupported; null state allows
+non-strict fallback and loose state is unchanged. Reporting rejection precedes
+invalid modifiers and operand reads, including zero EXEC, as checked by the
+existing optional-state test. Guest directed rounding and DX10-clamp-off remain
+unsupported. Scalar and eight-lane AVX2 implementations are unchanged, so this
+review introduces no library-size or performance change. No new numerical model
+or native hardware probe was introduced.
+
+The review ledger records **781** mnemonic contracts, with **28** remaining.
+This is a contract-review count, not a claim of complete encoding or exact-mode
+coverage.
+
+
+## FP8 DOT4 architecture contract resolution
+
+RDNA4 ISA section **7.7, Packed Math**, printed page 81, explicitly states under
+`DOT4_F32_{FP8,BF8}_{FP8,BF8}` that exceptions are not reported. This resolves
+the remaining global-state question for all four format pairs: their eight
+Wave32/Wave64 APIs correctly have no optional exception-output parameter.
+LLVM's inherited generic exception property does not override this explicit
+instruction-family rule.
+
+The same paragraph specifies fixed nearest-even rounding, no OMOD or CLAMP,
+fixed OPSEL/OPSEL_HI encodings, and C-only NEG/ABS (encoded using NEG/NEG_HI).
+GoC exposes the meaningful C modifiers and rejects unsupported arithmetic bits.
+The earlier DPP review establishes A-only DPP8/DPP16 routing. These mnemonics
+are RDNA4-only; there is no same-name architecture conflict. Each operand is one
+VGPR: A/B contain four E4M3FN or E5M2 bytes and C/D contain FP32. EXEC controls
+destination lanes. The scalar implementation and eight-lane AVX2 path retain
+their existing format-specific widening and four accumulated products.
+
+No faithful empirical FP8 DOT4 model was found in rocjitsu: its generic shared
+handlers decode both sources as E4M3 even for BF8 forms. GoC therefore retains
+loose semantics, rejects strict exact requests and permits non-strict fallback.
+Existing tests exhaust all byte pairs, all four format pairs and C modifiers at
+both wave widths, and exercise masks, aliases, DPP routing, invalid flags and
+fallback. No implementation, API signature or performance path changed.
+
+The ledger now records **785** reviewed mnemonic contracts and **24** pending;
+unsupported exact semantics remain explicitly documented rather than inferred
+from these counts.
+
+Validation for these two contract resolutions: all **1,178** CTests pass with
+Clang 21 Release and GCC 15 Release. Clang ASan/UBSan passes all **30** selected
+HalfBinary/DppHalfBinary/PackedBinary tests and all **nine** FP8 DOT4 tests.
+All nine tooling tests pass. Final logs are
+`coverage-work/half-binary-omod-final-{build,tests}.log` in each build directory
+and `coverage-work/fp8-dot-contract-tests.log` in the sanitizer build. The logs
+without `-final` record the rejected ordering experiment and its failing stored
+hardware hash; they do not describe the committed implementation.
