@@ -823,3 +823,25 @@ The width-review queue now has 292 candidates.
 Validation: all 763 tests pass with Clang 21 and GCC 15 Release. All nineteen
 integer arithmetic, Wave64, DPP, instruction-flag and zero-EXEC tests pass under
 ASan/UBSan. The zero-EXEC support table now records the expanded exact support.
+
+
+## Wave64 integer selection and ternary operations
+
+Added fourteen signed/unsigned min/max/median and eight ternary Wave64 APIs.
+Both widths now accept strict exact semantics; existing numerical and SIMD
+kernels are unchanged. Binary min/max does not access C. DPP routes A within
+16-lane rows and retains all four row enables. Mixed min/max still combines
+A/B before C, and byte LERP uses independent byte sums and rounding bits.
+
+Independent tests cover all triples from signed/unsigned boundary sets, random
+words, wrapping shifts/addition, byte rounding, all CPU paths, both semantics,
+DPP8/DPP16 with every row-enable mask, different EXEC patterns across halves,
+all whole-source destination aliases and guards. Validation checks zero EXEC
+with null pointers and all unsupported low instruction-flag bits. Existing
+Wave32 hardware captures remain the direct hardware evidence for the shared
+kernels; no new Wave64 captures or throughput measurements are claimed.
+The width-review queue now contains 270 candidates.
+
+Validation: all 765 tests pass with Clang 21 and GCC 15 Release. All 24
+selection, ternary, Wave64, DPP, zero-EXEC and instruction-flag tests pass under
+ASan/UBSan. The zero-EXEC table reflects the expanded exact support.

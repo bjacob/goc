@@ -107,8 +107,7 @@ TEST(IntegerMinmax, ValidationAndFpEnvironment) {
         for (int bit = 0; bit < 32; ++bit)
           EXPECT_EQ(fn(cpu, exec_mask, 1U << bit, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(cpu | (1ULL << 63), exec_mask, 0, &d, &a, &a, &a), GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, 0, &d,
-                     &a, &a, &a),
+        EXPECT_EQ(fn(cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, 0, &d, &a, &a, &a),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
       }
       for (auto word : output)

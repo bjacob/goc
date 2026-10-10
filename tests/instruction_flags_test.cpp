@@ -82,7 +82,18 @@ void check_high_flags(const char *name, int (*instruction)(uint64_t, Mask, uint6
         base_name == "goc_v_mul_lo_u32" || base_name == "goc_v_mul_hi_u32" ||
         base_name == "goc_v_mul_hi_i32" || base_name == "goc_v_mul_i32_i24" ||
         base_name == "goc_v_mul_hi_i32_i24" || base_name == "goc_v_mul_u32_u24" ||
-        base_name == "goc_v_mul_hi_u32_u24")
+        base_name == "goc_v_mul_hi_u32_u24" || base_name == "goc_v_min_i32" ||
+        base_name == "goc_v_max_i32" || base_name == "goc_v_min3_i32" ||
+        base_name == "goc_v_max3_i32" || base_name == "goc_v_minmax_i32" ||
+        base_name == "goc_v_maxmin_i32" || base_name == "goc_v_med3_i32" ||
+        base_name == "goc_v_min_u32" || base_name == "goc_v_max_u32" ||
+        base_name == "goc_v_min3_u32" || base_name == "goc_v_max3_u32" ||
+        base_name == "goc_v_minmax_u32" || base_name == "goc_v_maxmin_u32" ||
+        base_name == "goc_v_med3_u32" || base_name == "goc_v_lshl_add_u32" ||
+        base_name == "goc_v_add_lshl_u32" || base_name == "goc_v_lshl_or_b32" ||
+        base_name == "goc_v_and_or_b32" || base_name == "goc_v_or3_b32" ||
+        base_name == "goc_v_xor3_b32" || base_name == "goc_v_xad_u32" ||
+        base_name == "goc_v_lerp_u8")
       name = base_name.c_str();
   } else {
     EXPECT_TRUE((std::is_same_v<Mask, uint32_t>));

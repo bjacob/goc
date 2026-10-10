@@ -101,8 +101,8 @@ TEST(DppIntegerTernary, ValidationAndHostFpState) {
                   GOC_ERROR_INVALID_FLAGS);
         EXPECT_EQ(fn(1ULL << 63, exec_mask, mode, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, exec_mask, mode, nullptr,
-                     nullptr, nullptr, nullptr),
+        EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, exec_mask, mode, nullptr, nullptr,
+                     nullptr, nullptr),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
         EXPECT_EQ(fn(0, exec_mask, GOC_DPP8 | GOC_DPP16, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);

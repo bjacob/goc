@@ -19,7 +19,7 @@ int minmax(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d
           return minmax<Op, Signed>(flags, exec_mask, uint32_t(mode), d, source, b, c);
         });
 
-  if (int error = goc::validate(flags, mode))
+  if (int error = goc::validate(flags, mode, true))
     return error;
   if (exec_mask == 0)
     return GOC_SUCCESS;
@@ -65,6 +65,31 @@ int minmax(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d
   for (int lane = 0; lane < 32; ++lane)
     if (exec_mask >> lane & 1)
       d[0][lane] = result[lane];
+  return GOC_SUCCESS;
+}
+
+template <goc::IntegerMinmax Op, bool Signed>
+int minmax_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                  const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (int error = minmax<Op, Signed>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32;
+    const uint32_t *source_c = nullptr;
+    if constexpr (Op != goc::IntegerMinmax::Min && Op != goc::IntegerMinmax::Max)
+      source_c = c[0] + half * 32;
+    if (int error = minmax<Op, Signed>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                                       &source_a, &source_b, &source_c))
+      return error;
+  }
   return GOC_SUCCESS;
 }
 
@@ -138,4 +163,84 @@ int goc_v_maxmin_u32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t
 int goc_v_med3_u32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                    const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   return minmax<goc::IntegerMinmax::Median, false>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_min_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b) {
+  return minmax_wave64<goc::IntegerMinmax::Min, true>(flags, exec_mask, mode, d, a, b, nullptr);
+}
+
+int goc_v_max_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b) {
+  return minmax_wave64<goc::IntegerMinmax::Max, true>(flags, exec_mask, mode, d, a, b, nullptr);
+}
+
+int goc_v_min3_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return minmax_wave64<goc::IntegerMinmax::Min3, true>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_max3_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return minmax_wave64<goc::IntegerMinmax::Max3, true>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_minmax_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c) {
+  return minmax_wave64<goc::IntegerMinmax::Minmax, true>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_maxmin_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c) {
+  return minmax_wave64<goc::IntegerMinmax::Maxmin, true>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_med3_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return minmax_wave64<goc::IntegerMinmax::Median, true>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_min_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b) {
+  return minmax_wave64<goc::IntegerMinmax::Min, false>(flags, exec_mask, mode, d, a, b, nullptr);
+}
+
+int goc_v_max_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b) {
+  return minmax_wave64<goc::IntegerMinmax::Max, false>(flags, exec_mask, mode, d, a, b, nullptr);
+}
+
+int goc_v_min3_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return minmax_wave64<goc::IntegerMinmax::Min3, false>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_max3_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return minmax_wave64<goc::IntegerMinmax::Max3, false>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_minmax_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c) {
+  return minmax_wave64<goc::IntegerMinmax::Minmax, false>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_maxmin_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c) {
+  return minmax_wave64<goc::IntegerMinmax::Maxmin, false>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_med3_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return minmax_wave64<goc::IntegerMinmax::Median, false>(flags, exec_mask, mode, d, a, b, c);
 }

@@ -45,7 +45,7 @@ int ternary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
                               return ternary<Op>(flags, exec_mask, uint32_t(mode), d, source, b, c);
                             });
 
-  if (int error = goc::validate(flags, mode))
+  if (int error = goc::validate(flags, mode, true))
     return error;
   if (!exec_mask)
     return GOC_SUCCESS;
@@ -81,6 +81,29 @@ int ternary(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *
   for (int lane = 0; lane < 32; ++lane)
     if ((exec_mask >> lane) & 1)
       d[0][lane] = result[lane];
+  return GOC_SUCCESS;
+}
+
+template <goc::IntegerTernary Op>
+int ternary_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                   const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
+  if (int error = ternary<Op>(flags, 0, mode, nullptr, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source_a = a[0] + half * 32, *source_b = b[0] + half * 32;
+    const uint32_t *source_c = c[0] + half * 32;
+    if (int error = ternary<Op>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest,
+                                &source_a, &source_b, &source_c))
+      return error;
+  }
   return GOC_SUCCESS;
 }
 
@@ -127,4 +150,52 @@ int goc_v_xad_u32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *c
 int goc_v_lerp_u8(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                   const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
   return ternary<goc::IntegerTernary::Lerp>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_lshl_add_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              const uint32_t *const *c) {
+  return ternary_wave64<goc::IntegerTernary::ShiftAdd>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_add_lshl_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                              const uint32_t *const *a, const uint32_t *const *b,
+                              const uint32_t *const *c) {
+  return ternary_wave64<goc::IntegerTernary::AddShift>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_lshl_or_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                             const uint32_t *const *a, const uint32_t *const *b,
+                             const uint32_t *const *c) {
+  return ternary_wave64<goc::IntegerTernary::ShiftOr>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_and_or_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                            const uint32_t *const *a, const uint32_t *const *b,
+                            const uint32_t *const *c) {
+  return ternary_wave64<goc::IntegerTernary::AndOr>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_or3_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
+  return ternary_wave64<goc::IntegerTernary::Or3>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_xor3_b32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                          const uint32_t *const *a, const uint32_t *const *b,
+                          const uint32_t *const *c) {
+  return ternary_wave64<goc::IntegerTernary::Xor3>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_xad_u32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
+  return ternary_wave64<goc::IntegerTernary::XorAdd>(flags, exec_mask, mode, d, a, b, c);
+}
+
+int goc_v_lerp_u8_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                         const uint32_t *const *a, const uint32_t *const *b,
+                         const uint32_t *const *c) {
+  return ternary_wave64<goc::IntegerTernary::Lerp>(flags, exec_mask, mode, d, a, b, c);
 }

@@ -38,6 +38,31 @@ inline const IntegerMinmaxFn integer_minmax_functions[] = {integer_minmax_binary
                                                            goc_v_maxmin_u32,
                                                            goc_v_med3_u32};
 
+using IntegerMinmaxWave64Fn = decltype(&goc_v_min3_i32_wave64);
+
+template <auto Function>
+int integer_minmax_binary_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                 uint32_t *const *d, const uint32_t *const *a,
+                                 const uint32_t *const *b, const uint32_t *const *) {
+  return Function(flags, exec_mask, mode, d, a, b);
+}
+
+inline const IntegerMinmaxWave64Fn integer_minmax_wave64_functions[] = {
+    integer_minmax_binary_wave64<goc_v_min_i32_wave64>,
+    integer_minmax_binary_wave64<goc_v_max_i32_wave64>,
+    goc_v_min3_i32_wave64,
+    goc_v_max3_i32_wave64,
+    goc_v_minmax_i32_wave64,
+    goc_v_maxmin_i32_wave64,
+    goc_v_med3_i32_wave64,
+    integer_minmax_binary_wave64<goc_v_min_u32_wave64>,
+    integer_minmax_binary_wave64<goc_v_max_u32_wave64>,
+    goc_v_min3_u32_wave64,
+    goc_v_max3_u32_wave64,
+    goc_v_minmax_u32_wave64,
+    goc_v_maxmin_u32_wave64,
+    goc_v_med3_u32_wave64};
+
 inline uint32_t integer_minmax_reference(int instruction, uint32_t a, uint32_t b, uint32_t c) {
   int64_t values[] = {a, b, c};
   if (instruction < 7)
