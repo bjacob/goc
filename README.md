@@ -1671,8 +1671,9 @@ D half, returning zero for zeros, infinities and NaNs. Source sign modifiers,
 OMOD and CLAMP do not change that integer result. Scalar and SIMD FREXP paths
 preserve the host FP environment, including with signaling NaNs and nondefault
 rounding modes.
-Both instructions preserve the unselected D half and support whole-register
-aliases. Tests cover all half encodings, every signed 16-bit exponent, all
+Both instructions have Wave32 and `_wave64` APIs, preserve the unselected D
+half and support whole-register aliases. Wave64 retains loose semantics and
+the same optional-state contract. Tests cover all half encodings, every signed 16-bit exponent, all
 modifier combinations, all mask patterns, aliases and literal boundaries.
 Both instructions support DPP8/DPP16 on A, including FI, boundary behavior,
 row/bank filtering, and all existing low modifiers, without leaving SIMD.

@@ -1209,3 +1209,29 @@ new throughput claim. The width-review queue is now 163 APIs.
 
 Validation: all 796 tests pass on Clang 21 and GCC 15 Release. All six
 PERMLANE and instruction-flag tests pass under ASan/UBSan.
+
+## Wave64 FP16 exponent operations and width-inventory correction
+
+Added Wave64 LDEXP_F16 and FREXP_EXP_I16_F16 APIs using the existing scalar
+and AVX2 kernels. Half selectors, signed exponents, overflow control, DPP row
+filtering and whole-register aliases retain their Wave32 behavior. Loose
+semantics and exact optional-state rejection are unchanged.
+
+Independent references check exponent boundaries, FP16 special values, both
+overflow modes, each DPP routing form and all sixteen row enables, source and
+exponent aliases, upper-only/sparse EXEC, guards and preserved destination
+halves. Loose exception outputs remain unchanged. Validation checks null
+operands on zero EXEC and on rejected modes/reporting. Existing exhaustive
+Wave32 encoding, exponent, hardware-hash and host-environment tests remain.
+
+The inventory previously misclassified twelve scalar SAVEEXEC/WREXEC APIs
+as missing Wave64 forms because their explicit input data is named exec_mask.
+They already have distinct `_b32`/`_b64` mnemonics and implementations; they
+belong in the scalar audit, not the vector-EXEC suffix screen. Correcting
+that screen and adding these two vector APIs leaves 149 width candidates.
+This is not a new exactness, native Wave64 capture or performance claim.
+
+Validation: all 799 tests pass on Clang 21 and GCC 15 Release. All fifteen
+FP16 exponent and instruction-flag tests pass under ASan/UBSan. Inventory
+regeneration is deterministic, and all twelve scalar exclusions have `_b64`
+API counterparts.

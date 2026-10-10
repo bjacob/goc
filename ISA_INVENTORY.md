@@ -1173,7 +1173,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_fract_f16` | yes | yes | in | `goc_v_fract_f16` | — | API present; semantic audit pending |
 | `v_fract_f32` | yes | yes | in | `goc_v_fract_f32` | — | API present; semantic audit pending |
 | `v_fract_f64` | yes | yes | in | `goc_v_fract_f64` | — | API present; semantic audit pending |
-| `v_frexp_exp_i16_f16` | yes | yes | in | `goc_v_frexp_exp_i16_f16` | — | API present; semantic audit pending |
+| `v_frexp_exp_i16_f16` | yes | yes | in | `goc_v_frexp_exp_i16_f16`<br>`goc_v_frexp_exp_i16_f16_wave64` | — | API present; semantic audit pending |
 | `v_frexp_exp_i32_f32` | yes | yes | in | `goc_v_frexp_exp_i32_f32`<br>`goc_v_frexp_exp_i32_f32_wave64` | — | API present; semantic audit pending |
 | `v_frexp_exp_i32_f64` | yes | yes | in | `goc_v_frexp_exp_i32_f64`<br>`goc_v_frexp_exp_i32_f64_wave64` | — | API present; semantic audit pending |
 | `v_frexp_mant_f16` | yes | yes | in | `goc_v_frexp_mant_f16` | — | API present; semantic audit pending |
@@ -1185,7 +1185,7 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `v_interp_p2_f16_f32` | yes | yes | in | `goc_v_interp_p2_f16_f32` | — | API present; semantic audit pending |
 | `v_interp_p2_f32` | yes | yes | in | `goc_v_interp_p2_f32` | `v_interp_p2_new_f32` | API present; semantic audit pending |
 | `v_interp_p2_rtz_f16_f32` | yes | yes | in | `goc_v_interp_p2_rtz_f16_f32` | — | API present; semantic audit pending |
-| `v_ldexp_f16` | yes | yes | in | `goc_v_ldexp_f16` | — | API present; semantic audit pending |
+| `v_ldexp_f16` | yes | yes | in | `goc_v_ldexp_f16`<br>`goc_v_ldexp_f16_wave64` | — | API present; semantic audit pending |
 | `v_ldexp_f32` | yes | yes | in | `goc_v_ldexp_f32` | — | API present; semantic audit pending |
 | `v_ldexp_f64` | yes | yes | in | `goc_v_ldexp_f64` | — | API present; semantic audit pending |
 | `v_lerp_u8` | yes | yes | in | `goc_v_lerp_u8`<br>`goc_v_lerp_u8_wave64` | — | API present; semantic audit pending |
@@ -1425,12 +1425,14 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
 ## Wave-width API audit
 
-There are 163 Wave32 EXEC-taking APIs without a corresponding
+There are 149 Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
-Scalar, pseudo-scalar and matrix APIs have no EXEC parameter and are outside
-this screen; their width requirements remain a separate audit.
+Scalar, pseudo-scalar and matrix APIs are outside this vector-EXEC screen;
+their width requirements remain a separate audit. In particular, scalar
+SAVEEXEC/WREXEC consume EXEC as data and already have distinct `_b32` and
+`_b64` mnemonics, rather than `_wave64` variants.
 
 | Implementation | APIs lacking a Wave64 counterpart |
 |---|---|
@@ -1445,7 +1447,6 @@ this screen; their width requirements remain a separate audit.
 | [`fp8_dot.cpp`](src/fp8_dot.cpp) | `goc_v_dot4_f32_bf8_bf8`, `goc_v_dot4_f32_bf8_fp8`, `goc_v_dot4_f32_fp8_bf8`, `goc_v_dot4_f32_fp8_fp8` |
 | [`half_binary.cpp`](src/half_binary.cpp) | `goc_v_add_f16`, `goc_v_max_f16`, `goc_v_max_num_f16`, `goc_v_maximum_f16`, `goc_v_min_f16`, `goc_v_min_num_f16`, `goc_v_minimum_f16`, `goc_v_mul_f16`, `goc_v_pk_add_f16`, `goc_v_pk_max_f16`, `goc_v_pk_max_num_f16`, `goc_v_pk_maximum_f16`, `goc_v_pk_min_f16`, `goc_v_pk_min_num_f16`, `goc_v_pk_minimum_f16`, `goc_v_pk_mul_f16`, `goc_v_sub_f16`, `goc_v_subrev_f16` |
 | [`half_dot.cpp`](src/half_dot.cpp) | `goc_v_dot2_bf16_bf16`, `goc_v_dot2_f16_f16` |
-| [`half_exponent.cpp`](src/half_exponent.cpp) | `goc_v_frexp_exp_i16_f16`, `goc_v_ldexp_f16` |
 | [`half_fma.cpp`](src/half_fma.cpp) | `goc_v_fma_f16`, `goc_v_fmaak_f16`, `goc_v_fmac_f16`, `goc_v_fmamk_f16` |
 | [`half_minmax.cpp`](src/half_minmax.cpp) | `goc_v_max3_f16`, `goc_v_max3_num_f16`, `goc_v_maximum3_f16`, `goc_v_maximumminimum_f16`, `goc_v_maxmin_f16`, `goc_v_maxmin_num_f16`, `goc_v_med3_f16`, `goc_v_med3_num_f16`, `goc_v_min3_f16`, `goc_v_min3_num_f16`, `goc_v_minimum3_f16`, `goc_v_minimummaximum_f16`, `goc_v_minmax_f16`, `goc_v_minmax_num_f16` |
 | [`half_trig.cpp`](src/half_trig.cpp) | `goc_v_cos_f16`, `goc_v_sin_f16` |
@@ -1458,7 +1459,6 @@ this screen; their width requirements remain a separate audit.
 | [`mullit.cpp`](src/mullit.cpp) | `goc_v_mullit_f32` |
 | [`packed_fma.cpp`](src/packed_fma.cpp) | `goc_v_pk_fma_f16`, `goc_v_pk_fmac_f16` |
 | [`rcp_iflag.cpp`](src/rcp_iflag.cpp) | `goc_v_rcp_iflag_f32` |
-| [`scalar_exec.cpp`](src/scalar_exec.cpp) | `goc_s_and_not0_saveexec_b32`, `goc_s_and_not0_wrexec_b32`, `goc_s_and_not1_saveexec_b32`, `goc_s_and_not1_wrexec_b32`, `goc_s_and_saveexec_b32`, `goc_s_nand_saveexec_b32`, `goc_s_nor_saveexec_b32`, `goc_s_or_not0_saveexec_b32`, `goc_s_or_not1_saveexec_b32`, `goc_s_or_saveexec_b32`, `goc_s_xnor_saveexec_b32`, `goc_s_xor_saveexec_b32` |
 | [`trig.cpp`](src/trig.cpp) | `goc_v_cos_f32`, `goc_v_sin_f32` |
 | [`trig_preop.cpp`](src/trig_preop.cpp) | `goc_v_trig_preop_f64` |
 | [`unary.cpp`](src/unary.cpp) | `goc_v_ceil_f32`, `goc_v_exp_f32`, `goc_v_floor_f32`, `goc_v_fract_f32`, `goc_v_frexp_mant_f32`, `goc_v_log_f32`, `goc_v_rcp_f32`, `goc_v_rndne_f32`, `goc_v_rsq_f32`, `goc_v_sqrt_f32`, `goc_v_trunc_f32` |

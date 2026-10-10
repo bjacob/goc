@@ -79,6 +79,12 @@ uint32_t modifiers(unsigned variant) {
          (variant & 64 ? GOC_ALU_HIGH_D : 0) | (variant & 128 ? GOC_ALU_HIGH_B : 0);
 }
 
+int wave64_call(unsigned op, uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
+  return op == 0 ? goc_v_ldexp_f16_wave64(flags, exec_mask, mode, d, a, b, excp_flag_user)
+                 : goc_v_frexp_exp_i16_f16_wave64(flags, exec_mask, mode, d, a, excp_flag_user);
+}
+
 } // namespace
 
 TEST(HalfExponent, EveryHalfEncodingAndBoundaryExponents) {
@@ -430,4 +436,89 @@ TEST(HalfExponent, DppValidation) {
                               descriptor, nullptr, nullptr, nullptr, nullptr),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
     }
+}
+
+TEST(HalfExponent, Wave64DppMasksAndAliases) {
+  const uint16_t values[] = {0,      0x8000, 1,      0x8001, 0x3ff,  0x400,  0x3800, 0xb800,
+                             0x3bff, 0x3c00, 0x3e00, 0xbe00, 0x4100, 0xc100, 0x4200, 0x4400,
+                             0x4c00, 0xcc00, 0x7bff, 0xfbff, 0x7c00, 0xfc00, 0x7c01, 0xfe00};
+  const int exponents[] = {-32768, -65, -25, -24, -15, -1, 0, 1, 15, 24, 25, 32767};
+  for (int op = 0; op < 2; ++op)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (unsigned variant : {0u, 127u, op == 0 ? 255u : 73u})
+        for (uint64_t route : goc_test::dpp_modes)
+          for (unsigned rows = 0; rows < 16; ++rows)
+            for (bool saturate : {false, true})
+              for (uint64_t exec_mask :
+                   {UINT64_MAX, uint64_t(0xffffffff00000000ULL), uint64_t(0x87654321fedcba98ULL)})
+                for (int layout = 0; layout < (op == 0 ? 5 : 2); ++layout) {
+                  uint64_t descriptor = route;
+                  if (route & GOC_DPP16)
+                    descriptor =
+                        (route & ~GOC_DPP_ROW_MASK) | (uint64_t(rows) << GOC_DPP_ROW_SHIFT);
+                  auto mode = modifiers(variant);
+                  SCOPED_TRACE(::testing::Message()
+                               << op << '/' << cpu << '/' << mode << '/' << saturate << '/'
+                               << exec_mask << '/' << layout);
+                  uint32_t words[3][66], before[3][66];
+                  for (int reg = 0; reg < 3; ++reg) {
+                    std::fill(words[reg], words[reg] + 66, 0xdeadbeef);
+                    for (int lane = 1; lane <= 64; ++lane)
+                      words[reg][lane] =
+                          reg == 1 ? uint16_t(exponents[lane % 12]) |
+                                         (uint32_t(uint16_t(exponents[(lane + 5) % 12])) << 16)
+                                   : values[(lane + reg * 5) % 24] |
+                                         (uint32_t(values[(lane * 7 + reg) % 24]) << 16);
+                  }
+                  std::memcpy(before, words, sizeof(words));
+                  int dest = layout % 3 == 0 ? 2 : layout % 3 - 1;
+                  int b = layout >= 3 ? 0 : 1;
+                  uint32_t *p[] = {words[0] + 1, words[1] + 1, words[2] + 1};
+                  const uint32_t *inputs[] = {p[0], p[1], p[2]};
+                  uint32_t excp_flag_user = 0x12345678;
+                  ASSERT_EQ(wave64_call(op, cpu | (saturate ? GOC_FP16_OVFL : 0), exec_mask,
+                                        descriptor | mode, p + dest, inputs, inputs + b,
+                                        &excp_flag_user),
+                            GOC_SUCCESS);
+                  EXPECT_EQ(excp_flag_user, 0x12345678U);
+                  for (int reg = 0; reg < 3; ++reg)
+                    for (int lane = 0; lane < 66; ++lane) {
+                      int source = -1;
+                      if (reg == dest && lane >= 1 && lane <= 64 &&
+                          goc_test::dpp_source(descriptor, exec_mask, lane - 1, source)) {
+                        check(op, words[reg][lane], before[reg][lane],
+                              reference(op, source < 0 ? 0 : before[0][source + 1], before[b][lane],
+                                        mode, saturate),
+                              mode);
+                      } else {
+                        EXPECT_EQ(words[reg][lane], before[reg][lane]);
+                      }
+                    }
+                }
+}
+
+TEST(HalfExponent, Wave64Validation) {
+  for (unsigned op = 0; op < 2; ++op)
+    for (uint64_t descriptor : goc_test::dpp_modes) {
+      EXPECT_EQ(wave64_call(op, 0, 0, descriptor, nullptr, nullptr, nullptr, nullptr), GOC_SUCCESS);
+      EXPECT_EQ(wave64_call(op, 0, UINT64_MAX, descriptor | GOC_ALU_NEG_B, nullptr, nullptr,
+                            nullptr, nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(wave64_call(op, 0, UINT64_MAX, descriptor | (1ULL << 36), nullptr, nullptr, nullptr,
+                            nullptr),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT64_MAX,
+                            descriptor, nullptr, nullptr, nullptr, nullptr),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    }
+}
+
+TEST(HalfExponent, Wave64ExactReportingRejectsBeforeOperandAccess) {
+  for (unsigned op = 0; op < 2; ++op) {
+    uint32_t excp_flag_user = 0x12345678;
+    EXPECT_EQ(wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, UINT64_MAX, 0, nullptr, nullptr,
+                          nullptr, &excp_flag_user),
+              GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+    EXPECT_EQ(excp_flag_user, 0x12345678U);
+  }
 }

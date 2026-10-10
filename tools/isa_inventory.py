@@ -100,7 +100,8 @@ text += "\n| Mnemonic | RDNA3 | RDNA4 | Scope | APIs | XML aliases | Audit statu
 # scalar operations need separate width audits. VOPD is architecturally Wave32.
 width_gaps = set()
 for name, parameters in re.findall(r"int goc_(\w+)\(([^;]+)\);", header):
-    if ("uint32_t exec_mask" in parameters and not name.startswith("v_dual_")
+    if (name.startswith("v_") and "uint32_t exec_mask" in parameters
+            and not name.startswith("v_dual_")
             and name + "_wave64" not in apis):
         width_gaps.add(name)
 by_source = collections.defaultdict(list)
@@ -117,8 +118,10 @@ There are {len(width_gaps)} Wave32 EXEC-taking APIs without a corresponding
 `_wave64` API, excluding Wave32-only VOPD. This is a source-signature screen,
 not proof that every candidate's encoding is legal at both widths. Each needs
 an ISA width review and either an implementation or an explicit restriction.
-Scalar, pseudo-scalar and matrix APIs have no EXEC parameter and are outside
-this screen; their width requirements remain a separate audit.
+Scalar, pseudo-scalar and matrix APIs are outside this vector-EXEC screen;
+their width requirements remain a separate audit. In particular, scalar
+SAVEEXEC/WREXEC consume EXEC as data and already have distinct `_b32` and
+`_b64` mnemonics, rather than `_wave64` variants.
 
 | Implementation | APIs lacking a Wave64 counterpart |
 |---|---|

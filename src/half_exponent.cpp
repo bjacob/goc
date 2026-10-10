@@ -77,6 +77,29 @@ int run(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
   return GOC_SUCCESS;
 }
 
+template <bool Ldexp>
+int run_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+               const uint32_t *const *a, const uint32_t *const *b) {
+  if (int error = run<Ldexp>(flags, 0, mode, nullptr, nullptr, nullptr))
+    return error;
+  if (!exec_mask)
+    return GOC_SUCCESS;
+  for (unsigned half = 0; half < 2; ++half) {
+    uint64_t half_mode = mode;
+    if (mode & GOC_DPP16) {
+      uint64_t rows = (mode & GOC_DPP_ROW_MASK) >> GOC_DPP_ROW_SHIFT;
+      half_mode = (mode & ~GOC_DPP_ROW_MASK) | (((rows >> (half * 2)) & 3) << GOC_DPP_ROW_SHIFT);
+    }
+    uint32_t *dest = d[0] + half * 32;
+    const uint32_t *source = a[0] + half * 32;
+    const uint32_t *exponent = Ldexp ? b[0] + half * 32 : nullptr;
+    if (int error = run<Ldexp>(flags, uint32_t(exec_mask >> (half * 32)), half_mode, &dest, &source,
+                               &exponent))
+      return error;
+  }
+  return GOC_SUCCESS;
+}
+
 } // namespace
 
 int goc_v_ldexp_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -91,4 +114,20 @@ int goc_v_frexp_exp_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t mode, u
   if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   return run<false>(flags, exec_mask, mode, d, a, nullptr);
+}
+
+int goc_v_ldexp_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
+                           const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<true>(flags, exec_mask, mode, d, a, b);
+}
+
+int goc_v_frexp_exp_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user) {
+  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+    return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
+  return run_wave64<false>(flags, exec_mask, mode, d, a, nullptr);
 }

@@ -3729,6 +3729,16 @@ int goc_v_ldexp_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fla
 int goc_v_frexp_exp_i16_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, uint32_t *excp_flag_user);
 
+// Wave64 forms retain the same half selectors, DPP routing, loose semantics,
+// and optional-state contract as the Wave32 forms above.
+int goc_v_ldexp_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
+                           uint32_t *excp_flag_user);
+
+int goc_v_frexp_exp_i16_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   uint32_t *excp_flag_user);
+
 // Unary FP16: one independently selected half per A/D VGPR; supports ABS_A,
 // NEG_A, HIGH_A/D, OMOD, CLAMP and GOC_FP16_OVFL. Preserves the unselected D
 // half and inactive lanes; whole-register A/D aliasing is allowed. EXP/LOG
