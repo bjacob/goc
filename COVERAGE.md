@@ -4974,3 +4974,45 @@ pass. The production scalar field object is byte-identical to the pre-change
 audit builds under both compilers (`scalar-field-production-objects.json`).
 Logs use `scalar-field-review-` in each build directory. The ledger records
 297 contracts; 512 in-scope mnemonics still need recorded reviews.
+
+
+## Scalar Boolean and shift architecture contracts
+
+Reviewed all thirty instructions in [`scalar_bits.cpp`](src/scalar_bits.cpp):
+eighteen binary/unary Boolean operations, two bit reversals, six ordinary shifts,
+and four fixed-shift-add forms. Both ISA XML sets and every applicable SOP1/SOP2
+handler were checked against rocjitsu revision `ffc144c564c`; all delegate to the
+same shared bodies. Review followed GoC's bit-reversal helper as well as result
+and SCC writes. Helper bodies/hashes, handler locations, descriptions and aliases
+are retained in `scalar-bits-upstream-review.json` in
+`../goc-build/coverage-work/`. No architecture split is necessary.
+
+Boolean operations and ordinary shifts write SCC from nonzero results; reversal
+does not write SCC. NOT1 complements the second source. Shift counts are modulo
+32/64, and arithmetic right shifts propagate the original sign bit. GoC expresses
+sign propagation with unsigned shifts and explicitly handles count zero, avoiding
+implementation-defined signed shifts and undefined full-word shifts. Bit reversal
+uses the same full-word permutation as upstream's bit-at-a-time model.
+
+The LSHL1/2/3/4_ADD forms compute the shifted sum at wider precision, truncate D,
+and report whether any high bits remain. This agrees with RDNA3 manual section
+16.1 and upstream, rather than treating SCC as nonzero D or carry from addition
+after a truncated shift. These are exact integer semantics in both modes, with
+required SCC where specified, no EXEC predicate and no additional global output.
+Flags are validated before stores. D is stored before SCC; caller-side output
+aliases follow that public order. No host FP environment changes occur.
+
+Existing tests cover captured result/SCC hashes, scalar output aliases, all low
+count encodings, sign propagation, flag errors and FP-state preservation. The
+ordinary shift test now sets all high count bits too, comparing against the
+bit-by-bit reference. New literal shift-add cases include nonzero/no-overflow,
+zero/overflow, shift-only overflow above bit 32, UINT32_MAX, and the boundary
+between the largest nonoverflowing and first overflowing sums. They run at all
+CPU selectors in both semantics with STRICT. No production change was needed.
+
+Validation: all 1,110 CTests pass with Clang 21 Release and GCC 15 Release;
+all five scalar Boolean/shift tests pass under ASan/UBSan. All nine audit-tool
+tests pass. Production scalar Boolean/shift objects are byte-identical to the
+pre-change audit builds under both compilers (`scalar-bits-production-objects.json`).
+Logs use `scalar-bits-review-` in each build directory. The ledger records 327
+contracts; 482 in-scope mnemonics still need recorded reviews.

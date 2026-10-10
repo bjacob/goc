@@ -87,6 +87,11 @@ TEST(ScalarBits, EveryShiftCountAndSign) {
         ASSERT_EQ(goc_test::scalar_bits_call(op, 0, 0, &d, &d64, a, count, &cc), GOC_SUCCESS);
         EXPECT_EQ(width == 64 ? d64 : d, result);
         EXPECT_EQ(cc, unsigned(result != 0));
+        ASSERT_EQ(goc_test::scalar_bits_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, &d, &d64, a,
+                                             0xffffff00U | count, &cc),
+                  GOC_SUCCESS);
+        EXPECT_EQ(width == 64 ? d64 : d, result);
+        EXPECT_EQ(cc, unsigned(result != 0));
       }
     }
 }
@@ -116,5 +121,35 @@ TEST(ScalarBits, ErrorsDoNotWriteAndHostFpStatePreserved) {
       EXPECT_EQ(std::fegetround(), rounding);
       EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), exceptions);
     }
+  }
+}
+
+TEST(ScalarBits, ShiftAddCarriesIncludeShiftedOutBits) {
+  // SCC is overflow of the full shifted sum, not result!=0 or addition-only carry.
+  for (unsigned shift = 1; shift <= 4; ++shift) {
+    const uint32_t scale = 1U << shift, threshold = 1U << (32 - shift);
+
+    struct Case {
+      uint32_t a, b, result, scc;
+    };
+
+    const Case cases[] = {{0, 0, 0, 0},
+                          {0, 1, 1, 0},
+                          {threshold, 0, 0, 1},
+                          {0x80000000U, 0, 0, 1},
+                          {threshold - 1, scale - 1, UINT32_MAX, 0},
+                          {threshold - 1, scale, 0, 1},
+                          {UINT32_MAX, 0, 0U - scale, 1}};
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (const auto &test : cases) {
+          uint32_t result = 7, scc = 9;
+          uint64_t unused = 0;
+          ASSERT_EQ(goc_test::scalar_bits_call(25 + shift, cpu | semantics | GOC_SEMANTICS_STRICT,
+                                               0, &result, &unused, test.a, test.b, &scc),
+                    GOC_SUCCESS);
+          EXPECT_EQ(result, test.result);
+          EXPECT_EQ(scc, test.scc);
+        }
   }
 }

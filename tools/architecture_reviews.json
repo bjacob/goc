@@ -519,5 +519,42 @@
       "s_ctz_i32_b32",
       "s_ctz_i32_b64"
     ]
+  },
+  {
+    "heading": "Scalar Boolean and shift architecture contracts",
+    "semantics": "loose and exact",
+    "tests": "tests/scalar_bits_test.cpp",
+    "mnemonics": [
+      "s_and_b32",
+      "s_and_b64",
+      "s_and_not1_b32",
+      "s_and_not1_b64",
+      "s_ashr_i32",
+      "s_ashr_i64",
+      "s_brev_b32",
+      "s_brev_b64",
+      "s_lshl1_add_u32",
+      "s_lshl2_add_u32",
+      "s_lshl3_add_u32",
+      "s_lshl4_add_u32",
+      "s_lshl_b32",
+      "s_lshl_b64",
+      "s_lshr_b32",
+      "s_lshr_b64",
+      "s_nand_b32",
+      "s_nand_b64",
+      "s_nor_b32",
+      "s_nor_b64",
+      "s_not_b32",
+      "s_not_b64",
+      "s_or_b32",
+      "s_or_b64",
+      "s_or_not1_b32",
+      "s_or_not1_b64",
+      "s_xnor_b32",
+      "s_xnor_b64",
+      "s_xor_b32",
+      "s_xor_b64"
+    ]
   }
 ]
