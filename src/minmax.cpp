@@ -148,32 +148,32 @@ int goc_v_med3_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32
 
 int goc_v_min3_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                    const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
-                   uint32_t *excp_flag_user) {
-  return goc_v_min3_num_f32(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+                   uint32_t *trapsts) {
+  return goc_v_min3_num_f32(flags, exec_mask, mode, d, a, b, c, trapsts);
 }
 
 int goc_v_max3_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                    const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
-                   uint32_t *excp_flag_user) {
-  return goc_v_max3_num_f32(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+                   uint32_t *trapsts) {
+  return goc_v_max3_num_f32(flags, exec_mask, mode, d, a, b, c, trapsts);
 }
 
 int goc_v_minmax_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
-                     uint32_t *excp_flag_user) {
-  return goc_v_minmax_num_f32(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+                     uint32_t *trapsts) {
+  return goc_v_minmax_num_f32(flags, exec_mask, mode, d, a, b, c, trapsts);
 }
 
 int goc_v_maxmin_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                      const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
-                     uint32_t *excp_flag_user) {
-  return goc_v_maxmin_num_f32(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+                     uint32_t *trapsts) {
+  return goc_v_maxmin_num_f32(flags, exec_mask, mode, d, a, b, c, trapsts);
 }
 
 int goc_v_med3_f32(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                    const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
-                   uint32_t *excp_flag_user) {
-  return goc_v_med3_num_f32(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+                   uint32_t *trapsts) {
+  return goc_v_med3_num_f32(flags, exec_mask, mode, d, a, b, c, trapsts);
 }
 
 int goc_v_min3_num_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
@@ -263,30 +263,30 @@ int goc_v_med3_num_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode,
 
 int goc_v_min3_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b,
-                          const uint32_t *const *c, uint32_t *excp_flag_user) {
-  return goc_v_min3_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+                          const uint32_t *const *c, uint32_t *trapsts) {
+  return goc_v_min3_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, trapsts);
 }
 
 int goc_v_max3_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b,
-                          const uint32_t *const *c, uint32_t *excp_flag_user) {
-  return goc_v_max3_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+                          const uint32_t *const *c, uint32_t *trapsts) {
+  return goc_v_max3_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, trapsts);
 }
 
 int goc_v_minmax_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b,
-                            const uint32_t *const *c, uint32_t *excp_flag_user) {
-  return goc_v_minmax_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+                            const uint32_t *const *c, uint32_t *trapsts) {
+  return goc_v_minmax_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, trapsts);
 }
 
 int goc_v_maxmin_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                             const uint32_t *const *a, const uint32_t *const *b,
-                            const uint32_t *const *c, uint32_t *excp_flag_user) {
-  return goc_v_maxmin_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+                            const uint32_t *const *c, uint32_t *trapsts) {
+  return goc_v_maxmin_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, trapsts);
 }
 
 int goc_v_med3_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                           const uint32_t *const *a, const uint32_t *const *b,
-                          const uint32_t *const *c, uint32_t *excp_flag_user) {
-  return goc_v_med3_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, excp_flag_user);
+                          const uint32_t *const *c, uint32_t *trapsts) {
+  return goc_v_med3_num_f32_wave64(flags, exec_mask, mode, d, a, b, c, trapsts);
 }

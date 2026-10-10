@@ -2579,3 +2579,9 @@ exact semantics. Wide forms use two VGPRs for C/D, one each for A/B, and a
 required 64-bit carry result committed after vector writes. Carry records the
 extended sum's bit 64 before saturation, including for signed MAD. Narrow-factor
 forms retain DPP and v3 paths; wide forms reject DPP and retain v3/v4 paths.
+
+Architectural exception outputs use `trapsts` for explicitly RDNA3 APIs and
+`excp_flag_user` for RDNA4. The common `GOC_EXCEPTION_*` masks describe their
+matching arithmetic bits 0–6, not the complete register layouts. The
+[register-output audit](GLOBAL_STATE_AUDIT.md) lists unresolved shared APIs;
+matching register names alone does not certify reporting or numerical behavior.

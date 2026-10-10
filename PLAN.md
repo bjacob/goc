@@ -369,7 +369,11 @@ temporary internal changes restored by the instruction are not extra outputs.
 requested implicit architectural register are unavailable. This mechanism applies
 to any such global state, not only exception flags.
 
-`uint32_t *excp_flag_user` represents RDNA4's wave-wide sticky exception register.
+`uint32_t *trapsts` represents RDNA3's wave-wide sticky exception register;
+`uint32_t *excp_flag_user` represents RDNA4's. Their arithmetic exception bits
+0–6 agree and use the common `GOC_EXCEPTION_*` masks, but the complete registers
+are not interchangeable. Register parameters must use the target architecture's
+actual register name; equal low-bit encodings do not prove shared API semantics.
 A non-null pointer accumulates newly generated bits with bitwise OR; existing bits
 are never cleared. Only participating lanes contribute, following each
 instruction's execution rules. `NULL` opts out. Storage must not overlap operands, except where explicitly

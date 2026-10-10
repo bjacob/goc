@@ -129,63 +129,63 @@ int goc_v_cmpx_t_u64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_fl
 }
 
 int goc_v_cmp_f_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                    const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 16, true, excp_flag_user);
+                    const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 16, true, trapsts);
 }
 
 int goc_v_cmp_t_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                    const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 16, true, excp_flag_user);
+                    const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 16, true, trapsts);
 }
 
 int goc_v_cmpx_f_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                     const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 16, true, excp_flag_user);
+                     const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 16, true, trapsts);
 }
 
 int goc_v_cmpx_t_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                     const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 16, true, excp_flag_user);
+                     const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 16, true, trapsts);
 }
 
 int goc_v_cmp_f_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                    const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 32, true, excp_flag_user);
+                    const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 32, true, trapsts);
 }
 
 int goc_v_cmp_t_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                    const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 32, true, excp_flag_user);
+                    const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 32, true, trapsts);
 }
 
 int goc_v_cmpx_f_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                     const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 32, true, excp_flag_user);
+                     const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 32, true, trapsts);
 }
 
 int goc_v_cmpx_t_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                     const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 32, true, excp_flag_user);
+                     const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 32, true, trapsts);
 }
 
 int goc_v_cmp_f_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                    const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 64, true, excp_flag_user);
+                    const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 64, true, trapsts);
 }
 
 int goc_v_cmp_t_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                    const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 64, true, excp_flag_user);
+                    const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 64, true, trapsts);
 }
 
 int goc_v_cmpx_f_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                     const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 64, true, excp_flag_user);
+                     const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 64, true, trapsts);
 }
 
 int goc_v_cmpx_t_f64(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags, uint32_t *d,
-                     const uint32_t *const *, const uint32_t *const *, uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 64, true, excp_flag_user);
+                     const uint32_t *const *, const uint32_t *const *, uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 64, true, trapsts);
 }
 
 int goc_v_cmp_f_i32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
@@ -270,72 +270,72 @@ int goc_v_cmpx_t_u64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruc
 
 int goc_v_cmp_f_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                           uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 16, true, excp_flag_user);
+                           uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 16, true, trapsts);
 }
 
 int goc_v_cmp_t_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                           uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 16, true, excp_flag_user);
+                           uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 16, true, trapsts);
 }
 
 int goc_v_cmpx_f_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                            uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 16, true, excp_flag_user);
+                            uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 16, true, trapsts);
 }
 
 int goc_v_cmpx_t_f16_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                            uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 16, true, excp_flag_user);
+                            uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 16, true, trapsts);
 }
 
 int goc_v_cmp_f_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                           uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 32, true, excp_flag_user);
+                           uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 32, true, trapsts);
 }
 
 int goc_v_cmp_t_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                           uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 32, true, excp_flag_user);
+                           uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 32, true, trapsts);
 }
 
 int goc_v_cmpx_f_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                            uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 32, true, excp_flag_user);
+                            uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 32, true, trapsts);
 }
 
 int goc_v_cmpx_t_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                            uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 32, true, excp_flag_user);
+                            uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 32, true, trapsts);
 }
 
 int goc_v_cmp_f_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                           uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 64, true, excp_flag_user);
+                           uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 64, true, trapsts);
 }
 
 int goc_v_cmp_t_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                            uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                           uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 64, true, excp_flag_user);
+                           uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 64, true, trapsts);
 }
 
 int goc_v_cmpx_f_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                            uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, false, 64, true, excp_flag_user);
+                            uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, false, 64, true, trapsts);
 }
 
 int goc_v_cmpx_t_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                             uint64_t *d, const uint32_t *const *, const uint32_t *const *,
-                            uint32_t *excp_flag_user) {
-  return compare(flags, exec_mask, instruction_flags, d, true, 64, true, excp_flag_user);
+                            uint32_t *trapsts) {
+  return compare(flags, exec_mask, instruction_flags, d, true, 64, true, trapsts);
 }

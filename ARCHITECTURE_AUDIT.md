@@ -22,6 +22,10 @@ Source SHA-256 (`execute_shared.h`): `ba4a6d7ed23c10d22459d7bb5243042ec41226c403
   per-instruction review; host arithmetic cannot substitute for that review.
 - Packed FP16 results ignore OMOD on both architectures. Do not blindly split
   every instruction whose helper mentions the common modifier machinery.
+- RDNA3 arithmetic exceptions accumulate in TRAPSTS.EXCP; RDNA4 uses
+  EXCP_FLAG_USER. Their low seven arithmetic bits agree, but other fields do not.
+  The [register-output naming audit](GLOBAL_STATE_AUDIT.md) tracks resolved names
+  separately from pending shared APIs and from reporting accuracy.
 - HWREG IDs, writable fields and privilege differ. RDNA4 SETREG pseudocode
   explicitly shifts the write mask by the field offset; RDNA3's printed
   pseudocode omits that shift. The general field-write description and rocjitsu

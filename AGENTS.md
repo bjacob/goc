@@ -88,7 +88,8 @@ Append implicit architectural register outputs to instruction API parameter
 lists, exactly one pointer per register the instruction may write. Use the
 lowercase ISA register name and its native-width unsigned integer type. A null
 pointer opts out. Apply the register's specified update semantics: in particular,
-EXCP_FLAG_USER is a wave-wide uint32_t accumulated with bitwise OR, not cleared
+EXCP_FLAG_USER (RDNA4) and the arithmetic exception fields of TRAPSTS (RDNA3)
+are wave-wide uint32_t state accumulated with bitwise OR, not cleared
 or overwritten. Only participating lanes contribute. Leave all outputs unchanged
 on API errors. Faithful optional global-state output is required only for bit-exact
 semantics with a non-null output pointer, regardless of GOC_SEMANTICS_STRICT.

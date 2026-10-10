@@ -128,22 +128,22 @@ int goc_v_dual_min_num_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruct
 
 int goc_v_dual_max_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       uint32_t *excp_flag_user) {
+                       uint32_t *trapsts) {
   if (instruction_flags) {
-    int error = goc_v_max_f32(flags, 0, 0, d, a, b, excp_flag_user);
+    int error = goc_v_max_f32(flags, 0, 0, d, a, b, trapsts);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
   }
-  return goc_v_max_f32(flags, exec_mask, 0, d, a, b, excp_flag_user);
+  return goc_v_max_f32(flags, exec_mask, 0, d, a, b, trapsts);
 }
 
 int goc_v_dual_min_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                        uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
-                       uint32_t *excp_flag_user) {
+                       uint32_t *trapsts) {
   if (instruction_flags) {
-    int error = goc_v_min_f32(flags, 0, 0, d, a, b, excp_flag_user);
+    int error = goc_v_min_f32(flags, 0, 0, d, a, b, trapsts);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
   }
-  return goc_v_min_f32(flags, exec_mask, 0, d, a, b, excp_flag_user);
+  return goc_v_min_f32(flags, exec_mask, 0, d, a, b, trapsts);
 }
 
 int goc_v_dual_add_nc_u32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
@@ -175,22 +175,22 @@ int goc_v_dual_and_b32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_
 
 int goc_v_dual_dot2acc_f32_f16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                uint32_t *const *d, const uint32_t *const *a,
-                               const uint32_t *const *b, uint32_t *excp_flag_user) {
+                               const uint32_t *const *b, uint32_t *trapsts) {
   if (instruction_flags) {
-    int error = goc_v_dot2_f32_f16(flags, 0, 0, d, a, b, d, excp_flag_user);
+    int error = goc_v_dot2_f32_f16(flags, 0, 0, d, a, b, d, trapsts);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
   }
-  return goc_v_dot2_f32_f16(flags, exec_mask, 0, d, a, b, d, excp_flag_user);
+  return goc_v_dot2_f32_f16(flags, exec_mask, 0, d, a, b, d, trapsts);
 }
 
 int goc_v_dual_dot2acc_f32_bf16(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                                 uint32_t *const *d, const uint32_t *const *a,
-                                const uint32_t *const *b, uint32_t *excp_flag_user) {
+                                const uint32_t *const *b, uint32_t *trapsts) {
   if (instruction_flags) {
-    int error = goc_v_dot2_f32_bf16(flags, 0, 0, d, a, b, d, excp_flag_user);
+    int error = goc_v_dot2_f32_bf16(flags, 0, 0, d, a, b, d, trapsts);
     return error ? error : GOC_ERROR_INVALID_FLAGS;
   }
-  return goc_v_dot2_f32_bf16(flags, exec_mask, 0, d, a, b, d, excp_flag_user);
+  return goc_v_dot2_f32_bf16(flags, exec_mask, 0, d, a, b, d, trapsts);
 }
 
 int goc_v_dual_dot2acc_f32_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,

@@ -137,8 +137,8 @@ int arithmetic_wave64(uint64_t flags, uint64_t exec_mask, uint32_t mode, uint32_
 } // namespace
 
 int goc_v_add_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -156,8 +156,8 @@ int goc_v_add_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint3
 }
 
 int goc_v_mul_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -176,8 +176,8 @@ int goc_v_mul_f64_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint3
 
 int goc_v_fma_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
                   const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c,
-                  uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                  uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -316,8 +316,8 @@ int goc_v_frexp_mant_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint
 }
 
 int goc_v_min_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -325,8 +325,8 @@ int goc_v_min_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *c
 }
 
 int goc_v_max_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
-                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                  const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -334,9 +334,8 @@ int goc_v_max_f64(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *c
 }
 
 int goc_v_add_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
-                         const uint32_t *const *a, const uint32_t *const *b,
-                         uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                         const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -354,9 +353,8 @@ int goc_v_add_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode
 }
 
 int goc_v_mul_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
-                         const uint32_t *const *a, const uint32_t *const *b,
-                         uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                         const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -375,8 +373,8 @@ int goc_v_mul_f64_rdna4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode
 
 int goc_v_fma_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
                          const uint32_t *const *a, const uint32_t *const *b,
-                         const uint32_t *const *c, uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                         const uint32_t *const *c, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -517,9 +515,8 @@ int goc_v_frexp_mant_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mod
 }
 
 int goc_v_min_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
-                         const uint32_t *const *a, const uint32_t *const *b,
-                         uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                         const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;
@@ -527,9 +524,8 @@ int goc_v_min_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint
 }
 
 int goc_v_max_f64_wave64(uint64_t flags, uint64_t exec_mask, uint64_t mode, uint32_t *const *d,
-                         const uint32_t *const *a, const uint32_t *const *b,
-                         uint32_t *excp_flag_user) {
-  if (excp_flag_user && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
+                         const uint32_t *const *a, const uint32_t *const *b, uint32_t *trapsts) {
+  if (trapsts && (flags & GOC_SEMANTICS_MASK) != GOC_SEMANTICS_LOOSE)
     return GOC_ERROR_UNSUPPORTED_GLOBAL_STATE;
   if (mode >> 32)
     return GOC_ERROR_INVALID_FLAGS;

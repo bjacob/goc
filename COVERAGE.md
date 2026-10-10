@@ -1984,3 +1984,25 @@ those passing tests do not cover or resolve the newly identified RDNA3 gap.
   priority; this limited finite-input check is not a whole-library performance
   result. Driver, parent objects and raw samples are in
   `../goc-build/coverage-work/half-selection-*`, including `half-selection-timing.json`.
+
+## Architectural exception-register naming
+
+- RDNA3 ISA section 3.4 names TRAPSTS.EXCP as the sticky exception register;
+  RDNA4 uses EXCP_FLAG_USER. Arithmetic bits 0–6 agree, as also reflected by
+  rocjitsu's gfx12_excp_flag_user_raw mapping. Other register fields differ.
+- Renamed the final pointer to `trapsts` in 94 explicitly RDNA3 public APIs and
+  their definitions: RDNA3-only canonical instructions and unsuffixed instructions
+  with an explicit RDNA4 counterpart. Parameter types/order, ABI, optionality,
+  accumulation/error contracts and numerical behavior are unchanged.
+- Generated runtime reporting-contract tests now discover both register names.
+  New `tools/global_state_audit.py` / `GLOBAL_STATE_AUDIT.md` classify every existing
+  exception-output signature, with tests for architecture resolution and the real
+  public declarations. Pending shared APIs are explicitly unresolved.
+- This naming audit does not establish whether each instruction should expose an
+  exception output at all, whether any other writable state is missing, or whether
+  reporting is numerically faithful. Those remain separate completion gates.
+- Validation: all 945 tests pass under both Clang 21 and GCC 15 Release; all 15
+  ExceptionRegisters/Dot2Architecture tests pass under ASan/UBSan. Three new
+  global-state audit tests and four architecture audit tests pass. Generated
+  reporting-contract coverage remains 366 entries after accepting both parameter
+  names. Logs: `../goc-build/coverage-work/register-names-*-tests.log`.

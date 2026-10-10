@@ -45,7 +45,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/api_symbols.inc" "${goc_api_list}")
 
 # Keep exception-contract coverage exhaustive as public signatures grow.
 file(READ "${PROJECT_SOURCE_DIR}/include/goc/detail/goc_instructions.h" goc_header)
-string(REGEX MATCHALL "int goc_[a-zA-Z0-9_]*\\([^;]*excp_flag_user\\)"
+string(REGEX MATCHALL "int goc_[a-zA-Z0-9_]*\\([^;]*(excp_flag_user|trapsts)\\)"
   goc_reporting_declarations "${goc_header}")
 set(goc_reporting_list "")
 foreach(declaration IN LISTS goc_reporting_declarations)
