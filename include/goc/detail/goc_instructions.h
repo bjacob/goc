@@ -3090,13 +3090,13 @@ int goc_v_fma_f16_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction
 // OMOD independently of these guest settings. FMAC_DX9_ZERO is RDNA3-only.
 // DX9-zero forms always flush input
 // and output denormals, while retaining the architecture's OMOD gating rule.
-// Ordinary FMA/FMAC have exact integer RNE paths, including NaN payload priority,
+// FMA/FMAC and DX9 forms have exact integer RNE paths, including NaN payload priority,
 // DPP and all source/output modifiers, independent of host FP controls. RDNA3
-// exact CLAMP uses DX10_CLAMP=1. RDNA4 exact calls accumulate EXCP_FLAG_USER;
+// exact CLAMP uses DX10_CLAMP=1. Ordinary RDNA4 exact calls accumulate EXCP_FLAG_USER;
 // RDNA3 non-null exact TRAPSTS reporting remains unsupported.
 // Loose calls retain scalar, eight-lane AVX2 and sixteen-lane AVX512 paths and
 // skip optional output. They require host nearest-even arithmetic and enabled
-// denormals. DX9 exact requests still fall back to loose unless STRICT is set.
+// denormals. DX9 forms have no optional global-state output.
 // Guest settings never change the host FP environment.
 int goc_v_fma_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                   uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
@@ -3106,7 +3106,7 @@ int goc_v_fma_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instruction
                         const uint32_t *const *c, uint32_t *excp_flag_user);
 
 // Wave64 FP32 FMA forms retain the corresponding Wave32 modifier, literal,
-// DX9-zero, loose-semantics and optional-state contracts. DPP routes only A.
+// DX9-zero, semantics and optional-state contracts. DPP routes only A.
 int goc_v_fma_f32_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
                          uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                          const uint32_t *const *c, uint32_t *trapsts);
@@ -3243,7 +3243,7 @@ int goc_v_fmaak_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t instructi
                           uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                           uint32_t literal, uint32_t *excp_flag_user);
 
-// DX9 FMA: one VGPR per operand, all ALU source/output modifiers, loose semantics.
+// DX9 FMA: one VGPR per operand, all ALU source/output modifiers; loose and exact RNE.
 // Flush source/result subnormals. If either modified factor is signed zero,
 // add a positive-zero product to modified C before output scaling/CLAMP;
 // otherwise compute a fused multiply-add. DPP8/DPP16 permute A before source
@@ -3257,7 +3257,7 @@ int goc_v_fma_dx9_zero_f32_rdna4(uint64_t flags, uint32_t exec_mask, uint64_t in
 
 // RDNA3 DX9 fused multiply-accumulate into D, with the same flushing and
 // zero-product rules as DX9 FMA. Supports A/B ABS/NEG, OMOD, CLAMP and DPP
-// routing of A. C modifiers and half selectors are invalid. Loose semantics only.
+// routing of A. C modifiers and half selectors are invalid. Supports loose and exact RNE.
 int goc_v_fmac_dx9_zero_f32(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
                             uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b);
 

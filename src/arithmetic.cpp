@@ -13,13 +13,15 @@
 
 namespace {
 
-// Exact ordinary FMA, including source modifiers, output scaling and CLAMP.
+// Exact FMA, including source modifiers, output scaling, CLAMP and DX9 rules.
 // Sources may overlap the destination. Host FP controls do not affect results.
-template <bool Rdna3>
+template <bool Rdna3, bool Dx9Zero>
 [[gnu::noinline]] int fma_exact(uint64_t flags, uint32_t exec_mask, uint32_t mode,
                                 uint32_t *const *d, const uint32_t *const *a,
                                 const uint32_t *const *b, const uint32_t *const *c,
                                 uint32_t *exceptions = nullptr) {
+  if constexpr (Dx9Zero)
+    flags |= GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS;
   uint32_t result[32];
   uint32_t produced = 0;
   unsigned omod = (mode >> 6) & 3;
@@ -33,6 +35,12 @@ template <bool Rdna3>
       if ((flags & GOC_FP_FLUSH_INPUT_DENORMALS) && !(input[operand] & 0x7f800000))
         input[operand] &= 0x80000000;
     }
+    if constexpr (Dx9Zero)
+      if (!(input[0] & 0x7fffffff) || !(input[1] & 0x7fffffff)) {
+        // DX9 supplies a positive zero product before adding C.
+        input[0] = 0;
+        input[1] = 0x3f800000;
+      }
     uint32_t lane_exceptions = 0;
     bool report = exceptions && ((exec_mask >> lane) & 1) && !(mode & GOC_ALU_CLAMP);
     // OMOD flushes a tiny intermediate before scaling, independently of MODE.
@@ -81,9 +89,8 @@ int fma(uint64_t flags, uint32_t exec_mask, uint32_t instruction_flags, uint32_t
     if (!(flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) || (flags & GOC_FP_IEEE_MODE))
       instruction_flags &= ~GOC_ALU_OMOD_HALF;
 
-  if constexpr (!Dx9Zero)
-    if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
-      return fma_exact<Rdna3>(flags, exec_mask, instruction_flags, d, a, b, c, exceptions);
+  if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
+    return fma_exact<Rdna3, Dx9Zero>(flags, exec_mask, instruction_flags, d, a, b, c, exceptions);
 
 #if defined(GOC_HAVE_X86_64_V4)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V4) {
@@ -161,7 +168,7 @@ int fma_with_dpp(uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *co
     return GOC_ERROR_INVALID_FLAGS;
   constexpr uint64_t fp_flags =
       GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
-  if (int error = goc::validate(flags, 0, !Dx9Zero, fp_flags))
+  if (int error = goc::validate(flags, 0, true, fp_flags))
     return error;
   if (mode >> 32)
     return fma_dpp<Rdna3, Dx9Zero>(flags, exec_mask, mode, d, a, b, c, exceptions);

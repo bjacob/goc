@@ -4,7 +4,7 @@
 
 Usage: capture_arithmetic_exceptions.py OUTPUT_DIR FAMILY WIDTH
 Families: div_fixup (16/32/64), div_fmas (32/64), sin/cos (16/32), fma_mix (32).
-FMA/fmac and literal fmamk/fmaak accept 16/32.
+FMA/fmac and literal fmamk/fmaak accept 16/32; fma_dx9_zero accepts 32.
 All other families use WIDTH=16: pk_fma/pk_fmac,
 fma_mixlo/fma_mixhi, dot2_f32_f16/dot2_f32_bf16.
 Compile probe.cpp with hipcc for gfx1201 and run from OUTPUT_DIR. The probe
@@ -38,7 +38,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("output", type=Path)
 parser.add_argument(
     "family", choices=("div_fixup", "div_fmas", "dot2_f32_f16", "dot2_f32_bf16",
-                       "fma_mix", "fma_mixlo", "fma_mixhi", "fma", "fmac", "fmamk", "fmaak",
+                       "fma_dx9_zero", "fma_mix", "fma_mixlo", "fma_mixhi", "fma", "fmac", "fmamk", "fmaak",
                        "pk_fma", "pk_fmac", "sin", "cos"))
 parser.add_argument("width", type=int, choices=(16, 32, 64))
 parser.add_argument("--boundaries", action="store_true", help="FP32 SIN/COS boundary corpus")
@@ -48,13 +48,13 @@ parser.add_argument("--literal", type=lambda value: int(value, 0), help="raw FMA
 args = parser.parse_args()
 out, family, width = args.output, args.family, args.width
 allowed_widths = {"div_fixup": (16, 32, 64), "div_fmas": (32, 64),
-                  "sin": (16, 32), "cos": (16, 32), "fma_mix": (32,),
+                  "fma_dx9_zero": (32,), "sin": (16, 32), "cos": (16, 32), "fma_mix": (32,),
                   "fmamk": (16, 32), "fmaak": (16, 32), "fma": (16, 32), "fmac": (16, 32)}
 if width not in allowed_widths.get(family, (16,)):
     parser.error("unsupported family/width combination")
 if args.boundaries and (family not in ("sin", "cos") or width != 32):
     parser.error("--boundaries requires FP32 SIN/COS")
-if args.rounding_boundaries and family not in ("fma", "fmac", "div_fmas", "fmamk", "fmaak"):
+if args.rounding_boundaries and family not in ("fma", "fmac", "fma_dx9_zero", "div_fmas", "fmamk", "fmaak"):
     parser.error("--rounding-boundaries requires FMA, literal FMA or DIV_FMAS")
 if args.mix_high and not family.startswith("fma_mix"):
     parser.error("--mix-high requires mixed FMA")

@@ -255,10 +255,9 @@ TEST(Arithmetic, Dx9FmaFusedRoundingAndValidation) {
     std::fill(d, d + 32, 0xdeadbeef);
     EXPECT_EQ(goc_v_fma_dx9_zero_f32_rdna4(cpu, UINT32_MAX, GOC_ALU_HIGH_C, &pd, &pa, &pb, &pc),
               GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(
-        goc_v_fma_dx9_zero_f32_rdna4(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                     UINT32_MAX, 0, &pd, &pa, &pb, &pc),
-        GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(goc_v_fma_dx9_zero_f32_rdna4(cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0,
+                                           &pd, &pa, &pb, &pc),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0xdeadbeef);
     ASSERT_EQ(goc_v_fma_dx9_zero_f32_rdna4(cpu, UINT32_MAX, 0, &pd, &pa, &pb, &pc), GOC_SUCCESS);
@@ -478,8 +477,8 @@ TEST(Arithmetic, Dx9FmacZeroProductAndErrors) {
                                                             uint64_t(GOC_ALU_HIGH_A), 1ULL << 63})
       EXPECT_EQ(goc_v_fmac_dx9_zero_f32(cpu, UINT32_MAX, invalid, &pd, &pa, &pb),
                 GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(goc_v_fmac_dx9_zero_f32(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                      UINT32_MAX, 0, &pd, &pa, &pb),
+    EXPECT_EQ(goc_v_fmac_dx9_zero_f32(cpu | (2ULL << 16) | GOC_SEMANTICS_STRICT, UINT32_MAX, 0, &pd,
+                                      &pa, &pb),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     for (uint32_t value : d)
       EXPECT_EQ(value, 0x3f800000U);
@@ -601,15 +600,9 @@ TEST(Arithmetic, Wave64FmaValidation) {
     EXPECT_EQ(fma_wave64_call(op, 0, UINT64_MAX, 1ULL << 36, nullptr, nullptr, nullptr, nullptr, 0,
                               nullptr),
               GOC_ERROR_INVALID_FLAGS);
-    // DX9 remains loose-only; ordinary and literal forms support exact results.
-    if (op == 2 || op == 3)
-      EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                UINT64_MAX, 0, nullptr, nullptr, nullptr, nullptr, 0, nullptr),
-                GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    else
-      EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0,
-                                nullptr, nullptr, nullptr, nullptr, 0, nullptr),
-                GOC_SUCCESS);
+    EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0,
+                              nullptr, nullptr, nullptr, nullptr, 0, nullptr),
+              GOC_SUCCESS);
     if (op < 2) {
       uint32_t excp_flag_user = 0x12345678;
       EXPECT_EQ(fma_wave64_call(op, GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, nullptr,

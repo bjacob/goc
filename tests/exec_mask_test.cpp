@@ -267,7 +267,7 @@ const Case cases[] = {
      GOC_ALU_ABS_A | GOC_ALU_NEG_B | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
     {goc_v_fma_f16_rdna4, true, 0x1fff},
     {goc_v_fma_f32_rdna4, true, 0x1ff},
-    {goc_v_fma_dx9_zero_f32_rdna4, false, 0x1ff},
+    {goc_v_fma_dx9_zero_f32_rdna4, true, 0x1ff},
     {unary<goc_v_log_f32>, false,
      GOC_ALU_ABS_A | GOC_ALU_NEG_A | GOC_ALU_OMOD_HALF | GOC_ALU_CLAMP},
     {unary<goc_v_exp_f32>, false,

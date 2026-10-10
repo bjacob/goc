@@ -428,7 +428,10 @@ exception reporting is checked against 2,097,152 RX 9070 records across all
 four exposed denormal policies. OMOD suppresses underflow/inexact, CLAMP
 suppresses all flags, and only participating lanes contribute after DPP routing.
 RDNA3 exact TRAPSTS reporting remains unsupported. Loose SIMD paths are
-retained; DX9 forms still only implement loose results. RDNA3 exact CLAMP models
+retained. DX9 FMA, and RDNA3 DX9 FMAC, also have exact RNE paths with forced
+input/output flushing and the positive-zero product rule; they have no optional
+global-state output. RDNA4 DX9 results match 1,048,576 RX 9070 records, and all
+2,097,152 accompanying exception reads are zero. RDNA3 exact CLAMP models
 `DX10_CLAMP=1`; the alternative NaN-preserving setting is not exposed.
 
 FP32 literal `FMAMK`/`FMAAK` implement exact nearest-even results, including

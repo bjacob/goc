@@ -155,7 +155,7 @@ TEST(Dpp8, InvalidFlagsAndSemantics) {
   }
   EXPECT_EQ(goc_v_fma_dx9_zero_f32_rdna4(0, 0, GOC_DPP8, nullptr, nullptr, nullptr, nullptr),
             GOC_SUCCESS);
-  EXPECT_EQ(goc_v_fma_dx9_zero_f32_rdna4(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
-                                         GOC_DPP8, nullptr, nullptr, nullptr, nullptr),
+  EXPECT_EQ(goc_v_fma_dx9_zero_f32_rdna4((2ULL << 16) | GOC_SEMANTICS_STRICT, 0, GOC_DPP8, nullptr,
+                                         nullptr, nullptr, nullptr),
             GOC_ERROR_UNSUPPORTED_SEMANTICS);
 }

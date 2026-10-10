@@ -2584,3 +2584,40 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   by less than 1.6%. No reporting classifier runs in these loose paths. These
   measurements cover dispatch overhead, not exact-reporting performance or the
   whole library. Artifacts use `../goc-build/coverage-work/fma32-reporting-*`.
+
+## Exact DX9-zero FP32 fused arithmetic
+
+- Added exact RNE results for RDNA3/RDNA4 FMA_DX9_ZERO and RDNA3's FMAC_DX9_ZERO,
+  in both wave sizes. These reuse the ordinary integer FMA implementation with
+  the rocjitsu DX9 preprocessing rules: force input/output flushing and replace
+  the product by positive zero if either modified, flushed factor is zero.
+  NaN selection, fused rounding, OMOD and CLAMP then use the same shared code.
+  RDNA3 OMOD gating uses the original guest settings, before forced flushing.
+- RX 9070 gfx1201 raw-result fixtures cover 1,048,576 records across edge/random
+  and underflow/overflow-boundary corpora, sixteen modifier configurations and
+  four coupled denormal modes. All modes produced identical results, and both
+  CPU wave sizes match at every available CPU level, including NaN payloads.
+  The 2,097,152 accompanying exception records, including repeated FP16_OVFL
+  settings, were all zero. DX9 APIs retain their no-global-state-output contract.
+- The shared exact tests now cover DX9 source/output modifiers, guest policies,
+  architecture NaN/OMOD distinctions, masks, aliases and DPP8/DPP16. Host rounding
+  and FTZ/DAZ variations preserve results, controls and sticky flags. Literal
+  regression cases cover zero times signaling NaN/infinity, positive-zero product
+  addition, retained C payloads, signed flushed zeros and a fused-rounding witness.
+- RDNA3 FMAC uses the same model and has direct tests; these RDNA4 captures do
+  not constitute new RDNA3 hardware evidence. DX10_CLAMP=1 remains the modeled
+  RDNA3 setting. Loose scalar/AVX2/AVX512 kernels remain unchanged.
+- Capture generation now accepts `fma_dx9_zero 32`, with optional rounding
+  boundaries. Native artifacts and manifests are in
+  `../goc-build/coverage-work/dx9-exact-captures/`; source and compact digests
+  are checked in. Validation tests formerly expecting exact rejection now test
+  reserved semantics or successful exact empty-EXEC behavior.
+- Validation: all 973 tests pass under Clang 21 and GCC 15 Release. All 35
+  FmaExact/Arithmetic/Dpp8/Dpp16/ExecMask/Api tests pass under ASan/UBSan.
+- Eleven alternating CPU-2-pinned samples, minimum 50 ms thread CPU time,
+  compare loose paths against `fc3e22e`. Default DX9 AVX2 medians were
+  21.176 -> 21.150 ns and AVX512 7.616 -> 7.652 ns; with source/output
+  modifiers they were 23.649 -> 23.604 ns and 10.661 -> 10.700 ns. All sixteen
+  DX9/ordinary-FMA control cases, including ordinary null/non-null state
+  pointers, changed by less than 1%. This does not characterize exact-path or
+  whole-library performance. Artifacts use `../goc-build/coverage-work/dx9-exact-*`.
