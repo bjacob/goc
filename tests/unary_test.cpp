@@ -78,8 +78,10 @@ TEST(Unary, ValidationAndEmptyMask) {
       EXPECT_EQ(fn(0, exec_mask, 1u << 31, &pd, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
       EXPECT_EQ(fn(1ULL << 63, exec_mask, 0, &pd, &pa, nullptr), GOC_ERROR_INVALID_FLAGS);
       uint64_t unsupported =
-          (fn == goc_v_rcp_f32_rdna4 || fn == goc_v_sqrt_f32_rdna4 || fn == goc_v_rsq_f32_rdna4 ||
-           fn == goc_v_exp_f32_rdna4 || fn == goc_v_log_f32_rdna4)
+          (fn == goc_v_rcp_f32_rdna4 || fn == goc_v_trunc_f32_rdna4 || fn == goc_v_ceil_f32_rdna4 ||
+           fn == goc_v_rndne_f32_rdna4 || fn == goc_v_floor_f32_rdna4 ||
+           fn == goc_v_sqrt_f32_rdna4 || fn == goc_v_rsq_f32_rdna4 || fn == goc_v_exp_f32_rdna4 ||
+           fn == goc_v_log_f32_rdna4)
               ? 2ULL << 16
               : GOC_SEMANTICS_EXACT_EMPIRICAL;
       EXPECT_EQ(fn(unsupported | GOC_SEMANTICS_STRICT, exec_mask, 0, &pd, &pa, nullptr),
@@ -240,21 +242,15 @@ TEST(Unary, Wave64ModifiersDppSelectorsAndAliases) {
 
 TEST(Unary, Wave64ValidationAndOptionalState) {
   for (auto fn : wave64) {
+    bool exact = fn != goc_v_fract_f32_wave64 && fn != goc_v_frexp_mant_f32_wave64;
     EXPECT_EQ(fn(0, 0, 0, nullptr, nullptr, nullptr), GOC_SUCCESS);
     EXPECT_EQ(fn(0, UINT64_MAX, GOC_ALU_NEG_B, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(
         fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr, nullptr, nullptr),
-        (fn == goc_v_rcp_f32_rdna4_wave64 || fn == goc_v_sqrt_f32_rdna4_wave64 ||
-         fn == goc_v_rsq_f32_rdna4_wave64 || fn == goc_v_exp_f32_rdna4_wave64 ||
-         fn == goc_v_log_f32_rdna4_wave64)
-            ? GOC_SUCCESS
-            : GOC_ERROR_UNSUPPORTED_SEMANTICS);
+        exact ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_SEMANTICS);
     uint32_t exceptions = 0x80000055;
-    bool reporting = fn == goc_v_rcp_f32_rdna4_wave64 || fn == goc_v_sqrt_f32_rdna4_wave64 ||
-                     fn == goc_v_rsq_f32_rdna4_wave64 || fn == goc_v_exp_f32_rdna4_wave64 ||
-                     fn == goc_v_log_f32_rdna4_wave64;
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL, 0, 0, nullptr, nullptr, &exceptions),
-              reporting ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
+              exact ? GOC_SUCCESS : GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
     EXPECT_EQ(exceptions, 0x80000055U);
   }
 }

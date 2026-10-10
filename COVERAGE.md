@@ -2922,3 +2922,51 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   the SIMD parameter/branch change. Artifacts use
   `../goc-build/coverage-work/round-arch-*`; these are local per-call timings,
   not a whole-library performance claim.
+
+### Exact FP32 integral rounding and RDNA4 reporting
+
+- Enabled exact TRUNC/CEIL/RNDNE/FLOOR numerical results on both architectures
+  and wave sizes. Source modifiers, guest input flushing, architecture-specific
+  OMOD policy, CLAMP and DPP use the existing exact unary execution loop. All
+  four quiet signaling NaNs, following rocjitsu's shared scalar/SIMD rounding
+  helpers; there is no inferred RDNA3 IEEE-dependent NaN-preservation rule here.
+  Native gfx1201 capture hashes validate raw payload/sign results and status.
+  RDNA3 numerical policy follows the borrowed model and ISA; native RDNA3 status
+  evidence is still absent and exact non-null `TRAPSTS` requests remain rejected.
+- Extracted `round_integral_bits` into `src/round_integral.h`. It is the existing
+  scalar-rounding extension of rocjitsu's integer nearest-even algorithm, now
+  shared by FP16/FP32 scalar rounding, exact vector rounding, and the loose
+  scalar RNDNE helper. Integer exponent/fraction and tie-handling rules now have
+  one implementation. Scalar/vector state reporting and architecture policy
+  remain visible at their call sites; no policy/adaptor framework was added.
+- RDNA4 reporting accumulates INVALID for signaling NaNs and INPUT_DENORM for
+  preserved subnormal inputs. Discarding fractions does not raise INEXACT.
+  OMOD may overflow; CLAMP suppresses all new flags. The existing 4,194,304 native
+  result/status captures supply raw pair hashes, deduplicated only after checking
+  that changing the guest output-denormal policy leaves every pair identical.
+- Added per-input raw result/status checks with alternating wave widths, masks,
+  strict/non-strict exact semantics, IEEE and output-denormal settings. DPP8/DPP16
+  tests cover in-place aliases, architecture OMOD policy, accumulation and host
+  rounding/FTZ/DAZ changes. Validation preserves outputs; empty EXEC leaves state
+  alone. Existing scalar-rounding tests cover the shared helper's FP16 corpus.
+- Clang's Release vectorizer lowers some integer variable shifts through
+  floating conversions (`cvttps2dq`), which may raise sticky host INVALID or
+  INEXACT. Tests verify bit-exact results, unchanged host rounding/control bits,
+  and preservation of existing sticky flags. This follows the standing rule
+  allowing arithmetic status flags; no production code explicitly changes the
+  host environment.
+- Clang 21 and GCC 15 Release pass **1,020/1,020** tests. Targeted Clang
+  ASan/UBSan passes **60/60** rounding/scalar-rounding/unary/DPP tests. Following
+  the host-status assertion correction, GCC and ASan/UBSan each pass all five
+  rounding-architecture tests again. Logs use `/tmp/goc-round-exact-*tests.log`.
+- Eleven alternating CPU-2-pinned samples (50 ms minimum thread CPU time per
+  case) compare loose AVX2 paths against `40a8d19`. Sixteen rounding cases
+  range from -1.72% to +0.09%; twelve SQRT/RSQ/RCP controls range from -2.52%
+  to +1.31%, at most 0.253 ns slower. Artifacts use
+  `../goc-build/coverage-work/round-exact-*`. These timings cover default and
+  combined modifiers with null/non-null state, not exact-path throughput.
+- The loose scalar RNDNE caller also changed to use the shared helper. Eleven
+  alternating samples for its four modifier/state combinations improve by
+  2.50–15.43% in this local run (default null-state 72.648 -> 68.096 ns;
+  combined modifiers 109.030 -> 92.367 ns). Scalar artifacts use
+  `../goc-build/coverage-work/round-exact-scalar-*`.

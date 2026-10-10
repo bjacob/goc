@@ -5,6 +5,7 @@
 
 #include "goc/goc.h"
 #include "internal.h"
+#include "round_integral.h"
 
 #include <cmath>
 #include <stdint.h>
@@ -17,23 +18,14 @@ template <Unary Op>
 inline constexpr bool unary_flushes_f32 = Op == Unary::Sqrt || Op == Unary::Rcp ||
                                           Op == Unary::Rsq || Op == Unary::Exp || Op == Unary::Log;
 
+template <Unary Op>
+inline constexpr bool unary_rounds_f32 =
+    Op == Unary::Trunc || Op == Unary::Ceil || Op == Unary::Rndne || Op == Unary::Floor;
+
 // Round to an integral FP32 value, ties to even, preserving signed zero and
 // quieting NaNs without depending on the host rounding mode.
 inline float rndne(float value) {
-  const uint32_t bits = as_bits(value), magnitude = bits & 0x7fffffff, sign = bits & 0x80000000;
-  if (magnitude >= 0x7f800000)
-    return as_float(bits | (magnitude > 0x7f800000 ? 0x00400000 : 0));
-  const unsigned exponent = magnitude >> 23;
-  if (exponent >= 150)
-    return value;
-  if (exponent < 127)
-    return as_float(sign | (magnitude > 0x3f000000 ? 0x3f800000 : 0));
-  const uint32_t unit = 1U << (150 - exponent);
-  const uint32_t fraction = magnitude & (unit - 1);
-  uint32_t rounded = magnitude & ~(unit - 1);
-  if (fraction > unit / 2 || (fraction == unit / 2 && (rounded & unit)))
-    rounded += unit;
-  return as_float(sign | rounded);
+  return as_float(round_integral_bits<IntegralRound::Nearest, false>(as_bits(value), false));
 }
 
 template <Unary Op> inline float unary_value(float value) {
