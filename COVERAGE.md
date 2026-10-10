@@ -3317,3 +3317,53 @@ for RDNA4 MIXLO/MIXHI following the new captures.
   native-state effects still prevent a completeness claim. Canonical API
   presence remains **809/809**. The refreshed naming audit has 676 signatures,
   390 matching resolved names, zero mismatches, and 286 pending reviews.
+
+### Exhaustive FP16 rounding and FREXP_MANT hardware evidence
+
+- Added `tests/capture_half_unary.py`, a gfx1201 HIP result/EXCP_FLAG_USER
+  probe with one identical-input Wave32 per case. Captured TRUNC, CEIL, RNDNE,
+  FLOOR and FREXP_MANT over every 65,536 input half encoding, all 32 NEG/ABS/
+  OMOD/CLAMP combinations, four denormal policies and both FP16_OVFL settings:
+  **16,777,216 pairs per operation**, **83,886,080 pairs total**. Guest rounding
+  is nearest-even; source and destination select their low halves.
+- `tests/check_half_unary_capture.py` independently verifies every raw result
+  and exception word using exact binary64 representations of half inputs,
+  mathematical rounding/FREXP operations, and explicit NaN/exception rules.
+  All five captures pass. The checker rejects wrong-size files and deliberately
+  corrupted result/exception words. Regenerating the TRUNC probe reproduces the
+  source compiled for its capture. NumPy is needed only for this analysis tool.
+- All four rounding operations preserve signed zero without OMOD, quiet sNaNs
+  while preserving payload/sign, report INVALID for sNaNs and INPUT_DENORM for
+  preserved subnormal inputs, and do not report INEXACT for discarded fractions.
+  FREXP_MANT has the same input rules and additionally reports INVALID for
+  infinity while retaining the infinity result. Guest input flushing removes
+  INPUT_DENORM and supplies signed zero to the operation.
+- FP16 OMOD canonicalizes zero (including negative zero) to positive zero before
+  scaling. Finite scaling overflow follows FP16_OVFL, without adding overflow or
+  inexact flags for these operations. CLAMP maps NaNs/negative values to positive
+  zero, caps positive results at one, and suppresses all captured exceptions.
+  No operation in this set produces a nonzero subnormal output, even with div:2;
+  output-denormal policy consequently does not change the captured results.
+- Reuse candidates were inspected in rocjitsu's shared generated FLOOR and
+  FREXP_MANT execution paths and its architecture-dependent `effective_f16_omod`
+  handling. GoC already has `round_integral_bits<..., true>`, extending rocjitsu's
+  integer RNDNE algorithm, so the four exact rounding paths need no new host-FP
+  arithmetic engine. Production integration, RDNA3 policy/native-state splits,
+  selectors/DPP/alias/EXEC tests and loose-path throughput checks remain next.
+- Captures live at `../goc-build/coverage-work/half-OP-report-captures/capture.bin`.
+  The capture driver/log are `/tmp/goc-half-unary-capture.py` and
+  `/tmp/goc-half-unary-capture.log`. Recheck each with
+  `python3 tests/check_half_unary_capture.py OP CAPTURE_BIN`. SHA256 values:
+
+  | Operation | SHA256 |
+  |---|---|
+  | TRUNC | `16222accf7786f278ae63c2886fb29eab415ecdde9f5ceb75ddfd569347cbb9a` |
+  | CEIL | `f83913cd20616807c4854959d52d0d91bb65f0c7bcdd22ce470b9096e0c887eb` |
+  | RNDNE | `124a6def92b258e35f36398d5913d9bfa78384ed122056fcda9cf51dd6aca2d5` |
+  | FLOOR | `9e6a34be28119681793119505fde3e4f68f3e03baaef44b7549a0e7dd1ec684f` |
+  | FREXP_MANT | `98c9d20553ea2cdd86f8902cfef09703ed05e14ecd83ca7fc1dee8ecf61ce1a0` |
+
+- This is hardware evidence, not completed FP16 API support. No production
+  implementation changed in this checkpoint. Native RDNA3 behavior, other guest
+  rounding modes, high-half selectors and per-lane routing are not established
+  by these low-half, uniform-wave captures.
