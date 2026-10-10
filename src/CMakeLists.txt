@@ -1,4 +1,5 @@
 add_library(goc STATIC
+  scalar_move.cpp
   move.cpp
   wmma_replicated.cpp
   dpp.cpp

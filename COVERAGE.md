@@ -52,7 +52,7 @@ paths must retain their existing performance and may skip optional state outputs
 | DOT2 and DOT2ACC | FP32 DOT2 split into unsuffixed RDNA3 / `_rdna4`; shared modifiers/DPP/loose SIMD; GFX1100 captures, aliases and host-state tests | Add accumulator/dual forms; RDNA3 reporting uncharacterized; Wave64 |
 | Floating min/max/median | Existing RDNA4 NUM forms | RDNA3 names and NaN/zero policies, signaling NaNs, all widths and packed forms |
 | Scalar integer arithmetic | RDNA3 add/sub/addc/subb/addk spellings reuse RDNA4 implementations, as confirmed by XML aliases; all twelve CMPK forms added with exhaustive immediate tests | Continue full family audit; register/control operations tracked separately |
-| Scalar/register moves | Incomplete API inventory | Moves, conditional moves, immediate and relative addressing, saveexec/wrexec |
+| Scalar/register moves | MOV/CMOV B32/B64 and MOVK/CMOVK implemented for both architectures; exhaustive immediate/condition tests | Relative addressing, saveexec/wrexec, hardware registers |
 | Vector/register routing | Existing DPP/permlane/move coverage | Read/write lane, first lane, swaps, relative moves, permlane64, cross-width behavior |
 | Comparisons | Existing RDNA4 results/SCC/EXEC and exception tests | RDNA3 always-true/false forms; Wave64; architecture-specific floating policies |
 | Basic floating arithmetic, FMA, conversions | Existing RDNA4 implementations and captures | Audit shared numerical behavior and latest rocjitsu exact models for both targets |
@@ -82,3 +82,8 @@ a green test suite that exercises only the current implementation.
   borrow, overflow, aliases and error atomicity. All 680 tests pass with Clang
   and GCC; the three new tests pass under ASan/UBSan. Missing in-scope API names
   are now 121; semantic audits remain distinct from name coverage.
+- Basic scalar moves: six shared RDNA3/RDNA4 entry points added from rocjitsu's
+  register-transfer contracts. Tests exhaust all signed immediates, every raw
+  bit position in B32/B64, conditional preservation and aliases, invalid flags,
+  and host FP-state preservation. All 683 tests pass with Clang and GCC; all
+  three new move tests pass under ASan/UBSan. Missing in-scope API names: 115.

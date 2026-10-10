@@ -18,8 +18,8 @@ are included. SALU/VALU register/control boundaries are not silently excluded.
 
 RDNA3: 1148 canonical instructions; RDNA4: 1264.
 
-- in, API absent: 121
-- in, API present: 683
+- in, API absent: 115
+- in, API present: 689
 - out, API absent: 578
 - review, API absent: 14
 
@@ -569,9 +569,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_cls_i32_i64` | yes | yes | in | `goc_s_cls_i32_i64` | `s_flbit_i32_i64` | API present; semantic audit pending |
 | `s_clz_i32_u32` | yes | yes | in | `goc_s_clz_i32_u32` | `s_flbit_i32_b32` | API present; semantic audit pending |
 | `s_clz_i32_u64` | yes | yes | in | `goc_s_clz_i32_u64` | `s_flbit_i32_b64` | API present; semantic audit pending |
-| `s_cmov_b32` | yes | yes | in | — | — | missing API |
-| `s_cmov_b64` | yes | yes | in | — | — | missing API |
-| `s_cmovk_i32` | yes | yes | in | — | — | missing API |
+| `s_cmov_b32` | yes | yes | in | `goc_s_cmov_b32` | — | API present; semantic audit pending |
+| `s_cmov_b64` | yes | yes | in | `goc_s_cmov_b64` | — | API present; semantic audit pending |
+| `s_cmovk_i32` | yes | yes | in | `goc_s_cmovk_i32` | — | API present; semantic audit pending |
 | `s_cmp_eq_f16` | — | yes | in | `goc_s_cmp_eq_f16` | — | API present; semantic audit pending |
 | `s_cmp_eq_f32` | — | yes | in | `goc_s_cmp_eq_f32` | — | API present; semantic audit pending |
 | `s_cmp_eq_i32` | yes | yes | in | `goc_s_cmp_eq_i32` | — | API present; semantic audit pending |
@@ -687,9 +687,9 @@ RDNA3: 1148 canonical instructions; RDNA4: 1264.
 | `s_min_u32` | yes | yes | in | `goc_s_min_u32` | — | API present; semantic audit pending |
 | `s_minimum_f16` | — | yes | in | `goc_s_minimum_f16` | — | API present; semantic audit pending |
 | `s_minimum_f32` | — | yes | in | `goc_s_minimum_f32` | — | API present; semantic audit pending |
-| `s_mov_b32` | yes | yes | in | — | — | missing API |
-| `s_mov_b64` | yes | yes | in | — | — | missing API |
-| `s_movk_i32` | yes | yes | in | — | — | missing API |
+| `s_mov_b32` | yes | yes | in | `goc_s_mov_b32` | — | API present; semantic audit pending |
+| `s_mov_b64` | yes | yes | in | `goc_s_mov_b64` | — | API present; semantic audit pending |
+| `s_movk_i32` | yes | yes | in | `goc_s_movk_i32` | — | API present; semantic audit pending |
 | `s_movreld_b32` | yes | yes | review: control/register boundary | — | — | missing API |
 | `s_movreld_b64` | yes | yes | review: control/register boundary | — | — | missing API |
 | `s_movrels_b32` | yes | yes | review: control/register boundary | — | — | missing API |

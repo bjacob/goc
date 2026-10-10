@@ -186,6 +186,21 @@ int goc_s_wqm_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint6
 // Finite operand pairs accumulate INPUT_DENORM if either input is subnormal and
 // input flushing is disabled. Loose mode leaves excp_flag_user unchanged.
 
+// Scalar moves shared by RDNA3/RDNA4. Copy raw bits; MOVK/CMOVK sign-extend
+// their 16-bit immediate. Conditional forms write only when input_scc bit 0
+// is set, otherwise d is unchanged. SCC and EXEC are not modified; EXEC is
+// ignored. Both semantics are exact and instruction_flags must be zero.
+// Inputs passed by value may come from d. Errors preserve d and host FP state.
+int goc_s_mov_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a);
+int goc_s_mov_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a);
+int goc_s_cmov_b32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint32_t a,
+                   uint32_t input_scc);
+int goc_s_cmov_b64(uint64_t flags, uint64_t instruction_flags, uint64_t *d, uint64_t a,
+                   uint32_t input_scc);
+int goc_s_movk_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint16_t immediate);
+int goc_s_cmovk_i32(uint64_t flags, uint64_t instruction_flags, uint32_t *d, uint16_t immediate,
+                    uint32_t input_scc);
+
 // RDNA3 immediate comparisons set SCC to 0 or 1. I32 forms sign-extend the
 // 16-bit immediate; U32 forms zero-extend it. Both semantics are exact, EXEC
 // is ignored, instruction_flags must be zero, and errors preserve SCC.

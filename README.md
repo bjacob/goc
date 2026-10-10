@@ -2263,3 +2263,8 @@ RDNA3 scalar add/subtract spellings (`s_add_u32`, `s_sub_u32`, `s_add_i32`,
 RDNA4 carry/overflow implementations. The twelve `s_cmpk_*_{i32,u32}` forms
 compare against a 16-bit immediate: sign-extended for I32, zero-extended for U32.
 All support both semantics with exact integer results and preserve host FP state.
+
+Scalar `s_mov_b32/b64`, `s_cmov_b32/b64`, `s_movk_i32`, and `s_cmovk_i32`
+are shared by both architectures. Moves preserve raw bits; immediate forms
+sign-extend 16 bits. Conditional forms use `input_scc` bit 0. They ignore EXEC,
+preserve SCC and host FP state, and support exact semantics.
