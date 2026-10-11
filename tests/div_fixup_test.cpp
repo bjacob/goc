@@ -169,6 +169,14 @@ TEST(DivFixup, HardwareCartesianCorpus) {
             uint64_t word = data[6][lane];
             if (op == 2)
               word |= uint64_t(data[7][lane]) << 32;
+            uint32_t mode = goc_test::fixup_capture_modes[col % 5];
+            uint64_t expected = goc_test::fixup_reference(
+                widths[op], load(widths[op], a, lane, mode, 0), load(widths[op], b, lane, mode, 1),
+                load(widths[op], c, lane, mode, 2), mode, col >= 5);
+            if (op == 0)
+              expected |= 0x12340000U;
+            ASSERT_EQ(word, expected) << "type=" << op << " cpu=" << cpu << " column=" << col
+                                      << " input=" << start + lane;
             digest = goc_test::capture_hash_bytes(digest, word, op == 2 ? 8 : 4);
           }
         }
@@ -355,11 +363,11 @@ TEST(DivFixup, ExceptionHardwareCorpus) {
           const uint32_t *a[] = {words[0][0], words[0][1]}, *b[] = {words[1][0], words[1][1]},
                          *c[] = {words[2][0], words[2][1]};
           uint32_t *d[] = {words[3][0], words[3][1]};
-          uint32_t exceptions = 0x80000000;
+          uint32_t exceptions = 0xa5a50080;
           uint64_t flags =
               exact | (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
           ASSERT_EQ(functions[type](flags, 1, mode, d, a, b, c, &exceptions), GOC_SUCCESS);
-          ASSERT_TRUE(exceptions & 0x80000000);
+          ASSERT_EQ(exceptions & ~127U, 0xa5a50080U) << "input=" << i;
           hash = goc_test::capture_hash_word(hash, exceptions & 127);
         }
         EXPECT_EQ(hash, goc_test::fixup_exception_hashes[type][variant])
@@ -415,6 +423,14 @@ TEST(DivFixup, Wave64HardwareCartesianCorpus) {
             uint64_t word = data[6][lane];
             if (op == 2)
               word |= uint64_t(data[7][lane]) << 32;
+            uint32_t mode = goc_test::fixup_capture_modes[col % 5];
+            uint64_t expected = goc_test::fixup_reference(
+                widths[op], load(widths[op], a, lane, mode, 0), load(widths[op], b, lane, mode, 1),
+                load(widths[op], c, lane, mode, 2), mode, col >= 5);
+            if (op == 0)
+              expected |= 0x12340000U;
+            ASSERT_EQ(word, expected) << "type=" << op << " cpu=" << cpu << " column=" << col
+                                      << " input=" << start + lane;
             digest = goc_test::capture_hash_bytes(digest, word, op == 2 ? 8 : 4);
           }
         }
@@ -571,12 +587,12 @@ TEST(DivFixup, Wave64ExceptionHardwareCorpus) {
           const uint32_t *a[] = {words[0][0], words[0][1]}, *b[] = {words[1][0], words[1][1]},
                          *c[] = {words[2][0], words[2][1]};
           uint32_t *d[] = {words[3][0], words[3][1]};
-          uint32_t exceptions = 0x80000000;
+          uint32_t exceptions = 0xa5a50080;
           uint64_t flags =
               exact | (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
           ASSERT_EQ(wave64_functions[type](flags, 1ULL << 63, mode, d, a, b, c, &exceptions),
                     GOC_SUCCESS);
-          ASSERT_TRUE(exceptions & 0x80000000);
+          ASSERT_EQ(exceptions & ~127U, 0xa5a50080U) << "input=" << i;
           hash = goc_test::capture_hash_word(hash, exceptions & 127);
         }
         EXPECT_EQ(hash, goc_test::fixup_exception_hashes[type][variant])

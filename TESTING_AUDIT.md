@@ -485,3 +485,13 @@ identify the corpus. An attempted ordinary-FMA invalid witness failed because
 DIV_FMAS suppresses those flags; the unproven assumption was removed, not used
 to change production. All 29 family tests pass on rebuilt Clang/GCC binaries;
 all 14 tooling tests pass. DIV_FIXUP numerical review remains pending.
+
+### DIV_FIXUP review
+
+Two reviews bring the queue to 99 reviewed and 55 pending. Both-width Cartesian
+captures now check each computed result before the retained hardware digest,
+including FP16 half preservation. Exception corpora check all non-flag bits.
+Recorded captured-domain limits, long-double assumptions, independent flushed-input
+causes and upstream half-ordering witnesses, distinct from differential DPP state
+reduction. All 23 family tests pass on Clang/GCC; all 14 tooling tests pass.
+Production and hardware fixtures are unchanged.

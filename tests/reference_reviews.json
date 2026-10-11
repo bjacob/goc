@@ -1569,5 +1569,55 @@
     ],
     "scope": "FP32/64 RDNA4 DIV_FMAS in both wave widths. Independent gfx1201 Cartesian/random result digests and literal fused-rounding boundary outputs anchor exact semantics, including scaling condition, avoided intermediate overflow, subnormal rounding and cancellation. Random streams use defined uint32 recurrence or sequenced mt19937 draws. All-modifier CPU, aliases and host-state loops are explicitly differential. Captured exception digests cycle CPU selectors per input (not each input on every CPU); masked lane reduction is differential and reporting aliases upper inputs. Exception corpora now verify preservation of every pre-existing bit outside the seven captured flag bits, not only the highest bit. Ordinary FMA invalid-operation assumptions do not apply: DIV_FMAS suppresses invalid and input-denormal flags, whose evidence here remains the capture digests. Loose reporting is skipped; invalid calls preserve state. Architecture/guest restrictions are reviewed separately.",
     "diagnostics": "Result digest failures now distinguish Cartesian versus random corpus. Literal boundary outputs provide per-lane numerical anchors; 8192-input flag digests remain the independent flag evidence, supplemented by differential masking/alias tests. No new exact model is introduced."
+  },
+  {
+    "file": "div_fixup_test.cpp",
+    "assertions": [
+      "DivFixup.DppHalfModifiersMasksAndAliases",
+      "DivFixup.DppHalfHardwareCorpus",
+      "DivFixup.HardwareCartesianCorpus",
+      "DivFixup.EveryModifierHalfSelectorAndRandomBits",
+      "DivFixup.MasksAndCrossRegisterAliases",
+      "DivFixup.SharedSourcesAndHostEnvironment",
+      "DivFixup.ValidationAndFallback",
+      "DivFixup.ExceptionHardwareCorpus",
+      "DivFixup.ExceptionOptOutAndErrorAtomicity",
+      "DivFixup.Wave64HardwareCartesianCorpus",
+      "DivFixup.Wave64EveryModifierHalfSelectorAndRandomBits",
+      "DivFixup.Wave64MasksAndCrossRegisterAliases",
+      "DivFixup.Wave64SharedSourcesAndHostEnvironment",
+      "DivFixup.Wave64ExceptionHardwareCorpus",
+      "DivFixup.Wave64ExceptionOptOutAndErrorAtomicity",
+      "DivFixup.Wave64DppHalfModifiersMasksAndAliases",
+      "DivFixup.Wave64ReportingAliasesUpperInput",
+      "DivFixup.Wave64DppExceptionAccumulation",
+      "DivFixup.FlushedInputExceptionRulesBothWaves"
+    ],
+    "evidence": [
+      "tests/div_fixup_test.cpp",
+      "tests/div_fixup_reference.h",
+      "tests/div_fixup_hardware.h",
+      "tests/div_fixup_exceptions_hardware.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "RDNA4 FP16/32/64 DIV_FIXUP, both wave widths. Independent decode/classification uses long-double range to select provisional quotient/special values and scale exact binary significands; x86 long-double range is an explicit reference assumption. Both-width Cartesian hardware digests now have per-input computed-reference checks including preserved half bits. This establishes captured-domain agreement; arbitrary-input equivalence is not inferred from GoC alone. All modifiers, FP16 selectors/saturation, deterministic mt19937 words, masks/cross-register aliases, half DPP and host modes are covered. Captured exception digests use 8192 edge/random cases and cycle CPU selector by input; they now preserve/check all non-flag bits. Borrowed flushed-input literal causes separately test invalid/divide-by-zero, CLAMP suppression, inactive lanes and report aliases; DPP flag reduction is differential. Raw comparisons test exact selection/encoding, not approximate division.",
+    "diagnostics": "Cartesian failure context now gives precision/CPU/column/input. Exception hashes remain supported by literal flushed-input and alias witnesses; hardware DPP hash has independent routed-model companions. Wave64 uses the same numerical/flag corpus at its native width, not a claimed separate native capture."
+  },
+  {
+    "file": "half_div_fixup_architecture_test.cpp",
+    "assertions": [
+      "HalfDivFixupArchitecture.EveryProvisionalEncodingAndOutputScale",
+      "HalfDivFixupArchitecture.GuestPoliciesDppModifiersAndAliases",
+      "HalfDivFixupArchitecture.LiteralArchitectureDifferences",
+      "HalfDivFixupArchitecture.ErrorsAndHostEnvironment"
+    ],
+    "evidence": [
+      "tests/half_div_fixup_architecture_test.cpp",
+      "tests/div_fixup_reference.h",
+      "tests/half_reference.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "RDNA3/RDNA4 FP16 DIV_FIXUP architecture policies in both widths. Reference explicitly inherits rocjitsu ffc144c564c VDivFixupF16Vop3 scaling/clamp-before-narrowing and final OMOD flush ordering. Full provisional-half encoding sweep covers four output scales/two overflow policies in strict exact Wave32 on every CPU; small literal architecture differences cover both widths. Loose guest-policy integration samples 512 modifier/route layouts, aliases, EXEC and preserved halves with deterministic boundary patterns; it is not all 8192 modifier combinations crossed with every guest mode. RDNA3 exact optional-state rejection preserves outputs; host tests check controls while permitting arithmetic sticky flags. Core classification reference and captures are reviewed in div_fixup_test.cpp.",
+    "diagnostics": "Exhaustive encoding failures identify architecture/scale/CPU/input; guest routing failures include width/policy/variant/lane. Four literal cases independently expose subnormal scaling, midpoint narrowing and overflow differences. No new reverse-engineered model or fixture is introduced."
   }
 ]

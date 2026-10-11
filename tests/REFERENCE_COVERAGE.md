@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Ninety-seven explicit family-file reviews exist and 57
+non-generic family references. Ninety-nine explicit family-file reviews exist and 55
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -260,4 +260,14 @@ A proposed ordinary-FMA invalid-operation witness was rejected: DIV_FMAS has
 its own suppression rules, so those flags remain hardware-digest anchored.
 Digest failures distinguish the Cartesian and random corpus. DIV_SCALE condition masks are ordinary outputs, independently
 hardware-anchored; broad random integration checks are not mislabeled as new
-numerical evidence. Main DIV_FIXUP review remains pending.
+numerical evidence. DIV_FIXUP is reviewed below.
+
+## DIV_FIXUP and half architecture behavior
+
+Two reviews record independent classification/scaling, retained numerical and
+exception captures, and borrowed half-precision ordering rules. Cartesian
+captures now have per-input checks, including preserved destination halves.
+Exception corpora check all bits outside the seven captured flags. Separate
+flushed-input literals anchor invalid/divide-by-zero and CLAMP suppression;
+DPP accumulation checks are explicitly differential. The exhaustive provisional
+half sweep is distinguished from sampled guest/modifier integration.
