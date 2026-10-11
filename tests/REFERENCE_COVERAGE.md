@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 120 explicit family-file reviews exist and 34
+non-generic family references. 122 explicit family-file reviews exist and 32
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -387,3 +387,11 @@ half computed table has validation over its unmodified domain; modifier policy
 coverage is documented separately rather than extrapolating that equivalence.
 Loose tolerances now have alternate deterministic-seed measurements on both
 compilers. Removed production bitcast dependencies and improved failure context.
+
+### Half unary and log/exp policies
+
+Reviewed the exhaustive mathematical half-unary corpus and the stratified
+RDNA3/RDNA4 log/exp policy suite. Computed SFU references justify loose proximity,
+not arbitrary bit-exactness; exact SFU fixtures remain a separate review item.
+Tightened inactive-lane and nondestination preservation and added failure context
+without introducing new golden data or broadening the tolerance bounds.

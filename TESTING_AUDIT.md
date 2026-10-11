@@ -615,3 +615,13 @@ scope of captured and rocjitsu-digest evidence, improved half per-input and DPP
 failure diagnostics, and removed production bitcast dependencies. Alternate
 random seeds retain tolerance margin on Clang/GCC. All 21 affected tests pass
 on both compilers; production and original capture constants are unchanged.
+
+### Half unary and log/exp architecture review
+
+Two reviews bring the queue to 122 reviewed and 32 pending. Tightened inactive
+hardware-corpus lane checks to raw whole-word equality and checked all source
+words in disjoint Wave64 calls. Numerical helpers now expose failures with lane
+and case context; removed a vacuous exact null-state assertion. Recorded the
+scope of mathematical, hardware-digest and differential policy references.
+All 12 affected tests pass on Clang/GCC, as do 14 tooling tests. No production,
+capture or tolerance changes were needed.

@@ -23,21 +23,24 @@ const decltype(&goc_v_trunc_f16_rdna4_wave64) wave64[] = {
     goc_v_rsq_f16_rdna4_wave64,   goc_v_exp_f16_rdna4_wave64,       goc_v_log_f16_rdna4_wave64,
     goc_v_fract_f16_rdna4_wave64, goc_v_frexp_mant_f16_rdna4_wave64};
 
-void check(int op, uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
+::testing::AssertionResult check(int op, uint32_t actual, uint32_t before, uint16_t want,
+                                 uint32_t mode) {
   int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  EXPECT_EQ((actual ^ before) & ~(0xffffU << shift), 0u);
+  if ((actual ^ before) & ~(0xffffU << shift))
+    return ::testing::AssertionFailure()
+           << "unselected half changed: before=" << before << ", actual=" << actual;
   uint16_t got = uint16_t(actual >> shift);
   if ((want & 0x7fff) > 0x7c00) {
-    EXPECT_GT(got & 0x7fff, 0x7c00);
-  } else if (op >= 4 && op <= 8 && (want & 0x7fff) != 0 && (want & 0x7fff) < 0x7c00) {
-    // Loose transcendental paths may round at an adjacent half encoding.
-    EXPECT_EQ(got & 0x8000, want & 0x8000);
-    EXPECT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(got)),
-                                goc_test::half_value(uint16_t(want)),
-                                goc_test::half_sfu_tolerance));
-  } else {
-    EXPECT_EQ(got, want);
+    if ((got & 0x7fff) > 0x7c00)
+      return ::testing::AssertionSuccess();
+  } else if (op >= 4 && op <= 8 && (want & 0x7fff) != 0 && (want & 0x7fff) < 0x7c00 &&
+             (got & 0x8000) == (want & 0x8000)) {
+    return goc_test::fuzzy(goc_test::half_value(got), goc_test::half_value(want),
+                           goc_test::half_sfu_tolerance);
+  } else if (got == want) {
+    return ::testing::AssertionSuccess();
   }
+  return ::testing::AssertionFailure() << "actual bits=" << got << ", expected bits=" << want;
 }
 
 } // namespace
@@ -61,8 +64,10 @@ TEST(HalfUnary, EveryEncodingAndCpuLevel) {
                                                          UINT32_MAX, mode, &d, &a, nullptr),
                       GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane)
-              check(op, output[lane], 0xdeadbeef,
-                    goc_test::half_unary_reference(op, input[lane], mode, saturate), mode);
+              EXPECT_TRUE(check(op, output[lane], 0xdeadbeef,
+                                goc_test::half_unary_reference(op, input[lane], mode, saturate),
+                                mode))
+                  << "lane=" << lane;
           }
 }
 
@@ -95,9 +100,10 @@ TEST(HalfUnary, AllModifiersMasksAndAliases) {
                 for (int lane = 0; lane < 34; ++lane) {
                   if (reg == (alias ? 0 : 1) && lane >= 1 && lane <= 32 &&
                       ((exec_mask >> (lane - 1)) & 1)) {
-                    check(op, words[reg][lane], before[reg][lane],
-                          goc_test::half_unary_reference(op, before[0][lane], mode, saturate),
-                          mode);
+                    EXPECT_TRUE(check(
+                        op, words[reg][lane], before[reg][lane],
+                        goc_test::half_unary_reference(op, before[0][lane], mode, saturate), mode))
+                        << "lane=" << lane;
                   } else {
                     EXPECT_EQ(words[reg][lane], before[reg][lane]);
                   }
@@ -209,8 +215,10 @@ TEST(HalfUnary, ExpLogEveryEncodingAndOutputModifier) {
                                                            UINT32_MAX, mode, &pd, &pa, nullptr),
                         GOC_SUCCESS);
               for (unsigned lane = 0; lane < 32; ++lane)
-                check(op, d[lane], 0xfacecafe,
-                      goc_test::half_unary_reference(op, a[lane], mode, saturate), mode);
+                EXPECT_TRUE(check(op, d[lane], 0xfacecafe,
+                                  goc_test::half_unary_reference(op, a[lane], mode, saturate),
+                                  mode))
+                    << "lane=" << lane;
             }
 }
 
@@ -240,12 +248,19 @@ TEST(HalfUnary, HardwareExpLogRoundingAndOverflow) {
               for (unsigned lane = 0; lane < 32; ++lane) {
                 int source;
                 uint32_t want = 0xdead0000u + lane;
-                if (goc_test::dpp_source(descriptor | mode, exec_mask, lane, source)) {
+                bool written = goc_test::dpp_source(descriptor | mode, exec_mask, lane, source);
+                if (written) {
                   uint32_t value = goc_test::half_unary_reference(op, source < 0 ? 0 : a[source],
                                                                   mode, saturate);
                   want = (want & ~(65535U << shift)) | (value << shift);
                 }
-                check(op, d[lane], 0xdead0000u + lane, uint16_t(want >> shift), mode);
+                if (written) {
+                  EXPECT_TRUE(check(op, d[lane], 0xdead0000u + lane, uint16_t(want >> shift), mode))
+                      << op << "/" << cpu << "/" << mode << "/" << descriptor << "/" << exec_mask
+                      << "/" << lane;
+                } else {
+                  EXPECT_EQ(d[lane], want) << "inactive lane=" << lane;
+                }
                 uint32_t word = d[lane];
                 if (((word >> shift) & 0x7fff) > 0x7c00)
                   word = (word & ~(65535U << shift)) | (0x7e00U << shift);
@@ -292,10 +307,12 @@ TEST(HalfUnary, Wave64ModifiersDppSelectorsAndAliases) {
               bool enabled = descriptor ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
                                         : ((exec_mask >> lane) & 1);
               if (enabled) {
-                check(op, d[lane], before[dest][lane + 1],
-                      goc_test::half_unary_reference(op, source < 0 ? 0 : before[0][source + 1],
-                                                     mode, saturate),
-                      mode);
+                EXPECT_TRUE(check(op, d[lane], before[dest][lane + 1],
+                                  goc_test::half_unary_reference(
+                                      op, source < 0 ? 0 : before[0][source + 1], mode, saturate),
+                                  mode))
+                    << op << "/" << cpu << "/" << variant << "/" << route_index << "/" << dest
+                    << "/" << lane;
               } else {
                 EXPECT_EQ(d[lane], before[dest][lane + 1]);
               }
@@ -303,6 +320,10 @@ TEST(HalfUnary, Wave64ModifiersDppSelectorsAndAliases) {
             for (unsigned reg = 0; reg < 2; ++reg) {
               EXPECT_EQ(words[reg][0], before[reg][0]);
               EXPECT_EQ(words[reg][65], before[reg][65]);
+              if (reg != dest) {
+                for (unsigned lane = 1; lane <= 64; ++lane)
+                  EXPECT_EQ(words[reg][lane], before[reg][lane]) << "source lane=" << lane - 1;
+              }
             }
           }
 }
@@ -383,7 +404,9 @@ TEST(HalfUnary, Rdna3Dx10ClampPolicies) {
                                      mode | GOC_ALU_CLAMP, actual, precise ? nullptr : &state,
                                      alias),
                                 GOC_SUCCESS);
-                      EXPECT_EQ(state, 0x80000000U);
+                      if (!precise) {
+                        EXPECT_EQ(state, 0x80000000U);
+                      }
                       for (unsigned lane = 0; lane < 64; ++lane) {
                         if (!((exec_mask >> lane) & 1)) {
                           EXPECT_EQ(actual[lane], alias ? input[lane] : 0xdeadbeefU);
@@ -401,7 +424,9 @@ TEST(HalfUnary, Rdna3Dx10ClampPolicies) {
                           EXPECT_EQ(actual[lane],
                                     (before & ~(65535U << d_shift)) | (expected << d_shift));
                         else
-                          check(op, actual[lane], before, uint16_t(expected), uint32_t(mode));
+                          EXPECT_TRUE(
+                              check(op, actual[lane], before, uint16_t(expected), uint32_t(mode)))
+                              << "lane=" << lane;
                       }
                     }
                 }

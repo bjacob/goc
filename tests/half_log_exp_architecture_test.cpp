@@ -39,17 +39,19 @@ uint32_t effective_mode(unsigned arch, unsigned guest, uint32_t mode) {
   return mode;
 }
 
-void check(uint16_t got, uint16_t expected) {
-  if ((expected & 0x7fff) > 0x7c00) {
-    ASSERT_GT(got & 0x7fff, 0x7c00);
-  } else if ((expected & 0x7fff) == 0 || (expected & 0x7fff) == 0x7c00) {
-    ASSERT_EQ(got, expected);
+::testing::AssertionResult check(uint16_t got, uint16_t expected) {
+  unsigned magnitude = expected & 0x7fff;
+  if (magnitude > 0x7c00) {
+    if ((got & 0x7fff) > 0x7c00)
+      return ::testing::AssertionSuccess();
+  } else if (!magnitude || magnitude == 0x7c00 || (got & 0x8000) != (expected & 0x8000)) {
+    if (got == expected)
+      return ::testing::AssertionSuccess();
   } else {
-    ASSERT_EQ(got & 0x8000, expected & 0x8000);
-    ASSERT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(got)),
-                                goc_test::half_value(uint16_t(expected)),
-                                goc_test::half_sfu_tolerance));
+    return goc_test::fuzzy(goc_test::half_value(got), goc_test::half_value(expected),
+                           goc_test::half_sfu_tolerance);
   }
+  return ::testing::AssertionFailure() << "actual bits=" << got << ", expected bits=" << expected;
 }
 } // namespace
 
@@ -97,7 +99,9 @@ TEST(HalfLogExpArchitecture, PoliciesModifiersDppAndAliases) {
                 uint16_t expected = goc_test::half_unary_reference(
                     op + 7, input, effective_mode(arch, guest, uint32_t(mode)),
                     flags & GOC_FP16_OVFL, flags);
-                check(uint16_t(target[i] >> shift), expected);
+                ASSERT_TRUE(check(uint16_t(target[i] >> shift), expected))
+                    << arch << "/" << wide << "/" << op << "/" << guest << "/" << cpu << "/"
+                    << variant << "/" << i;
                 ASSERT_EQ(target[i] & (shift ? 0xffffU : 0xffff0000U),
                           before & (shift ? 0xffffU : 0xffff0000U));
               }

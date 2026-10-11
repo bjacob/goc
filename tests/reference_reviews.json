@@ -2058,5 +2058,47 @@
     ],
     "scope": "RDNA4 SIN/COS FP16. Every input encoding in both widths and all CPU selectors is checked against independently generated rocjitsu amdgpu_trig.h plus compiler _Float16 digests; these validate the complete unmodified domain and complement literal output-flush boundaries and an independent RX 9070 quarter-turn DPP digest. The per-input computed table calls GoC FP32 exact then independent half conversion, so it is differential unless anchored by those independent digests. All 128 modifiers/selectors use boundary and deterministically generated inputs; loose numerical outputs use calibrated half SFU or mathematical trig bounds, with raw signs/zero/NaN/unselected-half/storage checks. Wave32 routing covers 84 masks, aliases, guards and seven DPP descriptors, with mask stratification across modifiers. Error preservation, fallback semantics, saturation flag and host controls are covered. Architecture suites separately cover Wave64 routing/policies.",
     "diagnostics": "Removed production bitcast dependency. Half computed-reference and fuzzy failures now include input/operation/CPU/modifier context; DPP failures identify destination register and word. Retained original digest constants and clarified word-wise serialization. Aggregate capture witnesses complement per-input numerical and differential checks."
+  },
+  {
+    "file": "half_log_exp_architecture_test.cpp",
+    "assertions": [
+      "HalfLogExpArchitecture.PoliciesModifiersDppAndAliases",
+      "HalfLogExpArchitecture.LiteralScalingAndDenormalWitnesses",
+      "HalfLogExpArchitecture.ErrorsAndHostControls"
+    ],
+    "evidence": [
+      "tests/half_log_exp_architecture_test.cpp",
+      "tests/dpp_reference.h",
+      "tests/LOOSE_TOLERANCES.md",
+      "tests/half_unary_reference.h",
+      "tests/half_reference.h",
+      "tests/half_unary_test.cpp"
+    ],
+    "scope": "EXP/LOG FP16 loose-only across RDNA3/RDNA4 and both widths. Independent double exp2/log2 with numeric half conversion supplies a proximity reference; architecture-specific OMOD gating and guest input/output flushing are expressed separately. Sixteen categorical/boundary encodings, eight guest policies and 128 modifier/selector variants cover stratified DPP routes, mixed/full masks, saturation and aliases on all CPU selectors. The routing/alias/saturation choices are correlated with variants, not a full Cartesian product; core half-unary tests provide broader encoding/modifier coverage. Fixed half SFU tolerances have recorded exhaustive-core and architecture measurements. Literal exp2(1), log2(minsubnormal) and exp2(-15) witnesses check gating and flushing directly. Exact semantics/reporting are rejected explicitly, preserving outputs; loose optional state and host controls are checked.",
+    "diagnostics": "Numerical helpers return assertion results so callers attach lane/case information only on failure. Inactive hardware-corpus lanes now require whole-word identity; Wave64 disjoint calls check all source words, not only guards. Removed a vacuous null-output state assertion in exact DX10 tests. Existing calibrated tolerances and capture constants are unchanged."
+  },
+  {
+    "file": "half_unary_test.cpp",
+    "assertions": [
+      "HalfUnary.EveryEncodingAndCpuLevel",
+      "HalfUnary.AllModifiersMasksAndAliases",
+      "HalfUnary.LiteralBoundaries",
+      "HalfUnary.ValidationAndSemantics",
+      "HalfUnary.ExpLogEveryEncodingAndOutputModifier",
+      "HalfUnary.HardwareExpLogRoundingAndOverflow",
+      "HalfUnary.Wave64ModifiersDppSelectorsAndAliases",
+      "HalfUnary.Wave64ValidationAndOptionalState",
+      "HalfUnary.Rdna3Dx10ClampPolicies"
+    ],
+    "evidence": [
+      "tests/half_unary_test.cpp",
+      "tests/dpp_reference.h",
+      "tests/LOOSE_TOLERANCES.md",
+      "tests/half_unary_reference.h",
+      "tests/half_reference.h",
+      "tests/half_unary_exact_test.cpp"
+    ],
+    "scope": "Eleven FP16 unary operations (rounding, sqrt/rcp/rsq, exp/log, fract and mantissa extraction), both widths. The double mathematical reference with independent numeric half conversion is a loose proximity oracle for SFUs; simple rounding/extraction/storage checks remain exact. Every half encoding is tested on all CPU selectors with two selector/scale settings and both saturation choices. EXP/LOG additionally exhaust encodings across OMOD/clamp/saturation. Wave32 boundary tests combine 128 modifiers/selectors, 84 masks and aliases with guards; Wave64 combines eight routes, row-mask variants and aliases using a mixed mask. Literal boundary and aggregate hardware EXP/LOG witnesses supplement the computed references. The aggregate digest normalizes NaN payloads, so it does not prove payload identity. RDNA3 DX10 clamp tests use unclamped API results as a differential policy reference in both widths/semantics where supported, covering guest flags, selectors, source modifiers and aliases. Exact SFU numerical evidence is separately reviewed in half_unary_exact_test.cpp; this file does not promote mathematical proximity to bit-exact proof.",
+    "diagnostics": "Numerical helpers return assertion results so callers attach lane/case information only on failure. Inactive hardware-corpus lanes now require whole-word identity; Wave64 disjoint calls check all source words, not only guards. Removed a vacuous null-output state assertion in exact DX10 tests. Existing calibrated tolerances and capture constants are unchanged."
   }
 ]
