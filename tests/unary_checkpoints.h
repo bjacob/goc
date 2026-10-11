@@ -7,7 +7,7 @@
 namespace goc_test {
 
 // Cumulative word-wise FNV after each 2^20 inputs in the dense domains.
-// Generated directly from rocjitsu; see CORPUS_DIAGNOSTICS.md for provenance.
+// Generated from rocjitsu commit ffc144c564c450b7847ae0528410dc63af9725a8.
 static const uint64_t unary_normalized_checkpoints[5][32] = {
     {
         0xc6ef36d60ddef8beULL,

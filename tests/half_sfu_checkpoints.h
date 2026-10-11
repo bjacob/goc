@@ -8,7 +8,7 @@ namespace goc_test {
 
 // RCP, RSQ, SQRT: cumulative word-wise hashes every 4096 half encodings.
 // Unmodified inputs, denormals preserved, quiet NaNs, no saturation.
-// Generated from rocjitsu; see CORPUS_DIAGNOSTICS.md.
+// Generated from rocjitsu commit ffc144c564c450b7847ae0528410dc63af9725a8.
 static const uint64_t half_sfu_checkpoints[3][16] = {
     {
         0xb4867455ae932e96ULL,

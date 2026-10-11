@@ -4,7 +4,7 @@
 // Imported from rocjitsu ad2bb973ec4, native FP8/BF8 fix dd63b040587.
 
 // Physical gfx1201 captures, seed 0x12056f10; see rdna_wmma_float_test.cpp.
-// README.md records provenance and input reconstruction.
+// Upstream tests/fixtures/float_dot/README.md records provenance and input reconstruction.
 #pragma once
 
 #include "rdna_wmma_float_types.h"

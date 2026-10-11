@@ -4,7 +4,7 @@
 // Imported from rocjitsu ad2bb973ec4, dense FP16/BF16 qualification.
 
 // Physical gfx1100/gfx1201 captures, seed 0x12056f10; see rdna_wmma_float_test.cpp.
-// README.md records provenance and input reconstruction.
+// Upstream tests/fixtures/float_dot/README.md records provenance and input reconstruction.
 #pragma once
 
 #include "rdna_wmma_float_types.h"

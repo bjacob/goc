@@ -42,7 +42,7 @@ int main() {
   std::puts("// SPDX-License-Identifier: MIT\n\n#pragma once\n\n#include <stdint.h>\n\n"
             "namespace goc_test {\n\n"
             "// Cumulative word-wise FNV after each 2^20 inputs in the dense domains.\n"
-            "// Generated directly from rocjitsu; see CORPUS_DIAGNOSTICS.md for provenance.\n"
+            "// Generated from rocjitsu commit ffc144c564c450b7847ae0528410dc63af9725a8.\n"
             "static const uint64_t unary_normalized_checkpoints[5][32] = {");
   for (op = 0; op < 5; ++op) {
     std::puts("  {");

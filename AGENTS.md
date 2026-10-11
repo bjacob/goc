@@ -133,3 +133,10 @@ modes. Do not assume equivalence merely from mathematical plausibility or agreem
 with the current implementation. Use goldens where needed for empirical behavior;
 do not replace established computed references with bulky fixtures unnecessarily.
 Loose-only implementations may use computed references.
+
+Keep Markdown documentation limited to README.md (getting started), PLAN.md
+(current design, contracts and priorities), and this contributor guide. Keep
+per-instruction details beside API declarations and test provenance beside the
+fixtures or in maintained oracle records. Do not accumulate historical audits,
+completion reports, benchmark snapshots, or generated inventories in the source
+tree; git history preserves past work. Preserve the MIT license in LICENSE.

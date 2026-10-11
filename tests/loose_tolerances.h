@@ -6,9 +6,9 @@
 
 namespace goc_test {
 
-// Family/domain-specific bounds. Measurements and provenance are recorded in
-// LOOSE_TOLERANCES.md; these are not universal tolerances for every instruction
-// producing the same numeric format.
+// Family/domain-specific bounds, exercised by deterministic calibration and
+// holdout tests. See reference_reviews.json for each reference domain. These
+// are not universal tolerances for instructions producing the same format.
 // Half-output DOT2 with BF16 operands/results; measured bounded domain.
 inline const Tolerance half_dot_bf16_tolerance = {0x1p-126, 4e-3};
 inline const Tolerance half_sfu_tolerance = {0x1p-24, 1.1e-3};

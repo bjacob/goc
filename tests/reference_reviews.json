@@ -66,8 +66,7 @@
     "evidence": [
       "tests/unary_exact_hardware.h",
       "tests/unary_capture_input.h",
-      "tests/unary_checkpoints.h",
-      "tests/CORPUS_DIAGNOSTICS.md"
+      "tests/unary_checkpoints.h"
     ],
     "scope": "FP32 RCP/SQRT/RSQ/EXP/LOG exact implementations borrowed from rocjitsu, both architectures and wave widths. Dense domains use retained raw hardware digests; modifier/exponent/special-value domains have per-policy/per-modifier digests. Rocjitsu-generated cumulative checkpoints reproduce all five hardware totals. DPP comparisons to a non-DPP invocation check routing/alias behavior and do not independently prove the numeric model. Architecture-specific NaN and OMOD assertions remain literal anchors.",
     "diagnostics": "Dense captures now stop at the first failing 2^20-input interval. Modifier captures localize to operation, wave width, FP policy and modifier (8192 inputs)."
@@ -1672,7 +1671,6 @@
       "tests/mullit_test.cpp",
       "tests/mullit_reference.h",
       "tests/mullit_hardware.h",
-      "tests/LOOSE_TOLERANCES.md",
       "tests/mullit_checks.h"
     ],
     "scope": "RDNA4 MULLIT both widths, loose-only. Independent lighting-rule reference supplies numerical comparisons; retained gfx1201 MODE=0xf0 Cartesian and DPP captures separately anchor special behavior. General written numerical results now use calibrated fuzzy bounds; signed zeros, sentinel and untouched storage stay exact. All 512 modifiers, aliases, unaligned guards, shared sources, seven DPP descriptors and EXEC are exercised on all available CPU selectors. Wave32 uses 84 masks for ordinary routing and endpoint DPP modes; Wave64 uses three representative masks and stratified row masks. Strict exact semantics and exact optional-state reporting are explicitly rejected. Captures retain their limited domain and NaN canonicalization.",
@@ -1690,10 +1688,9 @@
       "tests/mullit_architecture_test.cpp",
       "tests/mullit_reference.h",
       "tests/mullit_hardware.h",
-      "tests/LOOSE_TOLERANCES.md",
       "tests/mullit_checks.h"
     ],
-    "scope": "RDNA3/RDNA4 both widths: independently expressed loose lighting rule and inherited rocjitsu ffc144c564c finish/OMOD policy, not a new bit-exact model. All 512 modes and eight guest policies sample DPP, aliases and EXEC with deterministic mt19937 words and capture boundaries on all CPU selectors. Written numerical outputs are fuzzy; guards, inactive lanes and optional-state preservation remain raw. RDNA3 4096-triple Cartesian lighting reference and six literal architecture differences cover sentinel, signed-zero, scaling and denormal ordering. Invalid flags, unsupported strict exact/global-state, empty EXEC and host controls are tested. Calibration and a separate random-seed holdout are documented in LOOSE_TOLERANCES.md.",
+    "scope": "RDNA3/RDNA4 both widths: independently expressed loose lighting rule and inherited rocjitsu ffc144c564c finish/OMOD policy, not a new bit-exact model. All 512 modes and eight guest policies sample DPP, aliases and EXEC with deterministic mt19937 words and capture boundaries on all CPU selectors. Written numerical outputs are fuzzy; guards, inactive lanes and optional-state preservation remain raw. RDNA3 4096-triple Cartesian lighting reference and six literal architecture differences cover sentinel, signed-zero, scaling and denormal ordering. Invalid flags, unsupported strict exact/global-state, empty EXEC and host controls are tested. Calibration and a separate random-seed holdout are covered by the deterministic calibration/holdout tests.",
     "diagnostics": "Computed checks report CPU/mode/lane (and architecture/policy/route where applicable); hardware digests remain complemented by per-output computed and literal witnesses. Agreement with GoC is not claimed to prove arbitrary-input hardware equivalence."
   },
   {
@@ -1708,8 +1705,7 @@
     "evidence": [
       "tests/fmac_test.cpp",
       "tests/half_fma_reference.h",
-      "tests/omod_reference.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/omod_reference.h"
     ],
     "scope": "RDNA4 Wave32 FP16/32 FMAC: all supported modifiers, overflow policies, CPU selectors, 84 EXEC masks and accumulator/source aliases with guarded storage. Full half-A encoding sweep uses deterministic random B/C and sampled OMOD/selectors. Half exact oracle uses bounded integer product/addend alignment and nearest-even packing; special-value and OMOD rules have upstream rocjitsu f16_fma_omod_cases capture witnesses, including matching FMA/FMAC behavior. FP32 computed proximity uses host std::fma plus independent OMOD under default host controls; non-strict exact requests in these broad FP32 tests are not claimed as strict exact validation. General loose numerical comparisons now use calibrated fuzzy bounds; preserved halves, signed zero and fused-rounding literals remain raw. Exact half payload/OMOD witnesses run under every host rounding mode. Wave64/architecture/optional-state integration is in other family files, not established by this file alone.",
     "diagnostics": "Captured FP32 literal-FMA corpus now reports operation/width/CPU/policy/input before its digest. Modifier and alias tests carry test context; exact integer-reference agreement alone is not claimed to prove arbitrary hardware special-value behavior. Calibrated loose numerical checks retain exact storage checks."
@@ -1731,8 +1727,7 @@
       "tests/literal_fma_test.cpp",
       "tests/literal_fma32_hardware.h",
       "tests/half_fma_reference.h",
-      "tests/mixed_fma_reference.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/mixed_fma_reference.h"
     ],
     "scope": "FP16 and FP32 FMAMK/FMAAK literal placement: every half literal with deterministic random operands and sampled selector/overflow combinations, all selectors/masks/aliases on edge inputs, FP32 random triples, validation and fused-rounding literals. Independent integer-grid references represent the exact finite product/addend; special payload priority and OMOD rules retain inherited/captured evidence rather than deriving hardware behavior from host math. FP32 retained gfx1201 hardware digests now also check each computed result, establishing captured-domain agreement across four flush policies and both wave widths. Both-architecture FP32 guest-policy tests distinguish exact from fuzzy loose results, unsupported exact state and literal NaN placement. Half host tests preserve payload priority; FP32 exact host-control tests use integer references. Loose half NaNs remain classification checks even in the literal boundary table. This file does not independently provide complete Wave64 half coverage.",
     "diagnostics": "Captured FP32 literal-FMA corpus now reports operation/width/CPU/policy/input before its digest. Modifier and alias tests carry test context; exact integer-reference agreement alone is not claimed to prove arbitrary hardware special-value behavior. Calibrated loose numerical checks retain exact storage checks."
@@ -1761,8 +1756,7 @@
       "tests/half_fma_test.cpp",
       "tests/half_fma_reference.h",
       "tests/half_fma_exceptions_hardware.h",
-      "tests/dpp_reference.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/dpp_reference.h"
     ],
     "scope": "FP16 FMA and accumulating/literal forms, RDNA3/RDNA4 and both wave widths. Bounded integer half-product/addend alignment and nearest-even packing supply the finite oracle; rocjitsu gfx1201 witnesses separately anchor NaN priority, OMOD, overflow and tininess ordering. All half-A encodings, boundary Cartesian triples, deterministic random triples and all Wave32 modifiers are covered, plus 84 masks and whole-register aliases. Wave64 covers four forms, sampled modifiers, seven DPP routes/row masks and aliases. Architecture tests cover eight guest policies, literals and integer boundary cases. Loose numerical checks are calibrated fuzzy; captured finite witnesses, signed zeros, exact payloads and preserved halves remain raw. Independent exception digests cover ordinary and each accumulator/literal form; upper-lane tests reuse the same capture sequence. Nonflag preservation now checks every bit outside the seven reported flags. Literal invalid/overflow accumulation, inactive signaling NaNs, aliased reporting, host controls and unsupported policy reporting are covered.",
     "diagnostics": "Exception digest failures identify modifier/overflow setting; per-output literal and differential form checks complement the aggregate flags. Broad integration is sampled across routing/policies, not a full Cartesian product. Computed reference agreement is not new arbitrary-input hardware proof."
@@ -1782,8 +1776,7 @@
       "tests/dpp_half_fma_reference.h",
       "tests/half_fma_reference.h",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Wave32 RDNA4 FP16 FMA/FMAC DPP, both semantics and all available CPU selectors. Retained gfx1201 result digests have per-output routed integer-oracle companions for ordinary values and OMOD boundaries. All valid low modifiers and overflow settings cross seven DPP descriptors with full EXEC; alias/mask tests stratify 84 versus 14 masks by modifier as documented by the earlier latency work. Explicit LCG recurrences provide reproducible random words. General loose writes now use calibrated fuzzy half comparisons while exact semantics, hardware captures, unwritten lanes and the other destination half remain bitwise. Shared-source layouts, all destination aliases, guards, invalid descriptor/operand flags and exact host rounding/sticky-state preservation are covered.",
     "diagnostics": "Random-route failures identify CPU/operation/mode/EXEC/destination/lane; all-modifier checks identify overflow setting. Hardware hash failures retain per-lane companions. Wave64 routing is covered separately in half_fma_test.cpp."
@@ -1819,8 +1812,7 @@
       "tests/mixed_fma_test.cpp",
       "tests/mixed_fma_reference.h",
       "tests/mixed_fma_guest_hardware.h",
-      "tests/dpp_reference.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/dpp_reference.h"
     ],
     "scope": "Three mixed-FMA forms across RDNA3/RDNA4 and both widths. Exact finite arithmetic uses an independent 640-bit integer grid covering FP32 products/addends; rounding, payload and flush behavior retain rocjitsu capture witnesses and gfx1201 denormal/DPP digests. All 8192 modifiers, every half encoding in each source, every positive half midpoint with signed tiny perturbations, boundary Cartesian triples and deterministic random words are exercised, with CPU/semantics coverage varying by sweep. General loose outputs now use calibrated fuzzy bounds. Captured single-rounding/denormal witnesses and hardware digests remain raw. Masks/aliases preserve inactive words and other destination halves exactly; exact alias cases now actually request raw comparisons. Wave64 DPP covers row masks, upper lanes, aliases and three EXEC patterns. Zero-exception hardware corpora for RDNA4 half destinations remain direct retained evidence; exact FP32 and RDNA3 reporting stay explicitly unsupported. Guest policies, host controls, unsupported semantics, error precedence and output atomicity are covered.",
     "diagnostics": "Per-input computed checks report operands, modes and lane; hardware digest failures are complemented by captured boundary witnesses and independent routed-model sweeps rather than claimed per-record capture data. Vacuous null-pointer state assertions were removed/guarded. Dedicated comparator tests protect exactness and preserved-half behavior. No arbitrary-input hardware proof is inferred solely from GoC/reference agreement."
@@ -1896,8 +1888,7 @@
     ],
     "evidence": [
       "tests/fp64_output_test.cpp",
-      "tests/fp64_output_hardware.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/fp64_output_hardware.h"
     ],
     "scope": "Seventeen RDNA4 Wave32 FP64 output operations (arithmetic, rounding/fract, sqrt/rcp/rsq, min/max, frexp mantissa and ldexp). Retained gfx1201 MODE=0xf0 boundary captures cover 16 OMOD/CLAMP/NEG_A combinations and cross-half source/destination aliases on all CPU selectors. ADD/MUL/FMA use identity operands, so their raw captured outputs test scaling/encoding rather than general loose arithmetic. Transcendentals compare individual captured values with the previously calibrated hardware SFU bound, preserving signs, zero/infinity bits and classification separately. Other operations retain normalized-NaN digests. LDEXP tests exponents zero and minus one. This is full-EXEC loose-mode integration, not complete masks, Wave64 or strict exact coverage; those belong to companion family tests.",
     "diagnostics": "Added checks that all nondestination registers remain unchanged; transcendental failures now identify modifier/lane in addition to CPU/operation/alias. Local memcpy decoding removes dependence on production fp64.h. Clarified legacy byte-as-uint32_t hash serialization without changing capture data. Aggregate digest cases are complemented by family-specific numerical tests."
@@ -1923,8 +1914,7 @@
     "evidence": [
       "tests/fp64_test.cpp",
       "tests/omod_reference.h",
-      "tests/fp64_output_hardware.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/fp64_output_hardware.h"
     ],
     "scope": "Loose FP64 ADD/MUL/FMA and min/max forms across both architectures and widths. Large all-modifier mask/alias sweeps deliberately use small dyadic inputs whose arithmetic is exact; raw word checks establish split-register behavior, including coincident destinations, masks and guards. Literal tables cover rounding, signed zeros, fused cancellation, overflow/underflow and NaN selection. Min/max references use bit ordering and explicit NaN priority; raw checks are intentional operand-selection contracts. Guest-policy integration covers flush/IEEE/OMOD differences and aliases. New deterministic random numerical coverage exercises RDNA4 ADD/MUL/FMA, both widths, all CPU selectors, 16 modifiers and cancellation patterns, using calibrated fuzzy comparisons against wider long-double arithmetic. The new reference is skipped where long double lacks extra precision. Strict exact arithmetic/minmax and exact optional reporting remain explicitly unsupported; non-strict fallback and loose reporting preservation are tested.",
     "diagnostics": "Large integration sweeps identify operation/mode/CPU/EXEC/alias; random numerical failures additionally report batch/width/lane and the fuzzy error bound. Small literal tables complement the captured output-scaling suite. Deterministic mathematical references are not presented as new hardware exactness evidence. Random numerical coverage does not cross every guest mode; those policies are covered by separate fixed boundary integration."
@@ -1947,10 +1937,9 @@
     "evidence": [
       "tests/fp64_unary_test.cpp",
       "tests/omod_reference.h",
-      "tests/LOOSE_TOLERANCES.md",
       "tests/fp64_output_hardware.h"
     ],
-    "scope": "Nine FP64 unary operations across RDNA3/RDNA4 and both widths: rounding/fract, sqrt/rcp/rsq and mantissa extraction. Long-double mathematical references supply calibrated loose SFU comparisons; raw bits remain for rounding/extraction, zero/infinity signs, storage and literal boundary/payload witnesses. All 32 modifiers, 84 Wave32 masks, three Wave64 masks, cross-half/coincident outputs and guards are exercised on all CPU selectors. Architecture integration covers eight guest policies, both widths and aliases with independent OMOD gating; FP64 input/output denormals follow the reference behavior rather than assuming FP32 flushing rules. Dedicated deterministic SFU calibration and holdout use fixed MT19937 seeds and raw/near-one/subnormal domains, with wider long-double assumptions recorded in LOOSE_TOLERANCES.md. Strict exact semantics/reporting remain explicitly unsupported; validation, error preservation, loose state preservation and host controls are covered.",
+    "scope": "Nine FP64 unary operations across RDNA3/RDNA4 and both widths: rounding/fract, sqrt/rcp/rsq and mantissa extraction. Long-double mathematical references supply calibrated loose SFU comparisons; raw bits remain for rounding/extraction, zero/infinity signs, storage and literal boundary/payload witnesses. All 32 modifiers, 84 Wave32 masks, three Wave64 masks, cross-half/coincident outputs and guards are exercised on all CPU selectors. Architecture integration covers eight guest policies, both widths and aliases with independent OMOD gating; FP64 input/output denormals follow the reference behavior rather than assuming FP32 flushing rules. Dedicated deterministic SFU calibration and holdout use fixed MT19937 seeds and raw/near-one/subnormal domains, with wider long-double assumptions specified by the reference tests. Strict exact semantics/reporting remain explicitly unsupported; validation, error preservation, loose state preservation and host controls are covered.",
     "diagnostics": "Coincident-output alias checks now compare the retained high word against disjoint execution even for NaNs; those comparisons test storage behavior rather than independent arithmetic. Finite mantissa extraction is now raw, matching its exact rescaling contract. Numerical context is formatted only on failure, retaining seed/batch/op/mode/width/CPU/lane details. Captured hardware approximation proximity is separately covered by fp64_output_test.cpp."
   },
   {
@@ -1983,7 +1972,6 @@
     "evidence": [
       "tests/trig_architecture_test.cpp",
       "tests/dpp_reference.h",
-      "tests/LOOSE_TOLERANCES.md",
       "tests/trig_golden.h",
       "tests/trig_test.cpp"
     ],
@@ -2001,7 +1989,6 @@
     "evidence": [
       "tests/half_trig_architecture_test.cpp",
       "tests/dpp_reference.h",
-      "tests/LOOSE_TOLERANCES.md",
       "tests/half_trig_test.cpp",
       "tests/trig_golden.h",
       "tests/half_reference.h"
@@ -2028,7 +2015,6 @@
       "tests/trig_test.cpp",
       "tests/dpp_reference.h",
       "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md",
       "tests/trig_golden.h",
       "tests/trig_architecture_test.cpp"
     ],
@@ -2053,7 +2039,6 @@
       "tests/half_trig_test.cpp",
       "tests/dpp_reference.h",
       "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md",
       "tests/half_reference.h",
       "tests/half_trig_architecture_test.cpp",
       "tests/trig_test.cpp"
@@ -2071,7 +2056,6 @@
     "evidence": [
       "tests/half_log_exp_architecture_test.cpp",
       "tests/dpp_reference.h",
-      "tests/LOOSE_TOLERANCES.md",
       "tests/half_unary_reference.h",
       "tests/half_reference.h",
       "tests/half_unary_test.cpp"
@@ -2095,7 +2079,6 @@
     "evidence": [
       "tests/half_unary_test.cpp",
       "tests/dpp_reference.h",
-      "tests/LOOSE_TOLERANCES.md",
       "tests/half_unary_reference.h",
       "tests/half_reference.h",
       "tests/half_unary_exact_test.cpp"
@@ -2119,11 +2102,9 @@
       "tests/half_unary_exact_test.cpp",
       "tests/half_sfu_checkpoints.h",
       "tools/generate_half_sfu_checkpoints.cpp",
-      "tests/CORPUS_DIAGNOSTICS.md",
       "tests/half_reference.h",
       "tests/half_unary_reference.h",
-      "tests/dpp_reference.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/dpp_reference.h"
     ],
     "scope": "Rounding, FREXP and RCP/RSQ/SQRT exact policies across RDNA3/RDNA4 and both widths. New independent rocjitsu-model checkpoints cover every unmodified half encoding for all CPU selectors with denormals preserved, IEEE quieting and no saturation. Mathematical boundary references are used for policy integration, not as proof of arbitrary SFU equivalence. FREXP exhausts encodings, selectors and denormal policies using exact power-of-two normalization and explicit payload rules. Literal powers-of-four, zeros/overflow, NaN quieting and rounding payloads complement the checkpoints. All 32 modifiers, eight guest policies and seven DPP routes combine with in-place aliases and mixed EXEC; selector settings are correlated with source modifiers. Loose SFU guest-mode tests exhaust encodings, saturation and output modifiers while cycling CPU selectors. Host-control changes, validation errors and unsupported reporting are covered. FRACT remains unsupported exact and is excluded from numerical exact loops.",
     "diagnostics": "Checkpoint failures localize an independent numerical regression to 4096 inputs. Loose policy integration uses the calibrated half SFU bound; exact comparisons and inactive storage stay raw. Removed null-state no-op assertions and replaced a whole-array host-control comparison with per-lane diagnostics."
@@ -2142,8 +2123,7 @@
       "tests/half_unary_reference.h",
       "tests/half_reference.h",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Eleven Wave32 half-unary instructions with DPP. Independent double arithmetic and numeric half conversion provide loose SFU proximity references; simple rounding/extraction and storage remain raw. Two gfx1201 aggregate corpora cover 132 operation/modifier combinations, seven descriptors and eight EXEC masks, including OMOD/denormal boundaries. Captured-domain per-lane reference checks remain exact except normalized NaNs; the aggregate witnesses do not establish arbitrary-input mathematical equivalence or NaN payload identity. All 128 selectors/modifiers and saturation choices combine with seven routes and deterministic LCG words. Separate routing/alias coverage uses 84 masks, twelve low-mode combinations, two aliases and four input batches (zero/ones, walking bits, random). Validation checks unsupported exact semantics and malformed descriptors. Broader architecture/Wave64/exact numerical evidence lives in the half-unary suites.",
     "diagnostics": "Saved all three pre-call registers in the modifier sweep so reference construction cannot absorb source corruption. Assert both nondestination registers and unwritten destinations bitwise. Hardware-corpus inactive lanes are checked before NaN canonicalization. Numerical helpers return assertion results with register/lane context, complementing existing CPU/op/mode/mask traces. Existing capture constants and tolerances are unchanged."
@@ -2160,8 +2140,7 @@
       "tests/unary_reference.h",
       "tests/omod_reference.h",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Eleven Wave32 FP32 unary instructions with DPP. Retained gfx1201 MODE=0xf0 digest spans seven descriptors, two source/OMOD settings, eight EXEC masks and powers-of-four inputs. Added computed per-lane checks on that captured domain, with NaN normalization matching the original digest; these checks improve localization while the independent capture remains the hardware witness. Boundary coverage combines all 32 modifiers, seven descriptors, 84 masks and in-place/disjoint destinations, including zeros, subnormals, extrema, infinities and signaling/quiet NaNs. Double arithmetic with explicit binary32 rounding and OMOD provides loose SFU proximity references. Rounding/fract/FREXP, zero/infinity signs and untouched storage are bitwise; NaN payloads are only classified in this suite. Invalid descriptors, flags, reserved strict semantics and empty masks are checked before operand access. Random numerical/holdout coverage and exact SFU evidence remain in core unary suites, not claimed for this fixed boundary corpus.",
     "diagnostics": "Hardware failures now identify CPU, operation, descriptor/modifier, EXEC and lane rather than only the final digest. All source words are checked for disjoint calls. Finite simple rounding/extraction operations now use exact comparisons instead of SFU tolerances. Fuzzy failures identify the lane in addition to existing case traces."
@@ -2190,8 +2169,7 @@
       "tests/unary_hardware.h",
       "tests/omod_reference.h",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Eleven FP32 unary operations, both wave widths. Double mathematical SFU references with explicit binary32 rounding, mandatory flushing and OMOD are loose proximity references; captured gfx1201 OMOD/flush outputs supply independent hardware comparison. Rounding, fraction/mantissa extraction, signed zero, infinity and storage are raw. Wave32 combines all 32 modifiers, 84 EXEC masks and aliases; Wave64 combines all modifiers, eight routes with stratified row masks, mixed EXEC and destination aliases. Architecture integration covers both architectures, widths, guest policies, DPP and IEEE scaling. RDNA3 DX10 tests use unclamped API results as a differential clamp-policy reference, in exact semantics where supported and loose otherwise; they are not independent arithmetic oracles. EXP/LOG sweep boundary/full-range strata across flags, masks and aliases. Fixed MT19937 calibration/holdout seeds span raw encodings, finite exp2 range and log2 near one, across all operations/modifiers/CPU selectors. Exact numerical models and exception flags have separate dedicated suites. Validation, empty masks, fallback semantics and optional-state rejection/preservation are covered.",
     "diagnostics": "One local comparison helper makes exact categorical/simple-operation versus approximate SFU checks explicit at existing callers. Tightened disjoint source preservation and out-of-wave storage, removed a null-state no-op assertion, and moved per-lane random/EXP/LOG diagnostics to failure-only formatting. Hardware comparisons retain explicit sign and classification checks. Existing input streams, hardware fixtures and tolerances are unchanged."
@@ -2224,8 +2202,7 @@
       "tests/unary_exact_hardware.h",
       "tests/unary_checkpoints.h",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "RCP_IFLAG FP32 across RDNA3/RDNA4 and both widths. Independent gfx1201 numeric fixtures now require raw equality in exact semantics and calibrated proximity in loose semantics. Status digests cover 4096 deterministic boundary/walking-lane/integer-mixed inputs, six masks, three seeds and all 32 modifiers; Wave64 replays captures in the upper half with inactive zero inputs below. Mathematical double reciprocal references in other tests are proximity checks, not arbitrary exact oracles. The inherited RCP normalized hardware digest with rocjitsu-generated checkpoints independently checks all 2^23 normalized mantissas, rotating architecture/width/CPU by batch; it does not enumerate every CPU per input. DPP capture and computed routing tests cover seven routes, 84 Wave32 masks, stratified Wave64 masks/row controls, in-place/disjoint/unaligned storage and status aliases in both source/destination registers. Architecture OMOD witnesses use exactly representable powers of two; RDNA3 exact reporting is rejected explicitly. Clamping/active subnormal status, null output, errors and NaN quieting have dedicated checks. Cheap RDNA4 loose INT_DIV0 reporting is tested as existing behavior, not a general guarantee for loose global-state reporting.",
     "diagnostics": "Tightened exact captured numeric assertions and added exact-semantics null-output equivalence tests in both widths. DPP numerical failures identify semantics, CPU, modifier, descriptor, EXEC, destination/status alias and word. Removed assertions about state variables whose pointers were null; error-path state checks remain. Existing normalized checkpoints localize failures to 2^20-input blocks."
@@ -2249,8 +2226,7 @@
       "tests/half_sfu_checkpoints.h",
       "tests/unary_checkpoints.h",
       "tests/unary_exact_hardware.h",
-      "tests/half_unary_reference.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/half_unary_reference.h"
     ],
     "scope": "Ten pseudo-scalar FP32/FP16 EXP/LOG/RCP/RSQ/SQRT APIs (no EXEC parameter). Independent gfx1201 fixtures retain 48 selected inputs across eight denormal/saturation policies and all 32 modifiers, with fuzzy loose checks and raw checks for eight supported exact operations on all CPU selectors. Storage-alias tests use by-value inputs and adjacent sentinel words. Literal witnesses cover denormal stages, signed zero and finite versus infinite saturation. Exact FP32 dense domains reuse the borrowed unary hardware digests and checkpoints, checking baseline CPU; other CPU selectors are covered by selected fixtures. Every half encoding across eight policies cycles CPU selectors; its mathematical comparison is proximity only. Reused independent rocjitsu half-SFU checkpoints now provide raw full-encoding validation for preserved denormals/no saturation, while captures validate selected policy inputs. Unsupported half EXP/LOG exact semantics, global-state reporting errors/precedence, output preservation and host rounding are explicit. Loose hardware-corpus calls now also exercise non-null optional state.",
     "diagnostics": "Half checkpoint failures identify operation and 4096-input interval without new fixture data. Mathematical half failures include operation/policy/raw input. Explicit comments distinguish proximity checks from independently anchored exact behavior. Existing dense FP32 checkpoints localize failures to 2^20-input intervals."
@@ -2270,8 +2246,7 @@
       "tests/scalar_fma_reference.h",
       "tests/scalar_fp_reference.h",
       "tests/scalar_fma_hardware.h",
-      "tests/half_fma_reference.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/half_fma_reference.h"
     ],
     "scope": "Four scalar FMA APIs: FP32/FP16 FMAC plus FP32 FMAAK/FMAMK. Twenty-six variants cover twelve literal values for each immediate placement. Independent gfx1201 digests cover eight input/output-denormal and saturation policies, 4096 deterministic edge/cancellation/tininess/integer-mixed triples and every CPU selector. Exact FP32 outputs retain hardware digest equality. Loose FP32 uses baseline exact calls as per-input references, checked against the same independent digest; loose FP16 uses the independent integer-grid half-FMA reference, whose digest now directly matches the hardware corpus. NaN normalization limits this aggregate evidence to canonicalized results; literal exact FP32 cases separately test payload/priority. Fuzzy comparisons apply only to loose numerical results, while zeros/infinities, zeroed upper half, guards and alias preservation stay exact. By-value source/accumulator aliases cover five selected samples and all variants/policies. Fusion, stage-flushing and saturation have literal witnesses. Unsupported FP16 exact semantics, invalid flags, reporting-error precedence before accumulator access and loose state preservation are covered.",
     "diagnostics": "Loose execution no longer has to reproduce the hardware digest bit-for-bit; the per-input reference does, keeping captured-domain equivalence independently anchored. Loose failures identify state/variant/CPU/input. Invalid-flag tests now check destination preservation for every variant. Existing capture values and exact literal witnesses are unchanged."
@@ -2290,8 +2265,7 @@
       "tests/scalar_fp_test.cpp",
       "tests/scalar_fp_reference.h",
       "tests/scalar_fp_hardware.h",
-      "tests/half_reference.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/half_reference.h"
     ],
     "scope": "Fourteen loose-only scalar FP16/FP32 ADD/SUB/MUL and min_num/max_num/minimum/maximum APIs. Two independent hardware datasets (general boundary/integer-mixed operands and dense min-normal/one neighborhoods) cover 4096 pairs each across eight denormal/saturation policies and all CPU selectors. ADD/SUB/MUL now use double arithmetic, explicit guest input flushing and pre-rounding tininess, plus numeric half conversion; the computed reference itself must match each hardware digest before it can justify fuzzy loose output comparisons. Min/max remain exact selection checks with normalized NaNs. Literal tests distinguish finite overflow saturation, preserved infinities, signed-zero ties, NaN selection/propagation and subnormal stages. Scalar by-value input aliases and guards are covered, with both source destinations in min/max tests. Exact semantics/reporting rejection, non-strict fallback equivalence, invalid flags/error preservation and loose optional-state preservation are tested. Computed-reference equivalence is captured-domain evidence, not arbitrary-input hardware proof.",
     "diagnostics": "Arithmetic comparisons now identify dataset, policy, operation, CPU and input index; independent capture digests remain reference gates. Numerical tolerances apply only to loose arithmetic; half upper-word zeroing, zero/infinity signs and selection results stay exact. Existing corpus generation uses explicit unsigned arithmetic, independent of library RNG distributions."
@@ -2331,8 +2305,7 @@
     "evidence": [
       "tests/dual_test.cpp",
       "tests/gfx11_dot2_fixtures.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Twenty-one operation variants, including architecture-specific floating dual slots and four FP16/BF16 DOT2ACC variants. Literal exactly representable arithmetic covers each variant with five EXEC masks and all CPU selectors. RDNA3 exact dot captures now run on all CPU selectors; a literal witness distinguishes RDNA4 behavior. Floating guest-policy checks compare dual slots with ordinary GoC instructions of the same architecture, so they establish adapter integration rather than independent numerical proof; independent evidence resides in ordinary family suites. Eight guest policies, source/destination aliases and mixed masks cover those floating adapters. Exact FMA NaN-priority witnesses distinguish IEEE behavior and RDNA3 reporting rejection. Integer/move/condition/shift/bitwise tests use direct unsigned oracles, 32 bit/count batches, 84 masks, shared/distinct sources and all destinations with guards. Pair tests reflect the individual-slot API: RDNA3 caller-staged pre-pair sources and a legal RDNA4 sequential pair. Invalid mode bits and reporting-error precedence are explicit.",
     "diagnostics": "Converted loose floating adapter comparisons to the existing FMA numerical bound while keeping inactive storage and zero/infinity signs raw; no claim that differential agreement independently validates hardware. Added source preservation and all-CPU RDNA3 dot captures, removed a null-state no-op assertion, and replaced aggregate integer memcmp failures with register/lane diagnostics."
@@ -2355,8 +2328,7 @@
     "evidence": [
       "tests/packed_binary_test.cpp",
       "tests/half_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Packed FP16 ADD/MUL (RDNA3/RDNA4) and six min/max spellings, both wave widths. Independent double arithmetic with numeric half conversion, half selectors, separate low/high negation, clamp and guest flushing supplies loose ADD/MUL references. Numeric/propagating/legacy selection is checked via raw half ordering with explicit signaling/quiet NaN policies. All 512 valid modifiers and overflow policies are covered on available CPU selectors. Wave32 includes Cartesian special pairs, every A encoding paired with fixed-seed MT19937 B words, eight representative modes across 84 masks, shared/distinct sources and all destinations with guards. Wave64 and architecture integration cover all modifiers with stratified aliases/full/mixed masks and eight guest policies; this is not the complete encoding-by-mode Cartesian product. Dedicated literal selection, signed-zero, NaN and denormal witnesses remain exact. Loose optional-state preservation, unsupported exact semantics/reporting, invalid flags and host controls are explicit. These are loose-only numerical APIs; computed references need no arbitrary exact-SFU equivalence claim.",
     "diagnostics": "Per-half assertion results identify numerical errors without imposing exact loose ADD/MUL rounding. Literal witnesses and min/max remain raw, and all inactive/source storage is bitwise. Added missing Wave64 nondestination words and operation/CPU/mode/lane diagnostics. Existing and alternate random-B seeds validate the unchanged half arithmetic tolerance."
@@ -2383,8 +2355,7 @@
       "tests/packed_fma_test.cpp",
       "tests/half_fma_reference.h",
       "tests/packed_fma_exceptions_hardware.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Packed F16 FMA/FMAC for RDNA3/RDNA4 and both wave widths. Independent integer-grid half FMA computes the finite RNE reference without host FP rounding; literal rocjitsu NaN witnesses and fused ties anchor exceptional behavior. This inherits the half-FMA reference's documented guest policies, not an inference that arbitrary mathematical references match hardware. All 8192 packed FMA modifiers, both overflow policies, every A encoding and fixed-seed random triples are covered on available CPU selectors. Wave32 spans 84 masks and all whole-register source/destination aliases; Wave64 spans modifiers and destination aliases with a mixed mask. FMAC separately spans 128 VOP3 modifiers, eight guest policies and three aliases on both architectures/widths. Guest-mode integration now covers all CPU selectors. Independent gfx1201 MODE 0xf0 exception digests cover 8192 triples at lane 0 and lane 63, with inactive signaling NaNs; literal tests cover cross-half/lane exception union, output aliasing and modifier-sensitive invalid. Unsupported global-state policies and invalid flags preserve outputs. Corpus digests are aggregate exception evidence, not arbitrary guest-mode hardware validation.",
     "diagnostics": "Per-half assertion results attach CPU, mode and lane context. Exact results, literal witnesses, zero/infinity signs and all inactive/source storage remain raw; loose finite arithmetic uses calibrated half-FMA atol/rtol. Added missing Wave64 and FMAC source checks, architecture input-preservation checks and all unrelated exception-state bits. Exact null opt-out no longer has a vacuous unchanged-state assertion. Original and alternate random seeds pass on Clang and GCC."
@@ -2409,8 +2380,7 @@
       "tests/dot2_architecture_test.cpp",
       "tests/gfx11_dot2_fixtures.h",
       "src/gfx11_dot2.h",
-      "tests/dpp_reference.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/dpp_reference.h"
     ],
     "scope": "RDNA3 F16/BF16 DOT2 F32 and F16 DOT2ACC at both wave widths. Independent gfx1100 fixtures borrowed from rocjitsu anchor exact unmodified results, masks, destination aliases and host rounding/sticky-state preservation at baseline CPU. The borrowed production model supplies transformed-input expectations for every selection/sign combination and representative DPP routing; this is differential modifier coverage, not an independent exact oracle for those transformed inputs. A direct model-to-fixture assertion records equivalence on the captured domain. Literal architecture differences, unsupported reporting and validation precedence are explicit. Loose fixed-seed fractional normal inputs bounded by four plus bounded FP32 C use independent double arithmetic, random selectors/signs, ignored clamp, full/mixed EXEC and all destination aliases on every CPU selector; accumulator form uses its implicit C destination. Literal loose accumulator checks remain exact. No general exact equivalence to the mathematical sum is claimed. The bounded loose corpus also covers RDNA4 F16/BF16 DOT2 F32, reusing the same independent arithmetic and storage checks; DOT2ACC remains RDNA3-only.",
     "diagnostics": "Added calibrated fuzzy comparisons with seed holdout and raw source/inactive/guard checks, CPU/mode/lane diagnostics and capture-index oracle assertions. Existing modifier aggregate storage checks identify destination; fixed capture diagnostics are scoped to the capture index for oracle failures."
@@ -2453,8 +2423,7 @@
       "tests/half_dot_test.cpp",
       "tests/half_reference.h",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Loose half-output F16/BF16 DOT2. RDNA4 both-width tests span all 256 ABS/NEG and C/D half-selection combinations, whole-register destination aliases, 84 Wave32 masks and representative Wave64 masks, plus DPP controls and guards. Independent small integer arithmetic is exactly representable and deliberately uses raw checks for routing. Every accumulator encoding is covered in both widths with explicit fixed BF16 flushing and NaN classification. Literal signed-zero, ties, overflow saturation, infinity and denormal cases remain raw. A retained gfx1201 DPP digest independently anchors the fixed binary-exact corpus, not arbitrary inputs or exact API support. Random all-encoding Wave32 checks are scalar/SIMD differential. A new bounded-normal fractional corpus supplies independent double arithmetic for both architectures, widths and all available CPU selectors, including ABS/NEG, C/D half selection, full/mixed masks and optional-state preservation. Strict exact semantics remain unsupported; non-strict fallback, invalid flags and empty masks are explicit.",
     "diagnostics": "New fractional comparisons use calibrated FP16/BF16 atol/rtol with alternate seeds and architecture/CPU/batch/lane diagnostics. Existing random differential finite results now use the same numeric policy while categorical outputs, inactive words and unselected halves remain raw. Added every nondestination word to ordinary modifier/alias sweeps. Existing per-word DPP integration checks localize routing failures; the separate hardware digest remains aggregate evidence."
@@ -2477,8 +2446,7 @@
     "evidence": [
       "tests/fp8_dot_test.cpp",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "All four FP8/BF8 DOT4 format pairings, both widths and all available CPU selectors. Independent mathematical byte decoding and double accumulation cover every repeated-byte pair with all four C ABS/NEG modes, including NaN/infinity encodings. Separate fixed-seed mixed-byte bounded arithmetic and holdout corpora exercise all C modifiers and cancellation with calibrated tolerances. Exact small integer factors/sums drive 84 Wave32 masks, representative Wave64 masks, all destination aliases, DPP routes and all DPP16 row masks; these raw comparisons are deliberate routing/field checks. Invalid modifiers, strict exact rejection, non-strict loose fallback, empty EXEC and DPP validation are explicit. These APIs are loose-only, have no optional global-state output, and need no arbitrary bit-exact oracle equivalence claim.",
     "diagnostics": "Converted repeated-pair comparison to an assertion result with caller lane context. Replaced production bit-cast dependencies with local memcpy conversions. Added every nondestination word to ordinary alias sweeps and immutable input snapshots plus out-of-wave storage checks to the bounded corpus. Successful numerical cases no longer construct per-lane diagnostic strings. Existing independent calibration and holdout bounds are unchanged; both are ordinary tests and pass on Clang and GCC."
@@ -2502,8 +2470,7 @@
       "tests/interp16_reference.h",
       "tests/mixed_fma_reference.h",
       "tests/interp16_hardware.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Four FP16-input interpolation spellings (P10/P2, RNE/RTZ), both wave widths and all CPU selectors. Independent integer mixed-FMA reference with quad routing covers all 64 NEG/clamp/half selections, both FP16 overflow policies, five source-sharing layouts, four destinations, unaligned guarded storage, 84 Wave32 masks and representative Wave64 masks. Boundary operands and deterministic full-word random inputs broaden arithmetic coverage. A standalone reference digest calculation now agrees with all retained gfx1201 MODE 0xf0 capture digests (1024 inputs per modifier/overflow/op), independently of GoC outputs; that establishes captured-domain agreement only. Wave64 reuses the captured sequence across its two halves, not a new native Wave64 capture. Explicit RTZ host-rounding invariance stays raw. Wait counts, invalid flags, empty EXEC and unsupported strict exact semantics are exercised; these remain loose-only APIs.",
     "diagnostics": "General finite arithmetic now uses FP32 or half-FMA atol/rtol by output format. Inactive/source storage and unselected destination halves remain raw, and NaNs are canonicalized only in the selected output field. Added input-preservation assertions to random tests; retained per-configuration/lane diagnostics. Existing and alternate seeds calibrate both output formats without changing bounds. Hardware digests remain aggregate anchors, supplemented by independent per-lane reference tests and direct reference-to-capture validation."
@@ -2527,8 +2494,7 @@
       "tests/interp32_test.cpp",
       "tests/interp32_reference.h",
       "tests/interp32_hardware.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "P10/P2 FP32 interpolation at both widths and all CPU selectors. Independent long-double FMA with quad source routing supplies random/special-value loose references. Exactly representable binary-fraction routing inputs cover all 16 NEG/clamp modes, five source-sharing layouts, all destinations, unaligned storage/guards, 84 Wave32 masks and representative Wave64 masks. Retained gfx1201 digests cover every modifier/wait count and 36 EXEC patterns including every single lane; Wave64 applies the same capture to each half and verifies lower-half preservation for upper-only EXEC. Shared-contract tests also cover four FP16-input spellings, unsupported exact semantics, rejected guest flags, error preservation and non-strict fallback. No independent native Wave64 hardware-capture claim is made.",
     "diagnostics": "Random numerical tests now assert input preservation and compute references from immutable source snapshots. Existing calibrated atol/rtol passes a new alternate seed as well as the original on both compilers. Raw full-array routing assertions are retained for the exactly representable corpus; hardware digests retain CPU/op/modifier/wait or mask diagnostics."
@@ -2558,8 +2524,7 @@
       "tests/half_binary_checks.h",
       "tests/half_reference.h",
       "tests/dpp_half_binary_test.cpp",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Half ADD/SUB/SUBREV/MUL and numeric, propagating and legacy min/max forms. Both architectures and widths have guest flush/IEEE/overflow policy, scaling, selectors, representative DPP routes, aliases and optional-state checks; RDNA4 arithmetic and four selection forms additionally cover every half A encoding plus deterministic random A/B words, all 1024 modifiers, 84 Wave32 masks and destination aliases. Wave64 sweeps all modifiers and routes with stratified row masks and a mixed EXEC. Literal rounding, signed zeros, NaN policy and OMOD boundaries stay raw. A separate literal source-selection table covers packed/unpacked min/max raw NaN payloads, guest modes and selectors; legacy selection preserves every encoding. Strict exact/reporting rejection, non-strict fallback and error precedence are explicit. Arithmetic references are independent double operations with numeric half rounding and captured OMOD boundary policy, suitable for these loose-only paths; no new exact hardware model is claimed.",
     "diagnostics": "Finite arithmetic now uses calibrated half atol/rtol; min/max selection and literal witnesses remain raw. A shared test comparison checks unselected halves first and keeps categorical results separate; regression assertions reject excessive error and storage/category changes. Added random-source preservation, Wave64 nondestination words, architecture out-of-wave storage and raw-selection source checks. Per-lane failures include CPU/op context; original and alternate seeds calibrate arithmetic only."
@@ -2579,8 +2544,7 @@
       "tests/half_binary_checks.h",
       "tests/half_reference.h",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Eight RDNA4 half binary operations in Wave32. Two retained gfx1201 hardware hashes independently anchor finite binary-exact and OMOD-boundary corpora across 128 operation/modifier combinations, seven DPP descriptors and eight EXEC masks; per-lane mathematical-reference checks supplement the aggregate hashes. All 1024 modifiers and both overflow policies are tested with explicitly sequenced unsigned LCG words. Representative modifiers cross DPP routing, focused mask sets, five source/destination alias layouts and four boundary/random batches with guards. Invalid modifiers, malformed DPP, global flags and strict exact rejection are explicit. Wave64 DPP coverage lives in half_binary_test.cpp. No arbitrary exact numerical equivalence is inferred from these loose-only tests.",
     "diagnostics": "Fixed captured corpora remain raw. General written finite arithmetic now uses the shared half comparison; min/max remains raw. Crucially, unwritten words are no longer NaN-canonicalized in the exhaustive modifier test. References use pre-call input snapshots, both source arrays are checked, and alias tests preserve all inactive storage. Alternate LCG seeds validate the unchanged tolerance; shared routing reference is backed by its dedicated routing tests."
@@ -2606,8 +2570,7 @@
       "tests/dot2_architecture_test.cpp",
       "tests/dot_fixtures.h",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "RDNA4 F16/BF16 DOT2 F32 at both widths. Both semantics and every CPU selector exercise all half selectors/signs and ignored clamp with independent exactly representable integer products/sums, masks, destination aliases and guards. Exact empirical behavior is independently anchored by retained gfx1201 fixtures: inverse signs and half swaps recover each captured input under 128 modifier transformations, at the detected CPU level and both widths. DPP integration checks all modifier variants, representative routing and stratified EXEC/row masks using an independent routing reference; a retained fixed finite corpus digest also anchors DPP results. Captured exception corpora cover 4096 edge and 4096 deterministic xorshift triples for each configuration with lane 0 or lane 63 active and CPU selectors cycled. All captured flag reads are zero. Loose numerical behavior has special-value scalar/SIMD differential tests plus independent bounded fractional double-reference tests in dot2_architecture_test.cpp, including held-out operands. The latter does not claim hardware-exact arbitrary accumulation.",
     "diagnostics": "Added nondestination storage checks to ordinary alias sweeps. Exact captures remain raw; special-value loose finite comparisons use the existing FP32 bound with inactive storage checked first. No-exception corpora now begin with all seven exception bits clear and all unrelated bits set, exposing erroneous updates previously hidden by pre-set exception bits. Bit casts are local memcpy operations instead of production helpers. Extended the existing fractional corpus to RDNA4 without duplicating its reference; Clang/GCC and alternate seeds pass unchanged tolerances."
@@ -2644,8 +2607,7 @@
       "tests/fma_omod_hardware.h",
       "tests/omod_reference.h",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "FP32 FMA/FMAC, DX9 forms and Wave64 literal FMA integration, plus initial C-linkage/LOG smoke tests. Independent exactly representable dyadic/integer products cover all FMA modifiers, masks and aliases; literal fused-rounding/zero/infinity witnesses and gfx1201 OMOD arrays stay raw. Retained DX9 digests span all modifiers and denormal modes, with DPP hardware and per-word independent dyadic routing checks. DX9 FMAC is explicitly differential against FMA with separate implicit C, supplemented by zero-product/error witnesses. Wave64 six-form integration covers representative modifiers, DPP row masks and aliases, with pre-call snapshots; guest-mode tests span architectures and FMA/FMAC/DX9 spellings. New deterministic full-word FMA inputs use long-double fused arithmetic, target-aware OMOD, random modifiers, all destinations and full/mixed masks on both architectures/widths and all CPU selectors. This is a loose numerical oracle, not proof of empirical exact FMA exception behavior; dedicated exception families cover optional exact reporting.",
     "diagnostics": "General Wave64 arithmetic now uses shared FP32 FMA atol/rtol; captured/literal/routing anchors remain raw. New random tests preserve all source/inactive words and carry architecture/CPU/batch/mode/lane diagnostics. Added missing Wave64 sources and architecture source checks, restricted captured NaN classification to written lanes and removed vacuous state assertions for DX9 APIs lacking that parameter. Original/alternate seeds measure zero numerical error on both compilers."
@@ -2665,8 +2627,7 @@
       "tests/binary_reference.h",
       "tests/minmax_reference.h",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "Wave32 DPP integration for 18 FP32 arithmetic and two/three-input selection operations. Independent double binary arithmetic and integer-bit minmax reference provide expected values with shared DPP routing; two retained gfx1201 corpus hashes separately anchor ordinary and tiny-OMOD domains. The integration sweep covers all legal low modifiers, seven representative DPP descriptors, five alias layouts, stratified 84-mask selection and 23 boundary operands, preserving guards and sources. Fixed captures include full/empty/alternating/single-lane/half EXEC. Separate literal OMOD witnesses and validation-before-operand-access cover routing-independent policy and errors. The corpus validates these fixed domains, not arbitrary hardware-exact semantics. Broader random binary/ternary numerical coverage resides in their instruction-family tests.",
     "diagnostics": "Only written finite ADD/SUB/SUBREV/MUL/DX9-MUL results use calibrated FP32 atol/rtol. Selection, categorical results, captured corpora and inactive storage remain raw. Added source snapshots/checks before hardware-corpus reference evaluation. Per-word diagnostics identify operation, CPU, modifier, descriptor and lane; fixed-corpus digests remain aggregate independent evidence. These fixed special-value comparisons have zero observed error on both compilers and are not described as random holdout."
@@ -2693,8 +2654,7 @@
       "tests/binary_test.cpp",
       "tests/binary_reference.h",
       "tests/dpp_reference.h",
-      "tests/exec_masks.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/exec_masks.h"
     ],
     "scope": "FP32 ADD/SUB/SUBREV/MUL/DX9-MUL and numeric/propagating/legacy min/max, with ordinary and relevant dual forms. RDNA4 Wave32 spans all 128 modifiers, 84 masks and destination aliases on available CPU selectors, with exact ADD/MUL numerical checks kept separate from loose arithmetic. Wave64 covers all modifiers, representative DPP/row masks, aliases and guards. Architecture integration spans guest input/output flushing, IEEE, OMOD gating, both widths and both semantics where supported. Literal min/max tables cover raw NaN precedence/payloads and signed zeros; borrowed rocjitsu ADD/MUL policy vectors cover captured NaN/zero/pre-packing tininess across host rounding/flush controls, architectures, forms and aliases. New deterministic arbitrary-word numerical inputs use independent binary64 arithmetic with architecture-aware OMOD, random modifiers, both widths and architectures, all destination aliases and masks. Exact reporting rejection/error ordering and loose non-null state preservation are explicit. General computed arithmetic is a loose oracle; exact policy behavior is independently anchored by the borrowed vectors rather than inferred from SIMD agreement.",
     "diagnostics": "Only loose finite arithmetic uses the calibrated FP32 bound; exact ADD/MUL, min/max selection, zeros/infinities and literal policies stay raw, with NaN classification only where the reference intentionally does not specify payloads. Added missing ordinary/Wave64/architecture sources, out-of-wave storage and borrowed-vector source checks. Removed an unchanged-state assertion for exact calls that pass null. Original and alternate random seeds pass on both compilers without changing tolerances."
@@ -2767,8 +2727,7 @@
       "tests/rdna_swmmac_f32_fp8_fp8_cases.h",
       "tests/rdna_swmmac_f32_fp8_bf8_cases.h",
       "tests/rdna_swmmac_f32_bf8_fp8_cases.h",
-      "tests/rdna_swmmac_f32_bf8_bf8_cases.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/rdna_swmmac_f32_bf8_bf8_cases.h"
     ],
     "scope": "All four FP8/BF8 sparse matrix combinations, both wave widths, every index key and available CPU selector. Independent gfx1201 digests use sixteen deterministic small-integer inputs with exact sums; native Wave64 captures are separate. Each of 256 operand encodings is decoded mathematically and multiplied by sixteen against one-valued partners, with NaN classification and otherwise exact scaling. New bounded fractional logical matrices with legal 2:4 selectors use independent double accumulation and fuzzy comparisons; no production decoder or accumulation helper supplies their expected values. Same-library per-lane and alias/duplicate-destination comparisons are differential checks rather than independent arithmetic oracles. Exact semantics now borrow native DOT8 arithmetic from rocjitsu ad2bb973ec4 and replay 296 supported matrix/operand captures on all CPU selectors; 48 raw sign/clamp encodings are explicitly excluded. The old small-integer digests also pass with exact dispatch. Saved guest denormal and FP16 overflow fields are translated; exact captures pass under four host rounding modes with FTZ/DAZ off/on and preserve host controls. Additional IEEE-on model checks pass.",
     "diagnostics": "Added non-output storage preservation to both-width captures and all sources/out-of-wave storage checks to random matrices. Expanded Wave32 validation to all 64 instruction-flag bits and both widths to invalid global flags and unchanged outputs on reserved-semantics rejection. Digest context includes sample. Primary and holdout fractional seeds each compare 1,572,864 values per compiler; existing WMMA bound passes unchanged on Clang and GCC. All ten tests pass."
@@ -2800,8 +2759,7 @@
       "tests/rdna_swmmac_f32_f16_cases.h",
       "tests/rdna_swmmac_f32_bf16_cases.h",
       "tests/rdna_swmmac_f16_f16_cases.h",
-      "tests/rdna_swmmac_bf16_bf16_cases.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/rdna_swmmac_bf16_bf16_cases.h"
     ],
     "scope": "Sparse FP16/BF16 with FP32 or packed output, both widths and all CPU selectors. Independent gfx1201 small-integer captures cover all negation/index-key variants, including native Wave64 captures. Literal midpoint, overflow/infinity and accumulator/pair-negation witnesses cover packed output rounding and the distinction between compressed pair position and dense K parity. Strict exact semantics now borrow rocjitsu 184faac7d94 DOT4 staging, with 488 supported captures and 24 explicitly excluded raw C/clamp cases at ad2bb973ec4. FP16 overflow mode is translated. Guest fields and host-control independence are now qualified by the capture replay; packed loose scalar/AVX2/AVX-512 now narrow at each DOT4 boundary. The packed numerical reference independently quantizes FP32 sums, with primary and holdout seeds. The existing small-integer captures pass in both semantics. New deterministic fractional logical matrices use independently decoded normal operands bounded by four, legal 2:4 selectors, double accumulation and fuzzy output checks; all negation combinations and keys occur in each width. This mathematical loose oracle does not claim empirical hardware rounding equivalence. Aliases and duplicate destinations use separately identified scalar/SIMD differential references with full expected storage images.",
     "diagnostics": "Added non-output preservation to both hardware corpus tests, full-storage validation with all 64 unknown-bit positions in both widths, and source/out-of-wave checks to random matrices. Calibrated packed FP16/BF16 bounds and retained the existing FP32 WMMA bound, with 1,572,864 total finite comparisons per seed per compiler. Primary and holdout seeds and all fourteen tests pass on Clang and GCC."
@@ -2837,8 +2795,7 @@
       "tests/rdna_wmma_f32_bf8_bf8_cases.h",
       "tests/integer_wmma_capture.h",
       "tests/integer_wmma_hardware.h",
-      "tests/integer_wmma_wave64_hardware.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/integer_wmma_wave64_hardware.h"
     ],
     "scope": "Dense FP8/BF8 K16 combinations and RDNA4 integer IU8/IU4 K16 plus IU4 K32, both widths and all CPU selectors. Offline Python goldens cover bounded dyadic floating products and integer sign/clamp/wrap behavior; independent native-width hardware digests anchor integer staged saturation, including opposite-sign near-limit accumulators. Widened logical integer references exercise extremes, cancellation and distinct wave-size saturation groupings. Floating encoding coverage includes all 256 codes of either input, classifying NaNs and independently decoding finite/infinite values; native Wave64 hardware has a separate exactly representable mapping corpus. A new double-reference fractional corpus spans all FP8/BF8 combinations, widths, C modifiers and destination aliases with normal factors/accumulators bounded by four. It provides loose numerical proximity evidence only. Strict floating exact semantics now use native DOT8 arithmetic borrowed from rocjitsu dd63b040587, with all compact dense FP8/BF8 matrices and operand fixtures at ad2bb973ec4 replayed across CPU selectors. Captured C ABS/NEG bits are ignored in both semantics, superseding the older transformed-C reference. Captured guest denormal and FP16 overflow fields are translated. Four host rounding modes and FTZ/DAZ off/on preserve exact results and host controls; IEEE-on is an additional model check. Integer results remain raw in both semantics.",
     "diagnostics": "Added non-output storage preservation to dense golden/alias tests and both-width integer hardware captures, removed production bit-cast dependencies, and expanded floating invalid-bit checks to all 64 bits with unchanged full storage. The fractional corpus has per-row/column context and raw source/guard checks. All fifteen tests and primary/holdout calibration pass on Clang and GCC; each seed supplies 524,288 fuzzy comparisons without changing the existing WMMA bound."
@@ -2853,8 +2810,7 @@
     ],
     "evidence": [
       "tests/wmma_replicated_test.cpp",
-      "tests/wmma_replicated_exact_test.cpp",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/wmma_replicated_exact_test.cpp"
     ],
     "scope": "RDNA3 FP32-output FP16/BF16 WMMA, both widths and all CPU selectors. Independent logical small-integer matrices span all 64 modifiers and five destination layouts with complete raw storage images. A literal 24-versus-16 witness distinguishes the RDNA3 and RDNA4 input footprints. New fractional double references cover both architectures, widths, formats, every modifier and cycled aliases. RDNA3 replicas have deliberately distinct values, while RDNA4 distributes one matrix across groups; the expected values are computed from logical matrices without production helpers. Bounded normal operands and fractional accumulators stay below four. This file provides loose arithmetic/layout evidence; borrowed exact hardware evidence resides in the companion exact family.",
     "diagnostics": "Removed production bit-cast dependency and expanded invalid-request checks from one word to the entire destination storage. Fractional outputs use the existing WMMA tolerance and all non-output registers/guards remain raw. Four tests and original/holdout calibration pass on Clang and GCC, with 524,288 finite comparisons per seed/compiler."
@@ -2891,8 +2847,7 @@
       "tests/wmma_fixtures.h",
       "tests/dot_fixtures.h",
       "tests/dense_golden.h",
-      "tests/wmma_replicated_test.cpp",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/wmma_replicated_test.cpp"
     ],
     "scope": "RDNA4 FP32-output FP16/BF16 WMMA in both widths, across available CPU selectors. Borrowed hardware matrix fixtures have width-specific raw exact outputs and fuzzy loose comparisons. Independent offline small-integer goldens, identity matrices, partial operand overlaps and modifier integer arithmetic cover layout and aliases. Explicit BF16 subnormal/overflow/category witnesses and per-element/per-accumulator Zen4 eligibility checks cover fallback boundaries. General scalar/SIMD comparisons are differential, not hardware evidence; independent bounded fractional references for these same entry points now reside in wmma_replicated_test.cpp. Direct internal format/DOT2 fixture tests and public DOT2 masked/alias checks are supplemental to the separately reviewed DOT2 families. Exact flags remain opt-out where exposed by DOT2.",
     "diagnostics": "Added all non-output storage preservation to matrix capture/overlap and dense golden checks in both widths. General written finite nonzero scalar/SIMD arithmetic uses fuzzy comparisons; untouched storage, zero/infinity categories and literal policy witnesses remain raw. Captured exact results retain raw bits. All 23 tests pass on Clang and GCC, including calibration with alternate random differential seeds; the existing tolerance remains unchanged."
@@ -2927,8 +2882,7 @@
       "tests/rdna_wmma_f16_f16_cases.h",
       "tests/rdna_wmma_bf16_bf16_cases.h",
       "tests/matrix_capture_state.h",
-      "tests/packed_wmma_fixtures.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/packed_wmma_fixtures.h"
     ],
     "scope": "RDNA3 FP16/BF16 FP32 and packed WMMA exact paths inherit rocjitsu GFX11 DOT2 hardware fixtures and matrix captures. Packed matrices cover both output halves, both widths, source/destination aliases and host rounding modes; raw full-storage expectations preserve unselected halves and guards. Floating modifiers also have a same-library raw-source transformation check, explicitly supplemental to hardware anchors. Integer IU4/IU8 references use widened arithmetic with four/two-product saturation respectively, following rocjitsu de4654cfc34 and independently replayed gfx1100 captures. Dense integer captures at ad2bb973ec4 cover all ten architecture/shape/width combinations in both semantics, every available CPU and four destination aliases; complete storage images include guards. This supersedes the former incorrect final-clamp reference. Floating architecture witnesses distinguish borrowed DOT2/DOT4 intermediate narrowing. Loose packed coverage includes independent exactly representable integer matrix arithmetic across every modifier, both architectures/widths and CPU selectors, literal intermediate narrowing/overflow behavior, and scalar/SIMD special/arbitrary-word differential comparisons. The latter do not establish arbitrary-input hardware equivalence or serve as independent general numerical references.",
     "diagnostics": "Expanded borrowed FP32 and packed hardware matrix checks to all CPU selectors, added FP32 non-output preservation and real-storage packed validation checks. General finite nonzero packed differential outputs use independently decoded numeric fuzzy comparisons, while NaNs are classified and zeros/infinities, sources, guards and unused halves remain raw. Primary/alternate random seeds have zero measured differential error on Clang and GCC. All twelve tests pass; exact fixture comparisons remain bitwise."

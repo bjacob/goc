@@ -16,7 +16,7 @@ int main() {
             "namespace goc_test {\n\n"
             "// RCP, RSQ, SQRT: cumulative word-wise hashes every 4096 half encodings.\n"
             "// Unmodified inputs, denormals preserved, quiet NaNs, no saturation.\n"
-            "// Generated from rocjitsu; see CORPUS_DIAGNOSTICS.md.\n"
+            "// Generated from rocjitsu commit ffc144c564c450b7847ae0528410dc63af9725a8.\n"
             "static const uint64_t half_sfu_checkpoints[3][16] = {");
   for (auto fn : {util::amdgpu_rcp_f32, util::amdgpu_rsq_f32, util::amdgpu_sqrt_f32}) {
     uint64_t hash = 14695981039346656037ULL;
