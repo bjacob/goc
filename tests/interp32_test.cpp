@@ -2,9 +2,11 @@
 
 #include "capture_hash.h"
 #include "exec_masks.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "interp32_hardware.h"
 #include "interp32_reference.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cmath>
@@ -23,15 +25,8 @@ void hash_words(uint64_t &hash, const uint32_t *words) {
     hash = goc_test::capture_hash_bytes(hash, words[lane], 4);
 }
 
-bool equal_float(uint32_t got, float want) {
-  float value = goc_test::interp32_float(got);
-  if (std::isnan(want))
-    return std::isnan(value);
-  if (value == want)
-    return true;
-  if (!std::isfinite(value) || !std::isfinite(want))
-    return false;
-  return std::abs(double(value) - want) <= 2e-7 * std::abs(double(want)) + 1e-44;
+::testing::AssertionResult equal_float(uint32_t got, float want) {
+  return goc_test::fuzzy(goc_test::interp32_float(got), want, goc_test::interp_f32_tolerance);
 }
 
 const decltype(&goc_v_interp_p10_f32_wave64) wave64_functions[] = {goc_v_interp_p10_f32_wave64,

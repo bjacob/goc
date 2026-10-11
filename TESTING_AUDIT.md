@@ -159,3 +159,17 @@ finds no remaining same-line two-draw bitwise expressions in unit-test sources.
 the offline dense matrix fixture. Their digests were calculated independently
 from the specified integer recurrences. All 80 affected tests pass in both Clang
 and GCC; logs are `coverage-work/testing-rng-tests.log` in those build trees.
+
+### Shared fuzzy comparator: first migration and measurements
+
+Added `tests/fuzzy.h`, with formula/special-value/asymmetry/boundary tests and
+failure diagnostics, and `tests/loose_tolerances.h` with named existing bounds.
+WMMA's captured loose results, interpolation's computed comparisons, and
+FP32/FP16 trig's numerical comparisons now use the shared helper. Exact
+architectural/untouched-bit checks remain unchanged. All 70 affected tests pass
+with Clang and GCC.
+
+Initial measured error envelopes and their limitations are recorded in
+[tests/LOOSE_TOLERANCES.md](tests/LOOSE_TOLERANCES.md). No tolerance was widened.
+This is partial completion: remaining loose comparisons, deterministic holdout
+calibration, and the reference-provenance inventory still need work.

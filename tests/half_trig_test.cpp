@@ -4,9 +4,11 @@
 #include "dpp_reference.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_reference.h"
 #include "internal.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -124,8 +126,9 @@ TEST(HalfTrig, EveryEncodingMatchesRocjitsuDigestAndLoosePaths) {
             if ((a[lane] & 0x7fff) < 0x7c00) {
               double phase = std::remainder(goc_test::half_value(uint16_t(a[lane])), 1.0);
               double angle = phase * 6.283185307179586476925286766559;
-              EXPECT_NEAR(goc_test::half_value(uint16_t(loose[lane])),
-                          op ? std::cos(angle) : std::sin(angle), 0.0005);
+              EXPECT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(loose[lane])),
+                                          op ? std::cos(angle) : std::sin(angle),
+                                          goc_test::trig_f16_tolerance));
             }
           }
         }
@@ -418,8 +421,9 @@ TEST(HalfTrig, Wave64EveryEncodingMatchesRocjitsuDigestAndLoosePaths) {
             if ((a[lane] & 0x7fff) < 0x7c00) {
               double phase = std::remainder(goc_test::half_value(uint16_t(a[lane])), 1.0);
               double angle = phase * 6.283185307179586476925286766559;
-              EXPECT_NEAR(goc_test::half_value(uint16_t(loose[lane])),
-                          op ? std::cos(angle) : std::sin(angle), 0.0005);
+              EXPECT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(loose[lane])),
+                                          op ? std::cos(angle) : std::sin(angle),
+                                          goc_test::trig_f16_tolerance));
             }
           }
         }

@@ -4,8 +4,10 @@
 #include "dot.h"
 #include "dot_fixtures.h"
 #include "float_formats.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "loose_tolerances.h"
 #include "test_instruction.h"
 #include "wmma_fixtures.h"
 
@@ -47,13 +49,6 @@ void set16(uint32_t *const *v, int index, int k, uint16_t bits) {
   word = (word & ~(0xffffu << shift)) | (uint32_t(bits) << shift);
 }
 
-bool fuzzy(float actual, float expected) {
-  // NumPy-style isclose, as used by hrx-system's math.h.
-  return actual == expected || (std::isnan(actual) && std::isnan(expected)) ||
-         (std::isfinite(expected) &&
-          std::abs(double(actual) - expected) <= 1e-5 + 1e-5 * std::abs(double(expected)));
-}
-
 } // namespace
 
 TEST(Wmma, HardwareCapturedLooseResults) {
@@ -74,7 +69,9 @@ TEST(Wmma, HardwareCapturedLooseResults) {
           ASSERT_EQ(fn(level, 0, r.v + dst, r.v, r.v + 4, r.v + 8), 0);
           for (int reg = 0; reg < 8; ++reg)
             for (int lane = 0; lane < 32; ++lane)
-              EXPECT_TRUE(fuzzy(goc::as_float(r.v[dst + reg][lane]), goc::as_float(f.expected32)));
+              EXPECT_TRUE(goc_test::fuzzy(goc::as_float(r.v[dst + reg][lane]),
+                                          goc::as_float(f.expected32),
+                                          goc_test::wmma_f32_tolerance));
           r.guards();
         }
     }
@@ -335,8 +332,9 @@ TEST(WmmaWave64, CapturedGoldensAndOverlap) {
                 if (semantics == GOC_SEMANTICS_EXACT_EMPIRICAL)
                   EXPECT_EQ(v[dst + reg][lane], f.expected64);
                 else
-                  EXPECT_TRUE(
-                      fuzzy(goc::as_float(v[dst + reg][lane]), goc::as_float(f.expected64)));
+                  EXPECT_TRUE(goc_test::fuzzy(goc::as_float(v[dst + reg][lane]),
+                                              goc::as_float(f.expected64),
+                                              goc_test::wmma_f32_tolerance));
               }
           }
       }

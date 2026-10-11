@@ -4,8 +4,10 @@
 #include "dpp_reference.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "loose_tolerances.h"
 #include "trig_golden.h"
 
 #include <algorithm>
@@ -93,7 +95,8 @@ TEST(Trig, FullRangeRandomInputsAndIntervalBoundaries) {
             double phase = std::remainder(double(goc::as_float(a[lane])), 1.0);
             double angle = phase * 6.283185307179586476925286766559;
             double expected = op ? std::cos(angle) : std::sin(angle);
-            ASSERT_NEAR(double(goc::as_float(d[lane])), expected, 3e-7)
+            ASSERT_TRUE(
+                goc_test::fuzzy(goc::as_float(d[lane]), expected, goc_test::trig_f32_tolerance))
                 << op << "/" << cpu << "/" << a[lane];
           }
         }
@@ -122,8 +125,9 @@ TEST(Trig, LooseMatchesScalarWithEveryModifier) {
               ASSERT_EQ(actual[lane], reference[lane]) << op << "/" << cpu << "/" << mode;
             } else {
               const float scales[] = {1, 2, 4, 0.5f};
-              ASSERT_NEAR(goc::as_float(actual[lane]), goc::as_float(reference[lane]),
-                          3e-7f * scales[(mode >> 2) & 3])
+              ASSERT_TRUE(
+                  goc_test::fuzzy(goc::as_float(actual[lane]), goc::as_float(reference[lane]),
+                                  {goc_test::trig_f32_tolerance.atol * scales[(mode >> 2) & 3], 0}))
                   << op << "/" << cpu << "/" << mode << "/" << a[lane];
             }
           }
