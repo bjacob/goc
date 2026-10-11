@@ -333,3 +333,11 @@ The unchanged raw comparisons cover categorical results and storage contracts.
 The half computed table's unmodified domain is checked against the independent
 rocjitsu digest, rather than assuming FP32 narrowing matches arbitrary hardware.
 Script and complete logs: `goc-build/coverage-work/testing-core-trig-calibration/run.py`.
+
+The exact-half-unary review also applies the existing half SFU bound to loose
+architecture-policy comparisons that previously required raw equality. Clang and
+GCC each measure 28,095,424 finite loose pairs across that suite with zero error,
+including the exhaustive guest-mode sweep already recorded above. This confirms
+current margin, not an obligation for future loose paths to reproduce exact bits.
+No tolerance was changed. Measurement script and snapshots:
+`goc-build/coverage-work/testing-half-sfu/measure.py`.

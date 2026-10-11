@@ -65,3 +65,32 @@ per-output comparisons alongside them. Their diagnostic scope still needs a
 family-by-family review with the reference-evidence inventory. These unary
 checkpoints improve the large dense domains; they do not establish that every
 compact corpus now has adequate localization.
+
+## Half RCP/RSQ/SQRT
+
+`half_sfu_checkpoints.h` contains 48 cumulative word-wise hashes (384 bytes),
+one after each 4096 ascending half encodings for each operation. The independent
+`tools/generate_half_sfu_checkpoints.cpp` calls unchanged rocjitsu FP32 models
+and compiler `_Float16` conversions, linking no GoC implementation or reference
+helper. Clang 21.1.8 and GCC 15.2.0 produce identical fixtures. Generate with C++20,
+`-O2`, and `TheRock/rocm-systems/emulation/rocjitsu/lib/util/include` on the include
+path, then clang-format its stdout. Ordinary tests require only C++17.
+
+Provenance: rocjitsu's containing rocm-systems commit
+`ffc144c564c450b7847ae0528410dc63af9725a8`. Header SHA-256 values:
+
+| Header | SHA-256 |
+| --- | --- |
+| `amdgpu_rcp.h` | `5538062de610792c017cef63c093ef488b0bedeee4dd676e823e7241c81522fd` |
+| `amdgpu_rsq.h` | `378d98edb7ee4292c4875b302eb650e123276bc819aee5be5c22d82e1155d28b` |
+| `amdgpu_sqrt.h` | `050dada1c764eb70533f1eb25ca3e0eaa623c09ef04840575bb59d1707d4c7d9` |
+
+The scope is unmodified inputs, preserved denormals, quiet NaNs and no saturation.
+These are borrowed-model regression fixtures, not new hardware captures. The
+upstream FP32 models' hardware validation is described in the existing unary
+corpus provenance. Both architectures, widths and all CPU selectors consume the
+same fixture; policy/NaN/saturation/modifier witnesses remain separate tests.
+The first failed prefix reports operation, architecture, width, CPU and the
+4096-encoding interval. Successful generation alone does not validate additional
+flags or policies. Local generator binaries and measurements are under
+`goc-build/coverage-work/testing-half-sfu/`.

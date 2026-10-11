@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 122 explicit family-file reviews exist and 32
+non-generic family references. 123 explicit family-file reviews exist and 31
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -395,3 +395,12 @@ RDNA3/RDNA4 log/exp policy suite. Computed SFU references justify loose proximit
 not arbitrary bit-exactness; exact SFU fixtures remain a separate review item.
 Tightened inactive-lane and nondestination preservation and added failure context
 without introducing new golden data or broadening the tolerance bounds.
+
+### Exact half unary
+
+Added independent full-encoding rocjitsu RCP/RSQ/SQRT checkpoints, with identical
+Clang/GCC generation and 4096-input failure localization. The 384-byte fixture
+covers unmodified quiet-NaN behavior; existing policy and literal tests cover
+other semantics without treating mathematical references as arbitrary SFU proof.
+Removed vacuous state assertions and separated loose SFU tolerance from raw
+inactive storage. FREXP's computed reference follows exact normalization.

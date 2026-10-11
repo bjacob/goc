@@ -625,3 +625,14 @@ and case context; removed a vacuous exact null-state assertion. Recorded the
 scope of mathematical, hardware-digest and differential policy references.
 All 12 affected tests pass on Clang/GCC, as do 14 tooling tests. No production,
 capture or tolerance changes were needed.
+
+### Exact half-unary review
+
+One review brings the queue to 123 reviewed and 31 pending. Added independent
+rocjitsu RCP/RSQ/SQRT checkpoints covering all half encodings in both architectures
+and widths on all CPU selectors. Clang/GCC independently generate identical
+384-byte fixtures. New numerical coverage takes about 40 ms and localizes failures
+to 4096-input intervals. Improved host/policy diagnostics and removed vacuous
+state checks; loose SFU comparisons use the existing calibrated bound, while
+inactive storage stays raw. All eight family tests pass on both compilers, as do
+14 tooling tests. Production remains unchanged.

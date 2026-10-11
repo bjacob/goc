@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 
+#include "capture_hash.h"
 #include "dpp_reference.h"
 #include "fp_environment.h"
 #include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_reference.h"
+#include "half_sfu_checkpoints.h"
 #include "half_unary_reference.h"
 #include "loose_tolerances.h"
 
@@ -53,13 +55,22 @@ uint64_t policy_flags(unsigned policy) {
          (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) | (policy & 4 ? GOC_FP_IEEE_MODE : 0);
 }
 
-void compare_half(uint32_t actual, uint32_t expected, unsigned shift) {
-  EXPECT_EQ((actual ^ expected) & ~(65535U << shift), 0U);
+::testing::AssertionResult compare_half(uint32_t actual, uint32_t expected, unsigned shift,
+                                        bool loose_sfu = false) {
+  if ((actual ^ expected) & ~(65535U << shift))
+    return ::testing::AssertionFailure() << "unselected half changed";
   auto a = uint16_t(actual >> shift), e = uint16_t(expected >> shift);
-  if ((e & 0x7fff) > 0x7c00)
-    EXPECT_GT(a & 0x7fff, 0x7c00);
-  else
-    EXPECT_EQ(a, e);
+  unsigned magnitude = e & 0x7fff;
+  if (magnitude > 0x7c00) {
+    if ((a & 0x7fff) > 0x7c00)
+      return ::testing::AssertionSuccess();
+  } else if (loose_sfu && magnitude && magnitude < 0x7c00 && (a & 0x8000) == (e & 0x8000)) {
+    return goc_test::fuzzy(goc_test::half_value(a), goc_test::half_value(e),
+                           goc_test::half_sfu_tolerance);
+  } else if (a == e) {
+    return ::testing::AssertionSuccess();
+  }
+  return ::testing::AssertionFailure() << "actual bits=" << a << ", expected bits=" << e;
 }
 
 } // namespace
@@ -109,9 +120,21 @@ TEST(HalfUnaryExact, ArchitecturePoliciesDppSelectorsAndAliases) {
                   ASSERT_EQ(invoke(op, rdna3, wide, flags, exec_mask, mode | dpp, input, input,
                                    precise ? nullptr : &state),
                             GOC_SUCCESS);
-                  EXPECT_EQ(state, want_state);
-                  for (unsigned lane = 0; lane < lanes; ++lane)
-                    compare_half(input[lane], expected[lane], d_shift);
+                  if (!precise) {
+                    EXPECT_EQ(state, want_state);
+                  }
+                  for (unsigned lane = 0; lane < lanes; ++lane) {
+                    int source;
+                    bool written = goc_test::dpp_source(dpp, exec_mask, lane, source);
+                    if (written) {
+                      EXPECT_TRUE(
+                          compare_half(input[lane], expected[lane], d_shift, !precise && op >= 6))
+                          << op << "/" << rdna3 << "/" << wide << "/" << precise << "/" << cpu
+                          << "/" << policy << "/" << m << "/" << dpp << "/" << lane;
+                    } else {
+                      EXPECT_EQ(input[lane], expected[lane]) << "inactive lane=" << lane;
+                    }
+                  }
                 }
 }
 
@@ -128,7 +151,6 @@ TEST(HalfUnaryExact, HostControlsAndValidation) {
           for (unsigned m = 0; m < 32; ++m) {
             uint64_t flags = exact | policy_flags(policy) | (m & 1 ? GOC_FP16_OVFL : 0);
             uint32_t mode = modifiers(m) | GOC_ALU_HIGH_D;
-            uint32_t expected_state = 0x80000040;
             std::fill(baseline, baseline + 64, 0xdeadbeef);
             ASSERT_EQ(invoke(op, rdna3, wide, flags, UINT64_MAX, mode, baseline, input, nullptr),
                       GOC_SUCCESS);
@@ -140,16 +162,17 @@ TEST(HalfUnaryExact, HostControlsAndValidation) {
                                     ((denorm & 2) ? 0x8000U : 0);
                 _mm_setcsr(controls);
 #endif
-                uint32_t state = 0x80000040;
                 std::fill(actual, actual + 64, 0xdeadbeef);
                 ASSERT_EQ(invoke(op, rdna3, wide, flags, UINT64_MAX, mode, actual, input, nullptr),
                           GOC_SUCCESS);
-                EXPECT_EQ(state, expected_state);
                 EXPECT_EQ(std::fegetround(), rounding);
 #if defined(__x86_64__) || defined(_M_X64)
                 EXPECT_EQ(_mm_getcsr(), controls);
 #endif
-                EXPECT_TRUE(std::equal(actual, actual + 64, baseline));
+                for (unsigned lane = 0; lane < 64; ++lane)
+                  EXPECT_EQ(actual[lane], baseline[lane])
+                      << op << "/" << rdna3 << "/" << wide << "/" << policy << "/" << m << "/"
+                      << rounding << "/" << denorm << "/" << lane;
               }
           }
         uint32_t state = 0x12345678;
@@ -204,7 +227,8 @@ TEST(HalfUnaryExact, SfuLooseGuestModesAndOptionalState) {
                 ASSERT_EQ(actual & 0x8000, expected & 0x8000);
                 ASSERT_TRUE(goc_test::fuzzy(goc_test::half_value(actual),
                                             goc_test::half_value(expected),
-                                            goc_test::half_sfu_tolerance));
+                                            goc_test::half_sfu_tolerance))
+                    << op << "/" << saturate << "/" << policy << "/" << m << "/" << base + lane;
               } else {
                 ASSERT_EQ(actual, expected);
               }
@@ -307,7 +331,9 @@ TEST(HalfUnaryExact, FrexpEveryEncodingAndDenormalPolicy) {
                   if (precise)
                     ASSERT_EQ(input[lane], expected[lane]) << base + lane << '/' << policy;
                   else
-                    compare_half(input[lane], expected[lane], d_shift);
+                    ASSERT_TRUE(compare_half(input[lane], expected[lane], d_shift))
+                        << rdna3 << "/" << wide << "/" << cpu << "/" << policy << "/" << halves
+                        << "/" << base + lane;
                 }
               }
 }
@@ -360,4 +386,34 @@ TEST(HalfUnaryExact, SfuLiteralDenormalOverflowAndSpecialValues) {
                                         [](uint32_t value) { return value == 0x12347800U; }));
               }
             }
+}
+
+TEST(HalfUnaryExact, SfuEveryEncodingMatchesRocjitsuCheckpoints) {
+  for (unsigned op = 0; op < 3; ++op)
+    for (bool rdna3 : {false, true})
+      for (bool wide : {false, true})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          uint64_t hash = goc_test::capture_hash_seed;
+          unsigned lanes = wide ? 64 : 32;
+          for (unsigned base = 0; base < 65536; base += lanes) {
+            uint32_t input[64], output[64];
+            for (unsigned lane = 0; lane < lanes; ++lane) {
+              input[lane] = base + lane;
+              output[lane] = 0xdeadbeef;
+            }
+            ASSERT_EQ(invoke(op + 6, rdna3, wide, cpu | exact | GOC_FP_IEEE_MODE, UINT64_MAX, 0,
+                             output, input, nullptr),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < lanes; ++lane) {
+              ASSERT_EQ(output[lane] >> 16, 0xdeadU);
+              hash = goc_test::capture_hash_word(hash, uint16_t(output[lane]));
+            }
+            if ((base + lanes) % 4096 == 0) {
+              unsigned block = (base + lanes) / 4096 - 1;
+              ASSERT_EQ(hash, goc_test::half_sfu_checkpoints[op][block])
+                  << "op=" << op << " rdna3=" << rdna3 << " wide=" << wide << " cpu=" << cpu
+                  << " input range=[" << block * 4096 << "," << (block + 1) * 4096 << ")";
+            }
+          }
+        }
 }

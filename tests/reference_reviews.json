@@ -2100,5 +2100,30 @@
     ],
     "scope": "Eleven FP16 unary operations (rounding, sqrt/rcp/rsq, exp/log, fract and mantissa extraction), both widths. The double mathematical reference with independent numeric half conversion is a loose proximity oracle for SFUs; simple rounding/extraction/storage checks remain exact. Every half encoding is tested on all CPU selectors with two selector/scale settings and both saturation choices. EXP/LOG additionally exhaust encodings across OMOD/clamp/saturation. Wave32 boundary tests combine 128 modifiers/selectors, 84 masks and aliases with guards; Wave64 combines eight routes, row-mask variants and aliases using a mixed mask. Literal boundary and aggregate hardware EXP/LOG witnesses supplement the computed references. The aggregate digest normalizes NaN payloads, so it does not prove payload identity. RDNA3 DX10 clamp tests use unclamped API results as a differential policy reference in both widths/semantics where supported, covering guest flags, selectors, source modifiers and aliases. Exact SFU numerical evidence is separately reviewed in half_unary_exact_test.cpp; this file does not promote mathematical proximity to bit-exact proof.",
     "diagnostics": "Numerical helpers return assertion results so callers attach lane/case information only on failure. Inactive hardware-corpus lanes now require whole-word identity; Wave64 disjoint calls check all source words, not only guards. Removed a vacuous null-output state assertion in exact DX10 tests. Existing calibrated tolerances and capture constants are unchanged."
+  },
+  {
+    "file": "half_unary_exact_test.cpp",
+    "assertions": [
+      "HalfUnaryExact.ArchitecturePoliciesDppSelectorsAndAliases",
+      "HalfUnaryExact.HostControlsAndValidation",
+      "HalfUnaryExact.SfuLooseGuestModesAndOptionalState",
+      "HalfUnaryExact.SfuRdna3NanQuieting",
+      "HalfUnaryExact.RoundingNanPayloadsIgnoreIeeeMode",
+      "HalfUnaryExact.FrexpEveryEncodingAndDenormalPolicy",
+      "HalfUnaryExact.SfuLiteralDenormalOverflowAndSpecialValues",
+      "HalfUnaryExact.SfuEveryEncodingMatchesRocjitsuCheckpoints"
+    ],
+    "evidence": [
+      "tests/half_unary_exact_test.cpp",
+      "tests/half_sfu_checkpoints.h",
+      "tools/generate_half_sfu_checkpoints.cpp",
+      "tests/CORPUS_DIAGNOSTICS.md",
+      "tests/half_reference.h",
+      "tests/half_unary_reference.h",
+      "tests/dpp_reference.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Rounding, FREXP and RCP/RSQ/SQRT exact policies across RDNA3/RDNA4 and both widths. New independent rocjitsu-model checkpoints cover every unmodified half encoding for all CPU selectors with denormals preserved, IEEE quieting and no saturation. Mathematical boundary references are used for policy integration, not as proof of arbitrary SFU equivalence. FREXP exhausts encodings, selectors and denormal policies using exact power-of-two normalization and explicit payload rules. Literal powers-of-four, zeros/overflow, NaN quieting and rounding payloads complement the checkpoints. All 32 modifiers, eight guest policies and seven DPP routes combine with in-place aliases and mixed EXEC; selector settings are correlated with source modifiers. Loose SFU guest-mode tests exhaust encodings, saturation and output modifiers while cycling CPU selectors. Host-control changes, validation errors and unsupported reporting are covered. FRACT remains unsupported exact and is excluded from numerical exact loops.",
+    "diagnostics": "Checkpoint failures localize an independent numerical regression to 4096 inputs. Loose policy integration uses the calibrated half SFU bound; exact comparisons and inactive storage stay raw. Removed null-state no-op assertions and replaced a whole-array host-control comparison with per-lane diagnostics."
   }
 ]
