@@ -455,3 +455,15 @@ Fixed captured/RTZ-host-rounding witnesses and storage remain raw. Direct
 reference-to-hardware-digest validation establishes the integer reference on the
 retained capture corpus without implying arbitrary hardware-exact API support.
 Script/snapshots/logs: goc-build/coverage-work/testing-interpolation-calibration/run.py.
+
+
+Half ADD/SUB/SUBREV/MUL and their DPP forms reuse (2^-24, 1e-3); min/max selection,
+fixed hardware witnesses, zeros/infinities and storage remain raw.
+Ordinary half-binary tests measure 10,881,860 finite nonzero arithmetic comparisons
+with seeds 427/12 and 10,829,636 with alternate seeds 73951/547.
+DPP tests measure 6,828,136 with LCG starts 997+variant and 231+batch,
+and 6,996,660 with starts 65537+variant and 7919+batch.
+All observed errors are zero on both Clang and GCC. The counts include repeated
+masks/modifiers/CPU paths; the holdout changes random operands, not fixed witnesses.
+Calibration excludes the dedicated comparator regression's deliberately rejected
+examples. Script/snapshots/logs: goc-build/coverage-work/testing-half-binary-calibration/run.py.

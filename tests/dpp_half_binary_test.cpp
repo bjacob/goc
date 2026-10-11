@@ -4,6 +4,7 @@
 #include "dpp_reference.h"
 #include "exec_masks.h"
 #include "goc/goc.h"
+#include "half_binary_checks.h"
 #include "half_binary_reference.h"
 #include "half_reference.h"
 
@@ -91,26 +92,32 @@ TEST(DppHalfBinary, EveryModifierAndOverflowMode) {
                 seed = seed * 1664525u + 1013904223u;
                 word = seed;
               }
-            uint32_t old[32];
-            std::memcpy(old, words[2], sizeof(old));
+            uint32_t before[3][32];
+            std::memcpy(before, words, sizeof(before));
             uint32_t *p[] = {words[0], words[1], words[2]};
             ASSERT_EQ(goc_test::half_binary_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0),
                                                           UINT32_MAX, mode, p + 2, p, p + 1,
                                                           nullptr),
                       GOC_SUCCESS);
+            ASSERT_EQ(std::memcmp(words, before, sizeof(before[0]) * 2), 0);
             for (unsigned lane = 0; lane < 32; ++lane) {
-              uint32_t want = old[lane];
+              uint32_t want = before[2][lane];
               int source;
-              if (goc_test::dpp_source(mode, UINT32_MAX, lane, source)) {
+              bool written = goc_test::dpp_source(mode, UINT32_MAX, lane, source);
+              if (written) {
                 unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
                 uint32_t value =
-                    goc_test::half_binary_reference(op, source < 0 ? 0 : words[0][source],
-                                                    words[1][lane], uint32_t(mode), saturate);
+                    goc_test::half_binary_reference(op, source < 0 ? 0 : before[0][source],
+                                                    before[1][lane], uint32_t(mode), saturate);
                 want = (want & ~(65535U << shift)) | (value << shift);
               }
-              ASSERT_EQ(goc_test::canonical_half_nan(words[2][lane], uint32_t(mode)),
-                        goc_test::canonical_half_nan(want, uint32_t(mode)))
-                  << cpu << '/' << op << '/' << mode << '/' << lane << '/' << saturate;
+              if (written) {
+                ASSERT_TRUE(
+                    goc_test::half_binary_equal(words[2][lane], want, uint32_t(mode), op < 4))
+                    << cpu << '/' << op << '/' << mode << '/' << lane << '/' << saturate;
+              } else {
+                ASSERT_EQ(words[2][lane], want);
+              }
             }
           }
 }
@@ -153,8 +160,9 @@ TEST(DppHalfBinary, MasksAliasesAndRandomWords) {
                         reference(op, source < 0 ? 0 : before[alias[1]][source + 1],
                                   before[alias[2]][index], before[alias[0]][index], uint32_t(mode));
                   if (written) {
-                    ASSERT_EQ(goc_test::canonical_half_nan(words[reg][index], uint32_t(mode)),
-                              goc_test::canonical_half_nan(want, uint32_t(mode)));
+                    ASSERT_TRUE(goc_test::half_binary_equal(words[reg][index], want, uint32_t(mode),
+                                                            op < 4))
+                        << "index=" << index;
                   } else {
                     ASSERT_EQ(words[reg][index], want);
                   }

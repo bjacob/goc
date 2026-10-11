@@ -2530,5 +2530,57 @@
     ],
     "scope": "P10/P2 FP32 interpolation at both widths and all CPU selectors. Independent long-double FMA with quad source routing supplies random/special-value loose references. Exactly representable binary-fraction routing inputs cover all 16 NEG/clamp modes, five source-sharing layouts, all destinations, unaligned storage/guards, 84 Wave32 masks and representative Wave64 masks. Retained gfx1201 digests cover every modifier/wait count and 36 EXEC patterns including every single lane; Wave64 applies the same capture to each half and verifies lower-half preservation for upper-only EXEC. Shared-contract tests also cover four FP16-input spellings, unsupported exact semantics, rejected guest flags, error preservation and non-strict fallback. No independent native Wave64 hardware-capture claim is made.",
     "diagnostics": "Random numerical tests now assert input preservation and compute references from immutable source snapshots. Existing calibrated atol/rtol passes a new alternate seed as well as the original on both compilers. Raw full-array routing assertions are retained for the exactly representable corpus; hardware digests retain CPU/op/modifier/wait or mask diagnostics."
+  },
+  {
+    "file": "half_binary_test.cpp",
+    "assertions": [
+      "HalfBinary.CanonicalNanPreservesUnselectedHalf",
+      "HalfBinary.LooseComparisonPreservesStorageAndCategories",
+      "HalfBinary.EveryEncodingAndRandomInputs",
+      "HalfBinary.AllModifiersAndHalfSelectors",
+      "HalfBinary.MasksAliasesAndUntouchedHalves",
+      "HalfBinary.LiteralRoundingOverflowAndNanRules",
+      "HalfBinary.ValidationAndSemantics",
+      "HalfBinary.Wave64ModifiersSelectorsDppAndAliases",
+      "HalfBinary.Wave64ValidationAndOptionalState",
+      "HalfBinary.ArchitectureScalingDenormalsSelectorsDppAndAliases",
+      "HalfBinary.Rdna3GuestFlagsDoNotEnableExactReporting",
+      "HalfBinary.ArithmeticOptionalStateAndExactFallback",
+      "HalfBinary.MinmaxRawNanBitsGuestModesAndPackedSelectors",
+      "HalfBinary.LegacySelectionPreservesEveryHalfEncoding",
+      "HalfBinary.ArithmeticRetainsCapturedOmodBoundaryPolicy"
+    ],
+    "evidence": [
+      "tests/half_binary_test.cpp",
+      "tests/half_binary_reference.h",
+      "tests/half_binary_checks.h",
+      "tests/half_reference.h",
+      "tests/dpp_half_binary_test.cpp",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Half ADD/SUB/SUBREV/MUL and numeric, propagating and legacy min/max forms. Both architectures and widths have guest flush/IEEE/overflow policy, scaling, selectors, representative DPP routes, aliases and optional-state checks; RDNA4 arithmetic and four selection forms additionally cover every half A encoding plus deterministic random A/B words, all 1024 modifiers, 84 Wave32 masks and destination aliases. Wave64 sweeps all modifiers and routes with stratified row masks and a mixed EXEC. Literal rounding, signed zeros, NaN policy and OMOD boundaries stay raw. A separate literal source-selection table covers packed/unpacked min/max raw NaN payloads, guest modes and selectors; legacy selection preserves every encoding. Strict exact/reporting rejection, non-strict fallback and error precedence are explicit. Arithmetic references are independent double operations with numeric half rounding and captured OMOD boundary policy, suitable for these loose-only paths; no new exact hardware model is claimed.",
+    "diagnostics": "Finite arithmetic now uses calibrated half atol/rtol; min/max selection and literal witnesses remain raw. A shared test comparison checks unselected halves first and keeps categorical results separate; regression assertions reject excessive error and storage/category changes. Added random-source preservation, Wave64 nondestination words, architecture out-of-wave storage and raw-selection source checks. Per-lane failures include CPU/op context; original and alternate seeds calibrate arithmetic only."
+  },
+  {
+    "file": "dpp_half_binary_test.cpp",
+    "assertions": [
+      "DppHalfBinary.HardwareCorpus",
+      "DppHalfBinary.HardwareOmodBoundaries",
+      "DppHalfBinary.EveryModifierAndOverflowMode",
+      "DppHalfBinary.MasksAliasesAndRandomWords",
+      "DppHalfBinary.Validation"
+    ],
+    "evidence": [
+      "tests/dpp_half_binary_test.cpp",
+      "tests/half_binary_reference.h",
+      "tests/half_binary_checks.h",
+      "tests/half_reference.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Eight RDNA4 half binary operations in Wave32. Two retained gfx1201 hardware hashes independently anchor finite binary-exact and OMOD-boundary corpora across 128 operation/modifier combinations, seven DPP descriptors and eight EXEC masks; per-lane mathematical-reference checks supplement the aggregate hashes. All 1024 modifiers and both overflow policies are tested with explicitly sequenced unsigned LCG words. Representative modifiers cross DPP routing, focused mask sets, five source/destination alias layouts and four boundary/random batches with guards. Invalid modifiers, malformed DPP, global flags and strict exact rejection are explicit. Wave64 DPP coverage lives in half_binary_test.cpp. No arbitrary exact numerical equivalence is inferred from these loose-only tests.",
+    "diagnostics": "Fixed captured corpora remain raw. General written finite arithmetic now uses the shared half comparison; min/max remains raw. Crucially, unwritten words are no longer NaN-canonicalized in the exhaustive modifier test. References use pre-call input snapshots, both source arrays are checked, and alias tests preserve all inactive storage. Alternate LCG seeds validate the unchanged tolerance; shared routing reference is backed by its dedicated routing tests."
   }
 ]

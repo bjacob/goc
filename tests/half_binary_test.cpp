@@ -3,6 +3,7 @@
 #include "dpp_reference.h"
 #include "exec_masks.h"
 #include "goc/goc.h"
+#include "half_binary_checks.h"
 #include "half_binary_reference.h"
 #include "half_reference.h"
 
@@ -22,15 +23,11 @@ const decltype(&goc_v_add_f16_rdna4_wave64) wave64[] = {
     goc_v_minimum_f16_wave64,   goc_v_maximum_f16_wave64,   goc_v_min_f16_wave64,
     goc_v_max_f16_wave64};
 
-void check(uint32_t actual, uint32_t before, uint16_t want, uint32_t mode) {
-  int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  EXPECT_EQ((actual ^ before) & ~(0xffffU << shift), 0u);
-  uint16_t got = uint16_t(actual >> shift);
-  if ((want & 0x7fff) > 0x7c00) {
-    EXPECT_GT(got & 0x7fff, 0x7c00);
-  } else {
-    EXPECT_EQ(got, want);
-  }
+::testing::AssertionResult check(uint32_t actual, uint32_t before, uint16_t want, uint32_t mode,
+                                 bool arithmetic = false) {
+  unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
+  uint32_t expected = (before & ~(0xffffU << shift)) | (uint32_t(want) << shift);
+  return goc_test::half_binary_equal(actual, expected, mode, arithmetic);
 }
 
 } // namespace
@@ -44,6 +41,15 @@ TEST(HalfBinary, CanonicalNanPreservesUnselectedHalf) {
     EXPECT_EQ(goc_test::canonical_half_nan((bits << 16) | 0x7c01, GOC_ALU_HIGH_D),
               (expected << 16) | 0x7c01);
   }
+}
+
+TEST(HalfBinary, LooseComparisonPreservesStorageAndCategories) {
+  EXPECT_TRUE(goc_test::half_binary_equal(0x7c013c01, 0x7c013c00, 0, true));
+  EXPECT_FALSE(goc_test::half_binary_equal(0x7c013c01, 0x7c013c00, 0, false));
+  EXPECT_FALSE(goc_test::half_binary_equal(0x7e013c01, 0x7c013c00, 0, true));
+  EXPECT_FALSE(goc_test::half_binary_equal(0x7c013c10, 0x7c013c00, 0, true));
+  EXPECT_FALSE(goc_test::half_binary_equal(0x7c018000, 0x7c010000, 0, true));
+  EXPECT_FALSE(goc_test::half_binary_equal(0x7c017bff, 0x7c017c00, 0, true));
 }
 
 TEST(HalfBinary, EveryEncodingAndRandomInputs) {
@@ -61,13 +67,18 @@ TEST(HalfBinary, EveryEncodingAndRandomInputs) {
             words[1][lane] = random();
             words[2][lane] = 0xdeadbeef;
           }
+          uint32_t sources[2][32];
+          std::memcpy(sources, words, sizeof(sources));
           ASSERT_EQ(goc_test::half_binary_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0),
                                                         UINT32_MAX, 0, p + 2, p, p + 1, nullptr),
                     GOC_SUCCESS);
+          ASSERT_EQ(std::memcmp(sources, words, sizeof(sources)), 0);
           for (int lane = 0; lane < 32; ++lane)
-            check(words[2][lane], 0xdeadbeef,
-                  goc_test::half_binary_reference(op, words[0][lane], words[1][lane], 0, saturate),
-                  0);
+            EXPECT_TRUE(check(
+                words[2][lane], 0xdeadbeef,
+                goc_test::half_binary_reference(op, words[0][lane], words[1][lane], 0, saturate), 0,
+                op < 4))
+                << "cpu=" << cpu << " op=" << op << " lane=" << lane;
         }
       }
 }
@@ -97,10 +108,11 @@ TEST(HalfBinary, AllModifiersAndHalfSelectors) {
           for (int reg = 0; reg < 3; ++reg)
             for (int lane = 0; lane < 32; ++lane) {
               if (reg == dest && ((exec_mask >> lane) & 1)) {
-                check(words[reg][lane], before[reg][lane],
-                      goc_test::half_binary_reference(op, before[0][lane], before[1][lane], mode,
-                                                      saturate),
-                      mode);
+                EXPECT_TRUE(check(words[reg][lane], before[reg][lane],
+                                  goc_test::half_binary_reference(op, before[0][lane],
+                                                                  before[1][lane], mode, saturate),
+                                  mode, op < 4))
+                    << "cpu=" << cpu << " op=" << op << " lane=" << lane;
               } else {
                 EXPECT_EQ(words[reg][lane], before[reg][lane]);
               }
@@ -134,10 +146,11 @@ TEST(HalfBinary, MasksAliasesAndUntouchedHalves) {
                 for (int reg = 0; reg < 3; ++reg)
                   for (int lane = 0; lane < 34; ++lane) {
                     if (reg == dest && lane >= 1 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
-                      check(words[reg][lane], before[reg][lane],
-                            goc_test::half_binary_reference(op, before[0][lane], before[b][lane],
-                                                            mode, false),
-                            mode);
+                      EXPECT_TRUE(check(words[reg][lane], before[reg][lane],
+                                        goc_test::half_binary_reference(
+                                            op, before[0][lane], before[b][lane], mode, false),
+                                        mode, op < 4))
+                          << "cpu=" << cpu << " op=" << op << " lane=" << lane;
                     } else {
                       EXPECT_EQ(words[reg][lane], before[reg][lane]);
                     }
@@ -186,7 +199,8 @@ TEST(HalfBinary, LiteralRoundingOverflowAndNanRules) {
                                                          nullptr),
                 GOC_SUCCESS);
       for (auto word : words[2])
-        check(word, 0xdeadbeef, test.result, test.mode);
+        EXPECT_TRUE(check(word, 0xdeadbeef, test.result, test.mode))
+            << "cpu=" << cpu << " op=" << test.op << " mode=" << test.mode;
     }
 }
 
@@ -243,19 +257,24 @@ TEST(HalfBinary, Wave64ModifiersSelectorsDppAndAliases) {
               int source = int(lane);
               bool enabled = descriptor ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
                                         : ((exec_mask >> lane) & 1);
-              if (enabled)
-                check(d[lane], before[dest][lane + 1],
-                      goc_test::half_binary_reference(
-                          op >= 8 ? op - 4 : op, source < 0 ? 0 : before[0][source + 1],
-                          before[1][lane + 1], op >= 8 ? mode & ~GOC_ALU_OMOD_HALF : mode,
-                          saturate),
-                      mode);
-              else
+              if (enabled) {
+                EXPECT_TRUE(check(d[lane], before[dest][lane + 1],
+                                  goc_test::half_binary_reference(
+                                      op >= 8 ? op - 4 : op, source < 0 ? 0 : before[0][source + 1],
+                                      before[1][lane + 1],
+                                      op >= 8 ? mode & ~GOC_ALU_OMOD_HALF : mode, saturate),
+                                  mode, op < 4))
+                    << "cpu=" << cpu << " op=" << op << " lane=" << lane;
+              } else {
                 EXPECT_EQ(d[lane], before[dest][lane + 1]);
+              }
             }
             for (unsigned reg = 0; reg < 3; ++reg) {
               EXPECT_EQ(words[reg][0], before[reg][0]);
               EXPECT_EQ(words[reg][65], before[reg][65]);
+              if (reg != dest) {
+                EXPECT_EQ(std::memcmp(words[reg], before[reg], sizeof(words[reg])), 0);
+              }
             }
           }
 }
@@ -350,11 +369,16 @@ TEST(HalfBinary, ArchitectureScalingDenormalsSelectorsDppAndAliases) {
                           goc_test::half_binary_reference(op, x, y, effective_mode, settings & 8);
                       if (op < 4 && (settings & 2) && (expected & 0x7fff) < 0x400)
                         expected &= 0x8000;
-                      check(d[lane], before[alias][lane + 1], expected, mode);
+                      EXPECT_TRUE(check(d[lane], before[alias][lane + 1], expected, mode, op < 4))
+                          << "cpu=" << cpu << " op=" << op << " lane=" << lane;
                     }
                     for (unsigned reg = 0; reg < 3; ++reg) {
                       EXPECT_EQ(words[reg][0], before[reg][0]);
-                      EXPECT_EQ(words[reg][width + 1], before[reg][width + 1]);
+                      for (unsigned index = 1; index < 66; ++index) {
+                        if (reg != alias || index > width) {
+                          EXPECT_EQ(words[reg][index], before[reg][index]);
+                        }
+                      }
                     }
                   }
 }
@@ -501,8 +525,17 @@ TEST(HalfBinary, MinmaxRawNanBitsGuestModesAndPackedSelectors) {
                         : wide[packed][op](flags, exec_mask, mode, &d, &a, &b, &state),
                     GOC_SUCCESS);
                 EXPECT_EQ(state, 0x12345678U);
+                for (unsigned reg = 0; reg < 3; ++reg) {
+                  if (reg != alias) {
+                    EXPECT_EQ(std::memcmp(words[reg], before[reg], sizeof(words[reg])), 0);
+                  }
+                }
                 unsigned column = (op >= 4 ? 6 : op >= 2 ? 4 : settings & 4 ? 2 : 0) + (op & 1);
-                for (unsigned lane = 0; lane < width; ++lane) {
+                for (unsigned lane = 0; lane < 64; ++lane) {
+                  if (lane >= width) {
+                    EXPECT_EQ(d[lane], before[alias][lane]);
+                    continue;
+                  }
                   const auto &test = cases[lane % 9];
                   unsigned choice = test.selected[column];
                   uint16_t expected = choice & 1 ? test.b : test.a;

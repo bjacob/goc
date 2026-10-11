@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 140 explicit family-file reviews exist and 14
+non-generic family references. 142 explicit family-file reviews exist and 12
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -534,3 +534,12 @@ bound, while inactive storage and unselected halves remain raw. FP32 references
 use long-double FMA with explicit quad routing. Both families now protect random
 test references against source mutation and pass alternate-seed calibration.
 Wave64 capture reuse is explicitly distinguished from native hardware captures.
+
+
+Half binary arithmetic and its DPP integration now share one test comparison rule:
+loose finite arithmetic uses the measured half bound, selection and categorical
+outputs stay raw, and the unselected half is always preserved exactly. A focused
+comparator regression checks that distinction. Fixed hardware/OMOD witnesses
+remain raw. Added source and out-of-wave checks; the DPP exhaustive-modifier
+test no longer canonicalizes unwritten NaNs. Both fixed-seed and alternate-seed
+corpora pass on Clang and GCC with unchanged numerical bounds.

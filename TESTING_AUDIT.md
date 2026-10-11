@@ -785,3 +785,15 @@ references now have source-preservation checks in both families. Original and
 alternate seeds agree exactly with the computed references on Clang and GCC;
 all 21 tests pass. Explicit inventory: 140/154 reviewed family files, with 14
 remaining before final broad verification.
+
+
+### Half binary arithmetic and DPP review
+
+Separated general loose finite arithmetic from raw min/max and categorical
+comparisons, with one small shared test comparison rule and a focused regression
+protecting storage/categories. Fixed the DPP exhaustive-modifier test's
+canonicalization of unwritten NaNs and protected references with input snapshots.
+Added missing Wave64/source/out-of-wave storage checks. All 20 affected tests
+pass on Clang and GCC; original and alternate-seed calibration has zero observed
+arithmetic error without widening bounds. The inventory reaches 142/154 reviewed
+family files; 12 and final broad verification remain.
