@@ -400,3 +400,13 @@ with pseudorandom B; only B changes in the holdout, while fixed modifier/policy
 and special-pair sweeps repeat. Selection, literal witnesses, zero signs and
 unwritten storage remain exact. Script/snapshots/logs:
 `goc-build/coverage-work/testing-packed-binary-calibration/run.py`.
+
+
+Packed half FMA/FMAC reuse the established half-FMA bound (2^-24, 1e-3).
+Clang and GCC each measure 6,958,368 finite nonzero comparisons with zero error
+using seed 2371, and 6,955,040 with zero error using alternate seed 61981.
+The holdout changes random triples and random packed modifiers; the exhaustive
+A-encoding prefix and fixed boundary/policy/alias sweeps remain. Exact semantics,
+literal witnesses, categorical results and storage remain bitwise checks.
+Script/snapshots/logs:
+goc-build/coverage-work/testing-packed-fma-calibration/run.py.

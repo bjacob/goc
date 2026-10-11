@@ -722,3 +722,18 @@ now compare each half numerically with the existing half arithmetic bound;
 selection, literals and storage stay exact. Added missing Wave64 source checks
 and per-half diagnostics. Existing/alternate seeds and all 11 family tests pass
 on Clang/GCC, along with 14 tooling tests. Production remains unchanged.
+
+
+### Packed FMA/FMAC review
+
+Reviewed all 14 packed FMA tests across RDNA3/RDNA4 and both widths. Loose finite
+arithmetic now uses the shared calibrated half-FMA comparison while exact
+integer-grid references, inherited literal witnesses and storage stay bitwise.
+Added missing source-preservation checks, checked all unrelated exception bits,
+expanded architecture guest-policy coverage to every available CPU selector, and
+removed vacuous state assertions when the reporting pointer is null.
+Both compilers pass the 14 tests and original/alternate-seed calibration without
+loosening bounds; each seed checks about 6.96 million finite half results with
+zero observed numerical error. The explicit inventory reaches 134/154 reviewed
+family files; 20 remain, followed by final broad verification. Production is
+unchanged.

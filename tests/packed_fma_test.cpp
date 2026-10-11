@@ -3,8 +3,11 @@
 #include "capture_hash.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_fma_reference.h"
+#include "half_reference.h"
+#include "loose_tolerances.h"
 #include "packed_fma_exceptions_hardware.h"
 
 #include <algorithm>
@@ -60,15 +63,26 @@ uint32_t reference(uint32_t a, uint32_t b, uint32_t c, uint32_t mode, bool satur
   return result;
 }
 
-void check(uint32_t actual, uint32_t expected, bool exact) {
+::testing::AssertionResult check(uint32_t actual, uint32_t expected, bool exact) {
   for (int half = 0; half < 2; ++half) {
     uint16_t got = uint16_t(actual >> (16 * half)), want = uint16_t(expected >> (16 * half));
-    if (!exact && (want & 0x7fff) > 0x7c00) {
-      EXPECT_GT(got & 0x7fff, 0x7c00);
-    } else {
-      EXPECT_EQ(got, want);
+    unsigned magnitude = want & 0x7fff;
+    if (!exact && magnitude > 0x7c00) {
+      if ((got & 0x7fff) > 0x7c00)
+        continue;
+    } else if (!exact && magnitude && magnitude < 0x7c00 && (got & 0x8000) == (want & 0x8000)) {
+      auto result = goc_test::fuzzy(goc_test::half_value(got), goc_test::half_value(want),
+                                    goc_test::fma_f16_tolerance);
+      if (!result)
+        return ::testing::AssertionFailure() << "half=" << half << " " << result.message();
+      continue;
+    } else if (got == want) {
+      continue;
     }
+    return ::testing::AssertionFailure()
+           << "half=" << half << " actual=" << got << " expected=" << want;
   }
+  return ::testing::AssertionSuccess();
 }
 
 void fill(uint32_t (&words)[4][34]) {
@@ -89,10 +103,11 @@ void run(bool accumulate, uint64_t flags, uint32_t exec_mask, uint64_t mode, int
   for (int reg = 0; reg < 4; ++reg)
     for (int lane = 0; lane < 34; ++lane) {
       if (reg == d && lane >= 1 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
-        check(words[reg][lane],
-              reference(before[a][lane], before[b][lane], before[accumulate ? d : c][lane], mode,
-                        flags & GOC_FP16_OVFL),
-              flags & GOC_SEMANTICS_MASK);
+        EXPECT_TRUE(check(words[reg][lane],
+                          reference(before[a][lane], before[b][lane],
+                                    before[accumulate ? d : c][lane], mode, flags & GOC_FP16_OVFL),
+                          flags & GOC_SEMANTICS_MASK))
+            << "lane=" << lane;
       } else {
         EXPECT_EQ(words[reg][lane], before[reg][lane]);
       }
@@ -290,13 +305,13 @@ TEST(PackedFma, ExceptionHardwareCorpus) {
           }
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[op ? 2 : 3]};
-          uint32_t exceptions = 0x80000000;
+          uint32_t exceptions = 0xffffff80;
           uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                            (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
           int status = op ? goc_v_pk_fmac_f16_rdna4(flags, 1, 0, d, a, b, &exceptions)
                           : goc_v_pk_fma_f16_rdna4(flags, 1, mode, d, a, b, c, &exceptions);
           ASSERT_EQ(status, GOC_SUCCESS);
-          ASSERT_TRUE(exceptions & 0x80000000);
+          ASSERT_EQ(exceptions & ~0x7fU, 0xffffff80U);
           hash = goc_test::capture_hash_word(hash, exceptions & 127);
         }
         EXPECT_EQ(hash, goc_test::packed_fma_exception_hashes[op][variant])
@@ -328,14 +343,14 @@ TEST(PackedFma, Wave64UpperLaneExceptionHardwareCorpus) {
           }
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[op ? 2 : 3]};
-          uint32_t exceptions = 0x80000000;
+          uint32_t exceptions = 0xffffff80;
           uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                            (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
           int status =
               op ? goc_v_pk_fmac_f16_rdna4_wave64(flags, 1ULL << 63, 0, d, a, b, &exceptions)
                  : goc_v_pk_fma_f16_rdna4_wave64(flags, 1ULL << 63, mode, d, a, b, c, &exceptions);
           ASSERT_EQ(status, GOC_SUCCESS);
-          ASSERT_TRUE(exceptions & 0x80000000);
+          ASSERT_EQ(exceptions & ~0x7fU, 0xffffff80U);
           hash = goc_test::capture_hash_word(hash, exceptions & 127);
         }
         EXPECT_EQ(hash, goc_test::packed_fma_exception_hashes[op][variant])
@@ -398,24 +413,31 @@ TEST(PackedFma, Wave64AllModifiersAndMasks) {
             uint64_t exec_mask = 0x87654321fedcba98ULL;
             uint64_t flags = cpu | (saturate ? GOC_FP16_OVFL : 0) |
                              (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0);
-            uint32_t exceptions = 0x80000000;
+            uint32_t exceptions = 0xffffff80;
             ASSERT_EQ(call_wave64(accumulate, flags, exec_mask, instruction_flags, &d, &a, &b, &c,
                                   exact ? nullptr : &exceptions),
                       GOC_SUCCESS);
-            EXPECT_EQ(exceptions, 0x80000000U);
+            if (!exact) {
+              EXPECT_EQ(exceptions, 0xffffff80U);
+            }
             for (unsigned lane = 0; lane < 64; ++lane) {
-              if ((exec_mask >> lane) & 1)
-                check(d[lane],
-                      reference(before[0][lane + 1], before[1][lane + 1],
-                                before[accumulate ? dest : 2][lane + 1], instruction_flags,
-                                saturate),
-                      exact);
-              else
+              if ((exec_mask >> lane) & 1) {
+                EXPECT_TRUE(check(d[lane],
+                                  reference(before[0][lane + 1], before[1][lane + 1],
+                                            before[accumulate ? dest : 2][lane + 1],
+                                            instruction_flags, saturate),
+                                  exact))
+                    << "cpu=" << cpu << " mode=" << mode << " lane=" << lane;
+              } else {
                 EXPECT_EQ(d[lane], before[dest][lane + 1]);
+              }
             }
             for (unsigned reg = 0; reg < 4; ++reg) {
               EXPECT_EQ(words[reg][0], before[reg][0]);
               EXPECT_EQ(words[reg][65], before[reg][65]);
+              if (reg != dest) {
+                EXPECT_EQ(std::memcmp(words[reg], before[reg], sizeof(words[reg])), 0);
+              }
             }
           }
 }
@@ -456,9 +478,7 @@ TEST(PackedFma, ArchitectureGuestModes) {
     for (bool wide : {false, true})
       for (bool accumulate : {false, true})
         for (bool exact : {false, true})
-          for (uint64_t cpu : {GOC_CPU_BASELINE, GOC_CPU_X86_64_V3}) {
-            if (cpu > detected)
-              continue;
+          for (uint64_t cpu = 0; cpu <= detected; ++cpu) {
             for (unsigned policy = 0; policy < 8; ++policy) {
               uint64_t guest = (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
                                (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
@@ -478,6 +498,10 @@ TEST(PackedFma, ArchitectureGuestModes) {
                       values[(lane + 13) % 20] | (uint32_t(values[(lane / 2 + 9) % 20]) << 16);
                   before[lane] = d[lane] = accumulate ? c[lane] : 0xdeadbeef;
                 }
+                uint32_t sources[3][64];
+                std::memcpy(sources[0], a, sizeof(a));
+                std::memcpy(sources[1], b, sizeof(b));
+                std::memcpy(sources[2], c, sizeof(c));
                 uint32_t *dest = d;
                 const uint32_t *x = a, *y = b, *z = c;
                 uint64_t exec_mask = 0xa3958acee37f5a91ULL;
@@ -494,14 +518,22 @@ TEST(PackedFma, ArchitectureGuestModes) {
                               : fma32(flags, uint32_t(exec_mask), mode, &dest, &x, &y, &z, output);
                 };
                 ASSERT_EQ(invoke(exact ? nullptr : &state), GOC_SUCCESS);
-                EXPECT_EQ(state, 0x12345678U);
+                ASSERT_EQ(std::memcmp(sources[0], a, sizeof(a)), 0);
+                ASSERT_EQ(std::memcmp(sources[1], b, sizeof(b)), 0);
+                ASSERT_EQ(std::memcmp(sources[2], c, sizeof(c)), 0);
+                if (!exact) {
+                  EXPECT_EQ(state, 0x12345678U);
+                }
                 for (int lane = 0; lane < 64; ++lane) {
                   if (lane >= (wide ? 64 : 32) || !((exec_mask >> lane) & 1)) {
                     EXPECT_EQ(d[lane], before[lane]);
                     continue;
                   }
-                  check(d[lane], reference(a[lane], b[lane], c[lane], mode, false, guest, rdna3),
-                        exact);
+                  EXPECT_TRUE(check(d[lane],
+                                    reference(a[lane], b[lane], c[lane], mode, false, guest, rdna3),
+                                    exact))
+                      << "rdna3=" << rdna3 << " wide=" << wide << " cpu=" << cpu
+                      << " policy=" << policy << " mode=" << mode << " lane=" << lane;
                 }
                 if (exact && (rdna3 || (policy & 3))) {
                   std::memcpy(before, d, sizeof(d));
@@ -570,9 +602,16 @@ TEST(PackedFma, FmacVop3ModifiersAndAliases) {
                                      : std::min<uint16_t>(result, 0x3c00);
                       expected |= uint32_t(result) << (16 * half);
                     }
-                    check(d[lane], expected, exact);
+                    EXPECT_TRUE(check(d[lane], expected, exact))
+                        << "rdna3=" << rdna3 << " wide=" << wide << " cpu=" << cpu
+                        << " mode=" << mode << " policy=" << policy << " lane=" << lane;
                   } else {
                     EXPECT_EQ(d[lane], expected);
+                  }
+                }
+                for (int reg = 0; reg < 3; ++reg) {
+                  if (reg != alias) {
+                    EXPECT_EQ(std::memcmp(words[reg], before[reg], sizeof(words[reg])), 0);
                   }
                 }
               }

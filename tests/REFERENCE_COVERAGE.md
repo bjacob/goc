@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 133 explicit family-file reviews exist and 21
+non-generic family references. 134 explicit family-file reviews exist and 20
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -488,3 +488,13 @@ Reviewed deterministic exhaustive-A/random-B generation, all packed modifiers,
 guest policies and both widths; added missing Wave64 source checks and per-half
 failure diagnostics. Literal contract witnesses remain exact. These loose-only
 APIs use independent mathematical references without a new golden-data burden.
+
+
+Packed FMA/FMAC now distinguishes finite loose comparisons from exact integer-grid
+references, literal rocjitsu NaN/fused witnesses and raw storage checks. All
+available CPU selectors cover architecture guest-policy integration. Wave64 and
+FMAC modifier sweeps check nondestination words, and exception capture tests
+preserve every bit outside the seven-bit arithmetic field. Both wave widths
+retain captured exception digests and explicit union/alias/validation witnesses.
+Computed numerical references remain justified by exact half arithmetic and the
+existing exceptional-policy evidence; no new golden arrays were needed.

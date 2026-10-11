@@ -2358,5 +2358,33 @@
     ],
     "scope": "Packed FP16 ADD/MUL (RDNA3/RDNA4) and six min/max spellings, both wave widths. Independent double arithmetic with numeric half conversion, half selectors, separate low/high negation, clamp and guest flushing supplies loose ADD/MUL references. Numeric/propagating/legacy selection is checked via raw half ordering with explicit signaling/quiet NaN policies. All 512 valid modifiers and overflow policies are covered on available CPU selectors. Wave32 includes Cartesian special pairs, every A encoding paired with fixed-seed MT19937 B words, eight representative modes across 84 masks, shared/distinct sources and all destinations with guards. Wave64 and architecture integration cover all modifiers with stratified aliases/full/mixed masks and eight guest policies; this is not the complete encoding-by-mode Cartesian product. Dedicated literal selection, signed-zero, NaN and denormal witnesses remain exact. Loose optional-state preservation, unsupported exact semantics/reporting, invalid flags and host controls are explicit. These are loose-only numerical APIs; computed references need no arbitrary exact-SFU equivalence claim.",
     "diagnostics": "Per-half assertion results identify numerical errors without imposing exact loose ADD/MUL rounding. Literal witnesses and min/max remain raw, and all inactive/source storage is bitwise. Added missing Wave64 nondestination words and operation/CPU/mode/lane diagnostics. Existing and alternate random-B seeds validate the unchanged half arithmetic tolerance."
+  },
+  {
+    "file": "packed_fma_test.cpp",
+    "assertions": [
+      "PackedFma.AllModifiersOverflowPoliciesAndCpuLevels",
+      "PackedFma.EveryEncodingAndRandomTriples",
+      "PackedFma.MasksAndEveryWholeRegisterAlias",
+      "PackedFma.BothResultsReadOriginalHalves",
+      "PackedFma.HardwareWitnessesAndExactHostEnvironment",
+      "PackedFma.ValidationAndZeroMasks",
+      "PackedFma.ExceptionHardwareCorpus",
+      "PackedFma.Wave64UpperLaneExceptionHardwareCorpus",
+      "PackedFma.Wave64HardwareWitnessesAndExactHostEnvironment",
+      "PackedFma.Wave64AllModifiersAndMasks",
+      "PackedFma.Wave64ExceptionUnionAliasesAndValidation",
+      "PackedFma.ArchitectureGuestModes",
+      "PackedFma.FmacVop3ModifiersAndAliases",
+      "PackedFma.FmacModifiersDetermineReportedInvalid"
+    ],
+    "evidence": [
+      "tests/packed_fma_test.cpp",
+      "tests/half_fma_reference.h",
+      "tests/packed_fma_exceptions_hardware.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Packed F16 FMA/FMAC for RDNA3/RDNA4 and both wave widths. Independent integer-grid half FMA computes the finite RNE reference without host FP rounding; literal rocjitsu NaN witnesses and fused ties anchor exceptional behavior. This inherits the half-FMA reference's documented guest policies, not an inference that arbitrary mathematical references match hardware. All 8192 packed FMA modifiers, both overflow policies, every A encoding and fixed-seed random triples are covered on available CPU selectors. Wave32 spans 84 masks and all whole-register source/destination aliases; Wave64 spans modifiers and destination aliases with a mixed mask. FMAC separately spans 128 VOP3 modifiers, eight guest policies and three aliases on both architectures/widths. Guest-mode integration now covers all CPU selectors. Independent gfx1201 MODE 0xf0 exception digests cover 8192 triples at lane 0 and lane 63, with inactive signaling NaNs; literal tests cover cross-half/lane exception union, output aliasing and modifier-sensitive invalid. Unsupported global-state policies and invalid flags preserve outputs. Corpus digests are aggregate exception evidence, not arbitrary guest-mode hardware validation.",
+    "diagnostics": "Per-half assertion results attach CPU, mode and lane context. Exact results, literal witnesses, zero/infinity signs and all inactive/source storage remain raw; loose finite arithmetic uses calibrated half-FMA atol/rtol. Added missing Wave64 and FMAC source checks, architecture input-preservation checks and all unrelated exception-state bits. Exact null opt-out no longer has a vacuous unchanged-state assertion. Original and alternate random seeds pass on Clang and GCC."
   }
 ]
