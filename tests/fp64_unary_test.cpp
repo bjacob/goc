@@ -3,6 +3,7 @@
 #include "exec_masks.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
+#include "loose_tolerances.h"
 #include "omod_reference.h"
 #include "test_instruction.h"
 
@@ -12,6 +13,7 @@
 #include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
+#include <random>
 #include <stdint.h>
 
 #if defined(__x86_64__) || defined(_M_X64)
@@ -177,7 +179,8 @@ TEST(Fp64Unary, AllModifiersMasksAndCrossHalfAliases) {
               } else if (op < 5 || expected[lane] == 0 || std::isinf(expected[lane])) {
                 EXPECT_EQ(got, bits(expected[lane]));
               } else {
-                EXPECT_DOUBLE_EQ(number(got), expected[lane]);
+                EXPECT_TRUE(
+                    goc_test::fuzzy(number(got), expected[lane], goc_test::unary_f64_tolerance));
               }
             }
             for (const auto &reg : storage) {
@@ -356,7 +359,8 @@ TEST(Fp64Unary, Wave64AllModifiersMasksAndCrossWordAliases) {
               } else if (op < 5 || expected[lane] == 0 || std::isinf(expected[lane])) {
                 EXPECT_EQ(got, bits(expected[lane]));
               } else {
-                EXPECT_DOUBLE_EQ(number(got), expected[lane]);
+                EXPECT_TRUE(
+                    goc_test::fuzzy(number(got), expected[lane], goc_test::unary_f64_tolerance));
               }
             }
             for (const auto &reg : storage) {
@@ -512,7 +516,7 @@ TEST(Fp64Unary, ArchitecturePoliciesModifiersAndAliases) {
                   } else if (op < 5 || want == 0 || std::isinf(want)) {
                     EXPECT_EQ(got, bits(want));
                   } else {
-                    EXPECT_DOUBLE_EQ(number(got), want);
+                    EXPECT_TRUE(goc_test::fuzzy(number(got), want, goc_test::unary_f64_tolerance));
                   }
                 }
                 for (unsigned reg = 0; reg < 4; ++reg) {
@@ -574,3 +578,51 @@ TEST(Fp64Unary, ArchitectureValidationAndHostControls) {
             EXPECT_EQ(state, 0x80000055U);
           }
 }
+
+namespace {
+
+void check_numerical_corpus(uint32_t seed) {
+  std::mt19937 random(seed);
+  for (unsigned batch = 0; batch < 32; ++batch) {
+    uint32_t inputs[2][64], outputs[2][64];
+    for (unsigned lane = 0; lane < 64; ++lane) {
+      uint64_t high = random();
+      uint32_t low = random();
+      uint64_t word = (high << 32) | low;
+      if (batch % 3 == 1)
+        word = 0x3ff0000000000000ULL + word % 8193 - 4096;
+      else if (batch % 3 == 2)
+        word &= 0x800fffffffffffffULL;
+      inputs[0][lane] = uint32_t(word);
+      inputs[1][lane] = uint32_t(word >> 32);
+    }
+    const uint32_t *a[] = {inputs[0], inputs[1]};
+    uint32_t *d[] = {outputs[0], outputs[1]};
+    for (unsigned op = 5; op < 8; ++op)
+      for (unsigned variant = 0; variant < 32; ++variant) {
+        uint32_t mode = (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
+                        ((variant >> 2 & 3) << 6) | (variant & 16 ? GOC_ALU_CLAMP : 0);
+        for (bool wide : {false, true})
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            ASSERT_EQ(wide ? wave64[op](cpu, UINT64_MAX, mode, d, a, nullptr)
+                           : functions[op](cpu, UINT32_MAX, mode, d, a, nullptr),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane) {
+              SCOPED_TRACE(::testing::Message()
+                           << seed << '/' << batch << '/' << op << '/' << variant << '/' << wide
+                           << '/' << cpu << '/' << lane);
+              uint64_t input = inputs[0][lane] | (uint64_t(inputs[1][lane]) << 32);
+              uint64_t output = outputs[0][lane] | (uint64_t(outputs[1][lane]) << 32);
+              ASSERT_TRUE(goc_test::fuzzy(number(output), reference(op, input, mode),
+                                          goc_test::unary_f64_tolerance));
+            }
+          }
+      }
+  }
+}
+
+} // namespace
+
+TEST(Fp64Unary, DeterministicNumericalCalibration) { check_numerical_corpus(33457U); }
+
+TEST(Fp64Unary, DeterministicNumericalHoldout) { check_numerical_corpus(81541U); }

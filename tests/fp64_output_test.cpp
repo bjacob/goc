@@ -4,6 +4,7 @@
 #include "fp64.h"
 #include "fp64_output_hardware.h"
 #include "goc/goc.h"
+#include "loose_tolerances.h"
 
 #include <cmath>
 #include <gtest/gtest.h>
@@ -90,7 +91,8 @@ TEST(Fp64Output, HardwareModifiersAndCrossHalfAliases) {
                 EXPECT_EQ(raw >> 63, want >> 63);
                 EXPECT_EQ(std::fpclassify(goc::as_double(raw)),
                           std::fpclassify(goc::as_double(want)));
-                EXPECT_NEAR(goc::as_double(raw) / goc::as_double(want), 1.0, 0x1p-23);
+                EXPECT_TRUE(goc_test::fuzzy(goc::as_double(raw), goc::as_double(want),
+                                            goc_test::hardware_sfu_f64_tolerance));
               }
             }
             if ((raw & 0x7fffffffffffffffULL) > 0x7ff0000000000000ULL)

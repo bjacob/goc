@@ -9,6 +9,11 @@ namespace goc_test {
 // Family/domain-specific bounds. Measurements and provenance are recorded in
 // LOOSE_TOLERANCES.md; these are not universal tolerances for every instruction
 // producing the same numeric format.
+inline const Tolerance fp8_dot_repeated_tolerance = {0, 2.5e-7};
+// Mixed FP8/BF8 factors bounded by 4, including cancellation against C.
+inline const Tolerance fp8_dot_bounded_tolerance = {4e-6, 2e-7};
+inline const Tolerance unary_f64_tolerance = {0x1p-1072, 5e-16};
+inline const Tolerance hardware_sfu_f64_tolerance = {0, 0x1p-23};
 inline const Tolerance unary_f32_tolerance = {0, 2.5e-7};
 inline const Tolerance wmma_f32_tolerance = {1e-5, 1e-5};
 inline const Tolerance interp_f32_tolerance = {1e-44, 2e-7};

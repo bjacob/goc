@@ -4,6 +4,7 @@
 #include "exec_masks.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,6 +14,7 @@
 #include <limits>
 #include <random>
 #include <stdint.h>
+#include <vector>
 
 namespace {
 
@@ -41,7 +43,7 @@ void compare(uint32_t word, double expected) {
   if (std::isnan(rounded)) {
     EXPECT_TRUE(std::isnan(actual));
   } else {
-    EXPECT_FLOAT_EQ(actual, rounded);
+    EXPECT_TRUE(goc_test::fuzzy(actual, rounded, goc_test::fp8_dot_repeated_tolerance));
   }
 }
 
@@ -122,7 +124,8 @@ TEST(Fp8Dot, MixedBytesMasksAndAliases) {
               for (int byte = 0; byte < 4; ++byte)
                 expected += factors[0][lane][byte] * factors[1][lane][byte];
               if ((exec_mask >> lane) & 1) {
-                EXPECT_FLOAT_EQ(goc::as_float(v[alias][lane]), float(expected));
+                // Small integer products and sums are exactly representable.
+                EXPECT_EQ(goc::as_float(v[alias][lane]), float(expected));
               } else {
                 EXPECT_EQ(v[alias][lane], before[lane]);
               }
@@ -228,7 +231,8 @@ TEST(Fp8Dot, Wave64MixedBytesMasksAndAliases) {
               for (int byte = 0; byte < 4; ++byte)
                 expected += factors[0][lane][byte] * factors[1][lane][byte];
               if ((exec_mask >> lane) & 1) {
-                EXPECT_FLOAT_EQ(goc::as_float(v[alias][lane]), float(expected));
+                // Small integer products and sums are exactly representable.
+                EXPECT_EQ(goc::as_float(v[alias][lane]), float(expected));
               } else {
                 EXPECT_EQ(v[alias][lane], before[lane]);
               }
@@ -368,3 +372,66 @@ TEST(Fp8Dot, DppValidationAndLooseFallback) {
       }
     }
 }
+
+namespace {
+
+// Mathematical binary64 accumulation, independent of the implementation's
+// binary32 FMA chain. Bound factors by 4 to give the fixed absolute tolerance a
+// meaningful scale near cancellation; exhaustive byte-pair tests cover the full
+// encoding/exponent range separately.
+void check_bounded_numerical_corpus(uint32_t seed) {
+  std::vector<uint8_t> codes[2];
+  for (unsigned format = 0; format < 2; ++format)
+    for (unsigned code = 0; code < 256; ++code)
+      if (std::isfinite(decode(code, format)) && std::abs(decode(code, format)) <= 4)
+        codes[format].push_back(uint8_t(code));
+  std::mt19937 random(seed);
+  for (unsigned op = 0; op < 4; ++op)
+    for (unsigned batch = 0; batch < 64; ++batch) {
+      uint32_t words[4][64] = {};
+      double products[64] = {};
+      for (unsigned lane = 0; lane < 64; ++lane) {
+        for (unsigned byte = 0; byte < 4; ++byte) {
+          uint8_t a = codes[op / 2][random() % codes[op / 2].size()];
+          uint8_t b = codes[op % 2][random() % codes[op % 2].size()];
+          words[0][lane] |= uint32_t(a) << (8 * byte);
+          words[1][lane] |= uint32_t(b) << (8 * byte);
+          products[lane] += decode(a, op / 2) * decode(b, op % 2);
+        }
+        float acc = float(int(random() % 2049) - 1024) / 256;
+        if (batch & 1)
+          acc = -float(products[lane]);
+        words[2][lane] = goc::as_bits(acc);
+      }
+      const uint32_t *a = words[0], *b = words[1], *c = words[2];
+      uint32_t *d = words[3];
+      for (unsigned variant = 0; variant < 4; ++variant) {
+        uint32_t mode = (variant & 1 ? GOC_DOT_NEG_C : 0) | (variant & 2 ? GOC_DOT_ABS_C : 0);
+        for (bool wide : {false, true})
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            ASSERT_EQ(wide ? wave64_functions[op](cpu, UINT64_MAX, mode, &d, &a, &b, &c)
+                           : functions[op](cpu, UINT32_MAX, mode, &d, &a, &b, &c),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane) {
+              SCOPED_TRACE(::testing::Message()
+                           << seed << '/' << op << '/' << batch << '/' << variant << '/' << wide
+                           << '/' << cpu << '/' << lane);
+              double expected = goc::as_float(c[lane]);
+              if (mode & GOC_DOT_ABS_C)
+                expected = std::abs(expected);
+              if (mode & GOC_DOT_NEG_C)
+                expected = -expected;
+              expected += products[lane];
+              ASSERT_TRUE(goc_test::fuzzy(goc::as_float(d[lane]), float(expected),
+                                          goc_test::fp8_dot_bounded_tolerance));
+            }
+          }
+      }
+    }
+}
+
+} // namespace
+
+TEST(Fp8Dot, DeterministicNumericalCalibration) { check_bounded_numerical_corpus(39217U); }
+
+TEST(Fp8Dot, DeterministicNumericalHoldout) { check_bounded_numerical_corpus(71993U); }

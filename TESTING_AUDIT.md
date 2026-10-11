@@ -225,3 +225,15 @@ hardware exact cases and untouched-bit assertions remain unchanged. Trig
 architecture comparisons also use the shared helper, preserving their bounds.
 All 17 affected tests pass with both compilers. FP8/FP64 and the remaining
 family/domain coverage and calibration work are still open.
+
+### FP8 dot, FP64 and DPP unary numerical comparisons
+
+All remaining GoogleTest floating/near assertions now use explicit shared
+numerical tolerances, except small-integer FP8 checks which now require exact
+numeric equality. Added deterministic calibration/holdout corpora for mixed
+FP8/BF8 reductions (including cancellation) and FP64 sqrt/rcp/rsq. Measurements
+and domains are recorded in [tests/LOOSE_TOLERANCES.md](tests/LOOSE_TOLERANCES.md);
+all 27 affected tests pass on Clang and GCC. Hardware FP64 SFU comparisons retain
+their separate, intentionally looser hardware-relative bound. Half-format ULP
+comparisons, remaining calibration domains and the oracle inventory are still
+open; removal of comparison macros is not used as a completion criterion.

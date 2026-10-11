@@ -92,3 +92,55 @@ That branch's bound is preserved, not claimed calibrated by these measurements.
 All 17 affected tests pass on Clang and GCC. Measurement snapshots, scripts and
 logs are in `coverage-work/testing-unary-calibration/` in each build directory;
 the ordinary test logs are `coverage-work/testing-unary.log`.
+
+## FP8 dot and FP64 calibration
+
+FP8/BF8 dot has two deliberately different domains. Exhaustive repeated-byte
+pairs span all encodings with C = +/-1.25; they use `(0, 2.5e-7)`. New mixed-byte
+corpora bound finite factors by 4 and use `(4e-6, 2e-7)`. C alternates between
+multiples of 1/256 in [-4,4] and the negated rounded dot product, creating strong
+cancellation. All four format combinations, C modifiers, CPU selectors and both
+wave widths are covered. References decode independently and accumulate in
+binary64 before rounding once. Integer-only alias/routing tests retain exact
+checks because their small products and sums are exactly representable.
+
+The mixed tests use MT19937 seed 39217 for calibration and 71993 for holdout,
+64 batches of 64 lanes per format combination. These bounds are specific to
+those domains; neither is advertised as a universal bound for arbitrary
+mixed-exponent reductions with cancellation.
+
+FP64 sqrt/rcp/rsq numerical tests use `(4 * minimum_subnormal, 5e-16)` against the
+existing long-double mathematical reference. The new calibration/holdout tests
+use MT19937 seeds 33457/81541, 32 batches of 64 lanes, all 32 modifiers, CPU levels
+and both wave widths. Separately sequenced high/low draws form binary64 words;
+strata cover raw words, encodings close to 1, and subnormals. Existing exact
+rounding, alias and special-value assertions remain. The reference precision
+is host-dependent; these measurements use x86 extended-precision long double,
+not a claim of hardware-exact SFU behavior or identical libm on every host.
+
+FP64 comparisons to the captured hardware SFU outputs keep their previous
+relative tolerance `2^-23`, now expressed directly as `(0, 2^-23)` instead of
+subtracting 1 from the actual/reference quotient. Sign and classification
+checks remain separate. Hardware approximations need not have binary64 accuracy.
+
+| Domain | Finite pairs | Max absolute error | Max relative error | Fraction of bound |
+| --- | ---: | ---: | ---: | ---: |
+| FP8 repeated pairs | 8,064,128 | 2 | 1.907387e-7 | 0.762955 |
+| FP8 mixed calibration | 393,216 | 1.907349e-6 | 15 | 0.254315 |
+| FP8 mixed holdout | 393,216 | 1.907349e-6 | 15 | 0.256883 |
+| FP64 mathematical existing + calibration | 3,324,752 | 2.381705e139 | 2.220447e-16 | 0.444090 |
+| FP64 mathematical holdout | 952,384 | 1.995841e292 | 2.220447e-16 | 0.444090 |
+| FP64 hardware SFU | 15,792 | 3.672847e300 | 4.086178e-8 | 0.342774 |
+
+Clang and GCC produced identical statistics on this host. The large relative
+error for FP8 cancellation demonstrates why the absolute term matters. The
+large FP64 absolute errors are at large exponents, where the relative term
+controls the comparison. All 24 FP8/FP64 tests pass with both compilers.
+Measurement scripts/snapshots/logs are in each build tree's
+`coverage-work/testing-fp8-fp64-calibration/`.
+
+The three DPP unary tests now also use the calibrated FP32 unary comparator and
+pass under both compilers. No `EXPECT/ASSERT_FLOAT_EQ`, `DOUBLE_EQ` or `NEAR`
+calls remain in test sources. That textual fact does not establish that every
+loose numerical comparison has been migrated: half-format ULP checks and the
+meaning of existing bitwise/differential comparisons remain under review.

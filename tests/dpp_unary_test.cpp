@@ -5,6 +5,7 @@
 #include "exec_masks.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "loose_tolerances.h"
 #include "unary_reference.h"
 
 #include <algorithm>
@@ -81,7 +82,7 @@ TEST(DppUnary, AllModifiersMasksAliasesAndSpecialValues) {
                 } else if (want == 0 || std::isinf(want)) {
                   ASSERT_EQ(pd[lane], goc::as_bits(want));
                 } else {
-                  ASSERT_FLOAT_EQ(got, want);
+                  ASSERT_TRUE(goc_test::fuzzy(got, want, goc_test::unary_f32_tolerance));
                 }
               }
               ASSERT_EQ(a[0], 0xdeadbeefu);
