@@ -558,3 +558,11 @@ per-input diagnostics alongside full exact-FMA hardware digests, improved
 modifier failure context, and removed a vacuous null-output state check.
 Rounding-exception captures now verify every nonflag bit remains unchanged.
 All six affected tests pass on Clang/GCC. Production and fixtures are unchanged.
+
+### Output-scaling and scalar guest-state review
+
+Two reviews bring the queue to 112 reviewed and 42 pending. Removed a production
+helper dependency from captured input construction, clarified the original hash
+serialization, and extended GETPC boundary/alias coverage to loose semantics.
+Improved immediate failure context. All six affected tests pass on Clang/GCC;
+production and hardware fixtures are unchanged.

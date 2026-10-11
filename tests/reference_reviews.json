@@ -1856,5 +1856,34 @@
     ],
     "scope": "RDNA4 Wave32 strict exact exception flags for FP16 FMA and FP32/64 DIV_FMAS. Direct gfx1201 MODE=0xf0 rounding-boundary capture digests cover 8192 triples around tiny-to-normal and finite-to-infinity thresholds, 16 modifier combinations, and both saturation/condition settings. Explicit bit-pattern generation is toolchain-independent; CPU selector cycles by input rather than crossing every input with every CPU. Reporting now begins with every nonflag bit set and checks their preservation per call, while hashing only the seven captured flag bits. This file verifies aggregate exception evidence, not numerical outputs or a fresh computed exception oracle; complementary literal and accumulation tests reside in the half-FMA and DIV_FMAS suites.",
     "diagnostics": "Digest failures identify precision/setting/modifier; nonflag corruption additionally identifies input. Numerical and per-cause witnesses in the complementary family suites remain necessary; the digest is not presented as per-input expected flag data."
+  },
+  {
+    "file": "output_scaling_test.cpp",
+    "assertions": [
+      "OutputScaling.LdexpAndConversionsHardwareBoundaries",
+      "OutputScaling.WideConversionsHardwareBoundaries"
+    ],
+    "evidence": [
+      "tests/output_scaling_test.cpp",
+      "tests/conversion16_test.cpp",
+      "tests/conversion64_test.cpp",
+      "tests/ldexp_test.cpp"
+    ],
+    "scope": "Six RDNA4 Wave32 operations: LDEXP_F32, CVT_F32_F16/F64 and CVT_F64_F32/I32/U32. Retained gfx1201 MODE=0xf0 digests anchor OMOD/CLAMP and permitted source modifiers on fixed boundary inputs, all available CPU selectors and destination/source alias layouts. Narrow outputs cover four input/exponent sets; wide conversions cover three two-register alias layouts. These loose-mode raw checks are intentional captured conversion/scaling regression witnesses, not generic approximate arithmetic acceptance. Input float decoding now uses local memcpy rather than a production helper. Broader exact/guest-policy/mask/encoding coverage resides in the separately reviewed conversion and LDEXP suites.",
+    "diagnostics": "Digest failures identify CPU/input set/operation/alias. Corrected provenance to state that each result byte is hashed as a zero-extended uint32_t, preserving the original capture serialization and hashes. Per-input diagnostics are supplied by the complementary conversion/ldexp suites; this aggregate capture alone is not an exhaustive numerical oracle."
+  },
+  {
+    "file": "guest_mode_test.cpp",
+    "assertions": [
+      "GuestMode.EveryImmediatePreservesUnselectedBits",
+      "GuestMode.NullOptOutAndErrorPreservation",
+      "GuestMode.PreservesHostRoundingExceptionFlagsAndControls",
+      "GuestMode.GetpcAdvancesWithoutChangingInputAndAllowsAliasing"
+    ],
+    "evidence": [
+      "tests/guest_mode_test.cpp"
+    ],
+    "scope": "Scalar S_ROUND_MODE/S_DENORM_MODE and S_GETPC_B64. Simple specification-derived bit-field replacement and unsigned PC+4 arithmetic justify computed exact references. Every 16-bit immediate is tested in loose and strict exact semantics, with deterministic surrounding bits and composed updates. Both mode APIs test null opt-out, invalid flag bits and error preservation. Host-rounding/sticky flags/controls are checked under all four host rounding modes. GETPC now tests both semantics, representative address boundaries including unsigned wraparound and input/output aliasing. These scalar tests use baseline CPU selection; no lane masks apply.",
+    "diagnostics": "Immediate failure messages identify semantics/immediate, and PC witnesses identify semantics/address. No golden fixture is needed for direct bit manipulation or modulo integer addition."
   }
 ]

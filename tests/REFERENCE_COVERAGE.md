@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 110 explicit family-file reviews exist and 44
+non-generic family references. 112 explicit family-file reviews exist and 42
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -327,3 +327,12 @@ provides a local diagnostic in FP32 FMA captures without repeating the expensive
 integer reference for every captured output. Rounding-exception tests preserve
 all nonflag bits while retaining the captured seven-bit digest. Records explicitly
 state the Wave32 scope and cycled CPU coverage of those exception tests.
+
+## Output scaling and scalar guest state
+
+Two reviews record retained conversion/scaling captures and simple scalar
+bit-field/PC arithmetic. Output-scaling tests no longer use a production helper
+to construct inputs; the original byte-as-word hash serialization is documented
+accurately. Their aggregate witnesses complement the previously reviewed
+conversion/LDEXP families. Scalar immediate coverage is exhaustive and GETPC now
+checks loose as well as exact semantics, including wraparound and aliasing.

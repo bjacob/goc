@@ -25,10 +25,10 @@ TEST(GuestMode, EveryImmediatePreservesUnselectedBits) {
       uint32_t round = initial, denorm = initial;
       ASSERT_EQ(goc_s_round_mode(semantics, 0, immediate, &round), GOC_SUCCESS);
       ASSERT_EQ(goc_s_denorm_mode(semantics, 0, immediate, &denorm), GOC_SUCCESS);
-      EXPECT_EQ(round & 15, immediate & 15);
-      EXPECT_EQ(round >> 4, initial >> 4);
-      EXPECT_EQ((denorm >> 4) & 15, immediate & 15);
-      EXPECT_EQ(denorm & 0xffffff0fU, initial & 0xffffff0fU);
+      EXPECT_EQ(round & 15, immediate & 15) << semantics << '/' << immediate;
+      EXPECT_EQ(round >> 4, initial >> 4) << semantics << '/' << immediate;
+      EXPECT_EQ((denorm >> 4) & 15, immediate & 15) << semantics << '/' << immediate;
+      EXPECT_EQ(denorm & 0xffffff0fU, initial & 0xffffff0fU) << semantics << '/' << immediate;
       ASSERT_EQ(goc_s_denorm_mode(semantics, 0, immediate, &round), GOC_SUCCESS);
       EXPECT_EQ(round, (initial & 0xffffff00U) | ((immediate & 15) * 17));
     }
@@ -75,15 +75,16 @@ TEST(GuestMode, PreservesHostRoundingExceptionFlagsAndControls) {
 }
 
 TEST(GuestMode, GetpcAdvancesWithoutChangingInputAndAllowsAliasing) {
-  for (uint64_t pc : std::initializer_list<uint64_t>{0, 4, 0x123456789abcULL, 0x7ffffffffffcULL,
-                                                     UINT64_MAX - 3}) {
-    uint64_t d = 0;
-    ASSERT_EQ(goc_s_getpc_b64(exact, 0, &d, pc), GOC_SUCCESS);
-    EXPECT_EQ(d, pc + 4);
-    d = pc;
-    ASSERT_EQ(goc_s_getpc_b64(exact, 0, &d, d), GOC_SUCCESS);
-    EXPECT_EQ(d, pc + 4);
-  }
+  for (uint64_t semantics : std::initializer_list<uint64_t>{0, exact})
+    for (uint64_t pc : std::initializer_list<uint64_t>{0, 4, 0x123456789abcULL, 0x7ffffffffffcULL,
+                                                       UINT64_MAX - 3}) {
+      uint64_t d = 0;
+      ASSERT_EQ(goc_s_getpc_b64(semantics, 0, &d, pc), GOC_SUCCESS);
+      EXPECT_EQ(d, pc + 4) << semantics << '/' << pc;
+      d = pc;
+      ASSERT_EQ(goc_s_getpc_b64(semantics, 0, &d, d), GOC_SUCCESS);
+      EXPECT_EQ(d, pc + 4) << semantics << '/' << pc;
+    }
   uint64_t d = 0xdeadbeef;
   EXPECT_EQ(goc_s_getpc_b64(exact, 1, &d, 0), GOC_ERROR_INVALID_FLAGS);
   EXPECT_EQ(d, 0xdeadbeefU);

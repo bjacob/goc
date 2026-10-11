@@ -2,7 +2,6 @@
 
 #include "capture_hash.h"
 #include "goc/goc.h"
-#include "internal.h"
 #include "test_instruction.h"
 
 #include <cstring>
@@ -13,7 +12,8 @@ namespace {
 
 // RX 9070, gfx1201, MODE=0xf0: RNE and preserved denormals.
 // Four input sets, LDEXP_F32 / CVT_F32_F16 / CVT_F32_F64, all 32 modifiers,
-// 32 lanes. FNV-1a over little-endian result bytes, NaNs normalized to 0x7fc00000.
+// 32 lanes. Each little-endian result byte is hashed as a zero-extended uint32_t
+// (the original capture serialization); NaNs normalize to 0x7fc00000.
 const uint64_t hardware_hashes[4][3] = {
     {0x1f93c115d1cdd755ULL, 0xa358ade8ebb6a9d5ULL, 0x1f93c115d1cdd755ULL},
     {0xd4295ecd2f0742a5ULL, 0xa358ade8ebb6a9d5ULL, 0xd4295ecd2f0742a5ULL},
@@ -50,7 +50,9 @@ TEST(OutputScaling, LdexpAndConversionsHardwareBoundaries) {
                                         : set == 2 ? 1
                                                    : exponents[lane % 12]);
               if (op == 2) {
-                double value = double(goc::as_float(inputs32[lane]));
+                float input;
+                std::memcpy(&input, &inputs32[lane], sizeof(input));
+                double value = double(input);
                 if (set == 1)
                   value *= 0.5;
                 if (set == 2)
@@ -83,7 +85,8 @@ TEST(OutputScaling, LdexpAndConversionsHardwareBoundaries) {
 }
 
 TEST(OutputScaling, WideConversionsHardwareBoundaries) {
-  // RX 9070, gfx1201, MODE=0xf0. Same input words as inputs32.
+  // RX 9070, gfx1201, MODE=0xf0. Same input words as inputs32 and the
+  // byte-as-uint32_t hash serialization used above.
   // FP32 widening covers ABS/NEG; integer widening only encodes OMOD/CLAMP.
   const uint64_t hashes[] = {0xe618186b9bac389dULL, 0xf8126ee2eef77260ULL, 0xab3308cda26a2808ULL};
   using Fn = goc_test::WaveInstruction<decltype(&goc_v_cvt_u32_u16)>;
