@@ -474,3 +474,14 @@ Cartesian digests now have per-input companions. Recorded captured-domain limits
 borrowed division witnesses and the differential nature of DIV_FMAS policy tests.
 DIV_FIXUP state assertions now apply only when its pointer is passed. All 28
 family tests pass with Clang/GCC; all 14 tooling tests pass. Production unchanged.
+
+### DIV_SCALE and DIV_FMAS review
+
+Two reviews bring the queue to 97 reviewed and 57 pending. Distinguished
+hardware numerical/exception digests, literal fused-boundary outputs and borrowed
+architecture witnesses from differential integration tests. DIV_FMAS captures now
+preserve/check all bits outside the seven captured flags, and result failures
+identify the corpus. An attempted ordinary-FMA invalid witness failed because
+DIV_FMAS suppresses those flags; the unproven assumption was removed, not used
+to change production. All 29 family tests pass on rebuilt Clang/GCC binaries;
+all 14 tooling tests pass. DIV_FIXUP numerical review remains pending.

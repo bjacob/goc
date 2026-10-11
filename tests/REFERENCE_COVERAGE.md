@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Ninety-five explicit family-file reviews exist and 59
+non-generic family references. Ninety-seven explicit family-file reviews exist and 57
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -250,3 +250,14 @@ per-input diagnostics. This establishes captured-domain equivalence without
 claiming arbitrary-input proof. Borrowed division literals cover tiny quotients,
 fused scaling, midpoint and overflow behavior. Architecture integration records
 stratified semantics coverage and unsupported exact reporting explicitly.
+
+## DIV_SCALE and DIV_FMAS numerical evidence
+
+Two reviews separate retained hardware numerical/exception digests and literal
+boundary outputs from differential CPU/alias/host-mode tests. DIV_FMAS exception
+corpora now check preservation of every bit outside the captured seven flags.
+A proposed ordinary-FMA invalid-operation witness was rejected: DIV_FMAS has
+its own suppression rules, so those flags remain hardware-digest anchored.
+Digest failures distinguish the Cartesian and random corpus. DIV_SCALE condition masks are ordinary outputs, independently
+hardware-anchored; broad random integration checks are not mislabeled as new
+numerical evidence. Main DIV_FIXUP review remains pending.

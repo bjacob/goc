@@ -1517,5 +1517,57 @@
     ],
     "scope": "FP32/64 DIV_FMAS on both architectures and widths. Broad random policy/alias test is explicitly differential: RDNA4 exact GoC output with effective OMOD becomes expected output, so it establishes integration consistency rather than independent bit-exact arithmetic. Guest flush/sign and OMOD gating have literal witnesses, and seven cases per precision inherited from rocjitsu division_test.cpp at ffc144c564c independently anchor fused scaling direction, subnormal midpoint, avoided overflow and cancellation. All CPU selectors, sequenced mt19937 draws, masks and overlapping split destinations are covered. Active RDNA3 OMOD remains loose-only; unavailable exact optional state (including output-flush cases) is rejected atomically. Raw equality in the differential test is intentional; mathematical loose arithmetic tolerances are a separate family concern.",
     "diagnostics": "Integration checks identify architecture/width/precision/guest/mode/CPU. Borrowed literal witnesses identify precision/lane and preserve exact expected bit patterns; no hardware equivalence is inferred merely from the differential oracle."
+  },
+  {
+    "file": "div_scale_test.cpp",
+    "assertions": [
+      "DivScale.HardwareCartesianCorpus",
+      "DivScale.RandomBitsAllModifiersAndHostEnvironment",
+      "DivScale.MasksAndCrossRegisterAliases",
+      "DivScale.ValidationAndZeroExec",
+      "DivScale.SharedSourcesUnalignedStorageAndScalarOutputAlias",
+      "DivScale.Wave64HardwareCartesianCorpus",
+      "DivScale.Wave64RandomBitsAllModifiersAndHostEnvironment",
+      "DivScale.Wave64MasksAndCrossRegisterAliases",
+      "DivScale.Wave64ValidationAndZeroExec",
+      "DivScale.Wave64UnalignedConditionAliases",
+      "DivScale.ArchitectureNanPayloadsAndAliases",
+      "DivScale.GuestDenormalPolicies",
+      "DivScale.ArchitectureOutputModifiers"
+    ],
+    "evidence": [
+      "tests/div_scale_test.cpp",
+      "tests/div_scale_hardware.h"
+    ],
+    "scope": "FP32/64 DIV_SCALE across RDNA3/RDNA4 and both widths. gfx1201 hardware digests independently anchor 576 B/C pairs, both legal A roles after NEG, and 64 modifier variants, including per-lane condition bits. Broader seeded mt19937, CPU/host-mode and alias loops are differential against baseline exact GoC and establish integration consistency, not numerical equivalence independently. Borrowed rocjitsu shared/division.h and DivisionTest literals anchor architecture NaN quieting, flushed inputs, normal/subnormal scaling and condition masks. Both semantics, all available CPU selectors, masks, split and unaligned scalar-output aliases, guards and error precedence are covered. Active RDNA3 OMOD is explicitly loose-only. Exact raw results/conditions are appropriate for these borrowed-model and differential checks; no approximate division quotient is computed here.",
+    "diagnostics": "Hardware digests localize to precision/CPU/role-modifier column (576 inputs); separate literals explain guest and NaN branches. Differential per-lane and whole-storage checks localize integration failures. Native Wave64 hardware capture is not claimed."
+  },
+  {
+    "file": "div_fmas_test.cpp",
+    "assertions": [
+      "DivFmas.HardwareCartesianAndRandomCorpora",
+      "DivFmas.AllModifiersRandomBitsAndConditionMasks",
+      "DivFmas.MasksAndCrossRegisterAliases",
+      "DivFmas.SharedSourcesAndHostEnvironment",
+      "DivFmas.ValidationAndZeroExec",
+      "DivFmas.FusedRoundingAndOutputModifierBoundaries",
+      "DivFmas.ExceptionHardwareCorpus",
+      "DivFmas.ExceptionMasksConditionAndAliases",
+      "DivFmas.ExceptionOptOutAndErrors",
+      "DivFmas.Wave64HardwareCartesianAndRandomCorpora",
+      "DivFmas.Wave64MasksAndCrossRegisterAliases",
+      "DivFmas.Wave64SharedSourcesAndHostEnvironment",
+      "DivFmas.Wave64FusedRoundingAndOutputModifierBoundaries",
+      "DivFmas.Wave64ExceptionHardwareCorpus",
+      "DivFmas.Wave64ExceptionOptOutAndErrors",
+      "DivFmas.Wave64ReportingAliasesUpperInput"
+    ],
+    "evidence": [
+      "tests/div_fmas_test.cpp",
+      "tests/div_fmas_hardware.h",
+      "tests/div_fmas_exceptions_hardware.h"
+    ],
+    "scope": "FP32/64 RDNA4 DIV_FMAS in both wave widths. Independent gfx1201 Cartesian/random result digests and literal fused-rounding boundary outputs anchor exact semantics, including scaling condition, avoided intermediate overflow, subnormal rounding and cancellation. Random streams use defined uint32 recurrence or sequenced mt19937 draws. All-modifier CPU, aliases and host-state loops are explicitly differential. Captured exception digests cycle CPU selectors per input (not each input on every CPU); masked lane reduction is differential and reporting aliases upper inputs. Exception corpora now verify preservation of every pre-existing bit outside the seven captured flag bits, not only the highest bit. Ordinary FMA invalid-operation assumptions do not apply: DIV_FMAS suppresses invalid and input-denormal flags, whose evidence here remains the capture digests. Loose reporting is skipped; invalid calls preserve state. Architecture/guest restrictions are reviewed separately.",
+    "diagnostics": "Result digest failures now distinguish Cartesian versus random corpus. Literal boundary outputs provide per-lane numerical anchors; 8192-input flag digests remain the independent flag evidence, supplemented by differential masking/alias tests. No new exact model is introduced."
   }
 ]

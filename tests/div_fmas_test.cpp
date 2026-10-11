@@ -61,7 +61,7 @@ TEST(DivFmas, HardwareCartesianAndRandomCorpora) {
           }
           ASSERT_EQ(digest, (corpus ? goc_test::fmas_random_digests[op][col]
                                     : goc_test::fmas_capture_digests[op][col]))
-              << op << "/" << cpu << "/" << col;
+              << op << "/" << cpu << "/" << corpus << "/" << col;
         }
 }
 
@@ -265,11 +265,11 @@ TEST(DivFmas, ExceptionHardwareCorpus) {
           const uint32_t *a[] = {words[0][0], words[0][1]}, *b[] = {words[1][0], words[1][1]},
                          *c[] = {words[2][0], words[2][1]};
           uint32_t *d[] = {words[3][0], words[3][1]};
-          uint32_t exceptions = 0x80000000;
+          uint32_t exceptions = 0xa5a50080;
           ASSERT_EQ(functions[type](exact | (i % (goc_init_cpu_flags() + 1)), 1, mode, d, a, b, c,
                                     condition, &exceptions),
                     GOC_SUCCESS);
-          ASSERT_TRUE(exceptions & 0x80000000);
+          ASSERT_EQ(exceptions & ~127U, 0xa5a50080U) << "input=" << i;
           hash = goc_test::capture_hash_word(hash, exceptions & 127);
         }
         EXPECT_EQ(hash, goc_test::div_fmas_exception_hashes[type][condition][variant])
@@ -380,7 +380,7 @@ TEST(DivFmas, Wave64HardwareCartesianAndRandomCorpora) {
           }
           ASSERT_EQ(digest, (corpus ? goc_test::fmas_random_digests[op][col]
                                     : goc_test::fmas_capture_digests[op][col]))
-              << op << "/" << cpu << "/" << col;
+              << op << "/" << cpu << "/" << corpus << "/" << col;
         }
 }
 
@@ -533,12 +533,12 @@ TEST(DivFmas, Wave64ExceptionHardwareCorpus) {
           const uint32_t *a[] = {words[0][0], words[0][1]}, *b[] = {words[1][0], words[1][1]},
                          *c[] = {words[2][0], words[2][1]};
           uint32_t *d[] = {words[3][0], words[3][1]};
-          uint32_t exceptions = 0x80000000;
+          uint32_t exceptions = 0xa5a50080;
           ASSERT_EQ(wave64_functions[type](exact | (i % (goc_init_cpu_flags() + 1)), 1ULL << 63,
                                            mode, d, a, b, c, uint64_t(condition) << 63,
                                            &exceptions),
                     GOC_SUCCESS);
-          ASSERT_TRUE(exceptions & 0x80000000);
+          ASSERT_EQ(exceptions & ~127U, 0xa5a50080U) << "input=" << i;
           hash = goc_test::capture_hash_word(hash, exceptions & 127);
         }
         EXPECT_EQ(hash, goc_test::div_fmas_exception_hashes[type][condition][variant])
