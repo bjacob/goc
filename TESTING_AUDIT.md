@@ -653,3 +653,13 @@ hardware-corpus diagnostics and disjoint source-preservation checks. Simple
 rounding/extraction results now use bitwise comparisons; SFUs retain the calibrated
 bound, with matching Clang/GCC boundary measurements. All three family tests and
 14 tooling tests pass. Production and the original capture digest are unchanged.
+
+### Core FP32 unary review
+
+One review brings the queue to 126 reviewed and 28 pending. Centralized the
+suite's distinction between exact simple/categorical results and fuzzy SFUs,
+including random calibration/holdout calls. Added source/out-of-wave preservation
+checks and removed a vacuous state assertion. Failure-only formatting reduced
+the existing EXP/LOG test from about 1.15 seconds to 0.06–0.07 seconds in these
+runs, with unchanged inputs. All 14 family tests pass on Clang/GCC, as do 14
+tooling tests. Production, tolerances and captured fixtures are unchanged.

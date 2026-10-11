@@ -24,6 +24,18 @@ const decltype(&goc_v_trunc_f32_rdna4_wave64) wave64[] = {
     goc_v_rsq_f32_rdna4_wave64,   goc_v_exp_f32_rdna4_wave64,       goc_v_log_f32_rdna4_wave64,
     goc_v_fract_f32_rdna4_wave64, goc_v_frexp_mant_f32_rdna4_wave64};
 
+// Approximate only SFU arithmetic; rounding/extraction, zero signs and
+// infinities have exact contracts even when the semantics selector is loose.
+::testing::AssertionResult compare(unsigned op, uint32_t actual, float expected) {
+  if (!std::isnan(expected) && (op < 4 || op >= 9 || expected == 0 || std::isinf(expected))) {
+    if (actual == goc::as_bits(expected))
+      return ::testing::AssertionSuccess();
+    return ::testing::AssertionFailure()
+           << "actual bits=" << actual << ", expected bits=" << goc::as_bits(expected);
+  }
+  return goc_test::fuzzy(goc::as_float(actual), expected, goc_test::unary_f32_tolerance);
+}
+
 } // namespace
 
 TEST(Unary, ModifiersMasksAliasesAndCpuLevels) {
@@ -50,18 +62,15 @@ TEST(Unary, ModifiersMasksAliasesAndCpuLevels) {
             ASSERT_EQ(goc_test::unary_functions[op](cpu, exec_mask, flags, &pd, &pa, nullptr),
                       GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane) {
+              if (!alias) {
+                EXPECT_EQ(a[lane + 1], inputs[lane]) << "source lane=" << lane;
+              }
               if (!((exec_mask >> lane) & 1)) {
                 EXPECT_EQ(pd[lane], alias ? inputs[lane] : 0xdeadbeef);
                 continue;
               }
               float want = goc_test::unary_reference(op, goc::as_float(inputs[lane]), flags);
-              float got = goc::as_float(pd[lane]);
-              if (std::isnan(want))
-                EXPECT_TRUE(std::isnan(got));
-              else if (want == 0 || std::isinf(want))
-                EXPECT_EQ(pd[lane], goc::as_bits(want));
-              else
-                EXPECT_TRUE(goc_test::fuzzy(got, want, goc_test::unary_f32_tolerance));
+              EXPECT_TRUE(compare(op, pd[lane], want)) << "lane=" << lane;
             }
             EXPECT_EQ(a[0], 0xdeadbeef);
             EXPECT_EQ(a[33], 0xdeadbeef);
@@ -163,6 +172,10 @@ TEST(Unary, HardwareOmodAndMandatoryFlush) {
                 ASSERT_EQ(goc_test::unary_functions[op](cpu, exec_mask, mode, &pd, &pa, nullptr),
                           GOC_SUCCESS);
                 for (int lane = 0; lane < 32; ++lane) {
+                  if (!alias) {
+                    EXPECT_EQ(a[lane + 1], goc_test::unary_hardware_inputs[lane])
+                        << "source lane=" << lane;
+                  }
                   if (!((exec_mask >> lane) & 1)) {
                     EXPECT_EQ(pd[lane],
                               alias ? goc_test::unary_hardware_inputs[lane] : 0xdeadbeefu);
@@ -226,13 +239,9 @@ TEST(Unary, Wave64ModifiersDppSelectorsAndAliases) {
               if (enabled) {
                 float want = goc_test::unary_reference(
                     op, goc::as_float(source < 0 ? 0 : before[0][source + 1]), mode);
-                float got = goc::as_float(d[lane]);
-                if (std::isnan(want))
-                  EXPECT_TRUE(std::isnan(got));
-                else if (want == 0 || std::isinf(want))
-                  EXPECT_EQ(d[lane], goc::as_bits(want));
-                else
-                  EXPECT_TRUE(goc_test::fuzzy(got, want, goc_test::unary_f32_tolerance));
+                EXPECT_TRUE(compare(op, d[lane], want))
+                    << op << "/" << cpu << "/" << variant << "/" << route_index << "/" << dest
+                    << "/" << lane;
               } else {
                 EXPECT_EQ(d[lane], before[dest][lane + 1]);
               }
@@ -240,6 +249,10 @@ TEST(Unary, Wave64ModifiersDppSelectorsAndAliases) {
             for (unsigned reg = 0; reg < 2; ++reg) {
               EXPECT_EQ(words[reg][0], before[reg][0]);
               EXPECT_EQ(words[reg][65], before[reg][65]);
+              if (reg != dest) {
+                for (unsigned lane = 1; lane <= 64; ++lane)
+                  EXPECT_EQ(words[reg][lane], before[reg][lane]) << "source lane=" << lane - 1;
+              }
             }
           }
 }
@@ -333,6 +346,15 @@ TEST(Unary, TranscendentalArchitectureGuestPolicies) {
                                                               mode | descriptor, &d, &a, &state),
                             GOC_SUCCESS);
                   EXPECT_EQ(state, 0x80000001U);
+                  if (!alias) {
+                    for (unsigned lane = 0; lane < 64; ++lane)
+                      EXPECT_EQ(input[lane], original[lane]) << "source lane=" << lane;
+                  }
+                  if (!wave64) {
+                    for (unsigned lane = 32; lane < 64; ++lane)
+                      EXPECT_EQ(d[lane], alias ? original[lane] : 0xdeadbeefU)
+                          << "outside wave lane=" << lane;
+                  }
                   for (unsigned lane = 0; lane < (wave64 ? 64U : 32U); ++lane) {
                     int source;
                     if (!goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
@@ -341,14 +363,9 @@ TEST(Unary, TranscendentalArchitectureGuestPolicies) {
                     }
                     float want = goc_test::unary_reference(
                         op + 4, goc::as_float(source < 0 ? 0 : original[source]), effective_mode);
-                    float got = goc::as_float(d[lane]);
-                    if (std::isnan(want)) {
-                      EXPECT_TRUE(std::isnan(got));
-                    } else if (want == 0 || std::isinf(want)) {
-                      EXPECT_EQ(d[lane], goc::as_bits(want));
-                    } else {
-                      EXPECT_TRUE(goc_test::fuzzy(got, want, goc_test::unary_f32_tolerance));
-                    }
+                    EXPECT_TRUE(compare(op + 4, d[lane], want))
+                        << architecture << "/" << wave64 << "/" << op << "/" << policy << "/" << cpu
+                        << "/" << modifier << "/" << descriptor << "/" << alias << "/" << lane;
                   }
                 }
 }
@@ -425,7 +442,9 @@ TEST(Unary, Rdna3Dx10ClampPolicies) {
                     ASSERT_EQ(call(flags | (preserve ? GOC_FP_DX10_CLAMP_OFF : 0),
                                    mode | GOC_ALU_CLAMP, actual, precise ? nullptr : &state, alias),
                               GOC_SUCCESS);
-                    EXPECT_EQ(state, 0x80000055U);
+                    if (!precise) {
+                      EXPECT_EQ(state, 0x80000055U);
+                    }
                     for (unsigned lane = 0; lane < 64; ++lane) {
                       if (!((exec_mask >> lane) & 1)) {
                         EXPECT_EQ(actual[lane], alias ? input[lane] : 0xdeadbeefU);
@@ -510,22 +529,18 @@ TEST(Unary, ExpLogFullRangeModifiersMasksAndAliases) {
                         GOC_SUCCESS);
               EXPECT_EQ(state, 0x12345678U);
               for (unsigned lane = 0; lane < lanes; ++lane) {
-                SCOPED_TRACE(::testing::Message() << arch << '/' << op << '/' << lanes << '/' << cpu
-                                                  << '/' << mode << '/' << batch << '/' << lane);
+                if (!alias) {
+                  EXPECT_EQ(input[lane + 1], original[lane]) << "source lane=" << lane;
+                }
                 if (!((exec_mask >> lane) & 1)) {
                   EXPECT_EQ(d[lane], alias ? original[lane] : 0xdeadbeefU);
                   continue;
                 }
                 const float want =
                     goc_test::unary_reference(op + 7, goc::as_float(original[lane]), effective);
-                const float got = goc::as_float(d[lane]);
-                if (std::isnan(want)) {
-                  EXPECT_TRUE(std::isnan(got));
-                } else if (want == 0 || std::isinf(want)) {
-                  EXPECT_EQ(d[lane], goc::as_bits(want));
-                } else {
-                  EXPECT_TRUE(goc_test::fuzzy(got, want, goc_test::unary_f32_tolerance));
-                }
+                EXPECT_TRUE(compare(op + 7, d[lane], want))
+                    << arch << '/' << op << '/' << lanes << '/' << cpu << '/' << mode << '/'
+                    << batch << '/' << lane;
               }
               EXPECT_EQ(input[0], 0xdeadbeefU);
               EXPECT_EQ(input[lanes + 1], 0xdeadbeefU);
@@ -562,11 +577,9 @@ void check_numerical_corpus(uint32_t seed) {
           ASSERT_EQ(goc_test::unary_functions[op](cpu, UINT32_MAX, mode, &d, &a, nullptr),
                     GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
-            SCOPED_TRACE(::testing::Message() << seed << '/' << batch << '/' << op << '/' << variant
-                                              << '/' << cpu << '/' << lane);
             float expected = goc_test::unary_reference(op, goc::as_float(input[lane]), mode);
-            ASSERT_TRUE(goc_test::fuzzy(goc::as_float(output[lane]), expected,
-                                        goc_test::unary_f32_tolerance));
+            ASSERT_TRUE(compare(op, output[lane], expected))
+                << seed << "/" << batch << "/" << op << "/" << variant << "/" << cpu << "/" << lane;
           }
         }
       }

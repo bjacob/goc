@@ -2163,5 +2163,35 @@
     ],
     "scope": "Eleven Wave32 FP32 unary instructions with DPP. Retained gfx1201 MODE=0xf0 digest spans seven descriptors, two source/OMOD settings, eight EXEC masks and powers-of-four inputs. Added computed per-lane checks on that captured domain, with NaN normalization matching the original digest; these checks improve localization while the independent capture remains the hardware witness. Boundary coverage combines all 32 modifiers, seven descriptors, 84 masks and in-place/disjoint destinations, including zeros, subnormals, extrema, infinities and signaling/quiet NaNs. Double arithmetic with explicit binary32 rounding and OMOD provides loose SFU proximity references. Rounding/fract/FREXP, zero/infinity signs and untouched storage are bitwise; NaN payloads are only classified in this suite. Invalid descriptors, flags, reserved strict semantics and empty masks are checked before operand access. Random numerical/holdout coverage and exact SFU evidence remain in core unary suites, not claimed for this fixed boundary corpus.",
     "diagnostics": "Hardware failures now identify CPU, operation, descriptor/modifier, EXEC and lane rather than only the final digest. All source words are checked for disjoint calls. Finite simple rounding/extraction operations now use exact comparisons instead of SFU tolerances. Fuzzy failures identify the lane in addition to existing case traces."
+  },
+  {
+    "file": "unary_test.cpp",
+    "assertions": [
+      "Unary.ModifiersMasksAliasesAndCpuLevels",
+      "Unary.ValidationAndEmptyMask",
+      "Unary.FractLiteralBoundaries",
+      "Unary.MantissaLiteralSubnormalsAndSpecialValues",
+      "Unary.HardwareOmodAndMandatoryFlush",
+      "Unary.Wave64ModifiersDppSelectorsAndAliases",
+      "Unary.Wave64ValidationAndOptionalState",
+      "Unary.Wave64HardwareOmodAndMandatoryFlush",
+      "Unary.TranscendentalArchitectureGuestPolicies",
+      "Unary.TranscendentalIeeeScalingWitness",
+      "Unary.Rdna3Dx10ClampPolicies",
+      "Unary.ExpLogFullRangeModifiersMasksAndAliases",
+      "Unary.DeterministicNumericalCalibration",
+      "Unary.DeterministicNumericalHoldout"
+    ],
+    "evidence": [
+      "tests/unary_test.cpp",
+      "tests/unary_reference.h",
+      "tests/unary_hardware.h",
+      "tests/omod_reference.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Eleven FP32 unary operations, both wave widths. Double mathematical SFU references with explicit binary32 rounding, mandatory flushing and OMOD are loose proximity references; captured gfx1201 OMOD/flush outputs supply independent hardware comparison. Rounding, fraction/mantissa extraction, signed zero, infinity and storage are raw. Wave32 combines all 32 modifiers, 84 EXEC masks and aliases; Wave64 combines all modifiers, eight routes with stratified row masks, mixed EXEC and destination aliases. Architecture integration covers both architectures, widths, guest policies, DPP and IEEE scaling. RDNA3 DX10 tests use unclamped API results as a differential clamp-policy reference, in exact semantics where supported and loose otherwise; they are not independent arithmetic oracles. EXP/LOG sweep boundary/full-range strata across flags, masks and aliases. Fixed MT19937 calibration/holdout seeds span raw encodings, finite exp2 range and log2 near one, across all operations/modifiers/CPU selectors. Exact numerical models and exception flags have separate dedicated suites. Validation, empty masks, fallback semantics and optional-state rejection/preservation are covered.",
+    "diagnostics": "One local comparison helper makes exact categorical/simple-operation versus approximate SFU checks explicit at existing callers. Tightened disjoint source preservation and out-of-wave storage, removed a null-state no-op assertion, and moved per-lane random/EXP/LOG diagnostics to failure-only formatting. Hardware comparisons retain explicit sign and classification checks. Existing input streams, hardware fixtures and tolerances are unchanged."
   }
 ]

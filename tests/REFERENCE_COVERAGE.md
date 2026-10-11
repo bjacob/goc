@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 125 explicit family-file reviews exist and 29
+non-generic family references. 126 explicit family-file reviews exist and 28
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -421,3 +421,12 @@ retaining its independent digest and explicitly limited input domain. Disjoint
 source words are checked bitwise. Simple rounding and fraction/mantissa extraction
 now use raw results; only numerical SFU results receive the calibrated tolerance.
 The fixed boundary routing suite complements core random unary coverage.
+
+### Core FP32 unary
+
+Reviewed mathematical, captured hardware and differential architecture-policy
+references separately. Simple unary results and signed zero now remain exact in
+the deterministic random tests as well as boundary tests; SFUs retain calibrated
+fuzzy comparisons. Added disjoint source and out-of-wave preservation checks.
+Failure-only per-lane formatting removes recurring diagnostic work from passing
+random and EXP/LOG tests without reducing input coverage.
