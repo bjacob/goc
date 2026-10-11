@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Sixty-two explicit family-file reviews exist and 92
+non-generic family references. Sixty-four explicit family-file reviews exist and 90
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -143,3 +143,13 @@ quiet classification without payload/sign equality; finite-only alias checks
 remain exact and separate NaN-policy tests cover both architectures. Existing
 literal witnesses and per-input diagnostics are adequate here, so this review
 adds no redundant fixtures or test loops.
+
+## FP16 conversions
+
+Two reviews cover full half-encoding sweeps, narrowing midpoint neighbors,
+overflow/modifier interactions and half preservation. Hardware captures anchor
+empirical OMOD/subnormal behavior. The architecture widening test explicitly
+inherits rocjitsu's RDNA3 signaling-NaN preservation rule, so its raw comparison
+is distinguished from ordinary loose quiet-NaN checks. Strict exact remains
+unsupported for these APIs. DPP capture failures now report configuration and
+per-lane values alongside the retained hardware digest.

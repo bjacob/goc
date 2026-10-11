@@ -366,3 +366,13 @@ witnesses are not mislabeled as hardware captures. Existing per-input diagnostic
 and independent literal cases were adequate; no redundant test loops or fixtures
 were added. The regenerated inventory validates all review links and the 14
 tooling tests pass. This batch changes documentation only.
+
+### FP16 conversion review
+
+Two reviews bring the explicit queue to 64 reviewed and 90 pending. Recorded
+half-encoding/midpoint coverage, half preservation, hardware-anchored overflow
+and scaling rules, and the separate upstream-derived RDNA3 raw NaN widening
+policy. Strict-exact API rejection is distinguished from these reference checks.
+Improved DPP capture failure context while retaining its hardware digest and
+per-output checks. All 17 affected/integration tests pass with Clang and GCC;
+all 14 tooling tests pass. No production changes or new golden arrays.

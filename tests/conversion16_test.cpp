@@ -286,6 +286,10 @@ TEST(Conversion16, DppHardwareCorpus) {
                  {0u, 1u, 2u, 3u, 4u, 7u, 8u, 16u, goc_test::conversion16_modes(op) / 2,
                   goc_test::conversion16_modes(op) - 1}) {
               uint32_t mode = goc_test::conversion16_mode(op, variant);
+              SCOPED_TRACE(::testing::Message()
+                           << "cpu=" << cpu << " saturate=" << saturate
+                           << " exec_mask=" << exec_mask << " op=" << op
+                           << " descriptor=" << descriptor << " variant=" << variant);
               uint32_t a[32], d[32];
               for (unsigned lane = 0; lane < 32; ++lane) {
                 a[lane] = values[lane % 16];
@@ -301,9 +305,10 @@ TEST(Conversion16, DppHardwareCorpus) {
                 if (goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
                   want = goc_test::conversion16_reference(op, source < 0 ? 0u : a[source], want,
                                                           mode, saturate);
-                  EXPECT_TRUE(goc_test::conversion16_equal(op, d[lane], want, mode));
+                  EXPECT_TRUE(goc_test::conversion16_equal(op, d[lane], want, mode))
+                      << "lane=" << lane << " actual=" << d[lane] << " expected=" << want;
                 } else {
-                  EXPECT_EQ(d[lane], want);
+                  EXPECT_EQ(d[lane], want) << "lane=" << lane;
                 }
                 uint32_t word = d[lane];
                 unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;

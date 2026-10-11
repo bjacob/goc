@@ -916,5 +916,38 @@
     ],
     "scope": "Six conversions across both architectures and widths. Literal conversion/scaling of 3 anchors RDNA3 OMOD gating (RDNA3 ISA 7.2.3.1 and rocjitsu effective_omod). Boundary inputs, all modifiers and guest policies, mixed EXEC, swapped source/destination halves and overlapping output registers use the integer reference. A separate NaN suite exercises both signs and signaling/quiet payloads, requiring quiet NaN class for floating results and zero for integer results, rather than payload equality. Strict exact and applicable exact optional-state requests are rejected without destination/state changes. This is loose-path integration evidence, not native hardware equivalence for all modes.",
     "diagnostics": "Whole-buffer assertions report architecture, width, opcode, policy, modifier, alias and CPU. NaN assertions have configuration context and finite alias tests remain independent of payload policy."
+  },
+  {
+    "file": "conversion16_test.cpp",
+    "assertions": [
+      "Conversion16.HardwareCapturedRoundingOverflowAndModifiers",
+      "Conversion16.EveryHalfEncodingAndIntegerInput",
+      "Conversion16.EveryNarrowingMidpointAndAdjacentFloat",
+      "Conversion16.RandomWordsAndEveryModifier",
+      "Conversion16.DppHardwareCorpus",
+      "Conversion16.Wave64HalfSelectorsOverflowDppAndAliases"
+    ],
+    "evidence": [
+      "tests/conversion16_reference.h",
+      "tests/conversion16_hardware.h",
+      "tests/conversion64_reference.h"
+    ],
+    "scope": "Six integer/FP16/FP32 conversion operations, both widths, loose/fallback only. Independent integer-significand re-encoding supplies nearest-even narrowing and exact widening; float-to-integer decodes and saturates directly. Hardware literals anchor overflow saturation, OMOD order and subnormal thresholds. Every half encoding is swept for two modifier endpoints and both overflow settings; every positive/negative finite-half narrowing midpoint and adjacent FP32 word is covered across OMOD settings. Deterministic full-word tests cover all modifiers, with source/destination half selection, masks, aliases and guards. Quiet NaN comparison permits payload/sign differences but requires unchanged unselected destination bits. Captures remain the evidence for empirical edge rules; model agreement outside them is not universal hardware proof. Strict exact rejection is explicit.",
+    "diagnostics": "Literal captures identify source, column, CPU and overflow mode in both widths. DPP hardware total retains companion per-output checks, now with CPU, overflow, EXEC, opcode, descriptor, variant, lane and numeric result context."
+  },
+  {
+    "file": "conversion16_architecture_test.cpp",
+    "assertions": [
+      "Conversion16Architecture.OutputScalingLiteralWitness",
+      "Conversion16Architecture.GuestPoliciesModifiersDppMasksAndAliases",
+      "Conversion16Architecture.ValidationStateAndHostControls",
+      "Conversion16Architecture.EveryHalfEncodingWidening"
+    ],
+    "evidence": [
+      "tests/conversion16_reference.h",
+      "tests/conversion16_architecture_test.cpp"
+    ],
+    "scope": "Six conversions across both architectures and widths. All sixteen guest policy/overflow combinations, modifiers, ordinary/seven DPP routes and aliases use the independently computed conversion model with architecture policy adjustments. The literal integer-3 witness anchors OMOD gating. Every-half widening separately checks raw sign/payload/signaling bits following rocjitsu cvt_f32_f16: RDNA3 IEEE=0 with no arithmetic output modifier preserves signaling bits, whereas RDNA4 or IEEE mode quiets them; input-flush maps half subnormals to signed zero. This raw check is intentionally stricter than the general loose quiet-NaN comparator. API calls remain loose and strict exact is rejected; upstream-derived reference behavior does not imply supported strict semantics.",
+    "diagnostics": "Architecture assertions identify width, opcode, policy, modifier, route, alias, CPU and lane with actual/expected values. Exhaustive widening failures identify the precise half encoding. No opaque digest requires additional fixtures."
   }
 ]
