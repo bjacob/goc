@@ -4,8 +4,10 @@
 #include "dpp_reference.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy_compare.h"
 #include "goc/goc.h"
 #include "half_reference.h"
+#include "loose_tolerances.h"
 #include "mixed_fma_guest_hardware.h"
 #include "mixed_fma_reference.h"
 
@@ -36,11 +38,25 @@ const uint32_t values[] = {0,          0x80000000, 1,          0x80000001, 0x007
                            0xff800000, 0x7f800012, 0x7fc12345, 0xffcabcde, 0x3c013bff, 0x7bff0400};
 
 bool equal(int op, uint32_t got, uint32_t want, bool exact) {
-  if (got == want)
-    return true;
-  if (!exact && !op)
-    return (got & 0x7fffffff) > 0x7f800000 && (want & 0x7fffffff) > 0x7f800000;
-  return false;
+  if (exact)
+    return got == want;
+  if (op) {
+    unsigned shift = op == 2 ? 16 : 0;
+    uint32_t selected = 0xffffU << shift;
+    if ((got & ~selected) != (want & ~selected))
+      return false;
+    uint16_t actual = uint16_t(got >> shift), expected = uint16_t(want >> shift);
+    if ((expected & 0x7fff) == 0)
+      return actual == expected;
+    return goc_test::fuzzy_equal(goc_test::half_value(actual), goc_test::half_value(expected),
+                                 goc_test::fma_f16_tolerance);
+  }
+  if ((want & 0x7fffffff) == 0)
+    return got == want;
+  float actual, expected;
+  std::memcpy(&actual, &got, sizeof(actual));
+  std::memcpy(&expected, &want, sizeof(expected));
+  return goc_test::fuzzy_equal(actual, expected, goc_test::fma_f32_tolerance);
 }
 
 ::testing::AssertionResult check(int op, uint64_t flags, uint32_t mode,
@@ -50,13 +66,10 @@ bool equal(int op, uint32_t got, uint32_t want, bool exact) {
   const uint32_t *a[] = {input[0]}, *b[] = {input[1]}, *c[] = {input[2]};
   uint32_t *d[] = {out};
   uint32_t exceptions = 0x80000000;
-  int status =
-      functions[op](flags, UINT32_MAX, mode, d, a, b, c,
-                    (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_LOOSE ||
-                            (op && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL)
-                        ? &exceptions
-                        : nullptr);
-  if (exceptions != 0x80000000)
+  bool report = (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_LOOSE ||
+                (op && (flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL);
+  int status = functions[op](flags, UINT32_MAX, mode, d, a, b, c, report ? &exceptions : nullptr);
+  if (report && exceptions != 0x80000000)
     return ::testing::AssertionFailure() << "unexpected mixed FMA exception flags";
   if (status != GOC_SUCCESS)
     return ::testing::AssertionFailure() << "status " << status;
@@ -101,9 +114,12 @@ TEST(MixedFma, DppAllModifiers) {
           ASSERT_EQ(functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0), UINT32_MAX,
                                   descriptor | mode, d, a, b, c, nullptr),
                     GOC_SUCCESS);
-          for (unsigned lane = 0; lane < 32; ++lane)
-            ASSERT_TRUE(equal(op, output[lane], want[lane], false))
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            int source;
+            bool written = goc_test::dpp_source(descriptor, UINT32_MAX, lane, source);
+            ASSERT_TRUE(equal(op, output[lane], want[lane], !written))
                 << op << "/" << index << "/" << descriptor << "/" << cpu << "/" << lane;
+          }
         }
       }
 }
@@ -178,7 +194,11 @@ TEST(MixedFma, DppMasksAliasesAndGuards) {
                   for (unsigned lane = 0; lane < 34; ++lane) {
                     uint32_t expected = reg == target && lane > 0 && lane < 33 ? want[lane - 1]
                                                                                : initial[reg][lane];
-                    ASSERT_TRUE(equal(op, words[reg][lane], expected, op && shared));
+                    int source;
+                    bool written = reg == target && lane > 0 && lane < 33 &&
+                                   goc_test::dpp_source(descriptor, exec_mask, lane - 1, source);
+                    ASSERT_TRUE(equal(op, words[reg][lane], expected, !written || (op && shared)))
+                        << op << '/' << index << '/' << cpu << '/' << reg << '/' << lane;
                   }
               }
             }
@@ -364,8 +384,9 @@ TEST(MixedFma, MasksUnalignedBuffersAndAllWholeAliases) {
                   for (int lane = 0; lane < 34; ++lane) {
                     bool active =
                         reg == target && lane > 0 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1);
-                    ASSERT_TRUE(active ? equal(op, words[reg][lane], expected[reg][lane], false)
-                                       : words[reg][lane] == expected[reg][lane]);
+                    ASSERT_TRUE(
+                        active ? equal(op, words[reg][lane], expected[reg][lane], semantics != 0)
+                               : words[reg][lane] == expected[reg][lane]);
                   }
               }
 }
@@ -540,7 +561,11 @@ TEST(MixedFma, Wave64DppMasksAliasesAndGuards) {
                       uint32_t expected = reg == target && lane > 0 && lane < 65
                                               ? want[lane - 1]
                                               : initial[reg][lane];
-                      ASSERT_TRUE(equal(op, words[reg][lane], expected, op && shared));
+                      int source;
+                      bool written = reg == target && lane > 0 && lane < 65 &&
+                                     goc_test::dpp_source(descriptor, exec_mask, lane - 1, source);
+                      ASSERT_TRUE(equal(op, words[reg][lane], expected, !written || (op && shared)))
+                          << op << '/' << index << '/' << cpu << '/' << reg << '/' << lane;
                     }
                 }
               }
@@ -611,7 +636,9 @@ TEST(MixedFma, Wave64ExactHostStateAndValidation) {
           ASSERT_EQ(wave64[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                                UINT64_MAX, 0, &d, &a, &b, &c, op ? &exceptions : nullptr),
                     GOC_SUCCESS);
-          EXPECT_EQ(exceptions, 0x80000055U);
+          if (op) {
+            EXPECT_EQ(exceptions, 0x80000055U);
+          }
           for (unsigned lane = 0; lane < 64; ++lane)
             EXPECT_EQ(d[lane], expected[lane]);
         }
@@ -672,7 +699,9 @@ TEST(MixedFma, ArchitectureGuestPolicies) {
                                 : f32(flags, uint32_t(exec_mask), mode, &dest, &x, &y, &z, output);
                   };
                   ASSERT_EQ(invoke(exact && (rdna3 || !op) ? nullptr : &state), GOC_SUCCESS);
-                  EXPECT_EQ(state, 0x12345678U);
+                  if (!exact || (!rdna3 && op)) {
+                    EXPECT_EQ(state, 0x12345678U);
+                  }
                   for (int lane = 0; lane < 64; ++lane) {
                     if (lane >= (wide ? 64 : 32) || !((exec_mask >> lane) & 1)) {
                       EXPECT_EQ(d[lane], 0xdeadbeefU);
@@ -735,7 +764,9 @@ TEST(MixedFma, DenormalHardwareCorpus) {
                   ASSERT_EQ(functions[op](flags, UINT32_MAX, mode, &dest, &a, &b, &c,
                                           op ? &exceptions : nullptr),
                             GOC_SUCCESS);
-                  EXPECT_EQ(exceptions, 0U);
+                  if (op) {
+                    EXPECT_EQ(exceptions, 0U);
+                  }
                   for (uint32_t word : d) {
                     hash = goc_test::capture_hash_word(hash, word);
                     hash = goc_test::capture_hash_word(hash, 0);
@@ -765,11 +796,10 @@ TEST(MixedFma, CapturedDenormalRoundingBoundary) {
             d[lane] = 0xdeadbeef;
           }
           const uint32_t *x = a, *y = b, *z = c;
-          uint32_t *dest = d, state = 0x12345678;
+          uint32_t *dest = d;
           uint64_t flags = cpu | (flush ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
                            (exact ? GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT : 0);
           ASSERT_EQ(functions[op](flags, UINT32_MAX, 0, &dest, &x, &y, &z, nullptr), GOC_SUCCESS);
-          EXPECT_EQ(state, 0x12345678U);
           for (unsigned lane = 0; lane < 32; ++lane) {
             uint32_t half = (flush ? (lane % 8 < 4 ? 0 : 0x400) : (lane % 8 == 0 ? 0x3ff : 0x400)) |
                             (lane & 8 ? 0x8000 : 0);
@@ -797,13 +827,12 @@ TEST(MixedFma, CapturedFp32TininessBeforeExponentPacking) {
         d[lane] = 0xdeadbeef;
       }
       const uint32_t *x = a, *y = b, *z = c;
-      uint32_t *dest = d, state = 0x12345678;
+      uint32_t *dest = d;
       uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                        (flush ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0);
       ASSERT_EQ(wide ? wave64[0](flags, UINT64_MAX, 0, &dest, &x, &y, &z, nullptr)
                      : functions[0](flags, UINT32_MAX, 0, &dest, &x, &y, &z, nullptr),
                 GOC_SUCCESS);
-      EXPECT_EQ(state, 0x12345678U);
       for (unsigned lane = 0; lane < 64; ++lane)
         EXPECT_EQ(d[lane], lane >= (wide ? 64U : 32U)
                                ? 0xdeadbeefU
@@ -868,4 +897,16 @@ TEST(MixedFma, OptionalStateContractAcrossArchitecturesAndGuestPolicies) {
                                               : 0xdeadbeefU);
             }
           }
+}
+
+TEST(MixedFma, ComparisonPreservesStorageAndExactness) {
+  EXPECT_TRUE(equal(0, 0x3f800001, 0x3f800000, false));
+  EXPECT_FALSE(equal(0, 0x3f800001, 0x3f800000, true));
+  EXPECT_FALSE(equal(0, 0x3f800002, 0x3f800000, false));
+  EXPECT_FALSE(equal(0, 0x80000000, 0, false));
+  EXPECT_TRUE(equal(1, 0xdead3c01, 0xdead3c00, false));
+  EXPECT_FALSE(equal(1, 0xdeac3c01, 0xdead3c00, false));
+  EXPECT_FALSE(equal(1, 0xdead3c01, 0xdead3c00, true));
+  EXPECT_TRUE(equal(2, 0x3c01beef, 0x3c00beef, false));
+  EXPECT_FALSE(equal(2, 0x3c01beee, 0x3c00beef, false));
 }

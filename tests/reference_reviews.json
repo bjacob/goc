@@ -1785,5 +1785,42 @@
     ],
     "scope": "Wave32 RDNA4 FP16 FMA/FMAC DPP, both semantics and all available CPU selectors. Retained gfx1201 result digests have per-output routed integer-oracle companions for ordinary values and OMOD boundaries. All valid low modifiers and overflow settings cross seven DPP descriptors with full EXEC; alias/mask tests stratify 84 versus 14 masks by modifier as documented by the earlier latency work. Explicit LCG recurrences provide reproducible random words. General loose writes now use calibrated fuzzy half comparisons while exact semantics, hardware captures, unwritten lanes and the other destination half remain bitwise. Shared-source layouts, all destination aliases, guards, invalid descriptor/operand flags and exact host rounding/sticky-state preservation are covered.",
     "diagnostics": "Random-route failures identify CPU/operation/mode/EXEC/destination/lane; all-modifier checks identify overflow setting. Hardware hash failures retain per-lane companions. Wave64 routing is covered separately in half_fma_test.cpp."
+  },
+  {
+    "file": "mixed_fma_test.cpp",
+    "assertions": [
+      "MixedFma.DppAllModifiers",
+      "MixedFma.DppHardwareCorpus",
+      "MixedFma.DppMasksAliasesAndGuards",
+      "MixedFma.BoundaryTriplesAndRandomWords",
+      "MixedFma.All8192ModifierCombinations",
+      "MixedFma.UnsupportedNonstrictSemanticsFallBackToLoose",
+      "MixedFma.EveryHalfEncodingInEachSource",
+      "MixedFma.CapturedAndSingleRoundingWitnesses",
+      "MixedFma.EveryPositiveHalfMidpointWithTinyPerturbations",
+      "MixedFma.CapturedFp32FusedCancellation",
+      "MixedFma.MasksUnalignedBuffersAndAllWholeAliases",
+      "MixedFma.ExactPreservesHostStateAndErrorsPrecedeEmptyMask",
+      "MixedFma.AlternatingDestinationHalvesPreservePriorWrites",
+      "MixedFma.NoExceptionHardwareCorpora",
+      "MixedFma.Wave64DppMasksAliasesAndGuards",
+      "MixedFma.Wave64UpperLaneNoExceptionHardwareCorpora",
+      "MixedFma.Wave64ExactHostStateAndValidation",
+      "MixedFma.ArchitectureGuestPolicies",
+      "MixedFma.DenormalHardwareCorpus",
+      "MixedFma.CapturedDenormalRoundingBoundary",
+      "MixedFma.CapturedFp32TininessBeforeExponentPacking",
+      "MixedFma.OptionalStateContractAcrossArchitecturesAndGuestPolicies",
+      "MixedFma.ComparisonPreservesStorageAndExactness"
+    ],
+    "evidence": [
+      "tests/mixed_fma_test.cpp",
+      "tests/mixed_fma_reference.h",
+      "tests/mixed_fma_guest_hardware.h",
+      "tests/dpp_reference.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Three mixed-FMA forms across RDNA3/RDNA4 and both widths. Exact finite arithmetic uses an independent 640-bit integer grid covering FP32 products/addends; rounding, payload and flush behavior retain rocjitsu capture witnesses and gfx1201 denormal/DPP digests. All 8192 modifiers, every half encoding in each source, every positive half midpoint with signed tiny perturbations, boundary Cartesian triples and deterministic random words are exercised, with CPU/semantics coverage varying by sweep. General loose outputs now use calibrated fuzzy bounds. Captured single-rounding/denormal witnesses and hardware digests remain raw. Masks/aliases preserve inactive words and other destination halves exactly; exact alias cases now actually request raw comparisons. Wave64 DPP covers row masks, upper lanes, aliases and three EXEC patterns. Zero-exception hardware corpora for RDNA4 half destinations remain direct retained evidence; exact FP32 and RDNA3 reporting stay explicitly unsupported. Guest policies, host controls, unsupported semantics, error precedence and output atomicity are covered.",
+    "diagnostics": "Per-input computed checks report operands, modes and lane; hardware digest failures are complemented by captured boundary witnesses and independent routed-model sweeps rather than claimed per-record capture data. Vacuous null-pointer state assertions were removed/guarded. Dedicated comparator tests protect exactness and preserved-half behavior. No arbitrary-input hardware proof is inferred solely from GoC/reference agreement."
   }
 ]

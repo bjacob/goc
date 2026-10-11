@@ -540,3 +540,13 @@ boundary, zero-sign and storage assertions. Alternate deterministic seeds also
 match the computed reference on both compilers. Exception corpora check every
 nonflag bit, and direct host-intrinsic includes replace a transitive dependency.
 All 22 affected tests pass on Clang/GCC. Production and fixtures are unchanged.
+
+### Mixed-FMA review
+
+One review brings the queue to 108 reviewed and 46 pending. General loose outputs
+now use calibrated numerical bounds, with independent exact checks for inactive
+storage and preserved halves. Fixed an alias test that selected exact semantics
+but passed a loose comparator selector. Removed vacuous null-output state checks
+and added comparator regression cases. All 23 family tests pass on Clang/GCC;
+14 tooling tests pass. Existing and alternate random inputs measure zero
+reference error on both compilers. Production and hardware fixtures are unchanged.

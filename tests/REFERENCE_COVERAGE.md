@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 107 explicit family-file reviews exist and 47
+non-generic family references. 108 explicit family-file reviews exist and 46
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -309,3 +309,12 @@ General loose writes now use measured fuzzy comparisons; exact boundary and
 payload witnesses remain raw. Exception capture tests preserve every nonflag bit,
 with literal accumulation and aliased-output tests providing local diagnostics.
 The existing stratified DPP mask coverage is retained.
+
+## Mixed FMA
+
+The mixed-FMA review covers format selection, direct half rounding, DPP, both
+architectures/widths and optional reporting. General loose outputs are fuzzy;
+unwritten storage, preserved halves, exact alias cases and captured witnesses
+remain raw. The integer-grid numerical reference is distinguished from empirical
+NaN/denormal evidence and zero-exception captures. Comparator regression tests
+ensure the fuzzy allowance cannot hide storage corruption or weaken exact mode.

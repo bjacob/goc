@@ -254,3 +254,22 @@ boundary/hardware witnesses and exact semantics remain unchanged; repeated fixed
 cases do not count as independent holdout inputs. Every half A encoding is
 covered, with sampled B/C, policies and routing combinations. Scripts, snapshots
 and logs: `goc-build/coverage-work/testing-half-fma-calibration/run.py`.
+
+## Mixed FMA
+
+Mixed FMA uses the same explicit FMA bounds, separately measured against its
+integer-grid reference. Clang and GCC both observed zero error:
+
+| Input seed | FP32 finite nonzero loose pairs | FP16 finite nonzero loose pairs |
+| --- | ---: | ---: |
+| 4671 (existing) | 4,878,668 | 8,771,008 |
+| 73939 (alternate random inputs) | 4,878,628 | 8,770,464 |
+
+Fixed modifier, routing, encoding and midpoint sweeps are repeated in both runs;
+only the pseudorandom triples change. These are domain measurements, not a proof
+that arbitrary hardware results equal the computed reference. Hardware digests
+and literal rounding witnesses remain exact checks. Unwritten storage and the
+unselected half are always bitwise, including in loose semantics. Dedicated
+comparator tests inject differences deliberately and are excluded from numerical
+calibration. Script and logs:
+`goc-build/coverage-work/testing-mixed-fma-calibration/run.py`.
