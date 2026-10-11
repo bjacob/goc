@@ -690,3 +690,11 @@ independent hardware-digest validation. The computed FP16 oracle matches the
 capture, avoiding new fixtures. Tightened error destination-preservation checks.
 All six family tests and numerical measurements pass on Clang/GCC, as do 14
 tooling tests. Production and captured values remain unchanged.
+
+### Scalar floating arithmetic review
+
+One review brings the queue to 130 reviewed and 24 pending. Computed arithmetic
+references match both hardware datasets, allowing loose ADD/SUB/MUL proximity
+checks with per-input diagnostics. Selection, categorical and storage results
+remain exact. All six family tests and measurements pass on Clang/GCC, as do 14
+tooling tests. Production and existing hardware captures are unchanged.

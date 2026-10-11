@@ -370,3 +370,18 @@ reference over the captured domain (with normalized NaNs), not arbitrary inputs.
 No new tolerance is inferred from zero error; the existing FMA bounds and their
 broader calibration/holdout remain above. This fixed capture has no fresh random
 holdout. Script and logs: `goc-build/coverage-work/testing-scalar-fma-calibration/run.py`.
+
+## Scalar ADD/SUB/MUL
+
+The two existing hardware corpora validate the new computed reference directly:
+double arithmetic, explicit input-denormal policy, pre-rounding tininess threshold
+and numeric half conversion. All reference digests match the retained captures.
+Clang and GCC measure 665,512 finite nonzero FP32 comparisons and 656,632 FP16
+comparisons with zero error. Bounds are `(2^-149, 1.2e-7)` and `(2^-24, 1e-3)`:
+a one-minimum-subnormal floor and approximately one encoding step with margin,
+consistent with the FMA format budgets. Nonzero allowances permit future loose
+implementations; they are not presented as observed nonzero error. Zero/infinity
+signs, upper-half zeroing and min/max selection are separate exact checks.
+The second dataset concentrates on min-normal boundaries; neither fixed capture
+is claimed as fresh random holdout. Script and logs:
+`goc-build/coverage-work/testing-scalar-fp-calibration/run.py`.

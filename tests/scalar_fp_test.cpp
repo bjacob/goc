@@ -2,14 +2,68 @@
 
 #include "capture_hash.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
+#include "half_reference.h"
+#include "loose_tolerances.h"
 #include "scalar_fp_hardware.h"
 #include "scalar_fp_reference.h"
 
 #include <cfenv>
+#include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <stdint.h>
+
+namespace {
+
+float value(uint32_t bits) {
+  float result;
+  std::memcpy(&result, &bits, sizeof(result));
+  return result;
+}
+
+uint32_t arithmetic_reference(unsigned op, uint32_t a, uint32_t b, uint64_t flags) {
+  bool half = op & 1;
+  double x = half ? goc_test::half_value(uint16_t(a)) : double(value(a));
+  double y = half ? goc_test::half_value(uint16_t(b)) : double(value(b));
+  double minimum = half ? 0x1p-14 : 0x1p-126;
+  if (flags & GOC_FP_FLUSH_INPUT_DENORMALS) {
+    if (std::abs(x) < minimum)
+      x = std::copysign(0.0, x);
+    if (std::abs(y) < minimum)
+      y = std::copysign(0.0, y);
+  }
+  double result = op < 2 ? x + y : op < 4 ? x - y : x * y;
+  // Guest tininess is tested before rounding, at the midpoint below min-normal.
+  if ((flags & GOC_FP_FLUSH_OUTPUT_DENORMALS) &&
+      std::abs(result) < minimum - (half ? 0x1p-26 : 0x1p-151))
+    result = std::copysign(0.0, result);
+  if (half)
+    return goc_test::half_bits(result, flags & GOC_FP16_OVFL);
+  float rounded = float(result);
+  uint32_t bits;
+  std::memcpy(&bits, &rounded, sizeof(bits));
+  return bits;
+}
+
+::testing::AssertionResult close(uint32_t actual, uint32_t expected, bool half) {
+  unsigned magnitude = expected & (half ? 0x7fffU : 0x7fffffffU);
+  if ((half && (actual >> 16)) || !magnitude || magnitude == (half ? 0x7c00U : 0x7f800000U)) {
+    if (actual == expected)
+      return ::testing::AssertionSuccess();
+    return ::testing::AssertionFailure()
+           << "actual bits=" << actual << ", expected bits=" << expected;
+  }
+  return half ? goc_test::fuzzy(goc_test::half_value(uint16_t(actual)),
+                                goc_test::half_value(uint16_t(expected)),
+                                goc_test::scalar_arithmetic_f16_tolerance)
+              : goc_test::fuzzy(value(actual), value(expected),
+                                goc_test::scalar_arithmetic_f32_tolerance);
+}
+
+} // namespace
 
 TEST(ScalarFp, HardwareEveryFpStateAndUnderflowBoundary) {
   for (unsigned dataset = 0; dataset < 2; ++dataset)
@@ -26,7 +80,16 @@ TEST(ScalarFp, HardwareEveryFpStateAndUnderflowBoundary) {
             ASSERT_EQ(goc_test::scalar_fp_functions[op](cpu | goc_test::scalar_fp_flags(state), 0,
                                                         &d, w[0], w[1], nullptr),
                       GOC_SUCCESS);
-            hash = goc_test::capture_hash_word(hash, goc_test::scalar_fp_canonical(d, op & 1));
+            uint32_t reference = d;
+            if (op < 6) {
+              reference = arithmetic_reference(op, w[0], w[1], goc_test::scalar_fp_flags(state));
+              ASSERT_TRUE(close(d, reference, op & 1))
+                  << dataset << "/" << state << "/" << op << "/" << cpu << "/" << i;
+            }
+            // Validate the computed arithmetic oracle against the independent
+            // capture. Selection operations still require raw output equality.
+            hash =
+                goc_test::capture_hash_word(hash, goc_test::scalar_fp_canonical(reference, op & 1));
           }
           ASSERT_EQ(hash, goc_test::scalar_fp_hardware[dataset][state][op])
               << dataset << "/" << state << "/" << op << "/" << cpu;

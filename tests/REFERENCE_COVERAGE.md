@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 129 explicit family-file reviews exist and 25
+non-generic family references. 130 explicit family-file reviews exist and 24
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -456,3 +456,11 @@ the exact implementation with the retained independent capture check; FP16 uses
 the existing independent integer-grid reference, now directly hash-validated over
 the captured domain. Exact FP32 output and literal payload checks remain bitwise.
 This reuses proven computed behavior without expanding golden fixtures.
+
+### Scalar floating arithmetic
+
+Added independent computed ADD/SUB/MUL references whose digests match both
+existing hardware datasets, including guest flushing and saturation policies.
+Loose numerical outputs now receive fuzzy comparisons, while min/max selection
+and categorical/storage results remain exact. The capture check proves reference
+equivalence for this corpus without requiring additional golden arrays.
