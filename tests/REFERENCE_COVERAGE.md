@@ -24,9 +24,9 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Twenty-five explicit family-file reviews exist and 129
-remain. 472 API symbols are linked to at least one reviewed file; that number
-must not be interpreted as 472 completely audited APIs. Consult the record's
+non-generic family references. Forty-seven explicit family-file reviews exist and 107
+remain. 654 API symbols are linked to at least one reviewed file; that number
+must not be interpreted as 654 completely audited APIs. Consult the record's
 scope, especially wave width, semantics and optional state.
 
 Initial reviews:
@@ -64,3 +64,21 @@ digests. `Permlane.HardwareCorpus` now adds CPU/EXEC/opcode/mode/selector-patter
 context and the failing lane, preserving its independent hardware digest.
 No new golden data or production implementation changes were needed in this
 batch. The remaining file queue is still explicit in the generated inventory.
+
+## Scalar state and DPP integration review
+
+Twenty-two additional records cover scalar bit/compare/convert/field/pack/round,
+EXEC manipulation, moves/relative moves/spellings, ten integer DPP families, and
+the DPP8/DPP16 routing suites. Captured scalar result/SCC/exception digests are
+kept distinct from differential alias checks. The scalar conversion family is
+explicitly recorded as loose/fallback-only rather than inferring strict-exact
+support from agreement with its hardware fixtures.
+
+The DPP integer captures already compare every result with the independent
+integer model composed with the routing reference, so their final digests are
+not the only diagnostic. DPP8/DPP16 use small integer or 1/8-step arithmetic:
+products, sums and power-of-two output scaling are exactly representable in the
+covered range. This is a bounded proof for these routing tests, not permission
+to assume general floating arithmetic is bit-exact. Source comments record that
+reason for exact assertions. Hardware-test failure traces now include routing
+controls and EXEC as well as the lane.

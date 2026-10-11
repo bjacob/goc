@@ -52,6 +52,8 @@ TEST(Dpp8, HardwareCorpus) {
         for (unsigned fi = 0; fi < 2; ++fi)
           for (unsigned pattern = 0; pattern < 8; ++pattern)
             for (unsigned mod = 0; mod < 2; ++mod) {
+              SCOPED_TRACE(::testing::Message() << cpu << '/' << exec_mask << '/' << accumulate
+                                                << '/' << fi << '/' << pattern << '/' << mod);
               uint32_t sel = 0;
               for (unsigned i = 0; i < 8; ++i)
                 sel |= ((i * 3 + pattern) & 7) << (3 * i);
@@ -73,7 +75,7 @@ TEST(Dpp8, HardwareCorpus) {
                 int want = 100 + int(lane);
                 if ((exec_mask >> lane) & 1)
                   want = mod ? (want - 2 * value) * 2 : want + 2 * value;
-                ASSERT_EQ(d[lane], bits(float(want)));
+                ASSERT_EQ(d[lane], bits(float(want))) << "lane=" << lane;
                 hash = goc_test::capture_hash_word(hash, d[lane]);
               }
             }
@@ -92,6 +94,8 @@ TEST(Dpp8, ArithmeticModifiersMasksAndAliases) {
         for (unsigned alias = 0; alias < 5; ++alias)
           for (unsigned fi = 0; fi < 2; ++fi) {
             uint32_t data[4][34], saved[4][34], want[32];
+            // Bounded dyadic inputs make the FMA and OMOD results exactly
+            // representable; these bit checks test routing and modifier order.
             for (auto &reg : data)
               for (auto &word : reg)
                 word = bits(float(int(random() % 65) - 32) / 8);

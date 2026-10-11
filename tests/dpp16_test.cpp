@@ -56,6 +56,8 @@ TEST(Dpp16, HardwareCorpus) {
         for (unsigned fi = 0; fi < 2; ++fi)
           for (unsigned bc = 0; bc < 2; ++bc)
             for (auto &rb : row_bank) {
+              SCOPED_TRACE(::testing::Message() << cpu << '/' << exec_mask << '/' << ctrl << '/'
+                                                << fi << '/' << bc << '/' << rb[0] << '/' << rb[1]);
               uint32_t data[4][32];
               for (unsigned i = 0; i < 32; ++i) {
                 data[0][i] = bits(float(i + 1));
@@ -72,7 +74,7 @@ TEST(Dpp16, HardwareCorpus) {
                 float want = float(1000 + lane);
                 if (goc_test::dpp16_reference(ctrl, fi, bc, rb[0], rb[1], exec_mask, lane, src))
                   want = float(100 + lane + 2 * (src < 0 ? 0 : src + 1));
-                ASSERT_EQ(d[lane], bits(want));
+                ASSERT_EQ(d[lane], bits(want)) << "lane=" << lane;
                 hash = goc_test::capture_hash_word(hash, d[lane]);
               }
             }
@@ -132,6 +134,8 @@ TEST(Dpp16, AllRowBankAndArithmeticModifiers) {
           unsigned ctrl = 0x101 + (low % 15);
           uint64_t mode = goc_test::dpp16_mode(ctrl, fi, bc, rows, banks) | low;
           uint32_t data[4][32], saved[4][32];
+          // Products are multiples of 1/64 with magnitude at most 16;
+          // accumulation and power-of-two OMOD are exact in this corpus.
           for (auto &reg : data)
             for (auto &word : reg)
               word = bits(float(int(random() % 65) - 32) / 8);

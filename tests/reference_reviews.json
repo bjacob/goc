@@ -350,5 +350,330 @@
     ],
     "scope": "PERMLANE16/PERMLANEX16 scalar and per-lane selectors in both wave sizes. The reference decodes four-bit selectors, computes row XOR for cross-row operations, and explicitly handles source EXEC/FI/BOUND/old destination. A gfx1201 hardware digest covers 65536 results, with every result also compared to that reference. Both semantics and every selector/destination with inactive sources are exercised.",
     "diagnostics": "HardwareCorpus now traces CPU, EXEC, opcode, mode and selector pattern, and reports the destination lane for each mismatch. The retained digest remains the independent corpus anchor."
+  },
+  {
+    "file": "scalar_bits_test.cpp",
+    "assertions": [
+      "ScalarBits.HardwareResultsAndScc",
+      "ScalarBits.EveryShiftCountAndSign",
+      "ScalarBits.ShiftAddCarriesIncludeShiftedOutBits"
+    ],
+    "evidence": [
+      "tests/scalar_bits_hardware.h",
+      "tests/scalar_bits_reference.h",
+      "tests/scalar_integer_reference.h"
+    ],
+    "scope": "Thirty scalar Boolean/shift/shift-add operations. Hardware result-low/result-high/SCC digests cover 4096 input pairs and both incoming SCC values, in both semantics and every CPU selector. Direct every-count/sign checks and shifted-out-carry witnesses supplement the captures; aliases check last-writer behavior. These are exact bit/integer contracts.",
+    "diagnostics": "Digest failures identify CPU/semantics/SCC/opcode, limiting the failing corpus to 4096 pairs; direct shift and carry witnesses provide local diagnostics."
+  },
+  {
+    "file": "scalar_compare_test.cpp",
+    "assertions": [
+      "ScalarCompare.HardwareEveryPredicateAndFpState",
+      "ScalarCompare.EveryBitIndexAndModuloCount",
+      "ScalarCompare.NaNsZerosDenormalsAndUnsigned64"
+    ],
+    "evidence": [
+      "tests/scalar_compare_hardware.h",
+      "tests/scalar_compare_reference.h",
+      "tests/scalar_fp_reference.h"
+    ],
+    "scope": "Forty-six scalar integer/floating/bit predicates. Hardware SCC digests cover 4096 inputs per opcode under eight FP states and both semantics. Literal NaN/zero/denormal/unsigned64 cases and exhaustive bit-index reduction supplement exact SCC checks. Scalar output overlap is a memory-contract test, not an independent numerical oracle.",
+    "diagnostics": "Per-state/opcode/semantics/CPU digests plus direct predicate witnesses; no need to expand small SCC corpora into raw arrays."
+  },
+  {
+    "file": "scalar_convert_test.cpp",
+    "assertions": [
+      "ScalarConvert.HardwareAllHalfPatternsAndFpStates",
+      "ScalarConvert.SaturationNaNsRoundingAndHalfSelection",
+      "ScalarConvert.TruncationBoundariesAcrossScalarAndVector",
+      "ScalarConvert.OptionalStateAndLooseFallbackContracts"
+    ],
+    "evidence": [
+      "tests/scalar_convert_hardware.h",
+      "tests/scalar_convert_reference.h",
+      "tests/scalar_fp_reference.h"
+    ],
+    "scope": "Eight scalar conversions currently advertise loose/fallback behavior (validate does not enable strict exact semantics). Hardware raw-result digests cover 65536 inputs, all half encodings, integer/FP32 boundary/random patterns, and eight guest FP states. Literal saturation, ties, half selection and payload cases document the conversion choices. These exact fixture checks validate the existing conversion mapping; they do not claim a new strict-exact implementation. Optional exact-state requests explicitly fail, while loose state output is skipped.",
+    "diagnostics": "Digests identify FP state/opcode/CPU, complemented by literal tie/saturation/flush cases and cross-scalar/vector truncation checks. Cross-implementation comparisons alone are not the oracle."
+  },
+  {
+    "file": "scalar_field_test.cpp",
+    "assertions": [
+      "ScalarField.HardwareResultsAndScc",
+      "ScalarField.EveryFieldWidthAndOffset",
+      "ScalarField.CountSentinelsAndSingleBits",
+      "ScalarField.MaskGenerationAndExtractionAgreeOnClippedFields"
+    ],
+    "evidence": [
+      "tests/scalar_field_hardware.h",
+      "tests/scalar_field_reference.h"
+    ],
+    "scope": "Twenty scalar field/count/mask utilities, 32/64-bit results and SCC. Hardware digests span 16384 pairs per opcode and incoming SCC, in both semantics. Direct field-width/offset, single-bit/sentinel and clipped-field composition checks implement simple bit rules and independently expose boundary behavior; result/SCC aliasing is separate.",
+    "diagnostics": "Per-opcode/SCC hardware digests plus direct width/offset/bit tests. Composition checks are supplemental, not substitutes for the captured oracle."
+  },
+  {
+    "file": "scalar_pack_test.cpp",
+    "assertions": [
+      "ScalarPack.HardwareAndScc",
+      "ScalarPack.BasisBitsAndEveryQuadPresenceMask",
+      "ScalarPack.ConditionalSelectionUsesOnlySccBitZero"
+    ],
+    "evidence": [
+      "tests/scalar_pack_hardware.h",
+      "tests/scalar_pack_reference.h"
+    ],
+    "scope": "Eleven scalar packing/selection/quad operations. Hardware result-low/high/SCC digests cover 4096 inputs per opcode and incoming SCC in both semantics. Basis-bit and every-quad-presence cases directly validate packing maps; condition selection explicitly uses only SCC bit zero. Exact raw-bit results are required.",
+    "diagnostics": "Small per-opcode hardware rows plus per-bit/quad and condition witnesses provide useful localization; overlaps separately test output ordering."
+  },
+  {
+    "file": "scalar_round_test.cpp",
+    "assertions": [
+      "ScalarRound.HardwareAllHalfPatternsAndFpStates",
+      "ScalarRound.NaNsZerosAndInputFlushing",
+      "ScalarRound.HardwareExceptionFlags",
+      "ScalarRound.LiteralTiesAndTinyInputs"
+    ],
+    "evidence": [
+      "tests/scalar_round_hardware.h",
+      "tests/scalar_round_exceptions_hardware.h",
+      "tests/scalar_round_reference.h"
+    ],
+    "scope": "Eight scalar FP16/FP32 integer-rounding operations. Raw hardware outputs cover every half encoding, FP32 boundaries/random bits, eight guest FP states and both semantics. Exact equality is appropriate: these are defined integral rounding operations, not approximate SFUs. Separate exception captures and literal accumulation/preservation cases anchor optional exact reporting; signed zero, payload and tiny inputs remain bit-checked.",
+    "diagnostics": "Per-policy/opcode digests have direct tie/tiny/NaN/flush witnesses. Exception digests are complemented by ReportingContractAndHostState and literal flag checks."
+  },
+  {
+    "file": "scalar_exec_test.cpp",
+    "assertions": [
+      "ScalarExec.B32TruthTablesAliasesAndValidation",
+      "ScalarExec.B64TruthTablesAliasesAndValidation",
+      "ScalarExec.B32NestedBranchesRestoreExecAndScc",
+      "ScalarExec.B64NestedBranchesRestoreExecAndScc"
+    ],
+    "evidence": [
+      "tests/scalar_exec_test.cpp"
+    ],
+    "scope": "Twelve saveexec/wrexec Boolean variants at each scalar width. Independent per-bit truth-table constants define the new EXEC, saved/written destination and nonzero SCC. Alias ordering and optional EXEC output are asserted. Fixed xorshift branch sequences independently check lane membership and restore the original EXEC in both semantics.",
+    "diagnostics": "Direct destination/EXEC/SCC and per-lane membership assertions; no empirical numerical behavior or digest-only oracle."
+  },
+  {
+    "file": "scalar_move_test.cpp",
+    "assertions": [
+      "ScalarMove.RawBitsConditionsAndAliases",
+      "ScalarMove.EveryImmediate"
+    ],
+    "evidence": [
+      "tests/scalar_move_test.cpp"
+    ],
+    "scope": "Scalar MOV/CMOV at both widths plus signed-immediate forms. Basis bits and all 65536 immediates directly determine copied/sign-extended values; only SCC bit zero controls writes. Existing destination, guards, aliases and host-state invariants are tested. Bitwise comparisons are the instruction contract.",
+    "diagnostics": "Literal/basis/immediate per-result checks; no computed numerical model or golden expansion needed."
+  },
+  {
+    "file": "scalar_relative_move_test.cpp",
+    "assertions": [
+      "ScalarRelativeMove.HardwareOffsetsAndRegisterWidths",
+      "ScalarRelativeMove.SourceBoundsRegionsAndFullM0",
+      "ScalarRelativeMove.DestinationBoundsAndSplitFields",
+      "ScalarRelativeMove.EverySplitOffsetAtRegionBoundaries"
+    ],
+    "evidence": [
+      "tests/scalar_relative_hardware.h",
+      "tests/scalar_relative_move_test.cpp"
+    ],
+    "scope": "Five scalar relative move forms. A small hardware word table anchors offsets/register widths; widened index arithmetic and explicit SGPR region/allocation limits provide the independent bounds reference. Split M0 fields, ignored reserved bits, overlap snapshots, invalid-source fallback and discarded destination writes are exercised.",
+    "diagnostics": "Raw captured register words identify opcode/offset/register. Bounds and split-field cases compare explicit expected words or whole snapshots, supplementing the small hardware table."
+  },
+  {
+    "file": "scalar_spellings_test.cpp",
+    "assertions": [
+      "ScalarSpellings.ArithmeticResultsAndScc",
+      "ScalarSpellings.EveryImmediateComparisonAndAdd",
+      "ScalarSpellings.CarryAndBorrowChainsAcrossArchitectures",
+      "ScalarSpellings.ManualAbsoluteValueAndSccWitnesses"
+    ],
+    "evidence": [
+      "tests/scalar_spellings_test.cpp"
+    ],
+    "scope": "Architecture-specific scalar arithmetic spellings, immediate comparisons/addition and carry/borrow chains. Bounded int64_t arithmetic gives exact modulo results and signed-overflow/unsigned-carry predicates; incoming carry uses only bit zero. Every immediate is paired with signed/unsigned boundaries. Manual ABS/SCC witnesses cover semantic differences instead of assuming renamed APIs are equivalent.",
+    "diagnostics": "Per-result/SCC assertions and focused cross-architecture literal witnesses; no opaque digest."
+  },
+  {
+    "file": "dpp_bitfield_test.cpp",
+    "assertions": [
+      "DppBitfield.HardwareCorpus",
+      "DppBitfield.MasksAliasesAndRandomWords"
+    ],
+    "evidence": [
+      "tests/bitfield_reference.h",
+      "tests/dpp_reference.h",
+      "tests/dpp16_reference.h",
+      "tests/dpp_bitfield_test.cpp"
+    ],
+    "scope": "Eight bitfield/align/PERM operations, with raw source routing before extraction or byte selection. Wave32 hardware digests validate composition of the independently reviewed integer model with DPP8/DPP16 routing, including FI/BOUND and row/bank filters. The seven descriptors are representative integrations, not every DPP encoding. Deterministic integer recurrences, source/destination aliases and inactive-lane/guard checks exercise the wider mask matrix. Exact integer comparisons are appropriate in loose semantics.",
+    "diagnostics": "Every captured output is checked against the computed composition with CPU/opcode/mode/lane context before hashing. Thus the digest remains an independent anchor but is not the only failure-localization mechanism; no additional checkpoint fixture is needed."
+  },
+  {
+    "file": "dpp_boolean16_test.cpp",
+    "assertions": [
+      "DppBoolean16.HardwareCorpus",
+      "DppBoolean16.MasksAliasesAndRandomWords"
+    ],
+    "evidence": [
+      "tests/boolean_reference.h",
+      "tests/dpp_reference.h",
+      "tests/dpp16_reference.h",
+      "tests/dpp_boolean16_test.cpp"
+    ],
+    "scope": "Four selected-half Boolean operations; 28 operation/selector combinations preserve the other destination half. Wave32 hardware digests validate composition of the independently reviewed integer model with DPP8/DPP16 routing, including FI/BOUND and row/bank filters. The seven descriptors are representative integrations, not every DPP encoding. Deterministic integer recurrences, source/destination aliases and inactive-lane/guard checks exercise the wider mask matrix. Exact integer comparisons are appropriate in loose semantics.",
+    "diagnostics": "Every captured output is checked against the computed composition with CPU/opcode/mode/lane context before hashing. Thus the digest remains an independent anchor but is not the only failure-localization mechanism; no additional checkpoint fixture is needed."
+  },
+  {
+    "file": "dpp_integer_test.cpp",
+    "assertions": [
+      "DppInteger.HardwareCorpus",
+      "DppInteger.MasksAliasesAndRandomWords",
+      "DppInteger.ShiftHardwareCorpus"
+    ],
+    "evidence": [
+      "tests/dpp_integer_reference.h",
+      "tests/dpp_reference.h",
+      "tests/dpp16_reference.h",
+      "tests/dpp_integer_test.cpp"
+    ],
+    "scope": "Fourteen scan/count/Boolean/shift operations. MBCNT uses the physical destination lane; shifts route the count rather than the shifted data. Wave32 hardware digests validate composition of the independently reviewed integer model with DPP8/DPP16 routing, including FI/BOUND and row/bank filters. The seven descriptors are representative integrations, not every DPP encoding. Deterministic integer recurrences, source/destination aliases and inactive-lane/guard checks exercise the wider mask matrix. Exact integer comparisons are appropriate in loose semantics.",
+    "diagnostics": "Every captured output is checked against the computed composition with CPU/opcode/mode/lane context before hashing. Thus the digest remains an independent anchor but is not the only failure-localization mechanism; no additional checkpoint fixture is needed."
+  },
+  {
+    "file": "dpp_integer_add_test.cpp",
+    "assertions": [
+      "DppIntegerAdd.HardwareCorpus",
+      "DppIntegerAdd.MasksAliasesAndRandomWords"
+    ],
+    "evidence": [
+      "tests/integer_add_reference.h",
+      "tests/dpp_reference.h",
+      "tests/dpp16_reference.h",
+      "tests/dpp_integer_add_test.cpp"
+    ],
+    "scope": "Six add/sub/subrev/add3 operations. SUBREV routes B, while the others route A; saturation follows arithmetic. Wave32 hardware digests validate composition of the independently reviewed integer model with DPP8/DPP16 routing, including FI/BOUND and row/bank filters. The seven descriptors are representative integrations, not every DPP encoding. Deterministic integer recurrences, source/destination aliases and inactive-lane/guard checks exercise the wider mask matrix. Exact integer comparisons are appropriate in loose semantics.",
+    "diagnostics": "Every captured output is checked against the computed composition with CPU/opcode/mode/lane context before hashing. Thus the digest remains an independent anchor but is not the only failure-localization mechanism; no additional checkpoint fixture is needed."
+  },
+  {
+    "file": "dpp_integer_mad_test.cpp",
+    "assertions": [
+      "DppIntegerMad.HardwareCorpus",
+      "DppIntegerMad.MasksAliasesAndRandomWords"
+    ],
+    "evidence": [
+      "tests/integer_mad_reference.h",
+      "tests/dpp_reference.h",
+      "tests/dpp16_reference.h",
+      "tests/dpp_integer_mad_test.cpp"
+    ],
+    "scope": "Four signed/unsigned 16/24-bit MAD operations with source half selection and clamp after the widened sum. Wave32 hardware digests validate composition of the independently reviewed integer model with DPP8/DPP16 routing, including FI/BOUND and row/bank filters. The seven descriptors are representative integrations, not every DPP encoding. Deterministic integer recurrences, source/destination aliases and inactive-lane/guard checks exercise the wider mask matrix. Exact integer comparisons are appropriate in loose semantics.",
+    "diagnostics": "Every captured output is checked against the computed composition with CPU/opcode/mode/lane context before hashing. Thus the digest remains an independent anchor but is not the only failure-localization mechanism; no additional checkpoint fixture is needed."
+  },
+  {
+    "file": "dpp_integer_minmax_test.cpp",
+    "assertions": [
+      "DppIntegerMinmax.HardwareCorpus",
+      "DppIntegerMinmax.MasksAliasesAndRandomWords"
+    ],
+    "evidence": [
+      "tests/integer_minmax_reference.h",
+      "tests/dpp_reference.h",
+      "tests/dpp16_reference.h",
+      "tests/dpp_integer_minmax_test.cpp"
+    ],
+    "scope": "Fourteen signed/unsigned binary/ternary selections, including ignored CLAMP in the alias corpus. Wave32 hardware digests validate composition of the independently reviewed integer model with DPP8/DPP16 routing, including FI/BOUND and row/bank filters. The seven descriptors are representative integrations, not every DPP encoding. Deterministic integer recurrences, source/destination aliases and inactive-lane/guard checks exercise the wider mask matrix. Exact integer comparisons are appropriate in loose semantics.",
+    "diagnostics": "Every captured output is checked against the computed composition with CPU/opcode/mode/lane context before hashing. Thus the digest remains an independent anchor but is not the only failure-localization mechanism; no additional checkpoint fixture is needed."
+  },
+  {
+    "file": "dpp_integer_mul_test.cpp",
+    "assertions": [
+      "DppIntegerMul.HardwareCorpus",
+      "DppIntegerMul.MasksAliasesAndRandomWords"
+    ],
+    "evidence": [
+      "tests/integer_mul_reference.h",
+      "tests/dpp_reference.h",
+      "tests/dpp16_reference.h",
+      "tests/dpp_integer_mul_test.cpp"
+    ],
+    "scope": "Four signed/unsigned 24-bit low/high products and their supported clamp combinations; 32-bit products are not included in this DPP family. Wave32 hardware digests validate composition of the independently reviewed integer model with DPP8/DPP16 routing, including FI/BOUND and row/bank filters. The seven descriptors are representative integrations, not every DPP encoding. Deterministic integer recurrences, source/destination aliases and inactive-lane/guard checks exercise the wider mask matrix. Exact integer comparisons are appropriate in loose semantics.",
+    "diagnostics": "Every captured output is checked against the computed composition with CPU/opcode/mode/lane context before hashing. Thus the digest remains an independent anchor but is not the only failure-localization mechanism; no additional checkpoint fixture is needed."
+  },
+  {
+    "file": "dpp_integer_ternary_test.cpp",
+    "assertions": [
+      "DppIntegerTernary.HardwareCorpus",
+      "DppIntegerTernary.MasksAliasesAndRandomWords"
+    ],
+    "evidence": [
+      "tests/integer_ternary_reference.h",
+      "tests/dpp_reference.h",
+      "tests/dpp16_reference.h",
+      "tests/dpp_integer_ternary_test.cpp"
+    ],
+    "scope": "Eight combined shift/Boolean/XOR-add/byte-LERP operations with routing before the arithmetic stages. Wave32 hardware digests validate composition of the independently reviewed integer model with DPP8/DPP16 routing, including FI/BOUND and row/bank filters. The seven descriptors are representative integrations, not every DPP encoding. Deterministic integer recurrences, source/destination aliases and inactive-lane/guard checks exercise the wider mask matrix. Exact integer comparisons are appropriate in loose semantics.",
+    "diagnostics": "Every captured output is checked against the computed composition with CPU/opcode/mode/lane context before hashing. Thus the digest remains an independent anchor but is not the only failure-localization mechanism; no additional checkpoint fixture is needed."
+  },
+  {
+    "file": "dpp_integer16_test.cpp",
+    "assertions": [
+      "DppInteger16.HardwareCorpus",
+      "DppInteger16.MasksAliasesAndRandomWords"
+    ],
+    "evidence": [
+      "tests/integer16_reference.h",
+      "tests/dpp_reference.h",
+      "tests/dpp16_reference.h",
+      "tests/dpp_integer16_test.cpp"
+    ],
+    "scope": "Twelve selected-half operations and 128 operation/selector/clamp combinations; destination merging preserves the unselected half. Wave32 hardware digests validate composition of the independently reviewed integer model with DPP8/DPP16 routing, including FI/BOUND and row/bank filters. The seven descriptors are representative integrations, not every DPP encoding. Deterministic integer recurrences, source/destination aliases and inactive-lane/guard checks exercise the wider mask matrix. Exact integer comparisons are appropriate in loose semantics.",
+    "diagnostics": "Every captured output is checked against the computed composition with CPU/opcode/mode/lane context before hashing. Thus the digest remains an independent anchor but is not the only failure-localization mechanism; no additional checkpoint fixture is needed."
+  },
+  {
+    "file": "dpp_integer16_ternary_test.cpp",
+    "assertions": [
+      "DppInteger16Ternary.HardwareCorpus",
+      "DppInteger16Ternary.MasksAliasesAndRandomWords"
+    ],
+    "evidence": [
+      "tests/integer16_ternary_reference.h",
+      "tests/dpp_reference.h",
+      "tests/dpp16_reference.h",
+      "tests/dpp_integer16_ternary_test.cpp"
+    ],
+    "scope": "Eight half MAD/min3/max3/median operations and 160 operation/selector/clamp combinations, preserving the unselected half. Wave32 hardware digests validate composition of the independently reviewed integer model with DPP8/DPP16 routing, including FI/BOUND and row/bank filters. The seven descriptors are representative integrations, not every DPP encoding. Deterministic integer recurrences, source/destination aliases and inactive-lane/guard checks exercise the wider mask matrix. Exact integer comparisons are appropriate in loose semantics.",
+    "diagnostics": "Every captured output is checked against the computed composition with CPU/opcode/mode/lane context before hashing. Thus the digest remains an independent anchor but is not the only failure-localization mechanism; no additional checkpoint fixture is needed."
+  },
+  {
+    "file": "dpp8_test.cpp",
+    "assertions": [
+      "Dpp8.HardwareCorpus",
+      "Dpp8.ArithmeticModifiersMasksAndAliases"
+    ],
+    "evidence": [
+      "tests/dpp8_test.cpp",
+      "tests/omod_reference.h"
+    ],
+    "scope": "DPP8 FMA/FMAC routing, FI, modifiers, masks and aliases. The captured corpus uses small integers. The computed corpus uses multiples of 1/8 in [-4,4]; products are multiples of 1/64 with magnitude at most 16, sums at most 20, and OMOD is a power-of-two scale. All nonzero results are exactly representable in binary32; explicit zero-sign/clamp handling anchors zeros. This bounded arithmetic proof justifies exact bit comparisons without assuming general FMA equivalence. Hardware digest remains an independent routing anchor.",
+    "diagnostics": "Every hardware word already has a direct expected result; new trace context identifies CPU/EXEC/FMAC/FI/selector pattern/modifier and lane. Alias snapshots are compared directly."
+  },
+  {
+    "file": "dpp16_test.cpp",
+    "assertions": [
+      "Dpp16.HardwareCorpus",
+      "Dpp16.EveryControlMasksAndAliases",
+      "Dpp16.AllRowBankAndArithmeticModifiers"
+    ],
+    "evidence": [
+      "tests/dpp16_reference.h",
+      "tests/dpp16_test.cpp",
+      "tests/omod_reference.h"
+    ],
+    "scope": "DPP16 enumerates every accepted control encoding and covers FI/BOUND, row/bank enables, masks and aliases; invalid encodings are rejected. Hardware captures anchor each control family and boundary shifts. Small integer and bounded 1/8-step FMA/FMAC corpora have exactly representable products, sums and power-of-two OMOD (same bounded proof as DPP8), so routing tests can compare bits in loose mode without a general numerical-equivalence assumption.",
+    "diagnostics": "Per-output reference checks supplement the hardware digest. New trace context identifies CPU/EXEC/control/FI/BOUND/row/bank and lane. The exhaustive-control test gives a direct companion for every valid routing control."
   }
 ]

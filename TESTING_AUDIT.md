@@ -289,3 +289,14 @@ results; replacing them with fuzzy comparisons would weaken the contract.
 digest; it now includes the missing mask/selector/opcode/lane failure context.
 All six permlane tests pass with Clang and GCC, and all fourteen audit-tool tests
 pass. The reference and diagnostic audit remains incomplete for other families.
+
+### Scalar-register and DPP integration oracle review
+
+Added 22 explicit reviews: scalar result/SCC/EXEC/conversion/rounding/move
+families, ten DPP integer families and DPP8/DPP16. The inventory now has 47
+reviewed family files and 107 pending. Captured state/result references remain
+distinct from alias-only differential checks and unsupported strict-exact
+conversion requests. Documented the bounded dyadic proof for exact arithmetic
+assertions in DPP routing tests, and added missing control/EXEC/lane diagnostics
+to DPP8/DPP16 hardware corpora. All seven affected DPP tests pass on Clang/GCC;
+the fourteen tooling tests pass. No production code changed.
