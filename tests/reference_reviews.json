@@ -1012,5 +1012,70 @@
     ],
     "scope": "FP32 mantissa extraction across both architectures and widths, loose and strict exact. Retained hardware result hashes cover 8192 inputs for guest policies and modifiers, canonicalizing NaNs; CPU selector rotates by batch. Literal exact special-value tests separately check signed zero, infinity and quieted NaN payload/sign under source modifiers. Every subnormal leading-bit position has literal mantissa 0.5 or signed zero when flushed. DPP expected values come from an un-routed exact call, making them routing/alias/control checks rather than independent numerical evidence. Optional exact reporting is explicitly unsupported; loose state preservation is checked only when the pointer is passed. Stored raw result/exception pair hashes are not used to claim reporting support.",
     "diagnostics": "Per-policy/modifier hardware hashes have literal special/subnormal companions. DPP compares lanes individually. Removed misleading exact-state expectation for null-pointer calls; numerical hardware evidence remains unchanged."
+  },
+  {
+    "file": "ldexp_test.cpp",
+    "assertions": [
+      "Ldexp.EveryExponentBoundaryAndRandomValues",
+      "Ldexp.LiteralRoundingAndValidation",
+      "Ldexp.DppHardwareCorpus",
+      "Ldexp.Wave64AllModifiersMasksAndAliases",
+      "Ldexp.Wave64OptionalStateAndEmptyExec"
+    ],
+    "evidence": [
+      "tests/ldexp_test.cpp",
+      "tests/omod_reference.h"
+    ],
+    "scope": "FP32/FP64 LDEXP in both widths, loose/fallback only. The reference scales in long double with extreme exponents clamped after they already force destination overflow/underflow, then rounds to destination precision before OMOD. Power-of-two scaling introduces no significand multiplication error within the wider range; the current x86 long-double range covers FP64 boundaries. This portability assumption is not a claim for platforms where long double equals double. Literal subnormal ties, signed zeros and overflow supplement exponent-field/target-boundary sweeps and random pairs. Exact finite comparisons intentionally check scaling/rounding; NaNs use class checks. DPP applies only to FP32; split-word aliases and masked stores have separate coverage. Strict exact/reporting errors are explicit. The random input/exponent pair now has sequenced draws; the former emplace_back argument order was toolchain-dependent.",
+    "diagnostics": "Computed checks use per-batch traces and literal boundaries; DPP hardware digest has independent reference companions. No new golden data is required."
+  },
+  {
+    "file": "ldexp_architecture_test.cpp",
+    "assertions": [
+      "LdexpArchitecture.LiteralScalingAndFlushing",
+      "LdexpArchitecture.GuestPoliciesModifiersWidthsAndAliases",
+      "LdexpArchitecture.DppGuestPolicies",
+      "LdexpArchitecture.NaNsRemainNaNsUnlessClamped",
+      "LdexpArchitecture.ErrorsAndHostControls"
+    ],
+    "evidence": [
+      "tests/ldexp_architecture_test.cpp",
+      "tests/omod_reference.h"
+    ],
+    "scope": "Both LDEXP formats, architectures and widths. Long-double power-of-two reference is combined with explicit guest input/output flushing and RDNA3 OMOD gating. Literal witnesses distinguish flushing from scaling. All guest policies/modifiers and representative alias layouts cover mixed EXEC; FP32 DPP uses every routing descriptor with a representative modifier. NaNs are checked by class or clamp-to-zero, not payload agreement. Strict exact and exact optional-state reporting reject without writes. These loose numerical checks do not assert universal hardware bit-exactness.",
+    "diagnostics": "Literal policy witnesses and configuration-tagged whole-buffer checks supplement per-lane DPP and NaN tests. No large digest is the sole oracle."
+  },
+  {
+    "file": "half_exponent_test.cpp",
+    "assertions": [
+      "HalfExponent.EveryHalfEncodingAndBoundaryExponents",
+      "HalfExponent.EverySignedExponent",
+      "HalfExponent.LiteralRoundingAndOverflow",
+      "HalfExponent.HardwareRoundingCorpus",
+      "HalfExponent.DppHardwareCorpus",
+      "HalfExponent.Wave64DppMasksAndAliases"
+    ],
+    "evidence": [
+      "tests/half_exponent_reference.h",
+      "tests/half_reference.h",
+      "tests/half_exponent_test.cpp"
+    ],
+    "scope": "FP16 LDEXP and exponent extraction in both widths, loose/fallback only. Half decode is exact in double; power-of-two scaling retains significand bits until explicitly rounded to FP16, with large finite overflow represented by a finite sentinel for saturation provenance. FREXP reference uses the defined exponent of the exactly decoded half. Every half encoding is tested at boundary exponents; every signed 16-bit exponent uses sixteen representative inputs, not their full Cartesian product. Hardware digest covers every half with five exponents, four OMOD values and both overflow settings, anchoring empirical stage-order rules. Literal ties/overflow and modifier/mask/alias/DPP checks complement it. Preserved halves use exact comparison and NaNs use class checks. Strict exact and reporting are rejected.",
+    "diagnostics": "Large hardware total has per-output computed sweeps and literal rounding witnesses. Those companion tests identify opcode, CPU, overflow, mode, exponent and input block, so the total is not the sole diagnostic."
+  },
+  {
+    "file": "half_exponent_architecture_test.cpp",
+    "assertions": [
+      "HalfExponentArchitecture.LiteralPolicies",
+      "HalfExponentArchitecture.ModifiersGuestModesDppAndAliases",
+      "HalfExponentArchitecture.EveryHalfUnderGuestPolicies",
+      "HalfExponentArchitecture.ValidationAndHostControls"
+    ],
+    "evidence": [
+      "tests/half_exponent_reference.h",
+      "tests/half_exponent_architecture_test.cpp"
+    ],
+    "scope": "FP16 scaling/exponent extraction across both architectures and widths. Reuses the independently decoded half reference with explicit guest flush/OMOD/overflow rules. All guest settings and modifiers are checked with boundary values, aliases, guards and mixed EXEC; routing cycles across modifiers rather than forming a full Cartesian product. Every half encoding additionally runs in Wave64 under eight guest policies with a selected modifier and varying exponent. NaN class checks preserve the unselected half. Strict exact and optional exact state reject, loose state remains unchanged. The integration model is not native hardware evidence for every mode.",
+    "diagnostics": "Literal policies distinguish input/output flush and architecture scaling gates. Per-output assertions identify architecture, width, opcode, policy, modifier, alias, CPU and lane; exhaustive sweep identifies half encoding."
   }
 ]

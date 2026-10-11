@@ -141,9 +141,11 @@ TEST(Ldexp, EveryExponentBoundaryAndRandomValues) {
       for (int power : {-1, 0, 1, width, bias, 2 * bias, INT32_MIN, INT32_MAX})
         cases.emplace_back(1ULL << bit, power);
     std::mt19937_64 random(905);
-    for (int i = 0; i < 2048; ++i)
-      cases.emplace_back(random() & (fp64 ? UINT64_MAX : UINT32_MAX),
-                         int(random() % (4 * bias)) - 2 * bias);
+    for (int i = 0; i < 2048; ++i) {
+      const uint64_t input = random() & (fp64 ? UINT64_MAX : UINT32_MAX);
+      const int exponent = int(random() % (4 * bias)) - 2 * bias;
+      cases.emplace_back(input, exponent);
+    }
     // Exercise each output scale across the exponent boundaries. The mask/alias
     // matrix above covers every combination of source and output modifiers.
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)

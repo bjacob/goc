@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Sixty-eight explicit family-file reviews exist and 86
+non-generic family references. Seventy-two explicit family-file reviews exist and 82
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -171,3 +171,13 @@ checking the retained digest. Mantissa DPP references are explicitly differentia
 literal special values and subnormal powers supplement its hardware hashes.
 State-preservation assertions apply only to loose calls that pass a state pointer,
 not exact calls opting out. FP64 exponent extraction remains loose/fallback-only.
+
+## Exponent scaling
+
+Four reviews cover FP16/32/64 scaling and architecture integration, including
+boundary rounding, guest flush/scaling rules, split-word/half preservation and
+strict-exact rejection. Long-double references rely on the wider x86 range used
+by the validated builds; no broader portability claim is made. A missed random
+pair-generation site in LDEXP was fixed by sequencing input and exponent draws.
+The follow-up scan of multiple `random()` calls per statement found only
+sequenced declarations and mutually exclusive conditional branches elsewhere.

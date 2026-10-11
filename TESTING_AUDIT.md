@@ -396,3 +396,15 @@ input independently, retaining the final captured digest. Optional-state checks
 in DPP integration apply only to loose calls passing the pointer. After fixing
 GCC's dangling-else warning around GoogleTest macros with explicit braces, all
 19 affected tests pass on rebuilt Clang/GCC binaries. All 14 tooling tests pass.
+
+### Exponent scaling and additional deterministic-input fix
+
+Four more reviews bring the queue to 72 reviewed and 82 pending. Recorded
+FP16/32/64 scaling references, literal boundaries, architecture policy witnesses
+and the wider-range long-double assumption of the validated x86 builds.
+Found an eighth unsequenced RNG site missed by the initial scan: LDEXP passed
+two draws as emplace_back arguments. Input and exponent draws are now separate
+statements. Follow-up multi-random-call statement inspection found only ordered
+declarations and mutually exclusive conditional branches. All ten LDEXP tests
+pass on Clang/GCC, and all 14 tooling tests pass. The RNG finding corrects the
+initial seven-site inventory; it does not alter the deterministic-input rule.
