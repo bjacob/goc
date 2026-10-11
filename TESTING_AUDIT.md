@@ -300,3 +300,15 @@ conversion requests. Documented the bounded dyadic proof for exact arithmetic
 assertions in DPP routing tests, and added missing control/EXEC/lane diagnostics
 to DPP8/DPP16 hardware corpora. All seven affected DPP tests pass on Clang/GCC;
 the fourteen tooling tests pass. No production code changed.
+
+### Integer/byte conversion and packing reference review
+
+Recorded four more family reviews (51 reviewed, 103 pending). Computed references
+for sign extension, saturation, small-integer power-of-two scaling and FP16 field
+packing have explicit scope and justification. Retained hardware digests and
+added per-output reference assertions to integer/byte DPP captures and both
+packing encoding corpora, improving failure localization without new fixture
+arrays. All 29 affected tests pass on both Clang and GCC. The inventory still
+finds family references for all 1,791 APIs; this does not establish complete
+semantic coverage. The broader reference, tolerance and final validation work
+remains open.

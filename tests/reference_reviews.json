@@ -675,5 +675,66 @@
     ],
     "scope": "DPP16 enumerates every accepted control encoding and covers FI/BOUND, row/bank enables, masks and aliases; invalid encodings are rejected. Hardware captures anchor each control family and boundary shifts. Small integer and bounded 1/8-step FMA/FMAC corpora have exactly representable products, sums and power-of-two OMOD (same bounded proof as DPP8), so routing tests can compare bits in loose mode without a general numerical-equivalence assumption.",
     "diagnostics": "Per-output reference checks supplement the hardware digest. New trace context identifies CPU/EXEC/control/FI/BOUND/row/bank and lane. The exhaustive-control test gives a direct companion for every valid routing control."
+  },
+  {
+    "file": "integer_conversion_test.cpp",
+    "assertions": [
+      "IntegerConversion.LiteralSaturationAndHalfOrder",
+      "IntegerConversion.EveryHalfAndSaturationBoundary",
+      "IntegerConversion.DppHardwareCorpus",
+      "IntegerConversion.Wave64ExactHalvesAndBoundaries"
+    ],
+    "evidence": [
+      "tests/integer_conversion_reference.h",
+      "tests/integer_conversion_test.cpp"
+    ],
+    "scope": "Four signed/unsigned half extensions and saturating pair packs, both wave widths. The independent model subtracts 2^16 or 2^32 in int64_t for sign extension, clamps to integer limits and packs disjoint halves. Exact comparison is appropriate in loose semantics too. Every half encoding, literal saturation boundaries, deterministic full words, masks, aliases, guards and DPP are exercised. Wave64 explicitly requests strict exact semantics; Wave32 separately checks semantic selector acceptance.",
+    "diagnostics": "The retained hardware DPP digest now has per-output computed checks with opcode, CPU, EXEC, descriptor, selector and lane. Literal boundaries and exhaustive half sweeps supplement it."
+  },
+  {
+    "file": "byte_conversion_test.cpp",
+    "assertions": [
+      "ByteConversion.LiteralByteOrderAndOutputModifiers",
+      "ByteConversion.EveryByteEveryModifierAndUnselectedBit",
+      "ByteConversion.DppHardwareCorpus",
+      "ByteConversion.Wave64ExactValuesDppAndAliases",
+      "ByteConversion.Wave64BytePackingRoundingDppAliasesAndOptionalState"
+    ],
+    "evidence": [
+      "tests/byte_conversion_reference.h",
+      "tests/byte_conversion_test.cpp"
+    ],
+    "scope": "RDNA4 byte-to-FP32 and signed-nibble offsets in both widths. All selected integers and power-of-two output scales fit exactly in binary32; direct integer encoding and literal bit patterns justify exact comparisons. Tests cover unselected bits, modifiers, masks, aliases, guards and DPP. The additional Wave64 float-to-byte test uses a computed ties-even/saturation reference and checks optional-state rejection; it does not independently establish arbitrary FP conversion equivalence. Its hardware anchors reside in the separate byte-pack family.",
+    "diagnostics": "Byte/nibble DPP hardware digest now compares every output with the bounded exact reference and identifies CPU, EXEC, opcode, descriptor, modifier and lane."
+  },
+  {
+    "file": "byte_conversion_architecture_test.cpp",
+    "assertions": [
+      "ByteConversionArchitecture.EveryInputPolicyModifierAndSemantics",
+      "ByteConversionArchitecture.DppMasksAliasesAndGuards",
+      "ByteConversionArchitecture.HostModesAndValidation"
+    ],
+    "evidence": [
+      "tests/byte_conversion_reference.h",
+      "tests/byte_conversion_architecture_test.cpp"
+    ],
+    "scope": "Five byte/nibble conversions, both architectures and widths, loose and strict exact semantics. The bounded dyadic encoding proof applies unchanged. The local OMOD policy table cites RDNA3 ISA 7.2.3.1. Every selected input, all eight guest policies and output modifier combinations are checked with deterministic unselected-bit noise. DPP adds mixed EXEC, aliases and guards. Invalid modes preserve output. These exactly representable results need no fuzzy tolerance.",
+    "diagnostics": "Every-input assertions identify architecture, width, opcode, policy, modifier, semantics, CPU, batch and lane. DPP uses whole-buffer comparison with configuration context, rather than an opaque digest."
+  },
+  {
+    "file": "pack_test.cpp",
+    "assertions": [
+      "Pack.ExhaustiveHardwareEncodingsAndModifiers",
+      "Pack.Wave64ExactResultsMatchCapturedEncodingCorpus",
+      "Pack.DppHardwareCorpusAndHostFpState",
+      "Pack.Wave64DppModifiersAliasesAndGlobalStateContract",
+      "Pack.SaturationBoundariesIgnoredClampAndWaveWidths"
+    ],
+    "evidence": [
+      "tests/pack_reference.h",
+      "tests/pack_test.cpp"
+    ],
+    "scope": "Signed-half-to-byte saturation and RDNA4 FP16 field packing in both widths. Saturation uses direct integer limits. FP packing selects halves, quiets NaNs and applies ABS then NEG without arithmetic. The 66 gfx1201 digests anchor every half encoding across modifiers, including NaN handling. Wave32 and strict-exact Wave64 now check the captured inputs individually against the field reference as well as retaining the hardware digest. DPP/mask/alias tests compose these operations with routing. Exact optional-state reporting remains explicitly unsupported; loose state preservation is tested. No general numerical rounding equivalence is inferred.",
+    "diagnostics": "Encoding captures now identify variant, CPU and exact input index in both widths. DPP hardware digest has computed routing/alias companions; literal saturation cases distinguish clamp and preserved-half behavior."
   }
 ]

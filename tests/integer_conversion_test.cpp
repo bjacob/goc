@@ -204,8 +204,18 @@ TEST(IntegerConversion, DppHardwareCorpus) {
             ASSERT_EQ(
                 functions[op](cpu, exec_mask, descriptor | (select ? GOC_ALU_HIGH_A : 0), d, a, b),
                 GOC_SUCCESS);
-            for (auto word : output)
-              hash = goc_test::capture_hash_word(hash, word);
+            SCOPED_TRACE(::testing::Message()
+                         << "cpu=" << cpu << " exec_mask=" << exec_mask << " op=" << op
+                         << " descriptor=" << descriptor << " select=" << select);
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              int source = 0;
+              uint32_t expected = 0xdead0000U + lane;
+              if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
+                expected = goc_test::integer_conversion_reference(
+                    op, source < 0 ? 0 : av[source], bv[lane], select ? GOC_ALU_HIGH_A : 0);
+              ASSERT_EQ(output[lane], expected) << "lane=" << lane;
+              hash = goc_test::capture_hash_word(hash, output[lane]);
+            }
           }
     EXPECT_EQ(hash, 0x1520b5b44ef7c66aULL) << cpu;
   }

@@ -31,8 +31,12 @@ TEST(Pack, ExhaustiveHardwareEncodingsAndModifiers) {
         ASSERT_EQ(
             goc_test::pack_call(variant, cpu, UINT32_MAX, goc_test::pack_mode(variant), d, a, b),
             GOC_SUCCESS);
-        for (uint32_t word : words[2])
-          digest = goc_test::capture_hash_bytes(digest, word, 4);
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          ASSERT_EQ(words[2][lane],
+                    goc_test::pack_reference(variant, words[0][lane], words[1][lane], 0xcafebeef))
+              << "variant=" << variant << " cpu=" << cpu << " input=" << start + lane;
+          digest = goc_test::capture_hash_bytes(digest, words[2][lane], 4);
+        }
       }
       EXPECT_EQ(digest, goc_test::pack_capture_digests[variant]) << variant << "/" << cpu;
     }
@@ -214,8 +218,12 @@ TEST(Pack, Wave64ExactResultsMatchCapturedEncodingCorpus) {
         ASSERT_EQ(pack_wave64(variant, cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                               UINT64_MAX, goc_test::pack_mode(variant), &d, &a, &b),
                   GOC_SUCCESS);
-        for (auto word : words[2])
-          digest = goc_test::capture_hash_bytes(digest, word, 4);
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          ASSERT_EQ(words[2][lane],
+                    goc_test::pack_reference(variant, words[0][lane], words[1][lane], 0xcafebeef))
+              << "variant=" << variant << " cpu=" << cpu << " input=" << start + lane;
+          digest = goc_test::capture_hash_bytes(digest, words[2][lane], 4);
+        }
       }
       EXPECT_EQ(digest, goc_test::pack_capture_digests[variant]);
     }

@@ -24,9 +24,8 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Forty-seven explicit family-file reviews exist and 107
-remain. 654 API symbols are linked to at least one reviewed file; that number
-must not be interpreted as 654 completely audited APIs. Consult the record's
+non-generic family references. Fifty-one explicit family-file reviews exist and 103
+remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
 Initial reviews:
@@ -82,3 +81,17 @@ covered range. This is a bounded proof for these routing tests, not permission
 to assume general floating arithmetic is bit-exact. Source comments record that
 reason for exact assertions. Hardware-test failure traces now include routing
 controls and EXEC as well as the lane.
+
+## Integer and byte conversion references
+
+Four more reviews cover integer half conversion, byte/nibble conversion, its
+architecture policies, and FP16 field packing. Exact integer and bounded dyadic
+references are appropriate here: there is no rounding ambiguity in extending an
+integer half or scaling a byte by these powers of two. The architecture review
+records the separate RDNA3 OMOD policy evidence.
+
+Integer/byte DPP hardware captures now retain their independent hardware totals
+while checking individual outputs against these simple references. FP16 packing
+likewise checks every captured input against the field model in both wave widths;
+its hardware totals still anchor NaN quieting and modifier ordering. Failures now
+identify the input or lane and configuration without adding golden arrays.

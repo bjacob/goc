@@ -204,7 +204,7 @@ TEST(ByteConversion, DppHardwareCorpus) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
     uint64_t hash = goc_test::capture_hash_seed;
     for (auto exec_mask : masks)
-      for (auto fn : ops)
+      for (unsigned op = 0; op < 5; ++op)
         for (auto descriptor : goc_test::dpp_modes)
           for (unsigned variant = 0; variant < 8; ++variant) {
             uint32_t input[32], output[32];
@@ -215,10 +215,23 @@ TEST(ByteConversion, DppHardwareCorpus) {
             const uint32_t *a[] = {input};
             uint32_t *d[] = {output};
             ASSERT_EQ(
-                fn(cpu, exec_mask, descriptor | goc_test::byte_conversion_mode(variant), d, a),
+                ops[op](cpu, exec_mask, descriptor | goc_test::byte_conversion_mode(variant), d, a),
                 GOC_SUCCESS);
-            for (auto word : output)
-              hash = goc_test::capture_hash_word(hash, word);
+            SCOPED_TRACE(::testing::Message()
+                         << "cpu=" << cpu << " exec_mask=" << exec_mask << " op=" << op
+                         << " descriptor=" << descriptor << " variant=" << variant);
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              int source = 0;
+              uint32_t expected = 0xdead0000U + lane;
+              if (goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
+                uint32_t raw = source < 0 ? 0 : input[source];
+                uint32_t mode = goc_test::byte_conversion_mode(variant);
+                expected = op < 4 ? goc_test::byte_conversion_reference(op, raw, mode)
+                                  : goc_test::nibble_offset_reference(raw, mode);
+              }
+              ASSERT_EQ(output[lane], expected) << "lane=" << lane;
+              hash = goc_test::capture_hash_word(hash, output[lane]);
+            }
           }
     EXPECT_EQ(hash, 0x5aa55d075a279fa5ULL) << cpu;
   }
