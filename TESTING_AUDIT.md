@@ -531,3 +531,12 @@ allowance above zero is documented explicitly. Loose NaN payloads stay
 unspecified. FP32 literal-FMA hardware digests now have per-input companions,
 and a null-pointer state assertion is no longer treated as reporting evidence.
 All 14 affected tests pass on Clang/GCC. Production and fixtures are unchanged.
+
+### Half-FMA and DPP review
+
+Two reviews bring the queue to 107 reviewed and 47 pending. Calibrated fuzzy
+checks now cover ordinary loose writes while preserving raw hardware, exact-mode,
+boundary, zero-sign and storage assertions. Alternate deterministic seeds also
+match the computed reference on both compilers. Exception corpora check every
+nonflag bit, and direct host-intrinsic includes replace a transitive dependency.
+All 22 affected tests pass on Clang/GCC. Production and fixtures are unchanged.

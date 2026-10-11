@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 105 explicit family-file reviews exist and 49
+non-generic family references. 107 explicit family-file reviews exist and 47
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -299,3 +299,13 @@ digests. General loose checks use calibrated fuzzy bounds; exact payloads,
 preserved halves/storage, signed zeros and finite fused-rounding literals remain
 raw. Records explicitly delimit Wave32 half coverage and non-strict FP32 FMAC
 requests rather than claiming strict exact coverage from those requests.
+
+## Half FMA, routing and exceptions
+
+Two reviews cover the ordinary and DPP half-FMA suites, including the Wave64
+accumulating/literal forms that complement the preceding Wave32 reviews.
+Computed integer arithmetic remains distinct from captured special-value rules.
+General loose writes now use measured fuzzy comparisons; exact boundary and
+payload witnesses remain raw. Exception capture tests preserve every nonflag bit,
+with literal accumulation and aliased-output tests providing local diagnostics.
+The existing stratified DPP mask coverage is retained.

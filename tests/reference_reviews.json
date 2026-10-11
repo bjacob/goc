@@ -1734,5 +1734,56 @@
     ],
     "scope": "FP16 and FP32 FMAMK/FMAAK literal placement: every half literal with deterministic random operands and sampled selector/overflow combinations, all selectors/masks/aliases on edge inputs, FP32 random triples, validation and fused-rounding literals. Independent integer-grid references represent the exact finite product/addend; special payload priority and OMOD rules retain inherited/captured evidence rather than deriving hardware behavior from host math. FP32 retained gfx1201 hardware digests now also check each computed result, establishing captured-domain agreement across four flush policies and both wave widths. Both-architecture FP32 guest-policy tests distinguish exact from fuzzy loose results, unsupported exact state and literal NaN placement. Half host tests preserve payload priority; FP32 exact host-control tests use integer references. Loose half NaNs remain classification checks even in the literal boundary table. This file does not independently provide complete Wave64 half coverage.",
     "diagnostics": "Captured FP32 literal-FMA corpus now reports operation/width/CPU/policy/input before its digest. Modifier and alias tests carry test context; exact integer-reference agreement alone is not claimed to prove arbitrary hardware special-value behavior. Calibrated loose numerical checks retain exact storage checks."
+  },
+  {
+    "file": "half_fma_test.cpp",
+    "assertions": [
+      "HalfFma.BoundaryCartesianProductsEveryEncodingAndRandomTriples",
+      "HalfFma.AllModifiersAndHalfSelectors",
+      "HalfFma.MasksAndAllWholeRegisterAliases",
+      "HalfFma.RocjitsuHardwareWitnesses",
+      "HalfFma.DoubleRoundingAndTininessBoundaries",
+      "HalfFma.ExactPreservesHostEnvironment",
+      "HalfFma.ValidationAndSemantics",
+      "HalfFma.ExceptionHardwareCorpus",
+      "HalfFma.AccumulatorAndLiteralExceptionHardwareCorpora",
+      "HalfFma.Wave64UpperLaneExceptionHardwareCorpus",
+      "HalfFma.Wave64FormsDppHalfSelectorsAndAliases",
+      "HalfFma.Wave64ReportingAccumulationAndAliasedUpperSource",
+      "HalfFma.Wave64ReportingDppAndHostEnvironment",
+      "HalfFma.ArchitectureGuestModesAndLiteralOperands",
+      "HalfFma.NewArchitecturePolicyPreservesHostStateAndRejectsUnverifiedReporting",
+      "HalfFma.ArchitectureIntegerOracleBoundaryCases"
+    ],
+    "evidence": [
+      "tests/half_fma_test.cpp",
+      "tests/half_fma_reference.h",
+      "tests/half_fma_exceptions_hardware.h",
+      "tests/dpp_reference.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "FP16 FMA and accumulating/literal forms, RDNA3/RDNA4 and both wave widths. Bounded integer half-product/addend alignment and nearest-even packing supply the finite oracle; rocjitsu gfx1201 witnesses separately anchor NaN priority, OMOD, overflow and tininess ordering. All half-A encodings, boundary Cartesian triples, deterministic random triples and all Wave32 modifiers are covered, plus 84 masks and whole-register aliases. Wave64 covers four forms, sampled modifiers, seven DPP routes/row masks and aliases. Architecture tests cover eight guest policies, literals and integer boundary cases. Loose numerical checks are calibrated fuzzy; captured finite witnesses, signed zeros, exact payloads and preserved halves remain raw. Independent exception digests cover ordinary and each accumulator/literal form; upper-lane tests reuse the same capture sequence. Nonflag preservation now checks every bit outside the seven reported flags. Literal invalid/overflow accumulation, inactive signaling NaNs, aliased reporting, host controls and unsupported policy reporting are covered.",
+    "diagnostics": "Exception digest failures identify modifier/overflow setting; per-output literal and differential form checks complement the aggregate flags. Broad integration is sampled across routing/policies, not a full Cartesian product. Computed reference agreement is not new arbitrary-input hardware proof."
+  },
+  {
+    "file": "dpp_half_fma_test.cpp",
+    "assertions": [
+      "DppHalfFma.HardwareCorpus",
+      "DppHalfFma.HardwareOmodBoundaries",
+      "DppHalfFma.MasksAliasesAndRandomWords",
+      "DppHalfFma.Validation",
+      "DppHalfFma.EveryModifierAndOverflowMode",
+      "DppHalfFma.ExactPreservesHostEnvironment"
+    ],
+    "evidence": [
+      "tests/dpp_half_fma_test.cpp",
+      "tests/dpp_half_fma_reference.h",
+      "tests/half_fma_reference.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Wave32 RDNA4 FP16 FMA/FMAC DPP, both semantics and all available CPU selectors. Retained gfx1201 result digests have per-output routed integer-oracle companions for ordinary values and OMOD boundaries. All valid low modifiers and overflow settings cross seven DPP descriptors with full EXEC; alias/mask tests stratify 84 versus 14 masks by modifier as documented by the earlier latency work. Explicit LCG recurrences provide reproducible random words. General loose writes now use calibrated fuzzy half comparisons while exact semantics, hardware captures, unwritten lanes and the other destination half remain bitwise. Shared-source layouts, all destination aliases, guards, invalid descriptor/operand flags and exact host rounding/sticky-state preservation are covered.",
+    "diagnostics": "Random-route failures identify CPU/operation/mode/EXEC/destination/lane; all-modifier checks identify overflow setting. Hardware hash failures retain per-lane companions. Wave64 routing is covered separately in half_fma_test.cpp."
   }
 ]

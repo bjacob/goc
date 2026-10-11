@@ -238,3 +238,19 @@ unchanged and are not independent holdout data. Reproduction script, instrumente
 snapshots and logs: `goc-build/coverage-work/testing-fma-calibration/run.py`.
 These observations do not prove hardware equivalence outside the reference's
 inherited rules and captured domains.
+
+The same half-FMA bound was separately measured in the ordinary and DPP
+half-FMA suites. Both Clang and GCC found zero error for all finite, nonzero
+loose comparisons:
+
+| Family | Existing corpus pairs | Alternate-seed pairs |
+| --- | ---: | ---: |
+| HalfFma | 2,376,872 | 2,378,480 |
+| DppHalfFma | 10,942,172 | 11,018,060 |
+
+The alternate HalfFma seed is 61387 instead of 84712. DPP uses LCG seeds 7919
+instead of 231, and `65537 + variant` instead of `997 + variant`. Literal
+boundary/hardware witnesses and exact semantics remain unchanged; repeated fixed
+cases do not count as independent holdout inputs. Every half A encoding is
+covered, with sampled B/C, policies and routing combinations. Scripts, snapshots
+and logs: `goc-build/coverage-work/testing-half-fma-calibration/run.py`.

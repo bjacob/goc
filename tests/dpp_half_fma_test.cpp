@@ -5,8 +5,10 @@
 #include "dpp_reference.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_reference.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -16,6 +18,21 @@
 #include <vector>
 
 namespace {
+
+::testing::AssertionResult check(uint32_t actual, uint32_t expected, uint32_t mode, bool exact) {
+  unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
+  uint32_t selected = 0xffffU << shift;
+  if ((actual & ~selected) != (expected & ~selected))
+    return ::testing::AssertionFailure() << "preserved half changed";
+  uint16_t got = uint16_t(actual >> shift), want = uint16_t(expected >> shift);
+  if (exact || (want & 0x7fff) == 0) {
+    if (got != want)
+      return ::testing::AssertionFailure() << "bits=" << got << ", expected=" << want;
+    return ::testing::AssertionSuccess();
+  }
+  return goc_test::fuzzy(goc_test::half_value(got), goc_test::half_value(want),
+                         goc_test::fma_f16_tolerance);
+}
 
 std::vector<uint64_t> modes(unsigned op) {
   std::vector<uint64_t> result;
@@ -117,10 +134,8 @@ TEST(DppHalfFma, MasksAliasesAndRandomWords) {
                           op, source < 0 ? 0 : before[layout[0]][source + 1],
                           before[layout[1]][index], before[layout[2]][index], uint32_t(mode), want);
                     if (written) {
-                      ASSERT_EQ(
-                          sem ? words[reg][index]
-                              : goc_test::canonical_half_nan(words[reg][index], uint32_t(mode)),
-                          sem ? want : goc_test::canonical_half_nan(want, uint32_t(mode)));
+                      ASSERT_TRUE(check(words[reg][index], want, uint32_t(mode), sem != 0))
+                          << index;
                     } else {
                       ASSERT_EQ(words[reg][index], want);
                     }
@@ -185,9 +200,9 @@ TEST(DppHalfFma, EveryModifierAndOverflowMode) {
                                                    words[1][lane], words[2][lane], uint32_t(mode),
                                                    old[lane], saturate);
                 }
-                ASSERT_EQ(sem ? words[3][lane]
-                              : goc_test::canonical_half_nan(words[3][lane], uint32_t(mode)),
-                          sem ? want : goc_test::canonical_half_nan(want, uint32_t(mode)))
+                ASSERT_TRUE(
+                    check(words[3][lane], want, uint32_t(mode),
+                          sem != 0 || !goc_test::dpp_source(mode, UINT32_MAX, lane, source)))
                     << cpu << '/' << op << '/' << mode << '/' << lane << '/' << saturate;
               }
             }

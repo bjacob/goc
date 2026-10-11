@@ -4,9 +4,12 @@
 #include "dpp_reference.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_fma_exceptions_hardware.h"
 #include "half_fma_reference.h"
+#include "half_reference.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -15,6 +18,10 @@
 #include <initializer_list>
 #include <random>
 #include <stdint.h>
+
+#if defined(__x86_64__) || defined(_M_X64)
+#include <immintrin.h>
+#endif
 
 namespace {
 
@@ -30,10 +37,11 @@ void check(uint32_t actual, uint32_t before, uint16_t want, uint32_t mode, bool 
   int shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
   EXPECT_EQ((actual ^ before) & ~(0xffffU << shift), 0u);
   uint16_t got = uint16_t(actual >> shift);
-  if (!exact && nan(want)) {
-    EXPECT_TRUE(nan(got));
-  } else {
+  if (exact || (want & 0x7fff) == 0) {
     EXPECT_EQ(got, want);
+  } else {
+    EXPECT_TRUE(goc_test::fuzzy(goc_test::half_value(got), goc_test::half_value(want),
+                                goc_test::fma_f16_tolerance));
   }
 }
 
@@ -187,7 +195,7 @@ TEST(HalfFma, RocjitsuHardwareWitnesses) {
                                         mode, p + 3, p, p + 1, p + 2, nullptr),
                     GOC_SUCCESS);
           for (auto word : words[3])
-            check(word, 0xdeadbeef, want, mode, sem != 0);
+            check(word, 0xdeadbeef, want, mode, sem != 0 || !nan(want));
         }
 }
 
@@ -293,17 +301,17 @@ TEST(HalfFma, ExceptionHardwareCorpus) {
         }
         const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
         uint32_t *d[] = {words[3]};
-        uint32_t exceptions = 0x80000000;
+        uint32_t exceptions = 0xffffff80U;
         uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | (i & 1 ? GOC_SEMANTICS_STRICT : 0) |
                          (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
         ASSERT_EQ(goc_v_fma_f16_rdna4(flags, 1, mode, d, a, b, c, &exceptions), GOC_SUCCESS);
-        ASSERT_TRUE(exceptions & 0x80000000);
+        ASSERT_EQ(exceptions & ~127U, 0xffffff80U);
         hash = goc_test::capture_hash_word(hash, exceptions & 127);
         // Literal and accumulator forms must generate the same flags, selecting
         // the same half, even when the destination aliases an input.
         if (!mode) {
           uint32_t expected = words[3][0];
-          uint32_t mk_flags = 0x80000000, ak_flags = mk_flags, mac_flags = mk_flags;
+          uint32_t mk_flags = 0xffffff80U, ak_flags = mk_flags, mac_flags = mk_flags;
           ASSERT_EQ(goc_v_fmamk_f16_rdna4(flags, 1, 0, d, a, uint16_t(words[1][0]), c, &mk_flags),
                     GOC_SUCCESS);
           EXPECT_EQ(words[3][0], expected);
@@ -342,14 +350,14 @@ TEST(HalfFma, AccumulatorAndLiteralExceptionHardwareCorpora) {
                                          : uint16_t(state * 0x2545f4914f6cdd1dULL);
           }
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
-          uint32_t *d[] = {words[op ? 3 : 2]}, exceptions = 0x80000000;
+          uint32_t *d[] = {words[op ? 3 : 2]}, exceptions = 0xffffff80U;
           uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                            (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
           int status = op == 0   ? goc_v_fmac_f16_rdna4(flags, 1, mode, d, a, b, &exceptions)
                        : op == 1 ? goc_v_fmamk_f16_rdna4(flags, 1, 0, d, a, 0x3c01, c, &exceptions)
                                  : goc_v_fmaak_f16_rdna4(flags, 1, 0, d, a, b, 0x3c01, &exceptions);
           ASSERT_EQ(status, GOC_SUCCESS);
-          ASSERT_TRUE(exceptions & 0x80000000);
+          ASSERT_EQ(exceptions & ~127U, 0xffffff80U);
           hash = goc_test::capture_hash_word(hash, exceptions & 127);
         }
         EXPECT_EQ(hash, goc_test::other_half_fma_exception_hashes[op][variant]);
@@ -379,18 +387,18 @@ TEST(HalfFma, Wave64UpperLaneExceptionHardwareCorpus) {
         }
         const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
         uint32_t *d[] = {words[3]};
-        uint32_t exceptions = 0x80000000;
+        uint32_t exceptions = 0xffffff80U;
         uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | (i & 1 ? GOC_SEMANTICS_STRICT : 0) |
                          (saturate ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
         ASSERT_EQ(goc_v_fma_f16_rdna4_wave64(flags, 1ULL << 63, mode, d, a, b, c, &exceptions),
                   GOC_SUCCESS);
-        ASSERT_TRUE(exceptions & 0x80000000);
+        ASSERT_EQ(exceptions & ~127U, 0xffffff80U);
         hash = goc_test::capture_hash_word(hash, exceptions & 127);
         // Literal and accumulator forms must generate the same flags, selecting
         // the same half, even when the destination aliases an input.
         if (!mode) {
           uint32_t expected = words[3][63];
-          uint32_t mk_flags = 0x80000000, ak_flags = mk_flags, mac_flags = mk_flags;
+          uint32_t mk_flags = 0xffffff80U, ak_flags = mk_flags, mac_flags = mk_flags;
           ASSERT_EQ(goc_v_fmamk_f16_rdna4_wave64(flags, 1ULL << 63, 0, d, a, uint16_t(words[1][63]),
                                                  c, &mk_flags),
                     GOC_SUCCESS);
@@ -647,7 +655,7 @@ TEST(HalfFma, ArchitectureGuestModesAndLiteralOperands) {
                     }
                     for (unsigned lane = 0; lane < 64; ++lane) {
                       if ((exec_mask >> lane) & 1)
-                        check(d[lane], before, expected, mode, semantics != 0);
+                        check(d[lane], before, expected, mode, semantics != 0 || !nan(expected));
                       else
                         EXPECT_EQ(d[lane], before);
                     }
