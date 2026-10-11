@@ -2788,5 +2788,35 @@
     ],
     "scope": "Sparse FP16/BF16 with FP32 or packed output, both widths and all CPU selectors. Independent gfx1201 small-integer captures cover all negation/index-key variants, including native Wave64 captures. Literal midpoint, overflow/infinity and accumulator/pair-negation witnesses cover packed output rounding and the distinction between compressed pair position and dense K parity. Strict exact semantics are unsupported and non-strict exact capture checks exercise loose fallback. New deterministic fractional logical matrices use independently decoded normal operands bounded by four, legal 2:4 selectors, double accumulation and fuzzy output checks; all negation combinations and keys occur in each width. This mathematical loose oracle does not claim empirical hardware rounding equivalence. Aliases and duplicate destinations use separately identified scalar/SIMD differential references with full expected storage images.",
     "diagnostics": "Added non-output preservation to both hardware corpus tests, full-storage validation with all 64 unknown-bit positions in both widths, and source/out-of-wave checks to random matrices. Calibrated packed FP16/BF16 bounds and retained the existing FP32 WMMA bound, with 1,572,864 total finite comparisons per seed per compiler. Primary and holdout seeds and all fourteen tests pass on Clang and GCC."
+  },
+  {
+    "file": "subbyte_wmma_test.cpp",
+    "assertions": [
+      "SubbyteWmma.Fp8DenseGoldensAndOverlap",
+      "SubbyteWmma.AllFp8CodesThroughApi",
+      "SubbyteWmma.Fp8ModifiersAndStrictErrors",
+      "SubbyteWmma.IntegerGoldensSignsClampAndOverlap",
+      "SubbyteWmma.IntegerErrorsPreserveEveryDestination",
+      "SubbyteWmma.IntegerExtremesAndCancellationAcrossCpuLevels",
+      "SubbyteWmma.IntegerHardwareStagedClampCorpus",
+      "SubbyteWmma.Wave64Fp8DenseGoldensAndOverlap",
+      "SubbyteWmma.Wave64AllFp8CodesThroughApi",
+      "SubbyteWmma.Wave64Fp8ModifiersAndStrictErrors",
+      "SubbyteWmma.Wave64Fp8HardwareCorpus",
+      "SubbyteWmma.Wave64IntegerNativeStagedClampCorpusAndAliases",
+      "SubbyteWmma.Wave64IntegerValidationPreservesOutputs",
+      "SubbyteWmma.Wave64IntegerExtremesAndCancellationAcrossCpuLevels",
+      "SubbyteWmma.FractionalFp8MatricesAgainstDoubleReference"
+    ],
+    "evidence": [
+      "tests/subbyte_wmma_test.cpp",
+      "tests/subbyte_golden.h",
+      "tests/integer_wmma_capture.h",
+      "tests/integer_wmma_hardware.h",
+      "tests/integer_wmma_wave64_hardware.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Dense FP8/BF8 K16 combinations and RDNA4 integer IU8/IU4 K16 plus IU4 K32, both widths and all CPU selectors. Offline Python goldens cover bounded dyadic floating products and integer sign/clamp/wrap behavior; independent native-width hardware digests anchor integer staged saturation, including opposite-sign near-limit accumulators. Widened logical integer references exercise extremes, cancellation and distinct wave-size saturation groupings. Floating encoding coverage includes all 256 codes of either input, classifying NaNs and independently decoding finite/infinite values; native Wave64 hardware has a separate exactly representable mapping corpus. A new double-reference fractional corpus spans all FP8/BF8 combinations, widths, C modifiers and destination aliases with normal factors/accumulators bounded by four. It provides loose numerical proximity evidence only; strict floating exact semantics are rejected, while non-strict requests fall back. Integer results remain raw in both semantics.",
+    "diagnostics": "Added non-output storage preservation to dense golden/alias tests and both-width integer hardware captures, removed production bit-cast dependencies, and expanded floating invalid-bit checks to all 64 bits with unchanged full storage. The fractional corpus has per-row/column context and raw source/guard checks. All fifteen tests and primary/holdout calibration pass on Clang and GCC; each seed supplies 524,288 fuzzy comparisons without changing the existing WMMA bound."
   }
 ]

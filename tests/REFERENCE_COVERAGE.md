@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 150 explicit family-file reviews exist and 4
+non-generic family references. 151 explicit family-file reviews exist and 3
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -603,3 +603,12 @@ combinations. Captured integer corpora and literal midpoint/overflow witnesses
 remain raw; general fractional results use measured family/output tolerances.
 Both-width source/error preservation is explicit. Scalar/SIMD alias references
 are identified as differential rather than independent hardware evidence.
+
+
+Subbyte WMMA distinguishes offline mathematical goldens from hardware captures:
+integer staged saturation has separate both-width hardware evidence, while
+FP8 loose arithmetic now has bounded fractional double references across formats,
+widths, C modifiers and destination aliases. Exhaustive encoding checks remain
+independent decoding/category tests. Added source/guard preservation to golden
+and capture paths and full-storage floating validation checks. Both seeds pass
+the existing WMMA tolerance on Clang and GCC.

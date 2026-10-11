@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
 
 #include "capture_hash.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "integer_wmma_capture.h"
 #include "integer_wmma_hardware.h"
 #include "integer_wmma_wave64_hardware.h"
-#include "internal.h"
+#include "loose_tolerances.h"
 #include "subbyte_golden.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <random>
@@ -17,6 +19,31 @@
 #include <vector>
 
 namespace {
+
+uint32_t as_bits(float value) {
+  uint32_t bits;
+  std::memcpy(&bits, &value, sizeof(bits));
+  return bits;
+}
+
+float as_float(uint32_t bits) {
+  float value;
+  std::memcpy(&value, &bits, sizeof(value));
+  return value;
+}
+
+// Registers have reversed pointer order and one leading guard word.
+// Every word outside the destination, including out-of-wave storage, stays raw.
+template <size_t Words>
+void preserved(const uint32_t (&actual)[24][Words], const uint32_t (&before)[24][Words], int dst,
+               int width) {
+  for (int reg = 0; reg < 24; ++reg)
+    for (size_t word = 0; word < Words; ++word)
+      if (reg < dst || reg >= dst + 256 / width || word == 0 || word > size_t(width)) {
+        EXPECT_EQ(actual[23 - reg][word], before[23 - reg][word])
+            << "reg=" << reg << " word=" << word;
+      }
+}
 
 using Wmma = decltype(&goc_v_wmma_f32_16x16x16_fp8_fp8);
 
@@ -83,7 +110,6 @@ TEST(SubbyteWmma, Fp8DenseGoldensAndOverlap) {
     for (uint32_t mode : {0U, GOC_WMMA_NEG_C, GOC_WMMA_ABS_C, GOC_WMMA_NEG_C | GOC_WMMA_ABS_C})
       for (int format = 0; format < 4; ++format)
         for (int dst : {0, 4, 8, 16})
-
           for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
             Registers r;
             std::minstd_rand random(12056925);
@@ -100,17 +126,20 @@ TEST(SubbyteWmma, Fp8DenseGoldensAndOverlap) {
             for (int row = 0; row < 16; ++row)
               for (int col = 0; col < 16; ++col) {
                 int c = int(random() % 33) - 16;
-                r.v[8 + row % 8][col + 16 * (row / 8)] = goc::as_bits(float(c));
+                r.v[8 + row % 8][col + 16 * (row / 8)] = as_bits(float(c));
                 int adjusted = mode & GOC_WMMA_ABS_C ? std::abs(c) : c;
                 if (mode & GOC_WMMA_NEG_C)
                   adjusted = -adjusted;
-                expected[row * 16 + col] = goc::as_bits(
-                    goc::as_float(kFp8Dense[format][row * 16 + col]) + float(adjusted - c));
+                expected[row * 16 + col] =
+                    as_bits(as_float(kFp8Dense[format][row * 16 + col]) + float(adjusted - c));
               }
             uint32_t before[8][32];
             save(r, dst, before);
+            uint32_t original[24][35];
+            std::memcpy(original, r.storage, sizeof(original));
             ASSERT_EQ(floating[format](cpu | semantics, mode, r.v + dst, r.v, r.v + 4, r.v + 8), 0);
             check(r, dst, expected, before);
+            preserved(r.storage, original, dst, 32);
           }
 }
 
@@ -136,7 +165,7 @@ TEST(SubbyteWmma, AllFp8CodesThroughApi) {
               int fraction_bits = bf8 ? 2 : 3, bias = bf8 ? 15 : 7;
               int exponent = (code & 127) >> fraction_bits,
                   fraction = code & ((1 << fraction_bits) - 1);
-              float value = goc::as_float(r.v[16 + row % 8][col + 16 * (row / 8)]);
+              float value = as_float(r.v[16 + row % 8][col + 16 * (row / 8)]);
               if ((bf8 && exponent == 31 && fraction) || (!bf8 && (code & 127) == 127)) {
                 EXPECT_TRUE(std::isnan(value));
               } else {
@@ -161,21 +190,28 @@ TEST(SubbyteWmma, Fp8ModifiersAndStrictErrors) {
       Registers r;
       for (int reg = 0; reg < 8; ++reg)
         for (int lane = 0; lane < 32; ++lane)
-          r.v[8 + reg][lane] = goc::as_bits(-3.0f);
+          r.v[8 + reg][lane] = as_bits(-3.0f);
       ASSERT_EQ(fn(GOC_FP16_OVFL, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8), 0);
       float want = (modifiers & GOC_WMMA_ABS_C) ? 3.0f : -3.0f;
       if (modifiers & GOC_WMMA_NEG_C)
         want = -want;
       for (int reg = 0; reg < 8; ++reg)
         for (int lane = 0; lane < 32; ++lane)
-          EXPECT_EQ(r.v[16 + reg][lane], goc::as_bits(want));
+          EXPECT_EQ(r.v[16 + reg][lane], as_bits(want));
       uint32_t before[8][32];
       save(r, 16, before);
+      uint32_t original[24][35];
+      std::memcpy(original, r.storage, sizeof(original));
       EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, modifiers, r.v + 16, r.v,
                    r.v + 4, r.v + 8),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
-      EXPECT_EQ(fn(0, GOC_WMMA_NEG_LO_A, r.v + 16, r.v, r.v + 4, r.v + 8), GOC_ERROR_INVALID_FLAGS);
+      for (unsigned bit = 0; bit < 64; ++bit)
+        if (!((1ULL << bit) & (GOC_WMMA_NEG_C | GOC_WMMA_ABS_C))) {
+          EXPECT_EQ(fn(0, 1ULL << bit, r.v + 16, r.v, r.v + 4, r.v + 8), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(std::memcmp(original, r.storage, sizeof(original)), 0);
+        }
       EXPECT_EQ(fn(1ULL << 63, 0, r.v + 16, r.v, r.v + 4, r.v + 8), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(std::memcmp(original, r.storage, sizeof(original)), 0);
       check(r, 16, nullptr, before);
     }
 }
@@ -185,7 +221,6 @@ TEST(SubbyteWmma, IntegerGoldensSignsClampAndOverlap) {
     for (int shape = 0; shape < 3; ++shape)
       for (uint32_t mode = 0; mode < 8; ++mode)
         for (int dst : {0, 4, 8, 16})
-
           for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
             int bits = shape == 0 ? 8 : 4, K = shape == 2 ? 32 : 16;
             Registers r;
@@ -203,11 +238,14 @@ TEST(SubbyteWmma, IntegerGoldensSignsClampAndOverlap) {
               }
             uint32_t before[8][32];
             save(r, dst, before);
+            uint32_t original[24][35];
+            std::memcpy(original, r.storage, sizeof(original));
             uint32_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
             ASSERT_EQ(integer[shape](cpu | semantics | GOC_SEMANTICS_STRICT | GOC_FP16_OVFL,
                                      modifiers, r.v + dst, r.v, r.v + 4, r.v + 8),
                       0);
             check(r, dst, kIntegerDense[shape][mode], before);
+            preserved(r.storage, original, dst, 32);
           }
 }
 
@@ -315,6 +353,8 @@ TEST(SubbyteWmma, IntegerHardwareStagedClampCorpus) {
         for (unsigned mode = 0; mode < 8; ++mode) {
           uint32_t data[15][32], result[8][32];
           goc_test::integer_wmma_capture_inputs(sample, data);
+          uint32_t original[15][32];
+          std::memcpy(original, data, sizeof(original));
           const uint32_t *a[] = {data[0], data[1]}, *b[] = {data[2], data[3]}, *c[8];
           uint32_t *d[8];
           for (unsigned reg = 0; reg < 8; ++reg) {
@@ -331,6 +371,7 @@ TEST(SubbyteWmma, IntegerHardwareStagedClampCorpus) {
               digest = goc_test::capture_hash_bytes(digest, word, 4);
           EXPECT_EQ(digest, goc_test::dense_integer_capture_digests[shape][sample][mode])
               << shape << "/" << cpu << "/" << sample << "/" << mode;
+          EXPECT_EQ(std::memcmp(original, data, sizeof(original)), 0);
         }
 }
 
@@ -387,7 +428,6 @@ TEST(SubbyteWmma, Wave64Fp8DenseGoldensAndOverlap) {
     for (uint32_t mode : {0U, GOC_WMMA_NEG_C, GOC_WMMA_ABS_C, GOC_WMMA_NEG_C | GOC_WMMA_ABS_C})
       for (int format = 0; format < 4; ++format)
         for (int dst : {0, 4, 8, 16})
-
           for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
             WideRegisters r;
             std::minstd_rand random(12056925);
@@ -404,20 +444,22 @@ TEST(SubbyteWmma, Wave64Fp8DenseGoldensAndOverlap) {
             for (int row = 0; row < 16; ++row)
               for (int col = 0; col < 16; ++col) {
                 int c = int(random() % 33) - 16;
-                r.v[8 + row % 4][col + 16 * (row / 8) + 32 * ((row / 4) % 2)] =
-                    goc::as_bits(float(c));
+                r.v[8 + row % 4][col + 16 * (row / 8) + 32 * ((row / 4) % 2)] = as_bits(float(c));
                 int adjusted = mode & GOC_WMMA_ABS_C ? std::abs(c) : c;
                 if (mode & GOC_WMMA_NEG_C)
                   adjusted = -adjusted;
-                expected[row * 16 + col] = goc::as_bits(
-                    goc::as_float(kFp8Dense[format][row * 16 + col]) + float(adjusted - c));
+                expected[row * 16 + col] =
+                    as_bits(as_float(kFp8Dense[format][row * 16 + col]) + float(adjusted - c));
               }
             uint32_t before[4][64];
             save_wave64(r, dst, before);
+            uint32_t original[24][66];
+            std::memcpy(original, r.storage, sizeof(original));
             ASSERT_EQ(
                 floating_wave64[format](cpu | semantics, mode, r.v + dst, r.v, r.v + 4, r.v + 8),
                 0);
             check_wave64(r, dst, expected, before);
+            preserved(r.storage, original, dst, 64);
           }
 }
 
@@ -444,7 +486,7 @@ TEST(SubbyteWmma, Wave64AllFp8CodesThroughApi) {
               int exponent = (code & 127) >> fraction_bits,
                   fraction = code & ((1 << fraction_bits) - 1);
               float value =
-                  goc::as_float(r.v[16 + row % 4][col + 16 * (row / 8) + 32 * ((row / 4) % 2)]);
+                  as_float(r.v[16 + row % 4][col + 16 * (row / 8) + 32 * ((row / 4) % 2)]);
               if ((bf8 && exponent == 31 && fraction) || (!bf8 && (code & 127) == 127)) {
                 EXPECT_TRUE(std::isnan(value));
               } else {
@@ -469,21 +511,28 @@ TEST(SubbyteWmma, Wave64Fp8ModifiersAndStrictErrors) {
       WideRegisters r;
       for (int reg = 0; reg < 4; ++reg)
         for (int lane = 0; lane < 64; ++lane)
-          r.v[8 + reg][lane] = goc::as_bits(-3.0f);
+          r.v[8 + reg][lane] = as_bits(-3.0f);
       ASSERT_EQ(fn(GOC_FP16_OVFL, modifiers, r.v + 16, r.v, r.v + 4, r.v + 8), 0);
       float want = (modifiers & GOC_WMMA_ABS_C) ? 3.0f : -3.0f;
       if (modifiers & GOC_WMMA_NEG_C)
         want = -want;
       for (int reg = 0; reg < 4; ++reg)
         for (int lane = 0; lane < 64; ++lane)
-          EXPECT_EQ(r.v[16 + reg][lane], goc::as_bits(want));
+          EXPECT_EQ(r.v[16 + reg][lane], as_bits(want));
       uint32_t before[4][64];
       save_wave64(r, 16, before);
+      uint32_t original[24][66];
+      std::memcpy(original, r.storage, sizeof(original));
       EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, modifiers, r.v + 16, r.v,
                    r.v + 4, r.v + 8),
                 GOC_ERROR_UNSUPPORTED_SEMANTICS);
-      EXPECT_EQ(fn(0, GOC_WMMA_NEG_LO_A, r.v + 16, r.v, r.v + 4, r.v + 8), GOC_ERROR_INVALID_FLAGS);
+      for (unsigned bit = 0; bit < 64; ++bit)
+        if (!((1ULL << bit) & (GOC_WMMA_NEG_C | GOC_WMMA_ABS_C))) {
+          EXPECT_EQ(fn(0, 1ULL << bit, r.v + 16, r.v, r.v + 4, r.v + 8), GOC_ERROR_INVALID_FLAGS);
+          EXPECT_EQ(std::memcmp(original, r.storage, sizeof(original)), 0);
+        }
       EXPECT_EQ(fn(1ULL << 63, 0, r.v + 16, r.v, r.v + 4, r.v + 8), GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(std::memcmp(original, r.storage, sizeof(original)), 0);
       check_wave64(r, 16, nullptr, before);
     }
 }
@@ -507,7 +556,7 @@ TEST(SubbyteWmma, Wave64Fp8HardwareCorpus) {
             r.v[4][lane] |= codes[bool(format & 1)][y] << (byte * 8);
           }
           for (unsigned reg = 0; reg < 4; ++reg)
-            r.v[8 + reg][lane] = goc::as_bits(float(int(lane) - 32 + 3 * int(reg)));
+            r.v[8 + reg][lane] = as_bits(float(int(lane) - 32 + 3 * int(reg)));
         }
         ASSERT_EQ(floating_wave64[format](cpu, 0, r.v + dst, r.v, r.v + 4, r.v + 8), GOC_SUCCESS);
         uint64_t hash = goc_test::capture_hash_seed;
@@ -534,6 +583,8 @@ TEST(SubbyteWmma, Wave64IntegerNativeStagedClampCorpusAndAliases) {
           for (unsigned dst : {0U, 2U, 6U, 10U}) {
             uint32_t data[15][64];
             goc_test::integer_wmma_capture_inputs(sample, data);
+            uint32_t original[15][64];
+            std::memcpy(original, data, sizeof(original));
             const uint32_t *a[] = {data[0]}, *b[] = {data[2]}, *c[4];
             uint32_t *d[4];
             for (unsigned reg = 0; reg < 4; ++reg) {
@@ -551,6 +602,10 @@ TEST(SubbyteWmma, Wave64IntegerNativeStagedClampCorpusAndAliases) {
                 hash = goc_test::capture_hash_word(hash, d[reg][lane]);
             EXPECT_EQ(hash, goc_test::integer_wmma_wave64_digests[shape][sample][mode])
                 << shape << "/" << cpu << "/" << sample << "/" << mode << "/" << dst;
+            for (unsigned reg = 0; reg < 15; ++reg)
+              if (reg < dst || reg >= dst + 4) {
+                EXPECT_EQ(std::memcmp(original[reg], data[reg], sizeof(original[reg])), 0);
+              }
           }
 }
 
@@ -664,4 +719,65 @@ TEST(SubbyteWmma, Wave64IntegerExtremesAndCancellationAcrossCpuLevels) {
           check_wave64(r, 16, golden, before);
         }
       }
+}
+
+TEST(SubbyteWmma, FractionalFp8MatricesAgainstDoubleReference) {
+  for (int width : {32, 64})
+    for (unsigned format = 0; format < 4; ++format) {
+      std::mt19937 random(52813);
+      for (unsigned batch = 0; batch < 64; ++batch) {
+        WideRegisters input;
+        double values[2][16][16], expected[16][16];
+        for (unsigned operand = 0; operand < 2; ++operand) {
+          bool bf8 = operand ? format & 1 : format & 2;
+          unsigned mantissa = bf8 ? 2 : 3, bias = bf8 ? 15 : 7;
+          for (int index = 0; index < 16; ++index)
+            for (int k = 0; k < 16; ++k) {
+              unsigned bits = random();
+              unsigned exponent = 1 + ((bits >> 8) % (bias + 1));
+              unsigned fraction = bits & ((1U << mantissa) - 1);
+              unsigned code = (bits >> 24 & 128) | (exponent << mantissa) | fraction;
+              double value = std::ldexp(double((1U << mantissa) + fraction),
+                                        int(exponent) - int(bias) - int(mantissa));
+              values[operand][index][k] = code & 128 ? -value : value;
+              if (width == 64)
+                set_wave64(input.v + 4 * operand, index, k, 8, code);
+              else
+                set(input.v + 4 * operand, index, k, 8, code);
+            }
+        }
+        unsigned modifiers = (batch & 1 ? GOC_WMMA_ABS_C : 0) | (batch & 2 ? GOC_WMMA_NEG_C : 0);
+        for (int row = 0; row < 16; ++row)
+          for (int col = 0; col < 16; ++col) {
+            float c = float(int(random() % 2000001) - 1000000) / 262144.0f;
+            int lane = col + 16 * (row / 8) + (width == 64 ? 32 * (row / 4 % 2) : 0);
+            input.v[8 + row % (256 / width)][lane] = as_bits(c);
+            double sum = modifiers & GOC_WMMA_ABS_C ? std::abs(c) : c;
+            if (modifiers & GOC_WMMA_NEG_C)
+              sum = -sum;
+            for (int k = 0; k < 16; ++k)
+              sum += values[0][row][k] * values[1][col][k];
+            expected[row][col] = sum;
+          }
+        // Cycle the four destination layouts independently of C modifiers.
+        const int destinations[] = {0, 4, 8, 16};
+        int dst = destinations[(batch / 4) % 4];
+        for (uint64_t cpu : cpu_levels()) {
+          WideRegisters r;
+          std::memcpy(r.storage, input.storage, sizeof(r.storage));
+          ASSERT_EQ((width == 64 ? floating_wave64[format] : floating[format])(
+                        cpu, modifiers, r.v + dst, r.v, r.v + 4, r.v + 8),
+                    GOC_SUCCESS);
+          for (int row = 0; row < 16; ++row)
+            for (int col = 0; col < 16; ++col) {
+              int lane = col + 16 * (row / 8) + (width == 64 ? 32 * (row / 4 % 2) : 0);
+              float actual = as_float(r.v[dst + row % (256 / width)][lane]);
+              EXPECT_TRUE(goc_test::fuzzy(actual, expected[row][col], goc_test::wmma_f32_tolerance))
+                  << width << '/' << format << '/' << batch << '/' << cpu << " row=" << row
+                  << " col=" << col;
+            }
+          preserved(r.storage, input.storage, dst, width);
+        }
+      }
+    }
 }

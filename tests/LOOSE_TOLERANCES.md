@@ -542,3 +542,18 @@ measurements. Near-zero cancellation explains relative peaks above `rtol`;
 the absolute term covers those cases. These are bounded-domain measurements,
 not promises for arbitrary exponent spreads. Separate raw capture, midpoint
 and infinity/saturation tests retain their exact categorical contracts.
+
+
+### Dense FP8/BF8 WMMA
+
+`SubbyteWmma.FractionalFp8MatricesAgainstDoubleReference` uses normal signed
+factors below four, fractional accumulators bounded by four, independent double
+matrix multiplication, and the existing `(atol=1e-5, rtol=1e-5)` WMMA bound.
+All four format pairs, both widths, all C modifiers, four destination layouts
+and every available CPU selector participate. Each seed has 524,288 finite
+comparisons per compiler. Seed 52813 measured maximum absolute error
+`2.384185791015625e-6` and relative error `7.6754550627134739e-5`; holdout 97651
+measured `1.9073486328125e-6` and `0.0001120699316373417`. Clang and GCC agree.
+The absolute term covers cancellation near zero; the unchanged bound passes
+both seeds. The separate offline dyadic goldens, exact integer references and
+single-code decoding tests retain their raw comparisons on those domains.

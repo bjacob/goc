@@ -882,3 +882,16 @@ overflow and pair-position witnesses. Added capture source preservation and
 full-storage invalid-request checks. All fourteen tests pass on Clang and GCC.
 Inventory: 150/154 families reviewed; four matrix families and final broad
 verification remain pending.
+
+
+### Subbyte WMMA review
+
+Reviewed both-width integer staged-clamp evidence, offline mathematical goldens,
+independent encoding checks and native Wave64 floating captures. Added fractional
+FP8/BF8 matrix references across widths, formats, C modifiers and aliases, with
+524,288 comparisons per primary/holdout seed on each compiler. Maximum absolute
+error is 2.38e-6 / 1.91e-6 within the unchanged WMMA tolerance. Expanded source,
+guard and floating validation preservation checks; removed production bit-cast
+dependencies. All fifteen tests pass on Clang and GCC. Inventory: 151/154
+families reviewed; three dense/replicated WMMA families and final broad
+verification remain pending.
