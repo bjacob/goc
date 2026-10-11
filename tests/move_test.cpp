@@ -76,8 +76,22 @@ TEST(Move, HalfHardwareModifierCorpus) {
                   : goc_v_mov_b16_wave64(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                                          UINT64_MAX, flags, &d, &a),
               GOC_SUCCESS);
-          for (unsigned lane = 0; lane < lanes; ++lane)
+          for (unsigned lane = 0; lane < lanes; ++lane) {
+            unsigned source_shift = halves & 1 ? 16 : 0;
+            unsigned destination_shift = halves & 2 ? 16 : 0;
+            uint32_t value = (input[lane] >> source_shift) & 65535;
+            if (mode & 1)
+              value &= 32767;
+            if (mode & 2)
+              value ^= 32768;
+            // Raw MOV_B16 ignores OMOD/CLAMP. The retained hardware digest
+            // anchors that rule, including signaling NaNs and subnormals.
+            uint32_t expected =
+                (0xabcd1234U & ~(65535U << destination_shift)) | (value << destination_shift);
+            ASSERT_EQ(output[lane], expected) << "lanes=" << lanes << " mode=" << mode
+                                              << " halves=" << halves << " lane=" << lane;
             hash = goc_test::capture_hash_word(hash, output[lane]);
+          }
         }
       EXPECT_EQ(hash, lanes == 32 ? goc_test::half_move_hash : goc_test::half_move_wave64_hash);
     }

@@ -1077,5 +1077,54 @@
     ],
     "scope": "FP16 scaling/exponent extraction across both architectures and widths. Reuses the independently decoded half reference with explicit guest flush/OMOD/overflow rules. All guest settings and modifiers are checked with boundary values, aliases, guards and mixed EXEC; routing cycles across modifiers rather than forming a full Cartesian product. Every half encoding additionally runs in Wave64 under eight guest policies with a selected modifier and varying exponent. NaN class checks preserve the unselected half. Strict exact and optional exact state reject, loose state remains unchanged. The integration model is not native hardware evidence for every mode.",
     "diagnostics": "Literal policies distinguish input/output flush and architecture scaling gates. Per-output assertions identify architecture, width, opcode, policy, modifier, alias, CPU and lane; exhaustive sweep identifies half encoding."
+  },
+  {
+    "file": "move_test.cpp",
+    "assertions": [
+      "Move.SharedRdna3Rdna4BitPatternsMasksAndAliases",
+      "Move.HalfHardwareModifierCorpus",
+      "Move.EveryHalfEncodingAndSignModifier",
+      "Move.Wave64DppRowsMasksAliasesAndHalfModifiers",
+      "Move.Wave64Dpp8RawMovesAndValidation"
+    ],
+    "evidence": [
+      "tests/move_test.cpp",
+      "tests/half_move_hardware.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Raw 16/32-bit moves, both widths. Direct field selection, sign-bit ABS/NEG and preservation of unselected halves give exact references without floating arithmetic. Hardware digest anchors ignored OMOD/CLAMP, including signaling NaNs and subnormals; it now has per-lane computed companions. Every half encoding/sign modifier is covered, and DPP tests use before-images to catch in-place ordering errors. Wave64 tests cover row masks, FI/bound controls, upper lanes and DPP8. Raw equality is required in loose semantics too.",
+    "diagnostics": "Hardware capture now identifies width, modifier, half selection and lane; CPU is scoped. Exhaustive half and per-lane DPP checks supplement the retained digest."
+  },
+  {
+    "file": "relative_move_test.cpp",
+    "assertions": [
+      "RelativeMove.IndicesBoundsDppAndAliases",
+      "RelativeMove.ManualOffsetLimitAndWidenedAddressing",
+      "RelativeMove.Wave64IndicesDppAndUpperLaneMasks",
+      "RelativeMove.SignModifiersAfterRegisterSelectionAndDpp"
+    ],
+    "evidence": [
+      "tests/relative_move_test.cpp",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Four relative-register move forms, both widths, plus ordinary MOV sign-modifier composition. Explicit widened register indices model bounds, source fallback to register zero, invalid destination discard, packed M0 offsets and the 255 offset limit independent of allocated storage. Before-images and direct bitwise ABS/NEG after routing provide exact references; integer/raw comparisons are appropriate in either semantics. Tests cover empty files, overflowed base indices, guards, aliases and inactive/upper lanes. These tests select baseline CPU; CPU-level raw MOV routing is covered in move_test.cpp rather than claimed here.",
+    "diagnostics": "Whole-file comparisons identify opcode, M0 and route; literal offset-limit cases expose bounds errors, and per-word sign-modifier checks identify width/opcode/modifier/route/word."
+  },
+  {
+    "file": "swap_test.cpp",
+    "assertions": [
+      "Swap.BothWaveSizesMasksAndAliases",
+      "Swap.Permlane64ReadsInactiveSourcesAndPreservesOriginalAliasedInput",
+      "Swap.HalfSelectionsBothWavesMasksAndSameRegisterExchange",
+      "Swap.RelativeBothWavesMasksAndOverlappingFiles",
+      "Swap.RelativeHardwareBothWaves",
+      "Swap.RelativeOffsetLimitIsIndependentOfAllocationSize"
+    ],
+    "evidence": [
+      "tests/swap_test.cpp",
+      "tests/relative_swap_hardware.h"
+    ],
+    "scope": "Raw 16/32-bit swaps, relative swaps and PERMLANE64 in both widths. Independent before-image exchange and lane XOR32 mapping are exact field/routing references. Half tests preserve untouched bits even when exchanging halves of one register. Invalid relative operand cancels both writes, tested separately from allocation-size limits with offsets 255/256/299 and widened addressing. Native Wave32/Wave64 gfx1201 digests anchor relative-swap semantics. Wave32 PERMLANE64 is a no-op with no EXEC parameter. Masks include zero/full/alternating/single upper lanes; all available CPU selectors are exercised.",
+    "diagnostics": "Native hardware digests identify width/opcode/mask and have literal bounds and per-output swap companions. Direct field-copy models suffice; fuzzy comparisons would weaken raw-bit behavior."
   }
 ]

@@ -408,3 +408,13 @@ statements. Follow-up multi-random-call statement inspection found only ordered
 declarations and mutually exclusive conditional branches. All ten LDEXP tests
 pass on Clang/GCC, and all 14 tooling tests pass. The RNG finding corrects the
 initial seven-site inventory; it does not alter the deterministic-input rule.
+
+### Move, relative-move and swap review
+
+Three reviews bring the queue to 75 reviewed and 79 pending. Recorded exact
+field/lane references, before-image alias rules, inactive sources and independent
+relative-offset/allocation bounds. Half-move hardware capture now has per-output
+checks and lane/modifier diagnostics while retaining its digest. Relative-move
+baseline-only CPU coverage is stated explicitly rather than generalized to all
+selectors. All seven affected Move tests pass on Clang/GCC; all 14 tooling tests
+pass. Production code and hardware fixtures are unchanged.
