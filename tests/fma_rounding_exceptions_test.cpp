@@ -41,7 +41,7 @@ TEST(FmaExceptions, RoundingBoundaryHardwareCorpora) {
           }
           const uint32_t *a[] = {words[0][0], words[0][1]}, *b[] = {words[1][0], words[1][1]},
                          *c[] = {words[2][0], words[2][1]};
-          uint32_t *d[] = {words[3][0], words[3][1]}, exceptions = 0;
+          uint32_t *d[] = {words[3][0], words[3][1]}, exceptions = 0xffffff80U;
           uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                            (i % (goc_init_cpu_flags() + 1));
           int status;
@@ -53,7 +53,9 @@ TEST(FmaExceptions, RoundingBoundaryHardwareCorpora) {
           else
             status = goc_v_div_fmas_f64_rdna4(flags, 1, mode, d, a, b, c, setting, &exceptions);
           ASSERT_EQ(status, GOC_SUCCESS);
-          hash = goc_test::capture_hash_word(hash, exceptions);
+          ASSERT_EQ(exceptions & ~127U, 0xffffff80U)
+              << type << '/' << setting << '/' << variant << '/' << i;
+          hash = goc_test::capture_hash_word(hash, exceptions & 127U);
         }
         EXPECT_EQ(hash, goc_test::fma_rounding_exception_hashes[type][setting][variant])
             << type << "/" << setting << "/" << variant;

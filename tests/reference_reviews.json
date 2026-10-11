@@ -1822,5 +1822,39 @@
     ],
     "scope": "Three mixed-FMA forms across RDNA3/RDNA4 and both widths. Exact finite arithmetic uses an independent 640-bit integer grid covering FP32 products/addends; rounding, payload and flush behavior retain rocjitsu capture witnesses and gfx1201 denormal/DPP digests. All 8192 modifiers, every half encoding in each source, every positive half midpoint with signed tiny perturbations, boundary Cartesian triples and deterministic random words are exercised, with CPU/semantics coverage varying by sweep. General loose outputs now use calibrated fuzzy bounds. Captured single-rounding/denormal witnesses and hardware digests remain raw. Masks/aliases preserve inactive words and other destination halves exactly; exact alias cases now actually request raw comparisons. Wave64 DPP covers row masks, upper lanes, aliases and three EXEC patterns. Zero-exception hardware corpora for RDNA4 half destinations remain direct retained evidence; exact FP32 and RDNA3 reporting stay explicitly unsupported. Guest policies, host controls, unsupported semantics, error precedence and output atomicity are covered.",
     "diagnostics": "Per-input computed checks report operands, modes and lane; hardware digest failures are complemented by captured boundary witnesses and independent routed-model sweeps rather than claimed per-record capture data. Vacuous null-pointer state assertions were removed/guarded. Dedicated comparator tests protect exactness and preserved-half behavior. No arbitrary-input hardware proof is inferred solely from GoC/reference agreement."
+  },
+  {
+    "file": "fma_exact_test.cpp",
+    "assertions": [
+      "FmaExact.HardwareCorpora",
+      "FmaExact.AllModifiersArchitecturesMasksAndAliases",
+      "FmaExact.DppMasksAliasingAndHostEnvironment",
+      "FmaExact.ReportingRemainsExplicitlyUnsupported",
+      "FmaExact.Dx9ZeroProductNaNPriorityAndTininess"
+    ],
+    "evidence": [
+      "tests/fma_exact_test.cpp",
+      "tests/fma32_exact_hardware.h",
+      "tests/dx9_exact_hardware.h",
+      "tests/mixed_fma_reference.h",
+      "tests/omod_reference.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Strict exact FP32 FMA/FMAC and DX9 forms across both architectures and wave widths. Retained gfx1201 edge/random and exponent-boundary result digests cover 16 modifier combinations and four flush policies; accumulating DX9 exists only on RDNA3 and has no direct capture in this file. Independent integer-grid FMA plus separately evaluated host OMOD (RNE, denormals preserved) supplies computed integration references. The hardware sweeps now check one rotating lane per batch against that reference while retaining full digests; this is sampled reference evidence, not a claim of exhaustive model/hardware equivalence. All supported low modifiers cross architectures/widths/CPU selectors with stratified masks/aliases. Seven DPP routes cross guest policies and host rounding/flush controls; CPU selection there is cycled by policy. Literal DX9 witnesses cover zero-product NaN priority, signed zeros, tininess and fused cancellation. Exact optional reporting remains explicitly unsupported, including empty EXEC and invalid-mode precedence.",
+    "diagnostics": "Hardware failures distinguish DX9/FMA/FMAC and capture domain; sampled companions identify modifier/input. Modifier integration now identifies architecture/width/CPU/register/lane. Removed an unused local state assertion from calls passing nullptr. Existing captures and computed-model limitations are retained explicitly."
+  },
+  {
+    "file": "fma_rounding_exceptions_test.cpp",
+    "assertions": [
+      "FmaExceptions.RoundingBoundaryHardwareCorpora"
+    ],
+    "evidence": [
+      "tests/fma_rounding_exceptions_test.cpp",
+      "tests/fma_rounding_exceptions_hardware.h",
+      "tests/half_fma_test.cpp",
+      "tests/div_fmas_test.cpp"
+    ],
+    "scope": "RDNA4 Wave32 strict exact exception flags for FP16 FMA and FP32/64 DIV_FMAS. Direct gfx1201 MODE=0xf0 rounding-boundary capture digests cover 8192 triples around tiny-to-normal and finite-to-infinity thresholds, 16 modifier combinations, and both saturation/condition settings. Explicit bit-pattern generation is toolchain-independent; CPU selector cycles by input rather than crossing every input with every CPU. Reporting now begins with every nonflag bit set and checks their preservation per call, while hashing only the seven captured flag bits. This file verifies aggregate exception evidence, not numerical outputs or a fresh computed exception oracle; complementary literal and accumulation tests reside in the half-FMA and DIV_FMAS suites.",
+    "diagnostics": "Digest failures identify precision/setting/modifier; nonflag corruption additionally identifies input. Numerical and per-cause witnesses in the complementary family suites remain necessary; the digest is not presented as per-input expected flag data."
   }
 ]

@@ -550,3 +550,11 @@ but passed a loose comparator selector. Removed vacuous null-output state checks
 and added comparator regression cases. All 23 family tests pass on Clang/GCC;
 14 tooling tests pass. Existing and alternate random inputs measure zero
 reference error on both compilers. Production and hardware fixtures are unchanged.
+
+### Exact FMA and rounding-exception review
+
+Two reviews bring the queue to 110 reviewed and 44 pending. Added sampled
+per-input diagnostics alongside full exact-FMA hardware digests, improved
+modifier failure context, and removed a vacuous null-output state check.
+Rounding-exception captures now verify every nonflag bit remains unchanged.
+All six affected tests pass on Clang/GCC. Production and fixtures are unchanged.

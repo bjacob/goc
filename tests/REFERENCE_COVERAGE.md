@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 108 explicit family-file reviews exist and 46
+non-generic family references. 110 explicit family-file reviews exist and 44
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -318,3 +318,12 @@ unwritten storage, preserved halves, exact alias cases and captured witnesses
 remain raw. The integer-grid numerical reference is distinguished from empirical
 NaN/denormal evidence and zero-exception captures. Comparator regression tests
 ensure the fuzzy allowance cannot hide storage corruption or weaken exact mode.
+
+## Exact FP32 FMA and rounding exception captures
+
+Two reviews distinguish complete retained hardware digests from sampled computed
+reference checks and broader integration cases. One rotating lane per batch now
+provides a local diagnostic in FP32 FMA captures without repeating the expensive
+integer reference for every captured output. Rounding-exception tests preserve
+all nonflag bits while retaining the captured seven-bit digest. Records explicitly
+state the Wave32 scope and cycled CPU coverage of those exception tests.

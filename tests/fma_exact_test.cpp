@@ -150,13 +150,22 @@ TEST(FmaExact, HardwareCorpora) {
                   ASSERT_EQ(invoke(false, wide, accumulate, flags, UINT64_MAX, mode, words[3],
                                    words[0], words[1], words[2], nullptr, dx9),
                             GOC_SUCCESS);
+                  // Rotate a per-input reference witness through each wave;
+                  // the retained hardware digest still covers every result.
+                  unsigned witness = (base / width) % width;
+                  ASSERT_EQ(words[3][witness],
+                            reference(words[0][witness], words[1][witness], words[2][witness], mode,
+                                      flags, false, dx9))
+                      << dx9 << '/' << accumulate << '/' << boundary << '/' << policy << '/' << wide
+                      << '/' << cpu << '/' << variant << '/' << base + witness;
                   for (unsigned lane = 0; lane < width; ++lane)
                     hash = goc_test::capture_hash_word(hash, words[3][lane]);
                 }
               }
               EXPECT_EQ(hash, (dx9 ? goc_test::dx9_exact_hashes[boundary]
                                    : goc_test::fma32_exact_hashes[accumulate][boundary][policy]))
-                  << accumulate << '/' << boundary << '/' << policy << '/' << wide << '/' << cpu;
+                  << dx9 << '/' << accumulate << '/' << boundary << '/' << policy << '/' << wide
+                  << '/' << cpu;
             }
 }
 
@@ -190,7 +199,9 @@ TEST(FmaExact, AllModifiersArchitecturesMasksAndAliases) {
                     expected =
                         reference(before[0][lane], before[1][lane],
                                   before[accumulate ? dest : 2][lane], mode, flags, rdna3, dx9);
-                  EXPECT_EQ(words[reg][lane], expected);
+                  EXPECT_EQ(words[reg][lane], expected)
+                      << dx9 << '/' << rdna3 << '/' << wide << '/' << accumulate << '/' << cpu
+                      << '/' << mode << '/' << reg << '/' << lane;
                 }
             }
 }
@@ -217,7 +228,7 @@ TEST(FmaExact, DppMasksAliasingAndHostEnvironment) {
                               (policy & 4 ? GOC_ALU_CLAMP : 0);
               uint64_t exec_mask = wide ? 0xa7109efae12ce36dULL : 0xe12ce36dULL;
               unsigned dest = policy % 4;
-              uint32_t before[4][64], expected[64], expected_state = 0;
+              uint32_t before[4][64], expected[64];
               for (unsigned reg = 0; reg < 4; ++reg)
                 for (unsigned lane = 0; lane < 64; ++lane)
                   before[reg][lane] = edge[(lane + 7 * reg) % 16];
@@ -239,7 +250,7 @@ TEST(FmaExact, DppMasksAliasingAndHostEnvironment) {
                   _mm_setcsr((_mm_getcsr() & ~0x8040U) | (flush ? 0x8040U : 0));
                   unsigned controls = _mm_getcsr();
 #endif
-                  uint32_t words[4][64], state = 0x40000014;
+                  uint32_t words[4][64];
                   std::memcpy(words, before, sizeof(words));
                   ASSERT_EQ(invoke(rdna3, wide, accumulate, flags, exec_mask, mode, words[dest],
                                    words[0], words[1], words[2], nullptr, dx9),
@@ -247,7 +258,6 @@ TEST(FmaExact, DppMasksAliasingAndHostEnvironment) {
                   for (unsigned reg = 0; reg < 4; ++reg)
                     for (unsigned lane = 0; lane < 64; ++lane)
                       EXPECT_EQ(words[reg][lane], reg == dest ? expected[lane] : before[reg][lane]);
-                  EXPECT_EQ(state, 0x40000014U | expected_state);
                   EXPECT_EQ(std::fegetround(), rounding);
                   EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_DIVBYZERO);
 #if defined(__x86_64__) || defined(_M_X64)
