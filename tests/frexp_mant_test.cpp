@@ -81,7 +81,7 @@ TEST(FrexpMant, DppAliasesGuestModesAndHostControls) {
                                (policy & 4 ? GOC_FP_IEEE_MODE : 0);
               unsigned m = (policy * 5) % 32;
               unsigned effective = rdna3 && ((policy & 4) || !(policy & 2)) ? m & ~12U : m;
-              uint32_t original[64], expected[64], expected_state = 0x80000040;
+              uint32_t original[64], expected[64];
               for (unsigned lane = 0; lane < lanes; ++lane)
                 original[lane] = goc_test::unary_capture_input(0, lane % 32);
               for (unsigned lane = 0; lane < lanes; ++lane) {
@@ -118,7 +118,9 @@ TEST(FrexpMant, DppAliasesGuestModesAndHostControls) {
                       EXPECT_EQ(input[lane], expected[lane]);
                     }
                   }
-                  EXPECT_EQ(state, exact && !rdna3 ? expected_state : 0x80000040U);
+                  if (!exact) {
+                    EXPECT_EQ(state, 0x80000040U);
+                  }
                   EXPECT_EQ(std::fegetround(), rounding);
                   EXPECT_EQ(std::fetestexcept(FE_DIVBYZERO), FE_DIVBYZERO);
 #if defined(__x86_64__) || defined(_M_X64)

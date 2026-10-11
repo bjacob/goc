@@ -980,5 +980,37 @@
     ],
     "scope": "Loose/fallback FP32 FRAC uses two retained 8192-input gfx1201 result corpora across policies/modifiers and both architectures/widths, with CPU selectors rotating by batch. It compares canonicalized hardware result hashes; this is retained empirical regression evidence, not a supported strict-exact path. Literal FP32/FP16 cases independently anchor zero signs, tiny negative inputs staying below one, integer boundaries, source/destination half selection, guest flushing and in-place mixed EXEC. Strict exact and exact reporting are rejected before writes; loose optional state is unchanged. The hash test uses only captured result hashes, not the stored raw result/exception pair hashes, and does not claim exception generation. General approximate unary calibration is reviewed separately.",
     "diagnostics": "Small literal boundary cases complement per-policy/modifier hardware hashes. The two corpora distinguish broad random/exponent coverage; each digest failure currently localizes to 8192 inputs, not an individual input. No new reverse-engineered exact model or expanded golden array is introduced."
+  },
+  {
+    "file": "frexp_exp_test.cpp",
+    "assertions": [
+      "FrexpExp.EveryExponentAndSubnormalLeadingBit",
+      "FrexpExp.LiteralValuesAndValidation",
+      "FrexpExpExact.HardwareNumericsAndGuestPolicy",
+      "FrexpExpExact.DppAliasesGuestModesAndHostControls",
+      "FrexpExp.Fp64ArchitecturePoliciesWidthsModifiersAndAliases"
+    ],
+    "evidence": [
+      "tests/frexp_exp_test.cpp",
+      "tests/unary_capture_input.h"
+    ],
+    "scope": "FP32/FP64 exponent extraction, both architectures and widths. The reference finds the leading significand bit and combines it with the exponent field, mapping zero/nonfinite to zero without host floating arithmetic. Every exponent field with four representative tails, every subnormal leading position and deterministic mt19937_64 words are tested. Exact equality is appropriate for integer results in both semantics. FP32 strict-exact hardware digests now include independent per-input checks with guest input flushing. FP64 remains loose/fallback and explicitly rejects strict exact and DPP. Modifier/mask/alias tests include split-source words, guards and optional-state rejection/preservation. Exact optional state is not requested in the DPP numerical tests; state assertions now apply only to loose calls that pass its address.",
+    "diagnostics": "FP32 hardware failure now identifies semantics, architecture, width, flags, modifier and precise corpus input. Literal and computed boundary checks supplement retained hashes; FP64 architecture checks identify policy and modifier."
+  },
+  {
+    "file": "frexp_mant_test.cpp",
+    "assertions": [
+      "FrexpMant.HardwareNumericsAndArchitecturePolicy",
+      "FrexpMant.DppAliasesGuestModesAndHostControls",
+      "FrexpMant.ValidationAndEmptyExec",
+      "FrexpMant.ExactSpecialValuesPreservePayloads",
+      "FrexpMant.EverySubnormalPowerOfTwo"
+    ],
+    "evidence": [
+      "tests/frexp_mant_hardware.h",
+      "tests/frexp_mant_test.cpp"
+    ],
+    "scope": "FP32 mantissa extraction across both architectures and widths, loose and strict exact. Retained hardware result hashes cover 8192 inputs for guest policies and modifiers, canonicalizing NaNs; CPU selector rotates by batch. Literal exact special-value tests separately check signed zero, infinity and quieted NaN payload/sign under source modifiers. Every subnormal leading-bit position has literal mantissa 0.5 or signed zero when flushed. DPP expected values come from an un-routed exact call, making them routing/alias/control checks rather than independent numerical evidence. Optional exact reporting is explicitly unsupported; loose state preservation is checked only when the pointer is passed. Stored raw result/exception pair hashes are not used to claim reporting support.",
+    "diagnostics": "Per-policy/modifier hardware hashes have literal special/subnormal companions. DPP compares lanes individually. Removed misleading exact-state expectation for null-pointer calls; numerical hardware evidence remains unchanged."
   }
 ]

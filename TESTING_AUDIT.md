@@ -386,3 +386,13 @@ although the API received a null state pointer; this test does not establish
 exception-output correctness. Added exact DPP failure context. All four affected
 rounding tests pass on Clang/GCC and all 14 tooling tests pass. FRAC remains
 explicitly loose/fallback-only; no new numerical model or production change.
+
+### Exponent and mantissa extraction review
+
+Two more reviews bring the queue to 68 reviewed and 86 pending. Documented the
+independent leading-bit exponent model and the different hardware/literal versus
+differential mantissa evidence. FP32 exponent hardware corpora now check each
+input independently, retaining the final captured digest. Optional-state checks
+in DPP integration apply only to loose calls passing the pointer. After fixing
+GCC's dangling-else warning around GoogleTest macros with explicit braces, all
+19 affected tests pass on rebuilt Clang/GCC binaries. All 14 tooling tests pass.

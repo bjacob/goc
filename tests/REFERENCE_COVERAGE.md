@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Sixty-six explicit family-file reviews exist and 88
+non-generic family references. Sixty-eight explicit family-file reviews exist and 86
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -162,3 +162,12 @@ state; a check of an untouched local variable was removed rather than counted
 as exception coverage. It now reports routing and host/guest settings on failure.
 FRAC remains loose/fallback-only, with retained hardware regression digests and
 literal tiny-negative, denormal, half-selection and masked-alias witnesses.
+
+## Exponent and mantissa extraction
+
+Two reviews record the leading-bit exponent proof and hardware/literal mantissa
+evidence. FP32 exponent captures now compare each input independently before
+checking the retained digest. Mantissa DPP references are explicitly differential;
+literal special values and subnormal powers supplement its hardware hashes.
+State-preservation assertions apply only to loose calls that pass a state pointer,
+not exact calls opting out. FP64 exponent extraction remains loose/fallback-only.

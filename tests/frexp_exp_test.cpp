@@ -447,8 +447,15 @@ TEST(FrexpExpExact, HardwareNumericsAndGuestPolicy) {
               ASSERT_EQ(
                   invoke(rdna3, wide, flags, UINT64_MAX, modifiers(m), output, input, nullptr),
                   GOC_SUCCESS);
-              for (unsigned lane = 0; lane < lanes; ++lane)
+              for (unsigned lane = 0; lane < lanes; ++lane) {
+                uint32_t magnitude = input[lane] & 0x7fffffff;
+                uint32_t expected =
+                    (policy & 1) && magnitude < 0x800000 ? 0 : reference(input[lane], false);
+                ASSERT_EQ(output[lane], expected)
+                    << "exact=" << exact << " rdna3=" << rdna3 << " wide=" << wide
+                    << " flags=" << flags << " modifier=" << m << " input_index=" << base + lane;
                 hash = goc_test::capture_hash_word(hash, output[lane]);
+              }
             }
             const uint64_t hashes[] = {0xcc12cb39440259e1ULL, 0xcf729b6b9bdb7fbaULL};
             EXPECT_EQ(hash, hashes[policy & 1])
@@ -503,7 +510,9 @@ TEST(FrexpExpExact, DppAliasesGuestModesAndHostControls) {
                             GOC_SUCCESS);
                   for (unsigned lane = 0; lane < lanes; ++lane)
                     EXPECT_EQ(input[lane], expected[lane]);
-                  EXPECT_EQ(state, 0x80000040U);
+                  if (!exact) {
+                    EXPECT_EQ(state, 0x80000040U);
+                  }
                   EXPECT_EQ(std::fegetround(), rounding);
                   EXPECT_EQ(std::fetestexcept(FE_DIVBYZERO), FE_DIVBYZERO);
 #if defined(__x86_64__) || defined(_M_X64)
