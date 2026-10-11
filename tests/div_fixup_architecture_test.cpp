@@ -59,7 +59,9 @@ TEST(DivFixupArchitecture, PoliciesModifiersMasksAndAliases) {
                                       one, sign | one, inf - 1, inf,      inf | 1,     inf | sign};
             for (unsigned operand = 0; operand < 3; ++operand)
               for (unsigned lane = 0; lane < 64; ++lane) {
-                uint64_t value = uint64_t(random()) << 32 | random();
+                const uint32_t high = random();
+                const uint32_t low = random();
+                uint64_t value = uint64_t(high) << 32 | low;
                 if (lane < 16)
                   value = edges[(lane * (operand * 2 + 1) + mode) % 12];
                 initial[2 * operand][lane] = uint32_t(value);

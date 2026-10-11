@@ -418,7 +418,9 @@ TEST(Wmma, Fp16V3FiniteAndExceptionalInputsMatchScalar) {
         std::minstd_rand random(73 + trial);
         for (int reg = 0; reg < 24; ++reg)
           for (int lane = 0; lane < 32; ++lane) {
-            uint32_t bits = uint32_t(random()) ^ (uint32_t(random()) << 16);
+            const uint32_t first = random();
+            const uint32_t second = random();
+            uint32_t bits = first ^ (second << 16);
             if (reg < 8) {
               // Both signs and the full finite exponent range, including
               // FP16 subnormals. Separate trials inject NaNs and infinities.
@@ -463,7 +465,9 @@ TEST(Wmma, Bf16V3AndZen4FallbackMatchScalar) {
         std::minstd_rand random(107 + trial);
         for (int reg = 0; reg < 24; ++reg)
           for (int lane = 0; lane < 32; ++lane) {
-            uint32_t bits = uint32_t(random()) ^ (uint32_t(random()) << 16);
+            const uint32_t first = random();
+            const uint32_t second = random();
+            uint32_t bits = first ^ (second << 16);
             if (reg < 8) {
               // Alternate moderate finite inputs with the full BF16 range.
               if (trial % 2 == 0)

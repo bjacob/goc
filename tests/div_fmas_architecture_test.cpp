@@ -73,7 +73,9 @@ TEST(DivFmasArchitecture, PoliciesModifiersMasksAndAliases) {
             uint32_t *gold[] = {expected[0], expected[1]};
             unsigned effective =
                 !arch && (!(guest & 2) || (guest & 4)) ? mode & ~GOC_ALU_OMOD_HALF : mode;
-            uint64_t condition = uint64_t(random()) << 32 | random();
+            const uint32_t high = random();
+            const uint32_t low = random();
+            uint64_t condition = uint64_t(high) << 32 | low;
             ASSERT_EQ(call(1, wide, op, exact, UINT64_MAX, effective, gold, a, b, c, condition),
                       GOC_SUCCESS);
             for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {

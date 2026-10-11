@@ -150,7 +150,9 @@ TEST(Conversion64, RandomFullWordsAndEveryModifier) {
         for (int batch = 0; batch < 256; ++batch) {
           uint64_t input[32];
           for (auto &word : input) {
-            word = (uint64_t(random()) << 32) | random();
+            const uint32_t high = random();
+            const uint32_t low = random();
+            word = (uint64_t(high) << 32) | low;
             if (op < 2 || op == 4)
               word = uint32_t(word);
           }

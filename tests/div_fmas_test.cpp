@@ -394,7 +394,9 @@ TEST(DivFmas, Wave64MasksAndCrossRegisterAliases) {
           for (unsigned first = 0; first < 8; first += (op ? 1 : 2))
             for (unsigned second = 0; second < (op ? 8u : 1u); ++second) {
               uint32_t data[8][66], expected[8][66], result[2][64];
-              uint64_t condition = (uint64_t(random()) << 32) | random();
+              const uint32_t high = random();
+              const uint32_t low = random();
+              uint64_t condition = (uint64_t(high) << 32) | low;
               for (auto &reg : data)
                 for (auto &word : reg)
                   word = random();

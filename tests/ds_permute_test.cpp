@@ -36,7 +36,9 @@ TEST(DsPermute, MasksOffsetsAliasesAndIndependentRoutingReference) {
         for (unsigned sample = 0; sample < 150; ++sample)
           for (unsigned alias = 0; alias < 3; ++alias) {
             const unsigned lanes = arch == 0 ? 32 : 64, group = arch == 4 ? 64 : 32;
-            uint64_t exec_mask = uint64_t(random()) | (uint64_t(random()) << 32);
+            const uint32_t low = random();
+            const uint32_t high = random();
+            uint64_t exec_mask = uint64_t(low) | (uint64_t(high) << 32);
             if (sample < 64)
               exec_mask = 1ULL << sample;
             if (sample == 64)
