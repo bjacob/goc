@@ -341,3 +341,12 @@ including the exhaustive guest-mode sweep already recorded above. This confirms
 current margin, not an obligation for future loose paths to reproduce exact bits.
 No tolerance was changed. Measurement script and snapshots:
 `goc-build/coverage-work/testing-half-sfu/measure.py`.
+
+After making DPP half-unary inactive-lane checks bitwise, Clang and GCC each
+measure 6,725,492 active finite loose pairs with zero error. Alternate LCG seeds
+(`997 + variant` to `65537 + variant`, `231 + batch` to `7919 + batch`) measure
+6,710,168 pairs, also with zero error. Fixed hardware and walking-bit batches
+repeat; only random portions are holdout data. The earlier count included some
+unwritten destinations and is retained as historical measurement, not numerical
+coverage. The half SFU bound remains unchanged. Script and logs:
+`goc-build/coverage-work/testing-dpp-half-unary-calibration/run.py`.

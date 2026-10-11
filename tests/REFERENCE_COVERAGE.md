@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 123 explicit family-file reviews exist and 31
+non-generic family references. 124 explicit family-file reviews exist and 30
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -404,3 +404,12 @@ covers unmodified quiet-NaN behavior; existing policy and literal tests cover
 other semantics without treating mathematical references as arbitrary SFU proof.
 Removed vacuous state assertions and separated loose SFU tolerance from raw
 inactive storage. FREXP's computed reference follows exact normalization.
+
+### DPP half unary
+
+Reviewed the two hardware digests, independent loose numerical references and
+routing/alias/validation sweeps. Reference construction now uses saved source
+words, and all source and unwritten destination words must remain identical.
+Canonical NaN comparisons apply only to numerical results, not inactive storage.
+The deterministic LCG has explicit sequential unsigned updates; alternate seeds
+exercise the random portions without replacing fixed hardware witnesses.

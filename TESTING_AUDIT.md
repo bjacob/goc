@@ -636,3 +636,12 @@ to 4096-input intervals. Improved host/policy diagnostics and removed vacuous
 state checks; loose SFU comparisons use the existing calibrated bound, while
 inactive storage stays raw. All eight family tests pass on both compilers, as do
 14 tooling tests. Production remains unchanged.
+
+### DPP half-unary review
+
+One review brings the queue to 124 reviewed and 30 pending. Corrected reference
+construction to use saved sources, checked all nondestination registers, and
+made inactive-lane preservation bitwise before fuzzy/NaN handling. Added lane
+context to numerical failures. Existing and alternate LCG inputs pass the fixed
+bound on Clang/GCC; all five family tests and 14 tooling tests pass. Production
+and hardware witnesses are unchanged.

@@ -2125,5 +2125,25 @@
     ],
     "scope": "Rounding, FREXP and RCP/RSQ/SQRT exact policies across RDNA3/RDNA4 and both widths. New independent rocjitsu-model checkpoints cover every unmodified half encoding for all CPU selectors with denormals preserved, IEEE quieting and no saturation. Mathematical boundary references are used for policy integration, not as proof of arbitrary SFU equivalence. FREXP exhausts encodings, selectors and denormal policies using exact power-of-two normalization and explicit payload rules. Literal powers-of-four, zeros/overflow, NaN quieting and rounding payloads complement the checkpoints. All 32 modifiers, eight guest policies and seven DPP routes combine with in-place aliases and mixed EXEC; selector settings are correlated with source modifiers. Loose SFU guest-mode tests exhaust encodings, saturation and output modifiers while cycling CPU selectors. Host-control changes, validation errors and unsupported reporting are covered. FRACT remains unsupported exact and is excluded from numerical exact loops.",
     "diagnostics": "Checkpoint failures localize an independent numerical regression to 4096 inputs. Loose policy integration uses the calibrated half SFU bound; exact comparisons and inactive storage stay raw. Removed null-state no-op assertions and replaced a whole-array host-control comparison with per-lane diagnostics."
+  },
+  {
+    "file": "dpp_half_unary_test.cpp",
+    "assertions": [
+      "DppHalfUnary.HardwareCorpus",
+      "DppHalfUnary.HardwareOmodBoundaries",
+      "DppHalfUnary.EveryModifierAndOverflowMode",
+      "DppHalfUnary.MasksAliasesAndRandomWords",
+      "DppHalfUnary.Validation"
+    ],
+    "evidence": [
+      "tests/dpp_half_unary_test.cpp",
+      "tests/half_unary_reference.h",
+      "tests/half_reference.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Eleven Wave32 half-unary instructions with DPP. Independent double arithmetic and numeric half conversion provide loose SFU proximity references; simple rounding/extraction and storage remain raw. Two gfx1201 aggregate corpora cover 132 operation/modifier combinations, seven descriptors and eight EXEC masks, including OMOD/denormal boundaries. Captured-domain per-lane reference checks remain exact except normalized NaNs; the aggregate witnesses do not establish arbitrary-input mathematical equivalence or NaN payload identity. All 128 selectors/modifiers and saturation choices combine with seven routes and deterministic LCG words. Separate routing/alias coverage uses 84 masks, twelve low-mode combinations, two aliases and four input batches (zero/ones, walking bits, random). Validation checks unsupported exact semantics and malformed descriptors. Broader architecture/Wave64/exact numerical evidence lives in the half-unary suites.",
+    "diagnostics": "Saved all three pre-call registers in the modifier sweep so reference construction cannot absorb source corruption. Assert both nondestination registers and unwritten destinations bitwise. Hardware-corpus inactive lanes are checked before NaN canonicalization. Numerical helpers return assertion results with register/lane context, complementing existing CPU/op/mode/mask traces. Existing capture constants and tolerances are unchanged."
   }
 ]

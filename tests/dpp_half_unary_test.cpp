@@ -32,19 +32,23 @@ uint32_t reference(unsigned op, uint32_t a, uint32_t old_d, uint32_t mode) {
   return (old_d & ~(65535U << shift)) | (value << shift);
 }
 
-void check(unsigned op, uint32_t got, uint32_t want, uint32_t mode) {
+::testing::AssertionResult check(unsigned op, uint32_t got, uint32_t want, uint32_t mode) {
   unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
-  ASSERT_EQ((got ^ want) & ~(65535U << shift), 0u);
+  if ((got ^ want) & ~(65535U << shift))
+    return ::testing::AssertionFailure() << "unselected half changed";
   uint16_t x = uint16_t(got >> shift), y = uint16_t(want >> shift);
-  if ((y & 0x7fff) > 0x7c00) {
-    ASSERT_GT(x & 0x7fff, 0x7c00);
-  } else if (op >= 4 && op <= 8 && (y & 0x7fff) && (y & 0x7fff) < 0x7c00) {
-    ASSERT_EQ(x & 0x8000, y & 0x8000);
-    ASSERT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(x)),
-                                goc_test::half_value(uint16_t(y)), goc_test::half_sfu_tolerance));
-  } else {
-    ASSERT_EQ(x, y);
+  unsigned magnitude = y & 0x7fff;
+  if (magnitude > 0x7c00) {
+    if ((x & 0x7fff) > 0x7c00)
+      return ::testing::AssertionSuccess();
+  } else if (op >= 4 && op <= 8 && magnitude && magnitude < 0x7c00 &&
+             (x & 0x8000) == (y & 0x8000)) {
+    return goc_test::fuzzy(goc_test::half_value(x), goc_test::half_value(y),
+                           goc_test::half_sfu_tolerance);
+  } else if (x == y) {
+    return ::testing::AssertionSuccess();
   }
+  return ::testing::AssertionFailure() << "actual bits=" << x << ", expected bits=" << y;
 }
 
 void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
@@ -67,8 +71,12 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
           for (unsigned lane = 0; lane < 32; ++lane) {
             int source;
             uint32_t want = 0xdead0000u + lane;
-            if (goc_test::dpp_source(mode, exec_mask, lane, source))
+            bool written = goc_test::dpp_source(mode, exec_mask, lane, source);
+            if (written)
               want = reference(op, source < 0 ? 0 : a[source], 0xdead0000u + lane, uint32_t(mode));
+            if (!written) {
+              ASSERT_EQ(d[lane], want) << "inactive lane=" << lane;
+            }
             ASSERT_EQ(goc_test::canonical_half_nan(d[lane], uint32_t(mode)),
                       goc_test::canonical_half_nan(want, uint32_t(mode)))
                 << cpu << '/' << op << '/' << mode << '/' << lane;
@@ -110,22 +118,29 @@ TEST(DppHalfUnary, EveryModifierAndOverflowMode) {
                 seed = seed * 1664525u + 1013904223u;
                 word = seed;
               }
-            uint32_t old[32];
-            std::memcpy(old, words[2], sizeof(old));
+            uint32_t before[3][32];
+            std::memcpy(before, words, sizeof(before));
             uint32_t *p[] = {words[0], words[1], words[2]};
             ASSERT_EQ(goc_test::half_unary_functions[op](cpu | (saturate ? GOC_FP16_OVFL : 0),
                                                          UINT32_MAX, mode, p + 2, p, nullptr),
                       GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
-              uint32_t want = old[lane];
+              uint32_t want = before[2][lane];
               int source;
-              if (goc_test::dpp_source(mode, UINT32_MAX, lane, source)) {
+              bool written = goc_test::dpp_source(mode, UINT32_MAX, lane, source);
+              if (written) {
                 unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
                 uint32_t value = goc_test::half_unary_reference(
-                    op, source < 0 ? 0 : words[0][source], uint32_t(mode), saturate);
+                    op, source < 0 ? 0 : before[0][source], uint32_t(mode), saturate);
                 want = (want & ~(65535U << shift)) | (value << shift);
               }
-              check(op, words[2][lane], want, uint32_t(mode));
+              if (written) {
+                ASSERT_TRUE(check(op, words[2][lane], want, uint32_t(mode))) << "lane=" << lane;
+              } else {
+                ASSERT_EQ(words[2][lane], want) << "inactive lane=" << lane;
+              }
+              for (unsigned reg = 0; reg < 2; ++reg)
+                ASSERT_EQ(words[reg][lane], before[reg][lane]) << reg << "/" << lane;
             }
           }
 }
@@ -168,7 +183,8 @@ TEST(DppHalfUnary, MasksAliasesAndRandomWords) {
                     want = reference(op, source < 0 ? 0 : before[alias[1]][source + 1],
                                      before[alias[0]][index], uint32_t(mode));
                   if (written) {
-                    check(op, words[reg][index], want, uint32_t(mode));
+                    ASSERT_TRUE(check(op, words[reg][index], want, uint32_t(mode)))
+                        << reg << "/" << index;
                   } else {
                     ASSERT_EQ(words[reg][index], want);
                   }
