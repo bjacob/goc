@@ -277,3 +277,15 @@ record assertions, oracle provenance/equivalence scope and diagnostics in
 `tests/reference_reviews.json`; 149 family files remain to be reviewed.
 See [tests/REFERENCE_COVERAGE.md](tests/REFERENCE_COVERAGE.md). Compiled references
 and reviewed-file membership are expressly not semantic-completeness proofs.
+
+### Integer/Boolean/routing oracle review
+
+Reviewed and recorded twenty more family files, bringing the explicit inventory
+to 25 reviewed and 129 pending. These use bounded integer arithmetic, truth
+tables or direct routing models, with literal/hardware anchors for semantic
+exceptions. Exact assertions in loose mode are intentional for these bit/integer
+results; replacing them with fuzzy comparisons would weaken the contract.
+`Permlane.HardwareCorpus` already checks every result alongside its hardware
+digest; it now includes the missing mask/selector/opcode/lane failure context.
+All six permlane tests pass with Clang and GCC, and all fourteen audit-tool tests
+pass. The reference and diagnostic audit remains incomplete for other families.

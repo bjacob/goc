@@ -71,5 +71,284 @@
     ],
     "scope": "FP32 RCP/SQRT/RSQ/EXP/LOG exact implementations borrowed from rocjitsu, both architectures and wave widths. Dense domains use retained raw hardware digests; modifier/exponent/special-value domains have per-policy/per-modifier digests. Rocjitsu-generated cumulative checkpoints reproduce all five hardware totals. DPP comparisons to a non-DPP invocation check routing/alias behavior and do not independently prove the numeric model. Architecture-specific NaN and OMOD assertions remain literal anchors.",
     "diagnostics": "Dense captures now stop at the first failing 2^20-input interval. Modifier captures localize to operation, wave width, FP policy and modifier (8192 inputs)."
+  },
+  {
+    "file": "bit_count_test.cpp",
+    "assertions": [
+      "BitCount.EveryBitPairAndComplements",
+      "BitCount.LiteralSentinelsAndPhysicalLaneNumbers",
+      "BitCount.Wave64DppHardwareCorpus"
+    ],
+    "evidence": [
+      "tests/bit_count_reference.h",
+      "tests/mbcnt_dpp_hardware.h"
+    ],
+    "scope": "Bit scans count leading/trailing bits by an explicit loop; MBCNT counts selected bit positions below the physical destination lane and adds modulo 2^32. Literal all-zero/all-one sentinels and lane-number composition distinguish scan/count semantics. Wave64 DPP is independently hardware-anchored to physical destination lanes. Integer outputs require exact equality in either semantics.",
+    "diagnostics": "Literal cases and per-output checks accompany the compact Wave64 DPP hardware digest. Pair/complement and population sweeps isolate individual bits; a failing digest need not be expanded into raw captures."
+  },
+  {
+    "file": "bitfield_test.cpp",
+    "assertions": [
+      "Bitfield.EveryOffsetWidthAndSourceBit",
+      "Bitfield.InsertionTruthTableAndReversal",
+      "Bitfield.LiteralBoundaryResults",
+      "Bitfield.PermuteHardwareAllSelectorBytes"
+    ],
+    "evidence": [
+      "tests/bitfield_reference.h",
+      "tests/bitfield_test.cpp"
+    ],
+    "scope": "Eight Wave32 extract/insert/mask/reverse/align/permute operations. The oracle reconstructs each destination bit from the source bit, explicit signed fill, reduced count or selector. All offset/width/source-bit combinations and all selector bytes are exercised. Literal zero-width, sign-extension and reversal anchors supplement the model; PERM selector behavior is hardware-digest anchored.",
+    "diagnostics": "Computed checks identify individual output mismatches; literals identify boundary rules. PERM hardware hash is supplemented by EverySelectorAndSourceBit, so extra raw golden arrays are unnecessary."
+  },
+  {
+    "file": "integer_mul_test.cpp",
+    "assertions": [
+      "IntegerMul.BoundaryProductsAndRandomInputs",
+      "IntegerMul.LiteralHighWordsSignExtensionAndClamp",
+      "IntegerMul.ReconstructFullProductsAcrossSimdLanes"
+    ],
+    "evidence": [
+      "tests/integer_mul_reference.h"
+    ],
+    "scope": "Seven Wave32 low/high 32-bit and signed/unsigned 24-bit products. Magnitudes multiply in uint64_t (maximum uint32_t product fits); signedness is restored with unsigned modulo arithmetic after any saturation. High-word extraction is explicit. Literal vectors cover signed minima, ignored upper bytes, high words and clamp. These are specification-derived integer references, not approximate numerical comparisons.",
+    "diagnostics": "Boundary/random assertions trace opcode, CPU, clamp and batch; literal and full-product reconstruction tests distinguish sign, high-word and saturation errors."
+  },
+  {
+    "file": "integer_minmax_test.cpp",
+    "assertions": [
+      "IntegerMinmax.BoundaryCartesianProductsAndRandomValues",
+      "IntegerMinmax.LiteralSignednessAndOperandOrder",
+      "IntegerMinmax.ClampPreservesIntegerSelection"
+    ],
+    "evidence": [
+      "tests/integer_minmax_reference.h"
+    ],
+    "scope": "Fourteen Wave32 signed/unsigned min/max/min3/max3/median and mixed min-max orderings. Inputs convert exactly to int64_t; sorting determines the extrema/median, while mixed operations explicitly preserve two-stage order. Literal signedness and operand-order outputs independently anchor the dispatch mapping. CLAMP is checked as ignored for integer selection.",
+    "diagnostics": "Per-output comparisons plus small literal answer/sign tables. No opaque corpus oracle requires new checkpoints."
+  },
+  {
+    "file": "integer_ternary_test.cpp",
+    "assertions": [
+      "IntegerTernary.EveryShiftCountAndBitPosition",
+      "IntegerTernary.BooleanTruthTablesAtEveryBit",
+      "IntegerTernary.EveryBytePairAndRoundingControl",
+      "IntegerTernary.LiteralStageOrderAndByteOverflow"
+    ],
+    "evidence": [
+      "tests/integer_ternary_reference.h"
+    ],
+    "scope": "Eight Wave32 shift/add/Boolean/packed-average combinations. Widened unsigned arithmetic and explicit narrowing encode modulo 2^32; per-bit truth tables encode Boolean stages; byte-wise integer division encodes average with its rounding bit without inter-byte carry. Every shift/bit and byte pair plus literal stage-order anchors justify exact computed references.",
+    "diagnostics": "Per-output checks and independent literal witnesses separate stage-order and byte-overflow errors; no digest-only oracle."
+  },
+  {
+    "file": "integer_mad_test.cpp",
+    "assertions": [
+      "IntegerMad.BoundaryTriplesAndRandomInputsWithEveryModifier",
+      "IntegerMad.LiteralOverflowCancellationAndSelection",
+      "IntegerMad.SaturationBoundariesAfterWideCancellation"
+    ],
+    "evidence": [
+      "tests/integer_mad_reference.h"
+    ],
+    "scope": "Four Wave32 signed/unsigned 16/24-bit multiply-add operations. Explicit half selection/sign extension and int64_t product plus 32-bit accumulator remain within int64_t range. Saturation applies after the wide sum, then explicit uint32_t narrowing. Literal cancellation/overflow/selectors independently anchor this stage ordering; all compact modifiers and discarded upper-byte behavior are tested.",
+    "diagnostics": "Literal witness arrays and per-output computed checks. Some random failures report opcode/CPU/modifier rather than a complete input tuple, but the fixed generator makes the case reproducible."
+  },
+  {
+    "file": "integer16_test.cpp",
+    "assertions": [
+      "Integer16.EveryModifierBoundaryPairsAndRandomInputs",
+      "Integer16.EveryInputEncoding",
+      "Integer16.LiteralSelectionSaturationAndShiftWitnesses"
+    ],
+    "evidence": [
+      "tests/integer16_reference.h",
+      "tests/packed_integer_reference.h"
+    ],
+    "scope": "Twelve Wave32 single-half integer operations reuse the independently widened packed-half oracle only for the selected values. Destination-half merging is explicit and the untouched half is compared exactly. All 16 compact modifiers, every input encoding and literal saturation/shift/selection witnesses are covered. Oracle equivalence follows the bounded integer arithmetic, not agreement with the implementation.",
+    "diagnostics": "Per-result comparison and literal witnesses expose selection and preservation errors; no hardware digest is the sole oracle."
+  },
+  {
+    "file": "integer16_ternary_test.cpp",
+    "assertions": [
+      "Integer16Ternary.EveryModifierBoundaryTriplesAndRandomInputs",
+      "Integer16Ternary.EverySourceEncoding",
+      "Integer16Ternary.LiteralSaturationSelectionAndPreservedHalf"
+    ],
+    "evidence": [
+      "tests/integer16_ternary_reference.h"
+    ],
+    "scope": "Eight Wave32 half MAD/min3/max3/median signed/unsigned operations. Selected 16-bit values widen to int64_t, products/sums cannot overflow it, and explicit clamp/narrow/merge handles saturation and preserved halves. Scalar sorting provides a median oracle independent of the SIMD network. All compact selectors/clamp combinations and literal stage/selection cases are exercised.",
+    "diagnostics": "Per-output checks plus literal witnesses; exact preserved-half comparisons complement arithmetic results."
+  },
+  {
+    "file": "packed_integer_test.cpp",
+    "assertions": [
+      "PackedInteger.AllModifiersBoundaryPairsAndRandomInputs",
+      "PackedInteger.EveryHalfEncoding",
+      "PackedInteger.LiteralSaturationAndHalfSelectionWitnesses",
+      "PackedInteger.ShiftCountsAndDiscardedCountBits"
+    ],
+    "evidence": [
+      "tests/packed_integer_reference.h"
+    ],
+    "scope": "Twelve Wave32 packed integer operations. Each half is independently selected and computed in int64_t; saturation is applied only to the specified add/sub operations. Arithmetic right shift uses floor division for negative values rather than relying on host signed-shift semantics. All 32 selector/clamp combinations, half encodings and literal ignored-clamp/count-bit cases are checked.",
+    "diagnostics": "Per-output checks and literal anchors provide direct diagnostics; no new golden data needed for these simple integer rules."
+  },
+  {
+    "file": "shift_test.cpp",
+    "assertions": [
+      "Shift.EveryCountAndBitPosition",
+      "Shift.RandomOperandsAndIgnoredCountBits",
+      "Shift.MasksAndEveryDestinationAlias"
+    ],
+    "evidence": [
+      "tests/shift_reference.h"
+    ],
+    "scope": "Six Wave32 32/64-bit shifts. The computed reference visits each output bit, selects the shifted source or explicit sign/zero fill, and reduces the count modulo width. This avoids undefined oversized/signed host shifts. Every count and source bit/complement, ignored count bits, masks and register-half aliases are exercised.",
+    "diagnostics": "Per-word assertions show opcode, CPU and count; both register halves and untouched words are checked. No opaque digest."
+  },
+  {
+    "file": "integer_dot_test.cpp",
+    "assertions": [
+      "IntegerDot.AllModifiersCpuLevelsMasksAliasesAndBoundaryInputs",
+      "IntegerDot.EveryElementPairAndPackedPosition",
+      "IntegerDot.RocjitsuDot4ClampPolicyVectors",
+      "IntegerDot.Wave64ModifiersMasksAliasesAndBoundaryInputs"
+    ],
+    "evidence": [
+      "tests/integer_dot_test.cpp"
+    ],
+    "scope": "Four signed/unsigned packed 4-bit/8-bit dot products in both wave sizes. Base-radix decoding and int64_t accumulation are exact; clamp applies after the entire dot, avoiding x86 pairwise saturation. Rocjitsu ffc144c564c Dot4ClampPolicyMatchesArchitecture vectors explicitly anchor the hardware/manual discrepancy: DOT4 does saturate. Every element pair/position and modifier combinations supplement boundary/random tests in both semantics.",
+    "diagnostics": "Per-output and literal rocjitsu policy vectors identify saturation/order regressions; no digest-only dependency."
+  },
+  {
+    "file": "boolean_wave64_test.cpp",
+    "assertions": [
+      "BooleanWave64.ModifiersRoutingAliasingAndExactSemantics",
+      "BooleanWave64.Wave32StrictExactResults"
+    ],
+    "evidence": [
+      "tests/boolean_reference.h",
+      "tests/cndmask_reference.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Nine Boolean and two conditional-selection Wave64 operations reuse the independent bitwise and selector models. Both semantics, selected halves, ignored CLAMP, DPP routes/all row masks, full/irregular EXEC and aliased destinations are compared per lane. The separate Wave32 strict-exact case covers all eleven entry points; floating-looking input words remain raw bits.",
+    "diagnostics": "Failures print operation/modifier/lane/route, with guard checks; no numerical approximation or opaque digest."
+  },
+  {
+    "file": "bitwise_wave64_test.cpp",
+    "assertions": [
+      "BitwiseWave64.ShiftsCountsBitsMasksRoutingAndAliases",
+      "BitwiseWave64.BitfieldsOffsetsWidthsSelectorsDppAndAliases"
+    ],
+    "evidence": [
+      "tests/shift_reference.h",
+      "tests/bitfield_reference.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Six shift and eight bitfield Wave64 operations use the independent per-bit models, with full/irregular masks, lane-distinct inputs, all DPP row masks, aliasing and both semantics. DPP is rejected for 64-bit operands rather than silently routed. Upper-wave and multi-register outputs are checked explicitly.",
+    "diagnostics": "Per-lane/per-word checks and guards complement the Wave32 literal witnesses. Bitfield failures report opcode/batch/lane; shifts compare each output word directly."
+  },
+  {
+    "file": "integer_compare_test.cpp",
+    "assertions": [
+      "IntegerCompare.HardwarePredicatesWidthsModifiersAndExec",
+      "IntegerCompare.IndependentBoundaryPairsAndRandomInputs",
+      "IntegerCompare.Wave64AllPredicatesFormatsAndMasks",
+      "IntegerCompare.ChainedCmpxCannotReactivateLanes"
+    ],
+    "evidence": [
+      "tests/integer_compare_reference.h",
+      "tests/integer_compare_hardware.h"
+    ],
+    "scope": "Signed/unsigned 16/32/64-bit CMP/CMPX predicates in both wave sizes. Explicit sign-bit ordering plus unsigned magnitude comparisons avoids signed-conversion ambiguity, with half selectors handled before comparison. Hardware masks anchor predicate/modifier/EXEC behavior; boundary/random, DPP and Wave64 cases check exact scalar mask results. Chained CMPX proves inactive lanes cannot reactivate.",
+    "diagnostics": "Hardware digests are per predicate/width/control row, supplemented by per-mask expected results and a focused chained-CMPX invariant."
+  },
+  {
+    "file": "cndmask_test.cpp",
+    "assertions": [
+      "Cndmask.HardwareAllEncodingsAndModifiers",
+      "Cndmask.EveryModifierMaskAliasAndUnalignedStorage",
+      "Cndmask.EveryConditionBitIndependentOfExec",
+      "Cndmask.DppHardwareCorpusAndHostFpState"
+    ],
+    "evidence": [
+      "tests/cndmask_reference.h",
+      "tests/cndmask_hardware.h"
+    ],
+    "scope": "Wave32 16/32-bit conditional selection. The reference selects the condition-chosen source, then copies bits while applying only sign ABS/NEG and half selection/preservation. There is no floating arithmetic; exact bit comparison remains appropriate in loose mode. Hardware capture, every modifier/condition bit, independent EXEC, aliases and DPP test the nontrivial selector behavior.",
+    "diagnostics": "Per-output computed comparisons and condition-bit tests complement per-variant hardware digests; no need for a larger raw golden corpus."
+  },
+  {
+    "file": "class_test.cpp",
+    "assertions": [
+      "Class.HardwareFormatsModifiersExecAndCmpx",
+      "Class.EveryClassMaskAndKnownClass",
+      "Class.Wave64EveryHalfEncodingAndClassBit",
+      "Class.GuestPoliciesAndClampPreserveRawClasses"
+    ],
+    "evidence": [
+      "tests/class_reference.h",
+      "tests/class_hardware.h"
+    ],
+    "scope": "FP16/32/64 CLASS/CMPX masks classify raw sign/exponent/fraction/quiet-bit fields, including both NaN classes, signed zero, denormals and infinities. An explicit ten-class Boolean model and known-class witnesses are hardware anchored. All class masks, every half encoding in Wave64, selectors, DPP and raw-class invariance under guest FP policies are tested. Output masks are exact even in loose semantics.",
+    "diagnostics": "Per-variant hardware digests have per-mask/class/encoding companion assertions, avoiding dependence on a single broad digest."
+  },
+  {
+    "file": "lane_transfer_test.cpp",
+    "assertions": [
+      "LaneTransfer.EveryIndexAndWrappedIndex",
+      "LaneTransfer.FirstActiveLaneAndZeroExec",
+      "LaneTransfer.FirstLaneSelectionWithDisjointActiveLanesAndAliasedOutput"
+    ],
+    "evidence": [
+      "tests/lane_transfer_test.cpp"
+    ],
+    "scope": "READLANE/WRITELANE/READFIRSTLANE in both wave sizes and semantics. Lane-tagged literal words make index modulo wave width and first-active selection directly observable; every wrapped index and active-lane pair is exercised. The zero-EXEC first-lane behavior is explicitly anchored. Scalar outputs may alias source storage, while other lanes and guards must remain unchanged.",
+    "diagnostics": "Direct expected word comparisons provide fine-grained failures; no digest or computed floating oracle."
+  },
+  {
+    "file": "ds_permute_test.cpp",
+    "assertions": [
+      "DsPermute.MasksOffsetsAliasesAndIndependentRoutingReference",
+      "DsPermute.Wave64ArchitecturesDifferAcrossHalfBoundary",
+      "DsPermute.ByteAddressOverflowAndScatterCollisions",
+      "DsPermute.EveryGatherPairInactiveSourcesAndAddressAliases"
+    ],
+    "evidence": [
+      "tests/ds_permute_test.cpp"
+    ],
+    "scope": "DS gather/scatter and force-inactive gather. A destination-centric reference searches potential active sources, performs explicit 32-bit byte-address addition/modulo group size, and resolves collisions by source order. Literal architecture tests distinguish RDNA3 32-lane groups from RDNA4 64-lane routing. Deterministic masks/offsets and exhaustive gather pairs exercise inactive-source and alias behavior; this is a simple routing oracle, not numerical reverse engineering.",
+    "diagnostics": "Assertions identify architecture, direction, sample, alias and lane; focused address-overflow/collision and cross-half anchors provide additional localization."
+  },
+  {
+    "file": "ds_swizzle_test.cpp",
+    "assertions": [
+      "DsSwizzle.AllOffsetEncodingsBothWavesAndInPlace",
+      "DsSwizzle.Rx9070HardwareCorpora",
+      "DsSwizzle.BasicModesInactiveSourcesInBothSemantics"
+    ],
+    "evidence": [
+      "tests/ds_swizzle_test.cpp",
+      "tests/ds_swizzle_hardware.h"
+    ],
+    "scope": "Both wave sizes, all 65536 offset encodings. Bit-by-bit bitmask/quad/rotate routing and the manual FFT order form an independent reference; hardware captures anchor extended modes and masked behavior. Lane-tagged words and in-place execution expose wrong source lanes. The broad encoding sweep is exact; selected basic-mode masked cases also exercise loose semantics.",
+    "diagnostics": "Every offset/lane has a direct assertion; hardware digests are supplemental per wave/mask. Further checkpoints would duplicate existing localization."
+  },
+  {
+    "file": "permlane_test.cpp",
+    "assertions": [
+      "Permlane.HardwareCorpus",
+      "Permlane.MasksAliasingAndSelectors",
+      "Permlane.Wave64MasksAliasingAndSelectors",
+      "Permlane.EverySelectorAndDestinationWithInactiveSources"
+    ],
+    "evidence": [
+      "tests/permlane_reference.h",
+      "tests/permlane_test.cpp"
+    ],
+    "scope": "PERMLANE16/PERMLANEX16 scalar and per-lane selectors in both wave sizes. The reference decodes four-bit selectors, computes row XOR for cross-row operations, and explicitly handles source EXEC/FI/BOUND/old destination. A gfx1201 hardware digest covers 65536 results, with every result also compared to that reference. Both semantics and every selector/destination with inactive sources are exercised.",
+    "diagnostics": "HardwareCorpus now traces CPU, EXEC, opcode, mode and selector pattern, and reports the destination lane for each mismatch. The retained digest remains the independent corpus anchor."
   }
 ]

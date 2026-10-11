@@ -22,6 +22,8 @@ TEST(Permlane, HardwareCorpus) {
       for (unsigned op = 0; op < 4; ++op)
         for (unsigned mode = 0; mode < 4; ++mode)
           for (unsigned pattern = 0; pattern < 16; ++pattern) {
+            SCOPED_TRACE(::testing::Message()
+                         << cpu << '/' << exec_mask << '/' << op << '/' << mode << '/' << pattern);
             uint32_t a[32], b[32], d[32], lo = 0, hi = 0;
             for (unsigned j = 0; j < 8; ++j) {
               lo |= ((j * 7 + pattern) & 15) << (j * 4);
@@ -40,7 +42,8 @@ TEST(Permlane, HardwareCorpus) {
                       GOC_SUCCESS);
             for (unsigned lane = 0; lane < 32; ++lane) {
               ASSERT_EQ(d[lane], goc_test::permlane_reference(op, exec_mask, mode, lane, a, b,
-                                                              0xdef00000u + lane, lo, hi));
+                                                              0xdef00000u + lane, lo, hi))
+                  << "lane=" << lane;
               hash = goc_test::capture_hash_word(hash, d[lane]);
             }
           }

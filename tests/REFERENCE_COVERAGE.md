@@ -24,9 +24,9 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Five explicit family-file reviews exist and 149
-remain. 144 API symbols are linked to at least one reviewed file; that number
-must not be interpreted as 144 completely audited APIs. Consult the record's
+non-generic family references. Twenty-five explicit family-file reviews exist and 129
+remain. 472 API symbols are linked to at least one reviewed file; that number
+must not be interpreted as 472 completely audited APIs. Consult the record's
 scope, especially wave width, semantics and optional state.
 
 Initial reviews:
@@ -43,3 +43,24 @@ This inventory is an explicit work queue, not a completeness claim. Remaining
 work includes reviewing the other family files, identifying which bitwise checks
 are intentional architectural checks versus overly restrictive loose numerical
 checks, and assessing whether each digest has useful companion diagnostics.
+
+## Integer, Boolean and routing review
+
+Twenty additional records cover bit counts/fields, multiplication, min/max,
+integer ternaries/MAD/dot, selected and packed half-integers, shifts, Wave64
+Boolean/bitwise operations, integer comparisons, conditional masks, raw FP
+classification, lane transfers, DS routing and permlane routing.
+
+The computed models use bounded widened arithmetic, per-bit Boolean definitions,
+explicit sign extension, or direct lane-index rules. Literal anchors cover
+stage ordering, ignored flags, width reduction, saturation and preserved halves.
+Hardware fixtures remain for empirical details such as DOT4 clamp behavior,
+PERM selectors, physical-lane MBCNT behavior and extended DS routing. These
+references justify exact result checks even when the semantics selector is loose;
+there is no approximate floating arithmetic to compare fuzzily in these domains.
+
+The diagnostic review found useful per-output companions to the broad hardware
+digests. `Permlane.HardwareCorpus` now adds CPU/EXEC/opcode/mode/selector-pattern
+context and the failing lane, preserving its independent hardware digest.
+No new golden data or production implementation changes were needed in this
+batch. The remaining file queue is still explicit in the generated inventory.
