@@ -809,3 +809,15 @@ inactive storage is raw. All 24 DOT2/architecture tests pass on Clang and GCC,
 including original/alternate-seed calibration with unchanged bounds.
 The explicit inventory reaches 143/154 family files; 11 and final broad
 verification remain.
+
+
+### FP32 FMA and DPP arithmetic review
+
+Added independent long-double arbitrary-word FMA testing for both architectures
+and widths, including aliases, modifiers and full/mixed masks. General loose
+Wave64/DPP arithmetic now uses calibrated comparisons; literal hardware,
+selection and categorical behavior remains separate. Added source checks and
+removed state assertions on variables never passed to DX9 APIs. All 27 affected
+tests (including C linkage) pass on Clang and GCC; original/alternate FMA seeds
+measure zero error without relaxing bounds. Inventory: 145/154 family files
+reviewed, nine and final broad verification remain.

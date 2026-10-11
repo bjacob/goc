@@ -4,8 +4,10 @@
 #include "dpp_arithmetic_reference.h"
 #include "dpp_reference.h"
 #include "exec_masks.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cmath>
@@ -31,12 +33,15 @@ TEST(DppArithmetic, HardwareCorpus) {
               data[2][lane] = goc::as_bits(float(int(lane % 9) - 4));
               data[3][lane] = goc::as_bits(float(100 + lane));
             }
+            uint32_t sources[3][32];
+            std::memcpy(sources, data, sizeof(sources));
             uint32_t *d = data[3];
             const uint32_t *a = data[0], *b = data[1], *c = data[2];
             uint32_t low = modified ? GOC_ALU_NEG_A | GOC_ALU_OMOD_2 : 0;
             ASSERT_EQ(
                 goc_test::dpp_arithmetic_call(op, cpu, exec_mask, descriptor | low, &d, &a, &b, &c),
                 GOC_SUCCESS);
+            ASSERT_EQ(std::memcmp(sources, data, sizeof(sources)), 0);
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
               uint32_t want = goc::as_bits(float(100 + lane));
@@ -75,12 +80,15 @@ TEST(DppArithmetic, OmodBoundaryHardware) {
               data[2][lane] = goc::as_bits(float(int(lane % 9) - 4));
               data[3][lane] = goc::as_bits(float(100 + lane));
             }
+            uint32_t sources[3][32];
+            std::memcpy(sources, data, sizeof(sources));
             uint32_t *d = data[3];
             const uint32_t *a = data[0], *b = data[1], *c = data[2];
             uint32_t low = modified ? GOC_ALU_NEG_A | (modified << 6) : 0;
             ASSERT_EQ(
                 goc_test::dpp_arithmetic_call(op, cpu, exec_mask, descriptor | low, &d, &a, &b, &c),
                 GOC_SUCCESS);
+            ASSERT_EQ(std::memcmp(sources, data, sizeof(sources)), 0);
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
               uint32_t want = goc::as_bits(float(100 + lane));
@@ -132,6 +140,11 @@ TEST(DppArithmetic, ModifiersMasksAliasesAndSpecialValues) {
                                                          before[bi][lane], before[ci][lane], low);
                 if (written && std::isnan(goc::as_float(want))) {
                   ASSERT_TRUE(std::isnan(goc::as_float(data[reg][lane])));
+                } else if (written && (op < 4 || op == 8) && (want & 0x7fffffff) &&
+                           (want & 0x7fffffff) < 0x7f800000) {
+                  ASSERT_TRUE(goc_test::fuzzy(goc::as_float(data[reg][lane]), goc::as_float(want),
+                                              goc_test::scalar_arithmetic_f32_tolerance))
+                      << op << "/" << cpu << "/" << low << "/" << descriptor << "/" << lane;
                 } else {
                   ASSERT_EQ(data[reg][lane], want)
                       << op << "/" << cpu << "/" << low << "/" << descriptor << "/" << exec_mask

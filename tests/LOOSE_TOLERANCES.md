@@ -478,3 +478,13 @@ passes both. RDNA4's separate fixed special-value scalar/SIMD differential
 test contributes 17,960 finite comparisons with zero error under the FP32 FMA
 bound; it is repeated unchanged rather than treated as a random holdout.
 Script/snapshots/logs: goc-build/coverage-work/testing-dot2-calibration/run.py.
+
+
+FP32 FMA integration uses the existing (2^-149, 1.2e-7) bound. Its fixed Wave64
+special-value integrations plus deterministic arbitrary-word FMA corpus produce
+1,333,176 finite comparisons with seed 41761 and 1,332,900 with alternate 97613,
+all with zero observed error on Clang and GCC. The separate fixed DPP arithmetic
+sweep contributes 372,524 finite nonzero comparisons with zero error under the
+same numeric bound. DPP inputs are unchanged in the second run and are not a
+random holdout. Storage/selection/captured boundaries stay raw. Script and logs:
+goc-build/coverage-work/testing-arithmetic-calibration/run.py.

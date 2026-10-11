@@ -5,8 +5,10 @@
 #include "dx9_hardware.h"
 #include "exec_masks.h"
 #include "fma_omod_hardware.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "loose_tolerances.h"
 #include "omod_reference.h"
 #include "test_instruction.h"
 
@@ -302,10 +304,11 @@ TEST(Arithmetic, FmaAndFmacOmodHardwareBoundaries) {
                   uint32_t want = (exec_mask >> lane) & 1
                                       ? goc_test::fma_omod_hardware[omod][clamp][neg][lane]
                                       : before[lane];
-                  if ((want & 0x7fffffff) > 0x7f800000)
+                  if (((exec_mask >> lane) & 1) && (want & 0x7fffffff) > 0x7f800000) {
                     EXPECT_GT(p[alias][lane] & 0x7fffffff, 0x7f800000u);
-                  else
+                  } else {
                     EXPECT_EQ(p[alias][lane], want);
+                  }
                 }
                 for (const auto &reg : words) {
                   EXPECT_EQ(reg[0], 0xdeadbeefu);
@@ -544,7 +547,9 @@ TEST(Arithmetic, Wave64FmaFormsDppModifiersAndAliases) {
               ASSERT_EQ(fma_wave64_call(op, cpu, exec_mask, descriptor | mode, &d, &a, &b, &c,
                                         literal, &excp_flag_user),
                         GOC_SUCCESS);
-              EXPECT_EQ(excp_flag_user, 0x12345678U);
+              if (op != 2 && op != 3) {
+                EXPECT_EQ(excp_flag_user, 0x12345678U);
+              }
               for (unsigned lane = 0; lane < 64; ++lane) {
                 int source = int(lane);
                 bool enabled = route ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
@@ -580,14 +585,16 @@ TEST(Arithmetic, Wave64FmaFormsDppModifiersAndAliases) {
                 value = goc_test::omod_f32_reference(value, mode);
                 if (mode & GOC_ALU_CLAMP)
                   value = !(value > 0) ? 0 : std::min(value, 1.0f);
-                if (std::isnan(value))
-                  EXPECT_TRUE(std::isnan(goc::as_float(d[lane])));
-                else
-                  EXPECT_EQ(d[lane], goc::as_bits(value)) << op << '/' << mode << '/' << lane;
+                EXPECT_TRUE(
+                    goc_test::fuzzy(goc::as_float(d[lane]), value, goc_test::fma_f32_tolerance))
+                    << cpu << '/' << op << '/' << mode << '/' << lane;
               }
               for (unsigned reg = 0; reg < 4; ++reg) {
                 EXPECT_EQ(words[reg][0], before[reg][0]);
                 EXPECT_EQ(words[reg][65], before[reg][65]);
+                if (reg != alias) {
+                  EXPECT_EQ(std::memcmp(words[reg], before[reg], sizeof(words[reg])), 0);
+                }
               }
             }
         }
@@ -667,7 +674,12 @@ TEST(Arithmetic, FmaArchitectureGuestModes) {
                                  : fn(flags, uint32_t(exec_mask), mode, &d, &a, &b, &c, &state);
                   }
                   ASSERT_EQ(error, GOC_SUCCESS);
-                  EXPECT_EQ(state, 0x80000055U);
+                  if (!dx9) {
+                    EXPECT_EQ(state, 0x80000055U);
+                  }
+                  for (unsigned reg = 0; reg < 3; ++reg)
+                    for (auto word : words[reg])
+                      EXPECT_EQ(word, input[reg]);
                   float x[3];
                   for (unsigned r = 0; r < 3; ++r) {
                     uint32_t bits = input[r];
@@ -707,4 +719,58 @@ TEST(Arithmetic, Dx9FmacRejectsDppBeforeOperandAccess) {
                                                    nullptr, nullptr),
                     GOC_ERROR_INVALID_FLAGS);
         }
+}
+
+// Long-double fused arithmetic supplies a loose reference independently of the
+// implementation's FP32 FMA. Target rounding/OMOD boundaries have raw witnesses.
+TEST(Arithmetic, RandomFmaAgainstWideReference) {
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+        std::mt19937 random(41761);
+        for (unsigned batch = 0; batch < 128; ++batch) {
+          uint32_t words[4][64], before[4][64];
+          for (auto &reg : words)
+            for (auto &word : reg)
+              word = random();
+          std::memcpy(before, words, sizeof(words));
+          uint32_t mode = random() & 511;
+          uint64_t exec_mask = batch & 1 ? 0x87654321fedcba98ULL : UINT64_MAX;
+          unsigned destination = batch % 4;
+          uint32_t *d = words[destination];
+          const uint32_t *a = words[0], *b = words[1], *c = words[2];
+          auto fn32 = rdna3 ? goc_v_fma_f32 : goc_v_fma_f32_rdna4;
+          auto fn64 = rdna3 ? goc_v_fma_f32_wave64 : goc_v_fma_f32_rdna4_wave64;
+          uint32_t state = 0xffffff80;
+          ASSERT_EQ(wide ? fn64(cpu, exec_mask, mode, &d, &a, &b, &c, &state)
+                         : fn32(cpu, uint32_t(exec_mask), mode, &d, &a, &b, &c, &state),
+                    GOC_SUCCESS);
+          ASSERT_EQ(state, 0xffffff80U);
+          for (unsigned reg = 0; reg < 4; ++reg)
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              if (reg != destination || lane >= (wide ? 64U : 32U) || !((exec_mask >> lane) & 1)) {
+                ASSERT_EQ(words[reg][lane], before[reg][lane]);
+                continue;
+              }
+              long double x[3];
+              for (unsigned operand = 0; operand < 3; ++operand) {
+                uint32_t bits = before[operand][lane];
+                if (mode & (GOC_ALU_ABS_A << operand))
+                  bits &= 0x7fffffff;
+                if (mode & (GOC_ALU_NEG_A << operand))
+                  bits ^= 0x80000000;
+                x[operand] = goc::as_float(bits);
+              }
+              float expected = float(std::fma(x[0], x[1], x[2]));
+              // RDNA3 ignores OMOD with default guest denormal/IEEE controls.
+              expected = goc_test::omod_f32_reference(expected, rdna3 ? 0 : mode);
+              if (mode & GOC_ALU_CLAMP)
+                expected = !(expected > 0) ? 0 : std::min(expected, 1.0f);
+              ASSERT_TRUE(goc_test::fuzzy(goc::as_float(words[reg][lane]), expected,
+                                          goc_test::fma_f32_tolerance))
+                  << "rdna3=" << rdna3 << " wide=" << wide << " cpu=" << cpu << " batch=" << batch
+                  << " mode=" << mode << " lane=" << lane;
+            }
+        }
+      }
 }

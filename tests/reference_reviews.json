@@ -2609,5 +2609,64 @@
     ],
     "scope": "RDNA4 F16/BF16 DOT2 F32 at both widths. Both semantics and every CPU selector exercise all half selectors/signs and ignored clamp with independent exactly representable integer products/sums, masks, destination aliases and guards. Exact empirical behavior is independently anchored by retained gfx1201 fixtures: inverse signs and half swaps recover each captured input under 128 modifier transformations, at the detected CPU level and both widths. DPP integration checks all modifier variants, representative routing and stratified EXEC/row masks using an independent routing reference; a retained fixed finite corpus digest also anchors DPP results. Captured exception corpora cover 4096 edge and 4096 deterministic xorshift triples for each configuration with lane 0 or lane 63 active and CPU selectors cycled. All captured flag reads are zero. Loose numerical behavior has special-value scalar/SIMD differential tests plus independent bounded fractional double-reference tests in dot2_architecture_test.cpp, including held-out operands. The latter does not claim hardware-exact arbitrary accumulation.",
     "diagnostics": "Added nondestination storage checks to ordinary alias sweeps. Exact captures remain raw; special-value loose finite comparisons use the existing FP32 bound with inactive storage checked first. No-exception corpora now begin with all seven exception bits clear and all unrelated bits set, exposing erroneous updates previously hidden by pre-set exception bits. Bit casts are local memcpy operations instead of production helpers. Extended the existing fractional corpus to RDNA4 without duplicating its reference; Clang/GCC and alternate seeds pass unchanged tolerances."
+  },
+  {
+    "file": "arithmetic_test.cpp",
+    "assertions": [
+      "Api.C99LinksAgainstCppImplementation",
+      "Arithmetic.ConstInputs",
+      "Arithmetic.DeterministicFmaMaskAndAliasing",
+      "Arithmetic.ErrorsPreserveDestination",
+      "Arithmetic.LogPowersOfTwoAndEmptyMask",
+      "Arithmetic.AllCpuLevelsFmaGoldenAndAliasing",
+      "Arithmetic.FmaAllModifiersCpuLevelsMasksAndAliases",
+      "Arithmetic.Dx9FmaAllModifiersCpuLevelsMasksAndAliases",
+      "Arithmetic.FmaModifierSpecialValues",
+      "Arithmetic.Dx9FmaZeroProductAdditionWithEveryModifierAndAlias",
+      "Arithmetic.Dx9FmaFusedRoundingAndValidation",
+      "Arithmetic.FmaAndFmacOmodHardwareBoundaries",
+      "Arithmetic.Dx9HardwareAllModifiersAndDenormalModes",
+      "Arithmetic.Dx9DppHardwareCorpus",
+      "Arithmetic.Dx9DppModifiersMasksAliasesAndGuards",
+      "Arithmetic.Dx9FmacModifiersAndAliases",
+      "Arithmetic.Dx9FmacZeroProductAndErrors",
+      "Arithmetic.Wave64FmaFormsDppModifiersAndAliases",
+      "Arithmetic.Wave64FmaValidation",
+      "Arithmetic.FmaArchitectureGuestModes",
+      "Arithmetic.Dx9FmacRejectsDppBeforeOperandAccess",
+      "Arithmetic.RandomFmaAgainstWideReference"
+    ],
+    "evidence": [
+      "tests/arithmetic_test.cpp",
+      "tests/dx9_hardware.h",
+      "tests/fma_omod_hardware.h",
+      "tests/omod_reference.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "FP32 FMA/FMAC, DX9 forms and Wave64 literal FMA integration, plus initial C-linkage/LOG smoke tests. Independent exactly representable dyadic/integer products cover all FMA modifiers, masks and aliases; literal fused-rounding/zero/infinity witnesses and gfx1201 OMOD arrays stay raw. Retained DX9 digests span all modifiers and denormal modes, with DPP hardware and per-word independent dyadic routing checks. DX9 FMAC is explicitly differential against FMA with separate implicit C, supplemented by zero-product/error witnesses. Wave64 six-form integration covers representative modifiers, DPP row masks and aliases, with pre-call snapshots; guest-mode tests span architectures and FMA/FMAC/DX9 spellings. New deterministic full-word FMA inputs use long-double fused arithmetic, target-aware OMOD, random modifiers, all destinations and full/mixed masks on both architectures/widths and all CPU selectors. This is a loose numerical oracle, not proof of empirical exact FMA exception behavior; dedicated exception families cover optional exact reporting.",
+    "diagnostics": "General Wave64 arithmetic now uses shared FP32 FMA atol/rtol; captured/literal/routing anchors remain raw. New random tests preserve all source/inactive words and carry architecture/CPU/batch/mode/lane diagnostics. Added missing Wave64 sources and architecture source checks, restricted captured NaN classification to written lanes and removed vacuous state assertions for DX9 APIs lacking that parameter. Original/alternate seeds measure zero numerical error on both compilers."
+  },
+  {
+    "file": "dpp_arithmetic_test.cpp",
+    "assertions": [
+      "DppArithmetic.HardwareCorpus",
+      "DppArithmetic.OmodBoundaryHardware",
+      "DppArithmetic.ModifiersMasksAliasesAndSpecialValues",
+      "DppArithmetic.ValidationBeforeOperandAccess",
+      "DppArithmetic.OmodWithoutPermutation"
+    ],
+    "evidence": [
+      "tests/dpp_arithmetic_test.cpp",
+      "tests/dpp_arithmetic_reference.h",
+      "tests/binary_reference.h",
+      "tests/minmax_reference.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Wave32 DPP integration for 18 FP32 arithmetic and two/three-input selection operations. Independent double binary arithmetic and integer-bit minmax reference provide expected values with shared DPP routing; two retained gfx1201 corpus hashes separately anchor ordinary and tiny-OMOD domains. The integration sweep covers all legal low modifiers, seven representative DPP descriptors, five alias layouts, stratified 84-mask selection and 23 boundary operands, preserving guards and sources. Fixed captures include full/empty/alternating/single-lane/half EXEC. Separate literal OMOD witnesses and validation-before-operand-access cover routing-independent policy and errors. The corpus validates these fixed domains, not arbitrary hardware-exact semantics. Broader random binary/ternary numerical coverage resides in their instruction-family tests.",
+    "diagnostics": "Only written finite ADD/SUB/SUBREV/MUL/DX9-MUL results use calibrated FP32 atol/rtol. Selection, categorical results, captured corpora and inactive storage remain raw. Added source snapshots/checks before hardware-corpus reference evaluation. Per-word diagnostics identify operation, CPU, modifier, descriptor and lane; fixed-corpus digests remain aggregate independent evidence. These fixed special-value comparisons have zero observed error on both compilers and are not described as random holdout."
   }
 ]

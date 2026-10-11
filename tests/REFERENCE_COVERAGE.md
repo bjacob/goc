@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 143 explicit family-file reviews exist and 11
+non-generic family references. 145 explicit family-file reviews exist and 9
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -552,3 +552,13 @@ no-exception tests now clear every exception bit before invocation, preserving
 all unrelated bits, so erroneous flag writes cannot hide behind pre-set flags.
 The bounded double reference is not presented as an arbitrary exact accumulator
 model; dedicated captures establish empirical behavior.
+
+
+FP32 FMA/DX9 integration now has an arbitrary-word, deterministic long-double
+reference corpus for ordinary FMA across architectures and widths, with aliases
+and raw storage checks. Existing literal, OMOD and DX9 captures stay raw, while
+general Wave64 numeric comparisons use the measured FP32 bound. DX9 FMAC's
+same-library differential reference is recorded as such. DPP arithmetic uses
+fuzzy comparisons only for written finite arithmetic; selection and fixed
+captured witnesses remain exact. Source snapshots protect captured references,
+and optional-state assertions only apply when the API receives that pointer.
