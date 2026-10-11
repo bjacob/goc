@@ -6978,23 +6978,24 @@ no extra SIMD kernel family was added. Artifacts are in
 `../goc-build/coverage-work/half-unary-dx10-performance/`; `initial-*` measurements
 refer to the superseded runtime-policy version, not these final results.
 
-## Integer WMMA architecture contract review
+## Integer WMMA captured saturation review (rocjitsu de4654cfc34)
 
 Reviewed the two shared `v_wmma_i32_16x16x16_iu8` / `_iu4` mnemonics and
-RDNA4-only `v_wmma_i32_16x16x32_iu4` against the manuals and rocjitsu
-`ffc144c564c` (`generated/rdna3/vop3p_exec.cpp`,
-`generated/rdna4/vop3p_exec.cpp`, and `shared/mma_exec.h`). Both wave widths
-are implemented. The shared names require the existing `_rdna4` split:
+RDNA4-only `v_wmma_i32_16x16x32_iu4` against rocjitsu `de4654cfc34`,
+with captures imported from `ad2bb973ec4`. This supersedes the earlier
+`ffc144c564c` final-saturation claims. Both wave widths are implemented.
+The shared names require the existing `_rdna4` split:
 
 - RDNA3 replicates the complete A/B tile in each 16-lane group and interleaves
-  output rows between groups. Its `exec_gfx11_wmma_i32` accumulates the full
-  reduction in a signed wide integer before optional signed saturation.
+  output rows between groups. Signed saturation occurs after each pair of IU8
+  products or quartet of IU4 products, in both scalar and SIMD implementations.
 - RDNA4 distributes A/B across lane groups and uses blocked output rows.
-  GoC retains its existing two-stage saturation model, backed by the recorded
-  Wave32 and Wave64 gfx1201 corpora. Rocjitsu's `exec_wmma_i32` currently uses
-  one final saturation; it is **not** the source of GoC's staged-clamp model.
-  Replacing the existing implementation with that upstream helper would regress
-  those fixtures. No new hardware probes or empirical models were added here.
+  Its existing two-stage saturation implementation also matches Jakub's new
+  dense captures, including IU4 K32. No production change was needed there.
+- `WmmaReplicatedExact.CapturedIntegerSaturation` checks ten physical captures,
+  both semantics, all available CPU selectors and four destination aliases.
+  The new test failed against the prior RDNA3 implementation. Existing captures
+  remain unchanged. No new hardware probes or empirical models were developed.
 - Both interpret A/B signedness independently using NEG[1:0], treat C/D as
   signed 32-bit integers, and wrap modulo 2^32 without CLAMP. Other NEG bits,
   packed half selection, OMOD and DPP are not supported instruction modifiers.

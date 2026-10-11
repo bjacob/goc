@@ -1176,7 +1176,7 @@
     ]
   },
   {
-    "heading": "Integer WMMA architecture contract review",
+    "heading": "Integer WMMA captured saturation review (rocjitsu de4654cfc34)",
     "semantics": "loose and exact",
     "tests": "tests/wmma_replicated_exact_test.cpp",
     "mnemonics": [
@@ -1185,7 +1185,7 @@
     ]
   },
   {
-    "heading": "Integer WMMA architecture contract review",
+    "heading": "Integer WMMA captured saturation review (rocjitsu de4654cfc34)",
     "semantics": "loose and exact",
     "tests": "tests/subbyte_wmma_test.cpp",
     "mnemonics": [

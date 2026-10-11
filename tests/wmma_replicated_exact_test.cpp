@@ -9,6 +9,9 @@
 #include "loose_tolerances.h"
 #include "packed16.h"
 #include "packed_wmma_fixtures.h"
+#include "rdna_wmma_iu4_cases.h"
+#include "rdna_wmma_iu4_k32_cases.h"
+#include "rdna_wmma_iu8_cases.h"
 #include "wmma_replicated_packed_fixtures.h"
 
 #include <algorithm>
@@ -300,9 +303,10 @@ TEST(WmmaReplicatedExact, IntegerSignsClampAliasesAndGuards) {
                     if ((mode & 2) && y >= (1 << (bits - 1)))
                       y -= 1 << bits;
                     acc += x * y;
+                    // Captured rocjitsu policy: IU8 pairs, IU4 quartets.
+                    if ((mode & 4) && (k + 1) % (bits == 8 ? 2 : 4) == 0)
+                      acc = std::clamp(acc, int64_t(-2147483648LL), int64_t(2147483647));
                   }
-                  if (mode & 4)
-                    acc = std::clamp(acc, int64_t(-2147483648LL), int64_t(2147483647));
                   expected[31 - dst - reg][lane + 1] = uint32_t(acc);
                 }
               uint64_t modifiers = (mode & 3) | ((mode & 4) ? GOC_WMMA_CLAMP : 0);
@@ -313,7 +317,7 @@ TEST(WmmaReplicatedExact, IntegerSignsClampAliasesAndGuards) {
             }
 }
 
-TEST(WmmaReplicatedExact, IntegerClampIsFinalNotStaged) {
+TEST(WmmaReplicatedExact, IntegerClampUsesFormatGroups) {
   for (int bits : {4, 8})
     for (int lanes : {32, 64}) {
       auto fn = lanes == 32
@@ -326,7 +330,7 @@ TEST(WmmaReplicatedExact, IntegerClampIsFinalNotStaged) {
           uint32_t av = 0, bv = 0;
           for (int element = 0; element < 32 / bits; ++element) {
             int k = reg * (32 / bits) + element;
-            av |= uint32_t(k < 8 ? 1 : (1 << bits) - 1) << (bits * element);
+            av |= uint32_t(k < 2 ? 1 : k < 4 ? (1 << bits) - 1 : 0) << (bits * element);
             bv |= 1U << (bits * element);
           }
           r.v[reg][lane] = av;
@@ -339,7 +343,7 @@ TEST(WmmaReplicatedExact, IntegerClampIsFinalNotStaged) {
                 GOC_SUCCESS);
       for (int reg = 0; reg < 256 / lanes; ++reg)
         for (int lane = 0; lane < lanes; ++lane)
-          EXPECT_EQ(r.v[24 + reg][lane], 0x7fffffffU);
+          EXPECT_EQ(r.v[24 + reg][lane], bits == 8 ? 0x7ffffffdU : 0x7fffffffU);
       for (unsigned bit = 0; bit < 64; ++bit)
         if (!((1ULL << bit) & (GOC_WMMA_SIGNED_A | GOC_WMMA_SIGNED_B | GOC_WMMA_CLAMP))) {
           EXPECT_EQ(fn(exact, 1ULL << bit, nullptr, nullptr, nullptr, nullptr),
@@ -380,7 +384,7 @@ TEST(WmmaReplicatedExact, IntegerArchitectureSaturationBoundaries) {
                 Registers r;
                 // Eight +1 products and eight -1 products cancel. On RDNA4
                 // put them in the two physical saturation stages (groups 0+2,
-                // then 1+3 in Wave64). RDNA3 reduces all products before clamp.
+                // then 1+3 in Wave64). RDNA3 uses smaller adjacent groups.
                 uint32_t ones = 0;
                 for (int shift = 0; shift < 32; shift += test.bits)
                   ones |= 1U << shift;
@@ -399,8 +403,7 @@ TEST(WmmaReplicatedExact, IntegerArchitectureSaturationBoundaries) {
                   std::fill(r.v[16 + reg], r.v[16 + reg] + test.lanes, acc);
                 uint32_t expected[32][66];
                 std::memcpy(expected, r.data, sizeof(expected));
-                const uint32_t result =
-                    test.rdna4 && clamp ? (negative_first ? 0x80000008U : 0x7ffffff7U) : acc;
+                const uint32_t result = clamp ? (negative_first ? 0x80000008U : 0x7ffffff7U) : acc;
                 for (int reg = 0; reg < output_regs; ++reg)
                   std::fill(expected[31 - dst - reg] + 1, expected[31 - dst - reg] + 1 + test.lanes,
                             result);
@@ -661,4 +664,60 @@ TEST(WmmaPackedLoose, ScalarSimdSpecialAndRandomInputs) {
                     }
               }
             }
+}
+
+// Reconstruct rocjitsu rdna_wmma_i32_test.cpp's physical capture inputs.
+// Expected words are hardware observations, not results of a GoC oracle.
+TEST(WmmaReplicatedExact, CapturedIntegerSaturation) {
+  struct Case {
+    Wmma fn;
+    int lanes;
+    bool rdna4;
+    const std::array<uint32_t, 256> *expected;
+  };
+
+  const Case cases[] = {
+      {goc_v_wmma_i32_16x16x16_iu8, 32, false, &kRdnaWmmaIu8Saturated[0]},
+      {goc_v_wmma_i32_16x16x16_iu8_wave64, 64, false, &kRdnaWmmaIu8Saturated[1]},
+      {goc_v_wmma_i32_16x16x16_iu8_rdna4, 32, true, &kRdnaWmmaIu8Saturated[2]},
+      {goc_v_wmma_i32_16x16x16_iu8_rdna4_wave64, 64, true, &kRdnaWmmaIu8Saturated[3]},
+      {goc_v_wmma_i32_16x16x16_iu4, 32, false, &kRdnaWmmaIu4Saturated[0]},
+      {goc_v_wmma_i32_16x16x16_iu4_wave64, 64, false, &kRdnaWmmaIu4Saturated[1]},
+      {goc_v_wmma_i32_16x16x16_iu4_rdna4, 32, true, &kRdnaWmmaIu4Saturated[2]},
+      {goc_v_wmma_i32_16x16x16_iu4_rdna4_wave64, 64, true, &kRdnaWmmaIu4Saturated[3]},
+      {goc_v_wmma_i32_16x16x32_iu4, 32, true, &kRdnaWmmaIu4K32Saturated[0]},
+      {goc_v_wmma_i32_16x16x32_iu4_wave64, 64, true, &kRdnaWmmaIu4K32Saturated[1]},
+  };
+  for (const auto &test : cases)
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+        for (int dst : {0, 8, 16, 24}) {
+          SCOPED_TRACE(::testing::Message() << test.lanes << "/" << test.rdna4 << "/" << cpu << "/"
+                                            << semantics << "/" << dst);
+          Registers r;
+          uint32_t rng = 0x12056101U;
+          const uint32_t accumulators[] = {0,           1,           0xffffffffU, 0x7fffffffU,
+                                           0x80000000U, 0x7ffff000U, 0x80001000U, 0x12345678U};
+          for (int reg = 0; reg < 32; ++reg)
+            for (int lane = 0; lane < test.lanes; ++lane) {
+              rng ^= rng << 13;
+              rng ^= rng >> 17;
+              rng ^= rng << 5;
+              r.v[reg][lane] = reg >= 16 ? accumulators[(rng >> 24) & 7] : rng;
+            }
+          if (!test.rdna4)
+            for (int reg = 0; reg < 16; ++reg)
+              for (int lane = 16; lane < test.lanes; ++lane)
+                r.v[reg][lane] = r.v[reg][lane % 16];
+          uint32_t expected[32][66];
+          std::memcpy(expected, r.data, sizeof(expected));
+          for (int reg = 0; reg < 256 / test.lanes; ++reg)
+            for (int lane = 0; lane < test.lanes; ++lane)
+              expected[31 - dst - reg][lane + 1] = (*test.expected)[reg * test.lanes + lane];
+          ASSERT_EQ(test.fn(cpu | semantics | GOC_SEMANTICS_STRICT,
+                            GOC_WMMA_SIGNED_A | GOC_WMMA_SIGNED_B | GOC_WMMA_CLAMP, r.v + dst, r.v,
+                            r.v + 8, r.v + 16),
+                    GOC_SUCCESS);
+          EXPECT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0);
+        }
 }

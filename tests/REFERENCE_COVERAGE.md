@@ -630,3 +630,12 @@ classified as differential. Independent loose layout arithmetic stays confined
 to exactly representable integer cases, with separate literal narrowing checks.
 All 154 family-file reviews are recorded; this is a reviewed coverage inventory,
 not an assertion of exhaustive input/mode equivalence.
+
+
+### Updated dense integer WMMA evidence
+
+`WmmaReplicatedExact.CapturedIntegerSaturation` replays the ten dense integer
+captures imported from rocjitsu `ad2bb973ec4` (fix `de4654cfc34`). RDNA3
+clamps each IU8 pair / IU4 quartet, superseding the old final-only reference.
+RDNA4 dense paths already match these captures. Both semantics, widths,
+available CPU selectors and source/destination aliases are checked.

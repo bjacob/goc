@@ -89,8 +89,8 @@ int wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32_t *cons
   return GOC_SUCCESS;
 }
 
-// Adapted from rocjitsu exec_gfx11_wmma_i32: signed C, complete K reduction,
-// then optional final saturation. RDNA4 instead saturates two separate stages.
+// rocjitsu de4654cfc34: signed C, with saturation after each pair of IU8
+// products or group of four IU4 products. Unclamped accumulation wraps.
 template <int Bits, int Lanes>
 int integer_wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
                  const uint32_t *const *b, const uint32_t *const *c) {
@@ -119,9 +119,10 @@ int integer_wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32
         if ((mode & GOC_WMMA_SIGNED_B) && (y & (1 << (Bits - 1))))
           y -= 1 << Bits;
         acc += x * y;
+        constexpr int clamp_group = Bits == 8 ? 2 : 4;
+        if ((mode & GOC_WMMA_CLAMP) && (k + 1) % clamp_group == 0)
+          acc = std::clamp(acc, int64_t(-2147483648LL), int64_t(2147483647));
       }
-      if (mode & GOC_WMMA_CLAMP)
-        acc = std::clamp(acc, int64_t(-2147483648LL), int64_t(2147483647));
       result[reg][lane] = uint32_t(acc);
     }
   for (int reg = 0; reg < Registers; ++reg)

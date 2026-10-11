@@ -2884,8 +2884,9 @@
       "WmmaReplicatedExact.EveryFloatingModifierAndHalfSelection",
       "WmmaReplicatedExact.PackedOverflowAndValidation",
       "WmmaReplicatedExact.IntegerSignsClampAliasesAndGuards",
-      "WmmaReplicatedExact.IntegerClampIsFinalNotStaged",
+      "WmmaReplicatedExact.IntegerClampUsesFormatGroups",
       "WmmaReplicatedExact.IntegerArchitectureSaturationBoundaries",
+      "WmmaReplicatedExact.CapturedIntegerSaturation",
       "WmmaReplicatedExact.FloatingArchitectureRoundingBoundaries",
       "WmmaPackedLoose.LayoutsModifiersAliasesAndGuards",
       "WmmaPackedLoose.IntermediateNarrowingAndOverflow",
@@ -2895,10 +2896,13 @@
       "tests/wmma_replicated_exact_test.cpp",
       "tests/gfx11_dot2_fixtures.h",
       "tests/wmma_replicated_packed_fixtures.h",
+      "tests/rdna_wmma_iu8_cases.h",
+      "tests/rdna_wmma_iu4_cases.h",
+      "tests/rdna_wmma_iu4_k32_cases.h",
       "tests/packed_wmma_fixtures.h",
       "tests/LOOSE_TOLERANCES.md"
     ],
-    "scope": "RDNA3 FP16/BF16 FP32 and packed WMMA exact paths inherit rocjitsu GFX11 DOT2 hardware fixtures and matrix captures. Packed matrices cover both output halves, both widths, source/destination aliases and host rounding modes; raw full-storage expectations preserve unselected halves and guards. Floating modifiers also have a same-library raw-source transformation check, explicitly supplemental to hardware anchors. Integer IU4/IU8 references use widened arithmetic and final signed clamp, with literal architecture witnesses distinguishing RDNA4 staged clamp. Floating architecture witnesses distinguish borrowed DOT2/DOT4 intermediate narrowing. Loose packed coverage includes independent exactly representable integer matrix arithmetic across every modifier, both architectures/widths and CPU selectors, literal intermediate narrowing/overflow behavior, and scalar/SIMD special/arbitrary-word differential comparisons. The latter do not establish arbitrary-input hardware equivalence or serve as independent general numerical references.",
+    "scope": "RDNA3 FP16/BF16 FP32 and packed WMMA exact paths inherit rocjitsu GFX11 DOT2 hardware fixtures and matrix captures. Packed matrices cover both output halves, both widths, source/destination aliases and host rounding modes; raw full-storage expectations preserve unselected halves and guards. Floating modifiers also have a same-library raw-source transformation check, explicitly supplemental to hardware anchors. Integer IU4/IU8 references use widened arithmetic with four/two-product saturation respectively, following rocjitsu de4654cfc34 and independently replayed gfx1100 captures. Dense integer captures at ad2bb973ec4 cover all ten architecture/shape/width combinations in both semantics, every available CPU and four destination aliases; complete storage images include guards. This supersedes the former incorrect final-clamp reference. Floating architecture witnesses distinguish borrowed DOT2/DOT4 intermediate narrowing. Loose packed coverage includes independent exactly representable integer matrix arithmetic across every modifier, both architectures/widths and CPU selectors, literal intermediate narrowing/overflow behavior, and scalar/SIMD special/arbitrary-word differential comparisons. The latter do not establish arbitrary-input hardware equivalence or serve as independent general numerical references.",
     "diagnostics": "Expanded borrowed FP32 and packed hardware matrix checks to all CPU selectors, added FP32 non-output preservation and real-storage packed validation checks. General finite nonzero packed differential outputs use independently decoded numeric fuzzy comparisons, while NaNs are classified and zeros/infinities, sources, guards and unused halves remain raw. Primary/alternate random seeds have zero measured differential error on Clang and GCC. All twelve tests pass; exact fixture comparisons remain bitwise."
   }
 ]

@@ -6169,8 +6169,8 @@ int goc_v_wmma_f32_16x16x16_bf16_wave64(uint64_t flags, uint64_t instruction_fla
 // IU8 uses 4 each and IU4 uses 2 each. All lanes participate and whole VGPRs may alias.
 // Packed forms support all six NEG/NEG_HI bits and GOC_WMMA_HIGH_C_D, narrow
 // after each DOT2 step, and honor GOC_FP16_OVFL for finite FP16 overflow.
-// Integer forms support SIGNED_A/B and CLAMP (final signed saturation after
-// all 16 products); without CLAMP they wrap modulo 2^32. Both semantics are
+// Integer forms support SIGNED_A/B and CLAMP (signed saturation after each
+// two IU8 or four IU4 products); without CLAMP they wrap modulo 2^32. Both semantics are
 // supported. Packed and integer paths preserve the host FP environment.
 int goc_v_wmma_f16_16x16x16_f16(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
                                 const uint32_t *const *a, const uint32_t *const *b,

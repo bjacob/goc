@@ -48,7 +48,9 @@ void integer_wmma_impl(uint32_t modifiers, uint32_t *const *d, const uint32_t *c
 
   uint32_t result[256 / Lanes][Lanes];
   constexpr bool clamp = Clamp;
-  constexpr int stages = Clamp && !Rdna3 ? 2 : 1;
+  // RDNA3 clamps adjacent pairs (IU8) or quartets (IU4); RDNA4 has
+  // two stages, with the physical product order selected below.
+  constexpr int stages = !Clamp ? 1 : Rdna3 ? K / (Bits == 8 ? 2 : 4) : 2;
   for (int row = 0; row < 16; ++row) {
     // RDNA3 interleaves output rows across replicated sixteen-lane groups.
     int group = Rdna3 ? row % Groups : 0;
@@ -62,7 +64,9 @@ void integer_wmma_impl(uint32_t modifiers, uint32_t *const *d, const uint32_t *c
       for (auto &sum : sums)
         sum = Ops::splat(0);
       for (int local = 0; local < K / stages; local += 2) {
-        int k = clamp && !Rdna3 ? 16 * (local / 8) + 8 * stage + local % 8 : local;
+        int k = Rdna3   ? stage * (K / stages) + local
+                : clamp ? 16 * (local / 8) + 8 * stage + local % 8
+                        : local;
         V left = Ops::splat_bits(packed[group][0][k / 2][row]);
         for (int chunk = 0; chunk < 16 / Ops::width; ++chunk)
           sums[chunk] =

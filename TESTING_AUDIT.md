@@ -975,3 +975,23 @@ costs rather than controlled performance comparisons. Full logs reside in
 `final-{gcc,no-simd,sanitize}-{build,ctest}.log` files. The rebuilt inventory is
 `/tmp/goc-testing-audit/reference-inventory.json`; regenerate it with
 `python3 tools/testing_audit.py ../goc-build --output OUTPUT.json`.
+
+
+## Jakub WMMA alignment: integer correction
+
+The previous review's RDNA3 final-only saturation oracle was wrong. The
+`de4654cfc34` rocjitsu fix and gfx1100 captures require saturation after two
+IU8 products or four IU4 products. Scalar and SIMD implementations now follow
+those boundaries. The focused two-positive/two-negative witness distinguishes
+these group sizes; the existing signedness, aliases and architecture tests use
+the corrected independent policy.
+
+`WmmaReplicatedExact.CapturedIntegerSaturation` imports 2,560 output words
+from ten dense integer shape/architecture/width captures at upstream
+`ad2bb973ec4`. It reconstructs the upstream unsigned xorshift inputs and checks
+whole guarded storage across both semantics, all available CPU selectors and
+four destination aliases. The regression failed before the RDNA3 fix; RDNA4
+passed without production changes. These are ten captures replayed in different
+execution configurations, not additional independent hardware observations.
+Further floating and sparse alignment remains in progress; earlier broad green
+results do not establish alignment with the newly imported evidence.
