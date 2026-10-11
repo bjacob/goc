@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 148 explicit family-file reviews exist and 6
+non-generic family references. 149 explicit family-file reviews exist and 5
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -586,3 +586,12 @@ intermediates. Both forms have a role; no arbitrary-input equivalence is inferre
 Matrix captures now cover all CPU selectors and preserve non-output storage;
 computed modifier cases cover both semantics. Error checks cover full storage.
 The companion packed-loose random/tolerance review remains pending.
+
+
+Sparse FP8/BF8 WMMA combines small-integer hardware captures, exhaustive single
+operand decoding/scaling, and independent fractional matrix references. The
+new random corpus covers both widths, all index keys and all CPU selectors;
+it uses the existing WMMA fuzzy bound with two measured deterministic seeds.
+Hardware digests remain raw because their restricted arithmetic is exact.
+Differential alias checks remain separately identified. Source and validation
+preservation coverage now spans both widths.

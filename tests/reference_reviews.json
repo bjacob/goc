@@ -2738,5 +2738,28 @@
     ],
     "scope": "RDNA4 packed FP16/BF16 WMMA, both wave widths. Independent rocjitsu gfx1201 matrix captures cover fractional, underflow, special, cancellation and accumulator-alignment cases with destination aliases and host rounding modes, now on every available CPU selector. Modifier captures and borrowed intermediate-overflow witnesses retain raw expected bits. A small computed modifier oracle uses only exactly representable integer intermediates and results, now in both semantics on every CPU selector. These simple references do not establish arbitrary-input computed-reference equivalence. General loose layout/narrowing/random differential coverage lives in wmma_replicated_exact_test.cpp; its numerical tolerance review remains pending with that family.",
     "diagnostics": "Added all non-output register preservation to matrix captures and computed modifier checks, CPU/destination/rounding context, and separate full-storage error preservation for all unknown modifier bits, invalid global flags and reserved strict semantics. No new golden arrays or numerical model. Six tests pass on Clang and GCC."
+  },
+  {
+    "file": "swmmac8_test.cpp",
+    "assertions": [
+      "Swmmac8.HardwareAllModifiers",
+      "Swmmac8.EveryLaneAndModifier",
+      "Swmmac8.OverlappingSourcesAndDuplicateDestinations",
+      "Swmmac8.Validation",
+      "Swmmac8.EveryInputEncoding",
+      "Swmmac8.Wave64NativeAllFormatsAndIndexKeys",
+      "Swmmac8.Wave64OverlappingSourcesAndDuplicateDestinations",
+      "Swmmac8.Wave64EveryInputEncoding",
+      "Swmmac8.Wave64ValidationPreservesOutputs",
+      "Swmmac8.FractionalMatricesAgainstDoubleReference"
+    ],
+    "evidence": [
+      "tests/swmmac8_test.cpp",
+      "tests/swmmac8_hardware.h",
+      "tests/swmmac8_wave64_hardware.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "All four FP8/BF8 sparse matrix combinations, both wave widths, every index key and available CPU selector. Independent gfx1201 digests use sixteen deterministic small-integer inputs with exact sums; native Wave64 captures are separate. Each of 256 operand encodings is decoded mathematically and multiplied by sixteen against one-valued partners, with NaN classification and otherwise exact scaling. New bounded fractional logical matrices with legal 2:4 selectors use independent double accumulation and fuzzy comparisons; no production decoder or accumulation helper supplies their expected values. Same-library per-lane and alias/duplicate-destination comparisons are differential checks rather than independent arithmetic oracles. Strict exact semantics are unsupported; captured non-strict exact calls explicitly exercise loose fallback.",
+    "diagnostics": "Added non-output storage preservation to both-width captures and all sources/out-of-wave storage checks to random matrices. Expanded Wave32 validation to all 64 instruction-flag bits and both widths to invalid global flags and unchanged outputs on strict-exact rejection. Digest context includes sample. Primary and holdout fractional seeds each compare 1,572,864 values per compiler; existing WMMA bound passes unchanged on Clang and GCC. All ten tests pass."
   }
 ]

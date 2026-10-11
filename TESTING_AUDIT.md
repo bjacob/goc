@@ -857,3 +857,16 @@ modifier bits, invalid global flags and reserved strict semantics. Six tests
 pass on Clang and GCC. Inventory: 148/154 families reviewed; six matrix families,
 including the companion packed-loose tolerance review, and final broad
 verification remain pending.
+
+
+### Sparse FP8/BF8 WMMA review
+
+Added independent bounded fractional matrix references for both widths, all
+four type pairs, all index keys and every available CPU selector. Primary and
+holdout seeds each provide 1,572,864 finite fuzzy comparisons per compiler;
+maximum absolute errors are 2.70e-6 and 3.28e-6 within the unchanged WMMA bound.
+Retained exact small-integer hardware digests and exhaustive encoding/scaling
+checks with their restricted oracle domains documented. Expanded capture source
+preservation and both-width validation/error checks. All ten tests pass on
+Clang and GCC. Inventory: 149/154 families reviewed; five matrix families and
+final broad verification remain pending.

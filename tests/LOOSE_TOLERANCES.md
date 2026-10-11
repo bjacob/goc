@@ -498,3 +498,23 @@ observed error on Clang and GCC. Only random operands/modifiers change in the
 holdout; fixed policy witnesses remain. Exact ADD/MUL, selection and storage
 assertions are excluded from these fuzzy counts.
 Script/snapshots/logs: goc-build/coverage-work/testing-binary-calibration/run.py.
+
+
+### Sparse FP8/BF8 WMMA
+
+`Swmmac8.FractionalMatricesAgainstDoubleReference` constructs logical compressed
+A, dense B and legal 2:4 selectors, packs the two ISA layouts, and compares
+against independent double accumulation. Four type pairs, both widths, every
+index key and all four available CPU selectors cover normal signed factors
+bounded by 4 and fractional accumulators bounded by 4. Each seed performs
+1,572,864 finite comparisons on each compiler. Seed 71849 measured maximum
+absolute error `2.6971101760864258e-6` and relative error
+`0.00060938452163315055`; holdout 92717 measured `3.2782554626464844e-6` and
+`0.0003808543126461264`. Clang and GCC measurements match. Cancellation accounts
+for the relative peaks; the absolute term covers them. The existing WMMA bound
+`(atol=1e-5, rtol=1e-5)` passes unchanged, including the holdout. These measurements
+do not establish a tolerance for arbitrary unbounded FP8/BF8 matrices.
+
+The separate hardware digests deliberately retain raw comparisons: their
+small-integer inputs and sums are exactly representable. Exhaustive encoding
+checks use exact multiplication by sixteen or explicit NaN classification.
