@@ -125,3 +125,11 @@ models. Hardware validation of a borrowed model does not authorize inventing a
 new model. If no faithful borrowed or simple specification-derived implementation
 is available, leave strict exact semantics or optional exact global-state reporting
 explicitly unsupported.
+
+Bit-exact tests may use computed references when equivalence to an already-validated
+implementation is established or inherited from rocjitsu, or follows directly from
+the ISA for a simple operation. Record the evidence and its supported domains and
+modes. Do not assume equivalence merely from mathematical plausibility or agreement
+with the current implementation. Use goldens where needed for empirical behavior;
+do not replace established computed references with bulky fixtures unnecessarily.
+Loose-only implementations may use computed references.
