@@ -714,3 +714,11 @@ captures to all CPU selectors, added source-preservation checks, allowed calibra
 loose adapter comparisons, and improved integer failure localization. Recorded
 independent versus differential evidence and caller-staged pair behavior. All
 nine family tests pass on Clang/GCC, as do 14 tooling tests. Production is unchanged.
+
+### Packed binary review
+
+One review brings the queue to 133 reviewed and 21 pending. Loose packed ADD/MUL
+now compare each half numerically with the existing half arithmetic bound;
+selection, literals and storage stay exact. Added missing Wave64 source checks
+and per-half diagnostics. Existing/alternate seeds and all 11 family tests pass
+on Clang/GCC, along with 14 tooling tests. Production remains unchanged.

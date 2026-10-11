@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 132 explicit family-file reviews exist and 22
+non-generic family references. 133 explicit family-file reviews exist and 21
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -480,3 +480,11 @@ CPU selector. Floating adapter checks permit loose numerical tolerance but requi
 raw inactive storage; source registers are preserved. Integer failures identify
 the register/lane. Pair tests document caller staging rather than implying a
 combined dual-issue API exists.
+
+### Packed binary half arithmetic
+
+Separated approximate ADD/MUL from exact selection and storage at each half.
+Reviewed deterministic exhaustive-A/random-B generation, all packed modifiers,
+guest policies and both widths; added missing Wave64 source checks and per-half
+failure diagnostics. Literal contract witnesses remain exact. These loose-only
+APIs use independent mathematical references without a new golden-data burden.

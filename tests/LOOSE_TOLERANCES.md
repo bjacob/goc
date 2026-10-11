@@ -392,3 +392,11 @@ with zero error. This is differential integration over fixed boundary operands,
 not independent hardware calibration or fresh random holdout; ordinary arithmetic
 families provide the numerical evidence. Storage and categorical results remain
 raw. Script/logs: `goc-build/coverage-work/testing-dual-calibration/run.py`.
+
+Packed half ADD/MUL reuse `(2^-24, 1e-3)` per half. Clang and GCC each measure
+5,354,256 finite nonzero comparisons with zero error using seed 7231, and
+5,352,732 with zero error using alternate seed 51787. Every A encoding is paired
+with pseudorandom B; only B changes in the holdout, while fixed modifier/policy
+and special-pair sweeps repeat. Selection, literal witnesses, zero signs and
+unwritten storage remain exact. Script/snapshots/logs:
+`goc-build/coverage-work/testing-packed-binary-calibration/run.py`.

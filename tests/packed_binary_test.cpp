@@ -2,8 +2,10 @@
 
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_reference.h"
+#include "loose_tolerances.h"
 #include "test_instruction.h"
 
 #include <algorithm>
@@ -65,15 +67,27 @@ uint32_t reference(int op, uint32_t a, uint32_t b, uint32_t mode, bool saturate,
   return result;
 }
 
-void check(uint32_t got, uint32_t want) {
+::testing::AssertionResult check(uint32_t got, uint32_t want, bool arithmetic = false) {
   for (int half = 0; half < 2; ++half) {
     uint16_t actual = uint16_t(got >> (16 * half)), expected = uint16_t(want >> (16 * half));
-    if ((expected & 0x7fff) > 0x7c00) {
-      EXPECT_GT(actual & 0x7fff, 0x7c00);
-    } else {
-      EXPECT_EQ(actual, expected);
+    unsigned magnitude = expected & 0x7fff;
+    if (magnitude > 0x7c00) {
+      if ((actual & 0x7fff) > 0x7c00)
+        continue;
+    } else if (arithmetic && magnitude && magnitude < 0x7c00 &&
+               (actual & 0x8000) == (expected & 0x8000)) {
+      auto result = goc_test::fuzzy(goc_test::half_value(actual), goc_test::half_value(expected),
+                                    goc_test::scalar_arithmetic_f16_tolerance);
+      if (!result)
+        return ::testing::AssertionFailure() << "half=" << half << " " << result.message();
+      continue;
+    } else if (actual == expected) {
+      continue;
     }
+    return ::testing::AssertionFailure()
+           << "half=" << half << " actual bits=" << actual << ", expected bits=" << expected;
   }
+  return ::testing::AssertionSuccess();
 }
 
 void fill(uint32_t (&words)[3][34]) {
@@ -94,8 +108,10 @@ void run(int op, uint64_t flags, uint32_t exec_mask, uint64_t mode, int b, int d
   for (int reg = 0; reg < 3; ++reg)
     for (int lane = 0; lane < 34; ++lane) {
       if (reg == d && lane >= 1 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
-        check(words[reg][lane],
-              reference(op, before[0][lane], before[b][lane], mode, flags & GOC_FP16_OVFL));
+        ASSERT_TRUE(check(
+            words[reg][lane],
+            reference(op, before[0][lane], before[b][lane], mode, flags & GOC_FP16_OVFL), op < 2))
+            << reg << "/" << lane;
       } else {
         EXPECT_EQ(words[reg][lane], before[reg][lane]);
       }
@@ -201,7 +217,7 @@ TEST(PackedBinary, LiteralHalfSelectionSignedZeroAndNanRules) {
           ASSERT_EQ(functions[op](cpu, UINT32_MAX, test.mode, p + d, p, p + 1, nullptr),
                     GOC_SUCCESS);
           for (auto word : words[d])
-            check(word, test.want[op]);
+            ASSERT_TRUE(check(word, test.want[op])) << op << "/" << cpu << "/" << test.mode;
         }
 }
 
@@ -252,15 +268,23 @@ TEST(PackedBinary, Wave64ModifiersMasksAndAliases) {
                     GOC_SUCCESS);
           EXPECT_EQ(exceptions, 0x80000055U);
           for (unsigned lane = 0; lane < 64; ++lane) {
-            if ((exec_mask >> lane) & 1)
-              check(d[lane], reference(op >= 6 ? op - 4 : op, before[0][lane + 1],
-                                       before[1][lane + 1], mode, saturate));
-            else
+            if ((exec_mask >> lane) & 1) {
+              EXPECT_TRUE(check(d[lane],
+                                reference(op >= 6 ? op - 4 : op, before[0][lane + 1],
+                                          before[1][lane + 1], mode, saturate),
+                                op < 2))
+                  << op << "/" << cpu << "/" << mode << "/" << lane;
+            } else {
               EXPECT_EQ(d[lane], before[dest][lane + 1]);
+            }
           }
           for (unsigned reg = 0; reg < 3; ++reg) {
             EXPECT_EQ(words[reg][0], before[reg][0]);
             EXPECT_EQ(words[reg][65], before[reg][65]);
+            if (reg != dest) {
+              for (unsigned lane = 1; lane <= 64; ++lane)
+                EXPECT_EQ(words[reg][lane], before[reg][lane]) << "source=" << reg << "/" << lane;
+            }
           }
         }
 }
@@ -323,11 +347,16 @@ TEST(PackedBinary, ArchitecturePoliciesModifiersAndAliases) {
               for (unsigned reg = 0; reg < 3; ++reg)
                 for (unsigned lane = 0; lane < 66; ++lane) {
                   if (reg == target && lane >= 1 && lane <= (wide ? 64u : 32u) &&
-                      ((exec_mask >> (lane - 1)) & 1))
-                    check(words[reg][lane], reference(op, before[0][lane], before[1][lane], mode,
-                                                      flags & GOC_FP16_OVFL, flags));
-                  else
+                      ((exec_mask >> (lane - 1)) & 1)) {
+                    EXPECT_TRUE(check(words[reg][lane],
+                                      reference(op, before[0][lane], before[1][lane], mode,
+                                                flags & GOC_FP16_OVFL, flags),
+                                      true))
+                        << arch << "/" << wide << "/" << op << "/" << guest << "/" << cpu << "/"
+                        << mode << "/" << lane;
+                  } else {
                     ASSERT_EQ(words[reg][lane], before[reg][lane]);
+                  }
                 }
             }
 }

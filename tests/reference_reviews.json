@@ -2334,5 +2334,29 @@
     ],
     "scope": "Twenty-one operation variants, including architecture-specific floating dual slots and four FP16/BF16 DOT2ACC variants. Literal exactly representable arithmetic covers each variant with five EXEC masks and all CPU selectors. RDNA3 exact dot captures now run on all CPU selectors; a literal witness distinguishes RDNA4 behavior. Floating guest-policy checks compare dual slots with ordinary GoC instructions of the same architecture, so they establish adapter integration rather than independent numerical proof; independent evidence resides in ordinary family suites. Eight guest policies, source/destination aliases and mixed masks cover those floating adapters. Exact FMA NaN-priority witnesses distinguish IEEE behavior and RDNA3 reporting rejection. Integer/move/condition/shift/bitwise tests use direct unsigned oracles, 32 bit/count batches, 84 masks, shared/distinct sources and all destinations with guards. Pair tests reflect the individual-slot API: RDNA3 caller-staged pre-pair sources and a legal RDNA4 sequential pair. Invalid mode bits and reporting-error precedence are explicit.",
     "diagnostics": "Converted loose floating adapter comparisons to the existing FMA numerical bound while keeping inactive storage and zero/infinity signs raw; no claim that differential agreement independently validates hardware. Added source preservation and all-CPU RDNA3 dot captures, removed a null-state no-op assertion, and replaced aggregate integer memcmp failures with register/lane diagnostics."
+  },
+  {
+    "file": "packed_binary_test.cpp",
+    "assertions": [
+      "PackedBinary.AllModifiersAndOverflowPolicies",
+      "PackedBinary.SpecialCartesianPairsAndEveryEncoding",
+      "PackedBinary.MasksAndAllWholeRegisterAliases",
+      "PackedBinary.LiteralHalfSelectionSignedZeroAndNanRules",
+      "PackedBinary.ValidationAndSemantics",
+      "PackedBinary.Wave64ModifiersMasksAndAliases",
+      "PackedBinary.Wave64ValidationAndOptionalState",
+      "PackedBinary.ArchitecturePoliciesModifiersAndAliases",
+      "PackedBinary.LiteralGuestDenormalWitnesses",
+      "PackedBinary.ArchitectureErrorsAndHostControls",
+      "PackedBinary.SelectionGuestPoliciesAllModifiersAndAliases"
+    ],
+    "evidence": [
+      "tests/packed_binary_test.cpp",
+      "tests/half_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Packed FP16 ADD/MUL (RDNA3/RDNA4) and six min/max spellings, both wave widths. Independent double arithmetic with numeric half conversion, half selectors, separate low/high negation, clamp and guest flushing supplies loose ADD/MUL references. Numeric/propagating/legacy selection is checked via raw half ordering with explicit signaling/quiet NaN policies. All 512 valid modifiers and overflow policies are covered on available CPU selectors. Wave32 includes Cartesian special pairs, every A encoding paired with fixed-seed MT19937 B words, eight representative modes across 84 masks, shared/distinct sources and all destinations with guards. Wave64 and architecture integration cover all modifiers with stratified aliases/full/mixed masks and eight guest policies; this is not the complete encoding-by-mode Cartesian product. Dedicated literal selection, signed-zero, NaN and denormal witnesses remain exact. Loose optional-state preservation, unsupported exact semantics/reporting, invalid flags and host controls are explicit. These are loose-only numerical APIs; computed references need no arbitrary exact-SFU equivalence claim.",
+    "diagnostics": "Per-half assertion results identify numerical errors without imposing exact loose ADD/MUL rounding. Literal witnesses and min/max remain raw, and all inactive/source storage is bitwise. Added missing Wave64 nondestination words and operation/CPU/mode/lane diagnostics. Existing and alternate random-B seeds validate the unchanged half arithmetic tolerance."
   }
 ]
