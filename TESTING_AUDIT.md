@@ -821,3 +821,15 @@ removed state assertions on variables never passed to DX9 APIs. All 27 affected
 tests (including C linkage) pass on Clang and GCC; original/alternate FMA seeds
 measure zero error without relaxing bounds. Inventory: 145/154 family files
 reviewed, nine and final broad verification remain.
+
+
+### FP32 binary review
+
+Separated finite loose arithmetic from exact ADD/MUL and raw min/max policy
+checks. Added deterministic arbitrary-word binary64 references across both
+architectures and widths, with masks and aliases, and strengthened source and
+out-of-wave storage checks throughout the integration tests. Borrowed exact
+policy vectors remain bitwise, including host-rounding/denormal-control tests.
+All 14 tests and both calibration seeds pass on Clang and GCC with zero
+observed arithmetic error. Inventory: 146/154 family files reviewed; the eight
+remaining matrix families and final broad verification are still pending.

@@ -488,3 +488,13 @@ sweep contributes 372,524 finite nonzero comparisons with zero error under the
 same numeric bound. DPP inputs are unchanged in the second run and are not a
 random holdout. Storage/selection/captured boundaries stay raw. Script and logs:
 goc-build/coverage-work/testing-arithmetic-calibration/run.py.
+
+
+FP32 binary loose arithmetic uses the existing (2^-149, 1.2e-7) bound against
+independent binary64 operations and the documented OMOD policy. Combined fixed
+modifier/alias/DPP cases and arbitrary-word seed 68147 produce 4,621,604 finite
+nonzero comparisons; alternate seed 95383 produces 4,620,508. Both have zero
+observed error on Clang and GCC. Only random operands/modifiers change in the
+holdout; fixed policy witnesses remain. Exact ADD/MUL, selection and storage
+assertions are excluded from these fuzzy counts.
+Script/snapshots/logs: goc-build/coverage-work/testing-binary-calibration/run.py.

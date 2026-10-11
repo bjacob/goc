@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 145 explicit family-file reviews exist and 9
+non-generic family references. 146 explicit family-file reviews exist and 8
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -562,3 +562,11 @@ same-library differential reference is recorded as such. DPP arithmetic uses
 fuzzy comparisons only for written finite arithmetic; selection and fixed
 captured witnesses remain exact. Source snapshots protect captured references,
 and optional-state assertions only apply when the API receives that pointer.
+
+
+FP32 binary review now separates loose finite arithmetic from exact ADD/MUL and
+raw selection/categorical policies. An arbitrary-word binary64 reference corpus
+covers both architectures and widths, while inherited ADD/MUL policy vectors
+retain host-mode-independent bitwise checks. Added missing sources and
+out-of-wave storage checks, including borrowed-vector and literal min/max
+integration. Original/alternate seeds pass unchanged bounds on both compilers.

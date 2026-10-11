@@ -2668,5 +2668,33 @@
     ],
     "scope": "Wave32 DPP integration for 18 FP32 arithmetic and two/three-input selection operations. Independent double binary arithmetic and integer-bit minmax reference provide expected values with shared DPP routing; two retained gfx1201 corpus hashes separately anchor ordinary and tiny-OMOD domains. The integration sweep covers all legal low modifiers, seven representative DPP descriptors, five alias layouts, stratified 84-mask selection and 23 boundary operands, preserving guards and sources. Fixed captures include full/empty/alternating/single-lane/half EXEC. Separate literal OMOD witnesses and validation-before-operand-access cover routing-independent policy and errors. The corpus validates these fixed domains, not arbitrary hardware-exact semantics. Broader random binary/ternary numerical coverage resides in their instruction-family tests.",
     "diagnostics": "Only written finite ADD/SUB/SUBREV/MUL/DX9-MUL results use calibrated FP32 atol/rtol. Selection, categorical results, captured corpora and inactive storage remain raw. Added source snapshots/checks before hardware-corpus reference evaluation. Per-word diagnostics identify operation, CPU, modifier, descriptor and lane; fixed-corpus digests remain aggregate independent evidence. These fixed special-value comparisons have zero observed error on both compilers and are not described as random holdout."
+  },
+  {
+    "file": "binary_test.cpp",
+    "assertions": [
+      "Binary.AllModifiersMasksAliasesAndSpecialValues",
+      "Binary.Validation",
+      "Binary.MinMaxLiteralNaNsAndSignedZeros",
+      "Binary.Dx9ZeroOverridesEveryOtherOperand",
+      "Binary.Dx9NonzeroUnderflowRetainsSign",
+      "Binary.Wave64ModifiersDppMasksAndAliases",
+      "Binary.Wave64ValidationAndOptionalState",
+      "Binary.ArchitectureOutputScalingGuestModesAndDpp",
+      "Binary.GuestDenormalFlushingAndUnsupportedExactState",
+      "Binary.MinmaxGuestIeeeNaNsAndDenormalSelection",
+      "Binary.Dx9GuestInputFlushPrecedesZeroOverride",
+      "Binary.ExactOptOutFallbackAndErrorOrdering",
+      "Binary.BorrowedAddMulPolicyVectorsAcrossHostModes",
+      "Binary.RandomInputsAgainstDoubleReference"
+    ],
+    "evidence": [
+      "tests/binary_test.cpp",
+      "tests/binary_reference.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "FP32 ADD/SUB/SUBREV/MUL/DX9-MUL and numeric/propagating/legacy min/max, with ordinary and relevant dual forms. RDNA4 Wave32 spans all 128 modifiers, 84 masks and destination aliases on available CPU selectors, with exact ADD/MUL numerical checks kept separate from loose arithmetic. Wave64 covers all modifiers, representative DPP/row masks, aliases and guards. Architecture integration spans guest input/output flushing, IEEE, OMOD gating, both widths and both semantics where supported. Literal min/max tables cover raw NaN precedence/payloads and signed zeros; borrowed rocjitsu ADD/MUL policy vectors cover captured NaN/zero/pre-packing tininess across host rounding/flush controls, architectures, forms and aliases. New deterministic arbitrary-word numerical inputs use independent binary64 arithmetic with architecture-aware OMOD, random modifiers, both widths and architectures, all destination aliases and masks. Exact reporting rejection/error ordering and loose non-null state preservation are explicit. General computed arithmetic is a loose oracle; exact policy behavior is independently anchored by the borrowed vectors rather than inferred from SIMD agreement.",
+    "diagnostics": "Only loose finite arithmetic uses the calibrated FP32 bound; exact ADD/MUL, min/max selection, zeros/infinities and literal policies stay raw, with NaN classification only where the reference intentionally does not specify payloads. Added missing ordinary/Wave64/architecture sources, out-of-wave storage and borrowed-vector source checks. Removed an unchanged-state assertion for exact calls that pass null. Original and alternate random seeds pass on both compilers without changing tolerances."
   }
 ]

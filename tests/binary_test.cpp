@@ -4,14 +4,17 @@
 #include "dpp_reference.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cfenv>
 #include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <random>
 #include <stdint.h>
 
 #if defined(__x86_64__) || defined(_M_X64)
@@ -31,6 +34,21 @@ const decltype(&goc_v_add_f32_rdna4_wave64) wave64[] = {
     goc_v_minimum_f32_wave64,   goc_v_maximum_f32_wave64,   goc_v_mul_dx9_zero_f32_rdna4_wave64,
     goc_v_min_f32_wave64,       goc_v_max_f32_wave64};
 
+::testing::AssertionResult compare(uint32_t actual, float expected, bool arithmetic) {
+  uint32_t want = goc::as_bits(expected);
+  unsigned magnitude = want & 0x7fffffff;
+  if (magnitude > 0x7f800000) {
+    if (std::isnan(goc::as_float(actual)))
+      return ::testing::AssertionSuccess();
+  } else if (arithmetic && magnitude && magnitude < 0x7f800000) {
+    return goc_test::fuzzy(goc::as_float(actual), expected,
+                           goc_test::scalar_arithmetic_f32_tolerance);
+  } else if (actual == want) {
+    return ::testing::AssertionSuccess();
+  }
+  return ::testing::AssertionFailure() << "actual bits=" << actual << " expected bits=" << want;
+}
+
 } // namespace
 
 TEST(Binary, AllModifiersMasksAliasesAndSpecialValues) {
@@ -49,7 +67,7 @@ TEST(Binary, AllModifiersMasksAliasesAndSpecialValues) {
             for (int alias = 0; alias < 3; ++alias) {
               SCOPED_TRACE(::testing::Message()
                            << op << "/" << cpu << "/" << mode << "/" << exec_mask << "/" << alias);
-              uint32_t storage[3][34], before[32];
+              uint32_t storage[3][34], before[32], saved[3][34];
               uint32_t *v[3];
               for (int reg = 0; reg < 3; ++reg) {
                 std::fill(storage[reg], storage[reg] + 34, 0xdeadbeef);
@@ -60,6 +78,7 @@ TEST(Binary, AllModifiersMasksAliasesAndSpecialValues) {
                 v[1][lane] = values[(lane * 5 + 3) % 21];
                 before[lane] = v[alias][lane];
               }
+              std::memcpy(saved, storage, sizeof(storage));
               ASSERT_EQ(functions[op](cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode,
                                       &v[alias], &v[0], &v[1], nullptr),
                         GOC_SUCCESS);
@@ -71,15 +90,15 @@ TEST(Binary, AllModifiersMasksAliasesAndSpecialValues) {
                 float want =
                     goc_test::binary_reference(op, goc::as_float(values[lane % 21]),
                                                goc::as_float(values[(lane * 5 + 3) % 21]), mode);
-                if (std::isnan(want)) {
-                  EXPECT_TRUE(std::isnan(goc::as_float(v[alias][lane])));
-                } else {
-                  EXPECT_EQ(v[alias][lane], goc::as_bits(want));
-                }
+                EXPECT_TRUE(compare(v[alias][lane], want, !semantics && (op < 4 || op == 8)))
+                    << "lane=" << lane;
               }
-              for (const auto &reg : storage) {
-                EXPECT_EQ(reg[0], 0xdeadbeef);
-                EXPECT_EQ(reg[33], 0xdeadbeef);
+              for (unsigned reg = 0; reg < 3; ++reg) {
+                EXPECT_EQ(storage[reg][0], 0xdeadbeef);
+                EXPECT_EQ(storage[reg][33], 0xdeadbeef);
+                if (reg != unsigned(alias)) {
+                  EXPECT_EQ(std::memcmp(storage[reg], saved[reg], sizeof(storage[reg])), 0);
+                }
               }
             }
         }
@@ -205,14 +224,15 @@ TEST(Binary, Wave64ModifiersDppMasksAndAliases) {
               float expected = goc_test::binary_reference(
                   op >= 9 ? op - 5 : op, goc::as_float(source < 0 ? 0 : before[0][source + 1]),
                   goc::as_float(before[1][lane + 1]), op >= 9 ? mode & ~GOC_ALU_OMOD_HALF : mode);
-              if (std::isnan(expected))
-                EXPECT_TRUE(std::isnan(goc::as_float(d[lane])));
-              else
-                EXPECT_EQ(d[lane], goc::as_bits(expected)) << op << '/' << mode << '/' << lane;
+              EXPECT_TRUE(compare(d[lane], expected, op < 4 || op == 8))
+                  << cpu << '/' << op << '/' << mode << '/' << lane;
             }
             for (unsigned reg = 0; reg < 3; ++reg) {
               EXPECT_EQ(words[reg][0], before[reg][0]);
               EXPECT_EQ(words[reg][65], before[reg][65]);
+              if (reg != alias) {
+                EXPECT_EQ(std::memcmp(words[reg], before[reg], sizeof(words[reg])), 0);
+              }
             }
           }
 }
@@ -282,7 +302,9 @@ TEST(Binary, ArchitectureOutputScalingGuestModesAndDpp) {
                             : (arch ? wave64[rdna4_index[op]] : rdna3_wide[op])(
                                   flags, exec_mask, mode, &d, &a, &b, semantics ? nullptr : &state);
                     ASSERT_EQ(status, GOC_SUCCESS);
-                    EXPECT_EQ(state, 0x12345678U);
+                    if (!semantics) {
+                      EXPECT_EQ(state, 0x12345678U);
+                    }
                     const float scales[] = {1, 2, 4, 0.5f};
                     float factor = scales[arch || ((settings & 2) && !(settings & 4)) ? scale : 0];
                     for (unsigned lane = 0; lane < width; ++lane) {
@@ -310,7 +332,11 @@ TEST(Binary, ArchitectureOutputScalingGuestModesAndDpp) {
                     }
                     for (unsigned reg = 0; reg < 3; ++reg) {
                       EXPECT_EQ(words[reg][0], before[reg][0]);
-                      EXPECT_EQ(words[reg][width + 1], before[reg][width + 1]);
+                      for (unsigned index = 1; index < 66; ++index) {
+                        if (reg != alias || index > width) {
+                          EXPECT_EQ(words[reg][index], before[reg][index]);
+                        }
+                      }
                     }
                   }
 }
@@ -401,8 +427,17 @@ TEST(Binary, MinmaxGuestIeeeNaNsAndDenormalSelection) {
                                   : wide[op](flags, exec_mask, 0, &d, &a, &b, &state),
                       GOC_SUCCESS);
             EXPECT_EQ(state, 0x12345678U);
+            for (unsigned reg = 0; reg < 3; ++reg) {
+              if (reg != alias) {
+                EXPECT_EQ(std::memcmp(words[reg], before[reg], sizeof(words[reg])), 0);
+              }
+            }
             unsigned column = 2 + (op % 4 >= 2 ? 4 : settings & 4 ? 2 : 0) + (op & 1);
-            for (unsigned lane = 0; lane < width; ++lane) {
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              if (lane >= width) {
+                EXPECT_EQ(d[lane], before[alias][lane]);
+                continue;
+              }
               uint32_t expected = cases[lane % 9][column];
               if ((settings & 1) && lane % 9 == 8)
                 expected &= 0x80000000U;
@@ -572,6 +607,11 @@ TEST(Binary, BorrowedAddMulPolicyVectorsAcrossHostModes) {
                                       : (form == 2 ? dual : ordinary)(flags, uint32_t(exec_mask), 0,
                                                                       &d, &a, &b, nullptr),
                             GOC_SUCCESS);
+                  for (unsigned reg = 0; reg < 3; ++reg) {
+                    if (reg != target) {
+                      EXPECT_EQ(std::memcmp(words[reg], before[reg], sizeof(words[reg])), 0);
+                    }
+                  }
                   for (unsigned lane = 0; lane < 64; ++lane) {
                     bool active = (form == 1 || lane < 32) && ((exec_mask >> lane) & 1);
                     EXPECT_EQ(d[lane], active ? expected[lane] : before[target][lane]);
@@ -583,4 +623,56 @@ TEST(Binary, BorrowedAddMulPolicyVectorsAcrossHostModes) {
 #endif
     }
   }
+}
+
+// Independent binary64 arithmetic over deterministic arbitrary FP32 encodings.
+// Raw literal tests separately constrain NaN payloads and signed-zero policies.
+TEST(Binary, RandomInputsAgainstDoubleReference) {
+  const Fn rdna3[] = {goc_v_add_f32,     goc_v_sub_f32,     goc_v_subrev_f32,
+                      goc_v_mul_f32,     goc_v_min_f32,     goc_v_max_f32,
+                      goc_v_minimum_f32, goc_v_maximum_f32, goc_v_mul_dx9_zero_f32};
+  const decltype(&goc_v_add_f32_wave64) rdna3_wide[] = {
+      goc_v_add_f32_wave64,     goc_v_sub_f32_wave64,     goc_v_subrev_f32_wave64,
+      goc_v_mul_f32_wave64,     goc_v_min_f32_wave64,     goc_v_max_f32_wave64,
+      goc_v_minimum_f32_wave64, goc_v_maximum_f32_wave64, goc_v_mul_dx9_zero_f32_wave64};
+  for (bool older : {false, true})
+    for (bool wide : {false, true})
+      for (unsigned op = 0; op < 9; ++op)
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          std::mt19937 random(68147);
+          for (unsigned batch = 0; batch < 64; ++batch) {
+            uint32_t words[3][64], before[3][64];
+            for (auto &reg : words)
+              for (auto &word : reg)
+                word = random();
+            std::memcpy(before, words, sizeof(words));
+            unsigned variant = random() & 127;
+            uint32_t mode = (variant & 3) | ((variant & 12) << 1) | ((variant & 112) << 2);
+            uint32_t effective_mode =
+                older && op != 6 && op != 7 ? mode & ~GOC_ALU_OMOD_HALF : mode;
+            unsigned target = batch % 3;
+            uint64_t exec_mask = batch & 1 ? 0x87654321fedcba98ULL : UINT64_MAX;
+            const uint32_t *a = words[0], *b = words[1];
+            uint32_t *d = words[target], state = 0xffffff80;
+            ASSERT_EQ(wide ? (older ? rdna3_wide[op] : wave64[op])(cpu, exec_mask, mode, &d, &a, &b,
+                                                                   &state)
+                           : (older ? rdna3[op] : functions[op])(cpu, uint32_t(exec_mask), mode, &d,
+                                                                 &a, &b, &state),
+                      GOC_SUCCESS);
+            ASSERT_EQ(state, 0xffffff80U);
+            for (unsigned reg = 0; reg < 3; ++reg)
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                if (reg != target || lane >= (wide ? 64U : 32U) || !((exec_mask >> lane) & 1)) {
+                  ASSERT_EQ(words[reg][lane], before[reg][lane]);
+                  continue;
+                }
+                float expected =
+                    goc_test::binary_reference(op, goc::as_float(before[0][lane]),
+                                               goc::as_float(before[1][lane]), effective_mode);
+                ASSERT_TRUE(compare(words[reg][lane], expected, op < 4 || op == 8))
+                    << older << "/" << wide << "/" << op << "/" << cpu << "/" << batch << "/"
+                    << mode << "/" << lane;
+              }
+          }
+        }
 }
