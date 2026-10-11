@@ -115,47 +115,50 @@ TEST(Sad, EveryHalfwordAndUnsignedExtremes) {
 }
 
 TEST(Sad, LiteralWindowsAndIndependentOverflow) {
-  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
-    for (int op = 0; op < 8; ++op)
-      for (bool clamp : {false, true}) {
-        uint32_t words[12][32] = {};
-        const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2]},
-                       *c[] = {words[3], words[4], words[5], words[6]};
-        uint32_t *d[] = {words[7], words[8], words[9], words[10]};
-        for (int lane = 0; lane < 32; ++lane) {
-          words[2][lane] = UINT32_MAX;
-          for (int reg = 3; reg < 7; ++reg)
-            words[reg][lane] = UINT32_MAX;
-        }
-        ASSERT_EQ(functions[op](cpu, UINT32_MAX, clamp ? GOC_ALU_CLAMP : 0, d, a, b, c),
-                  GOC_SUCCESS);
-        const uint32_t wrapping[] = {1019, 0x03fbffff, 0x1fffd,    0xfffffffe,
-                                     1019, 0x03fb03fb, 0x03fb03fb, 1019};
-        for (int reg = 0; reg < outputs(op); ++reg)
-          for (int lane = 0; lane < 32; ++lane)
-            ASSERT_EQ(d[reg][lane], clamp ? UINT32_MAX : wrapping[op]);
-        if (op < 5)
-          continue;
-        for (int lane = 0; lane < 32; ++lane) {
-          words[0][lane] = 0x04030201;
-          words[1][lane] = 0x08070605;
-          words[2][lane] = op == 5 ? 0x04030201 : 0x00030001;
-          if (op == 7) {
-            for (int reg = 0; reg < 4; ++reg)
-              words[3 + reg][lane] = 100 * (reg + 1);
-          } else {
-            words[3][lane] = 0x0014000a;
-            words[4][lane] = 0x0028001e;
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (int op = 0; op < 8; ++op)
+        for (bool clamp : {false, true}) {
+          uint32_t words[12][32] = {};
+          const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2]},
+                         *c[] = {words[3], words[4], words[5], words[6]};
+          uint32_t *d[] = {words[7], words[8], words[9], words[10]};
+          for (int lane = 0; lane < 32; ++lane) {
+            words[2][lane] = UINT32_MAX;
+            for (int reg = 3; reg < 7; ++reg)
+              words[reg][lane] = UINT32_MAX;
           }
+          ASSERT_EQ(functions[op](cpu | semantics | GOC_SEMANTICS_STRICT, UINT32_MAX,
+                                  clamp ? GOC_ALU_CLAMP : 0, d, a, b, c),
+                    GOC_SUCCESS);
+          const uint32_t wrapping[] = {1019, 0x03fbffff, 0x1fffd,    0xfffffffe,
+                                       1019, 0x03fb03fb, 0x03fb03fb, 1019};
+          for (int reg = 0; reg < outputs(op); ++reg)
+            for (int lane = 0; lane < 32; ++lane)
+              ASSERT_EQ(d[reg][lane], clamp ? UINT32_MAX : wrapping[op]);
+          if (op < 5)
+            continue;
+          for (int lane = 0; lane < 32; ++lane) {
+            words[0][lane] = 0x04030201;
+            words[1][lane] = 0x08070605;
+            words[2][lane] = op == 5 ? 0x04030201 : 0x00030001;
+            if (op == 7) {
+              for (int reg = 0; reg < 4; ++reg)
+                words[3 + reg][lane] = 100 * (reg + 1);
+            } else {
+              words[3][lane] = 0x0014000a;
+              words[4][lane] = 0x0028001e;
+            }
+          }
+          ASSERT_EQ(functions[op](cpu | semantics | GOC_SEMANTICS_STRICT, UINT32_MAX,
+                                  clamp ? GOC_ALU_CLAMP : 0, d, a, b, c),
+                    GOC_SUCCESS);
+          const uint32_t golden[][4] = {
+              {0x0018000a, 0x00340026, 0, 0}, {0x0016000a, 0x002e0022, 0, 0}, {100, 202, 304, 406}};
+          for (int reg = 0; reg < outputs(op); ++reg)
+            for (int lane = 0; lane < 32; ++lane)
+              EXPECT_EQ(d[reg][lane], golden[op - 5][reg]);
         }
-        ASSERT_EQ(functions[op](cpu, UINT32_MAX, clamp ? GOC_ALU_CLAMP : 0, d, a, b, c),
-                  GOC_SUCCESS);
-        const uint32_t golden[][4] = {
-            {0x0018000a, 0x00340026, 0, 0}, {0x0016000a, 0x002e0022, 0, 0}, {100, 202, 304, 406}};
-        for (int reg = 0; reg < outputs(op); ++reg)
-          for (int lane = 0; lane < 32; ++lane)
-            EXPECT_EQ(d[reg][lane], golden[op - 5][reg]);
-      }
 }
 
 TEST(Sad, MaskedBytesAndUnusedSourceByte) {
@@ -336,6 +339,9 @@ TEST(Sad, DppHardwareCorpus) {
       for (unsigned op = 0; op < 5; ++op)
         for (auto descriptor : goc_test::dpp_modes)
           for (bool clamp : {false, true}) {
+            SCOPED_TRACE(::testing::Message()
+                         << "cpu=" << cpu << " op=" << op << " exec=" << exec_mask
+                         << " dpp=" << descriptor << " clamp=" << clamp);
             uint32_t av[32], bv[32], cv[32], output[32];
             for (unsigned lane = 0; lane < 32; ++lane) {
               av[lane] = values[lane % 8];
@@ -348,8 +354,16 @@ TEST(Sad, DppHardwareCorpus) {
             ASSERT_EQ(
                 functions[op](cpu, exec_mask, descriptor | (clamp ? GOC_ALU_CLAMP : 0), d, a, b, c),
                 GOC_SUCCESS);
-            for (auto word : output)
-              hash = goc_test::capture_hash_word(hash, word);
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              int source;
+              bool enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+              uint32_t expected = 0xdead0000U + lane;
+              if (enabled)
+                expected = goc_test::sad_reference(op, source < 0 ? 0 : av[source], 0, bv[lane],
+                                                   cv + lane, clamp)[0];
+              ASSERT_EQ(output[lane], expected) << "lane=" << lane;
+              hash = goc_test::capture_hash_word(hash, output[lane]);
+            }
           }
     EXPECT_EQ(hash, 0x9a854a2e5f977214ULL) << cpu;
   }

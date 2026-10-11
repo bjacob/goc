@@ -1266,5 +1266,58 @@
     ],
     "scope": "Thirty-four selected-half and packed Wave64 integer entry points, including signed/unsigned MAD. Widened bounded arithmetic, explicit signed extension, scalar sorting, masked shifts and half insertion provide simple ISA-derived exact references. Both semantics/all CPU selectors cover every encoded half-selector/clamp combination, DPP where supported, row masks, upper/inactive lanes, aliases and destination guards. Input patterns combine integer boundaries and defined unsigned mixing; mode-dependent generation is deterministic but not an exhaustive Cartesian input/mode product. Packed DPP rejection and pre-access validation/zero EXEC are explicit.",
     "diagnostics": "Per-lane comparisons include opcode/mode/lane/route; raw-word comparison verifies untouched halves. No fuzzy numerical comparison is applicable."
+  },
+  {
+    "file": "sad_test.cpp",
+    "assertions": [
+      "Sad.BoundaryTriplesRandomInputsAndSaturation",
+      "Sad.EveryBytePair",
+      "Sad.EveryHalfwordAndUnsignedExtremes",
+      "Sad.LiteralWindowsAndIndependentOverflow",
+      "Sad.MaskedBytesAndUnusedSourceByte",
+      "Sad.MasksAndEveryDestinationSourceAlias",
+      "Sad.ValidationAndHostFpState",
+      "Sad.DppClampMasksAliasesAndGuards",
+      "Sad.DppValidation",
+      "Sad.DppHardwareCorpus"
+    ],
+    "evidence": [
+      "tests/sad_test.cpp",
+      "tests/sad_reference.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Eight Wave32 SAD/MSAD/QSAD/MQSAD variants. Independent radix decomposition, signed widened absolute differences and widened accumulators model byte/halfword/word windows, zero-byte masking, independent packed saturation and wrapping. Directly justified integer rules are complemented by literal overflow/window outputs and retained RX9070 DPP digest. Full byte-pair and halfword sweeps, deterministic mt19937 streams, every byte-zero pattern and unused high source byte, all CPU selectors, EXEC, coincident destination/source aliases, DPP and guards are covered. Main exhaustive loops use loose semantics; compact literal witnesses now exercise both semantics with STRICT. Exact host-state integration is separate.",
+    "diagnostics": "Per-register/lane reference failures include opcode/flags/clamp. Hardware DPP now adds per-output checks with opcode/CPU/EXEC/route/clamp/lane while preserving the independent final digest."
+  },
+  {
+    "file": "sad_wave64_test.cpp",
+    "assertions": [
+      "SadWave64.WindowsSaturationDppMasksAndAliases",
+      "SadWave64.QuadAccumulatorThresholdsAndCoincidentDestinations",
+      "SadWave64.EmptyAndInvalidCallsDoNotAccessOperands"
+    ],
+    "evidence": [
+      "tests/sad_wave64_test.cpp",
+      "tests/sad_reference.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Eight Wave64 SAD variants, both semantics with STRICT and every available CPU selector. Independent widened byte/window reference is shared with Wave32; no new native Wave64 capture is claimed. Defined mt19937 draws include near-overflow accumulators and zero-byte masking. Supported DPP row controls, high EXEC bits, source aliases, all-register guards, empty EXEC and unsupported routes are tested. Compact hand-computed quad-window differences independently test below/at/above each accumulator limit and coincident destinations, including masks selecting lanes31/32.",
+    "diagnostics": "Per-lane/per-result checks identify opcode and alias; literal threshold cases also report CPU/clamp/coincident layout. Threshold references do not call the general SAD oracle."
+  },
+  {
+    "file": "packed_mad_test.cpp",
+    "assertions": [
+      "PackedMad.EveryModifierBoundaryTriplesAndRandomInputs",
+      "PackedMad.EverySourceEncoding",
+      "PackedMad.AllMasksModifiersAndWholeRegisterAliases",
+      "PackedMad.LiteralFullPrecisionSaturationAndCrossHalfAliases",
+      "PackedMad.ValidationAndFloatingEnvironment"
+    ],
+    "evidence": [
+      "tests/packed_mad_test.cpp",
+      "tests/packed_mad_reference.h"
+    ],
+    "scope": "Signed/unsigned packed Wave32 integer MAD. Explicit half extraction/sign extension and int64 product-plus-addend are bounded (unsigned maximum below 2^32); clamp precedes 16-bit narrowing. All 128 half-selection/clamp combinations, boundary triples, each source encoding with deterministic other operands, all CPU selectors and all 15 whole-register alias partitions are tested. Primary sweeps use loose semantics; literal full-precision overflow and cross-half witnesses now run both semantics with STRICT. Wave64 packed variants have separate both-semantics coverage in integer16_wave64_test.cpp. Invalid negation flags preserve results, empty EXEC and host-state behavior are checked.",
+    "diagnostics": "Mode sweeps carry sign/CPU/mode context and alias failures report EXEC. Small literal witnesses independently anchor clamp-before-narrowing and half selection; no hardware capture is claimed."
   }
 ]

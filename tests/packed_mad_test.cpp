@@ -119,19 +119,22 @@ TEST(PackedMad, LiteralFullPrecisionSaturationAndCrossHalfAliases) {
       {false, 0x00020003, 0x00050007, 0x000b000d,
        GOC_PK_LO_A_HIGH | GOC_PK_HI_A_LOW | GOC_PK_LO_C_HIGH | GOC_PK_HI_C_LOW, 0x001c0019},
   };
-  for (const auto &w : cases)
-    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-      uint32_t words[3][32];
-      uint32_t *p[] = {words[0], words[1], words[2]};
-      for (int lane = 0; lane < 32; ++lane) {
-        words[0][lane] = w.a;
-        words[1][lane] = w.b;
-        words[2][lane] = w.c;
+  for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+    for (const auto &w : cases)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+        uint32_t words[3][32];
+        uint32_t *p[] = {words[0], words[1], words[2]};
+        for (int lane = 0; lane < 32; ++lane) {
+          words[0][lane] = w.a;
+          words[1][lane] = w.b;
+          words[2][lane] = w.c;
+        }
+        ASSERT_EQ(functions[w.sign](cpu | semantics | GOC_SEMANTICS_STRICT, UINT32_MAX, w.mode, p,
+                                    p, p + 1, p + 2),
+                  GOC_SUCCESS);
+        for (uint32_t value : words[0])
+          EXPECT_EQ(value, w.expected);
       }
-      ASSERT_EQ(functions[w.sign](cpu, UINT32_MAX, w.mode, p, p, p + 1, p + 2), GOC_SUCCESS);
-      for (uint32_t value : words[0])
-        EXPECT_EQ(value, w.expected);
-    }
 }
 
 TEST(PackedMad, ValidationAndFloatingEnvironment) {

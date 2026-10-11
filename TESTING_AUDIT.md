@@ -438,3 +438,12 @@ reference independence; hardware and literal extended-sign witnesses remain.
 Wave64 records cover supported modes, upper-lane masks, aliases and guards with
 explicit limits on native capture evidence. All 28 affected/family tests pass
 on Clang/GCC, and all 14 tooling tests pass. Production code is unchanged.
+
+### SAD and packed integer MAD review
+
+Three reviews bring the queue to 85 reviewed and 69 pending. Recorded independent
+widened/window arithmetic, literal threshold and half-selection witnesses, and
+limits of Wave32 loose-only exhaustive sweeps. Compact Wave32 SAD/packed-MAD
+literal tests now also select strict exact semantics. SAD's DPP hardware digest
+now has per-output diagnostics. All 18 family tests pass with Clang/GCC; all 14
+tooling tests pass. Production and captured data are unchanged.

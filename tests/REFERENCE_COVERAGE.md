@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Eighty-two explicit family-file reviews exist and 72
+non-generic family references. Eighty-five explicit family-file reviews exist and 69
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -210,3 +210,12 @@ hardware digests and literal extended-sign witnesses remain essential evidence.
 Integer results require exact comparisons under either semantics. Wave64 reviews
 record all-selector coverage, supported modes, upper-lane masks and overlapping
 outputs without claiming separate native hardware captures where none exist.
+
+## Absolute differences and packed integer MAD
+
+Three reviews record widened integer/window references, deterministic exhaustive
+and sampled inputs, and independent literal overflow/selection witnesses.
+The compact Wave32 literal cases now exercise strict exact as well as loose
+semantics; the large loose sweeps are not mislabeled as exact coverage.
+SAD DPP capture retains its hardware digest with per-lane diagnostics. Wave64
+threshold cases independently test each accumulator and coincident outputs.
