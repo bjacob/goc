@@ -2293,5 +2293,24 @@
     ],
     "scope": "Fourteen loose-only scalar FP16/FP32 ADD/SUB/MUL and min_num/max_num/minimum/maximum APIs. Two independent hardware datasets (general boundary/integer-mixed operands and dense min-normal/one neighborhoods) cover 4096 pairs each across eight denormal/saturation policies and all CPU selectors. ADD/SUB/MUL now use double arithmetic, explicit guest input flushing and pre-rounding tininess, plus numeric half conversion; the computed reference itself must match each hardware digest before it can justify fuzzy loose output comparisons. Min/max remain exact selection checks with normalized NaNs. Literal tests distinguish finite overflow saturation, preserved infinities, signed-zero ties, NaN selection/propagation and subnormal stages. Scalar by-value input aliases and guards are covered, with both source destinations in min/max tests. Exact semantics/reporting rejection, non-strict fallback equivalence, invalid flags/error preservation and loose optional-state preservation are tested. Computed-reference equivalence is captured-domain evidence, not arbitrary-input hardware proof.",
     "diagnostics": "Arithmetic comparisons now identify dataset, policy, operation, CPU and input index; independent capture digests remain reference gates. Numerical tolerances apply only to loose arithmetic; half upper-word zeroing, zero/infinity signs and selection results stay exact. Existing corpus generation uses explicit unsigned arithmetic, independent of library RNG distributions."
+  },
+  {
+    "file": "arithmetic_exceptions_test.cpp",
+    "assertions": [
+      "ArithmeticExceptions.DppMasksHalfSelectorsAndAliases",
+      "ArithmeticExceptions.HostEnvironmentAndOptOut",
+      "ArithmeticExceptions.LooseModeSkipsReporting"
+    ],
+    "evidence": [
+      "tests/arithmetic_exceptions_test.cpp",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/half_fma_test.cpp",
+      "tests/half_fma_exceptions_hardware.h",
+      "tests/div_fixup_exceptions_hardware.h",
+      "tests/fmac_test.cpp"
+    ],
+    "scope": "Cross-cutting Wave32 FP16 FMA/FMAC/DIV_FIXUP exception integration, plus packed FMA loose opt-out. Single-lane baseline calls compute expected numerical results and OR accumulated flags after independent DPP routing; this is differential integration, not independent numerical/exception evidence. Dedicated family hardware fixtures supply that evidence. Seven descriptors, 84 masks, eight representative selectors/modifiers and four destination aliases run on all CPU selectors. Nondestination registers, inactive results and all bits outside the seven exception fields must remain unchanged. Host rounding and FTZ/DAZ variations verify controls remain fixed and preexisting sticky divide-by-zero is retained; additional host sticky flags are permitted. Active exact reporting versus null opt-out now checks identical destinations, including FMAC accumulator initialization. Empty EXEC, invalid flags and loose supplied-state preservation are covered. Wave64 coverage lives in dedicated family suites.",
+    "diagnostics": "Expanded storage checks to every register/lane with CPU/descriptor/mask/modifier/alias context. Seed all nonflag bits and assert them independently of the differential reference. Added the direct intrinsics include used by host-control tests and active exact null-output comparison."
   }
 ]

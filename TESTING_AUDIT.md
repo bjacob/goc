@@ -698,3 +698,11 @@ references match both hardware datasets, allowing loose ADD/SUB/MUL proximity
 checks with per-input diagnostics. Selection, categorical and storage results
 remain exact. All six family tests and measurements pass on Clang/GCC, as do 14
 tooling tests. Production and existing hardware captures are unchanged.
+
+### Arithmetic exception integration review
+
+One review brings the queue to 131 reviewed and 23 pending. Added independent
+nonflag-bit preservation checks, all-register storage checks and active exact
+null-reporting equivalence. Documented the single-lane differential reference
+and separate hardware evidence. All three family tests pass on Clang/GCC, as do
+14 tooling tests. Production remains unchanged.

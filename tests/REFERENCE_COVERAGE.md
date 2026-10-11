@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 130 explicit family-file reviews exist and 24
+non-generic family references. 131 explicit family-file reviews exist and 23
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -464,3 +464,10 @@ existing hardware datasets, including guest flushing and saturation policies.
 Loose numerical outputs now receive fuzzy comparisons, while min/max selection
 and categorical/storage results remain exact. The capture check proves reference
 equivalence for this corpus without requiring additional golden arrays.
+
+### Arithmetic exception integration
+
+Recorded the single-lane-reference dependency explicitly and linked the separate
+family capture evidence. Expanded checks to all nondestination storage and every
+nonflag bit. The host/opt-out test now checks active exact calls with and without
+reporting, rather than treating empty EXEC as sufficient opt-out coverage.

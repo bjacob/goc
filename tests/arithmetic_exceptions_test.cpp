@@ -10,6 +10,10 @@
 #include <gtest/gtest.h>
 #include <stdint.h>
 
+#if defined(__x86_64__) || defined(_M_X64)
+#include <immintrin.h>
+#endif
+
 namespace {
 
 using Fn = decltype(&goc_v_fma_f16_rdna4);
@@ -38,7 +42,7 @@ TEST(ArithmeticExceptions, DppMasksHalfSelectorsAndAliases) {
             for (unsigned reg = 0; reg < 4; ++reg)
               for (unsigned lane = 0; lane < 32; ++lane)
                 initial[reg][lane] = values[(lane + reg * 3) % 8];
-            uint32_t expected_flags = 0x80000000, expected[32];
+            uint32_t expected_flags = 0xffffff80, expected[32];
             std::memcpy(expected, initial[destination], sizeof(expected));
             for (unsigned lane = 0; lane < 32; ++lane) {
               int source;
@@ -59,13 +63,18 @@ TEST(ArithmeticExceptions, DppMasksHalfSelectorsAndAliases) {
               std::memcpy(words, initial, sizeof(words));
               const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
               uint32_t *d[] = {words[destination]};
-              uint32_t exceptions = 0x80000000;
+              uint32_t exceptions = 0xffffff80;
               ASSERT_EQ(fn(cpu | exact, exec_mask, descriptor | mode, d, a, b, c, &exceptions),
                         GOC_SUCCESS);
+              EXPECT_EQ(exceptions & ~0x7fU, 0xffffff80U);
               EXPECT_EQ(exceptions, expected_flags)
                   << descriptor << "/" << exec_mask << "/" << mode;
-              for (unsigned lane = 0; lane < 32; ++lane)
-                EXPECT_EQ(words[destination][lane], expected[lane]);
+              for (unsigned reg = 0; reg < 4; ++reg)
+                for (unsigned lane = 0; lane < 32; ++lane)
+                  EXPECT_EQ(words[reg][lane],
+                            reg == destination ? expected[lane] : initial[reg][lane])
+                      << cpu << "/" << descriptor << "/" << exec_mask << "/" << mode << "/"
+                      << destination << "/" << reg << "/" << lane;
             }
           }
 }
@@ -89,12 +98,17 @@ TEST(ArithmeticExceptions, HostEnvironmentAndOptOut) {
             for (unsigned lane = 0; lane < 32; ++lane)
               words[reg][lane] = values[(lane + reg * 3) % 8];
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
-          uint32_t *d[] = {words[3]};
+          uint32_t unreported[32];
+          std::memcpy(unreported, words[3], sizeof(unreported));
+          uint32_t *d[] = {words[3]}, *without_state[] = {unreported};
           uint32_t exceptions = 0x80000000;
           ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
           ASSERT_EQ(std::feraiseexcept(FE_DIVBYZERO), 0);
           ASSERT_EQ(fn(cpu | exact, UINT32_MAX, 0, d, a, b, c, &exceptions), GOC_SUCCESS);
           EXPECT_NE(exceptions, 0x80000000);
+          ASSERT_EQ(fn(cpu | exact, UINT32_MAX, 0, without_state, a, b, c, nullptr), GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 32; ++lane)
+            EXPECT_EQ(words[3][lane], unreported[lane]) << "lane=" << lane;
           EXPECT_EQ(std::fegetround(), rounding);
           // Compiler-generated arithmetic may raise additional sticky flags.
           EXPECT_EQ(std::fetestexcept(FE_DIVBYZERO), FE_DIVBYZERO);
