@@ -66,17 +66,27 @@ TEST(SwmmacInteger, HardwareAllModifiers) {
           for (uint64_t semantics :
                {uint64_t{0}, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
             Registers r(op, sample);
+            uint32_t before[15][32];
+            std::memcpy(before, r.data, sizeof(before));
             ASSERT_EQ(functions[op](cpu | semantics, mode(variant), r.d, r.a, r.b, r.index),
                       GOC_SUCCESS);
+            for (unsigned reg = 0; reg < 15; ++reg) {
+              if (reg < 6 || reg >= 14) {
+                ASSERT_EQ(std::memcmp(r.data[reg], before[reg], sizeof(before[reg])), 0)
+                    << "source=" << reg;
+              }
+            }
             uint64_t digest = goc_test::capture_hash_seed;
             for (unsigned reg = 0; reg < 8u; ++reg)
               for (unsigned lane = 0; lane < 32; ++lane)
                 digest = goc_test::capture_hash_bytes(digest, r.d[reg][lane], 4);
             ASSERT_EQ(digest, goc_test::swmmac_integer_capture_digests[op][sample][variant])
-                << op << "/" << cpu << "/" << variant;
+                << op << "/" << cpu << "/" << sample << "/" << variant << "/" << semantics;
           }
 }
 
+// Differential CPU dispatch check; the independent hardware digests above
+// establish numerical behavior, while this test localizes per-register failures.
 TEST(SwmmacInteger, EveryLaneAndModifier) {
   for (unsigned op = 0; op < 3; ++op)
     for (unsigned variant = 0; variant < (op == 2 ? 8u : 16u); ++variant) {
@@ -113,7 +123,6 @@ TEST(SwmmacInteger, OverlappingSourcesAndDuplicateDestinations) {
           std::memcpy(expected, r.data, sizeof(expected));
           for (unsigned reg = 0; reg < regs; ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
-
               expected[offsets[reg]][lane] = reference.d[reg][lane];
           ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
           ASSERT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0)
@@ -123,12 +132,17 @@ TEST(SwmmacInteger, OverlappingSourcesAndDuplicateDestinations) {
 
 TEST(SwmmacInteger, Validation) {
   for (unsigned op = 0; op < 3; ++op) {
-    Fn fn = functions[op];
-    for (unsigned bit = 0; bit < 32; ++bit) {
-      if (!((1u << bit) & mode(op == 2 ? 7 : 15))) {
-        EXPECT_EQ(fn(0, 1u << bit, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    Registers r(op);
+    uint32_t before[15][32];
+    std::memcpy(before, r.data, sizeof(before));
+    uint64_t known = mode(op == 2 ? 7 : 15);
+    for (unsigned bit = 0; bit < 64; ++bit) {
+      if (!(known & (1ULL << bit))) {
+        EXPECT_EQ(functions[op](0, 1ULL << bit, r.d, r.a, r.b, r.index), GOC_ERROR_INVALID_FLAGS);
       }
     }
+    EXPECT_EQ(functions[op](1ULL << 63, 0, r.d, r.a, r.b, r.index), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(std::memcmp(before, r.data, sizeof(before)), 0);
   }
 }
 
@@ -175,22 +189,29 @@ TEST(SwmmacInteger, Wave64NativeAllModifiers) {
   for (unsigned op = 0; op < 3; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned variant = 0; variant < (op == 0 ? 32U : 16U); ++variant)
-        for (unsigned sample = 0; sample < 16; ++sample) {
-          uint32_t data[15][64];
-          goc_test::integer_wmma_capture_inputs(sample, data);
-          const uint32_t *a[] = {data[0]}, *b[] = {data[2], data[3]}, *index[] = {data[14]};
-          uint32_t *d[] = {data[6], data[7], data[8], data[9]};
-          unsigned modifiers = (variant & 3) | ((variant & 4) << 4) | ((variant >> 3) << 7);
-          ASSERT_EQ(wide_functions[op](cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                       modifiers, d, a, b, index),
-                    GOC_SUCCESS);
-          uint64_t hash = goc_test::capture_hash_seed;
-          for (unsigned reg = 0; reg < 4; ++reg)
-            for (unsigned lane = 0; lane < 64; ++lane)
-              hash = goc_test::capture_hash_word(hash, d[reg][lane]);
-          ASSERT_EQ(hash, goc_test::swmmac_integer_wave64_digests[op][sample][variant])
-              << op << "/" << cpu << "/" << sample << "/" << variant;
-        }
+        for (unsigned sample = 0; sample < 16; ++sample)
+          for (uint64_t semantics :
+               {uint64_t(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT}) {
+            uint32_t data[15][64], before[15][64];
+            goc_test::integer_wmma_capture_inputs(sample, data);
+            std::memcpy(before, data, sizeof(before));
+            const uint32_t *a[] = {data[0]}, *b[] = {data[2], data[3]}, *index[] = {data[14]};
+            uint32_t *d[] = {data[6], data[7], data[8], data[9]};
+            unsigned modifiers = (variant & 3) | ((variant & 4) << 4) | ((variant >> 3) << 7);
+            ASSERT_EQ(wide_functions[op](cpu | semantics, modifiers, d, a, b, index), GOC_SUCCESS);
+            for (unsigned reg = 0; reg < 15; ++reg) {
+              if (reg < 6 || reg >= 10) {
+                ASSERT_EQ(std::memcmp(data[reg], before[reg], sizeof(before[reg])), 0)
+                    << "source=" << reg;
+              }
+            }
+            uint64_t hash = goc_test::capture_hash_seed;
+            for (unsigned reg = 0; reg < 4; ++reg)
+              for (unsigned lane = 0; lane < 64; ++lane)
+                hash = goc_test::capture_hash_word(hash, d[reg][lane]);
+            ASSERT_EQ(hash, goc_test::swmmac_integer_wave64_digests[op][sample][variant])
+                << op << "/" << cpu << "/" << sample << "/" << variant << "/" << semantics;
+          }
 }
 
 TEST(SwmmacInteger, Wave64OverlappingSourcesAndDuplicateDestinations) {
@@ -217,7 +238,6 @@ TEST(SwmmacInteger, Wave64OverlappingSourcesAndDuplicateDestinations) {
           std::memcpy(expected, r.data, sizeof(expected));
           for (unsigned reg = 0; reg < regs; ++reg)
             for (unsigned lane = 0; lane < 64; ++lane)
-
               expected[offsets[reg]][lane] = reference.d[reg][lane];
           ASSERT_EQ(wide_functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
           ASSERT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0)

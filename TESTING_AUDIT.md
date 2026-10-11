@@ -833,3 +833,14 @@ policy vectors remain bitwise, including host-rounding/denormal-control tests.
 All 14 tests and both calibration seeds pass on Clang and GCC with zero
 observed arithmetic error. Inventory: 146/154 family files reviewed; the eight
 remaining matrix families and final broad verification are still pending.
+
+
+### Sparse integer WMMA review
+
+Verified independent both-width hardware digests, native Wave64 selector coverage,
+deterministic input draw order, staged saturation witnesses and differential
+alias/duplicate-destination checks. Added loose semantics to native Wave64
+capture checks, all non-output storage preservation, more precise digest
+diagnostics and complete Wave32 invalid-bit/error-preservation checks.
+All ten tests pass on Clang and GCC. Inventory: 147/154 families reviewed,
+seven matrix families and final broad verification remain.

@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 146 explicit family-file reviews exist and 8
+non-generic family references. 147 explicit family-file reviews exist and 7
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -570,3 +570,11 @@ covers both architectures and widths, while inherited ADD/MUL policy vectors
 retain host-mode-independent bitwise checks. Added missing sources and
 out-of-wave storage checks, including borrowed-vector and literal min/max
 integration. Original/alternate seeds pass unchanged bounds on both compilers.
+
+
+Sparse integer WMMA has independent modifier-complete hardware digests for all
+three shapes, including native Wave64 captures. Both semantics now exercise
+both-width captures, with all non-output storage checked. Differential overlap
+and duplicate-destination references are explicitly distinguished from that
+independent numerical evidence. Expanded Wave32 error-preservation coverage;
+integer results remain bitwise in loose as well as exact semantics.
