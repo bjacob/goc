@@ -1,8 +1,14 @@
 # GoC testing audit
 
-Audited source: `536bb22`, with a clean working tree. This is an audit, not a test-suite rewrite.
+Original audited source: `536bb22`.
 
-## Verdict
+**Follow-up complete.** All five action items have been addressed and all 1,215
+CTests pass in Clang Release, GCC Release, scalar-only Clang Release and Debug
+ASan/UBSan builds. Fourteen tooling tests also pass. The evidence and deliberate
+coverage limits are recorded in [the final verification](#final-verification-of-follow-up-requirements).
+The original findings and incremental progress below are retained as history.
+
+## Original verdict at `536bb22`
 
 The suite has broad instruction and behavioral coverage, but does **not yet consistently meet the requested testing policy**. The clearest actionable gaps are toolchain-independent RNG sequencing and a shared, empirically justified loose-comparison policy. Reference provenance needs a more explicit inventory; computed references are not intrinsically a deficiency.
 
@@ -141,11 +147,11 @@ The active follow-up is to complete all five action items above, preserving the
 clarified policy that established computed exact references are welcome.
 
 - [x] Fix the identified RNG sequencing sites and pin fixture-dependent input streams.
-- [ ] Centralize loose fuzzy comparisons and record empirical tolerance calibration.
-- [ ] Map instruction tests to reference evidence and establish missing oracle provenance.
+- [x] Centralize loose fuzzy comparisons and record empirical tolerance calibration.
+- [x] Map instruction tests to reference evidence and establish missing oracle provenance.
 - [x] Reduce the expensive DPP products while preserving essential interactions; measure latency.
-- [ ] Improve compact-corpus diagnostics with justified checkpoints/readable anchors.
-- [ ] Run final compiler/SIMD/sanitizer validation and record remaining limitations.
+- [x] Improve compact-corpus diagnostics with justified checkpoints/readable anchors.
+- [x] Run final compiler/SIMD/sanitizer validation and record remaining limitations.
 
 
 ### RNG sequencing completed
@@ -919,3 +925,53 @@ finite differential comparisons fuzzy while retaining raw categories and
 unused storage. All twelve tests and original/alternate seed runs pass on
 Clang and GCC. Inventory: 154/154 family files reviewed. Final broad validation
 and requirement-by-requirement completion verification remain in progress.
+
+
+## Final verification of follow-up requirements
+
+Source/test changes through `40b8c37`. The original findings above are retained
+as history; this section assesses the resulting tree against each action item.
+
+| Action item | Current evidence | Status |
+| --- | --- | --- |
+| Deterministic RNG sequencing and fixture streams | Explicitly sequenced draws at the seven original sites and the later LDEXP site; fixed recurrence digests in `deterministic_inputs_test.cpp` and capture-stream tests. Final searches find no implementation-dependent distributions/default engines or same-expression multi-draw arithmetic in unit tests. Multi-declarator initializers and conditional branches have defined sequencing. | Complete |
+| Shared fuzzy policy and empirical bounds | `fuzzy_compare.h` implements the asymmetric NumPy formula; `fuzzy_test.cpp` checks bounds, special values and diagnostics. `loose_tolerances.h` names domain bounds; `LOOSE_TOLERANCES.md` records compiler measurements, holdout seeds and scope. Numerical comparisons are distinguished from raw selection/category/storage checks. | Complete |
+| Reference provenance and instruction-family review | Rebuilt inventory reports 1,791 public APIs, 163 active test objects, zero missing non-generic references and 154/154 explicit family-file reviews. `reference_reviews.json` connects actual test names to evidence, domains and diagnostic limitations; its tool checks file/test/evidence existence. Manual review records distinguish upstream/hardware/simple computed oracles from differential tests. | Complete |
+| Five expensive DPP products | Retained every operation/CPU/descriptor/modifier/layout/alias/numerical batch, with deliberate representative masks for modifier products and full masks for routing. Controlled three-run median fell from 7.32 s to 1.45 s; the earlier table records the per-family results. | Complete |
+| Compact-corpus diagnostics | Per-family records identify digest context and readable anchors. Added captured-domain computed checks, per-input/row/lane diagnostics, sample/mode labels and literal boundary witnesses where useful, keeping independent digests rather than generating goldens from GoC. Differential diagnostics are identified as such. | Complete |
+| Broad final verification | Full rebuilds include benchmark/header checks; Clang Release, GCC Release and Clang scalar-only each pass all 1,215 CTests. Debug ASan/UBSan also passes all 1,215 CTests; fourteen tooling tests pass. | Complete |
+
+The broad rebuild found and fixed one integration issue: a GoogleTest comparison
+helper had entered a reference header also used by the benchmark. It now lives
+in `mullit_checks.h`, shared by the two unit-test callers, while the numerical
+reference remains usable without GoogleTest. No production files under `src/`
+or `include/` changed relative to the original audit baseline.
+
+Limits retained deliberately: compiled references alone do not prove execution
+or every API/mode combination. The reviewed assertion scopes provide the semantic
+evidence and state their domains. Calibration is empirical over documented
+corpora, not a universal error bound. Scalar/SIMD agreement is supplemental and
+does not establish independent bit-exact hardware behavior. In particular,
+packed loose arbitrary-word checks remain differential alongside independent
+integer/layout and literal narrowing witnesses; borrowed exact matrix captures
+remain bitwise. CPU coverage is limited to the paths available on this host,
+with a separate build verifying scalar fallback. These are coverage trade-offs,
+not claims of exhaustive input-space proof or new hardware reverse engineering.
+
+
+Final full rebuild/CTest results on this host (`ninja -j24`, `ctest -j24
+--output-on-failure`):
+
+| Configuration | Result | CTest wall time |
+| --- | --- | ---: |
+| Clang Release, SIMD enabled | 1,215/1,215 passed | 13.10 s |
+| GCC Release, SIMD enabled | 1,215/1,215 passed | 15.11 s |
+| Clang Release, SIMD disabled | 1,215/1,215 passed | 13.52 s |
+| Clang Debug, ASan + UBSan | 1,215/1,215 passed | 149.30 s |
+
+No tests were skipped. Builds/tests partly overlapped, so these are validation
+costs rather than controlled performance comparisons. Full logs reside in
+`../goc-build/coverage-work/final-{build,ctest}.log` and corresponding
+`final-{gcc,no-simd,sanitize}-{build,ctest}.log` files. The rebuilt inventory is
+`/tmp/goc-testing-audit/reference-inventory.json`; regenerate it with
+`python3 tools/testing_audit.py ../goc-build --output OUTPUT.json`.
