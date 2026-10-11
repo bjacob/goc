@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Ninety-nine explicit family-file reviews exist and 55
+non-generic family references. 101 explicit family-file reviews exist and 53
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -271,3 +271,12 @@ Exception corpora check all bits outside the seven captured flags. Separate
 flushed-input literals anchor invalid/divide-by-zero and CLAMP suppression;
 DPP accumulation checks are explicitly differential. The exhaustive provisional
 half sweep is distinguished from sampled guest/modifier integration.
+
+## Trigonometric preprocessing
+
+Two reviews distinguish TRIG_PREOP's exact table extraction from approximate
+trigonometric arithmetic. Retained hardware digests and individual samples cover
+RDNA4; the RDNA3 computed reference inherits rocjitsu's table and RTZ extraction.
+Architecture witnesses expose table precision and scaling differences. Records
+state the long-double assumption and the Wave32 even-exponent sampling limit.
+Optional-state assertions now apply only when the pointer is passed.

@@ -495,3 +495,15 @@ Recorded captured-domain limits, long-double assumptions, independent flushed-in
 causes and upstream half-ordering witnesses, distinct from differential DPP state
 reduction. All 23 family tests pass on Clang/GCC; all 14 tooling tests pass.
 Production and hardware fixtures are unchanged.
+
+### TRIG_PREOP review
+
+Two reviews bring the queue to 101 reviewed and 53 pending. Recorded the hardware
+sample/digest evidence and inherited table-extraction reference, including width
+sampling limits. Removed a vacuous null-output state assertion. All 11 family
+tests pass on Clang/GCC. Production and fixtures are unchanged.
+
+Follow-up identified while reviewing MULLIT: general loose multiplication in its
+computed-reference tests still uses raw equality. Preserve sentinel, signed-zero,
+hardware-digest and untouched-storage checks, but calibrate fuzzy comparisons for
+ordinary written numerical results before marking those two files reviewed.

@@ -142,7 +142,9 @@ TEST(TrigPreopArchitecture, GuestPoliciesMasksAliasesAndGuards) {
               ASSERT_EQ(call(rdna4, wide, cpu | policy(guest) | (mode & 1 ? 0 : exact), exec_mask,
                              instruction, d, a, b, mode & 1 ? &state : nullptr),
                         GOC_SUCCESS);
-              ASSERT_EQ(state, 0x12345678U);
+              if (mode & 1) {
+                ASSERT_EQ(state, 0x12345678U);
+              }
               ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0)
                   << rdna4 << "/" << wide << "/" << guest << "/" << mode << "/" << target << "/"
                   << cpu;

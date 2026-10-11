@@ -1619,5 +1619,38 @@
     ],
     "scope": "RDNA3/RDNA4 FP16 DIV_FIXUP architecture policies in both widths. Reference explicitly inherits rocjitsu ffc144c564c VDivFixupF16Vop3 scaling/clamp-before-narrowing and final OMOD flush ordering. Full provisional-half encoding sweep covers four output scales/two overflow policies in strict exact Wave32 on every CPU; small literal architecture differences cover both widths. Loose guest-policy integration samples 512 modifier/route layouts, aliases, EXEC and preserved halves with deterministic boundary patterns; it is not all 8192 modifier combinations crossed with every guest mode. RDNA3 exact optional-state rejection preserves outputs; host tests check controls while permitting arithmetic sticky flags. Core classification reference and captures are reviewed in div_fixup_test.cpp.",
     "diagnostics": "Exhaustive encoding failures identify architecture/scale/CPU/input; guest routing failures include width/policy/variant/lane. Four literal cases independently expose subnormal scaling, midpoint narrowing and overflow differences. No new reverse-engineered model or fixture is introduced."
+  },
+  {
+    "file": "trig_preop_test.cpp",
+    "assertions": [
+      "TrigPreop.HardwareEveryExponentSelectorAndModifier",
+      "TrigPreop.MasksAliasesAndUnalignedStorage",
+      "TrigPreop.PreservesFpStateAndValidatesFlags",
+      "TrigPreop.Wave64HardwareEveryExponentSelectorAndModifier",
+      "TrigPreop.Wave64MasksAliasesAndUnalignedStorage",
+      "TrigPreop.Wave64PreservesFpStateAndValidatesFlags",
+      "TrigPreop.Wave64UnusedLowWordAndOptionalState"
+    ],
+    "evidence": [
+      "tests/trig_preop_test.cpp",
+      "tests/trig_preop_hardware.h"
+    ],
+    "scope": "RDNA4 TRIG_PREOP both wave widths: retained hardware digests cover every exponent, selector and supported modifier on every available CPU selector, including ignored fraction/sign bits. Individual hardware samples independently check 25 destination layouts, unaligned storage, guards and EXEC; Wave32 uses the shared 84-mask corpus and Wave64 three upper-lane/mixed/full masks. Exact table extraction remains a raw encoding comparison even under loose semantics. Strict exact digests, host controls/sticky flags, invalid flags, unused low source and unsupported optional exact reporting are covered. Wave64 reuses the same ordered captured corpus, not a separately claimed native capture.",
+    "diagnostics": "Digest failures identify CPU/modifier; independent captured samples localize lane/alias failures. No new computed hardware-equivalence assumption or fixture."
+  },
+  {
+    "file": "trig_preop_architecture_test.cpp",
+    "assertions": [
+      "TrigPreopArchitecture.BorrowedTableEveryExponentSelectorAndModifier",
+      "TrigPreopArchitecture.GuestPoliciesMasksAliasesAndGuards",
+      "TrigPreopArchitecture.LiteralArchitectureDifferences",
+      "TrigPreopArchitecture.ReportingErrorsAndHostControls"
+    ],
+    "evidence": [
+      "tests/trig_preop_architecture_test.cpp",
+      "tests/trig_preop_hardware.h"
+    ],
+    "scope": "RDNA3/RDNA4 TRIG_PREOP: computed reference inherits rocjitsu ffc144c564c execute_v_trig_preop_f64_vop3 2/pi table and RTZ extraction, with the retained RDNA4 table precision. Wider long-double arithmetic is the reference assumption. RDNA3 strict exact sweep covers all exponents in Wave64 and even exponents in Wave32, all selectors and eight scaling/clamp combinations, on all CPU selectors. Both-architecture guest-policy integration stratifies exact/loose modes, masks, aliases and guarded storage. Literal witnesses distinguish table tails, tiny-result scaling and one-bit rounding. Exact optional state is explicitly unsupported; loose state checks now apply only to calls passing a pointer.",
+    "diagnostics": "Computed-reference failures identify architecture/width/policy/mode/target/CPU. Four literal borrowed/table witnesses complement the RDNA4 hardware captures in trig_preop_test.cpp; computed agreement alone is not claimed as new hardware proof."
   }
 ]
