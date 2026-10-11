@@ -7,8 +7,13 @@
 #include "goc/goc.h"
 #include "internal.h"
 #include "loose_tolerances.h"
+#include "matrix_capture_state.h"
 #include "packed16.h"
 #include "packed_wmma_fixtures.h"
+#include "rdna_wmma_bf16_bf16_cases.h"
+#include "rdna_wmma_f16_f16_cases.h"
+#include "rdna_wmma_f32_bf16_cases.h"
+#include "rdna_wmma_f32_f16_cases.h"
 #include "rdna_wmma_iu4_cases.h"
 #include "rdna_wmma_iu4_k32_cases.h"
 #include "rdna_wmma_iu8_cases.h"
@@ -720,4 +725,141 @@ TEST(WmmaReplicatedExact, CapturedIntegerSaturation) {
                     GOC_SUCCESS);
           EXPECT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0);
         }
+}
+
+TEST(WmmaReplicatedExact, CapturedDenseMatricesAndOperands) {
+  goc_test::ScopedFpEnvironment restore;
+  ASSERT_TRUE(restore.saved());
+  for (unsigned host_case = 0; host_case < 8; ++host_case) {
+    ASSERT_NO_FATAL_FAILURE(goc_test::matrix_test_host(host_case));
+    const unsigned controls = goc_test::matrix_host_controls();
+
+    struct Shape {
+      bool bf16, packed;
+
+      const RdnaWmmaFloatMatrixCase *matrices;
+      unsigned matrix_count;
+      const RdnaWmmaFloatOperandCase *operands;
+      unsigned operand_count;
+    };
+
+    const Shape shapes[] = {
+        {false, false, kRdnaWmmaF32F16Matrices.data(), kRdnaWmmaF32F16Matrices.size(),
+         kRdnaWmmaF32F16Operands.data(), kRdnaWmmaF32F16Operands.size()},
+        {true, false, kRdnaWmmaF32Bf16Matrices.data(), kRdnaWmmaF32Bf16Matrices.size(),
+         kRdnaWmmaF32Bf16Operands.data(), kRdnaWmmaF32Bf16Operands.size()},
+        {false, true, kRdnaWmmaF16F16Matrices.data(), kRdnaWmmaF16F16Matrices.size(),
+         kRdnaWmmaF16F16Operands.data(), kRdnaWmmaF16F16Operands.size()},
+        {true, true, kRdnaWmmaBf16Bf16Matrices.data(), kRdnaWmmaBf16Bf16Matrices.size(),
+         kRdnaWmmaBf16Bf16Operands.data(), kRdnaWmmaBf16Bf16Operands.size()},
+    };
+    unsigned replayed = 0;
+    for (const auto &shape : shapes)
+      for (unsigned sample = 0; sample < shape.matrix_count + shape.operand_count; ++sample)
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          const bool matrix = sample < shape.matrix_count;
+          const auto &m = shape.matrices[matrix ? sample : 0];
+          const auto &o = shape.operands[matrix ? 0 : sample - shape.matrix_count];
+          const unsigned width = matrix ? m.width : o.width;
+          const auto code = matrix ? m.code : o.code;
+          const bool rdna4 = matrix ? m.gfx12 : o.gfx12;
+          if (cpu == 0)
+            ++replayed;
+          SCOPED_TRACE(::testing::Message() << shape.bf16 << shape.packed << "/" << sample << "/"
+                                            << width << "/" << cpu);
+          uint32_t data[33][66], expected[33][66];
+          uint32_t *v[33];
+          uint32_t rng = m.seed;
+          constexpr uint32_t accumulators[] = {0,           1,           0x80000000U, 0x3f800001U,
+                                               0xbf800001U, 0x43800001U, 0xc3800001U, 0x80000001U};
+          constexpr uint32_t pairs[] = {4, 8, 12, 9, 13, 14};
+          for (unsigned reg = 0; reg < 33; ++reg) {
+            v[reg] = data[reg] + 1;
+            std::fill(data[reg], data[reg] + 66, 0xdeadbeefU);
+            for (unsigned lane = 0; lane < width; ++lane) {
+              uint32_t value;
+              if (matrix) {
+                rng ^= rng << 13;
+                rng ^= rng >> 17;
+                rng ^= rng << 5;
+                value = rng;
+                if (m.finite && reg < 16) {
+                  const unsigned max_finite = shape.bf16 ? 0x7f7f : 0x7bff;
+                  value = 0;
+                  for (unsigned shift = 0; shift < 32; shift += 16) {
+                    unsigned part = (rng >> shift) & 65535;
+                    value |= ((part & 32768) | (m.bounded_bf16 ? 0x3c80U + (part & 32767) % 0x500U
+                                                               : (part & 32767) % (max_finite + 1)))
+                             << shift;
+                  }
+                } else if (m.finite && reg < 32) {
+                  value = accumulators[(rng >> 24) & 7];
+                  if (m.bounded_bf16 && shape.packed) {
+                    constexpr uint32_t packed_c[] = {0,           0x00010001U, 0x80008000U,
+                                                     0x3f813f81U, 0xbf81bf81U, 0x43814381U,
+                                                     0xc381c381U, 0x80018001U};
+                    value = packed_c[(rng >> 24) & 7];
+                  }
+                }
+                if (reg == 32) {
+                  value = 0;
+                  for (unsigned i = 0; i < 8; ++i)
+                    value |= pairs[((rng >> (4 * i)) & 15) % 6] << (4 * i);
+                }
+              } else
+                value = reg < 8 ? o.a : reg < 16 ? o.b : reg < 24 ? o.c : reg < 32 ? o.d : o.index;
+              v[reg][lane] = value;
+            }
+          }
+          if (!rdna4)
+            for (unsigned reg = 0; reg < 16; ++reg)
+              for (unsigned lane = 16; lane < width; ++lane)
+                v[reg][lane] = v[reg][lane % 16];
+          if (!matrix && o.factor_base != RdnaWmmaFloatOperandCase::kUniformFactors)
+            for (unsigned i = 0; i < 128; ++i) {
+              unsigned offset = o.factor_base * width + i;
+              v[offset / width][offset % width] = o.factor_groups[i / 16];
+            }
+          std::memcpy(expected, data, sizeof(expected));
+          unsigned dest = code[0] & 255;
+          unsigned count = matrix ? m.expected_words : shape.packed && rdna4 ? 128 : 256;
+          for (unsigned i = 0; i < count; ++i)
+            expected[dest + i / width][1 + i % width] = matrix ? m.expected[i] : o.expected;
+          unsigned a = (code[1] & 511) - 256, b = ((code[1] >> 9) & 511) - 256,
+                   c = (code[1] >> 18) & 511;
+          ASSERT_LT(a, 33U);
+          ASSERT_LT(b, 33U);
+          uint32_t inline_c[8][64];
+          const uint32_t *cv[8];
+          if (c >= 256) {
+            ASSERT_LT(c - 256, 33U);
+            for (unsigned i = 0; i < (shape.packed && rdna4 ? 128U : 256U) / width; ++i)
+              cv[i] = v[c - 256 + i];
+          } else {
+            ASSERT_TRUE(c == 128 || c == 193 || c == 240);
+            for (unsigned i = 0; i < 8; ++i) {
+              uint32_t word = c == 128 ? 0 : c == 193 ? 0xffffffffU : 0x3f000000U;
+              // Floating inline constants use repeated packed format bits.
+              if (shape.packed && c == 240)
+                word = shape.bf16 ? 0x3f003f00U : 0x38003800U;
+              std::fill(inline_c[i], inline_c[i] + 64, word);
+              cv[i] = inline_c[i];
+            }
+          }
+          uint64_t modifiers = ((code[1] >> 29) & 7) | (((code[0] >> 8) & 7) << 3);
+          if (!rdna4 && shape.packed && (code[0] & (1U << 13)))
+            modifiers |= GOC_WMMA_HIGH_C_D;
+          auto fn = floating(shape.bf16, shape.packed, width, rdna4);
+          ASSERT_EQ(fn(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                           goc_test::matrix_capture_flags(matrix ? m.mode : o.mode, host_case),
+                       modifiers, v + dest, v + a, v + b, cv),
+                    GOC_SUCCESS);
+          for (unsigned reg = 0; reg < 33; ++reg)
+            for (unsigned lane = 0; lane < 66; ++lane)
+              ASSERT_EQ(data[reg][lane], expected[reg][lane])
+                  << "reg=" << reg << " guarded lane=" << lane;
+        }
+    EXPECT_EQ(replayed, 1618U);
+    EXPECT_EQ(goc_test::matrix_host_controls(), controls);
+  }
 }

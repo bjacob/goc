@@ -18,7 +18,7 @@ int run(uint64_t flags, uint32_t mode, uint32_t *const *d, const uint32_t *const
   const uint32_t known = GOC_WMMA_NEG_LO_A | GOC_WMMA_NEG_LO_B | GOC_WMMA_NEG_HI_A |
                          GOC_WMMA_NEG_HI_B | GOC_SWMMAC_INDEX_KEY_1 |
                          (Wave64 ? GOC_SWMMAC_INDEX_KEY_2 : 0);
-  if (int error = goc::validate(flags, mode & ~known, true))
+  if (int error = goc::validate(flags, mode & ~known, true, goc::matrix_ignored_fp_flags))
     return error;
   // The shared kernels store 32-lane register sections. Packed Wave64
   // uses two physical VGPRs; FP32 Wave64 uses four.

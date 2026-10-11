@@ -6122,6 +6122,11 @@ int goc_v_dot8_u32_u4_wave64(uint64_t flags, uint64_t exec_mask, uint64_t instru
                              uint32_t *const *d, const uint32_t *const *a, const uint32_t *const *b,
                              const uint32_t *const *c);
 
+// Floating WMMA and SWMMAC accept but ignore guest input/output denormal flush
+// and IEEE flags in both semantics. Packed FP16 still honors GOC_FP16_OVFL.
+// Exact arithmetic is independent of host rounding and denormal controls; loose
+// arithmetic retains its stated host FP preconditions.
+//
 // WMMA modifier layout follows neg_lo[0:2], then neg_hi[0:2]. For C,
 // neg_hi means absolute value, applied before neg_lo negation.
 static const uint32_t GOC_WMMA_NEG_LO_A = 1U << 0;

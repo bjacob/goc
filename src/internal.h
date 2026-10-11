@@ -11,6 +11,11 @@
 
 namespace goc {
 
+// Floating matrix arithmetic ignores guest denormal and IEEE controls.
+// FP16 finite overflow remains a separate, effective packed-output setting.
+inline constexpr uint64_t matrix_ignored_fp_flags =
+    GOC_FP_FLUSH_INPUT_DENORMALS | GOC_FP_FLUSH_OUTPUT_DENORMALS | GOC_FP_IEEE_MODE;
+
 // EXEC has one bit per lane in the instruction wave.
 template <int Lanes> using ExecMask = std::conditional_t<Lanes == 32, uint32_t, uint64_t>;
 

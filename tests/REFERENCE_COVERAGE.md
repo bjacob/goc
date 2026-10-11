@@ -705,3 +705,26 @@ staged numerical reference and both primary/holdout seeds; packed errors are
 zero in the Clang measured corpus without changing the fuzzy tolerances.
 See `tests/LOOSE_TOLERANCES.md` for the reference domain and calibration.
 This supersedes earlier notes that packed loose narrowing remained pending.
+
+
+## Dense FP16/BF16 and guest-state qualification
+
+The 1,618 new dense FP16/BF16 cases (170 matrices, 1,448 operands) at rocjitsu
+`ad2bb973ec4` pass with GoC's existing arithmetic: RDNA3/RDNA4, both widths,
+FP32/packed results, modifiers, selected packed halves, overlaps and bounded BF16.
+No dense numerical algorithm change was needed. The adapter materializes packed
+floating inline constants in their element format; integer inline -1 stays raw.
+
+All four floating capture suites now translate MODE's denormal bits and
+FP16_OVFL. The saved values (`0x0f`, `0xf0`, `0x8000ff`) have equal F32 and
+F16/F64 denormal policies; the adapter asserts this rather than silently merging
+incompatible settings. Rounding selectors lack API counterparts and the borrowed
+matrix model ignores them. Floating matrix APIs accept/ignore guest denormal and
+IEEE controls in both semantics. Packed FP16 finite-overflow behavior is retained.
+
+Every supported floating capture runs on all CPU selectors under four host
+rounding modes, with FTZ/DAZ off and on where available. Results remain raw-bit
+identical and host control bits remain unchanged. Ordinary sticky flags are
+permitted. IEEE-on is additionally toggled to check borrowed-model invariance;
+there are no IEEE-on hardware captures in this compact corpus. These checks
+supersede prior notes that guest-state qualification remained pending.

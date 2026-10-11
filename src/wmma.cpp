@@ -19,7 +19,8 @@ namespace {
 template <bool Bf16, int WaveSize = 32, bool Packed = false>
 int wmma(uint64_t flags, uint32_t instruction_flags, uint32_t *const *d, const uint32_t *const *a,
          const uint32_t *const *b, const uint32_t *const *c) {
-  if (int error = goc::validate(flags, instruction_flags & ~63U, true))
+  if (int error =
+          goc::validate(flags, instruction_flags & ~63U, true, goc::matrix_ignored_fp_flags))
     return error;
 
 #if defined(GOC_HAVE_AVX512BF16)

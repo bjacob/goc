@@ -15,7 +15,8 @@ template <bool Bf8A, bool Bf8B, bool Wave64 = false>
 int run(uint64_t flags, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *index) {
   if (int error = goc::validate(
-          flags, mode & ~(GOC_SWMMAC_INDEX_KEY_1 | (Wave64 ? GOC_SWMMAC_INDEX_KEY_2 : 0)), true))
+          flags, mode & ~(GOC_SWMMAC_INDEX_KEY_1 | (Wave64 ? GOC_SWMMAC_INDEX_KEY_2 : 0)), true,
+          goc::matrix_ignored_fp_flags))
     return error;
   // Existing accumulation kernels use eight 32-lane destination sections.
   // Wave64 stores the upper four sections in the upper lanes of D[0..3].

@@ -22,7 +22,7 @@ int wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32_t *cons
   const uint64_t known = 63 | (Packed ? GOC_WMMA_HIGH_C_D : 0);
   if (mode & ~known)
     return GOC_ERROR_INVALID_FLAGS;
-  if (int error = goc::validate(flags, 0, true))
+  if (int error = goc::validate(flags, 0, true, goc::matrix_ignored_fp_flags))
     return error;
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3 &&

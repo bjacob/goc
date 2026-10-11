@@ -32,7 +32,8 @@ template <bool Bf8A, bool Bf8B>
 int floating(uint64_t flags, uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
              const uint32_t *const *b, const uint32_t *const *c) {
   // Captured C ABS/NEG bits are ignored aliases. A/B modifiers remain unsupported.
-  if (int error = goc::validate(flags, modifiers & ~(GOC_WMMA_NEG_C | GOC_WMMA_ABS_C), true))
+  if (int error = goc::validate(flags, modifiers & ~(GOC_WMMA_NEG_C | GOC_WMMA_ABS_C), true,
+                                goc::matrix_ignored_fp_flags))
     return error;
   if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
     uint32_t result[8][32];
@@ -81,7 +82,8 @@ int floating(uint64_t flags, uint32_t modifiers, uint32_t *const *d, const uint3
 template <bool Bf8A, bool Bf8B>
 int floating_wave64(uint64_t flags, uint32_t modifiers, uint32_t *const *d,
                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  if (int error = goc::validate(flags, modifiers & ~(GOC_WMMA_NEG_C | GOC_WMMA_ABS_C), true))
+  if (int error = goc::validate(flags, modifiers & ~(GOC_WMMA_NEG_C | GOC_WMMA_ABS_C), true,
+                                goc::matrix_ignored_fp_flags))
     return error;
   const uint32_t *av[] = {a[0], a[0] + 32}, *bv[] = {b[0], b[0] + 32};
   const uint32_t *cv[8];
