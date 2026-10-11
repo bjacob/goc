@@ -22,7 +22,7 @@ TEST(DppUnary, HardwareCorpus) {
     uint64_t hash = goc_test::capture_hash_seed;
     for (uint32_t exec_mask :
          {0xffffffffu, 0u, 0xaaaaaaaau, 0x55555555u, 1u, 0x80000000u, 0xffffu, 0xffff0000u})
-      for (auto fn : goc_test::unary_functions)
+      for (unsigned op = 0; op < 11; ++op)
         for (uint64_t descriptor : goc_test::dpp_modes)
           for (unsigned modified = 0; modified < 2; ++modified) {
             uint32_t a[32], d[32];
@@ -32,10 +32,24 @@ TEST(DppUnary, HardwareCorpus) {
             }
             auto pa = a, pd = d;
             uint64_t mode = descriptor | (modified ? GOC_ALU_NEG_A | GOC_ALU_OMOD_2 : 0);
-            ASSERT_EQ(fn(cpu, exec_mask, mode, &pd, &pa, nullptr), GOC_SUCCESS);
-            for (uint32_t value : d) {
+            ASSERT_EQ(goc_test::unary_functions[op](cpu, exec_mask, mode, &pd, &pa, nullptr),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              ASSERT_EQ(a[lane], goc::as_bits(inputs[lane % 8])) << "source lane=" << lane;
+              int source;
+              uint32_t expected = goc::as_bits(float(100 + lane));
+              if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
+                expected = goc::as_bits(goc_test::unary_reference(
+                    op, source < 0 ? 0 : inputs[source % 8], uint32_t(mode)));
+              // These captured powers-of-four inputs have exact per-lane
+              // references. Keep the independent hardware digest as evidence.
+              uint32_t value = d[lane];
+              if ((expected & 0x7fffffff) > 0x7f800000)
+                expected = 0x7fc00000;
               if ((value & 0x7fffffff) > 0x7f800000)
                 value = 0x7fc00000;
+              ASSERT_EQ(value, expected)
+                  << cpu << "/" << op << "/" << mode << "/" << exec_mask << "/" << lane;
               hash = goc_test::capture_hash_word(hash, value);
             }
           }
@@ -70,6 +84,9 @@ TEST(DppUnary, AllModifiersMasksAliasesAndSpecialValues) {
                                                       nullptr),
                         GOC_SUCCESS);
               for (unsigned lane = 0; lane < 32; ++lane) {
+                if (!alias) {
+                  ASSERT_EQ(a[lane + 1], before[lane]) << "source lane=" << lane;
+                }
                 int source;
                 if (!goc_test::dpp_source(descriptor, exec_mask, lane, source)) {
                   ASSERT_EQ(pd[lane], alias ? before[lane] : 0xdeadbeefu);
@@ -80,10 +97,11 @@ TEST(DppUnary, AllModifiersMasksAliasesAndSpecialValues) {
                 float got = goc::as_float(pd[lane]);
                 if (std::isnan(want)) {
                   ASSERT_TRUE(std::isnan(got));
-                } else if (want == 0 || std::isinf(want)) {
+                } else if (op < 4 || op >= 9 || want == 0 || std::isinf(want)) {
                   ASSERT_EQ(pd[lane], goc::as_bits(want));
                 } else {
-                  ASSERT_TRUE(goc_test::fuzzy(got, want, goc_test::unary_f32_tolerance));
+                  ASSERT_TRUE(goc_test::fuzzy(got, want, goc_test::unary_f32_tolerance))
+                      << "lane=" << lane;
                 }
               }
               ASSERT_EQ(a[0], 0xdeadbeefu);

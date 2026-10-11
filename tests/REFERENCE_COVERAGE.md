@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 124 explicit family-file reviews exist and 30
+non-generic family references. 125 explicit family-file reviews exist and 29
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -413,3 +413,11 @@ words, and all source and unwritten destination words must remain identical.
 Canonical NaN comparisons apply only to numerical results, not inactive storage.
 The deterministic LCG has explicit sequential unsigned updates; alternate seeds
 exercise the random portions without replacing fixed hardware witnesses.
+
+### DPP FP32 unary
+
+Added per-lane computed diagnostics for the simple captured hardware corpus,
+retaining its independent digest and explicitly limited input domain. Disjoint
+source words are checked bitwise. Simple rounding and fraction/mantissa extraction
+now use raw results; only numerical SFU results receive the calibrated tolerance.
+The fixed boundary routing suite complements core random unary coverage.

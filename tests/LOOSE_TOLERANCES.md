@@ -350,3 +350,11 @@ repeat; only random portions are holdout data. The earlier count included some
 unwritten destinations and is retained as historical measurement, not numerical
 coverage. The half SFU bound remains unchanged. Script and logs:
 `goc-build/coverage-work/testing-dpp-half-unary-calibration/run.py`.
+
+The FP32 DPP-unary boundary suite, restricted to numerical SFU comparisons,
+measures 3,751,808 finite pairs on both Clang and GCC. Maximum relative error is
+`1.1920928955078125e-7`, below the shared `2.5e-7` bound; maximum absolute error
+is `2199023255552` for large-magnitude results. This fixed boundary corpus has no
+random holdout; core unary random calibration/holdout is recorded above. Rounding,
+fraction/mantissa extraction and storage are checked bitwise. Local script/logs:
+`goc-build/coverage-work/testing-dpp-unary-calibration/run.py`.

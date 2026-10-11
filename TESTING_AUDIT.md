@@ -645,3 +645,11 @@ made inactive-lane preservation bitwise before fuzzy/NaN handling. Added lane
 context to numerical failures. Existing and alternate LCG inputs pass the fixed
 bound on Clang/GCC; all five family tests and 14 tooling tests pass. Production
 and hardware witnesses are unchanged.
+
+### DPP FP32 unary review
+
+One review brings the queue to 125 reviewed and 29 pending. Added per-lane
+hardware-corpus diagnostics and disjoint source-preservation checks. Simple
+rounding/extraction results now use bitwise comparisons; SFUs retain the calibrated
+bound, with matching Clang/GCC boundary measurements. All three family tests and
+14 tooling tests pass. Production and the original capture digest are unchanged.

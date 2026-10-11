@@ -2145,5 +2145,23 @@
     ],
     "scope": "Eleven Wave32 half-unary instructions with DPP. Independent double arithmetic and numeric half conversion provide loose SFU proximity references; simple rounding/extraction and storage remain raw. Two gfx1201 aggregate corpora cover 132 operation/modifier combinations, seven descriptors and eight EXEC masks, including OMOD/denormal boundaries. Captured-domain per-lane reference checks remain exact except normalized NaNs; the aggregate witnesses do not establish arbitrary-input mathematical equivalence or NaN payload identity. All 128 selectors/modifiers and saturation choices combine with seven routes and deterministic LCG words. Separate routing/alias coverage uses 84 masks, twelve low-mode combinations, two aliases and four input batches (zero/ones, walking bits, random). Validation checks unsupported exact semantics and malformed descriptors. Broader architecture/Wave64/exact numerical evidence lives in the half-unary suites.",
     "diagnostics": "Saved all three pre-call registers in the modifier sweep so reference construction cannot absorb source corruption. Assert both nondestination registers and unwritten destinations bitwise. Hardware-corpus inactive lanes are checked before NaN canonicalization. Numerical helpers return assertion results with register/lane context, complementing existing CPU/op/mode/mask traces. Existing capture constants and tolerances are unchanged."
+  },
+  {
+    "file": "dpp_unary_test.cpp",
+    "assertions": [
+      "DppUnary.HardwareCorpus",
+      "DppUnary.AllModifiersMasksAliasesAndSpecialValues",
+      "DppUnary.ValidationBeforeOperandAccess"
+    ],
+    "evidence": [
+      "tests/dpp_unary_test.cpp",
+      "tests/unary_reference.h",
+      "tests/omod_reference.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Eleven Wave32 FP32 unary instructions with DPP. Retained gfx1201 MODE=0xf0 digest spans seven descriptors, two source/OMOD settings, eight EXEC masks and powers-of-four inputs. Added computed per-lane checks on that captured domain, with NaN normalization matching the original digest; these checks improve localization while the independent capture remains the hardware witness. Boundary coverage combines all 32 modifiers, seven descriptors, 84 masks and in-place/disjoint destinations, including zeros, subnormals, extrema, infinities and signaling/quiet NaNs. Double arithmetic with explicit binary32 rounding and OMOD provides loose SFU proximity references. Rounding/fract/FREXP, zero/infinity signs and untouched storage are bitwise; NaN payloads are only classified in this suite. Invalid descriptors, flags, reserved strict semantics and empty masks are checked before operand access. Random numerical/holdout coverage and exact SFU evidence remain in core unary suites, not claimed for this fixed boundary corpus.",
+    "diagnostics": "Hardware failures now identify CPU, operation, descriptor/modifier, EXEC and lane rather than only the final digest. All source words are checked for disjoint calls. Finite simple rounding/extraction operations now use exact comparisons instead of SFU tolerances. Fuzzy failures identify the lane in addition to existing case traces."
   }
 ]
