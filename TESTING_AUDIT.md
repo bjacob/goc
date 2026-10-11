@@ -265,3 +265,15 @@ the standalone generator and reproduction commands. Seven affected tests pass
 under Clang and GCC; an out-of-tree injected checkpoint error correctly reports
 its million-input interval. Other digest families remain part of the pending
 reference/diagnostic review, so the overall diagnostics item remains open.
+
+### Reproducible reference inventory and first explicit reviews
+
+Added `tools/testing_audit.py`, with regression tests for stale/missing objects,
+generic-only references, explicit review attachment and broken evidence links.
+It replaces the one-off `/tmp` symbol scan with a reproducible inventory covering
+all 1,791 declared instruction APIs; none lacks a compiled family reference.
+Fourteen tooling tests pass. Five manually inspected family-file reviews now
+record assertions, oracle provenance/equivalence scope and diagnostics in
+`tests/reference_reviews.json`; 149 family files remain to be reviewed.
+See [tests/REFERENCE_COVERAGE.md](tests/REFERENCE_COVERAGE.md). Compiled references
+and reviewed-file membership are expressly not semantic-completeness proofs.

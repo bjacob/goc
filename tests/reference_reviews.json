@@ -1,0 +1,75 @@
+[
+  {
+    "file": "boolean_test.cpp",
+    "assertions": [
+      "Boolean.TruthTablesAtEveryBitAndSelector",
+      "Boolean.EveryHalfEncodingAndRandomFullWords",
+      "Boolean.MasksAliasesAndUnalignedStorage"
+    ],
+    "evidence": [
+      "tests/boolean_reference.h"
+    ],
+    "scope": "Nine Wave32 bitwise operations in boolean_functions, including selected half and preservation of the other half. Per-bit AND/OR/XOR/NOT/XNOR truth tables are a direct specification-derived exact reference, independent of numeric rounding. Every truth-table input at each bit and selector is checked, with exhaustive half encodings and deterministic full words. Exact integer results are required even when the API semantics selector is loose.",
+    "diagnostics": "Per-output assertion identifies operation, CPU, modifier and lane; no opaque golden digest is used."
+  },
+  {
+    "file": "integer_add_test.cpp",
+    "assertions": [
+      "IntegerAdd.BoundaryCartesianProductsAndRandomInputs",
+      "IntegerAdd.LiteralOverflowBorrowAndOperandOrder",
+      "IntegerAdd.SignedSaturationMixedLaneSigns"
+    ],
+    "evidence": [
+      "tests/integer_add_reference.h"
+    ],
+    "scope": "Six Wave32 add/sub/subrev/add3 operations. int64_t computes signed or unsigned widened sums/differences without overflow (three uint32_t inputs sum below 2^34); explicit clamp then uint32_t narrowing implements saturation or modulo 2^32. Independent literal boundaries check operand order, signed limits, borrow and ADD3 clamp behavior. This simple integer model is an exact oracle; fuzzy FP comparison is inapplicable.",
+    "diagnostics": "Boundary/random tests trace operation, CPU, clamp and batch; literal cases separately expose saturation and operand-order regressions."
+  },
+  {
+    "file": "scalar_integer_test.cpp",
+    "assertions": [
+      "ScalarInteger.HardwareResultsAndScc",
+      "ScalarInteger.AllSignedImmediates",
+      "ScalarInteger.AbsDiffWrapsBeforeAbsoluteValue",
+      "ScalarInteger.SignExtendExhaustiveHardware"
+    ],
+    "evidence": [
+      "tests/scalar_integer_hardware.h",
+      "tests/scalar_integer_reference.h"
+    ],
+    "scope": "The 20 scalar operations in scalar_integer_call, their immediate variants and additional sign-extension checks. Hardware digests cover result low/high words and SCC over 4096 boundary/random pairs, both incoming SCC values and both semantics. Immediate ADDK/MULK computed references use bounded int64_t arithmetic and explicit narrowing; literal ABS_DIFF cases preserve its wrap-before-absolute ordering. Aliasing checks are differential memory checks, not separate numerical oracles.",
+    "diagnostics": "Each hardware failure identifies CPU, semantics, incoming SCC and one opcode/immediate row (4096 pairs). Literal boundaries and exhaustive immediate assertions complement those compact row digests; dense-domain checkpoints are not needed for these small rows."
+  },
+  {
+    "file": "float_compare_test.cpp",
+    "assertions": [
+      "FloatCompare.HardwarePredicatesModifiersExecAndDenormalModes",
+      "FloatCompare.IndependentBoundariesAndEveryModifier",
+      "FloatCompare.EveryFp16EncodingAndPredicate",
+      "FloatCompare.DppHardwareCorpusAndHostFpState"
+    ],
+    "evidence": [
+      "tests/float_compare_hardware.h",
+      "tests/float_compare_reference.h"
+    ],
+    "scope": "84 RDNA4 Wave32 FP16/32/64 CMP/CMPX predicate entry points. Exact mask results are anchored by hardware captures across modifiers, masks and input-denormal policy. The independent integer-bit reference applies selectors, ABS then NEG, optional flush, NaN unordered handling and signed-zero equality; sign/magnitude order implements finite comparisons without host FP arithmetic. Every half encoding is checked with representative operand pairing, not all 2^32 half pairs. Optional exception-state behavior is reviewed separately.",
+    "diagnostics": "Hardware digest identifies CPU, denormal policy, mask and predicate. Independent boundary/every-half tests report predicate/modifier/input batch. DPP capture and per-output routing checks complement each other."
+  },
+  {
+    "file": "unary_exact_test.cpp",
+    "assertions": [
+      "UnaryExact.DenseDomainHardwareCapture",
+      "UnaryExact.ModifiersExponentsSpecialValuesHardwareCapture",
+      "UnaryExact.ArchitectureNaNPriorityAndOmod",
+      "UnaryExact.DppAliasesMasksAndHostEnvironment"
+    ],
+    "evidence": [
+      "tests/unary_exact_hardware.h",
+      "tests/unary_capture_input.h",
+      "tests/unary_checkpoints.h",
+      "tests/CORPUS_DIAGNOSTICS.md"
+    ],
+    "scope": "FP32 RCP/SQRT/RSQ/EXP/LOG exact implementations borrowed from rocjitsu, both architectures and wave widths. Dense domains use retained raw hardware digests; modifier/exponent/special-value domains have per-policy/per-modifier digests. Rocjitsu-generated cumulative checkpoints reproduce all five hardware totals. DPP comparisons to a non-DPP invocation check routing/alias behavior and do not independently prove the numeric model. Architecture-specific NaN and OMOD assertions remain literal anchors.",
+    "diagnostics": "Dense captures now stop at the first failing 2^20-input interval. Modifier captures localize to operation, wave width, FP policy and modifier (8192 inputs)."
+  }
+]
