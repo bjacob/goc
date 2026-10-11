@@ -11,6 +11,8 @@ namespace goc_test {
 // producing the same numeric format.
 inline const Tolerance half_sfu_tolerance = {0x1p-24, 1.1e-3};
 inline const Tolerance fp8_dot_repeated_tolerance = {0, 2.5e-7};
+// FP16/BF16 factors bounded by 4 with a bounded FP32 accumulator.
+inline const Tolerance dot2_bounded_tolerance = {2e-6, 2e-7};
 // Mixed FP8/BF8 factors bounded by 4, including cancellation against C.
 inline const Tolerance fp8_dot_bounded_tolerance = {4e-6, 2e-7};
 inline const Tolerance scalar_arithmetic_f16_tolerance = {0x1p-24, 1e-3};

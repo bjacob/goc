@@ -2,14 +2,18 @@
 
 #include "dpp_reference.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "gfx11_dot2.h"
 #include "gfx11_dot2_fixtures.h"
 #include "goc/goc.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cfenv>
+#include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <random>
 #include <stdint.h>
 
 namespace {
@@ -31,6 +35,8 @@ template <unsigned Lanes> struct LaneRegisters {
 using Registers = LaneRegisters<32>;
 using WideRegisters = LaneRegisters<64>;
 
+// Modifier/routing reference reuses the borrowed model; hardware fixtures below
+// independently anchor its unmodified arithmetic, not every transformed input.
 uint32_t expected(bool bf16, uint64_t mode, uint32_t a, uint32_t b, uint32_t c) {
   uint16_t a0 = a >> ((mode & GOC_DOT_LO_A_HIGH) ? 16 : 0);
   uint16_t a1 = a >> ((mode & GOC_DOT_HI_A_LOW) ? 0 : 16);
@@ -53,6 +59,14 @@ uint32_t expected(bool bf16, uint64_t mode, uint32_t a, uint32_t b, uint32_t c) 
 } // namespace
 
 TEST(Dot2Architecture, Gfx11HardwareCapturesMasksAliasesAndHostState) {
+  for (bool bf16 : {false, true}) {
+    const auto *cases = bf16 ? kDot2BF16Cases.data() : kDot2F16Cases.data();
+    size_t count = bf16 ? kDot2BF16Cases.size() : kDot2F16Cases.size();
+    for (size_t i = 0; i < count; ++i)
+      EXPECT_EQ(expected(bf16, 0, cases[i].a, cases[i].b, cases[i].c), cases[i].expected)
+          << "bf16=" << bf16 << " capture=" << i;
+  }
+
   goc_test::ScopedFpEnvironment restore;
   ASSERT_TRUE(restore.saved());
   for (int rounding : {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO}) {
@@ -80,7 +94,7 @@ TEST(Dot2Architecture, Gfx11HardwareCapturesMasksAliasesAndHostState) {
                 wanted[dst][lane + 1] = cases[(base + lane) % count].expected;
             ASSERT_EQ(fn(exact, exec_mask, 0, r.v + dst, r.v, r.v + 1, r.v + 2, nullptr),
                       GOC_SUCCESS);
-            EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0);
+            EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0) << "destination=" << dst;
           }
     }
     EXPECT_EQ(std::fegetround(), rounding);
@@ -114,7 +128,7 @@ TEST(Dot2Architecture, Gfx11ModifiersDppMasksAndAliases) {
             }
             ASSERT_EQ(fn(exact, exec_mask, mode, r.v + dst, r.v, r.v + 1, r.v + 2, nullptr),
                       GOC_SUCCESS);
-            EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0);
+            EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0) << "destination=" << dst;
           }
   }
 }
@@ -184,7 +198,7 @@ TEST(Dot2Architecture, AccumulateHardwareAndDppAliases) {
       }
       ASSERT_EQ(goc_v_dot2acc_f32_f16(exact, exec_mask, mode, r.v + dst, r.v, r.v + 1, nullptr),
                 GOC_SUCCESS);
-      EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0);
+      EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0) << "destination=" << dst;
     }
   for (unsigned bit = 0; bit < 32; ++bit)
     EXPECT_EQ(
@@ -241,7 +255,7 @@ TEST(Dot2Architecture, Wave64Gfx11HardwareCapturesMasksAliasesAndHostState) {
                 wanted[dst][lane + 1] = cases[(base + lane) % count].expected;
             ASSERT_EQ(fn(exact, exec_mask, 0, r.v + dst, r.v, r.v + 1, r.v + 2, nullptr),
                       GOC_SUCCESS);
-            EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0);
+            EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0) << "destination=" << dst;
           }
     }
     EXPECT_EQ(std::fegetround(), rounding);
@@ -275,7 +289,7 @@ TEST(Dot2Architecture, Wave64Gfx11ModifiersDppMasksAndAliases) {
             }
             ASSERT_EQ(fn(exact, exec_mask, mode, r.v + dst, r.v, r.v + 1, r.v + 2, nullptr),
                       GOC_SUCCESS);
-            EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0);
+            EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0) << "destination=" << dst;
           }
   }
 }
@@ -349,7 +363,7 @@ TEST(Dot2Architecture, Wave64AccumulateHardwareAndDppAliases) {
       ASSERT_EQ(
           goc_v_dot2acc_f32_f16_wave64(exact, exec_mask, mode, r.v + dst, r.v, r.v + 1, nullptr),
           GOC_SUCCESS);
-      EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0);
+      EXPECT_EQ(std::memcmp(wanted, r.data, sizeof wanted), 0) << "destination=" << dst;
     }
   for (unsigned bit = 0; bit < 32; ++bit)
     EXPECT_EQ(goc_v_dot2acc_f32_f16_wave64(exact, UINT64_MAX, 1ULL << bit, nullptr, nullptr,
@@ -415,4 +429,97 @@ TEST(Dot2Architecture, AccumulateStateReportingPrecedesFlagValidation) {
             EXPECT_EQ(state, 0x8badf00dU);
             EXPECT_EQ(std::memcmp(words, before, sizeof words), 0);
           }
+}
+
+// Normal factors bounded by four avoid overflow/flush ambiguities. Independent
+// double arithmetic covers loose numerical behavior; this does not claim that
+// RDNA3's empirical exact accumulator equals the mathematical sum.
+TEST(Dot2Architecture, LooseFractionalInputsModifiersAndStorage) {
+  for (bool bf16 : {false, true})
+    for (bool wide : {false, true})
+      for (bool accumulate : {false, true}) {
+        if (bf16 && accumulate)
+          continue;
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          std::mt19937 random(42683);
+          for (unsigned batch = 0; batch < 128; ++batch) {
+            WideRegisters r;
+            double factors[2][64][2], sums[64];
+            for (unsigned reg = 0; reg < 2; ++reg)
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                r.v[reg][lane] = 0;
+                for (unsigned half = 0; half < 2; ++half) {
+                  unsigned fraction_bits = bf16 ? 7 : 10, bias = bf16 ? 127 : 15;
+                  uint32_t draw = random();
+                  unsigned fraction = draw & ((1U << fraction_bits) - 1);
+                  int exponent = int((draw >> 12) % 10) - 8;
+                  bool negative = draw >> 31;
+                  uint16_t code =
+                      (negative ? 0x8000 : 0) | ((exponent + bias) << fraction_bits) | fraction;
+                  r.v[reg][lane] |= uint32_t(code) << (16 * half);
+                  factors[reg][lane][half] = std::ldexp(double((1U << fraction_bits) + fraction),
+                                                        exponent - int(fraction_bits)) *
+                                             (negative ? -1 : 1);
+                }
+              }
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              float c = float(int(random() % 2049) - 1024) / 257;
+              std::memcpy(&r.v[2][lane], &c, sizeof(c));
+              sums[lane] = c;
+            }
+            uint32_t signs = random() & 31;
+            uint32_t selection = random() & 15;
+            uint32_t mode =
+                accumulate ? 0 : signs | (selection << 7) | (batch & 1 ? GOC_DOT_CLAMP : 0);
+            unsigned dst = accumulate ? 2 : batch % 4;
+            uint64_t exec_mask = batch & 1 ? 0x87654321fedcba98ULL : UINT64_MAX;
+            uint32_t before[4][66];
+            std::memcpy(before, r.data, sizeof(before));
+            uint32_t state = 0xffffff80;
+            int status;
+            if (accumulate)
+              status = wide ? goc_v_dot2acc_f32_f16_wave64(cpu, exec_mask, 0, r.v + dst, r.v,
+                                                           r.v + 1, &state)
+                            : goc_v_dot2acc_f32_f16(cpu, uint32_t(exec_mask), 0, r.v + dst, r.v,
+                                                    r.v + 1, &state);
+            else if (wide)
+              status = (bf16 ? goc_v_dot2_f32_bf16_wave64 : goc_v_dot2_f32_f16_wave64)(
+                  cpu, exec_mask, mode, r.v + dst, r.v, r.v + 1, r.v + 2, &state);
+            else
+              status = (bf16 ? goc_v_dot2_f32_bf16 : goc_v_dot2_f32_f16)(
+                  cpu, uint32_t(exec_mask), mode, r.v + dst, r.v, r.v + 1, r.v + 2, &state);
+            ASSERT_EQ(status, GOC_SUCCESS);
+            ASSERT_EQ(state, 0xffffff80U);
+            for (unsigned reg = 0; reg < 4; ++reg)
+              for (unsigned word = 0; word < 66; ++word) {
+                bool active = reg == dst && word > 0 && word <= (wide ? 64U : 32U) &&
+                              ((exec_mask >> (word - 1)) & 1);
+                if (!active) {
+                  ASSERT_EQ(r.data[reg][word], before[reg][word]) << reg << "/" << word;
+                  continue;
+                }
+                unsigned lane = word - 1;
+                double a0 = factors[0][lane][bool(mode & GOC_DOT_LO_A_HIGH)];
+                double a1 = factors[0][lane][!bool(mode & GOC_DOT_HI_A_LOW)];
+                double b0 = factors[1][lane][bool(mode & GOC_DOT_LO_B_HIGH)];
+                double b1 = factors[1][lane][!bool(mode & GOC_DOT_HI_B_LOW)];
+                if (mode & GOC_DOT_NEG_LO_A)
+                  a0 = -a0;
+                if (mode & GOC_DOT_NEG_HI_A)
+                  a1 = -a1;
+                if (mode & GOC_DOT_NEG_LO_B)
+                  b0 = -b0;
+                if (mode & GOC_DOT_NEG_HI_B)
+                  b1 = -b1;
+                double c = (mode & GOC_DOT_NEG_C) ? -sums[lane] : sums[lane];
+                float actual;
+                std::memcpy(&actual, &r.data[reg][word], sizeof(actual));
+                ASSERT_TRUE(goc_test::fuzzy(actual, a0 * b0 + a1 * b1 + c,
+                                            goc_test::dot2_bounded_tolerance))
+                    << "bf16=" << bf16 << " wide=" << wide << " accumulate=" << accumulate
+                    << " cpu=" << cpu << " batch=" << batch << " mode=" << mode << " lane=" << lane;
+              }
+          }
+        }
+      }
 }

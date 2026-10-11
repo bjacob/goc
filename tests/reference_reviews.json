@@ -2386,5 +2386,46 @@
     ],
     "scope": "Packed F16 FMA/FMAC for RDNA3/RDNA4 and both wave widths. Independent integer-grid half FMA computes the finite RNE reference without host FP rounding; literal rocjitsu NaN witnesses and fused ties anchor exceptional behavior. This inherits the half-FMA reference's documented guest policies, not an inference that arbitrary mathematical references match hardware. All 8192 packed FMA modifiers, both overflow policies, every A encoding and fixed-seed random triples are covered on available CPU selectors. Wave32 spans 84 masks and all whole-register source/destination aliases; Wave64 spans modifiers and destination aliases with a mixed mask. FMAC separately spans 128 VOP3 modifiers, eight guest policies and three aliases on both architectures/widths. Guest-mode integration now covers all CPU selectors. Independent gfx1201 MODE 0xf0 exception digests cover 8192 triples at lane 0 and lane 63, with inactive signaling NaNs; literal tests cover cross-half/lane exception union, output aliasing and modifier-sensitive invalid. Unsupported global-state policies and invalid flags preserve outputs. Corpus digests are aggregate exception evidence, not arbitrary guest-mode hardware validation.",
     "diagnostics": "Per-half assertion results attach CPU, mode and lane context. Exact results, literal witnesses, zero/infinity signs and all inactive/source storage remain raw; loose finite arithmetic uses calibrated half-FMA atol/rtol. Added missing Wave64 and FMAC source checks, architecture input-preservation checks and all unrelated exception-state bits. Exact null opt-out no longer has a vacuous unchanged-state assertion. Original and alternate random seeds pass on Clang and GCC."
+  },
+  {
+    "file": "dot2_architecture_test.cpp",
+    "assertions": [
+      "Dot2Architecture.Gfx11HardwareCapturesMasksAliasesAndHostState",
+      "Dot2Architecture.Gfx11ModifiersDppMasksAndAliases",
+      "Dot2Architecture.DifferentExactResultsAndOptionalReporting",
+      "Dot2Architecture.AccumulateHardwareAndDppAliases",
+      "Dot2Architecture.AccumulateLooseSimdAndReportingOptOut",
+      "Dot2Architecture.Wave64Gfx11HardwareCapturesMasksAliasesAndHostState",
+      "Dot2Architecture.Wave64Gfx11ModifiersDppMasksAndAliases",
+      "Dot2Architecture.Wave64DifferentExactResultsAndOptionalReporting",
+      "Dot2Architecture.Wave64AccumulateHardwareAndDppAliases",
+      "Dot2Architecture.Wave64AccumulateLooseSimdAndReportingOptOut",
+      "Dot2Architecture.AccumulateStateReportingPrecedesFlagValidation",
+      "Dot2Architecture.LooseFractionalInputsModifiersAndStorage"
+    ],
+    "evidence": [
+      "tests/dot2_architecture_test.cpp",
+      "tests/gfx11_dot2_fixtures.h",
+      "src/gfx11_dot2.h",
+      "tests/dpp_reference.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "RDNA3 F16/BF16 DOT2 F32 and F16 DOT2ACC at both wave widths. Independent gfx1100 fixtures borrowed from rocjitsu anchor exact unmodified results, masks, destination aliases and host rounding/sticky-state preservation at baseline CPU. The borrowed production model supplies transformed-input expectations for every selection/sign combination and representative DPP routing; this is differential modifier coverage, not an independent exact oracle for those transformed inputs. A direct model-to-fixture assertion records equivalence on the captured domain. Literal architecture differences, unsupported reporting and validation precedence are explicit. Loose fixed-seed fractional normal inputs bounded by four plus bounded FP32 C use independent double arithmetic, random selectors/signs, ignored clamp, full/mixed EXEC and all destination aliases on every CPU selector; accumulator form uses its implicit C destination. Literal loose accumulator checks remain exact. No general exact equivalence to the mathematical sum is claimed.",
+    "diagnostics": "Added calibrated fuzzy comparisons with seed holdout and raw source/inactive/guard checks, CPU/mode/lane diagnostics and capture-index oracle assertions. Existing modifier aggregate storage checks identify destination; fixed capture diagnostics are scoped to the capture index for oracle failures."
+  },
+  {
+    "file": "half_dot_architecture_test.cpp",
+    "assertions": [
+      "HalfDotArchitecture.FixedPoliciesModifiersDppMasksAliasesAndGuards",
+      "HalfDotArchitecture.EveryAccumulatorEncodingIgnoresGuestDenormalModes",
+      "HalfDotArchitecture.LiteralPrecisionOverflowAndFixedDenormalPolicy",
+      "HalfDotArchitecture.ReportingErrorsAndHostControls"
+    ],
+    "evidence": [
+      "tests/half_dot_architecture_test.cpp",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "RDNA3/RDNA4 F16 and BF16 half-output DOT2 at both widths, all available CPU selectors. Loose-only integration checks every supported ABS/NEG and C/D half-selection combination using exactly representable small integer products/sums, eight guest policies, representative DPP descriptors, shared sources, destination aliases, full/mixed EXEC and guards. Raw equality here tests exact integer routing and field preservation rather than imposing arbitrary loose rounding. Exhaustive accumulator encodings cover fixed FP16-preserve/BF16-flush behavior; NaNs use classification. Literal ties, overflow saturation, infinity and denormal witnesses anchor fixed policies. Unsupported exact semantics/reporting, invalid modifiers, empty masks and preservation of host controls are checked. General fractional numerical coverage belongs to half_dot_test.cpp; these architecture-integration tests do not establish hardware-exact semantics.",
+    "diagnostics": "Extended literal policy checks to out-of-wave storage and every input word, with architecture/type/CPU/guest/lane context. Existing full-array routing comparisons preserve destination halves, sources, guards and inactive lanes. Computed small integer references need no golden arrays."
   }
 ]

@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 134 explicit family-file reviews exist and 20
+non-generic family references. 136 explicit family-file reviews exist and 18
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -498,3 +498,13 @@ preserve every bit outside the seven-bit arithmetic field. Both wave widths
 retain captured exception digests and explicit union/alias/validation witnesses.
 Computed numerical references remain justified by exact half arithmetic and the
 existing exceptional-policy evidence; no new golden arrays were needed.
+
+
+RDNA3 F32-output DOT2 now has independent loose fractional arithmetic checks,
+in addition to its inherited gfx1100 exact captures. Direct reference-to-capture
+checks establish the borrowed model on that captured domain; transformed-input
+modifier tests remain explicitly differential. Half-output architecture tests
+use exact small-integer references to check routing and field preservation,
+plus literal policy witnesses and exhaustive accumulator encodings. They remain
+loose-only and make no claim of empirical bit-exact support. Both families cover
+both wave widths; new numerical loose DOT2 tests cover every CPU selector.

@@ -410,3 +410,15 @@ A-encoding prefix and fixed boundary/policy/alias sweeps remain. Exact semantics
 literal witnesses, categorical results and storage remain bitwise checks.
 Script/snapshots/logs:
 goc-build/coverage-work/testing-packed-fma-calibration/run.py.
+
+
+RDNA3 F32-output DOT2/DOT2ACC with FP16/BF16 normal factors bounded by four
+and FP32 C in approximately [-4, 4] uses (atol=2e-6, rtol=2e-7).
+The absolute term accommodates cancellation and alternative accumulation orders.
+Seeds 42683 and 79393 each exercise 114,432 finite results over both widths,
+available CPU selectors and random signs/selections. Both Clang and GCC measure
+maximum absolute error 1.1920928955078125e-6 on each seed; maximum relative errors
+are 8.6570342731986881e-6 and 0.00035398230088495576 respectively near cancellation.
+The held-out seed passes without changing the bound. Exact RDNA3 captures are
+not compared with this mathematical reference or weakened by this tolerance.
+Script/snapshots/logs: goc-build/coverage-work/testing-dot2-architecture-calibration/run.py.

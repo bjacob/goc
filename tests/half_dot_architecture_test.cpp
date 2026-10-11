@@ -185,8 +185,17 @@ TEST(HalfDotArchitecture, LiteralPrecisionOverflowAndFixedDenormalPolicy) {
                              cpu | policy(guest) | (saturate ? GOC_FP16_OVFL : 0), UINT64_MAX, 0, d,
                              a, b, c),
                         GOC_SUCCESS);
-              for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane)
-                ASSERT_EQ(result[lane], 0xabcd0000U | (saturate ? v.saturated : v.result));
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                uint32_t expected = lane < (wide ? 64U : 32U)
+                                        ? 0xabcd0000U | (saturate ? v.saturated : v.result)
+                                        : 0xabcd0000U;
+                ASSERT_EQ(result[lane], expected)
+                    << "arch=" << arch << "brain=" << v.brain << " wide=" << wide << " cpu=" << cpu
+                    << " guest=" << guest << " lane=" << lane;
+                ASSERT_EQ(a0[lane], v.a);
+                ASSERT_EQ(b0[lane], v.b);
+                ASSERT_EQ(c0[lane], v.c);
+              }
             }
       }
 }

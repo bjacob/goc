@@ -737,3 +737,16 @@ loosening bounds; each seed checks about 6.96 million finite half results with
 zero observed numerical error. The explicit inventory reaches 134/154 reviewed
 family files; 20 remain, followed by final broad verification. Production is
 unchanged.
+
+
+### DOT2 architecture integration
+
+Reviewed the RDNA3 F32-output and both-architecture half-output DOT2 families.
+Added deterministic fractional loose tests with an independent double reference,
+random modifiers, aliases and raw storage checks on every CPU selector. Original
+and holdout seeds each cover 114,432 finite outputs and pass the measured
+(2e-6, 2e-7) bound on Clang and GCC. Explicitly separated borrowed-model differential
+modifier coverage from independent gfx1100 captures and verified the model against
+those captures directly. Half-output literal policy tests now check sources and
+out-of-wave storage. The 16 tests pass on both compilers. The review inventory
+reaches 136/154 family files; 18 and final broad verification remain.
