@@ -2703,6 +2703,7 @@
     "file": "swmmac_integer_test.cpp",
     "assertions": [
       "SwmmacInteger.CaptureInputsKeepSeedAndDrawOrder",
+      "SwmmacInteger.JakubCapturedSaturationKeysAndOverlap",
       "SwmmacInteger.HardwareAllModifiers",
       "SwmmacInteger.EveryLaneAndModifier",
       "SwmmacInteger.OverlappingSourcesAndDuplicateDestinations",
@@ -2717,9 +2718,12 @@
       "tests/swmmac_integer_test.cpp",
       "tests/integer_wmma_capture.h",
       "tests/swmmac_integer_hardware.h",
-      "tests/swmmac_integer_wave64_hardware.h"
+      "tests/swmmac_integer_wave64_hardware.h",
+      "tests/rdna_swmmac_iu8_cases.h",
+      "tests/rdna_swmmac_iu4_cases.h",
+      "tests/rdna_swmmac_iu4_k64_cases.h"
     ],
-    "scope": "Sparse integer IU8 K32 and IU4 K32/K64 matrix instructions, both widths and every CPU selector. Independent gfx1201 captures cover 16 deterministic input samples per shape and all sign/clamp/index-key variants, including native Wave64 captures with width-specific selector ranges. Both loose and strict exact modes now check these captures. Near-limit signed accumulators expose the two-stage saturation rule; explicit opposing-sign stage witnesses distinguish it from final-sum clamping. Same-library baseline references separately exercise source/index overlap and duplicate destinations with full-storage expected images. A per-register/lane dispatch comparison localizes differential CPU failures but does not substitute for hardware evidence. The unsigned xorshift corpus defines draw order and includes a fixed input digest regression. Integer outputs remain bitwise in either semantics; floating atol/rtol is inapplicable.",
+    "scope": "Sparse integer IU8 K32 and IU4 K32/K64 matrix instructions, both widths and every CPU selector. Added all 78 compact gfx1201 captures from rocjitsu ad2bb973ec4, including six destination bases per legal key and width; tied C/D and index overlap compare complete guarded storage in both semantics. All match existing production paths. Raw out-of-range selector aliases exercised by the upstream decoder test remain outside the GoC API and are not replayed. Independent gfx1201 captures cover 16 deterministic input samples per shape and all sign/clamp/index-key variants, including native Wave64 captures with width-specific selector ranges. Both loose and strict exact modes now check these captures. Near-limit signed accumulators expose the two-stage saturation rule; explicit opposing-sign stage witnesses distinguish it from final-sum clamping. Same-library baseline references separately exercise source/index overlap and duplicate destinations with full-storage expected images. A per-register/lane dispatch comparison localizes differential CPU failures but does not substitute for hardware evidence. The unsigned xorshift corpus defines draw order and includes a fixed input digest regression. Integer outputs remain bitwise in either semantics; floating atol/rtol is inapplicable.",
     "diagnostics": "Added all non-output register preservation to both hardware corpus tests, expanded native Wave64 goldens to loose semantics, included sample/semantics in digest failures, and expanded Wave32 invalid-bit validation to 64 bits plus global-flag rejection with unchanged-storage checks. Kept hardware digest provenance distinct from differential alias/dispatch references. All ten tests pass on Clang and GCC."
   },
   {

@@ -995,3 +995,16 @@ passed without production changes. These are ten captures replayed in different
 execution configurations, not additional independent hardware observations.
 Further floating and sparse alignment remains in progress; earlier broad green
 results do not establish alignment with the newly imported evidence.
+
+
+### Sparse integer qualification against Jakub's captures
+
+All 78 compact gfx1201 sparse integer captures from rocjitsu `ad2bb973ec4`
+pass without production changes: 36 IU8 K32, 24 IU4 K32 and 18 IU4 K64.
+Each legal key/width has six captured destination bases; this includes tied C/D,
+A/B overlaps and index overlap. The GoC-local replay compares the entire guarded
+register image for both semantics and every available CPU selector. Existing
+independent captures remain intact. Upstream's additional out-of-range encoded
+key aliases are not supported by the GoC API and are explicitly excluded;
+none of the 78 stored captures is excluded. This validates the equivalence of
+GoC's existing physical rearrangement for these captures, not all possible inputs.

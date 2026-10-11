@@ -3,9 +3,13 @@
 #include "capture_hash.h"
 #include "goc/goc.h"
 #include "integer_wmma_capture.h"
+#include "rdna_swmmac_iu4_cases.h"
+#include "rdna_swmmac_iu4_k64_cases.h"
+#include "rdna_swmmac_iu8_cases.h"
 #include "swmmac_integer_hardware.h"
 #include "swmmac_integer_wave64_hardware.h"
 
+#include <algorithm>
 #include <cstring>
 #include <gtest/gtest.h>
 #include <stdint.h>
@@ -290,4 +294,71 @@ TEST(SwmmacInteger, Wave64ValidationPreservesOutputs) {
     EXPECT_EQ(wide_functions[op](1ULL << 63, 0, r.d, r.a, r.b, r.index), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(std::memcmp(before, r.data, sizeof before), 0);
   }
+}
+
+// Captures use tied C/D and include A/B/index destination overlaps. Recreate
+// rocjitsu's unsigned xorshift draw order, including the metadata register.
+TEST(SwmmacInteger, JakubCapturedSaturationKeysAndOverlap) {
+  struct Shape {
+    Fn wave32, wave64;
+    const RdnaSwmmacIntegerCase *cases;
+    unsigned count;
+  };
+
+  const Shape shapes[] = {
+      {goc_v_swmmac_i32_16x16x32_iu8, goc_v_swmmac_i32_16x16x32_iu8_wave64,
+       kRdnaSwmmacIu8Saturated.data(), kRdnaSwmmacIu8Saturated.size()},
+      {goc_v_swmmac_i32_16x16x32_iu4, goc_v_swmmac_i32_16x16x32_iu4_wave64,
+       kRdnaSwmmacIu4Saturated.data(), kRdnaSwmmacIu4Saturated.size()},
+      {goc_v_swmmac_i32_16x16x64_iu4, goc_v_swmmac_i32_16x16x64_iu4_wave64,
+       kRdnaSwmmacIu4K64Saturated.data(), kRdnaSwmmacIu4K64Saturated.size()},
+  };
+  for (const auto &shape : shapes)
+    for (unsigned sample = 0; sample < shape.count; ++sample) {
+      const auto &capture = shape.cases[sample];
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL}) {
+          SCOPED_TRACE(::testing::Message()
+                       << shape.count << "/" << sample << "/" << capture.width << "/" << capture.key
+                       << "/" << capture.dst << "/" << cpu << "/" << semantics);
+          uint32_t data[40][66], expected[40][66];
+          uint32_t *v[40];
+          uint32_t rng = 0x12056101U;
+          constexpr uint32_t accumulators[] = {0,           1,           0xffffffffU, 0x7fffffffU,
+                                               0x80000000U, 0x7ffff000U, 0x80001000U, 0x12345678U};
+          constexpr uint32_t pairs[] = {4, 8, 12, 9, 13, 14};
+          for (unsigned reg = 0; reg < 40; ++reg) {
+            v[reg] = data[reg] + 1;
+            std::fill(data[reg], data[reg] + 66, 0xdeadbeefU);
+            if (reg >= 33)
+              continue;
+            for (unsigned lane = 0; lane < capture.width; ++lane) {
+              rng ^= rng << 13;
+              rng ^= rng >> 17;
+              rng ^= rng << 5;
+              uint32_t value = reg >= 16 && reg < 32 ? accumulators[(rng >> 24) & 7] : rng;
+              if (reg == 32) {
+                value = 0;
+                for (unsigned i = 0; i < 8; ++i)
+                  value |= pairs[((rng >> (4 * i)) & 15) % 6] << (4 * i);
+              }
+              v[reg][lane] = value;
+            }
+          }
+          std::memcpy(expected, data, sizeof(expected));
+          for (unsigned reg = 0; reg < 256 / capture.width; ++reg)
+            for (unsigned lane = 0; lane < capture.width; ++lane)
+              expected[capture.dst + reg][lane + 1] = capture.expected[reg * capture.width + lane];
+          const auto fn = capture.width == 32 ? shape.wave32 : shape.wave64;
+          ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT,
+                       GOC_WMMA_SIGNED_A | GOC_WMMA_SIGNED_B | GOC_WMMA_CLAMP |
+                           (uint64_t(capture.key) << 7),
+                       v + capture.dst, v, v + 8, v + 32),
+                    GOC_SUCCESS);
+          for (unsigned reg = 0; reg < 40; ++reg)
+            for (unsigned lane = 0; lane < 66; ++lane)
+              ASSERT_EQ(data[reg][lane], expected[reg][lane])
+                  << "reg=" << reg << " guarded lane=" << lane;
+        }
+    }
 }
