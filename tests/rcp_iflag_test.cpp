@@ -64,10 +64,15 @@ TEST(RcpIflag, HardwareNumericAndStickyExceptions) {
           ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu | semantics, UINT32_MAX,
                                               goc_test::rcp_iflag_mode(m), dp, ap, &status),
                     GOC_SUCCESS);
-          for (unsigned lane = 0; lane < 32; ++lane)
-            ASSERT_TRUE(goc_test::rcp_iflag_close(
-                d[lane], goc_test::rcp_iflag_numeric[m][group * 32 + lane]))
-                << cpu << "/" << m << "/" << group << "/" << lane;
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            uint32_t expected = goc_test::rcp_iflag_numeric[m][group * 32 + lane];
+            if (semantics) {
+              ASSERT_EQ(d[lane], expected) << cpu << "/" << m << "/" << group << "/" << lane;
+            } else {
+              ASSERT_TRUE(goc_test::rcp_iflag_close(d[lane], expected))
+                  << cpu << "/" << m << "/" << group << "/" << lane;
+            }
+          }
         }
 }
 
@@ -208,7 +213,9 @@ TEST(RcpIflag, DppModifiersMasksAndStatusAliases) {
                       ASSERT_EQ(words[reg][word], want);
                     else if (reg == target && word >= 1 && word <= 32 &&
                              ((reference_exec_mask >> (word - 1)) & 1))
-                      ASSERT_TRUE(goc_test::rcp_iflag_close(words[reg][word], expected[reg][word]));
+                      ASSERT_TRUE(goc_test::rcp_iflag_close(words[reg][word], expected[reg][word]))
+                          << semantics << "/" << cpu << "/" << m << "/" << descriptor << "/"
+                          << exec_mask << "/" << target << "/" << status_target << "/" << word;
                     else
                       ASSERT_EQ(words[reg][word], expected[reg][word]);
                   }
@@ -279,14 +286,17 @@ TEST(RcpIflag, NullExceptionOutput) {
     a[lane] = lane % 2 ? 0x40000000 : 0;
   const uint32_t *ap[] = {a};
   uint32_t *dp[] = {reported}, *np[] = {unreported};
-  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint32_t status = 0x80000001;
-    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu, UINT32_MAX, 0, dp, ap, &status), GOC_SUCCESS);
-    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu, UINT32_MAX, 0, np, ap, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(status, 0x80000001 | GOC_EXCEPTION_INT_DIV0);
-    for (unsigned lane = 0; lane < 32; ++lane)
-      EXPECT_EQ(reported[lane], unreported[lane]);
-  }
+  for (uint64_t semantics : {uint64_t(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      uint32_t status = 0x80000001;
+      ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu | semantics, UINT32_MAX, 0, dp, ap, &status),
+                GOC_SUCCESS);
+      ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4(cpu | semantics, UINT32_MAX, 0, np, ap, nullptr),
+                GOC_SUCCESS);
+      EXPECT_EQ(status, 0x80000001 | GOC_EXCEPTION_INT_DIV0);
+      for (unsigned lane = 0; lane < 32; ++lane)
+        EXPECT_EQ(reported[lane], unreported[lane]);
+    }
 }
 
 TEST(RcpIflag, Wave64ModifiersExecAliasesAndUnalignedStorage) {
@@ -374,7 +384,9 @@ TEST(RcpIflag, Wave64DppModifiersMasksAndStatusAliases) {
                       ASSERT_EQ(words[reg][word], want);
                     else if (reg == target && word >= 1 && word <= 64 &&
                              ((reference_exec_mask >> (word - 1)) & 1))
-                      ASSERT_TRUE(goc_test::rcp_iflag_close(words[reg][word], expected[reg][word]));
+                      ASSERT_TRUE(goc_test::rcp_iflag_close(words[reg][word], expected[reg][word]))
+                          << semantics << "/" << cpu << "/" << m << "/" << descriptor << "/"
+                          << exec_mask << "/" << target << "/" << status_target << "/" << word;
                     else
                       ASSERT_EQ(words[reg][word], expected[reg][word]);
                   }
@@ -407,14 +419,17 @@ TEST(RcpIflag, Wave64NullExceptionOutput) {
     a[lane] = lane % 2 ? 0x40000000 : 0;
   const uint32_t *ap[] = {a};
   uint32_t *dp[] = {reported}, *np[] = {unreported};
-  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
-    uint32_t status = 0x80000001;
-    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(cpu, UINT64_MAX, 0, dp, ap, &status), GOC_SUCCESS);
-    ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(cpu, UINT64_MAX, 0, np, ap, nullptr), GOC_SUCCESS);
-    EXPECT_EQ(status, 0x80000001 | GOC_EXCEPTION_INT_DIV0);
-    for (unsigned lane = 0; lane < 64; ++lane)
-      EXPECT_EQ(reported[lane], unreported[lane]);
-  }
+  for (uint64_t semantics : {uint64_t(0), GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+      uint32_t status = 0x80000001;
+      ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(cpu | semantics, UINT64_MAX, 0, dp, ap, &status),
+                GOC_SUCCESS);
+      ASSERT_EQ(goc_v_rcp_iflag_f32_rdna4_wave64(cpu | semantics, UINT64_MAX, 0, np, ap, nullptr),
+                GOC_SUCCESS);
+      EXPECT_EQ(status, 0x80000001 | GOC_EXCEPTION_INT_DIV0);
+      for (unsigned lane = 0; lane < 64; ++lane)
+        EXPECT_EQ(reported[lane], unreported[lane]);
+    }
 }
 
 TEST(RcpIflag, Wave64UpperHalfHardwareStatusCorpus) {
@@ -499,7 +514,7 @@ TEST(RcpIflag, ArchitectureOmodGuestPolicyAcrossWaveSizesAndDpp) {
                     EXPECT_EQ(d[lane], expected)
                         << rdna3 << '/' << wide << '/' << policy << '/' << m;
                   }
-                  if (rdna3) {
+                  if (rdna3 && !semantics) {
                     EXPECT_EQ(state, 0x80000001U);
                   }
                 }
@@ -559,7 +574,9 @@ TEST(RcpIflag, ExactBorrowedNormalizedCapture) {
       d += 32;
       ASSERT_EQ(fn(flags, UINT32_MAX, 0, &d, &a, rdna3 ? nullptr : &state), GOC_SUCCESS);
     }
-    EXPECT_EQ(state, 0x80000001U);
+    if (!rdna3) {
+      EXPECT_EQ(state, 0x80000001U);
+    }
     for (auto word : output)
       hash = goc_test::capture_hash_word(hash, word);
     if ((base + 64) % (1U << 20) == 0) {
@@ -593,7 +610,9 @@ TEST(RcpIflag, ExactNanQuietingAndStateErrorPrecedence) {
         };
         ASSERT_EQ(call(flags, 1, 0, rdna3 ? nullptr : &state), GOC_SUCCESS);
         EXPECT_EQ(values[0], 0xffc00123U);
-        EXPECT_EQ(state, 0x80000001U);
+        if (!rdna3) {
+          EXPECT_EQ(state, 0x80000001U);
+        }
         EXPECT_EQ(call(2 * GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, 0, nullptr),
                   GOC_ERROR_UNSUPPORTED_SEMANTICS);
         for (uint64_t strict : {uint64_t(0), uint64_t(GOC_SEMANTICS_STRICT)}) {

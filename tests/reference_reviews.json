@@ -2193,5 +2193,39 @@
     ],
     "scope": "Eleven FP32 unary operations, both wave widths. Double mathematical SFU references with explicit binary32 rounding, mandatory flushing and OMOD are loose proximity references; captured gfx1201 OMOD/flush outputs supply independent hardware comparison. Rounding, fraction/mantissa extraction, signed zero, infinity and storage are raw. Wave32 combines all 32 modifiers, 84 EXEC masks and aliases; Wave64 combines all modifiers, eight routes with stratified row masks, mixed EXEC and destination aliases. Architecture integration covers both architectures, widths, guest policies, DPP and IEEE scaling. RDNA3 DX10 tests use unclamped API results as a differential clamp-policy reference, in exact semantics where supported and loose otherwise; they are not independent arithmetic oracles. EXP/LOG sweep boundary/full-range strata across flags, masks and aliases. Fixed MT19937 calibration/holdout seeds span raw encodings, finite exp2 range and log2 near one, across all operations/modifiers/CPU selectors. Exact numerical models and exception flags have separate dedicated suites. Validation, empty masks, fallback semantics and optional-state rejection/preservation are covered.",
     "diagnostics": "One local comparison helper makes exact categorical/simple-operation versus approximate SFU checks explicit at existing callers. Tightened disjoint source preservation and out-of-wave storage, removed a null-state no-op assertion, and moved per-lane random/EXP/LOG diagnostics to failure-only formatting. Hardware comparisons retain explicit sign and classification checks. Existing input streams, hardware fixtures and tolerances are unchanged."
+  },
+  {
+    "file": "rcp_iflag_test.cpp",
+    "assertions": [
+      "RcpIflag.HardwareNumericAndStickyExceptions",
+      "RcpIflag.ModifiersExecAliasesAndUnalignedStorage",
+      "RcpIflag.ActiveSubnormalsClampAndStickyState",
+      "RcpIflag.ValidationAndHostRounding",
+      "RcpIflag.DppModifiersMasksAndStatusAliases",
+      "RcpIflag.DppValidationAndZeroExec",
+      "RcpIflag.DppHardwareCorpus",
+      "RcpIflag.NullExceptionOutput",
+      "RcpIflag.Wave64ModifiersExecAliasesAndUnalignedStorage",
+      "RcpIflag.Wave64DppModifiersMasksAndStatusAliases",
+      "RcpIflag.Wave64DppValidationAndZeroExec",
+      "RcpIflag.Wave64NullExceptionOutput",
+      "RcpIflag.Wave64UpperHalfHardwareStatusCorpus",
+      "RcpIflag.ArchitectureOmodGuestPolicyAcrossWaveSizesAndDpp",
+      "RcpIflag.Rdna3ReportingValidationAndLooseOptOut",
+      "RcpIflag.ExactBorrowedNormalizedCapture",
+      "RcpIflag.ExactNanQuietingAndStateErrorPrecedence"
+    ],
+    "evidence": [
+      "tests/rcp_iflag_test.cpp",
+      "tests/rcp_iflag_hardware.h",
+      "tests/rcp_iflag_reference.h",
+      "tests/unary_exact_hardware.h",
+      "tests/unary_checkpoints.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "RCP_IFLAG FP32 across RDNA3/RDNA4 and both widths. Independent gfx1201 numeric fixtures now require raw equality in exact semantics and calibrated proximity in loose semantics. Status digests cover 4096 deterministic boundary/walking-lane/integer-mixed inputs, six masks, three seeds and all 32 modifiers; Wave64 replays captures in the upper half with inactive zero inputs below. Mathematical double reciprocal references in other tests are proximity checks, not arbitrary exact oracles. The inherited RCP normalized hardware digest with rocjitsu-generated checkpoints independently checks all 2^23 normalized mantissas, rotating architecture/width/CPU by batch; it does not enumerate every CPU per input. DPP capture and computed routing tests cover seven routes, 84 Wave32 masks, stratified Wave64 masks/row controls, in-place/disjoint/unaligned storage and status aliases in both source/destination registers. Architecture OMOD witnesses use exactly representable powers of two; RDNA3 exact reporting is rejected explicitly. Clamping/active subnormal status, null output, errors and NaN quieting have dedicated checks. Cheap RDNA4 loose INT_DIV0 reporting is tested as existing behavior, not a general guarantee for loose global-state reporting.",
+    "diagnostics": "Tightened exact captured numeric assertions and added exact-semantics null-output equivalence tests in both widths. DPP numerical failures identify semantics, CPU, modifier, descriptor, EXEC, destination/status alias and word. Removed assertions about state variables whose pointers were null; error-path state checks remain. Existing normalized checkpoints localize failures to 2^20-input blocks."
   }
 ]

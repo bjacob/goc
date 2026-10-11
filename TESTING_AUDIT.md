@@ -663,3 +663,12 @@ checks and removed a vacuous state assertion. Failure-only formatting reduced
 the existing EXP/LOG test from about 1.15 seconds to 0.06–0.07 seconds in these
 runs, with unchanged inputs. All 14 family tests pass on Clang/GCC, as do 14
 tooling tests. Production, tolerances and captured fixtures are unchanged.
+
+### RCP_IFLAG review
+
+One review brings the queue to 127 reviewed and 27 pending. Exact captured
+numeric outputs now require bitwise equality; loose comparisons retain their
+calibrated tolerance. Both-width null-output tests now cover exact semantics.
+Improved DPP failure context and removed null-state no-op assertions. All 17
+family tests pass on Clang/GCC, as do 14 tooling tests. Production, capture
+fixtures and tolerance values are unchanged.

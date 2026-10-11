@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 126 explicit family-file reviews exist and 28
+non-generic family references. 127 explicit family-file reviews exist and 27
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -430,3 +430,12 @@ the deterministic random tests as well as boundary tests; SFUs retain calibrated
 fuzzy comparisons. Added disjoint source and out-of-wave preservation checks.
 Failure-only per-lane formatting removes recurring diagnostic work from passing
 random and EXP/LOG tests without reducing input coverage.
+
+### RCP_IFLAG
+
+Reviewed independent numeric/status captures, borrowed normalized-RCP checkpoints,
+and mathematical proximity references separately. Exact captured numeric outputs
+are now checked bitwise; computed mathematical comparisons remain proximity
+checks outside the independently anchored domain. Null reporting equivalence now
+covers both semantics and wave widths. DPP diagnostics include masks and aliases,
+and state assertions no longer claim coverage when the pointer was null.
