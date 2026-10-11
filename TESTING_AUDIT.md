@@ -762,3 +762,14 @@ comparisons. Every unselected destination half and inactive/source word remains
 raw, with missing source checks added to the ordinary alias sweeps.
 All 15 tests and both calibration seeds pass on Clang and GCC. Inventory:
 137/154 family files reviewed, 17 remain before final broad verification.
+
+
+### FP8/BF8 DOT4 review
+
+Retained existing independently calibrated exhaustive-pair and mixed-byte
+numerical checks, including the fixed holdout. Added missing alias-source and
+out-of-wave storage checks, made source snapshots independent of post-call
+operands, and removed successful per-lane diagnostic formatting overhead.
+All 11 tests pass on Clang and GCC with unchanged tolerance bounds and input
+corpora. The explicit inventory now has 138/154 family-file reviews, with 16
+remaining before final broad verification.

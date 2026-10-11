@@ -4,7 +4,6 @@
 #include "exec_masks.h"
 #include "fuzzy.h"
 #include "goc/goc.h"
-#include "internal.h"
 #include "loose_tolerances.h"
 
 #include <algorithm>
@@ -18,6 +17,18 @@
 #include <vector>
 
 namespace {
+
+float as_float(uint32_t bits) {
+  float result;
+  std::memcpy(&result, &bits, sizeof(result));
+  return result;
+}
+
+uint32_t as_bits(float value) {
+  uint32_t result;
+  std::memcpy(&result, &value, sizeof(result));
+  return result;
+}
 
 using Fn = decltype(&goc_v_mad_u32_u24);
 const Fn functions[] = {goc_v_dot4_f32_fp8_fp8, goc_v_dot4_f32_fp8_bf8, goc_v_dot4_f32_bf8_fp8,
@@ -39,13 +50,8 @@ double decode(uint8_t value, bool bf8) {
   return value >= 128 ? -result : result;
 }
 
-void compare(uint32_t word, double expected) {
-  float actual = goc::as_float(word), rounded = float(expected);
-  if (std::isnan(rounded)) {
-    EXPECT_TRUE(std::isnan(actual));
-  } else {
-    EXPECT_TRUE(goc_test::fuzzy(actual, rounded, goc_test::fp8_dot_repeated_tolerance));
-  }
+::testing::AssertionResult compare(uint32_t word, double expected) {
+  return goc_test::fuzzy(as_float(word), float(expected), goc_test::fp8_dot_repeated_tolerance);
 }
 
 const decltype(&goc_v_dot4_f32_fp8_fp8_wave64) wave64_functions[] = {
@@ -64,7 +70,7 @@ TEST(Fp8Dot, ExhaustiveBytePairsAllFormatsAndModifiers) {
           for (unsigned lane = 0; lane < 32; ++lane) {
             a[lane] = ((base + lane) / 256) * 0x01010101u;
             b[lane] = ((base + lane) % 256) * 0x01010101u;
-            c[lane] = goc::as_bits(-1.25f);
+            c[lane] = as_bits(-1.25f);
           }
           auto pa = a, pb = b, pc = c, pd = d;
           ASSERT_EQ(functions[op](cpu, UINT32_MAX, modifiers, &pd, &pa, &pb, &pc), GOC_SUCCESS);
@@ -72,9 +78,10 @@ TEST(Fp8Dot, ExhaustiveBytePairsAllFormatsAndModifiers) {
           if (modifiers & GOC_DOT_NEG_C)
             acc = -acc;
           for (unsigned lane = 0; lane < 32; ++lane)
-            compare(d[lane], 4 * decode(uint8_t((base + lane) / 256), op >= 2) *
-                                     decode(uint8_t((base + lane) % 256), op & 1) +
-                                 acc);
+            EXPECT_TRUE(compare(d[lane], 4 * decode(uint8_t((base + lane) / 256), op >= 2) *
+                                                 decode(uint8_t((base + lane) % 256), op & 1) +
+                                             acc))
+                << "lane=" << lane;
         }
 }
 
@@ -99,7 +106,7 @@ TEST(Fp8Dot, MixedBytesMasksAndAliases) {
           inputs[operand][lane] |= uint32_t(codes[index]) << (8 * byte);
         }
       }
-      inputs[2][lane] = goc::as_bits(float(lane - 16));
+      inputs[2][lane] = as_bits(float(lane - 16));
     }
     for (uint32_t mode : {0U, GOC_DOT_NEG_C, GOC_DOT_ABS_C, GOC_DOT_NEG_C | GOC_DOT_ABS_C})
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
@@ -126,14 +133,20 @@ TEST(Fp8Dot, MixedBytesMasksAndAliases) {
                 expected += factors[0][lane][byte] * factors[1][lane][byte];
               if ((exec_mask >> lane) & 1) {
                 // Small integer products and sums are exactly representable.
-                EXPECT_EQ(goc::as_float(v[alias][lane]), float(expected));
+                EXPECT_EQ(as_float(v[alias][lane]), float(expected));
               } else {
                 EXPECT_EQ(v[alias][lane], before[lane]);
               }
             }
-            for (const auto &reg : storage) {
-              EXPECT_EQ(reg[0], 0xdeadbeef);
-              EXPECT_EQ(reg[33], 0xdeadbeef);
+            for (unsigned reg = 0; reg < 4; ++reg) {
+              EXPECT_EQ(storage[reg][0], 0xdeadbeef);
+              EXPECT_EQ(storage[reg][33], 0xdeadbeef);
+              if (reg != unsigned(alias)) {
+                for (unsigned lane = 0; lane < 32; ++lane)
+                  EXPECT_EQ(v[reg][lane], reg < 3 ? inputs[reg][lane] : 0xdeadbeefU)
+                      << "op=" << op << " cpu=" << cpu << " mode=" << mode << " source=" << reg
+                      << " lane=" << lane;
+              }
             }
           }
   }
@@ -169,7 +182,7 @@ TEST(Fp8Dot, Wave64ExhaustiveBytePairsAllFormatsAndModifiers) {
           for (unsigned lane = 0; lane < 64; ++lane) {
             a[lane] = ((base + lane) / 256) * 0x01010101u;
             b[lane] = ((base + lane) % 256) * 0x01010101u;
-            c[lane] = goc::as_bits(-1.25f);
+            c[lane] = as_bits(-1.25f);
           }
           auto pa = a, pb = b, pc = c, pd = d;
           ASSERT_EQ(wave64_functions[op](cpu, UINT64_MAX, modifiers, &pd, &pa, &pb, &pc),
@@ -178,9 +191,10 @@ TEST(Fp8Dot, Wave64ExhaustiveBytePairsAllFormatsAndModifiers) {
           if (modifiers & GOC_DOT_NEG_C)
             acc = -acc;
           for (unsigned lane = 0; lane < 64; ++lane)
-            compare(d[lane], 4 * decode(uint8_t((base + lane) / 256), op >= 2) *
-                                     decode(uint8_t((base + lane) % 256), op & 1) +
-                                 acc);
+            EXPECT_TRUE(compare(d[lane], 4 * decode(uint8_t((base + lane) / 256), op >= 2) *
+                                                 decode(uint8_t((base + lane) % 256), op & 1) +
+                                             acc))
+                << "lane=" << lane;
         }
 }
 
@@ -205,7 +219,7 @@ TEST(Fp8Dot, Wave64MixedBytesMasksAndAliases) {
           inputs[operand][lane] |= uint32_t(codes[index]) << (8 * byte);
         }
       }
-      inputs[2][lane] = goc::as_bits(float(lane - 16));
+      inputs[2][lane] = as_bits(float(lane - 16));
     }
     for (uint32_t mode : {0U, GOC_DOT_NEG_C, GOC_DOT_ABS_C, GOC_DOT_NEG_C | GOC_DOT_ABS_C})
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
@@ -233,14 +247,20 @@ TEST(Fp8Dot, Wave64MixedBytesMasksAndAliases) {
                 expected += factors[0][lane][byte] * factors[1][lane][byte];
               if ((exec_mask >> lane) & 1) {
                 // Small integer products and sums are exactly representable.
-                EXPECT_EQ(goc::as_float(v[alias][lane]), float(expected));
+                EXPECT_EQ(as_float(v[alias][lane]), float(expected));
               } else {
                 EXPECT_EQ(v[alias][lane], before[lane]);
               }
             }
-            for (const auto &reg : storage) {
-              EXPECT_EQ(reg[0], 0xdeadbeef);
-              EXPECT_EQ(reg[65], 0xdeadbeef);
+            for (unsigned reg = 0; reg < 4; ++reg) {
+              EXPECT_EQ(storage[reg][0], 0xdeadbeef);
+              EXPECT_EQ(storage[reg][65], 0xdeadbeef);
+              if (reg != unsigned(alias)) {
+                for (unsigned lane = 0; lane < 64; ++lane)
+                  EXPECT_EQ(v[reg][lane], reg < 3 ? inputs[reg][lane] : 0xdeadbeefU)
+                      << "op=" << op << " cpu=" << cpu << " mode=" << mode << " source=" << reg
+                      << " lane=" << lane;
+              }
             }
           }
   }
@@ -298,7 +318,7 @@ template <unsigned Lanes> void dpp_routes_masks_and_aliases() {
                     initial[1][lane + 1] |= uint32_t(codes[op % 2][(3 * lane + byte + 1) % 5])
                                             << (8 * byte);
                   }
-                  initial[2][lane + 1] = goc::as_bits(float(int(lane) - 37));
+                  initial[2][lane + 1] = as_bits(float(int(lane) - 37));
                 }
                 std::memcpy(words, initial, sizeof(words));
                 std::memcpy(expected_words, initial, sizeof(expected_words));
@@ -325,7 +345,7 @@ template <unsigned Lanes> void dpp_routes_masks_and_aliases() {
                   for (unsigned byte = 0; byte < 4; ++byte)
                     expected += decode(uint8_t(av >> (8 * byte)), op / 2) *
                                 decode(uint8_t(initial[1][lane + 1] >> (8 * byte)), op % 2);
-                  expected_words[dst][lane + 1] = goc::as_bits(float(expected));
+                  expected_words[dst][lane + 1] = as_bits(float(expected));
                 }
                 EXPECT_EQ(std::memcmp(words, expected_words, sizeof(words)), 0);
               }
@@ -402,29 +422,34 @@ void check_bounded_numerical_corpus(uint32_t seed) {
         float acc = float(int(random() % 2049) - 1024) / 256;
         if (batch & 1)
           acc = -float(products[lane]);
-        words[2][lane] = goc::as_bits(acc);
+        words[2][lane] = as_bits(acc);
       }
+      uint32_t sources[3][64];
+      std::memcpy(sources, words, sizeof(sources));
       const uint32_t *a = words[0], *b = words[1], *c = words[2];
       uint32_t *d = words[3];
       for (unsigned variant = 0; variant < 4; ++variant) {
         uint32_t mode = (variant & 1 ? GOC_DOT_NEG_C : 0) | (variant & 2 ? GOC_DOT_ABS_C : 0);
         for (bool wide : {false, true})
           for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            std::fill_n(d, 64, 0xdeadbeefU);
             ASSERT_EQ(wide ? wave64_functions[op](cpu, UINT64_MAX, mode, &d, &a, &b, &c)
                            : functions[op](cpu, UINT32_MAX, mode, &d, &a, &b, &c),
                       GOC_SUCCESS);
+            ASSERT_EQ(std::memcmp(sources, words, sizeof(sources)), 0);
+            for (unsigned lane = wide ? 64U : 32U; lane < 64; ++lane)
+              ASSERT_EQ(d[lane], 0xdeadbeefU);
             for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane) {
-              SCOPED_TRACE(::testing::Message()
-                           << seed << '/' << op << '/' << batch << '/' << variant << '/' << wide
-                           << '/' << cpu << '/' << lane);
-              double expected = goc::as_float(c[lane]);
+              double expected = as_float(sources[2][lane]);
               if (mode & GOC_DOT_ABS_C)
                 expected = std::abs(expected);
               if (mode & GOC_DOT_NEG_C)
                 expected = -expected;
               expected += products[lane];
-              ASSERT_TRUE(goc_test::fuzzy(goc::as_float(d[lane]), float(expected),
-                                          goc_test::fp8_dot_bounded_tolerance));
+              ASSERT_TRUE(goc_test::fuzzy(as_float(d[lane]), float(expected),
+                                          goc_test::fp8_dot_bounded_tolerance))
+                  << seed << '/' << op << '/' << batch << '/' << variant << '/' << wide << '/'
+                  << cpu << '/' << lane;
             }
           }
       }

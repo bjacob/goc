@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 137 explicit family-file reviews exist and 17
+non-generic family references. 138 explicit family-file reviews exist and 16
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -516,3 +516,11 @@ is explicitly scalar/SIMD differential, with fuzzy finite comparisons and raw
 unwritten storage. Literal and integer routing assertions remain exact, as does
 the retained fixed-domain hardware DPP digest. Ordinary alias sweeps now check
 all nondestination words. This family remains loose-only.
+
+
+FP8/BF8 DOT4's independent mathematical decoder, exhaustive repeated-byte pairs
+and separately calibrated mixed-byte holdout already provide loose numerical
+coverage for all four formats and both widths. Completed its review by adding
+nondestination storage checks to aliases and immutable source/out-of-wave checks
+to the bounded corpus. Integer DPP routing stays raw; these loose-only APIs
+require no invented exact reference. Diagnostic formatting now occurs on failure.

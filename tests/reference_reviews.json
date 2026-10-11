@@ -2456,5 +2456,29 @@
     ],
     "scope": "Loose half-output F16/BF16 DOT2. RDNA4 both-width tests span all 256 ABS/NEG and C/D half-selection combinations, whole-register destination aliases, 84 Wave32 masks and representative Wave64 masks, plus DPP controls and guards. Independent small integer arithmetic is exactly representable and deliberately uses raw checks for routing. Every accumulator encoding is covered in both widths with explicit fixed BF16 flushing and NaN classification. Literal signed-zero, ties, overflow saturation, infinity and denormal cases remain raw. A retained gfx1201 DPP digest independently anchors the fixed binary-exact corpus, not arbitrary inputs or exact API support. Random all-encoding Wave32 checks are scalar/SIMD differential. A new bounded-normal fractional corpus supplies independent double arithmetic for both architectures, widths and all available CPU selectors, including ABS/NEG, C/D half selection, full/mixed masks and optional-state preservation. Strict exact semantics remain unsupported; non-strict fallback, invalid flags and empty masks are explicit.",
     "diagnostics": "New fractional comparisons use calibrated FP16/BF16 atol/rtol with alternate seeds and architecture/CPU/batch/lane diagnostics. Existing random differential finite results now use the same numeric policy while categorical outputs, inactive words and unselected halves remain raw. Added every nondestination word to ordinary modifier/alias sweeps. Existing per-word DPP integration checks localize routing failures; the separate hardware digest remains aggregate evidence."
+  },
+  {
+    "file": "fp8_dot_test.cpp",
+    "assertions": [
+      "Fp8Dot.ExhaustiveBytePairsAllFormatsAndModifiers",
+      "Fp8Dot.MixedBytesMasksAndAliases",
+      "Fp8Dot.ValidationAndLooseFallback",
+      "Fp8Dot.Wave64ExhaustiveBytePairsAllFormatsAndModifiers",
+      "Fp8Dot.Wave64MixedBytesMasksAndAliases",
+      "Fp8Dot.Wave64ValidationAndLooseFallback",
+      "Fp8Dot.DppRoutesMasksAndAliases",
+      "Fp8Dot.Wave64DppRoutesMasksAndAliases",
+      "Fp8Dot.DppValidationAndLooseFallback",
+      "Fp8Dot.DeterministicNumericalCalibration",
+      "Fp8Dot.DeterministicNumericalHoldout"
+    ],
+    "evidence": [
+      "tests/fp8_dot_test.cpp",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "All four FP8/BF8 DOT4 format pairings, both widths and all available CPU selectors. Independent mathematical byte decoding and double accumulation cover every repeated-byte pair with all four C ABS/NEG modes, including NaN/infinity encodings. Separate fixed-seed mixed-byte bounded arithmetic and holdout corpora exercise all C modifiers and cancellation with calibrated tolerances. Exact small integer factors/sums drive 84 Wave32 masks, representative Wave64 masks, all destination aliases, DPP routes and all DPP16 row masks; these raw comparisons are deliberate routing/field checks. Invalid modifiers, strict exact rejection, non-strict loose fallback, empty EXEC and DPP validation are explicit. These APIs are loose-only, have no optional global-state output, and need no arbitrary bit-exact oracle equivalence claim.",
+    "diagnostics": "Converted repeated-pair comparison to an assertion result with caller lane context. Replaced production bit-cast dependencies with local memcpy conversions. Added every nondestination word to ordinary alias sweeps and immutable input snapshots plus out-of-wave storage checks to the bounded corpus. Successful numerical cases no longer construct per-lane diagnostic strings. Existing independent calibration and holdout bounds are unchanged; both are ordinary tests and pass on Clang and GCC."
   }
 ]
