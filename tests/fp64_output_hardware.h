@@ -8,7 +8,8 @@ namespace goc_test {
 
 // RX 9070, gfx1201, MODE=0xf0. B=1 (ADD uses -0), C=-0.
 // Operation order is the dispatch table in fp64_output_test.cpp.
-// Hashes cover [OMOD][CLAMP][NEG_A][lane], FNV-1a little-endian bytes,
+// Hashes cover [OMOD][CLAMP][NEG_A][lane]; each little-endian result byte
+// is hashed as a zero-extended uint32_t (the original capture serialization),
 // all NaNs normalized to 0x7ff8000000000000. Transcendentals use values below.
 static const uint64_t fp64_omod_inputs[] = {
     0x0000000000000000ULL, 0x8000000000000000ULL, 0x0000000000000001ULL, 0x8000000000000001ULL,

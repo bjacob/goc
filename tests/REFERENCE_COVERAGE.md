@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 112 explicit family-file reviews exist and 42
+non-generic family references. 113 explicit family-file reviews exist and 41
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -336,3 +336,11 @@ to construct inputs; the original byte-as-word hash serialization is documented
 accurately. Their aggregate witnesses complement the previously reviewed
 conversion/LDEXP families. Scalar immediate coverage is exhaustive and GETPC now
 checks loose as well as exact semantics, including wraparound and aliasing.
+
+## FP64 output integration
+
+The FP64 output review preserves the distinction between hardware SFU fuzzy
+comparisons and exact captured scaling/selection witnesses. Alias tests now
+check every nondestination register as well as the split output. Test decoding
+is independent of production helpers; capture serialization and the Wave32,
+full-EXEC scope are documented explicitly.

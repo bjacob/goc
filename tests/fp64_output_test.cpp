@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: MIT
 
 #include "capture_hash.h"
-#include "fp64.h"
 #include "fp64_output_hardware.h"
 #include "fuzzy.h"
 #include "goc/goc.h"
 #include "loose_tolerances.h"
 
 #include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <stdint.h>
 
 namespace {
+
+double number(uint64_t bits) {
+  double result;
+  std::memcpy(&result, &bits, sizeof(result));
+  return result;
+}
 
 int call(unsigned op, uint64_t cpu, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
          const uint32_t *const *b, const uint32_t *const *c) {
@@ -76,23 +82,30 @@ TEST(Fp64Output, HardwareModifiersAndCrossHalfAliases) {
             words[5][lane] = 0x80000000;
           }
           uint64_t mode = ((v >> 2) << 6) | (v & 2 ? GOC_ALU_CLAMP : 0) | (v & 1);
+          uint32_t before[8][32];
+          std::memcpy(before, words, sizeof(words));
           ASSERT_EQ(call(op, cpu, mode, d, p, p + 2, p + 4), GOC_SUCCESS);
+          for (unsigned reg = 0; reg < 8; ++reg)
+            if (reg != alias[0] && reg != alias[1])
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                ASSERT_EQ(words[reg][lane], before[reg][lane]) << v << '/' << reg << '/' << lane;
+              }
           for (unsigned lane = 0; lane < 32; ++lane) {
             uint64_t raw = d[0][lane] | (uint64_t(d[1][lane]) << 32);
             if (op >= 8 && op <= 10) {
+              SCOPED_TRACE(::testing::Message() << "variant=" << v << "/lane=" << lane);
               uint64_t want = goc_test::fp64_transcendental_hardware[op - 8][v][lane];
               uint64_t magnitude = want & 0x7fffffffffffffffULL;
               if (magnitude > 0x7ff0000000000000ULL) {
-                EXPECT_TRUE(std::isnan(goc::as_double(raw)));
+                EXPECT_TRUE(std::isnan(number(raw)));
               } else if (!magnitude || magnitude == 0x7ff0000000000000ULL) {
                 EXPECT_EQ(raw, want);
               } else {
                 // RDNA4 FP64 transcendental approximations have substantially
                 // less than binary64 precision; preserve sign and classification.
                 EXPECT_EQ(raw >> 63, want >> 63);
-                EXPECT_EQ(std::fpclassify(goc::as_double(raw)),
-                          std::fpclassify(goc::as_double(want)));
-                EXPECT_TRUE(goc_test::fuzzy(goc::as_double(raw), goc::as_double(want),
+                EXPECT_EQ(std::fpclassify(number(raw)), std::fpclassify(number(want)));
+                EXPECT_TRUE(goc_test::fuzzy(number(raw), number(want),
                                             goc_test::hardware_sfu_f64_tolerance));
               }
             }
@@ -129,8 +142,15 @@ TEST(Fp64Output, LdexpHardwareBoundaries) {
             words[2][lane] = set ? UINT32_MAX : 0;
           }
           uint64_t mode = ((v >> 2) << 6) | (v & 2 ? GOC_ALU_CLAMP : 0) | (v & 1);
+          uint32_t before[5][32];
+          std::memcpy(before, words, sizeof(words));
           ASSERT_EQ(goc_v_ldexp_f64_rdna4(cpu, UINT32_MAX, mode, d, p, p + 2, nullptr),
                     GOC_SUCCESS);
+          for (unsigned reg = 0; reg < 5; ++reg)
+            if (reg != alias[0] && reg != alias[1])
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                ASSERT_EQ(words[reg][lane], before[reg][lane]) << v << '/' << reg << '/' << lane;
+              }
           for (unsigned lane = 0; lane < 32; ++lane) {
             uint64_t raw = d[0][lane] | (uint64_t(d[1][lane]) << 32);
             if ((raw & 0x7fffffffffffffffULL) > 0x7ff0000000000000ULL)

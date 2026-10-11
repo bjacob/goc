@@ -566,3 +566,11 @@ helper dependency from captured input construction, clarified the original hash
 serialization, and extended GETPC boundary/alias coverage to loose semantics.
 Improved immediate failure context. All six affected tests pass on Clang/GCC;
 production and hardware fixtures are unchanged.
+
+### FP64 output review
+
+One review brings the queue to 113 reviewed and 41 pending. Cross-half alias
+tests now check every nondestination register; hardware transcendental failures
+include modifier/lane context. Removed a production decoding dependency and
+clarified hash serialization without changing capture data. Both affected tests
+pass on Clang/GCC. Production is unchanged.

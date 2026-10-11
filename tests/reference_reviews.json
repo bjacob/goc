@@ -1885,5 +1885,19 @@
     ],
     "scope": "Scalar S_ROUND_MODE/S_DENORM_MODE and S_GETPC_B64. Simple specification-derived bit-field replacement and unsigned PC+4 arithmetic justify computed exact references. Every 16-bit immediate is tested in loose and strict exact semantics, with deterministic surrounding bits and composed updates. Both mode APIs test null opt-out, invalid flag bits and error preservation. Host-rounding/sticky flags/controls are checked under all four host rounding modes. GETPC now tests both semantics, representative address boundaries including unsigned wraparound and input/output aliasing. These scalar tests use baseline CPU selection; no lane masks apply.",
     "diagnostics": "Immediate failure messages identify semantics/immediate, and PC witnesses identify semantics/address. No golden fixture is needed for direct bit manipulation or modulo integer addition."
+  },
+  {
+    "file": "fp64_output_test.cpp",
+    "assertions": [
+      "Fp64Output.HardwareModifiersAndCrossHalfAliases",
+      "Fp64Output.LdexpHardwareBoundaries"
+    ],
+    "evidence": [
+      "tests/fp64_output_test.cpp",
+      "tests/fp64_output_hardware.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Seventeen RDNA4 Wave32 FP64 output operations (arithmetic, rounding/fract, sqrt/rcp/rsq, min/max, frexp mantissa and ldexp). Retained gfx1201 MODE=0xf0 boundary captures cover 16 OMOD/CLAMP/NEG_A combinations and cross-half source/destination aliases on all CPU selectors. ADD/MUL/FMA use identity operands, so their raw captured outputs test scaling/encoding rather than general loose arithmetic. Transcendentals compare individual captured values with the previously calibrated hardware SFU bound, preserving signs, zero/infinity bits and classification separately. Other operations retain normalized-NaN digests. LDEXP tests exponents zero and minus one. This is full-EXEC loose-mode integration, not complete masks, Wave64 or strict exact coverage; those belong to companion family tests.",
+    "diagnostics": "Added checks that all nondestination registers remain unchanged; transcendental failures now identify modifier/lane in addition to CPU/operation/alias. Local memcpy decoding removes dependence on production fp64.h. Clarified legacy byte-as-uint32_t hash serialization without changing capture data. Aggregate digest cases are complemented by family-specific numerical tests."
   }
 ]
