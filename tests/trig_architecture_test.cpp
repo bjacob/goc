@@ -3,6 +3,7 @@
 
 #include "dpp_reference.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "trig_golden.h"
 
@@ -156,7 +157,7 @@ TEST(TrigArchitecture, CapturedResultsGuestPoliciesModifiersDppMasksAndAliases) 
                       unsigned magnitude = want & 0x7fffffff;
                       if (loose && written && got != want && magnitude && magnitude < 0x7f800000) {
                         double tolerance = magnitude < 0x800000 ? 3 * 0x1p-149 : 8e-7;
-                        ASSERT_NEAR(as_float(got), as_float(want), tolerance)
+                        ASSERT_TRUE(goc_test::fuzzy(as_float(got), as_float(want), {tolerance, 0}))
                             << arch << "/" << cosine << "/" << guest << "/" << variant;
                       } else
                         ASSERT_EQ(got, want) << arch << "/" << cosine << "/" << guest << "/"

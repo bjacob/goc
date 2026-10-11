@@ -4,6 +4,7 @@
 #include "exec_masks.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "loose_tolerances.h"
 #include "unary_hardware.h"
 #include "unary_reference.h"
 
@@ -11,6 +12,7 @@
 #include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <random>
 #include <stdint.h>
 
 namespace {
@@ -58,7 +60,7 @@ TEST(Unary, ModifiersMasksAliasesAndCpuLevels) {
               else if (want == 0 || std::isinf(want))
                 EXPECT_EQ(pd[lane], goc::as_bits(want));
               else
-                EXPECT_FLOAT_EQ(got, want);
+                EXPECT_TRUE(goc_test::fuzzy(got, want, goc_test::unary_f32_tolerance));
             }
             EXPECT_EQ(a[0], 0xdeadbeef);
             EXPECT_EQ(a[33], 0xdeadbeef);
@@ -175,7 +177,8 @@ TEST(Unary, HardwareOmodAndMandatoryFlush) {
                     EXPECT_EQ(pd[lane] >> 31, want >> 31);
                     EXPECT_GE(pd[lane] & 0x7fffffff, 0x00800000u);
                     EXPECT_LT(pd[lane] & 0x7fffffff, 0x7f800000u);
-                    EXPECT_FLOAT_EQ(goc::as_float(pd[lane]), goc::as_float(want));
+                    EXPECT_TRUE(goc_test::fuzzy(goc::as_float(pd[lane]), goc::as_float(want),
+                                                goc_test::unary_f32_tolerance));
                   } else {
                     EXPECT_EQ(pd[lane], want);
                   }
@@ -228,7 +231,7 @@ TEST(Unary, Wave64ModifiersDppSelectorsAndAliases) {
                 else if (want == 0 || std::isinf(want))
                   EXPECT_EQ(d[lane], goc::as_bits(want));
                 else
-                  EXPECT_FLOAT_EQ(got, want);
+                  EXPECT_TRUE(goc_test::fuzzy(got, want, goc_test::unary_f32_tolerance));
               } else {
                 EXPECT_EQ(d[lane], before[dest][lane + 1]);
               }
@@ -277,7 +280,8 @@ TEST(Unary, Wave64HardwareOmodAndMandatoryFlush) {
                 EXPECT_EQ(d[lane] >> 31, want >> 31);
                 EXPECT_GE(d[lane] & 0x7fffffff, 0x00800000U);
                 EXPECT_LT(d[lane] & 0x7fffffff, 0x7f800000U);
-                EXPECT_FLOAT_EQ(goc::as_float(d[lane]), goc::as_float(want));
+                EXPECT_TRUE(goc_test::fuzzy(goc::as_float(d[lane]), goc::as_float(want),
+                                            goc_test::unary_f32_tolerance));
               } else {
                 EXPECT_EQ(d[lane], want);
               }
@@ -342,7 +346,7 @@ TEST(Unary, TranscendentalArchitectureGuestPolicies) {
                     } else if (want == 0 || std::isinf(want)) {
                       EXPECT_EQ(d[lane], goc::as_bits(want));
                     } else {
-                      EXPECT_FLOAT_EQ(got, want);
+                      EXPECT_TRUE(goc_test::fuzzy(got, want, goc_test::unary_f32_tolerance));
                     }
                   }
                 }
@@ -519,7 +523,7 @@ TEST(Unary, ExpLogFullRangeModifiersMasksAndAliases) {
                 } else if (want == 0 || std::isinf(want)) {
                   EXPECT_EQ(d[lane], goc::as_bits(want));
                 } else {
-                  EXPECT_FLOAT_EQ(got, want);
+                  EXPECT_TRUE(goc_test::fuzzy(got, want, goc_test::unary_f32_tolerance));
                 }
               }
               EXPECT_EQ(input[0], 0xdeadbeefU);
@@ -528,3 +532,48 @@ TEST(Unary, ExpLogFullRangeModifiersMasksAndAliases) {
               EXPECT_EQ(output[lanes + 1], 0xdeadbeefU);
             }
 }
+
+// Two fixed streams: calibration and independently seeded holdout. Raw words
+// span the binary32 exponent/significand space; a second stratum concentrates
+// on the finite exp2 range and cancellation near log2(1). Existing literal and
+// hardware tests retain classification, zero-sign and exact-output checks.
+namespace {
+
+void check_numerical_corpus(uint32_t seed) {
+  std::mt19937 random(seed);
+  for (unsigned batch = 0; batch < 64; ++batch) {
+    uint32_t input[32], output[32];
+    for (unsigned lane = 0; lane < 32; ++lane) {
+      uint32_t word = random();
+      if (batch % 3 == 1)
+        word = goc::as_bits(float(int(word % 65537) - 32768) / 256);
+      else if (batch % 3 == 2)
+        word = 0x3f800000U + (word % 8193) - 4096;
+      input[lane] = word;
+    }
+    const uint32_t *a = input;
+    uint32_t *d = output;
+    for (unsigned op = 0; op < 11; ++op)
+      for (unsigned variant = 0; variant < 32; ++variant) {
+        uint32_t mode = (variant & 1 ? GOC_ALU_NEG_A : 0) | (variant & 2 ? GOC_ALU_ABS_A : 0) |
+                        ((variant >> 2 & 3) << 6) | (variant & 16 ? GOC_ALU_CLAMP : 0);
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          ASSERT_EQ(goc_test::unary_functions[op](cpu, UINT32_MAX, mode, &d, &a, nullptr),
+                    GOC_SUCCESS);
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            SCOPED_TRACE(::testing::Message() << seed << '/' << batch << '/' << op << '/' << variant
+                                              << '/' << cpu << '/' << lane);
+            float expected = goc_test::unary_reference(op, goc::as_float(input[lane]), mode);
+            ASSERT_TRUE(goc_test::fuzzy(goc::as_float(output[lane]), expected,
+                                        goc_test::unary_f32_tolerance));
+          }
+        }
+      }
+  }
+}
+
+} // namespace
+
+TEST(Unary, DeterministicNumericalCalibration) { check_numerical_corpus(18731U); }
+
+TEST(Unary, DeterministicNumericalHoldout) { check_numerical_corpus(61357U); }

@@ -212,3 +212,16 @@ in the five affected DPP families pass under ASan/UBSan, including their unchang
 hardware-corpus and exhaustive modifier tests. Logs are
 `coverage-work/testing-dpp-full.log` in both Release build trees and
 `coverage-work/testing-dpp-targeted.log` in the sanitizer build tree.
+
+### Unary numerical comparisons and independent holdout
+
+Migrated the six FP32 unary numerical comparison sites from implicit ULP bounds
+to the shared `(atol, rtol)` helper. Two deterministic stratified numerical tests
+exercise all eleven operations, 32 modifiers and available CPU selectors.
+The chosen relative bound of 2.5e-7 has measured margin on calibration and a fresh
+holdout stream under both Clang and GCC; see
+[tests/LOOSE_TOLERANCES.md](tests/LOOSE_TOLERANCES.md). Signed-zero, classification,
+hardware exact cases and untouched-bit assertions remain unchanged. Trig
+architecture comparisons also use the shared helper, preserving their bounds.
+All 17 affected tests pass with both compilers. FP8/FP64 and the remaining
+family/domain coverage and calibration work are still open.

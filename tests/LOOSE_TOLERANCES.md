@@ -7,9 +7,10 @@ infinities and either signed zero match. Other nonfinite pairs fail. Tests that
 require payload, zero-sign, masks, flags, or preserved bits check those separately.
 Failure diagnostics include both operands, the absolute error and allowed bound.
 
-`loose_tolerances.h` centralizes the existing bounds for the migrated families.
-This first migration does not widen bounds, claim all loose comparisons have
-been migrated, or claim the current corpora establish universal error limits.
+`loose_tolerances.h` centralizes bounds for the migrated families. The initial
+migration preserved existing bounds; subsequent calibration is documented below.
+Migration is still incomplete, and sampled corpora do not establish universal
+error limits.
 
 ## Initial measurement, following source commit `16a87aa`
 
@@ -51,3 +52,43 @@ comparators, and reference provenance remain tracked in `TESTING_AUDIT.md`.
 Local measurement source, instrumented snapshots, full test logs and CSV results:
 `goc-build/coverage-work/testing-fuzzy-calibration/`. The two normal build trees
 record affected-suite results in `coverage-work/testing-fuzzy-tests.log`.
+
+## Unary calibration and holdout
+
+The eleven FP32 unary operations now use `(atol=0, rtol=2.5e-7)` for numerical
+comparisons, replacing GoogleTest's implicit four-ULP comparison. Existing
+bit-pattern checks for exact cases, signed zeros, classifications and untouched
+lanes remain intact. The reference evaluates the mathematical operation in
+binary64, then applies the specified binary32 rounding, flushing and modifiers;
+this is a loose reference, not a claim of exact hardware equivalence for SFUs.
+
+`Unary.DeterministicNumericalCalibration` uses MT19937 seed 18731;
+`Unary.DeterministicNumericalHoldout` uses seed 61357. Each generates 64 batches
+of 32 words, stratified between raw binary32 bit patterns, multiples of 1/256
+in [-128,128], and encodings within 4096 words of 1. Every operation is checked
+with all 32 ABS/NEG/OMOD/CLAMP combinations and all four available CPU selectors.
+Inputs are generated outside the operation/modifier/CPU loops, so comparisons
+share the same corpus. Neither test tunes its tolerance at runtime.
+
+| Corpus | Finite comparisons per compiler | Max absolute error | Max relative error | Fraction of bound |
+| --- | ---: | ---: | ---: | ---: |
+| Calibration | 2,674,680 | 2.028241e31 | 1.840310e-7 | 0.736124 |
+| Fresh holdout | 2,674,128 | 1.267651e30 | 1.769156e-7 | 0.707663 |
+
+Clang 21.1.8 and GCC 15.2.0 produced the same statistics on the available host.
+Large absolute errors occur at large exponents; the relative bound is decisive.
+An exploratory second stream (seed 94217) reached relative error 1.939394e-7.
+The 2.5e-7 bound was fixed after those exploratory measurements, then checked
+against the fresh seed 61357. Existing unary cases reached 1.192093e-7. These
+observations support a modest margin, not a proof of a universal approximation
+bound or coverage of other host libm implementations/FP environments.
+
+The RDNA3/RDNA4 trig architecture test now uses the same shared comparator with
+its existing absolute bounds (8e-7 for normals, three minimum subnormals for
+subnormal expectations). Its 175,980 measured finite fuzzy calls reached
+4.768372e-7 absolute error; this corpus did not exercise the subnormal branch.
+That branch's bound is preserved, not claimed calibrated by these measurements.
+
+All 17 affected tests pass on Clang and GCC. Measurement snapshots, scripts and
+logs are in `coverage-work/testing-unary-calibration/` in each build directory;
+the ordinary test logs are `coverage-work/testing-unary.log`.
