@@ -4,6 +4,7 @@
 #include "dpp_reference.h"
 #include "exec_masks.h"
 #include "goc/goc.h"
+#include "mullit_checks.h"
 #include "mullit_hardware.h"
 #include "mullit_reference.h"
 

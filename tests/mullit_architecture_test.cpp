@@ -4,6 +4,7 @@
 #include "dpp_reference.h"
 #include "fp_environment.h"
 #include "goc/goc.h"
+#include "mullit_checks.h"
 #include "mullit_hardware.h"
 #include "mullit_reference.h"
 

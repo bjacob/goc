@@ -908,3 +908,14 @@ witnesses; changed general finite differential checks to fuzzy comparisons and
 strengthened matrix source/error preservation. All 27 tests and calibration
 runs pass on Clang and GCC. Inventory: 153/154 families reviewed; the packed/
 replicated exact family and final broad verification remain pending.
+
+
+### Packed/replicated exact WMMA review
+
+Completed the final family review, retaining inherited GFX11 hardware fixtures,
+packed captures and architecture witnesses. Expanded exact matrix tests across
+CPU selectors, added source and error preservation, and made packed loose
+finite differential comparisons fuzzy while retaining raw categories and
+unused storage. All twelve tests and original/alternate seed runs pass on
+Clang and GCC. Inventory: 154/154 family files reviewed. Final broad validation
+and requirement-by-requirement completion verification remain in progress.

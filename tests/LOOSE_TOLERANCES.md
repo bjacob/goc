@@ -578,3 +578,19 @@ maximum absolute/relative errors `0.03125` / `8.7627527626987843e-8` on both
 compilers. Alternate seeds replace 73/107 with 479/719 in the scalar/SIMD
 corpora; hardware captures are unchanged. These differential comparisons are
 supplemental dispatch checks, not independent proof of hardware accuracy.
+
+
+### Packed WMMA differential checks
+
+`WmmaPackedLoose.ScalarSimdSpecialAndRandomInputs` now compares written finite
+nonzero outputs with the existing FP16 `(2^-24, 1e-3)` and BF16 `(2^-126, 4e-3)`
+bounds. Independent arithmetic decoding avoids a production converter in the
+comparison. NaNs use classification; zero/infinity signs, unselected halves,
+sources and guards remain raw. The scalar output is a differential reference,
+not independent evidence of hardware arithmetic. Other tests supply rocjitsu
+exact captures and independent integer/literal loose behavior witnesses.
+
+Original seed `0x12345678 + batch` gives 17,934 FP16 and 9,816 BF16 finite
+comparisons; alternate seed `0x92715381 + batch` gives 18,537 and 9,432.
+Both compilers measure zero differential error in both runs, across both
+architectures/widths and available SIMD selectors. No tolerance was widened.

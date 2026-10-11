@@ -24,8 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 153 explicit family-file reviews exist and 1
-remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
+non-generic family references. 154 explicit family-file reviews exist; none remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
 Initial reviews:
@@ -585,7 +584,7 @@ empirical behavior and computed integer cases with exactly representable
 intermediates. Both forms have a role; no arbitrary-input equivalence is inferred.
 Matrix captures now cover all CPU selectors and preserve non-output storage;
 computed modifier cases cover both semantics. Error checks cover full storage.
-The companion packed-loose random/tolerance review remains pending.
+The companion packed-loose random/tolerance review is now recorded below.
 
 
 Sparse FP8/BF8 WMMA combines small-integer hardware captures, exhaustive single
@@ -621,3 +620,13 @@ RDNA3 replica values expose group selection, and both architectures cover all
 modifiers, aliases and CPU selectors. General finite differential checks use
 fuzzy bounds; exact fixtures, categories and storage stay raw. The packed and
 replicated exact companion family remains the last family-file review.
+
+
+The final packed/replicated family retains rocjitsu hardware fixtures and explicit
+architecture witnesses. Exact matrix cases now cover every CPU selector; packed
+loose random tests use finite fuzzy comparisons with raw category, source,
+guard and unused-half checks. Their scalar reference remains explicitly
+classified as differential. Independent loose layout arithmetic stays confined
+to exactly representable integer cases, with separate literal narrowing checks.
+All 154 family-file reviews are recorded; this is a reviewed coverage inventory,
+not an assertion of exhaustive input/mode equivalence.

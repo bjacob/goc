@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: MIT
 
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "gfx11_dot2.h"
 #include "gfx11_dot2_fixtures.h"
 #include "goc/goc.h"
 #include "internal.h"
+#include "loose_tolerances.h"
 #include "packed16.h"
 #include "packed_wmma_fixtures.h"
 #include "wmma_replicated_packed_fixtures.h"
 
 #include <algorithm>
 #include <cfenv>
+#include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
 #include <stdint.h>
@@ -78,36 +81,44 @@ TEST(WmmaReplicatedExact, BorrowedFp32HardwareMatrix) {
   // Same input generator as rocjitsu Gfx11Dot2.WmmaHardwareOrderAndOverlappingAccumulator.
   for (int lanes : {32, 64})
     for (bool bf16 : {false, true})
-      for (int dst : {0, 8, 16, 24}) {
-        Registers r;
-        auto bits16 = [bf16](int value) {
-          uint32_t bits = goc::as_bits(float(value));
-          if (bf16)
-            return uint16_t(bits >> 16);
-          return goc::packed16::pack_f16(value, 0);
-        };
-        for (int lane = 0; lane < lanes; ++lane) {
-          int index = lane % 16;
-          for (int reg = 0; reg < 8; ++reg) {
-            int a0 = ((index * 16 + reg * 2) * 7) % 17 - 8;
-            int a1 = ((index * 16 + reg * 2 + 1) * 7) % 17 - 8;
-            int b0 = ((reg * 2 * 16 + index) * 11) % 17 - 8;
-            int b1 = (((reg * 2 + 1) * 16 + index) * 11) % 17 - 8;
-            r.v[reg][lane] = bits16(a0) | uint32_t(bits16(a1)) << 16;
-            r.v[8 + reg][lane] = bits16(b0) | uint32_t(bits16(b1)) << 16;
+      for (int dst : {0, 8, 16, 24})
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          Registers r;
+          auto bits16 = [bf16](int value) {
+            uint32_t bits = goc::as_bits(float(value));
+            if (bf16)
+              return uint16_t(bits >> 16);
+            return goc::packed16::pack_f16(value, 0);
+          };
+          for (int lane = 0; lane < lanes; ++lane) {
+            int index = lane % 16;
+            for (int reg = 0; reg < 8; ++reg) {
+              int a0 = ((index * 16 + reg * 2) * 7) % 17 - 8;
+              int a1 = ((index * 16 + reg * 2 + 1) * 7) % 17 - 8;
+              int b0 = ((reg * 2 * 16 + index) * 11) % 17 - 8;
+              int b1 = (((reg * 2 + 1) * 16 + index) * 11) % 17 - 8;
+              r.v[reg][lane] = bits16(a0) | uint32_t(bits16(a1)) << 16;
+              r.v[8 + reg][lane] = bits16(b0) | uint32_t(bits16(b1)) << 16;
+            }
+            for (int reg = 0; reg < 256 / lanes; ++reg) {
+              int c = (((lanes / 16 * reg + lane / 16) * 16 + index) * 13) % 129 - 64;
+              r.v[16 + reg][lane] = goc::as_bits(float(c));
+            }
           }
-          for (int reg = 0; reg < 256 / lanes; ++reg) {
-            int c = (((lanes / 16 * reg + lane / 16) * 16 + index) * 13) % 129 - 64;
-            r.v[16 + reg][lane] = goc::as_bits(float(c));
-          }
+          uint32_t before[32][66];
+          std::memcpy(before, r.data, sizeof(before));
+          ASSERT_EQ(floating(bf16, false, lanes)(cpu | exact, 0, r.v + dst, r.v, r.v + 8, r.v + 16),
+                    GOC_SUCCESS);
+          for (int reg = 0; reg < 256 / lanes; ++reg)
+            for (int lane = 0; lane < lanes; ++lane)
+              EXPECT_EQ(r.v[dst + reg][lane],
+                        kWmmaIntegerResult[(reg * (lanes / 16) + lane / 16) * 16 + lane % 16]);
+          for (int reg = 0; reg < 32; ++reg)
+            for (int word = 0; word < 66; ++word)
+              if (reg < dst || reg >= dst + 256 / lanes || word == 0 || word > lanes) {
+                EXPECT_EQ(r.data[31 - reg][word], before[31 - reg][word]);
+              }
         }
-        ASSERT_EQ(floating(bf16, false, lanes)(exact, 0, r.v + dst, r.v, r.v + 8, r.v + 16),
-                  GOC_SUCCESS);
-        for (int reg = 0; reg < 256 / lanes; ++reg)
-          for (int lane = 0; lane < lanes; ++lane)
-            EXPECT_EQ(r.v[dst + reg][lane],
-                      kWmmaIntegerResult[(reg * (lanes / 16) + lane / 16) * 16 + lane % 16]);
-      }
 }
 
 TEST(WmmaReplicatedExact, PackedHardwareMatricesBothHalvesAliasesAndHostState) {
@@ -118,44 +129,45 @@ TEST(WmmaReplicatedExact, PackedHardwareMatricesBothHalvesAliasesAndHostState) {
       for (int fixture = 0; fixture < 7; ++fixture)
         for (unsigned high : {0U, 1U})
           for (int dst : {0, 4, 8, 16, 24})
-            for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
-              Registers r;
-              const auto &input = kPackedInputs[bf16][fixture];
-              for (int lane = 0; lane < lanes; ++lane) {
-                int index = lane % 16;
-                for (int reg = 0; reg < 8; ++reg) {
-                  r.v[reg][lane] = input.a[index * 16 + 2 * reg] |
-                                   (uint32_t(input.a[index * 16 + 2 * reg + 1]) << 16);
-                  r.v[8 + reg][lane] = input.b[2 * reg * 16 + index] |
-                                       (uint32_t(input.b[(2 * reg + 1) * 16 + index]) << 16);
-                }
-                for (int reg = 0; reg < 256 / lanes; ++reg) {
-                  int row = (lanes / 16) * reg + lane / 16;
-                  r.v[16 + reg][lane] = (uint32_t(input.c[row * 16 + index]) << (16 * high)) |
-                                        (0x1234U << (16 * (1 - high)));
-                }
-              }
-              uint32_t expected[32][66];
-              std::memcpy(expected, r.data, sizeof(expected));
-              for (int reg = 0; reg < 256 / lanes; ++reg)
+            for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+              for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
+                Registers r;
+                const auto &input = kPackedInputs[bf16][fixture];
                 for (int lane = 0; lane < lanes; ++lane) {
-                  int row = reg * (lanes / 16) + lane / 16;
-                  uint32_t value =
-                      kReplicatedPackedExpected[lanes == 64][bf16][fixture][row * 16 + lane % 16];
-                  auto &word = expected[31 - dst - reg][lane + 1];
-                  word = (word & ~(65535U << (16 * high))) | (value << (16 * high));
+                  int index = lane % 16;
+                  for (int reg = 0; reg < 8; ++reg) {
+                    r.v[reg][lane] = input.a[index * 16 + 2 * reg] |
+                                     (uint32_t(input.a[index * 16 + 2 * reg + 1]) << 16);
+                    r.v[8 + reg][lane] = input.b[2 * reg * 16 + index] |
+                                         (uint32_t(input.b[(2 * reg + 1) * 16 + index]) << 16);
+                  }
+                  for (int reg = 0; reg < 256 / lanes; ++reg) {
+                    int row = (lanes / 16) * reg + lane / 16;
+                    r.v[16 + reg][lane] = (uint32_t(input.c[row * 16 + index]) << (16 * high)) |
+                                          (0x1234U << (16 * (1 - high)));
+                  }
                 }
-              ASSERT_EQ(std::fesetround(rounding), 0);
-              ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
-              ASSERT_EQ(std::feraiseexcept(FE_INEXACT), 0);
-              ASSERT_EQ(floating(bf16, true, lanes)(exact, high ? GOC_WMMA_HIGH_C_D : 0, r.v + dst,
-                                                    r.v, r.v + 8, r.v + 16),
-                        GOC_SUCCESS);
-              EXPECT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0)
-                  << lanes << "/" << bf16 << "/" << fixture;
-              EXPECT_EQ(std::fegetround(), rounding);
-              EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
-            }
+                uint32_t expected[32][66];
+                std::memcpy(expected, r.data, sizeof(expected));
+                for (int reg = 0; reg < 256 / lanes; ++reg)
+                  for (int lane = 0; lane < lanes; ++lane) {
+                    int row = reg * (lanes / 16) + lane / 16;
+                    uint32_t value =
+                        kReplicatedPackedExpected[lanes == 64][bf16][fixture][row * 16 + lane % 16];
+                    auto &word = expected[31 - dst - reg][lane + 1];
+                    word = (word & ~(65535U << (16 * high))) | (value << (16 * high));
+                  }
+                ASSERT_EQ(std::fesetround(rounding), 0);
+                ASSERT_EQ(std::feclearexcept(FE_ALL_EXCEPT), 0);
+                ASSERT_EQ(std::feraiseexcept(FE_INEXACT), 0);
+                ASSERT_EQ(floating(bf16, true, lanes)(cpu | exact, high ? GOC_WMMA_HIGH_C_D : 0,
+                                                      r.v + dst, r.v, r.v + 8, r.v + 16),
+                          GOC_SUCCESS);
+                EXPECT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0)
+                    << lanes << "/" << bf16 << "/" << fixture;
+                EXPECT_EQ(std::fegetround(), rounding);
+                EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
+              }
 }
 
 TEST(WmmaReplicatedExact, EveryFloatingModifierAndHalfSelection) {
@@ -208,15 +220,17 @@ TEST(WmmaReplicatedExact, PackedOverflowAndValidation) {
     for (bool bf16 : {false, true}) {
       Registers r;
       auto fn = floating(bf16, true, lanes);
+      uint32_t before[32][66];
+      std::memcpy(before, r.data, sizeof(before));
       for (unsigned bit = 0; bit < 64; ++bit) {
         if ((1ULL << bit) & (63ULL | GOC_WMMA_HIGH_C_D))
           continue;
-        EXPECT_EQ(fn(exact, 1ULL << bit, nullptr, nullptr, nullptr, nullptr),
+        EXPECT_EQ(fn(exact, 1ULL << bit, r.v + 24, r.v, r.v + 8, r.v + 16),
                   GOC_ERROR_INVALID_FLAGS);
       }
-      EXPECT_EQ(
-          fn(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT, 0, nullptr, nullptr, nullptr, nullptr),
-          GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      EXPECT_EQ(fn(GOC_SEMANTICS_MASK | GOC_SEMANTICS_STRICT, 0, r.v + 24, r.v, r.v + 8, r.v + 16),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      EXPECT_EQ(std::memcmp(before, r.data, sizeof(before)), 0);
       if (bf16)
         continue;
       for (unsigned high : {0U, 1U})
@@ -602,6 +616,16 @@ TEST(WmmaPackedLoose, ScalarSimdSpecialAndRandomInputs) {
                 ASSERT_EQ(fn(flags | cpu, modifiers, actual.v + 24, actual.v, actual.v + 8,
                              actual.v + 16),
                           GOC_SUCCESS);
+                for (int reg = 0; reg < 32; ++reg)
+                  for (int word = 0; word < 66; ++word) {
+                    uint32_t got = actual.data[31 - reg][word];
+                    uint32_t before = original.data[31 - reg][word];
+                    if (reg < 24 || reg >= 24 + regs || word == 0 || word > lanes) {
+                      EXPECT_EQ(got, before);
+                    } else if (!rdna4) {
+                      EXPECT_EQ((got >> (16 - shift)) & 65535U, (before >> (16 - shift)) & 65535U);
+                    }
+                  }
                 for (int reg = 0; reg < regs; ++reg)
                   for (int lane = 0; lane < lanes; ++lane)
                     for (int part = 0; part < (rdna4 ? 2 : 1); ++part) {
@@ -610,6 +634,26 @@ TEST(WmmaPackedLoose, ScalarSimdSpecialAndRandomInputs) {
                       unsigned infinity = bf16 ? 0x7f80 : 0x7c00;
                       if ((want & 0x7fffU) > infinity) {
                         EXPECT_GT(got & 0x7fffU, infinity);
+                      } else if ((want & 0x7fffU) != 0 && (want & 0x7fffU) < infinity) {
+                        // Independent arithmetic decoding for the comparison. The
+                        // expected arithmetic is still a scalar/SIMD differential.
+                        auto decode = [bf16](uint16_t bits) {
+                          unsigned mantissa = bf16 ? 7 : 10, bias = bf16 ? 127 : 15;
+                          unsigned exponent = (bits & 32767) >> mantissa;
+                          unsigned fraction = bits & ((1U << mantissa) - 1);
+                          if (exponent == (bf16 ? 255U : 31U))
+                            return fraction ? NAN : (bits & 32768 ? -INFINITY : INFINITY);
+                          double value =
+                              std::ldexp(double(fraction + (exponent ? 1U << mantissa : 0)),
+                                         int(exponent ? exponent : 1) - int(bias) - int(mantissa));
+                          return float(bits & 32768 ? -value : value);
+                        };
+                        EXPECT_TRUE(
+                            goc_test::fuzzy(decode(got), decode(want),
+                                            bf16 ? goc_test::half_dot_bf16_tolerance
+                                                 : goc_test::scalar_arithmetic_f16_tolerance))
+                            << rdna4 << '/' << lanes << '/' << bf16 << '/' << batch << '/' << mode
+                            << '/' << cpu;
                       } else {
                         EXPECT_EQ(got, want) << rdna4 << '/' << lanes << '/' << bf16 << '/' << batch
                                              << '/' << mode << '/' << cpu;

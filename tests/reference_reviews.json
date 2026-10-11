@@ -1672,7 +1672,8 @@
       "tests/mullit_test.cpp",
       "tests/mullit_reference.h",
       "tests/mullit_hardware.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/LOOSE_TOLERANCES.md",
+      "tests/mullit_checks.h"
     ],
     "scope": "RDNA4 MULLIT both widths, loose-only. Independent lighting-rule reference supplies numerical comparisons; retained gfx1201 MODE=0xf0 Cartesian and DPP captures separately anchor special behavior. General written numerical results now use calibrated fuzzy bounds; signed zeros, sentinel and untouched storage stay exact. All 512 modifiers, aliases, unaligned guards, shared sources, seven DPP descriptors and EXEC are exercised on all available CPU selectors. Wave32 uses 84 masks for ordinary routing and endpoint DPP modes; Wave64 uses three representative masks and stratified row masks. Strict exact semantics and exact optional-state reporting are explicitly rejected. Captures retain their limited domain and NaN canonicalization.",
     "diagnostics": "Computed checks report CPU/mode/lane (and architecture/policy/route where applicable); hardware digests remain complemented by per-output computed and literal witnesses. Agreement with GoC is not claimed to prove arbitrary-input hardware equivalence."
@@ -1689,7 +1690,8 @@
       "tests/mullit_architecture_test.cpp",
       "tests/mullit_reference.h",
       "tests/mullit_hardware.h",
-      "tests/LOOSE_TOLERANCES.md"
+      "tests/LOOSE_TOLERANCES.md",
+      "tests/mullit_checks.h"
     ],
     "scope": "RDNA3/RDNA4 both widths: independently expressed loose lighting rule and inherited rocjitsu ffc144c564c finish/OMOD policy, not a new bit-exact model. All 512 modes and eight guest policies sample DPP, aliases and EXEC with deterministic mt19937 words and capture boundaries on all CPU selectors. Written numerical outputs are fuzzy; guards, inactive lanes and optional-state preservation remain raw. RDNA3 4096-triple Cartesian lighting reference and six literal architecture differences cover sentinel, signed-zero, scaling and denormal ordering. Invalid flags, unsupported strict exact/global-state, empty EXEC and host controls are tested. Calibration and a separate random-seed holdout are documented in LOOSE_TOLERANCES.md.",
     "diagnostics": "Computed checks report CPU/mode/lane (and architecture/policy/route where applicable); hardware digests remain complemented by per-output computed and literal witnesses. Agreement with GoC is not claimed to prove arbitrary-input hardware equivalence."
@@ -2736,7 +2738,7 @@
       "tests/packed_modifier_fixtures.h",
       "tests/wmma_replicated_exact_test.cpp"
     ],
-    "scope": "RDNA4 packed FP16/BF16 WMMA, both wave widths. Independent rocjitsu gfx1201 matrix captures cover fractional, underflow, special, cancellation and accumulator-alignment cases with destination aliases and host rounding modes, now on every available CPU selector. Modifier captures and borrowed intermediate-overflow witnesses retain raw expected bits. A small computed modifier oracle uses only exactly representable integer intermediates and results, now in both semantics on every CPU selector. These simple references do not establish arbitrary-input computed-reference equivalence. General loose layout/narrowing/random differential coverage lives in wmma_replicated_exact_test.cpp; its numerical tolerance review remains pending with that family.",
+    "scope": "RDNA4 packed FP16/BF16 WMMA, both wave widths. Independent rocjitsu gfx1201 matrix captures cover fractional, underflow, special, cancellation and accumulator-alignment cases with destination aliases and host rounding modes, now on every available CPU selector. Modifier captures and borrowed intermediate-overflow witnesses retain raw expected bits. A small computed modifier oracle uses only exactly representable integer intermediates and results, now in both semantics on every CPU selector. These simple references do not establish arbitrary-input computed-reference equivalence. General loose layout/narrowing/random differential coverage lives in wmma_replicated_exact_test.cpp; its numerical tolerance review is recorded with that family.",
     "diagnostics": "Added all non-output register preservation to matrix captures and computed modifier checks, CPU/destination/rounding context, and separate full-storage error preservation for all unknown modifier bits, invalid global flags and reserved strict semantics. No new golden arrays or numerical model. Six tests pass on Clang and GCC."
   },
   {
@@ -2872,5 +2874,31 @@
     ],
     "scope": "RDNA4 FP32-output FP16/BF16 WMMA in both widths, across available CPU selectors. Borrowed hardware matrix fixtures have width-specific raw exact outputs and fuzzy loose comparisons. Independent offline small-integer goldens, identity matrices, partial operand overlaps and modifier integer arithmetic cover layout and aliases. Explicit BF16 subnormal/overflow/category witnesses and per-element/per-accumulator Zen4 eligibility checks cover fallback boundaries. General scalar/SIMD comparisons are differential, not hardware evidence; independent bounded fractional references for these same entry points now reside in wmma_replicated_test.cpp. Direct internal format/DOT2 fixture tests and public DOT2 masked/alias checks are supplemental to the separately reviewed DOT2 families. Exact flags remain opt-out where exposed by DOT2.",
     "diagnostics": "Added all non-output storage preservation to matrix capture/overlap and dense golden checks in both widths. General written finite nonzero scalar/SIMD arithmetic uses fuzzy comparisons; untouched storage, zero/infinity categories and literal policy witnesses remain raw. Captured exact results retain raw bits. All 23 tests pass on Clang and GCC, including calibration with alternate random differential seeds; the existing tolerance remains unchanged."
+  },
+  {
+    "file": "wmma_replicated_exact_test.cpp",
+    "assertions": [
+      "WmmaReplicatedExact.BorrowedDot2HardwareBitsUnderHostFpModes",
+      "WmmaReplicatedExact.BorrowedFp32HardwareMatrix",
+      "WmmaReplicatedExact.PackedHardwareMatricesBothHalvesAliasesAndHostState",
+      "WmmaReplicatedExact.EveryFloatingModifierAndHalfSelection",
+      "WmmaReplicatedExact.PackedOverflowAndValidation",
+      "WmmaReplicatedExact.IntegerSignsClampAliasesAndGuards",
+      "WmmaReplicatedExact.IntegerClampIsFinalNotStaged",
+      "WmmaReplicatedExact.IntegerArchitectureSaturationBoundaries",
+      "WmmaReplicatedExact.FloatingArchitectureRoundingBoundaries",
+      "WmmaPackedLoose.LayoutsModifiersAliasesAndGuards",
+      "WmmaPackedLoose.IntermediateNarrowingAndOverflow",
+      "WmmaPackedLoose.ScalarSimdSpecialAndRandomInputs"
+    ],
+    "evidence": [
+      "tests/wmma_replicated_exact_test.cpp",
+      "tests/gfx11_dot2_fixtures.h",
+      "tests/wmma_replicated_packed_fixtures.h",
+      "tests/packed_wmma_fixtures.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "RDNA3 FP16/BF16 FP32 and packed WMMA exact paths inherit rocjitsu GFX11 DOT2 hardware fixtures and matrix captures. Packed matrices cover both output halves, both widths, source/destination aliases and host rounding modes; raw full-storage expectations preserve unselected halves and guards. Floating modifiers also have a same-library raw-source transformation check, explicitly supplemental to hardware anchors. Integer IU4/IU8 references use widened arithmetic and final signed clamp, with literal architecture witnesses distinguishing RDNA4 staged clamp. Floating architecture witnesses distinguish borrowed DOT2/DOT4 intermediate narrowing. Loose packed coverage includes independent exactly representable integer matrix arithmetic across every modifier, both architectures/widths and CPU selectors, literal intermediate narrowing/overflow behavior, and scalar/SIMD special/arbitrary-word differential comparisons. The latter do not establish arbitrary-input hardware equivalence or serve as independent general numerical references.",
+    "diagnostics": "Expanded borrowed FP32 and packed hardware matrix checks to all CPU selectors, added FP32 non-output preservation and real-storage packed validation checks. General finite nonzero packed differential outputs use independently decoded numeric fuzzy comparisons, while NaNs are classified and zeros/infinities, sources, guards and unused halves remain raw. Primary/alternate random seeds have zero measured differential error on Clang and GCC. All twelve tests pass; exact fixture comparisons remain bitwise."
   }
 ]
