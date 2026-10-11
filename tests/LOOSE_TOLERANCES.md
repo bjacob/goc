@@ -518,3 +518,27 @@ do not establish a tolerance for arbitrary unbounded FP8/BF8 matrices.
 The separate hardware digests deliberately retain raw comparisons: their
 small-integer inputs and sums are exactly representable. Exhaustive encoding
 checks use exact multiplication by sixteen or explicit NaN classification.
+
+
+### Sparse FP16/BF16 WMMA
+
+`Swmmac16.FractionalMatricesAgainstDoubleReference` packs independent logical
+sparse matrices, applying A/B negation by compressed pair position. It covers
+both widths, all keys, all negation combinations, and all four CPU selectors.
+Operands and accumulators are normal signed values below four, with eight
+operand exponents. Double accumulation provides the mathematical loose oracle;
+packed outputs are decoded and compared as real numbers. The existing FP32
+WMMA bound remains `(1e-5, 1e-5)`. Packed FP16 uses `(1e-5, 5e-4)` and BF16
+`(1e-5, 4e-3)`, allowing final-format rounding and measured accumulation error.
+
+| Output | Comparisons per seed/compiler | Primary max absolute / relative | Holdout max absolute / relative |
+| --- | ---: | --- | --- |
+| FP32 | 786,432 | 6.3627958297729492e-6 / 0.0028294063125030491 | 5.4836273193359375e-6 / 0.012451593684837652 |
+| FP16 | 393,216 | 0.015602109953761101 / 0.0021952290355627103 | 0.015521987341344357 / 0.013722569754741336 |
+| BF16 | 393,216 | 0.11626553535461426 / 0.0038905035226522119 | 0.12195014953613281 / 0.0038902225991997263 |
+
+Primary seed 38671 and holdout 89767 pass on Clang and GCC, with identical
+measurements. Near-zero cancellation explains relative peaks above `rtol`;
+the absolute term covers those cases. These are bounded-domain measurements,
+not promises for arbitrary exponent spreads. Separate raw capture, midpoint
+and infinity/saturation tests retain their exact categorical contracts.

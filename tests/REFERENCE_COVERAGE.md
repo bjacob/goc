@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 149 explicit family-file reviews exist and 5
+non-generic family references. 150 explicit family-file reviews exist and 4
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -595,3 +595,11 @@ it uses the existing WMMA fuzzy bound with two measured deterministic seeds.
 Hardware digests remain raw because their restricted arithmetic is exact.
 Differential alias checks remain separately identified. Source and validation
 preservation coverage now spans both widths.
+
+
+Sparse FP16/BF16 WMMA now has independent fractional matrix references for
+FP32 and packed outputs, both widths, all index keys and all pair-negation
+combinations. Captured integer corpora and literal midpoint/overflow witnesses
+remain raw; general fractional results use measured family/output tolerances.
+Both-width source/error preservation is explicit. Scalar/SIMD alias references
+are identified as differential rather than independent hardware evidence.

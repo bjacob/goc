@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: MIT
 
 #include "capture_hash.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
+#include "loose_tolerances.h"
 #include "swmmac16_hardware.h"
 #include "swmmac16_wave64_hardware.h"
 
+#include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
+#include <random>
 #include <stdint.h>
 
 namespace {
@@ -51,6 +55,8 @@ TEST(Swmmac16, HardwareAllModifiers) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
         for (unsigned variant = 0; variant < 32; ++variant) {
           Registers r(op);
+          uint32_t before[21][32];
+          std::memcpy(before, r.data, sizeof(before));
           ASSERT_EQ(functions[op](cpu | semantics, mode(variant), r.d, r.a, r.b, r.index),
                     GOC_SUCCESS);
           uint64_t digest = goc_test::capture_hash_seed;
@@ -59,10 +65,15 @@ TEST(Swmmac16, HardwareAllModifiers) {
               digest = goc_test::capture_hash_bytes(digest, r.d[reg][lane], 4);
           ASSERT_EQ(digest, goc_test::swmmac16_capture_digests[op][variant])
               << op << "/" << semantics << "/" << cpu << "/" << variant;
+          for (unsigned reg = 0; reg < 21; ++reg)
+            if (reg < 12 || reg >= 12 + (op >= 2 ? 4U : 8U)) {
+              EXPECT_EQ(std::memcmp(before[reg], r.data[reg], sizeof(before[reg])), 0);
+            }
         }
 }
 
 TEST(Swmmac16, EveryLaneAndModifier) {
+  // Differential CPU diagnostic; the captures above are the independent oracle.
   for (unsigned op = 0; op < 4; ++op)
     for (unsigned variant = 0; variant < 32; ++variant) {
       Registers full(op);
@@ -98,7 +109,6 @@ TEST(Swmmac16, OverlappingSourcesAndDuplicateDestinations) {
           std::memcpy(expected, r.data, sizeof(expected));
           for (unsigned reg = 0; reg < regs; ++reg)
             for (unsigned lane = 0; lane < 32; ++lane)
-
               expected[offsets[reg]][lane] = reference.d[reg][lane];
           ASSERT_EQ(functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
           ASSERT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0)
@@ -111,10 +121,18 @@ TEST(Swmmac16, Validation) {
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, nullptr, nullptr, nullptr,
                  nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
-    for (unsigned bit = 0; bit < 32; ++bit)
-      if (!((1u << bit) & mode(31))) {
-        EXPECT_EQ(fn(0, 1u << bit, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+    Registers r(0);
+    uint32_t before[21][32];
+    std::memcpy(before, r.data, sizeof(before));
+    for (unsigned bit = 0; bit < 64; ++bit)
+      if (!((1ULL << bit) & mode(31))) {
+        EXPECT_EQ(fn(0, 1ULL << bit, r.d, r.a, r.b, r.index), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(std::memcmp(before, r.data, sizeof(before)), 0);
       }
+    EXPECT_EQ(fn(1ULL << 63, 0, r.d, r.a, r.b, r.index), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, r.d, r.a, r.b, r.index),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(std::memcmp(before, r.data, sizeof(before)), 0);
   }
 }
 
@@ -218,6 +236,8 @@ TEST(Swmmac16, Wave64NativeAllModifiers) {
         for (unsigned variant = 0; variant < 64; ++variant) {
           uint32_t data[21][64];
           goc_test::swmmac16_capture_inputs(op, data);
+          uint32_t before[21][64];
+          std::memcpy(before, data, sizeof(before));
           const uint32_t *a[] = {data[0], data[1]}, *b[] = {data[4], data[5], data[6], data[7]},
                          *index[] = {data[20]};
           uint32_t *d[] = {data[12], data[13], data[14], data[15]};
@@ -229,6 +249,10 @@ TEST(Swmmac16, Wave64NativeAllModifiers) {
               hash = goc_test::capture_hash_word(hash, d[reg][lane]);
           ASSERT_EQ(hash, goc_test::swmmac16_wave64_digests[op][variant])
               << op << "/" << semantics << "/" << cpu << "/" << variant;
+          for (unsigned reg = 0; reg < 21; ++reg)
+            if (reg < 12 || reg >= 12 + (op >= 2 ? 2U : 4U)) {
+              EXPECT_EQ(std::memcmp(before[reg], data[reg], sizeof(before[reg])), 0);
+            }
         }
 }
 
@@ -253,7 +277,6 @@ TEST(Swmmac16, Wave64OverlappingSourcesAndDuplicateDestinations) {
           std::memcpy(expected, r.data, sizeof(expected));
           for (unsigned reg = 0; reg < regs; ++reg)
             for (unsigned lane = 0; lane < 64; ++lane)
-
               expected[offsets[reg]][lane] = reference.d[reg][lane];
           ASSERT_EQ(wide_functions[op](cpu, mode(variant), r.d, r.a, r.b, r.index), GOC_SUCCESS);
           ASSERT_EQ(std::memcmp(expected, r.data, sizeof(expected)), 0)
@@ -266,10 +289,18 @@ TEST(Swmmac16, Wave64Validation) {
     EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, nullptr, nullptr, nullptr,
                  nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    WideRegisters r(0);
+    uint32_t before[21][64];
+    std::memcpy(before, r.data, sizeof(before));
     for (unsigned bit = 0; bit < 64; ++bit)
       if (!((1ULL << bit) & mode(63))) {
-        EXPECT_EQ(fn(0, 1ULL << bit, nullptr, nullptr, nullptr, nullptr), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(fn(0, 1ULL << bit, r.d, r.a, r.b, r.index), GOC_ERROR_INVALID_FLAGS);
+        EXPECT_EQ(std::memcmp(before, r.data, sizeof(before)), 0);
       }
+    EXPECT_EQ(fn(1ULL << 63, 0, r.d, r.a, r.b, r.index), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, r.d, r.a, r.b, r.index),
+              GOC_ERROR_UNSUPPORTED_SEMANTICS);
+    EXPECT_EQ(std::memcmp(before, r.data, sizeof(before)), 0);
   }
 }
 
@@ -355,4 +386,125 @@ TEST(Swmmac16, Wave64AccumulatorAndPairNegationAcrossOutputFormats) {
           for (unsigned lane = 0; lane < 64; ++lane)
             ASSERT_EQ(r.d[reg][lane], expected) << op << '/' << cpu << '/' << variant;
       }
+}
+
+TEST(Swmmac16, FractionalMatricesAgainstDoubleReference) {
+  // Logical sparse matrices and double accumulation are independent of the
+  // production readers/kernels. Packed outputs are compared as real numbers;
+  // this is a loose numerical oracle, not a model of hardware rounding stages.
+  for (unsigned width : {32U, 64U})
+    for (unsigned op = 0; op < 4; ++op) {
+      std::mt19937 random(38671);
+      const bool bf16 = op & 1, packed = op >= 2;
+      const unsigned mantissa = bf16 ? 7 : 10, bias = bf16 ? 127 : 15;
+      auto decode = [&](uint16_t code) {
+        unsigned fraction = code & ((1U << mantissa) - 1);
+        unsigned exponent = (code & 32767) >> mantissa;
+        double value = std::ldexp(double(fraction + (exponent ? 1U << mantissa : 0)),
+                                  int(exponent ? exponent : 1) - int(bias) - int(mantissa));
+        return code & 32768 ? -value : value;
+      };
+      auto operand = [&]() {
+        unsigned bits = random();
+        // Eight exponents, normal finite factors below four, both signs.
+        return uint16_t((bits & 32768) | ((bias - 6 + (bits >> 16) % 8) << mantissa) |
+                        (bits & ((1U << mantissa) - 1)));
+      };
+      for (unsigned batch = 0; batch < 64; ++batch)
+        for (unsigned key = 0; key < width / 16; ++key) {
+          unsigned modifiers = mode((batch % 16) | (key << 4));
+          uint32_t original[21][64] = {};
+          double a_values[16][16], b_values[32][16], sums[16][16];
+          unsigned selected[16][16];
+          for (unsigned row = 0; row < 16; ++row)
+            for (unsigned pair = 0; pair < 8; ++pair) {
+              const unsigned pairs[] = {4, 8, 12, 9, 13, 14};
+              unsigned selection = pairs[random() % 6];
+              for (unsigned part = 0; part < 2; ++part) {
+                unsigned ck = 2 * pair + part;
+                unsigned lane = row + 16 * (width == 64 ? pair / 2 : pair / 2 % 2);
+                unsigned reg = width == 64 ? pair % 2 : 2 * (pair / 4) + pair % 2;
+                unsigned local = 2 * reg + part;
+                selected[row][ck] = 4 * pair + ((selection >> (2 * part)) & 3);
+                original[20][lane] |= ((selection >> (2 * part)) & 3)
+                                      << (key * (width == 64 ? 8 : 16) + 2 * local);
+                uint16_t code = operand();
+                a_values[row][ck] = decode(code);
+                if (modifiers & (part ? GOC_WMMA_NEG_HI_A : GOC_WMMA_NEG_LO_A))
+                  a_values[row][ck] = -a_values[row][ck];
+                original[reg][lane] |= uint32_t(code) << (16 * part);
+              }
+            }
+          for (unsigned k = 0; k < 32; ++k)
+            for (unsigned col = 0; col < 16; ++col) {
+              uint16_t code = operand();
+              b_values[k][col] = decode(code);
+              unsigned lane = col + 16 * (width == 64 ? k / 8 : k / 8 % 2);
+              unsigned reg = width == 64 ? k % 8 / 2 : 4 * (k / 16) + k % 8 / 2;
+              original[4 + reg][lane] |= uint32_t(code) << (16 * (k % 2));
+            }
+          for (unsigned row = 0; row < 16; ++row)
+            for (unsigned col = 0; col < 16; ++col) {
+              unsigned count = (packed ? 128 : 256) / width;
+              unsigned section = packed ? row % 8 / 2 : row % 8;
+              unsigned reg = section % count;
+              unsigned lane = col + 16 * (row / 8) + 32 * (section / count);
+              uint16_t code = operand();
+              double sum = decode(code);
+              if (packed) {
+                original[12 + reg][lane] |= uint32_t(code) << (16 * (row % 2));
+              } else {
+                float c = float(sum);
+                std::memcpy(&original[12 + reg][lane], &c, sizeof(c));
+              }
+              for (unsigned ck = 0; ck < 16; ++ck) {
+                double b = b_values[selected[row][ck]][col];
+                // B negation follows compressed pair position, not dense K parity.
+                if (modifiers & (ck % 2 ? GOC_WMMA_NEG_HI_B : GOC_WMMA_NEG_LO_B))
+                  b = -b;
+                sum += a_values[row][ck] * b;
+              }
+              sums[row][col] = sum;
+            }
+          for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+            uint32_t data[21][64];
+            std::memcpy(data, original, sizeof(data));
+            const uint32_t *a[] = {data[0], data[1], data[2], data[3]};
+            const uint32_t *b[] = {data[4], data[5], data[6],  data[7],
+                                   data[8], data[9], data[10], data[11]};
+            const uint32_t *index[] = {data[20]};
+            uint32_t *d[] = {data[12], data[13], data[14], data[15],
+                             data[16], data[17], data[18], data[19]};
+            ASSERT_EQ(
+                (width == 64 ? wide_functions[op] : functions[op])(cpu, modifiers, d, a, b, index),
+                GOC_SUCCESS);
+            unsigned count = (packed ? 128 : 256) / width;
+            for (unsigned row = 0; row < 16; ++row)
+              for (unsigned col = 0; col < 16; ++col) {
+                unsigned section = packed ? row % 8 / 2 : row % 8;
+                unsigned lane = col + 16 * (row / 8) + 32 * (section / count);
+                uint32_t word = d[section % count][lane];
+                double actual;
+                if (packed) {
+                  actual = decode(uint16_t(word >> (16 * (row % 2))));
+                } else {
+                  float value;
+                  std::memcpy(&value, &word, sizeof(value));
+                  actual = value;
+                }
+                auto tolerance = !packed ? goc_test::wmma_f32_tolerance
+                                 : bf16  ? goc_test::swmmac_bf16_tolerance
+                                         : goc_test::swmmac_f16_tolerance;
+                EXPECT_TRUE(goc_test::fuzzy(actual, sums[row][col], tolerance))
+                    << width << '/' << op << '/' << batch << '/' << key << '/' << cpu
+                    << " row=" << row << " col=" << col;
+              }
+            for (unsigned reg = 0; reg < 21; ++reg)
+              for (unsigned lane = 0; lane < 64; ++lane)
+                if (reg < 12 || reg >= 12 + count || lane >= width) {
+                  EXPECT_EQ(data[reg][lane], original[reg][lane]);
+                }
+          }
+        }
+    }
 }

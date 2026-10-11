@@ -870,3 +870,15 @@ checks with their restricted oracle domains documented. Expanded capture source
 preservation and both-width validation/error checks. All ten tests pass on
 Clang and GCC. Inventory: 149/154 families reviewed; five matrix families and
 final broad verification remain pending.
+
+
+### Sparse FP16/BF16 WMMA review
+
+Added independent fractional references across output formats, both widths,
+all keys/negation combinations and all available CPU selectors. Measured FP32,
+FP16 and BF16 bounds with primary and holdout seeds (1,572,864 comparisons per
+seed/compiler), retaining exact small-integer captures and literal midpoint,
+overflow and pair-position witnesses. Added capture source preservation and
+full-storage invalid-request checks. All fourteen tests pass on Clang and GCC.
+Inventory: 150/154 families reviewed; four matrix families and final broad
+verification remain pending.

@@ -26,6 +26,9 @@ inline const Tolerance unary_f32_tolerance = {0, 2.5e-7};
 inline const Tolerance fma_f16_tolerance = {0x1p-24, 1e-3};
 inline const Tolerance fma_f32_tolerance = {0x1p-149, 1.2e-7};
 inline const Tolerance mullit_tolerance = {0x1p-149, 1.2e-7};
+// Sparse matrix factors and accumulators bounded by four.
+inline const Tolerance swmmac_f16_tolerance = {1e-5, 5e-4};
+inline const Tolerance swmmac_bf16_tolerance = {1e-5, 4e-3};
 inline const Tolerance wmma_f32_tolerance = {1e-5, 1e-5};
 inline const Tolerance interp_f32_tolerance = {1e-44, 2e-7};
 inline const Tolerance trig_f32_tolerance = {3e-7, 0};

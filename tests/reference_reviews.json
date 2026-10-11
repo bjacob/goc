@@ -2761,5 +2761,32 @@
     ],
     "scope": "All four FP8/BF8 sparse matrix combinations, both wave widths, every index key and available CPU selector. Independent gfx1201 digests use sixteen deterministic small-integer inputs with exact sums; native Wave64 captures are separate. Each of 256 operand encodings is decoded mathematically and multiplied by sixteen against one-valued partners, with NaN classification and otherwise exact scaling. New bounded fractional logical matrices with legal 2:4 selectors use independent double accumulation and fuzzy comparisons; no production decoder or accumulation helper supplies their expected values. Same-library per-lane and alias/duplicate-destination comparisons are differential checks rather than independent arithmetic oracles. Strict exact semantics are unsupported; captured non-strict exact calls explicitly exercise loose fallback.",
     "diagnostics": "Added non-output storage preservation to both-width captures and all sources/out-of-wave storage checks to random matrices. Expanded Wave32 validation to all 64 instruction-flag bits and both widths to invalid global flags and unchanged outputs on strict-exact rejection. Digest context includes sample. Primary and holdout fractional seeds each compare 1,572,864 values per compiler; existing WMMA bound passes unchanged on Clang and GCC. All ten tests pass."
+  },
+  {
+    "file": "swmmac16_test.cpp",
+    "assertions": [
+      "Swmmac16.HardwareAllModifiers",
+      "Swmmac16.EveryLaneAndModifier",
+      "Swmmac16.OverlappingSourcesAndDuplicateDestinations",
+      "Swmmac16.Validation",
+      "Swmmac16.PackedNearestEvenMidpoints",
+      "Swmmac16.FiniteOverflowAndInfinity",
+      "Swmmac16.AccumulatorAndPairNegationAcrossOutputFormats",
+      "Swmmac16.Wave64NativeAllModifiers",
+      "Swmmac16.Wave64OverlappingSourcesAndDuplicateDestinations",
+      "Swmmac16.Wave64Validation",
+      "Swmmac16.Wave64PackedNearestEvenMidpoints",
+      "Swmmac16.Wave64FiniteOverflowAndInfinity",
+      "Swmmac16.Wave64AccumulatorAndPairNegationAcrossOutputFormats",
+      "Swmmac16.FractionalMatricesAgainstDoubleReference"
+    ],
+    "evidence": [
+      "tests/swmmac16_test.cpp",
+      "tests/swmmac16_hardware.h",
+      "tests/swmmac16_wave64_hardware.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Sparse FP16/BF16 with FP32 or packed output, both widths and all CPU selectors. Independent gfx1201 small-integer captures cover all negation/index-key variants, including native Wave64 captures. Literal midpoint, overflow/infinity and accumulator/pair-negation witnesses cover packed output rounding and the distinction between compressed pair position and dense K parity. Strict exact semantics are unsupported and non-strict exact capture checks exercise loose fallback. New deterministic fractional logical matrices use independently decoded normal operands bounded by four, legal 2:4 selectors, double accumulation and fuzzy output checks; all negation combinations and keys occur in each width. This mathematical loose oracle does not claim empirical hardware rounding equivalence. Aliases and duplicate destinations use separately identified scalar/SIMD differential references with full expected storage images.",
+    "diagnostics": "Added non-output preservation to both hardware corpus tests, full-storage validation with all 64 unknown-bit positions in both widths, and source/out-of-wave checks to random matrices. Calibrated packed FP16/BF16 bounds and retained the existing FP32 WMMA bound, with 1,572,864 total finite comparisons per seed per compiler. Primary and holdout seeds and all fourteen tests pass on Clang and GCC."
   }
 ]
