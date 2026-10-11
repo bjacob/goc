@@ -2427,5 +2427,34 @@
     ],
     "scope": "RDNA3/RDNA4 F16 and BF16 half-output DOT2 at both widths, all available CPU selectors. Loose-only integration checks every supported ABS/NEG and C/D half-selection combination using exactly representable small integer products/sums, eight guest policies, representative DPP descriptors, shared sources, destination aliases, full/mixed EXEC and guards. Raw equality here tests exact integer routing and field preservation rather than imposing arbitrary loose rounding. Exhaustive accumulator encodings cover fixed FP16-preserve/BF16-flush behavior; NaNs use classification. Literal ties, overflow saturation, infinity and denormal witnesses anchor fixed policies. Unsupported exact semantics/reporting, invalid modifiers, empty masks and preservation of host controls are checked. General fractional numerical coverage belongs to half_dot_test.cpp; these architecture-integration tests do not establish hardware-exact semantics.",
     "diagnostics": "Extended literal policy checks to out-of-wave storage and every input word, with architecture/type/CPU/guest/lane context. Existing full-array routing comparisons preserve destination halves, sources, guards and inactive lanes. Computed small integer references need no golden arrays."
+  },
+  {
+    "file": "half_dot_test.cpp",
+    "assertions": [
+      "HalfDot.AllModifiersHalfSelectionsMasksAndAliases",
+      "HalfDot.EveryAccumulatorEncoding",
+      "HalfDot.LiteralRoundingDenormalsAndOverflow",
+      "HalfDot.Validation",
+      "HalfDot.RandomEncodingsSimdMatchesScalar",
+      "HalfDot.DppModifiersMasksAliasesAndGuards",
+      "HalfDot.DppValidation",
+      "HalfDot.DppHardwareCorpus",
+      "HalfDot.Wave64AllModifiersHalfSelectionsMasksAndAliases",
+      "HalfDot.Wave64EveryAccumulatorEncoding",
+      "HalfDot.Wave64LiteralRoundingDenormalsAndOverflow",
+      "HalfDot.Wave64Validation",
+      "HalfDot.Wave64DppModifiersMasksAliasesAndGuards",
+      "HalfDot.Wave64DppValidation",
+      "HalfDot.FractionalInputsAgainstDoubleReference"
+    ],
+    "evidence": [
+      "tests/half_dot_test.cpp",
+      "tests/half_reference.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Loose half-output F16/BF16 DOT2. RDNA4 both-width tests span all 256 ABS/NEG and C/D half-selection combinations, whole-register destination aliases, 84 Wave32 masks and representative Wave64 masks, plus DPP controls and guards. Independent small integer arithmetic is exactly representable and deliberately uses raw checks for routing. Every accumulator encoding is covered in both widths with explicit fixed BF16 flushing and NaN classification. Literal signed-zero, ties, overflow saturation, infinity and denormal cases remain raw. A retained gfx1201 DPP digest independently anchors the fixed binary-exact corpus, not arbitrary inputs or exact API support. Random all-encoding Wave32 checks are scalar/SIMD differential. A new bounded-normal fractional corpus supplies independent double arithmetic for both architectures, widths and all available CPU selectors, including ABS/NEG, C/D half selection, full/mixed masks and optional-state preservation. Strict exact semantics remain unsupported; non-strict fallback, invalid flags and empty masks are explicit.",
+    "diagnostics": "New fractional comparisons use calibrated FP16/BF16 atol/rtol with alternate seeds and architecture/CPU/batch/lane diagnostics. Existing random differential finite results now use the same numeric policy while categorical outputs, inactive words and unselected halves remain raw. Added every nondestination word to ordinary modifier/alias sweeps. Existing per-word DPP integration checks localize routing failures; the separate hardware digest remains aggregate evidence."
   }
 ]

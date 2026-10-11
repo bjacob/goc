@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 136 explicit family-file reviews exist and 18
+non-generic family references. 137 explicit family-file reviews exist and 17
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -508,3 +508,11 @@ use exact small-integer references to check routing and field preservation,
 plus literal policy witnesses and exhaustive accumulator encodings. They remain
 loose-only and make no claim of empirical bit-exact support. Both families cover
 both wave widths; new numerical loose DOT2 tests cover every CPU selector.
+
+
+Half-output DOT2 now has independent fractional double-reference tests across both
+architectures, widths and CPU selectors. The existing all-encoding random test
+is explicitly scalar/SIMD differential, with fuzzy finite comparisons and raw
+unwritten storage. Literal and integer routing assertions remain exact, as does
+the retained fixed-domain hardware DPP digest. Ordinary alias sweeps now check
+all nondestination words. This family remains loose-only.

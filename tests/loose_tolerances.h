@@ -9,6 +9,8 @@ namespace goc_test {
 // Family/domain-specific bounds. Measurements and provenance are recorded in
 // LOOSE_TOLERANCES.md; these are not universal tolerances for every instruction
 // producing the same numeric format.
+// Half-output DOT2 with BF16 operands/results; measured bounded domain.
+inline const Tolerance half_dot_bf16_tolerance = {0x1p-126, 4e-3};
 inline const Tolerance half_sfu_tolerance = {0x1p-24, 1.1e-3};
 inline const Tolerance fp8_dot_repeated_tolerance = {0, 2.5e-7};
 // FP16/BF16 factors bounded by 4 with a bounded FP32 accumulator.

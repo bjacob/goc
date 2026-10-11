@@ -750,3 +750,15 @@ modifier coverage from independent gfx1100 captures and verified the model again
 those captures directly. Half-output literal policy tests now check sources and
 out-of-wave storage. The 16 tests pass on both compilers. The review inventory
 reaches 136/154 family files; 18 and final broad verification remain.
+
+
+### Half-output DOT2 numerical review
+
+Added independent deterministic fractional references for both architectures and
+wave widths, using measured FP16/BF16 tolerances. Preserved exact integer routing,
+literal policy witnesses and captured DPP digests; classified existing random
+scalar/SIMD comparisons as differential and gave their finite results fuzzy
+comparisons. Every unselected destination half and inactive/source word remains
+raw, with missing source checks added to the ordinary alias sweeps.
+All 15 tests and both calibration seeds pass on Clang and GCC. Inventory:
+137/154 family files reviewed, 17 remain before final broad verification.

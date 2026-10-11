@@ -3,13 +3,18 @@
 #include "capture_hash.h"
 #include "dpp_reference.h"
 #include "exec_masks.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
+#include "half_reference.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
+#include <limits>
 #include <random>
 #include <stdint.h>
 #include <vector>
@@ -33,6 +38,17 @@ uint16_t encode(int value, bool bf16) {
                   int(std::ldexp(mantissa - 1, fraction)));
 }
 
+double value(uint16_t bits, bool bf16) {
+  if (!bf16)
+    return goc_test::half_value(bits);
+  unsigned exponent = (bits >> 7) & 255, fraction = bits & 127;
+  double magnitude = exponent == 255 ? (fraction ? std::numeric_limits<double>::quiet_NaN()
+                                                 : std::numeric_limits<double>::infinity())
+                                     : std::ldexp(double(fraction + (exponent ? 128 : 0)),
+                                                  int(exponent ? exponent : 1) - 134);
+  return bits & 0x8000 ? -magnitude : magnitude;
+}
+
 } // namespace
 
 TEST(HalfDot, AllModifiersHalfSelectionsMasksAndAliases) {
@@ -45,7 +61,7 @@ TEST(HalfDot, AllModifiersHalfSelectionsMasksAndAliases) {
           for (int alias = 0; alias < 4; ++alias) {
             SCOPED_TRACE(::testing::Message() << brain << "/" << cpu << "/" << variant << "/"
                                               << exec_mask << "/" << alias);
-            uint32_t storage[4][34], expected[32], before[32];
+            uint32_t storage[4][34], expected[32], before[32], saved[4][34];
             uint32_t *v[4];
             for (int reg = 0; reg < 4; ++reg) {
               std::fill(storage[reg], storage[reg] + 34, 0xdeadbeef);
@@ -72,14 +88,19 @@ TEST(HalfDot, AllModifiersHalfSelectionsMasksAndAliases) {
               expected[lane] =
                   (before[lane] & ~(0xffffu << shift)) | (uint32_t(encode(result, brain)) << shift);
             }
+            std::memcpy(saved, storage, sizeof(storage));
             ASSERT_EQ(
                 functions[brain](cpu, exec_mask, mode, &v[alias], &v[0], &v[1], &v[2], nullptr),
                 GOC_SUCCESS);
             for (int lane = 0; lane < 32; ++lane)
               EXPECT_EQ(v[alias][lane], ((exec_mask >> lane) & 1) ? expected[lane] : before[lane]);
-            for (const auto &reg : storage) {
-              EXPECT_EQ(reg[0], 0xdeadbeef);
-              EXPECT_EQ(reg[33], 0xdeadbeef);
+            for (unsigned reg = 0; reg < 4; ++reg) {
+              EXPECT_EQ(storage[reg][0], 0xdeadbeef);
+              EXPECT_EQ(storage[reg][33], 0xdeadbeef);
+              if (reg != unsigned(alias)) {
+                EXPECT_EQ(std::memcmp(storage[reg], saved[reg], sizeof(storage[reg])), 0)
+                    << "source=" << reg;
+              }
             }
           }
       }
@@ -199,6 +220,13 @@ TEST(HalfDot, RandomEncodingsSimdMatchesScalar) {
           if (((exec_mask >> lane) & 1) && (expected & 0x7fff) > (brain ? 0x7f80 : 0x7c00)) {
             EXPECT_GT(actual & 0x7fff, brain ? 0x7f80 : 0x7c00);
             EXPECT_EQ(result[lane] & ~(0xffffu << shift), ref[lane] & ~(0xffffu << shift));
+          } else if (((exec_mask >> lane) & 1) && (expected & 0x7fff) &&
+                     (expected & 0x7fff) < (brain ? 0x7f80 : 0x7c00)) {
+            EXPECT_EQ(result[lane] & ~(0xffffU << shift), ref[lane] & ~(0xffffU << shift));
+            EXPECT_TRUE(goc_test::fuzzy(value(actual, brain), value(expected, brain),
+                                        brain ? goc_test::half_dot_bf16_tolerance
+                                              : goc_test::fma_f16_tolerance))
+                << "brain=" << brain << " cpu=" << cpu << " trial=" << trial << " lane=" << lane;
           } else {
             EXPECT_EQ(result[lane], ref[lane]);
           }
@@ -324,7 +352,7 @@ TEST(HalfDot, Wave64AllModifiersHalfSelectionsMasksAndAliases) {
           for (int alias = 0; alias < 4; ++alias) {
             SCOPED_TRACE(::testing::Message() << brain << "/" << cpu << "/" << variant << "/"
                                               << exec_mask << "/" << alias);
-            uint32_t storage[4][66], expected[64], before[64];
+            uint32_t storage[4][66], expected[64], before[64], saved[4][66];
             uint32_t *v[4];
             for (int reg = 0; reg < 4; ++reg) {
               std::fill(storage[reg], storage[reg] + 66, 0xdeadbeef);
@@ -351,14 +379,19 @@ TEST(HalfDot, Wave64AllModifiersHalfSelectionsMasksAndAliases) {
               expected[lane] =
                   (before[lane] & ~(0xffffu << shift)) | (uint32_t(encode(result, brain)) << shift);
             }
+            std::memcpy(saved, storage, sizeof(storage));
             ASSERT_EQ(wave64_functions[brain](cpu, exec_mask, mode, &v[alias], &v[0], &v[1], &v[2],
                                               nullptr),
                       GOC_SUCCESS);
             for (int lane = 0; lane < 64; ++lane)
               EXPECT_EQ(v[alias][lane], ((exec_mask >> lane) & 1) ? expected[lane] : before[lane]);
-            for (const auto &reg : storage) {
-              EXPECT_EQ(reg[0], 0xdeadbeef);
-              EXPECT_EQ(reg[65], 0xdeadbeef);
+            for (unsigned reg = 0; reg < 4; ++reg) {
+              EXPECT_EQ(storage[reg][0], 0xdeadbeef);
+              EXPECT_EQ(storage[reg][65], 0xdeadbeef);
+              if (reg != unsigned(alias)) {
+                EXPECT_EQ(std::memcmp(storage[reg], saved[reg], sizeof(storage[reg])), 0)
+                    << "source=" << reg;
+              }
             }
           }
       }
@@ -529,4 +562,73 @@ TEST(HalfDot, Wave64DppValidation) {
         EXPECT_EQ(fn(0, 0, descriptor | invalid, nullptr, nullptr, nullptr, nullptr, nullptr),
                   GOC_ERROR_INVALID_FLAGS);
     }
+}
+
+// Independent loose arithmetic over bounded normal encodings, including
+// cancellation and fractional results. Integer routing and literal policy
+// tests above retain raw comparisons.
+TEST(HalfDot, FractionalInputsAgainstDoubleReference) {
+  for (bool rdna3 : {false, true})
+    for (bool wide : {false, true})
+      for (unsigned brain = 0; brain < 2; ++brain)
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+          std::mt19937 random(37493);
+          for (unsigned batch = 0; batch < 128; ++batch) {
+            uint32_t words[4][64], before[4][64];
+            for (unsigned reg = 0; reg < 4; ++reg)
+              for (unsigned lane = 0; lane < 64; ++lane) {
+                words[reg][lane] = 0;
+                for (unsigned half = 0; half < 2; ++half) {
+                  uint32_t draw = random();
+                  unsigned fraction_bits = brain ? 7 : 10, bias = brain ? 127 : 15;
+                  uint16_t code = (draw & 0x8000) |
+                                  ((bias - 8 + ((draw >> 16) % 10)) << fraction_bits) |
+                                  (draw & ((1U << fraction_bits) - 1));
+                  words[reg][lane] |= uint32_t(code) << (16 * half);
+                }
+              }
+            std::memcpy(before, words, sizeof(words));
+            uint32_t mode =
+                (batch & 63) | (batch & 1 ? GOC_ALU_HIGH_C : 0) | (batch & 64 ? GOC_ALU_HIGH_D : 0);
+            unsigned shift = mode & GOC_ALU_HIGH_D ? 16 : 0;
+            uint64_t exec_mask = batch & 1 ? 0x87654321fedcba98ULL : UINT64_MAX;
+            uint32_t *d = words[3];
+            const uint32_t *a = words[0], *b = words[1], *c = words[2];
+            auto fn32 =
+                rdna3 ? (brain ? goc_v_dot2_bf16_bf16 : goc_v_dot2_f16_f16) : functions[brain];
+            auto fn64 = rdna3 ? (brain ? goc_v_dot2_bf16_bf16_wave64 : goc_v_dot2_f16_f16_wave64)
+                              : wave64_functions[brain];
+            uint32_t state = 0xffffff80;
+            ASSERT_EQ(wide ? fn64(cpu, exec_mask, mode, &d, &a, &b, &c, &state)
+                           : fn32(cpu, uint32_t(exec_mask), mode, &d, &a, &b, &c, &state),
+                      GOC_SUCCESS);
+            ASSERT_EQ(state, 0xffffff80U);
+            for (unsigned lane = 0; lane < 64; ++lane) {
+              for (unsigned reg = 0; reg < 3; ++reg)
+                ASSERT_EQ(words[reg][lane], before[reg][lane]);
+              if (lane >= (wide ? 64U : 32U) || !((exec_mask >> lane) & 1)) {
+                ASSERT_EQ(d[lane], before[3][lane]);
+                continue;
+              }
+              ASSERT_EQ(d[lane] & ~(0xffffU << shift), before[3][lane] & ~(0xffffU << shift));
+              double inputs[3][2];
+              for (unsigned reg = 0; reg < 3; ++reg)
+                for (unsigned half = 0; half < 2; ++half) {
+                  double x = value(uint16_t(before[reg][lane] >> (16 * half)), brain);
+                  if (mode & (GOC_ALU_ABS_A << reg))
+                    x = std::abs(x);
+                  if (mode & (GOC_ALU_NEG_A << reg))
+                    x = -x;
+                  inputs[reg][half] = x;
+                }
+              double expected = inputs[0][0] * inputs[1][0] + inputs[0][1] * inputs[1][1] +
+                                inputs[2][bool(mode & GOC_ALU_HIGH_C)];
+              ASSERT_TRUE(goc_test::fuzzy(value(uint16_t(d[lane] >> shift), brain), expected,
+                                          brain ? goc_test::half_dot_bf16_tolerance
+                                                : goc_test::fma_f16_tolerance))
+                  << "rdna3=" << rdna3 << " wide=" << wide << " brain=" << brain << " cpu=" << cpu
+                  << " batch=" << batch << " lane=" << lane;
+            }
+          }
+        }
 }

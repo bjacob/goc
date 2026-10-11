@@ -422,3 +422,22 @@ are 8.6570342731986881e-6 and 0.00035398230088495576 respectively near cancellat
 The held-out seed passes without changing the bound. Exact RDNA3 captures are
 not compared with this mathematical reference or weakened by this tolerance.
 Script/snapshots/logs: goc-build/coverage-work/testing-dot2-architecture-calibration/run.py.
+
+
+Half-output DOT2 uses the existing FP16 (2^-24, 1e-3) bound and a BF16 bound
+(2^-126, 4e-3). Independent double sums use normal inputs bounded by four on both
+architectures and widths. The BF16 relative term is just above the observed
+half-ULP relative rounding scale; the FP16 absolute term covers near-zero
+subnormal rounding. Existing all-encoding scalar/SIMD differential comparisons
+also use these bounds, while NaN classification, infinity/zero policy witnesses
+and storage are checked separately.
+Clang and GCC report identical measurements. Original seeds 37493 (fractional)
+and 11719 (differential) give 89,564 FP16 finite comparisons, maximum absolute
+error 0.0038810186088085175 and relative error 0.0074560095436922158; BF16 has
+88,513 comparisons, absolute error 0.030745506286621094 and relative error
+0.0038033074399128927. Alternate seeds 81559 and 63727 give 89,675 FP16 comparisons,
+absolute error 0.0038728713989257812 and relative error 0.00047246083704427944;
+BF16 has 88,368 comparisons, absolute error 0.031131744384765625 and relative
+error 0.0038610038610038611. Both seeds pass the final bound. Counts include
+differential checks and repeated architecture/CPU cases, not unique hardware samples.
+Script/snapshots/logs: goc-build/coverage-work/testing-half-dot-calibration/run.py.
