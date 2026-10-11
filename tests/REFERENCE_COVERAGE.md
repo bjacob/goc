@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 118 explicit family-file reviews exist and 36
+non-generic family references. 120 explicit family-file reviews exist and 34
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -378,3 +378,12 @@ storage and categorical checks remain separate from calibrated loose arithmetic.
 The half suite exhausts encodings for guest policy/OMOD; routing, selectors and
 aliases use boundary inputs rather than the full Cartesian product. Core trig
 numerical suites retain their own captures and remain separate review items.
+
+### Core trigonometric suites
+
+Reviewed FP32 captured outputs and FP16 full-encoding rocjitsu digests, retaining
+independent aggregate witnesses alongside computed per-input diagnostics. The
+half computed table has validation over its unmodified domain; modifier policy
+coverage is documented separately rather than extrapolating that equivalence.
+Loose tolerances now have alternate deterministic-seed measurements on both
+compilers. Removed production bitcast dependencies and improved failure context.

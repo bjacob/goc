@@ -7,12 +7,12 @@
 #include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_reference.h"
-#include "internal.h"
 #include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cfenv>
 #include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <random>
 #include <stdint.h>
@@ -28,12 +28,26 @@ using Fn = decltype(&goc_v_sin_f16_rdna4);
 const Fn functions[] = {goc_v_sin_f16_rdna4, goc_v_cos_f16_rdna4};
 const Fn wide_functions[] = {goc_v_sin_f32_rdna4, goc_v_cos_f32_rdna4};
 
+float as_float(uint32_t bits) {
+  float value;
+  std::memcpy(&value, &bits, sizeof(value));
+  return value;
+}
+
+uint32_t as_bits(float value) {
+  uint32_t bits;
+  std::memcpy(&bits, &value, sizeof(bits));
+  return bits;
+}
+
 uint32_t modifiers(int mode) {
   return (mode & 1 ? GOC_ALU_NEG_A : 0) | (mode & 2 ? GOC_ALU_ABS_A : 0) |
          (uint32_t((mode >> 2) & 3) << 6) | (mode & 16 ? GOC_ALU_CLAMP : 0) |
          (mode & 32 ? GOC_ALU_HIGH_A : 0) | (mode & 64 ? GOC_ALU_HIGH_D : 0);
 }
 
+// This table is a differential integration reference; the independent rocjitsu
+// digest below validates its complete unmodified half-input domain.
 // Round the independently tested FP32 exact API's results using the numeric
 // half reference, preserving NaN signs/payloads explicitly.
 std::vector<uint16_t> reference_table(int op) {
@@ -46,7 +60,7 @@ std::vector<uint16_t> reference_table(int op) {
       uint16_t half = uint16_t(start + lane);
       a[lane] = (half & 0x7fff) > 0x7c00
                     ? (uint32_t(half & 0x8000) << 16) | 0x7f800000 | (uint32_t(half & 1023) << 13)
-                    : goc::as_bits(float(goc_test::half_value(half)));
+                    : as_bits(float(goc_test::half_value(half)));
     }
     EXPECT_EQ(wide_functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
                                  0, dp, ap, nullptr),
@@ -55,7 +69,7 @@ std::vector<uint16_t> reference_table(int op) {
       table[start + lane] =
           (d[lane] & 0x7fffffff) > 0x7f800000
               ? uint16_t(((d[lane] >> 16) & 0x8000) | 0x7c00 | ((d[lane] >> 13) & 1023))
-              : goc_test::half_bits(double(goc::as_float(d[lane])));
+              : goc_test::half_bits(double(as_float(d[lane])));
   }
   return table;
 }
@@ -83,21 +97,23 @@ uint16_t reference(uint16_t value, int mode) {
   return value;
 }
 
-void expect_near(uint16_t actual, uint16_t expected) {
+::testing::AssertionResult near(uint16_t actual, uint16_t expected) {
   unsigned magnitude = expected & 0x7fff;
-  if (!magnitude || magnitude >= 0x7c00)
-    EXPECT_EQ(actual, expected);
-  else {
-    EXPECT_EQ(actual & 0x8000, expected & 0x8000);
-    EXPECT_TRUE(goc_test::fuzzy(goc_test::half_value(actual), goc_test::half_value(expected),
-                                goc_test::half_sfu_tolerance));
+  if (!magnitude || magnitude >= 0x7c00 || (actual & 0x8000) != (expected & 0x8000)) {
+    if (actual == expected)
+      return ::testing::AssertionSuccess();
+    return ::testing::AssertionFailure()
+           << "actual bits=" << actual << ", expected bits=" << expected;
   }
+  return goc_test::fuzzy(goc_test::half_value(actual), goc_test::half_value(expected),
+                         goc_test::half_sfu_tolerance);
 }
 
 } // namespace
 
 TEST(HalfTrig, EveryEncodingMatchesRocjitsuDigestAndLoosePaths) {
-  // FNV-1a over uint16_t results in ascending input-encoding order. Generated
+  // Word-wise FNV-style digest: XOR each complete uint16_t result into the
+  // hash, then multiply, in ascending input-encoding order. Generated
   // directly from rocjitsu util/amdgpu_trig.h with compiler _Float16 conversion,
   // independently of GoC's C++17 adaptation and half conversion implementation.
   const uint64_t digests[] = {0xb6245e65a23f99f9ULL, 0xc6c3112c531e4391ULL};
@@ -120,16 +136,19 @@ TEST(HalfTrig, EveryEncodingMatchesRocjitsuDigestAndLoosePaths) {
                     GOC_SUCCESS);
           ASSERT_EQ(functions[op](flags, UINT32_MAX, 0, lp, ap, nullptr), GOC_SUCCESS);
           for (unsigned lane = 0; lane < 32; ++lane) {
-            ASSERT_EQ(exact[lane], 0xdead0000u | table[start + lane]);
+            ASSERT_EQ(exact[lane], 0xdead0000u | table[start + lane])
+                << op << "/" << cpu << "/" << saturate << "/" << start + lane;
             EXPECT_EQ(loose[lane] >> 16, 0xdeadu);
-            expect_near(uint16_t(loose[lane]), table[start + lane]);
+            ASSERT_TRUE(near(uint16_t(loose[lane]), table[start + lane]))
+                << op << "/" << cpu << "/" << saturate << "/" << start + lane;
             digest = goc_test::capture_hash_word(digest, uint16_t(exact[lane]));
             if ((a[lane] & 0x7fff) < 0x7c00) {
               double phase = std::remainder(goc_test::half_value(uint16_t(a[lane])), 1.0);
               double angle = phase * 6.283185307179586476925286766559;
               EXPECT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(loose[lane])),
                                           op ? std::cos(angle) : std::sin(angle),
-                                          goc_test::trig_f16_tolerance));
+                                          goc_test::trig_f16_tolerance))
+                  << op << "/" << cpu << "/" << saturate << "/" << start + lane;
             }
           }
         }
@@ -171,9 +190,11 @@ TEST(HalfTrig, AllModifiersRandomInputsAndBoundaries) {
           for (int lane = 0; lane < 32; ++lane) {
             int shift = mode & 64 ? 16 : 0;
             uint32_t keep = mode & 64 ? 0x0000ffff : 0xffff0000;
-            ASSERT_EQ(exact[lane], (0xfacecafe & keep) | (uint32_t(expected[lane]) << shift));
+            ASSERT_EQ(exact[lane], (0xfacecafe & keep) | (uint32_t(expected[lane]) << shift))
+                << op << "/" << cpu << "/" << mode << "/" << a[lane];
             EXPECT_EQ(d[lane] & keep, 0xfacecafe & keep);
-            expect_near(uint16_t(d[lane] >> shift), expected[lane]);
+            ASSERT_TRUE(near(uint16_t(d[lane] >> shift), expected[lane]))
+                << op << "/" << cpu << "/" << mode << "/" << a[lane];
           }
         }
       }
@@ -343,7 +364,7 @@ TEST(HalfTrig, DppModifiersMasksAliasesAndGuards) {
                   for (unsigned word = 0; word < 34; ++word)
                     ASSERT_EQ(words[reg][word], expected[reg][word])
                         << cpu << "/" << semantics << "/" << m << "/" << descriptor << "/"
-                        << exec_mask;
+                        << exec_mask << "/" << target << "/" << reg << "/" << word;
               }
           }
 }
@@ -391,7 +412,8 @@ TEST(HalfTrig, DppHardwareCorpus) {
 TEST(HalfTrig, Wave64EveryEncodingMatchesRocjitsuDigestAndLoosePaths) {
   const decltype(&goc_v_sin_f16_rdna4_wave64) wave64_functions[] = {goc_v_sin_f16_rdna4_wave64,
                                                                     goc_v_cos_f16_rdna4_wave64};
-  // FNV-1a over uint16_t results in ascending input-encoding order. Generated
+  // Word-wise FNV-style digest: XOR each complete uint16_t result into the
+  // hash, then multiply, in ascending input-encoding order. Generated
   // directly from rocjitsu util/amdgpu_trig.h with compiler _Float16 conversion,
   // independently of GoC's C++17 adaptation and half conversion implementation.
   const uint64_t digests[] = {0xb6245e65a23f99f9ULL, 0xc6c3112c531e4391ULL};
@@ -415,16 +437,19 @@ TEST(HalfTrig, Wave64EveryEncodingMatchesRocjitsuDigestAndLoosePaths) {
               GOC_SUCCESS);
           ASSERT_EQ(wave64_functions[op](flags, UINT64_MAX, 0, lp, ap, nullptr), GOC_SUCCESS);
           for (unsigned lane = 0; lane < 64; ++lane) {
-            ASSERT_EQ(exact[lane], 0xdead0000u | table[start + lane]);
+            ASSERT_EQ(exact[lane], 0xdead0000u | table[start + lane])
+                << op << "/" << cpu << "/" << saturate << "/" << start + lane;
             EXPECT_EQ(loose[lane] >> 16, 0xdeadu);
-            expect_near(uint16_t(loose[lane]), table[start + lane]);
+            ASSERT_TRUE(near(uint16_t(loose[lane]), table[start + lane]))
+                << op << "/" << cpu << "/" << saturate << "/" << start + lane;
             digest = goc_test::capture_hash_word(digest, uint16_t(exact[lane]));
             if ((a[lane] & 0x7fff) < 0x7c00) {
               double phase = std::remainder(goc_test::half_value(uint16_t(a[lane])), 1.0);
               double angle = phase * 6.283185307179586476925286766559;
               EXPECT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(loose[lane])),
                                           op ? std::cos(angle) : std::sin(angle),
-                                          goc_test::trig_f16_tolerance));
+                                          goc_test::trig_f16_tolerance))
+                  << op << "/" << cpu << "/" << saturate << "/" << start + lane;
             }
           }
         }

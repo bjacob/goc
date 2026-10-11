@@ -6,13 +6,13 @@
 #include "fp_environment.h"
 #include "fuzzy.h"
 #include "goc/goc.h"
-#include "internal.h"
 #include "loose_tolerances.h"
 #include "trig_golden.h"
 
 #include <algorithm>
 #include <cfenv>
 #include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <random>
 #include <stdint.h>
@@ -27,6 +27,18 @@ namespace {
 using Fn = decltype(&goc_v_sin_f32_rdna4);
 const Fn functions[] = {goc_v_sin_f32_rdna4, goc_v_cos_f32_rdna4};
 
+float as_float(uint32_t bits) {
+  float value;
+  std::memcpy(&value, &bits, sizeof(value));
+  return value;
+}
+
+uint32_t as_bits(float value) {
+  uint32_t bits;
+  std::memcpy(&bits, &value, sizeof(bits));
+  return bits;
+}
+
 uint32_t modifiers(int mode) {
   return (mode & 1 ? GOC_ALU_NEG_A : 0) | (mode & 2 ? GOC_ALU_ABS_A : 0) |
          (uint32_t((mode >> 2) & 3) << 6) | (mode & 16 ? GOC_ALU_CLAMP : 0);
@@ -36,10 +48,10 @@ uint32_t modifiers(int mode) {
 // FP32, then apply the captured active-OMOD output flush and clamp policy.
 uint32_t scale_reference(uint32_t bits, int mode) {
   const double scales[] = {1, 2, 4, 0.5};
-  float result = float(double(goc::as_float(bits)) * scales[(mode >> 2) & 3]);
+  float result = float(double(as_float(bits)) * scales[(mode >> 2) & 3]);
   if (mode & 16)
     result = !(result > 0) ? 0 : result > 1 ? 1 : result;
-  bits = goc::as_bits(result);
+  bits = as_bits(result);
   if ((mode & 12) && (bits & 0x7fffffff) < 0x800000)
     return 0;
   return bits;
@@ -83,8 +95,8 @@ TEST(Trig, FullRangeRandomInputsAndIntervalBoundaries) {
         uint32_t *dp[] = {d};
         for (int lane = 0; lane < 32; ++lane) {
           int index = start + lane;
-          a[lane] = index < 1024 ? goc::as_bits(float(index / 8) / 128) + index % 8 - 4
-                                 : uint32_t(random());
+          a[lane] =
+              index < 1024 ? as_bits(float(index / 8) / 128) + index % 8 - 4 : uint32_t(random());
         }
         ASSERT_EQ(functions[op](cpu, UINT32_MAX, 0, dp, ap, nullptr), GOC_SUCCESS);
         for (int lane = 0; lane < 32; ++lane) {
@@ -92,11 +104,10 @@ TEST(Trig, FullRangeRandomInputsAndIntervalBoundaries) {
           if (magnitude >= 0x7f800000) {
             EXPECT_EQ(d[lane], magnitude == 0x7f800000 ? 0xffc00000 : a[lane] | 0x400000);
           } else {
-            double phase = std::remainder(double(goc::as_float(a[lane])), 1.0);
+            double phase = std::remainder(double(as_float(a[lane])), 1.0);
             double angle = phase * 6.283185307179586476925286766559;
             double expected = op ? std::cos(angle) : std::sin(angle);
-            ASSERT_TRUE(
-                goc_test::fuzzy(goc::as_float(d[lane]), expected, goc_test::trig_f32_tolerance))
+            ASSERT_TRUE(goc_test::fuzzy(as_float(d[lane]), expected, goc_test::trig_f32_tolerance))
                 << op << "/" << cpu << "/" << a[lane];
           }
         }
@@ -126,7 +137,7 @@ TEST(Trig, LooseMatchesScalarWithEveryModifier) {
             } else {
               const float scales[] = {1, 2, 4, 0.5f};
               ASSERT_TRUE(
-                  goc_test::fuzzy(goc::as_float(actual[lane]), goc::as_float(reference[lane]),
+                  goc_test::fuzzy(as_float(actual[lane]), as_float(reference[lane]),
                                   {goc_test::trig_f32_tolerance.atol * scales[(mode >> 2) & 3], 0}))
                   << op << "/" << cpu << "/" << mode << "/" << a[lane];
             }
@@ -264,7 +275,7 @@ TEST(Trig, DppModifiersMasksAliasesAndGuards) {
                   for (unsigned word = 0; word < 34; ++word)
                     ASSERT_EQ(words[reg][word], expected[reg][word])
                         << cpu << "/" << semantics << "/" << m << "/" << descriptor << "/"
-                        << exec_mask;
+                        << exec_mask << "/" << target << "/" << reg << "/" << word;
               }
           }
 }

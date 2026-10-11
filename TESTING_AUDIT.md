@@ -607,3 +607,11 @@ on the separately validated FP32 API, removed production bitcast dependencies
 and vacuous null-output state assertions, and improved numerical diagnostics.
 All seven affected tests and 14 tooling tests pass. Production and captures are
 unchanged; core trig numerical suites still have separate pending reviews.
+
+### Core trigonometric review
+
+Two reviews bring the queue to 120 reviewed and 34 pending. Recorded the exact
+scope of captured and rocjitsu-digest evidence, improved half per-input and DPP
+failure diagnostics, and removed production bitcast dependencies. Alternate
+random seeds retain tolerance margin on Clang/GCC. All 21 affected tests pass
+on both compilers; production and original capture constants are unchanged.

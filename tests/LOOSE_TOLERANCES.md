@@ -311,3 +311,25 @@ reference depends on GoC's separately validated FP32 API and independent half
 narrowing, so this measurement demonstrates integration consistency rather than
 independent hardware equivalence. Script, source snapshots and logs:
 `goc-build/coverage-work/testing-trig-architecture-calibration/run.py`.
+
+## Core trigonometric holdout
+
+Clang and GCC give the same measurements for the core trig tests:
+
+| Domain | Corpus | Finite pairs | Maximum absolute error | Maximum fraction of bound |
+| --- | --- | ---: | ---: | ---: |
+| FP32 mathematical/scalar comparisons, scaled bounds | Existing | 1,988,968 | 4.76837158203125e-7 | 0.417047 |
+| FP32 mathematical/scalar comparisons, scaled bounds | Alternate seeds | 1,988,488 | 4.76837158203125e-7 | 0.416732 |
+| FP16 mathematical, both widths | Exhaustive encodings | 2,031,616 | 0.00024411025959947263 | 0.488221 |
+| FP16 rounded reference | Existing | 4,634,704 | 0.000244140625 | 0.683928 |
+| FP16 rounded reference | Alternate seeds | 4,639,328 | 0.0009765625 | 0.684013 |
+
+FP32 seeds 781/8287 change to 65371/93179. FP16 modifier seed 815 changes to
+72341; alias/DPP input seeds also change. Fixed captured and exhaustive inputs
+repeat, so only the random modifier/input portions are holdout data. There is no
+unseen half encoding beyond the exhaustive mathematical sweep. All existing
+bounds retain margin; output scaling explains the larger absolute errors.
+The unchanged raw comparisons cover categorical results and storage contracts.
+The half computed table's unmodified domain is checked against the independent
+rocjitsu digest, rather than assuming FP32 narrowing matches arbitrary hardware.
+Script and complete logs: `goc-build/coverage-work/testing-core-trig-calibration/run.py`.

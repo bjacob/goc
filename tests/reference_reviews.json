@@ -2006,5 +2006,57 @@
     ],
     "scope": "SIN/COS FP16 for both architectures and widths. The reference table calls the separately tested FP32 GoC exact API and independently narrows its outputs: this is differential integration, not an independent numerical oracle. Independent numerical evidence remains in the core trig captures. Every half encoding is tested across eight guest policies and four output modifiers in Wave64 exact mode on all CPU selectors. A separate boundary corpus covers 128 source/destination selector/modifier combinations, eight routes, stratified row masks, mixed/full EXEC, both widths and destination aliases in both semantics. Loose finite outputs use the calibrated half SFU bound; unselected halves, signs, zeros, NaNs, guards and untouched lanes remain raw. Literal architecture-policy witnesses and reporting/error/host-control tests complement the differential table.",
     "diagnostics": "Per-output checks identify architecture, operation, guest policy, variant and lane; fuzzy failures also identify route and CPU. Removed vacuous state assertions from null-pointer calls; loose calls still check their supplied state. Half reference bitcasts use local memcpy rather than production helpers."
+  },
+  {
+    "file": "trig_test.cpp",
+    "assertions": [
+      "Trig.CapturedResultsWithEveryModifier",
+      "Trig.FullRangeRandomInputsAndIntervalBoundaries",
+      "Trig.LooseMatchesScalarWithEveryModifier",
+      "Trig.EveryMaskAliasesAndModifier",
+      "Trig.ExactPreservesHostEnvironment",
+      "Trig.InvalidFlagsAndReservedSemanticsPreserveDestination",
+      "Trig.DppModifiersMasksAliasesAndGuards",
+      "Trig.DppValidation",
+      "Trig.DppHardwareCorpus",
+      "Trig.Wave64CapturedResultsWithEveryModifier",
+      "Trig.Wave64ExactPreservesHostEnvironment"
+    ],
+    "evidence": [
+      "tests/trig_test.cpp",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md",
+      "tests/trig_golden.h",
+      "tests/trig_architecture_test.cpp"
+    ],
+    "scope": "RDNA4 SIN/COS FP32. Both widths check gfx1100/gfx1201 captures under all 32 modifiers and CPU selectors, with independent power-of-two output scaling. Wave32 loose tests use full-range MT19937 raw words and interval boundaries against double sin/cos of reduced turns, plus scalar exact differential comparisons across modifiers. Calibration and alternate seeds validate fixed scaled absolute bounds; this does not establish arbitrary-input bit-exactness. Exact zeros/NaN payloads and untouched storage remain raw. All 84 EXEC masks, aliases, DPP routing and guards are checked, with exhaustive mask combinations at endpoint modifiers and full EXEC at others. The independent RX 9070 DPP digest covers quarter-turn inputs, all modifiers, seven descriptors and eight masks. Raw loose DPP/alias equality tests routing within the same numerical implementation; it is not a scalar/SIMD numerical equality requirement. Invalid flags, fallback semantics, error preservation and host controls are covered.",
+    "diagnostics": "Removed production bitcast dependency. Half computed-reference and fuzzy failures now include input/operation/CPU/modifier context; DPP failures identify destination register and word. Retained original digest constants and clarified word-wise serialization. Aggregate capture witnesses complement per-input numerical and differential checks."
+  },
+  {
+    "file": "half_trig_test.cpp",
+    "assertions": [
+      "HalfTrig.EveryEncodingMatchesRocjitsuDigestAndLoosePaths",
+      "HalfTrig.AllModifiersRandomInputsAndBoundaries",
+      "HalfTrig.OutputScalingFlushBoundaries",
+      "HalfTrig.MasksAliasesAndHalfPreservation",
+      "HalfTrig.ExactPreservesHostEnvironmentWithEveryModifier",
+      "HalfTrig.InvalidFlagsAndReservedSemanticsPreserveDestination",
+      "HalfTrig.DppModifiersMasksAliasesAndGuards",
+      "HalfTrig.DppValidation",
+      "HalfTrig.DppHardwareCorpus",
+      "HalfTrig.Wave64EveryEncodingMatchesRocjitsuDigestAndLoosePaths"
+    ],
+    "evidence": [
+      "tests/half_trig_test.cpp",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md",
+      "tests/half_reference.h",
+      "tests/half_trig_architecture_test.cpp",
+      "tests/trig_test.cpp"
+    ],
+    "scope": "RDNA4 SIN/COS FP16. Every input encoding in both widths and all CPU selectors is checked against independently generated rocjitsu amdgpu_trig.h plus compiler _Float16 digests; these validate the complete unmodified domain and complement literal output-flush boundaries and an independent RX 9070 quarter-turn DPP digest. The per-input computed table calls GoC FP32 exact then independent half conversion, so it is differential unless anchored by those independent digests. All 128 modifiers/selectors use boundary and deterministically generated inputs; loose numerical outputs use calibrated half SFU or mathematical trig bounds, with raw signs/zero/NaN/unselected-half/storage checks. Wave32 routing covers 84 masks, aliases, guards and seven DPP descriptors, with mask stratification across modifiers. Error preservation, fallback semantics, saturation flag and host controls are covered. Architecture suites separately cover Wave64 routing/policies.",
+    "diagnostics": "Removed production bitcast dependency. Half computed-reference and fuzzy failures now include input/operation/CPU/modifier context; DPP failures identify destination register and word. Retained original digest constants and clarified word-wise serialization. Aggregate capture witnesses complement per-input numerical and differential checks."
   }
 ]
