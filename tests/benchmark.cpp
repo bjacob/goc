@@ -171,7 +171,7 @@ struct Registers {
       }
   }
 
-  void initialize_fp8_wmma(int format, uint32_t modifiers) {
+  void initialize_fp8_wmma(int format, uint32_t /*modifiers*/) {
     std::minstd_rand random(12056925);
     for (int operand = 0; operand < 2; ++operand) {
       bool bf8 = operand ? format & 1 : format & 2;
@@ -186,9 +186,7 @@ struct Registers {
       for (int col = 0; col < 16; ++col) {
         int c = int(random() % 33) - 16;
         data[8 + row % 8][col + 16 * (row / 8)] = bits(float(c));
-        int adjusted = modifiers & GOC_WMMA_ABS_C ? std::abs(c) : c;
-        if (modifiers & GOC_WMMA_NEG_C)
-          adjusted = -adjusted;
+        int adjusted = c;
         float golden;
         std::memcpy(&golden, &kFp8Dense[format][row * 16 + col], sizeof(golden));
         expected[row * 16 + col] = bits(golden + float(adjusted - c));

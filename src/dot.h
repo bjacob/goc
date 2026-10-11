@@ -10,10 +10,12 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <stdint.h>
+#include <type_traits>
 
-// Adapted from rocjitsu shared/gfx12_dot.h. This is the existing gfx1201
-// empirical model, adapted to C++17. No new hardware model.
+// Adapted from rocjitsu ad2bb973ec4 shared/gfx12_dot.h (native FP8/BF8
+// extension dd63b040587). Empirical gfx1201 model, not a universal guarantee.
 namespace goc {
 
 inline int bit_width(uint64_t x) {
@@ -30,7 +32,6 @@ namespace gfx12_dot_detail {
 inline constexpr uint32_t kFactorNan = 0xffc00a3d;
 inline constexpr uint32_t kInvalidProductNan = 0xffc00000;
 inline constexpr uint32_t kQuietNanBit = 0x00400000;
-
 inline constexpr int kEmptyExponent = -1024;
 
 // A nonnegative integer significand times 2^exponent. Keeping products in this
@@ -45,21 +46,33 @@ struct Term {
   }
 };
 
-template <bool Bf16> struct Factor {
-  static constexpr int fraction_bits = Bf16 ? 7 : 10;
-  static constexpr int bias = Bf16 ? 127 : 15;
-  static constexpr uint16_t fraction_mask = (1u << fraction_bits) - 1;
-  static constexpr uint16_t infinity = Bf16 ? 0x7f80 : 0x7c00;
+enum class InputFormat { F16, Bf16, Fp8, Bf8 };
 
+template <InputFormat Format> struct Factor {
+  static constexpr bool is_f8 = Format == InputFormat::Fp8 || Format == InputFormat::Bf8;
+  static constexpr bool is_bfloat = Format == InputFormat::Bf16 || Format == InputFormat::Bf8;
+  static constexpr int fraction_bits = is_f8 ? (is_bfloat ? 2 : 3) : (is_bfloat ? 7 : 10);
+  static constexpr int bias = is_f8 ? (is_bfloat ? 15 : 7) : (is_bfloat ? 127 : 15);
+  static constexpr uint16_t fraction_mask = (1u << fraction_bits) - 1;
+  static constexpr uint16_t infinity = is_f8 ? 0x7c : (is_bfloat ? 0x7f80 : 0x7c00);
+  static constexpr uint16_t magnitude_mask = is_f8 ? 0x7f : 0x7fff;
   uint16_t bits;
 
-  bool nan() const { return (bits & 0x7fff) > infinity; }
+  bool nan() const {
+    if constexpr (is_f8 && !is_bfloat)
+      return (bits & magnitude_mask) == 0x7f;
+    return (bits & magnitude_mask) > infinity;
+  }
 
-  bool inf() const { return (bits & 0x7fff) == infinity; }
+  bool inf() const {
+    if constexpr (is_f8 && !is_bfloat)
+      return false;
+    return (bits & magnitude_mask) == infinity;
+  }
 
-  bool negative() const { return bits >> 15; }
+  bool negative() const { return bits >> (is_f8 ? 7 : 15); }
 
-  int exponent_field() const { return (bits & 0x7fff) >> fraction_bits; }
+  unsigned exponent_field() const { return (bits & magnitude_mask) >> fraction_bits; }
 
   uint64_t significand() const {
     if (exponent_field())
@@ -67,11 +80,11 @@ template <bool Bf16> struct Factor {
     return bits & fraction_mask;
   }
 
-  int alignment_exponent() const { return int(std::max(exponent_field(), 1)) - bias; }
+  int alignment_exponent() const { return int(std::max(exponent_field(), 1u)) - bias; }
 
-  Term product(Factor other) const {
+  template <InputFormat OtherFormat> Term product(Factor<OtherFormat> other) const {
     return {significand() * other.significand(),
-            alignment_exponent() + other.alignment_exponent() - 2 * fraction_bits,
+            alignment_exponent() + other.alignment_exponent() - fraction_bits - other.fraction_bits,
             negative() != other.negative()};
   }
 };
@@ -93,7 +106,6 @@ inline uint32_t pack(int64_t units, int grid) {
   const uint64_t magnitude = units < 0 ? uint64_t(-units) : uint64_t(units);
   const int top = int(bit_width(magnitude)) - 1;
   int exponent = top + grid;
-
   // Round directly on the subnormal grid to avoid double rounding.
   if (exponent < -126) {
     const uint64_t fraction = shift_round_even(magnitude, -149 - grid);
@@ -122,19 +134,18 @@ inline int64_t align(Term term, int grid, bool accumulator = false) {
                        : int64_t(magnitude);
 }
 
-} // namespace gfx12_dot_detail
-
-// GFX12 first aligns each pair of products, then aligns pair sums with C.
-// Four-product steps are rounded to the output format. Integer arithmetic preserves the
-// empirically observed NaN precedence and subnormal behavior.
-template <bool Bf16, int N, bool Packed = false>
-inline uint32_t gfx12_dot_bits(const std::array<uint16_t, N> &a, const std::array<uint16_t, N> &b,
-                               uint32_t acc, bool fp16_ovfl = false) {
-  static_assert(N == 2 || N == 4);
-  using namespace gfx12_dot_detail;
+template <InputFormat LeftFormat, InputFormat RightFormat, bool Packed, std::size_t N, typename Raw>
+inline uint32_t dot_bits(const std::array<Raw, N> &a, const std::array<Raw, N> &b, uint32_t acc,
+                         bool fp16_ovfl = false) {
+  constexpr bool is_f8 = Factor<LeftFormat>::is_f8;
+  constexpr bool is_bf16 = LeftFormat == InputFormat::Bf16;
+  static_assert(std::is_same_v<Raw, std::conditional_t<is_f8, uint8_t, uint16_t>>);
+  static_assert(is_f8 == Factor<RightFormat>::is_f8);
+  static_assert(is_f8 ? (N == 8 && !Packed) : (N == 2 || N == 4));
+  static_assert(is_f8 || LeftFormat == RightFormat);
   const auto special = [](uint32_t bits) -> uint32_t {
     if constexpr (Packed)
-      return packed16::special<Bf16>(bits);
+      return packed16::special<is_bf16>(bits);
     return bits;
   };
   std::array<Term, N> products;
@@ -143,8 +154,9 @@ inline uint32_t gfx12_dot_bits(const std::array<uint16_t, N> &a, const std::arra
   bool positive_inf = false;
   bool negative_inf = false;
   bool invalid = false;
-  for (int i = 0; i < N; ++i) {
-    const Factor<Bf16> left{a[i]}, right{b[i]};
+  for (std::size_t i = 0; i < N; ++i) {
+    const Factor<LeftFormat> left{a[i]};
+    const Factor<RightFormat> right{b[i]};
     if (left.nan() || right.nan())
       return special(kFactorNan);
     invalid |= (left.inf() && !right.significand()) || (right.inf() && !left.significand());
@@ -160,40 +172,70 @@ inline uint32_t gfx12_dot_bits(const std::array<uint16_t, N> &a, const std::arra
                            : kEmptyExponent;
     product_grid = std::max(product_grid, product_grids[i]);
   }
-
   // Factor NaNs, then invalid products, precede an accumulator NaN.
   if (invalid || (positive_inf && negative_inf))
-    return special(kInvalidProductNan);
+    return special(is_f8 ? kFactorNan : kInvalidProductNan);
   if ((acc & 0x7fffffff) > 0x7f800000)
     return special(acc | kQuietNanBit);
   positive_inf |= acc == 0x7f800000;
   negative_inf |= acc == 0xff800000;
   if (positive_inf || negative_inf)
-    return special(positive_inf && negative_inf ? kInvalidProductNan
+    return special(positive_inf && negative_inf ? (is_f8 ? kFactorNan : kInvalidProductNan)
                    : negative_inf               ? 0xff800000
                                                 : 0x7f800000);
 
-  const int acc_exp = (acc >> 23) & 255;
+  const unsigned acc_exp = (acc >> 23) & 255;
   const Term c{acc_exp ? (acc & 0x7fffff) | 0x800000u : acc & 0x7fffff,
-               int(std::max(acc_exp, 1)) - 127 - 23, bool(acc >> 31)};
+               int(std::max(acc_exp, 1u)) - 127 - 23, bool(acc >> 31)};
+  // Packed F16 floors C's alignment exponent at -14. A negative subnormal C
+  // contributes an arithmetic-floor unit if the grid is at or below -14,
+  // even when no magnitude bits survive. Coarser grids drop that tiny C.
   const int grid =
-      std::max(product_grid, std::max(Packed && !Bf16 ? -14 : -126, c.leading_exponent()) - 26);
-  int64_t total = align(c, grid, !(Packed && !Bf16 && grid <= -14));
-  for (int i = 0; i < N; i += 2) {
-    const int pair_grid = std::max(product_grids[i], product_grids[i + 1]);
-    const int64_t pair = align(products[i], pair_grid) + align(products[i + 1], pair_grid);
-    const Term sum{uint64_t(pair < 0 ? -pair : pair), pair_grid, pair < 0};
+      std::max(product_grid, std::max(Packed && !is_bf16 ? -14 : -126, c.leading_exponent()) - 26);
+  int64_t total = align(c, grid, !(Packed && !is_bf16 && grid <= -14));
+  constexpr std::size_t group_size = is_f8 ? 4 : 2;
+  for (std::size_t i = 0; i < N; i += group_size) {
+    int group_grid = kEmptyExponent;
+    for (std::size_t j = i; j < i + group_size; ++j)
+      group_grid = std::max(group_grid, product_grids[j]);
+    int64_t group = 0;
+    for (std::size_t j = i; j < i + group_size; ++j)
+      group += align(products[j], group_grid);
+    const Term sum{uint64_t(group < 0 ? -group : group), group_grid, group < 0};
     total += align(sum, grid);
   }
-
-  // Pair alignment retains at most 27 magnitude bits; the final sum and C
+  // Group alignment retains at most 28 magnitude bits; the final sum and C
   // fit comfortably in int64_t. Zero, including underflow to zero, is positive.
   if constexpr (Packed) {
-    if constexpr (Bf16)
+    if constexpr (is_bf16)
       return pack(total, grid) >> 16;
-    return packed16::pack_f16(total, grid, false, fp16_ovfl);
+    else
+      return packed16::pack_f16(total, grid, false, fp16_ovfl);
   }
   return pack(total, grid);
+}
+
+} // namespace gfx12_dot_detail
+
+// Retain the DOT2/DOT4 interface used by FP16/BF16 arithmetic and reporting.
+template <bool Bf16, int N, bool Packed = false>
+inline uint32_t gfx12_dot_bits(const std::array<uint16_t, N> &a, const std::array<uint16_t, N> &b,
+                               uint32_t acc, bool fp16_ovfl = false) {
+  using gfx12_dot_detail::InputFormat;
+  constexpr auto format = Bf16 ? InputFormat::Bf16 : InputFormat::F16;
+  return gfx12_dot_detail::dot_bits<format, format, Packed>(a, b, acc, fp16_ovfl);
+}
+
+// Native FP8/BF8 DOT8: two independently aligned groups of four products,
+// followed by FP32 RNE. Factor NaNs and BF8 invalid products yield 0xffc00a3d;
+// otherwise an accumulator NaN retains its payload and is quieted.
+template <bool ABf8, bool BBf8>
+inline uint32_t gfx12_dot8_f32(const std::array<uint8_t, 8> &a, const std::array<uint8_t, 8> &b,
+                               uint32_t acc) {
+  using gfx12_dot_detail::InputFormat;
+  constexpr auto left = ABf8 ? InputFormat::Bf8 : InputFormat::Fp8;
+  constexpr auto right = BBf8 ? InputFormat::Bf8 : InputFormat::Fp8;
+  return gfx12_dot_detail::dot_bits<left, right, false>(a, b, acc);
 }
 
 } // namespace goc

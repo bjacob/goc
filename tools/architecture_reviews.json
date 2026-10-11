@@ -1205,7 +1205,7 @@
   },
   {
     "heading": "FP8 and BF8 dense WMMA contract review",
-    "semantics": "loose",
+    "semantics": "loose and exact",
     "tests": "tests/subbyte_wmma_test.cpp",
     "mnemonics": [
       "v_wmma_f32_16x16x16_fp8_fp8",

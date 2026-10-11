@@ -1008,3 +1008,17 @@ independent captures remain intact. Upstream's additional out-of-range encoded
 key aliases are not supported by the GoC API and are explicitly excluded;
 none of the 78 stored captures is excluded. This validates the equivalence of
 GoC's existing physical rearrangement for these captures, not all possible inputs.
+
+
+### Dense native FP8/BF8 alignment
+
+Ported rocjitsu `dd63b040587` native DOT8 arithmetic, preserving the existing
+DOT2/DOT4 interface. Dense FP8/BF8 strict exact paths now run two DOT8 steps;
+loose SIMD remains enabled. Captured C ABS/NEG encodings are ignored, superseding
+the prior transformed-C test and benchmark references. The new matrix/operand
+replay imports all four dense FP8/BF8 headers at `ad2bb973ec4`, reproduces the
+unsigned xorshift stream and nonuniform factor patches, materializes inline C,
+and compares complete guarded storage for every CPU selector. All local dense
+fixtures pass at default API guest flags. Translating their saved MODE fields,
+host-state coverage, final metadata reconciliation and cross-build qualification
+remain pending; fixture metadata alone is not proof of those gates.

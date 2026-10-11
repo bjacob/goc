@@ -23,9 +23,8 @@ void ds_swizzle_x86_64_v3(unsigned lanes, uint64_t exec_mask, uint32_t *d, const
 void half_dot_x86_64_v3(bool bf16, bool saturate, uint32_t exec_mask, uint32_t mode, uint32_t *d,
                         const uint32_t *a, const uint32_t *b, const uint32_t *c);
 
-void fp8_wmma_x86_64_v3(bool bf8_a, bool bf8_b, uint32_t modifiers, uint32_t *const *d,
-                        const uint32_t *const *a, const uint32_t *const *b,
-                        const uint32_t *const *c);
+void fp8_wmma_x86_64_v3(bool bf8_a, bool bf8_b, uint32_t *const *d, const uint32_t *const *a,
+                        const uint32_t *const *b, const uint32_t *const *c);
 
 void fp8_dot_x86_64_v3(bool bf8_a, bool bf8_b, uint32_t exec_mask, uint32_t modifiers, uint32_t *d,
                        const uint32_t *a, const uint32_t *b, const uint32_t *c);

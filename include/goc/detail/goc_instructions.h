@@ -6247,9 +6247,10 @@ int goc_v_wmma_bf16_16x16x16_bf16_rdna4_wave64(uint64_t flags, uint64_t instruct
                                                const uint32_t *const *b, const uint32_t *const *c);
 
 // Wave32 FP8/BF8 WMMA: A/B each hold 2 VGPRs, C/D each hold 8.
-// FP8 is OCP E4M3FN; BF8 is OCP E5M2. Only loose semantics are implemented;
-// strict exact requests return GOC_ERROR_UNSUPPORTED_SEMANTICS. Supported
-// modifiers are GOC_WMMA_NEG_C and GOC_WMMA_ABS_C.
+// FP8 is OCP E4M3FN; BF8 is OCP E5M2. Both semantics are implemented.
+// Exact uses two native DOT8 steps from the borrowed gfx1201 empirical model.
+// GOC_WMMA_NEG_C and GOC_WMMA_ABS_C are accepted but ignored in both semantics,
+// matching captured raw encodings. A/B sign modifiers remain unsupported.
 int goc_v_wmma_f32_16x16x16_fp8_fp8(uint64_t flags, uint64_t instruction_flags, uint32_t *const *d,
                                     const uint32_t *const *a, const uint32_t *const *b,
                                     const uint32_t *const *c);

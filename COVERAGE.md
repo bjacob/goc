@@ -74,7 +74,7 @@ supersede earlier findings, including the removal of newly inferred exact models
 | Family | Current evidence | Remaining limits or verification |
 |---|---|---|
 | RDNA3 WMMA | All six contracts reviewed at both widths; borrowed GFX11 models and captures | Scalar paths and fixed numerical modes; see [matrix review](#fp16-and-bf16-wmma-architecture-contract-review) |
-| RDNA4 WMMA/SWMMAC | All 22 matrix contracts reviewed at both widths; captures, SIMD and fallback tests | FP8 dense and floating sparse forms remain loose-only; [sparse review](#sparse-wmma-contract-review) records encoding/mode limits |
+| RDNA4 WMMA/SWMMAC | All 22 matrix contracts reviewed at both widths; captures, SIMD and fallback tests | Floating sparse forms remain loose-only; [sparse review](#sparse-wmma-contract-review) records encoding/mode limits |
 | DOT2 and DOT2ACC | Ordinary, accumulator, dual and half-result contracts reviewed; architecture-specific FP32-result models and shared SIMD | RDNA3 reporting unavailable; see [DOT2 review](#fp32-result-dot2-architecture-contracts) |
 | Floating selection | Binary/ternary FP16/FP32, packed FP16 and FP64 contracts reviewed; architecture policies and both widths tested | Strict exact and optional exact reporting remain unsupported; see [FP16 selection](#fp16-binary-and-packed-selection-architecture-contracts) and [FP64 selection](#fp64-minmax-architecture-contracts) |
 | Scalar arithmetic and bits | Integer arithmetic, Boolean, shifts, fields, counts, comparisons and EXEC operations reviewed; scalar floating contracts also reviewed | Floating exact support is selective; see [scalar FMA](#scalar-fp32-fma-exact-port-and-architecture-contracts) and following FP16 limitation |
@@ -7075,27 +7075,24 @@ mnemonics and sparse SWMMAC are separate review work.
 
 ## FP8 and BF8 dense WMMA contract review
 
-Reviewed all four RDNA4-only FP8/BF8 format pairs at both wave widths against
-rocjitsu `ffc144c564c`'s generated `vop3p_exec.cpp` and
-`shared/mma_exec.h::exec_wmma_f32_mixed`. These handlers use generic floating
-MAC reduction, not the characterized GFX11 DOT2 / GFX12 DOT4 models used by
-FP16/BF16 WMMA. GoC therefore retains loose semantics, rejects strict exact
-requests before operand access, and permits non-strict fallback. The source
-formats are OCP E4M3FN and E5M2, not FNUZ. Both C modifiers are supported;
-A/B negation, DPP, OMOD and floating CLAMP are not exposed.
+All four RDNA4-only format pairs and both widths now support empirical exact
+semantics using native DOT8 arithmetic borrowed from rocjitsu `dd63b040587`
+at `ad2bb973ec4`. Two steps each align two groups of four products, then C,
+and round to FP32. This replaces the earlier loose-only qualification against
+`ffc144c564c`; the formats remain OCP E4M3FN and E5M2, not FNUZ.
 
-The manual's storage map and GoC's existing finite gfx1201 Wave64 corpus anchor
-register use. The known upstream Wave64 K-permutation discrepancy remains:
-a common permutation of A/B leaves exact finite sums unchanged, so that corpus
-does not establish a general hardware accumulation order. No new exact claim
-or hardware probe is warranted. `SubbyteWmma` covers all byte encodings, four
-format pairs, both widths, C modifiers, aliases, dense goldens, strict errors
-and non-strict fallback. Scalar and AVX2 paths exist at both widths. FP16 overflow
-mode has no effect; other guest FP flags remain unsupported.
+The new GoC-local captured matrix and operand replay covers raw special values,
+native subnormal factors, Wave64 order, inline C values, nonuniform factor groups
+and complete destination/source preservation on every CPU selector. It retains
+captured MODE metadata, but guest-mode translation is still pending. Old finite
+hardware corpora and independent fuzzy references remain in place. These saved
+observations qualify a borrowed empirical model, not arbitrary hardware behavior.
 
-These APIs retain no EXEC input or implicit-state output, for the same matrix
-instruction contract and LLVM evidence recorded in the FP16/BF16 WMMA review.
-This does not extend FP16/BF16's numerical exactness to FP8/BF8.
+C ABS/NEG bits are accepted but ignored in both semantics, matching the raw
+captures. Loose paths retain AVX2 dispatch; exact uses integer arithmetic without
+host FP-environment writes. A/B negation, DPP, OMOD and floating CLAMP remain
+unsupported. FP16 overflow has no effect; other guest FP flags currently remain
+unsupported. There is no EXEC input or implicit-state output.
 
 ## Sparse WMMA contract review
 
@@ -8664,7 +8661,7 @@ Upstream paths below are relative to rocjitsu's `lib/`; `shared/` abbreviates
 | `util/include/util/amdgpu_exp.h`, `amdgpu_log.h` | [EXP](src/exp_model.h), [LOG](src/log_model.h) | [Unary tests](tests/unary_exact_test.cpp); FP32 numerical ports, including pseudo-scalar use; FP16 EXP/LOG remain loose-only |
 | `util/include/util/amdgpu_trig.h` | [Trig model](src/trig_model.h), [coefficients](src/trig_coefficients.h) | [FP32](tests/trig_test.cpp) and [FP16](tests/half_trig_test.cpp) tests; architecture policies and optional reporting have separate restrictions |
 | `shared/gfx11_dot2.h`, `shared/mma_exec.h` | [GFX11 DOT2](src/gfx11_dot2.h), [RDNA3 WMMA](src/wmma_replicated.cpp) | [RDNA3 WMMA captures](tests/wmma_replicated_exact_test.cpp), [DOT2 architecture tests](tests/dot2_architecture_test.cpp); fixed numerical modes and scalar exact paths |
-| `shared/gfx12_dot.h`, `shared/dot_packed16.h` | [GFX12 dot model](src/dot.h), [packed formats](src/packed16.h) | [WMMA](tests/wmma_test.cpp), [packed WMMA](tests/packed_wmma_test.cpp), [DOT2](tests/dot2_test.cpp); does not supply exact FP8 dense or floating sparse WMMA |
+| `shared/gfx12_dot.h`, `shared/dot_packed16.h` | [GFX12 dot model](src/dot.h), [packed formats](src/packed16.h) | [WMMA](tests/wmma_test.cpp), [packed WMMA](tests/packed_wmma_test.cpp), [DOT2](tests/dot2_test.cpp); now also supplies native exact FP8 dense WMMA; floating sparse alignment is pending |
 | `shared/fp_mode.h` fused arithmetic and mixed-result handling | [Integer intermediate](src/fma_integer.h), [FP32 finishing](src/fma_scalar.h), [FP16](src/half_fma_scalar.h), [mixed](src/mixed_fma_scalar.h) | [FMA](tests/fma_exact_test.cpp), [mixed FMA](tests/mixed_fma_test.cpp), [scalar FMA](tests/scalar_fma_test.cpp); reused by FP32 ADD/MUL and literal/dual forms; nearest-even, with per-family reporting limits |
 | `shared/division.h` | [Division helpers](src/division.h), [DIV_FMAS](src/div_fmas.cpp), [DIV_SCALE](src/div_scale.cpp), [DIV_FIXUP](src/div_fixup.cpp) | Corresponding division tests and architecture reviews; accepted guest modes are narrower than the upstream interface |
 | `shared/cube.h` | [Cube model](src/cube.h), [wrappers](src/cube.cpp) | [Cube tests](tests/cube_test.cpp); architecture NaN/OMOD/CLAMP policies, nearest-even overflow behavior |

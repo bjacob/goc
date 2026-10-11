@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: MIT
 
+#include "dot.h"
 #include "float_formats.h"
 #include "goc/goc.h"
 #include "internal.h"
@@ -30,12 +31,31 @@ void store(uint32_t *const *d, const uint32_t (&result)[8][32]) {
 template <bool Bf8A, bool Bf8B>
 int floating(uint64_t flags, uint32_t modifiers, uint32_t *const *d, const uint32_t *const *a,
              const uint32_t *const *b, const uint32_t *const *c) {
-  // FP8/BF8 WMMA supports C negation/absolute value, not A/B halfword negation.
-  if (int error = goc::validate(flags, modifiers & ~(GOC_WMMA_NEG_C | GOC_WMMA_ABS_C)))
+  // Captured C ABS/NEG bits are ignored aliases. A/B modifiers remain unsupported.
+  if (int error = goc::validate(flags, modifiers & ~(GOC_WMMA_NEG_C | GOC_WMMA_ABS_C), true))
     return error;
+  if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
+    uint32_t result[8][32];
+    for (int row = 0; row < 16; ++row)
+      for (int col = 0; col < 16; ++col) {
+        int lane = col + 16 * (row / 8), reg = row % 8;
+        uint32_t acc = c[reg][lane];
+        for (int stage = 0; stage < 2; ++stage) {
+          std::array<uint8_t, 8> left, right;
+          for (int i = 0; i < 8; ++i) {
+            left[i] = uint8_t(element<8>(a, row, stage * 8 + i));
+            right[i] = uint8_t(element<8>(b, col, stage * 8 + i));
+          }
+          acc = goc::gfx12_dot8_f32<Bf8A, Bf8B>(left, right, acc);
+        }
+        result[reg][lane] = acc;
+      }
+    store(d, result);
+    return GOC_SUCCESS;
+  }
 #if defined(GOC_HAVE_X86_64_V3)
   if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::fp8_wmma_x86_64_v3(Bf8A, Bf8B, modifiers, d, a, b, c);
+    goc::fp8_wmma_x86_64_v3(Bf8A, Bf8B, d, a, b, c);
     return GOC_SUCCESS;
   }
 #endif
@@ -44,10 +64,6 @@ int floating(uint64_t flags, uint32_t modifiers, uint32_t *const *d, const uint3
     for (int col = 0; col < 16; ++col) {
       int lane = col + 16 * (row / 8), reg = row % 8;
       uint32_t bits = c[reg][lane];
-      if (modifiers & GOC_WMMA_ABS_C)
-        bits &= 0x7fffffff;
-      if (modifiers & GOC_WMMA_NEG_C)
-        bits ^= 0x80000000;
       float acc = goc::as_float(bits);
       for (int k = 0; k < 16; ++k)
         acc = std::fma(goc::fp8_to_float<Bf8A>(uint8_t(element<8>(a, row, k))),
@@ -65,7 +81,7 @@ int floating(uint64_t flags, uint32_t modifiers, uint32_t *const *d, const uint3
 template <bool Bf8A, bool Bf8B>
 int floating_wave64(uint64_t flags, uint32_t modifiers, uint32_t *const *d,
                     const uint32_t *const *a, const uint32_t *const *b, const uint32_t *const *c) {
-  if (int error = goc::validate(flags, modifiers & ~(GOC_WMMA_NEG_C | GOC_WMMA_ABS_C)))
+  if (int error = goc::validate(flags, modifiers & ~(GOC_WMMA_NEG_C | GOC_WMMA_ABS_C), true))
     return error;
   const uint32_t *av[] = {a[0], a[0] + 32}, *bv[] = {b[0], b[0] + 32};
   const uint32_t *cv[8];
