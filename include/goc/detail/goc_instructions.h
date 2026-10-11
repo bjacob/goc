@@ -2638,7 +2638,8 @@ int goc_v_swmmac_i32_16x16x64_iu4_wave64(uint64_t flags, uint64_t instruction_fl
 // four. GOC_SWMMAC_INDEX_KEY_1 selects the upper 16 metadata bits per lane;
 // no other instruction modifiers apply. Loose semantics use FP32 FMA with
 // host nearest-even rounding and denormals enabled. Exception flags may change.
-// Exact semantics are unsupported; GOC_FP16_OVFL has no effect. All inputs and
+// Exact semantics use two native DOT8 steps from the borrowed gfx1201 model,
+// independently of host FP state. GOC_FP16_OVFL has no effect. All inputs and
 // D are read before ascending destination-register stores; last store wins
 // aliases. EXEC is ignored; every lane is read and written, and operand pointers
 // must be valid. Errors leave destinations unchanged.
@@ -2661,7 +2662,7 @@ int goc_v_swmmac_f32_16x16x32_bf8_bf8(uint64_t flags, uint64_t instruction_flags
 // Wave64 FP8/BF8 SWMMAC: A one VGPR, B two, D four, index one.
 // KEY_1/KEY_2 combine to select one of four consecutive metadata bytes per
 // lane. Four compressed elements use four 2-bit indices from that byte.
-// Loose-only semantics and alias/error guarantees match the Wave32 forms.
+// Both semantics and alias/error guarantees match the Wave32 forms.
 int goc_v_swmmac_f32_16x16x32_fp8_fp8_wave64(uint64_t flags, uint64_t instruction_flags,
                                              uint32_t *const *d, const uint32_t *const *a,
                                              const uint32_t *const *b,

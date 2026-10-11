@@ -2757,16 +2757,21 @@
       "Swmmac8.Wave64OverlappingSourcesAndDuplicateDestinations",
       "Swmmac8.Wave64EveryInputEncoding",
       "Swmmac8.Wave64ValidationPreservesOutputs",
-      "Swmmac8.FractionalMatricesAgainstDoubleReference"
+      "Swmmac8.FractionalMatricesAgainstDoubleReference",
+      "Swmmac8.NativeFp8CapturedMatricesAndOperands"
     ],
     "evidence": [
       "tests/swmmac8_test.cpp",
       "tests/swmmac8_hardware.h",
       "tests/swmmac8_wave64_hardware.h",
+      "tests/rdna_swmmac_f32_fp8_fp8_cases.h",
+      "tests/rdna_swmmac_f32_fp8_bf8_cases.h",
+      "tests/rdna_swmmac_f32_bf8_fp8_cases.h",
+      "tests/rdna_swmmac_f32_bf8_bf8_cases.h",
       "tests/LOOSE_TOLERANCES.md"
     ],
-    "scope": "All four FP8/BF8 sparse matrix combinations, both wave widths, every index key and available CPU selector. Independent gfx1201 digests use sixteen deterministic small-integer inputs with exact sums; native Wave64 captures are separate. Each of 256 operand encodings is decoded mathematically and multiplied by sixteen against one-valued partners, with NaN classification and otherwise exact scaling. New bounded fractional logical matrices with legal 2:4 selectors use independent double accumulation and fuzzy comparisons; no production decoder or accumulation helper supplies their expected values. Same-library per-lane and alias/duplicate-destination comparisons are differential checks rather than independent arithmetic oracles. Strict exact semantics are unsupported; captured non-strict exact calls explicitly exercise loose fallback.",
-    "diagnostics": "Added non-output storage preservation to both-width captures and all sources/out-of-wave storage checks to random matrices. Expanded Wave32 validation to all 64 instruction-flag bits and both widths to invalid global flags and unchanged outputs on strict-exact rejection. Digest context includes sample. Primary and holdout fractional seeds each compare 1,572,864 values per compiler; existing WMMA bound passes unchanged on Clang and GCC. All ten tests pass."
+    "scope": "All four FP8/BF8 sparse matrix combinations, both wave widths, every index key and available CPU selector. Independent gfx1201 digests use sixteen deterministic small-integer inputs with exact sums; native Wave64 captures are separate. Each of 256 operand encodings is decoded mathematically and multiplied by sixteen against one-valued partners, with NaN classification and otherwise exact scaling. New bounded fractional logical matrices with legal 2:4 selectors use independent double accumulation and fuzzy comparisons; no production decoder or accumulation helper supplies their expected values. Same-library per-lane and alias/duplicate-destination comparisons are differential checks rather than independent arithmetic oracles. Exact semantics now borrow native DOT8 arithmetic from rocjitsu ad2bb973ec4 and replay 296 supported matrix/operand captures on all CPU selectors; 48 raw sign/clamp encodings are explicitly excluded. The old small-integer digests also pass with exact dispatch. Guest-mode translation remains pending.",
+    "diagnostics": "Added non-output storage preservation to both-width captures and all sources/out-of-wave storage checks to random matrices. Expanded Wave32 validation to all 64 instruction-flag bits and both widths to invalid global flags and unchanged outputs on reserved-semantics rejection. Digest context includes sample. Primary and holdout fractional seeds each compare 1,572,864 values per compiler; existing WMMA bound passes unchanged on Clang and GCC. All ten tests pass."
   },
   {
     "file": "swmmac16_test.cpp",

@@ -1215,8 +1215,8 @@
     ]
   },
   {
-    "heading": "Sparse WMMA contract review",
-    "semantics": "loose",
+    "heading": "Sparse FP8 native arithmetic qualification",
+    "semantics": "loose and exact",
     "tests": "tests/swmmac8_test.cpp",
     "mnemonics": [
       "v_swmmac_f32_16x16x32_fp8_fp8",

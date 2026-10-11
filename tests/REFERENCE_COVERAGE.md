@@ -652,3 +652,24 @@ independent captures remain intact. Upstream's additional out-of-range encoded
 key aliases are not supported by the GoC API and are explicitly excluded;
 none of the 78 stored captures is excluded. This validates the equivalence of
 GoC's existing physical rearrangement for these captures, not all possible inputs.
+
+
+## Sparse FP8 native arithmetic qualification
+
+Sparse FP8/BF8 now supports strict empirical exact semantics using the native
+DOT8 model borrowed from rocjitsu `ad2bb973ec4` (`184faac7d94`). Compressed K
+is contiguous in each of the two steps. Integer arithmetic preserves native
+subnormal floors and NaN payload precedence without host FP-environment writes.
+All results are staged before stores, including A/B/index overlap. Loose scalar,
+AVX2 and AVX-512 implementations are unchanged.
+
+The imported compact corpus contains 80 matrices and 264 operand cases. Of
+these, 296 are replayed in exact semantics at every CPU selector: FP8/FP8 has
+25 Wave32 + 27 Wave64; FP8/BF8 and BF8/FP8 each have 36 + 38; BF8/BF8 has
+47 + 49. Forty-eight raw sign/clamp encodings (six per format/width) remain
+outside GoC's supported flags and are explicitly excluded, with counts asserted
+by the test. Complete guarded storage and tied C/D are compared. Captured MODE
+metadata is retained; guest-mode translation and host-state qualification remain
+pending. Existing loose numerical references remain applicable and unchanged.
+This supersedes the earlier sparse FP8 loose-only conclusion; sparse FP16/BF16
+alignment is still pending.

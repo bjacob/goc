@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 
+#include "dot.h"
 #include "float_formats.h"
 #include "goc/goc.h"
 #include "internal.h"
 #include "swmmac_float.h"
 
+#include <array>
 #include <stdint.h>
 
 namespace {
@@ -13,15 +15,44 @@ template <bool Bf8A, bool Bf8B, bool Wave64 = false>
 int run(uint64_t flags, uint32_t mode, uint32_t *const *d, const uint32_t *const *a,
         const uint32_t *const *b, const uint32_t *const *index) {
   if (int error = goc::validate(
-          flags, mode & ~(GOC_SWMMAC_INDEX_KEY_1 | (Wave64 ? GOC_SWMMAC_INDEX_KEY_2 : 0))))
+          flags, mode & ~(GOC_SWMMAC_INDEX_KEY_1 | (Wave64 ? GOC_SWMMAC_INDEX_KEY_2 : 0)), true))
     return error;
   // Existing accumulation kernels use eight 32-lane destination sections.
   // Wave64 stores the upper four sections in the upper lanes of D[0..3].
   uint32_t *dest[8];
   for (unsigned reg = 0; reg < 8; ++reg)
     dest[reg] = Wave64 ? d[reg % 4] + 32 * (reg / 4) : d[reg];
-  goc::SwmmacFloatInputs input;
   unsigned key = Wave64 ? 8 * ((mode >> 7) & 3) : (mode & GOC_SWMMAC_INDEX_KEY_1 ? 16 : 0);
+  // Compressed K remains contiguous for sparse DOT8 steps. Snapshot all
+  // results before any stores because D can overlap A, B or the index VGPR.
+  if ((flags & GOC_SEMANTICS_MASK) == GOC_SEMANTICS_EXACT_EMPIRICAL) {
+    uint32_t result[8][32];
+    for (unsigned row = 0; row < 16; ++row)
+      for (unsigned col = 0; col < 16; ++col) {
+        unsigned reg = row % 8, out_lane = col + 16 * (row / 8);
+        uint32_t acc = dest[reg][out_lane];
+        for (unsigned stage = 0; stage < 2; ++stage) {
+          std::array<uint8_t, 8> left, right;
+          for (unsigned i = 0; i < 8; ++i) {
+            unsigned ck = stage * 8 + i;
+            unsigned lane = row + 16 * (ck / 8) + (Wave64 ? 32 * ((ck / 4) % 2) : 0);
+            unsigned slot = ck % (Wave64 ? 4 : 8);
+            left[i] = uint8_t(a[slot / 4][lane] >> (8 * (slot % 4)));
+            unsigned k = 4 * (ck / 2) + ((index[0][lane] >> (key + 2 * slot)) & 3);
+            unsigned b_lane = col + 16 * (k / 16) + (Wave64 ? 32 * ((k / 8) % 2) : 0);
+            unsigned b_reg = (k % (Wave64 ? 8 : 16)) / 4;
+            right[i] = uint8_t(b[b_reg][b_lane] >> (8 * (k % 4)));
+          }
+          acc = goc::gfx12_dot8_f32<Bf8A, Bf8B>(left, right, acc);
+        }
+        result[reg][out_lane] = acc;
+      }
+    for (unsigned reg = 0; reg < 8; ++reg)
+      for (unsigned lane = 0; lane < 32; ++lane)
+        dest[reg][lane] = result[reg][lane];
+    return GOC_SUCCESS;
+  }
+  goc::SwmmacFloatInputs input;
   for (unsigned row = 0; row < 16; ++row)
     for (unsigned ck = 0; ck < 16; ++ck) {
       unsigned lane = row + 16 * (ck / 8) + (Wave64 ? 32 * ((ck / 4) % 2) : 0);
