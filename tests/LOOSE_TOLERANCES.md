@@ -292,3 +292,22 @@ allows about one binary64 encoding step with margin; the absolute term supplies
 a minimum-subnormal floor. Wider host arithmetic is a proximity reference, not
 a hardware bit-exact oracle. Script/snapshots/logs:
 `goc-build/coverage-work/testing-fp64-arithmetic-calibration/run.py`.
+
+## Trigonometric architecture integration
+
+The captured FP32 architecture corpus retains `(8e-7, 0)` for normal results
+and `(3 * 2^-149, 0)` for subnormal results, now named centrally. Clang and GCC
+measure 1,023,392 finite normal pairs, maximum absolute error
+`4.76837158203125e-7` (about 60% of the bound), and 2,956 subnormal pairs with
+zero error. Both architectures, wave widths, CPU selectors, eight guest policies,
+32 modifiers and eight routing choices participate. Exact zeros and NaN payloads
+remain raw checks. This calibration describes the fixed captured boundary corpus;
+it has no independent random holdout and is not an arbitrary-input error bound.
+Broader mathematical comparisons remain in the core trig tests.
+
+The half architecture integration compares 2,939,840 finite loose pairs with zero
+error on both compilers, using the existing half SFU tolerance. Its computed
+reference depends on GoC's separately validated FP32 API and independent half
+narrowing, so this measurement demonstrates integration consistency rather than
+independent hardware equivalence. Script, source snapshots and logs:
+`goc-build/coverage-work/testing-trig-architecture-calibration/run.py`.

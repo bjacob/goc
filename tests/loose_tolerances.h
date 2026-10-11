@@ -23,6 +23,9 @@ inline const Tolerance mullit_tolerance = {0x1p-149, 1.2e-7};
 inline const Tolerance wmma_f32_tolerance = {1e-5, 1e-5};
 inline const Tolerance interp_f32_tolerance = {1e-44, 2e-7};
 inline const Tolerance trig_f32_tolerance = {3e-7, 0};
+// Captured FP32 architecture corpus including output scaling.
+inline const Tolerance trig_arch_f32_tolerance = {8e-7, 0};
+inline const Tolerance trig_arch_subnormal_f32_tolerance = {3 * 0x1p-149, 0};
 inline const Tolerance trig_f16_tolerance = {0.0005, 0};
 
 } // namespace goc_test

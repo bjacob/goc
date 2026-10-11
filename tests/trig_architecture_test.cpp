@@ -5,6 +5,7 @@
 #include "fp_environment.h"
 #include "fuzzy.h"
 #include "goc/goc.h"
+#include "loose_tolerances.h"
 #include "trig_golden.h"
 
 #include <algorithm>
@@ -148,17 +149,22 @@ TEST(TrigArchitecture, CapturedResultsGuestPoliciesModifiersDppMasksAndAliases) 
                   ASSERT_EQ(call(arch, wide, cosine, cpu | policy(guest) | (loose ? 0 : exact),
                                  exec_mask, descriptor | mode, d, a, loose ? &state : nullptr),
                             GOC_SUCCESS);
-                  ASSERT_EQ(state, 0x12345678U);
+                  if (loose) {
+                    ASSERT_EQ(state, 0x12345678U);
+                  }
                   for (unsigned reg = 0; reg < 2; ++reg)
                     for (unsigned lane = 0; lane < 66; ++lane) {
                       uint32_t got = words[reg][lane], want = expected[reg][lane];
                       bool written =
                           reg == target && lane > 0 && lane < 65 && ((writes >> (lane - 1)) & 1);
                       unsigned magnitude = want & 0x7fffffff;
-                      if (loose && written && got != want && magnitude && magnitude < 0x7f800000) {
-                        double tolerance = magnitude < 0x800000 ? 3 * 0x1p-149 : 8e-7;
-                        ASSERT_TRUE(goc_test::fuzzy(as_float(got), as_float(want), {tolerance, 0}))
-                            << arch << "/" << cosine << "/" << guest << "/" << variant;
+                      if (loose && written && magnitude && magnitude < 0x7f800000) {
+                        auto tolerance = magnitude < 0x800000
+                                             ? goc_test::trig_arch_subnormal_f32_tolerance
+                                             : goc_test::trig_arch_f32_tolerance;
+                        ASSERT_TRUE(goc_test::fuzzy(as_float(got), as_float(want), tolerance))
+                            << arch << "/" << cosine << "/" << guest << "/" << variant << "/"
+                            << permutation << "/" << cpu << "/" << lane;
                       } else
                         ASSERT_EQ(got, want) << arch << "/" << cosine << "/" << guest << "/"
                                              << variant << "/" << lane;

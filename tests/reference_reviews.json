@@ -1970,5 +1970,41 @@
     ],
     "scope": "RDNA4 exact SIN/COS FP16/FP32 exception reporting, both widths. Retained gfx1201 MODE=0xf0 digests cover every half encoding, a deterministic FP32 sign/exponent/mantissa corpus and dense values around 16 boundary anchors, each across 16 modifier combinations. CPU selectors cycle by input; Wave64 replays the same captured values at lane 63, with inactive signaling NaNs elsewhere. Nonflag preservation now checks all bits outside the seven captured flags. DPP/alias/half-selector tests compute expected lane results and accumulated flags using scalar one-lane API calls: they establish routing/integration, not independent arithmetic evidence. Wave32 covers 84 EXEC masks; Wave64 three upper/mixed/full masks with sampled row/modifier combinations. Loose optional-state preservation, null opt-out, empty EXEC/error precedence and reporting into an upper source are covered.",
     "diagnostics": "Hardware hashes identify corpus/modifier; nonflag failures additionally identify input. DPP failures now include operation/descriptor/EXEC/variant/CPU/lane. Upper-source alias test remains differential, complemented by the independent exception captures. Numerical reference coverage is reviewed in the separate trig family files."
+  },
+  {
+    "file": "trig_architecture_test.cpp",
+    "assertions": [
+      "TrigArchitecture.CapturedResultsGuestPoliciesModifiersDppMasksAndAliases",
+      "TrigArchitecture.LiteralNaNFlushingAndIeeePolicy",
+      "TrigArchitecture.ReportingErrorsAndHostControls"
+    ],
+    "evidence": [
+      "tests/trig_architecture_test.cpp",
+      "tests/dpp_reference.h",
+      "tests/LOOSE_TOLERANCES.md",
+      "tests/trig_golden.h",
+      "tests/trig_test.cpp"
+    ],
+    "scope": "SIN/COS FP32 for both architectures and wave widths. Captured gfx1100/gfx1201 input/output pairs supply numerical anchors, with independently expressed borrowed architecture policies, source modifiers and power-of-two scaling. All eight guest policies and 32 modifiers combine with eight routing choices and stratified Wave64 row masks; mixed/full EXEC, disjoint/in-place destinations, guards and all CPU selectors are checked. Loose finite nonzero outputs use measured domain-specific tolerances; exact results, zeros, NaN payloads and untouched storage remain raw. Literal witnesses distinguish IEEE NaN quieting, OMOD gating and tiny signed outputs. Reporting rejection, invalid flags and host control preservation are checked. This is captured-domain policy integration, not an arbitrary-input proof.",
+    "diagnostics": "Per-output checks identify architecture, operation, guest policy, variant and lane; fuzzy failures also identify route and CPU. Removed vacuous state assertions from null-pointer calls; loose calls still check their supplied state. Half reference bitcasts use local memcpy rather than production helpers."
+  },
+  {
+    "file": "half_trig_architecture_test.cpp",
+    "assertions": [
+      "HalfTrigArchitecture.EveryEncodingGuestPolicyAndOutputModifier",
+      "HalfTrigArchitecture.ModifiersDppMasksHalfSelectionAndAliases",
+      "HalfTrigArchitecture.LiteralNaNFlushingAndIeeePolicy",
+      "HalfTrigArchitecture.ReportingErrorsAndHostControls"
+    ],
+    "evidence": [
+      "tests/half_trig_architecture_test.cpp",
+      "tests/dpp_reference.h",
+      "tests/LOOSE_TOLERANCES.md",
+      "tests/half_trig_test.cpp",
+      "tests/trig_golden.h",
+      "tests/half_reference.h"
+    ],
+    "scope": "SIN/COS FP16 for both architectures and widths. The reference table calls the separately tested FP32 GoC exact API and independently narrows its outputs: this is differential integration, not an independent numerical oracle. Independent numerical evidence remains in the core trig captures. Every half encoding is tested across eight guest policies and four output modifiers in Wave64 exact mode on all CPU selectors. A separate boundary corpus covers 128 source/destination selector/modifier combinations, eight routes, stratified row masks, mixed/full EXEC, both widths and destination aliases in both semantics. Loose finite outputs use the calibrated half SFU bound; unselected halves, signs, zeros, NaNs, guards and untouched lanes remain raw. Literal architecture-policy witnesses and reporting/error/host-control tests complement the differential table.",
+    "diagnostics": "Per-output checks identify architecture, operation, guest policy, variant and lane; fuzzy failures also identify route and CPU. Removed vacuous state assertions from null-pointer calls; loose calls still check their supplied state. Half reference bitcasts use local memcpy rather than production helpers."
   }
 ]

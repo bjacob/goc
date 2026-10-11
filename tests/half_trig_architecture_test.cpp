@@ -5,7 +5,6 @@
 #include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_reference.h"
-#include "internal.h"
 #include "loose_tolerances.h"
 
 #include <algorithm>
@@ -42,6 +41,19 @@ int call(unsigned arch, bool wide, unsigned cosine, uint64_t flags, uint64_t exe
               : functions[arch][cosine](flags, uint32_t(exec_mask), mode, d, a, state);
 }
 
+float as_float(uint32_t bits) {
+  float value;
+  std::memcpy(&value, &bits, sizeof(value));
+  return value;
+}
+
+uint32_t as_bits(float value) {
+  uint32_t bits;
+  std::memcpy(&bits, &value, sizeof(bits));
+  return bits;
+}
+
+// This is a differential integration reference, not an independent numerical oracle.
 // Round the independently tested FP32 exact API's results using the numeric
 // half reference, preserving NaN signs/payloads explicitly.
 std::vector<uint16_t> reference_table(int op) {
@@ -54,7 +66,7 @@ std::vector<uint16_t> reference_table(int op) {
       uint16_t half = uint16_t(start + lane);
       a[lane] = (half & 0x7fff) > 0x7c00
                     ? (uint32_t(half & 0x8000) << 16) | 0x7f800000 | (uint32_t(half & 1023) << 13)
-                    : goc::as_bits(float(goc_test::half_value(half)));
+                    : as_bits(float(goc_test::half_value(half)));
     }
     EXPECT_EQ(wide_functions[op](GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, UINT32_MAX,
                                  0, dp, ap, nullptr),
@@ -63,7 +75,7 @@ std::vector<uint16_t> reference_table(int op) {
       table[start + lane] =
           (d[lane] & 0x7fffffff) > 0x7f800000
               ? uint16_t(((d[lane] >> 16) & 0x8000) | 0x7c00 | ((d[lane] >> 13) & 1023))
-              : goc_test::half_bits(double(goc::as_float(d[lane])));
+              : goc_test::half_bits(double(as_float(d[lane])));
   }
   return table;
 }
@@ -187,7 +199,9 @@ TEST(HalfTrigArchitecture, ModifiersDppMasksHalfSelectionAndAliases) {
                   ASSERT_EQ(call(arch, wide, cosine, cpu | policy(guest) | (loose ? 0 : exact),
                                  exec_mask, descriptor | mode, d, a, loose ? &state : nullptr),
                             GOC_SUCCESS);
-                  ASSERT_EQ(state, 0x12345678U);
+                  if (loose) {
+                    ASSERT_EQ(state, 0x12345678U);
+                  }
                   for (unsigned reg = 0; reg < 2; ++reg)
                     for (unsigned lane = 0; lane < 66; ++lane) {
                       uint32_t got = words[reg][lane], want = expected[reg][lane];
@@ -198,7 +212,9 @@ TEST(HalfTrigArchitecture, ModifiersDppMasksHalfSelectionAndAliases) {
                         ASSERT_EQ(got & ~(0x7fffU << shift), want & ~(0x7fffU << shift));
                         ASSERT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(got >> shift)),
                                                     goc_test::half_value(uint16_t(want >> shift)),
-                                                    goc_test::half_sfu_tolerance));
+                                                    goc_test::half_sfu_tolerance))
+                            << arch << "/" << cosine << "/" << guest << "/" << variant << "/"
+                            << permutation << "/" << cpu << "/" << lane;
                       } else {
                         ASSERT_EQ(got, want) << arch << "/" << cosine << "/" << guest << "/"
                                              << variant << "/" << lane;

@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 116 explicit family-file reviews exist and 38
+non-generic family references. 118 explicit family-file reviews exist and 36
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -369,3 +369,12 @@ routing/accumulation. Both-width capture replays now preserve every nonflag bit;
 DPP failures identify the relevant route, mask and lane. Exhaustive half inputs
 and sampled FP32 corpora remain explicitly bounded evidence, with CPU selectors
 cycled across inputs rather than a full CPU/input cross-product.
+
+### Trigonometric architecture policy integration
+
+Reviewed both FP32 and FP16 architecture suites, distinguishing captured FP32
+anchors from the half suite's differential FP32-API-based reference. Exact
+storage and categorical checks remain separate from calibrated loose arithmetic.
+The half suite exhausts encodings for guest policy/OMOD; routing, selectors and
+aliases use boundary inputs rather than the full Cartesian product. Core trig
+numerical suites retain their own captures and remain separate review items.

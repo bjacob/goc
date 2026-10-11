@@ -597,3 +597,13 @@ One review brings the queue to 116 reviewed and 38 pending. Both-width capture
 tests now check every nonflag bit, and DPP failures have route/mask/lane context.
 Recorded independent hardware evidence separately from differential integration.
 All seven affected tests pass on Clang/GCC. Production and fixtures are unchanged.
+
+### Trigonometric architecture review
+
+Two reviews bring the queue to 118 reviewed and 36 pending. Centralized and
+measured FP32 architecture tolerances on Clang/GCC; both compilers report the
+same worst error, below the retained bound. Documented half-reference dependence
+on the separately validated FP32 API, removed production bitcast dependencies
+and vacuous null-output state assertions, and improved numerical diagnostics.
+All seven affected tests and 14 tooling tests pass. Production and captures are
+unchanged; core trig numerical suites still have separate pending reviews.
