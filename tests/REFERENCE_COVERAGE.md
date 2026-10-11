@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 147 explicit family-file reviews exist and 7
+non-generic family references. 148 explicit family-file reviews exist and 6
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -578,3 +578,11 @@ both-width captures, with all non-output storage checked. Differential overlap
 and duplicate-destination references are explicitly distinguished from that
 independent numerical evidence. Expanded Wave32 error-preservation coverage;
 integer results remain bitwise in loose as well as exact semantics.
+
+
+Packed RDNA4 WMMA keeps independent rocjitsu matrix/modifier captures for
+empirical behavior and computed integer cases with exactly representable
+intermediates. Both forms have a role; no arbitrary-input equivalence is inferred.
+Matrix captures now cover all CPU selectors and preserve non-output storage;
+computed modifier cases cover both semantics. Error checks cover full storage.
+The companion packed-loose random/tolerance review remains pending.

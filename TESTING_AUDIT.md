@@ -844,3 +844,16 @@ capture checks, all non-output storage preservation, more precise digest
 diagnostics and complete Wave32 invalid-bit/error-preservation checks.
 All ten tests pass on Clang and GCC. Inventory: 147/154 families reviewed,
 seven matrix families and final broad verification remain.
+
+
+### Packed WMMA reference review
+
+Retained borrowed hardware captures and simple exactly representable computed
+modifier references, consistent with the clarified oracle policy. Expanded
+matrix captures to all CPU selectors, added non-output storage preservation,
+and exercised computed modifier cases in both semantics on all CPU selectors.
+Separated validation into a full-storage preservation test covering all unknown
+modifier bits, invalid global flags and reserved strict semantics. Six tests
+pass on Clang and GCC. Inventory: 148/154 families reviewed; six matrix families,
+including the companion packed-loose tolerance review, and final broad
+verification remain pending.

@@ -4,10 +4,10 @@
 #include "goc/goc.h"
 #include "packed_modifier_fixtures.h"
 #include "packed_wmma_fixtures.h"
-#include "test_instruction.h"
 
 #include <algorithm>
 #include <cfenv>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <stdint.h>
@@ -34,12 +34,13 @@ struct Registers {
     }
   }
 
-  void guards(int width) {
-    for (auto &r : storage) {
-      EXPECT_EQ(r[0], 0xdeadbeef);
-      for (int lane = width + 1; lane < 67; ++lane)
-        EXPECT_EQ(r[lane], 0xdeadbeef);
-    }
+  void preserved(const uint32_t (&before)[16][67], int width, int dst) {
+    for (int reg = 0; reg < 16; ++reg)
+      for (int word = 0; word < 67; ++word)
+        if (reg < dst || reg >= dst + 128 / width || word == 0 || word > width) {
+          EXPECT_EQ(storage[15 - reg][word], before[15 - reg][word])
+              << "reg=" << reg << " word=" << word;
+        }
   }
 };
 
@@ -69,29 +70,33 @@ TEST(PackedWmma, HardwareMatricesOverlapAndHostState) {
     for (bool bf16 : {false, true})
       for (int fixture = 0; fixture < 7; ++fixture)
         for (int dst : {0, 4, 8, 12})
-
-          for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
-            Registers r;
-            load(r, kPackedInputs[bf16][fixture], width);
-            std::fesetround(rounding);
-            std::feclearexcept(FE_ALL_EXCEPT);
-            std::feraiseexcept(FE_INEXACT);
-            ASSERT_EQ(function(width, bf16)(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0,
-                                            r.v + dst, r.v, r.v + 4, r.v + 8),
-                      GOC_SUCCESS);
-            EXPECT_EQ(std::fegetround(), rounding);
-            EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
-            for (int row = 0; row < 16; ++row)
-              for (int col = 0; col < 16; ++col) {
-                int lane = col + 16 * (row / 8) + (width == 64 ? 32 * ((row / 4) % 2) : 0);
-                int reg = (row % (256 / width)) / 2, shift = 16 * (row % 2);
-                uint32_t want = kPackedExpected[width == 64][bf16][fixture][row * 16 + col];
-                EXPECT_EQ((r.v[dst + reg][lane] >> shift) & 65535, want)
-                    << "width=" << width << " bf16=" << bf16 << " fixture=" << fixture
-                    << " row=" << row << " col=" << col;
-              }
-            r.guards(width);
-          }
+          for (uint64_t cpu = GOC_CPU_BASELINE; cpu <= goc_init_cpu_flags(); ++cpu)
+            for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO}) {
+              Registers r;
+              load(r, kPackedInputs[bf16][fixture], width);
+              uint32_t before[16][67];
+              std::memcpy(before, r.storage, sizeof(before));
+              std::fesetround(rounding);
+              std::feclearexcept(FE_ALL_EXCEPT);
+              std::feraiseexcept(FE_INEXACT);
+              ASSERT_EQ(
+                  function(width, bf16)(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
+                                        0, r.v + dst, r.v, r.v + 4, r.v + 8),
+                  GOC_SUCCESS);
+              EXPECT_EQ(std::fegetround(), rounding);
+              EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
+              for (int row = 0; row < 16; ++row)
+                for (int col = 0; col < 16; ++col) {
+                  int lane = col + 16 * (row / 8) + (width == 64 ? 32 * ((row / 4) % 2) : 0);
+                  int reg = (row % (256 / width)) / 2, shift = 16 * (row % 2);
+                  uint32_t want = kPackedExpected[width == 64][bf16][fixture][row * 16 + col];
+                  EXPECT_EQ((r.v[dst + reg][lane] >> shift) & 65535, want)
+                      << "width=" << width << " bf16=" << bf16 << " fixture=" << fixture
+                      << " row=" << row << " col=" << col << " cpu=" << cpu << " dst=" << dst
+                      << " rounding=" << rounding;
+                }
+              r.preserved(before, width, dst);
+            }
 }
 
 TEST(PackedWmma, OverflowStateAndModifiers) {
@@ -120,46 +125,67 @@ TEST(PackedWmma, OverflowStateAndModifiers) {
           }
 }
 
-TEST(PackedWmma, EveryModifierCombinationAndValidation) {
+TEST(PackedWmma, EveryModifierCombination) {
   for (int width : {32, 64})
     for (bool bf16 : {false, true})
-      for (uint32_t modifiers = 0; modifiers < 64; ++modifiers) {
-        Registers r;
-        PackedWmmaInput input{};
-        const uint16_t one = bf16 ? 0x3f80 : 0x3c00;
-        for (int i = 0; i < 256; ++i) {
-          input.a[i] = input.b[i] = one;
-          input.c[i] = one | 0x8000;
-        }
-        load(r, input, width);
-        ASSERT_EQ(function(width, bf16)(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
-                                        modifiers, r.v + 12, r.v, r.v + 4, r.v + 8),
-                  0);
-        int sum = 8 * ((bool(modifiers & 1) != bool(modifiers & 2)) ? -1 : 1) +
-                  8 * ((bool(modifiers & 8) != bool(modifiers & 16)) ? -1 : 1);
-        int c = (modifiers & GOC_WMMA_ABS_C) ? 1 : -1;
-        sum += (modifiers & GOC_WMMA_NEG_C) ? -c : c;
-        // All results are +/-1, +/-15 or +/-17, exactly representable.
-        int mag = sum < 0 ? -sum : sum;
-        uint32_t want = bf16 ? (mag == 1    ? 0x3f80
-                                : mag == 15 ? 0x4170
-                                            : 0x4188)
-                             : (mag == 1    ? 0x3c00
-                                : mag == 15 ? 0x4b80
-                                            : 0x4c40);
-        if (sum < 0)
-          want |= 0x8000;
-        for (int reg = 0; reg < 128 / width; ++reg)
-          for (int lane = 0; lane < width; ++lane)
-            EXPECT_EQ(r.v[12 + reg][lane], want | (want << 16));
-        uint32_t old = r.v[12][0];
-        EXPECT_EQ(function(width, bf16)(0, 64, r.v + 12, r.v, r.v + 4, r.v + 8),
-                  GOC_ERROR_INVALID_FLAGS);
-        EXPECT_EQ(function(width, bf16)((2ULL << 16) | GOC_SEMANTICS_STRICT, 0, r.v + 12, r.v,
-                                        r.v + 4, r.v + 8),
-                  GOC_ERROR_UNSUPPORTED_SEMANTICS);
-        EXPECT_EQ(r.v[12][0], old);
+      for (uint64_t cpu = GOC_CPU_BASELINE; cpu <= goc_init_cpu_flags(); ++cpu)
+        for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
+          for (uint32_t modifiers = 0; modifiers < 64; ++modifiers) {
+            Registers r;
+            PackedWmmaInput input{};
+            const uint16_t one = bf16 ? 0x3f80 : 0x3c00;
+            for (int i = 0; i < 256; ++i) {
+              input.a[i] = input.b[i] = one;
+              input.c[i] = one | 0x8000;
+            }
+            load(r, input, width);
+            uint32_t before[16][67];
+            std::memcpy(before, r.storage, sizeof(before));
+            ASSERT_EQ(function(width, bf16)(cpu | semantics | GOC_SEMANTICS_STRICT, modifiers,
+                                            r.v + 12, r.v, r.v + 4, r.v + 8),
+                      0);
+            int sum = 8 * ((bool(modifiers & 1) != bool(modifiers & 2)) ? -1 : 1) +
+                      8 * ((bool(modifiers & 8) != bool(modifiers & 16)) ? -1 : 1);
+            int c = (modifiers & GOC_WMMA_ABS_C) ? 1 : -1;
+            sum += (modifiers & GOC_WMMA_NEG_C) ? -c : c;
+            // All results are +/-1, +/-15 or +/-17, exactly representable.
+            int mag = sum < 0 ? -sum : sum;
+            uint32_t want = bf16 ? (mag == 1    ? 0x3f80
+                                    : mag == 15 ? 0x4170
+                                                : 0x4188)
+                                 : (mag == 1    ? 0x3c00
+                                    : mag == 15 ? 0x4b80
+                                                : 0x4c40);
+            if (sum < 0)
+              want |= 0x8000;
+            for (int reg = 0; reg < 128 / width; ++reg)
+              for (int lane = 0; lane < width; ++lane)
+                EXPECT_EQ(r.v[12 + reg][lane], want | (want << 16));
+            r.preserved(before, width, 12);
+          }
+}
+
+TEST(PackedWmma, ValidationPreservesOutputs) {
+  for (int width : {32, 64})
+    for (bool bf16 : {false, true}) {
+      Registers r;
+      load(r, kPackedInputs[bf16][0], width);
+      uint32_t before[16][67];
+      std::memcpy(before, r.storage, sizeof(before));
+      for (int bit = 6; bit < 64; ++bit) {
+        EXPECT_EQ(function(width, bf16)(0, 1ULL << bit, r.v + 12, r.v, r.v + 4, r.v + 8),
+                  GOC_ERROR_INVALID_FLAGS)
+            << "bit=" << bit;
+        EXPECT_EQ(std::memcmp(before, r.storage, sizeof(before)), 0);
       }
+      EXPECT_EQ(function(width, bf16)((2ULL << 16) | GOC_SEMANTICS_STRICT, 0, r.v + 12, r.v,
+                                      r.v + 4, r.v + 8),
+                GOC_ERROR_UNSUPPORTED_SEMANTICS);
+      EXPECT_EQ(std::memcmp(before, r.storage, sizeof(before)), 0);
+      EXPECT_EQ(function(width, bf16)(1ULL << 63, 0, r.v + 12, r.v, r.v + 4, r.v + 8),
+                GOC_ERROR_INVALID_FLAGS);
+      EXPECT_EQ(std::memcmp(before, r.storage, sizeof(before)), 0);
+    }
 }
 
 TEST(PackedWmma, HardwareModifierCaptures) {

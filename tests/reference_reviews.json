@@ -2719,5 +2719,24 @@
     ],
     "scope": "Sparse integer IU8 K32 and IU4 K32/K64 matrix instructions, both widths and every CPU selector. Independent gfx1201 captures cover 16 deterministic input samples per shape and all sign/clamp/index-key variants, including native Wave64 captures with width-specific selector ranges. Both loose and strict exact modes now check these captures. Near-limit signed accumulators expose the two-stage saturation rule; explicit opposing-sign stage witnesses distinguish it from final-sum clamping. Same-library baseline references separately exercise source/index overlap and duplicate destinations with full-storage expected images. A per-register/lane dispatch comparison localizes differential CPU failures but does not substitute for hardware evidence. The unsigned xorshift corpus defines draw order and includes a fixed input digest regression. Integer outputs remain bitwise in either semantics; floating atol/rtol is inapplicable.",
     "diagnostics": "Added all non-output register preservation to both hardware corpus tests, expanded native Wave64 goldens to loose semantics, included sample/semantics in digest failures, and expanded Wave32 invalid-bit validation to 64 bits plus global-flag rejection with unchanged-storage checks. Kept hardware digest provenance distinct from differential alias/dispatch references. All ten tests pass on Clang and GCC."
+  },
+  {
+    "file": "packed_wmma_test.cpp",
+    "assertions": [
+      "PackedWmma.HardwareMatricesOverlapAndHostState",
+      "PackedWmma.OverflowStateAndModifiers",
+      "PackedWmma.EveryModifierCombination",
+      "PackedWmma.ValidationPreservesOutputs",
+      "PackedWmma.HardwareModifierCaptures",
+      "PackedWmma.HardwareIntermediateOverflowState"
+    ],
+    "evidence": [
+      "tests/packed_wmma_test.cpp",
+      "tests/packed_wmma_fixtures.h",
+      "tests/packed_modifier_fixtures.h",
+      "tests/wmma_replicated_exact_test.cpp"
+    ],
+    "scope": "RDNA4 packed FP16/BF16 WMMA, both wave widths. Independent rocjitsu gfx1201 matrix captures cover fractional, underflow, special, cancellation and accumulator-alignment cases with destination aliases and host rounding modes, now on every available CPU selector. Modifier captures and borrowed intermediate-overflow witnesses retain raw expected bits. A small computed modifier oracle uses only exactly representable integer intermediates and results, now in both semantics on every CPU selector. These simple references do not establish arbitrary-input computed-reference equivalence. General loose layout/narrowing/random differential coverage lives in wmma_replicated_exact_test.cpp; its numerical tolerance review remains pending with that family.",
+    "diagnostics": "Added all non-output register preservation to matrix captures and computed modifier checks, CPU/destination/rounding context, and separate full-storage error preservation for all unknown modifier bits, invalid global flags and reserved strict semantics. No new golden arrays or numerical model. Six tests pass on Clang and GCC."
   }
 ]
