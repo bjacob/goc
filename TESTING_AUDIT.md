@@ -583,3 +583,10 @@ selectors. Calibration and alternate seeds pass on Clang/GCC, including a measur
 nonzero difference from the wider reference. Existing raw dyadic, selection and
 literal boundary checks remain. All 14 family tests pass on both compilers;
 production is unchanged. The new reference explicitly requires wider long double.
+
+### FP64 unary review
+
+One review brings the queue to 115 reviewed and 39 pending. Tightened coincident
+output alias checks for NaNs and raw mantissa-extraction checks; retained calibrated
+fuzzy SFU tests. Moved numerical diagnostic formatting to failures only. All 11
+family tests pass on Clang/GCC. Production and capture data are unchanged.

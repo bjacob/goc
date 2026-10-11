@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 114 explicit family-file reviews exist and 40
+non-generic family references. 115 explicit family-file reviews exist and 39
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -353,3 +353,11 @@ ADD/MUL/FMA test adds fuzzy numerical coverage against wider fused arithmetic,
 including cancellation. An alternate seed measures a small nonzero difference
 within the documented bound. The review distinguishes loose coverage from the
 explicit rejection of strict exact semantics/reporting.
+
+## FP64 unary operations
+
+The unary review records the existing calibrated mathematical reference and
+separate hardware SFU evidence. Coincident destination aliases now check the
+retained high word even for NaNs, while finite mantissa extraction compares raw
+bits. Approximate SFU results remain fuzzy. Numerical failure context is retained
+without formatting a trace on every successful lane.

@@ -1926,5 +1926,29 @@
     ],
     "scope": "Loose FP64 ADD/MUL/FMA and min/max forms across both architectures and widths. Large all-modifier mask/alias sweeps deliberately use small dyadic inputs whose arithmetic is exact; raw word checks establish split-register behavior, including coincident destinations, masks and guards. Literal tables cover rounding, signed zeros, fused cancellation, overflow/underflow and NaN selection. Min/max references use bit ordering and explicit NaN priority; raw checks are intentional operand-selection contracts. Guest-policy integration covers flush/IEEE/OMOD differences and aliases. New deterministic random numerical coverage exercises RDNA4 ADD/MUL/FMA, both widths, all CPU selectors, 16 modifiers and cancellation patterns, using calibrated fuzzy comparisons against wider long-double arithmetic. The new reference is skipped where long double lacks extra precision. Strict exact arithmetic/minmax and exact optional reporting remain explicitly unsupported; non-strict fallback and loose reporting preservation are tested.",
     "diagnostics": "Large integration sweeps identify operation/mode/CPU/EXEC/alias; random numerical failures additionally report batch/width/lane and the fuzzy error bound. Small literal tables complement the captured output-scaling suite. Deterministic mathematical references are not presented as new hardware exactness evidence. Random numerical coverage does not cross every guest mode; those policies are covered by separate fixed boundary integration."
+  },
+  {
+    "file": "fp64_unary_test.cpp",
+    "assertions": [
+      "Fp64Unary.AllModifiersMasksAndCrossHalfAliases",
+      "Fp64Unary.LiteralBoundaries",
+      "Fp64Unary.Validation",
+      "Fp64Unary.MantissaLiteralSubnormalsAndPassthrough",
+      "Fp64Unary.Wave64AllModifiersMasksAndCrossWordAliases",
+      "Fp64Unary.Wave64ReportingAndValidation",
+      "Fp64Unary.ArchitectureLiteralOutputScaling",
+      "Fp64Unary.ArchitecturePoliciesModifiersAndAliases",
+      "Fp64Unary.ArchitectureValidationAndHostControls",
+      "Fp64Unary.DeterministicNumericalCalibration",
+      "Fp64Unary.DeterministicNumericalHoldout"
+    ],
+    "evidence": [
+      "tests/fp64_unary_test.cpp",
+      "tests/omod_reference.h",
+      "tests/LOOSE_TOLERANCES.md",
+      "tests/fp64_output_hardware.h"
+    ],
+    "scope": "Nine FP64 unary operations across RDNA3/RDNA4 and both widths: rounding/fract, sqrt/rcp/rsq and mantissa extraction. Long-double mathematical references supply calibrated loose SFU comparisons; raw bits remain for rounding/extraction, zero/infinity signs, storage and literal boundary/payload witnesses. All 32 modifiers, 84 Wave32 masks, three Wave64 masks, cross-half/coincident outputs and guards are exercised on all CPU selectors. Architecture integration covers eight guest policies, both widths and aliases with independent OMOD gating; FP64 input/output denormals follow the reference behavior rather than assuming FP32 flushing rules. Dedicated deterministic SFU calibration and holdout use fixed MT19937 seeds and raw/near-one/subnormal domains, with wider long-double assumptions recorded in LOOSE_TOLERANCES.md. Strict exact semantics/reporting remain explicitly unsupported; validation, error preservation, loose state preservation and host controls are covered.",
+    "diagnostics": "Coincident-output alias checks now compare the retained high word against disjoint execution even for NaNs; those comparisons test storage behavior rather than independent arithmetic. Finite mantissa extraction is now raw, matching its exact rescaling contract. Numerical context is formatted only on failure, retaining seed/batch/op/mode/width/CPU/lane details. Captured hardware approximation proximity is separately covered by fp64_output_test.cpp."
   }
 ]

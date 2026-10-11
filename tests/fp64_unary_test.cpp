@@ -173,11 +173,11 @@ TEST(Fp64Unary, AllModifiersMasksAndCrossHalfAliases) {
                 continue;
               }
               uint64_t got = d[0][lane] | (uint64_t(d[1][lane]) << 32);
-              if (std::isnan(expected[lane])) {
-                EXPECT_TRUE(std::isnan(number(got)));
-              } else if (alias[0] == alias[1]) {
+              if (alias[0] == alias[1]) {
                 EXPECT_EQ(d[0][lane], separate[1][lane]);
-              } else if (op < 5 || expected[lane] == 0 || std::isinf(expected[lane])) {
+              } else if (std::isnan(expected[lane])) {
+                EXPECT_TRUE(std::isnan(number(got)));
+              } else if (op < 5 || op == 8 || expected[lane] == 0 || std::isinf(expected[lane])) {
                 EXPECT_EQ(got, bits(expected[lane]));
               } else {
                 EXPECT_TRUE(
@@ -353,11 +353,11 @@ TEST(Fp64Unary, Wave64AllModifiersMasksAndCrossWordAliases) {
                 continue;
               }
               uint64_t got = d[0][lane] | (uint64_t(d[1][lane]) << 32);
-              if (std::isnan(expected[lane])) {
-                EXPECT_TRUE(std::isnan(number(got)));
-              } else if (alias[0] == alias[1]) {
+              if (alias[0] == alias[1]) {
                 EXPECT_EQ(d[0][lane], separate[1][lane]);
-              } else if (op < 5 || expected[lane] == 0 || std::isinf(expected[lane])) {
+              } else if (std::isnan(expected[lane])) {
+                EXPECT_TRUE(std::isnan(number(got)));
+              } else if (op < 5 || op == 8 || expected[lane] == 0 || std::isinf(expected[lane])) {
                 EXPECT_EQ(got, bits(expected[lane]));
               } else {
                 EXPECT_TRUE(
@@ -514,7 +514,7 @@ TEST(Fp64Unary, ArchitecturePoliciesModifiersAndAliases) {
                     EXPECT_EQ(d[0][lane], separate[1][lane]);
                   } else if (std::isnan(want)) {
                     EXPECT_TRUE(std::isnan(number(got)));
-                  } else if (op < 5 || want == 0 || std::isinf(want)) {
+                  } else if (op < 5 || op == 8 || want == 0 || std::isinf(want)) {
                     EXPECT_EQ(got, bits(want));
                   } else {
                     EXPECT_TRUE(goc_test::fuzzy(number(got), want, goc_test::unary_f64_tolerance));
@@ -609,13 +609,12 @@ void check_numerical_corpus(uint32_t seed) {
                            : functions[op](cpu, UINT32_MAX, mode, d, a, nullptr),
                       GOC_SUCCESS);
             for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane) {
-              SCOPED_TRACE(::testing::Message()
-                           << seed << '/' << batch << '/' << op << '/' << variant << '/' << wide
-                           << '/' << cpu << '/' << lane);
               uint64_t input = inputs[0][lane] | (uint64_t(inputs[1][lane]) << 32);
               uint64_t output = outputs[0][lane] | (uint64_t(outputs[1][lane]) << 32);
               ASSERT_TRUE(goc_test::fuzzy(number(output), reference(op, input, mode),
-                                          goc_test::unary_f64_tolerance));
+                                          goc_test::unary_f64_tolerance))
+                  << seed << '/' << batch << '/' << op << '/' << variant << '/' << wide << '/'
+                  << cpu << '/' << lane;
             }
           }
       }
