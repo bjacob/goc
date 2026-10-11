@@ -736,5 +736,39 @@
     ],
     "scope": "Signed-half-to-byte saturation and RDNA4 FP16 field packing in both widths. Saturation uses direct integer limits. FP packing selects halves, quiets NaNs and applies ABS then NEG without arithmetic. The 66 gfx1201 digests anchor every half encoding across modifiers, including NaN handling. Wave32 and strict-exact Wave64 now check the captured inputs individually against the field reference as well as retaining the hardware digest. DPP/mask/alias tests compose these operations with routing. Exact optional-state reporting remains explicitly unsupported; loose state preservation is tested. No general numerical rounding equivalence is inferred.",
     "diagnostics": "Encoding captures now identify variant, CPU and exact input index in both widths. DPP hardware digest has computed routing/alias companions; literal saturation cases distinguish clamp and preserved-half behavior."
+  },
+  {
+    "file": "fp8_conversion_test.cpp",
+    "assertions": [
+      "Fp8Conversion.LiteralFormatBoundaries",
+      "Fp8Conversion.EveryCodeByteAndUnselectedBit",
+      "Fp8Conversion.EveryPackedPairAndHalfSelector",
+      "Fp8Conversion.ExactRawHardwareCorpusIncludingNanSign",
+      "Fp8Conversion.Wave64ExactEncodingsSelectorsMasksAndAliases"
+    ],
+    "evidence": [
+      "tests/fp8_conversion_reference.h",
+      "tests/fp8_conversion_test.cpp",
+      "tests/conversion64_reference.h"
+    ],
+    "scope": "Four FP8/BF8 widening operations, both wave widths. Finite codes have at most four significant bits and exponent ranges entirely representable in binary32, so direct integer re-encoding is exact. Raw gfx1201 hardware digests cover every code without NaN canonicalization and anchor exceptional encodings including NaN sign. The capture test now checks the computed decoder per code alongside the retained hardware total. Every packed pair, byte/half selection, unselected-bit perturbation, masks, destination overlap and guards are checked. DPP is tested for single-result forms and explicitly rejected for two-result forms. Wave64 regroups the Wave32 numerical capture; it is not a native Wave64 hardware capture. Exact assertions are appropriate even in loose semantics for this lossless widening.",
+    "diagnostics": "Raw capture failures identify opcode, CPU, width, output register and code. Independent literal boundaries and per-output selector/routing checks complement the NaN-canonicalized DPP digest."
+  },
+  {
+    "file": "fp8_narrow_test.cpp",
+    "assertions": [
+      "Fp8Narrow.HardwareCapturedSpecialValuesAndStochasticAlignment",
+      "Fp8Narrow.RoundingBoundariesAndSeeds",
+      "Fp8Narrow.DppHardwareCorpus",
+      "Fp8Narrow.Wave64ExactHardwareCorpus",
+      "Fp8Narrow.Wave64SelectorsSeedsDppAndAliases"
+    ],
+    "evidence": [
+      "tests/fp8_narrow_hardware.h",
+      "tests/fp8_narrow_reference.h",
+      "tests/fp8_narrow_test.cpp"
+    ],
+    "scope": "Four packed/stochastic FP32-to-FP8/BF8 operations in both widths. Stored gfx1201 outputs anchor special values, overflow saturation, sign modifiers, destination placement and stochastic seed alignment; strict exact calls use these goldens directly. Both capture tests now also validate the computed reference directly against those outputs, independently of GoC. The reference quantizes in output-spacing units using double arithmetic, explicit nearest-even rounding or truncated seed addition. Deterministic boundary/adjacent/random inputs, six seed patterns and alias/DPP corpora provide supplemental model checks; agreement there is not a proof of arbitrary-input hardware equivalence. Retain the goldens for the empirical seed/special-value rules. Exact encoded comparisons also test destination-byte preservation; no blanket fuzzy replacement is justified for these structural checks.",
+    "diagnostics": "Captured tests report source, seed, column and CPU in both widths. Boundary checks report source and second operand; the DPP digest has computed per-output routing companions. Captured-domain equivalence is explicit, not inferred solely from agreement with GoC."
   }
 ]

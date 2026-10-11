@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Fifty-one explicit family-file reviews exist and 103
+non-generic family references. Fifty-three explicit family-file reviews exist and 101
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -95,3 +95,14 @@ while checking individual outputs against these simple references. FP16 packing
 likewise checks every captured input against the field model in both wave widths;
 its hardware totals still anchor NaN quieting and modifier ordering. Failures now
 identify the input or lane and configuration without adding golden arrays.
+
+## FP8 conversion evidence
+
+The widening review separates the lossless finite decode proof from hardware
+validation of special encodings. All 256 raw codes are hardware-anchored,
+including NaN sign; per-code checks now localize capture failures in both widths.
+The narrowing review retains raw captures for stochastic rounding and special
+values. Its computed reference is now checked directly against those captured
+outputs, independently of GoC. This demonstrates equivalence on the captured
+domain; the broader random/model tests do not prove arbitrary-input hardware
+equivalence. Existing goldens remain in place.

@@ -312,3 +312,15 @@ arrays. All 29 affected tests pass on both Clang and GCC. The inventory still
 finds family references for all 1,791 APIs; this does not establish complete
 semantic coverage. The broader reference, tolerance and final validation work
 remains open.
+
+### FP8 widening and narrowing oracle evidence
+
+Reviewed both FP8 conversion families (53 reviewed, 101 pending). Lossless finite
+widening has a direct encoding proof, with raw hardware captures covering all
+256 codes and exceptional NaN encodings. Added per-code failure localization to
+that retained capture. Narrowing now explicitly checks its computed reference
+against the stored captured outputs, independently of the implementation under
+test; documented that this establishes captured-domain agreement, not universal
+hardware equivalence. Both widths retain their golden comparisons and now report
+source/seed/column context. All 22 affected tests pass on Clang and GCC, and all
+14 tooling tests pass. No production code or golden values changed.

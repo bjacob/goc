@@ -51,6 +51,14 @@ TEST(Fp8Narrow, HardwareCapturedSpecialValuesAndStochasticAlignment) {
           mode = GOC_ALU_HIGH_D;
         }
         bool saturate = column < 16 ? column >= 8 : column >= 18;
+        SCOPED_TRACE(::testing::Message() << "source=" << capture.source << " seed=" << capture.seed
+                                          << " column=" << column << " cpu=" << cpu);
+        // Validate the computed reference against captured outputs, independently
+        // of the GoC call. This establishes agreement on this capture domain.
+        ASSERT_EQ(goc_test::fp8_narrow_result(op, capture.source,
+                                              op >= 2 ? capture.seed : capture.source ^ 0x80000000U,
+                                              0x12345678, mode, saturate),
+                  capture.expected[column]);
         uint32_t av[32], bv[32], dv[32];
         std::fill_n(av, 32, capture.source);
         std::fill_n(bv, 32, op >= 2 ? capture.seed : capture.source ^ 0x80000000);
@@ -332,6 +340,14 @@ TEST(Fp8Narrow, Wave64ExactHardwareCorpus) {
           mode = GOC_ALU_HIGH_D;
         }
         bool saturate = column < 16 ? column >= 8 : column >= 18;
+        SCOPED_TRACE(::testing::Message() << "source=" << capture.source << " seed=" << capture.seed
+                                          << " column=" << column << " cpu=" << cpu);
+        // Validate the computed reference against captured outputs, independently
+        // of the GoC call. This establishes agreement on this capture domain.
+        ASSERT_EQ(goc_test::fp8_narrow_result(op, capture.source,
+                                              op >= 2 ? capture.seed : capture.source ^ 0x80000000U,
+                                              0x12345678, mode, saturate),
+                  capture.expected[column]);
         uint32_t a[64], b[64], d[64];
         std::fill_n(a, 64, capture.source);
         std::fill_n(b, 64, op >= 2 ? capture.seed : capture.source ^ 0x80000000);

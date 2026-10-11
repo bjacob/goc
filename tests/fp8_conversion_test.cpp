@@ -362,6 +362,7 @@ TEST(Fp8Conversion, ExactRawHardwareCorpusIncludingNanSign) {
   for (unsigned op = 0; op < 4; ++op)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned width : {32U, 64U}) {
+        SCOPED_TRACE(::testing::Message() << "op=" << op << " cpu=" << cpu << " width=" << width);
         uint64_t hash[] = {goc_test::capture_hash_seed, goc_test::capture_hash_seed};
         for (unsigned start = 0; start < 256; start += width) {
           uint32_t input[64], output[2][64];
@@ -376,8 +377,12 @@ TEST(Fp8Conversion, ExactRawHardwareCorpusIncludingNanSign) {
                                 : functions[op](flags, UINT32_MAX, 0, d, &a),
                     GOC_SUCCESS);
           for (unsigned reg = 0; reg < (op < 2 ? 1U : 2U); ++reg)
-            for (unsigned lane = 0; lane < width; ++lane)
+            for (unsigned lane = 0; lane < width; ++lane) {
+              ASSERT_EQ(output[reg][lane], goc_test::fp8_conversion_reference(
+                                               op & 1, uint8_t(input[lane] >> (8 * reg))))
+                  << "reg=" << reg << " code=" << start + lane;
               hash[reg] = goc_test::capture_hash_word(hash[reg], output[reg][lane]);
+            }
         }
         EXPECT_EQ(hash[0], expected[op][0]);
         if (op >= 2) {
