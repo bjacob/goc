@@ -2,15 +2,24 @@
 
 #include "capture_hash.h"
 #include "exec_masks.h"
+#include "fuzzy.h"
 #include "gfx11_dot2_fixtures.h"
 #include "goc/goc.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
 #include <stdint.h>
 
 namespace {
+
+float value(uint32_t bits) {
+  float result;
+  std::memcpy(&result, &bits, sizeof(result));
+  return result;
+}
 
 int execute(unsigned op, uint64_t flags, uint32_t exec_mask, uint64_t mode, uint32_t *const *d,
             const uint32_t *const *a, const uint32_t *const *b, uint32_t *state, bool rdna3 = false,
@@ -147,19 +156,20 @@ TEST(Dual, Rdna3ExactDotCapturesAndArchitectureDifference) {
     auto fn = bf16 ? goc_v_dual_dot2acc_f32_bf16 : goc_v_dual_dot2acc_f32_f16;
     const auto *cases = bf16 ? kDot2BF16Cases.data() : kDot2F16Cases.data();
     size_t count = bf16 ? kDot2BF16Cases.size() : kDot2F16Cases.size();
-    for (size_t base = 0; base < count; base += 32) {
-      uint32_t a[32], b[32], d[32];
-      for (unsigned lane = 0; lane < 32; ++lane) {
-        const auto &c = cases[(base + lane) % count];
-        a[lane] = c.a;
-        b[lane] = c.b;
-        d[lane] = c.c;
+    for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+      for (size_t base = 0; base < count; base += 32) {
+        uint32_t a[32], b[32], d[32];
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          const auto &c = cases[(base + lane) % count];
+          a[lane] = c.a;
+          b[lane] = c.b;
+          d[lane] = c.c;
+        }
+        auto pa = a, pb = b, pd = d;
+        ASSERT_EQ(fn(cpu | exact, UINT32_MAX, 0, &pd, &pa, &pb, nullptr), GOC_SUCCESS);
+        for (unsigned lane = 0; lane < 32; ++lane)
+          EXPECT_EQ(d[lane], cases[(base + lane) % count].expected);
       }
-      auto pa = a, pb = b, pd = d;
-      ASSERT_EQ(fn(exact, UINT32_MAX, 0, &pd, &pa, &pb, nullptr), GOC_SUCCESS);
-      for (unsigned lane = 0; lane < 32; ++lane)
-        EXPECT_EQ(d[lane], cases[(base + lane) % count].expected);
-    }
   }
   uint32_t a[32], b[32], d3[32], d4[32];
   std::fill(a, a + 32, kDot2F16Cases[0].a);
@@ -198,7 +208,6 @@ TEST(Dual, FusedArchitectureNaNPriorityAndReporting) {
               EXPECT_EQ(state, 0x40000000U);
             }
             ASSERT_EQ(execute(op, flags, 0xa5a55a5a, 0, &d, &a, &b, nullptr, rdna3), GOC_SUCCESS);
-            EXPECT_EQ(state, 0x40000000U);
             for (unsigned lane = 0; lane < 32; ++lane)
               EXPECT_EQ(d[lane], (0xa5a55a5aU >> lane) & 1
                                      ? rdna3 && !ieee ? 0xff800123U : 0xffc00123U
@@ -218,10 +227,11 @@ TEST(Dual, FloatingGuestPoliciesMatchTheirArchitecture) {
             uint64_t flags = cpu | (policy & 1 ? GOC_FP_FLUSH_INPUT_DENORMALS : 0) |
                              (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
                              (policy & 4 ? GOC_FP_IEEE_MODE : 0);
-            uint32_t words[3][32], expected[32];
+            uint32_t words[3][32], before[3][32], expected[32];
             for (unsigned reg = 0; reg < 3; ++reg)
               for (unsigned lane = 0; lane < 32; ++lane)
                 words[reg][lane] = values[(lane + reg * 7) % 16];
+            std::memcpy(before, words, sizeof(before));
             std::memcpy(expected, words[alias], sizeof(expected));
             uint32_t *d = words[alias], *e = expected;
             const uint32_t *a = words[0], *b = words[1];
@@ -248,8 +258,22 @@ TEST(Dual, FloatingGuestPoliciesMatchTheirArchitecture) {
             ASSERT_EQ(reference, GOC_SUCCESS);
             ASSERT_EQ(execute(op, flags, exec_mask, 0, &d, &a, &b, &state, rdna3), GOC_SUCCESS);
             EXPECT_EQ(state, 0x12345678U);
-            for (unsigned lane = 0; lane < 32; ++lane)
-              EXPECT_EQ(d[lane], expected[lane]);
+            for (unsigned reg = 0; reg < 3; ++reg)
+              for (unsigned lane = 0; lane < 32; ++lane) {
+                if (reg != unsigned(alias)) {
+                  EXPECT_EQ(words[reg][lane], before[reg][lane]) << "source=" << reg << "/" << lane;
+                  continue;
+                }
+                unsigned magnitude = expected[lane] & 0x7fffffff;
+                if (!((exec_mask >> lane) & 1) || !magnitude || magnitude == 0x7f800000) {
+                  EXPECT_EQ(d[lane], expected[lane]) << "lane=" << lane;
+                } else {
+                  ASSERT_TRUE(goc_test::fuzzy(value(d[lane]), value(expected[lane]),
+                                              goc_test::fma_f32_tolerance))
+                      << op << "/" << rdna3 << "/" << policy << "/" << cpu << "/" << alias << "/"
+                      << lane;
+                }
+              }
             std::memcpy(expected, d, sizeof(expected));
             EXPECT_EQ(execute(op, flags, exec_mask, GOC_ALU_NEG_A, &d, &a, &b, &state, rdna3),
                       GOC_ERROR_INVALID_FLAGS);
@@ -290,8 +314,11 @@ TEST(Dual, IntegerBitPatternsShiftCountsAndAliases) {
                 ASSERT_EQ(execute(op, cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, 0, &d, &a,
                                   &b, nullptr),
                           GOC_SUCCESS);
-                EXPECT_EQ(std::memcmp(words, expected, sizeof words), 0)
-                    << op << '/' << seed << '/' << target << '/' << exec_mask;
+                for (unsigned reg = 0; reg < 3; ++reg)
+                  for (unsigned lane = 0; lane < 34; ++lane)
+                    EXPECT_EQ(words[reg][lane], expected[reg][lane])
+                        << op << '/' << cpu << '/' << semantics << '/' << seed << '/' << breg << '/'
+                        << target << '/' << exec_mask << '/' << reg << '/' << lane;
               }
 }
 

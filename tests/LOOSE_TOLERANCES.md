@@ -385,3 +385,10 @@ signs, upper-half zeroing and min/max selection are separate exact checks.
 The second dataset concentrates on min-normal boundaries; neither fixed capture
 is claimed as fresh random holdout. Script and logs:
 `goc-build/coverage-work/testing-scalar-fp-calibration/run.py`.
+
+Dual floating adapters use the existing FP32 FMA bound against the corresponding
+ordinary-instruction paths. Both compilers measure 8,992 finite nonzero comparisons
+with zero error. This is differential integration over fixed boundary operands,
+not independent hardware calibration or fresh random holdout; ordinary arithmetic
+families provide the numerical evidence. Storage and categorical results remain
+raw. Script/logs: `goc-build/coverage-work/testing-dual-calibration/run.py`.

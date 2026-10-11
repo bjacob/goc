@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 131 explicit family-file reviews exist and 23
+non-generic family references. 132 explicit family-file reviews exist and 22
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -471,3 +471,12 @@ Recorded the single-lane-reference dependency explicitly and linked the separate
 family capture evidence. Expanded checks to all nondestination storage and every
 nonflag bit. The host/opt-out test now checks active exact calls with and without
 reporting, rather than treating empty EXEC as sufficient opt-out coverage.
+
+### Dual instruction slots
+
+Reviewed independent simple literals and RDNA3 dot captures separately from
+ordinary-instruction differential references. Capture replay now covers every
+CPU selector. Floating adapter checks permit loose numerical tolerance but require
+raw inactive storage; source registers are preserved. Integer failures identify
+the register/lane. Pair tests document caller staging rather than implying a
+combined dual-issue API exists.

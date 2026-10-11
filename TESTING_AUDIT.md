@@ -706,3 +706,11 @@ nonflag-bit preservation checks, all-register storage checks and active exact
 null-reporting equivalence. Documented the single-lane differential reference
 and separate hardware evidence. All three family tests pass on Clang/GCC, as do
 14 tooling tests. Production remains unchanged.
+
+### Dual-slot review
+
+One review brings the queue to 132 reviewed and 22 pending. Extended RDNA3 dot
+captures to all CPU selectors, added source-preservation checks, allowed calibrated
+loose adapter comparisons, and improved integer failure localization. Recorded
+independent versus differential evidence and caller-staged pair behavior. All
+nine family tests pass on Clang/GCC, as do 14 tooling tests. Production is unchanged.
