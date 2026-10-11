@@ -2,6 +2,10 @@
 
 Original audited source: `536bb22`.
 
+The later [WMMA alignment report](WMMA_ALIGNMENT.md) supersedes this audit's
+old final-clamp, FP8 C-modifier, and matrix loose-only conclusions. The earlier
+green suite did not establish those numerical assumptions.
+
 **Follow-up complete.** All five action items have been addressed and all 1,215
 CTests pass in Clang Release, GCC Release, scalar-only Clang Release and Debug
 ASan/UBSan builds. Fourteen tooling tests also pass. The evidence and deliberate

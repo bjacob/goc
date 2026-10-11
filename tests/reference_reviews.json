@@ -2824,7 +2824,9 @@
       "SubbyteWmma.Wave64IntegerValidationPreservesOutputs",
       "SubbyteWmma.Wave64IntegerExtremesAndCancellationAcrossCpuLevels",
       "SubbyteWmma.FractionalFp8MatricesAgainstDoubleReference",
-      "SubbyteWmma.NativeFp8CapturedMatricesAndOperands"
+      "SubbyteWmma.NativeFp8CapturedMatricesAndOperands",
+      "SubbyteWmma.NativeDot8InfinityPrecedenceAndWave64Order",
+      "SubbyteWmma.NativeFp8SubnormalFactorAndIgnoredCFlags"
     ],
     "evidence": [
       "tests/subbyte_wmma_test.cpp",

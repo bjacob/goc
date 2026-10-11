@@ -487,3 +487,16 @@ kernels. All five additionally implement exact results using rocjitsu's captured
 gfx1100/gfx1201 mappings, with integer source/output processing and no host
 FP-environment dependence. Non-null exact reporting remains unsupported. Loose
 calls skip optional state updates.
+
+
+### Pinned RDNA matrix model alignment
+
+The [WMMA alignment report](https://github.com/bjacob/goc/blob/main/WMMA_ALIGNMENT.md)
+records the port of rocjitsu `ad2bb973ec4`: staged RDNA3 integer saturation,
+native FP8/BF8 exact arithmetic, floating sparse exact support, packed sparse
+intermediate narrowing, and expanded dense FP16/BF16 qualification. Floating
+matrix APIs accept but ignore guest denormal and IEEE controls; packed FP16
+still honors `GOC_FP16_OVFL`. Captured raw C modifier bits are ignored by dense
+FP8/BF8, while unsupported sparse raw aliases remain rejected. None of these
+ports may write host FP controls. Empirical claims are bounded by the recorded
+capture domains; archive totals and RDNA3.5 hardware validation are not claimed.

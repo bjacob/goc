@@ -186,10 +186,7 @@ struct Registers {
       for (int col = 0; col < 16; ++col) {
         int c = int(random() % 33) - 16;
         data[8 + row % 8][col + 16 * (row / 8)] = bits(float(c));
-        int adjusted = c;
-        float golden;
-        std::memcpy(&golden, &kFp8Dense[format][row * 16 + col], sizeof(golden));
-        expected[row * 16 + col] = bits(golden + float(adjusted - c));
+        expected[row * 16 + col] = kFp8Dense[format][row * 16 + col];
       }
   }
 

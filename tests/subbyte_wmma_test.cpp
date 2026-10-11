@@ -133,9 +133,7 @@ TEST(SubbyteWmma, Fp8DenseGoldensAndOverlap) {
               for (int col = 0; col < 16; ++col) {
                 int c = int(random() % 33) - 16;
                 r.v[8 + row % 8][col + 16 * (row / 8)] = as_bits(float(c));
-                int adjusted = c; // Captured C ABS/NEG bits are ignored.
-                expected[row * 16 + col] =
-                    as_bits(as_float(kFp8Dense[format][row * 16 + col]) + float(adjusted - c));
+                expected[row * 16 + col] = kFp8Dense[format][row * 16 + col];
               }
             uint32_t before[8][32];
             save(r, dst, before);
@@ -447,9 +445,7 @@ TEST(SubbyteWmma, Wave64Fp8DenseGoldensAndOverlap) {
               for (int col = 0; col < 16; ++col) {
                 int c = int(random() % 33) - 16;
                 r.v[8 + row % 4][col + 16 * (row / 8) + 32 * ((row / 4) % 2)] = as_bits(float(c));
-                int adjusted = c; // Captured C ABS/NEG bits are ignored.
-                expected[row * 16 + col] =
-                    as_bits(as_float(kFp8Dense[format][row * 16 + col]) + float(adjusted - c));
+                expected[row * 16 + col] = kFp8Dense[format][row * 16 + col];
               }
             uint32_t before[4][64];
             save_wave64(r, dst, before);
@@ -898,4 +894,59 @@ TEST(SubbyteWmma, NativeFp8CapturedMatricesAndOperands) {
         }
     EXPECT_EQ(goc_test::matrix_host_controls(), controls);
   }
+}
+
+// Literal witnesses from ad2bb973ec4's dense operand captures. The two Wave64
+// DOT8 steps read sixteen-lane groups 0+2, then 1+3. Opposing infinities within
+// a step override C's NaN, while infinities in separate steps preserve C's NaN.
+TEST(SubbyteWmma, NativeDot8InfinityPrecedenceAndWave64Order) {
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (bool same_step : {false, true}) {
+      uint32_t a[64], b[64], c[4][64], d[4][64];
+      const uint32_t *av[] = {a}, *bv[] = {b}, *cv[] = {c[0], c[1], c[2], c[3]};
+      uint32_t *dv[] = {d[0], d[1], d[2], d[3]};
+      const uint32_t groups[] = {0x7c7c7c7cU, same_step ? 0x3c3c3c3cU : 0xfcfcfcfcU,
+                                 same_step ? 0xfcfcfcfcU : 0x7c7c7c7cU,
+                                 same_step ? 0x3c3c3c3cU : 0xfcfcfcfcU};
+      for (unsigned lane = 0; lane < 64; ++lane) {
+        a[lane] = groups[lane / 16];
+        b[lane] = 0x3c3c3c3cU;
+        for (auto &reg : c)
+          reg[lane] = 0xffc54321U;
+      }
+      ASSERT_EQ(goc_v_wmma_f32_16x16x16_bf8_bf8_wave64(
+                    cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, dv, av, bv, cv),
+                GOC_SUCCESS);
+      for (const auto &reg : d)
+        for (uint32_t word : reg)
+          EXPECT_EQ(word, same_step ? 0xffc00a3dU : 0xffc54321U);
+    }
+}
+
+TEST(SubbyteWmma, NativeFp8SubnormalFactorAndIgnoredCFlags) {
+  // Includes native E4M3FN byte 0x01, with captured C=-0.5. All four C flag
+  // combinations have the same captured answer, 0x44e0f040.
+  for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+    for (uint64_t flags : {uint64_t(0), uint64_t(GOC_WMMA_ABS_C), uint64_t(GOC_WMMA_NEG_C),
+                           uint64_t(GOC_WMMA_ABS_C | GOC_WMMA_NEG_C)}) {
+      uint32_t a[2][32], b[2][32], c[8][32], d[8][32];
+      const uint32_t *av[] = {a[0], a[1]}, *bv[] = {b[0], b[1]}, *cv[8];
+      uint32_t *dv[8];
+      for (unsigned reg = 0; reg < 8; ++reg) {
+        cv[reg] = c[reg];
+        dv[reg] = d[reg];
+        std::fill(c[reg], c[reg] + 32, 0xbf000000U);
+      }
+      for (unsigned reg = 0; reg < 2; ++reg) {
+        std::fill(a[reg], a[reg] + 32, 0x013840b8U);
+        std::fill(b[reg], b[reg] + 32, 0x407e3801U);
+      }
+      ASSERT_EQ(goc_v_wmma_f32_16x16x16_fp8_fp8(cpu | GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                                    GOC_SEMANTICS_STRICT,
+                                                flags, dv, av, bv, cv),
+                GOC_SUCCESS);
+      for (const auto &reg : d)
+        for (uint32_t word : reg)
+          EXPECT_EQ(word, 0x44e0f040U);
+    }
 }
