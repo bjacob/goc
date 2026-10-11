@@ -427,3 +427,14 @@ proofs, including optional-state rejection rather than claiming state generation
 Hardware-register captures now check individual outputs with field diagnostics
 while retaining their independent hardware digests. All 21 affected tests pass
 on Clang/GCC; all 14 tooling tests pass. No production changes or new fixtures.
+
+### Carry, wide MAD and Wave64 integer review
+
+Five reviews bring the queue to 82 reviewed and 72 pending. Carry's computed
+reference now checks captured values/masks directly. Carry DPP and wide-MAD
+captures retain hardware digests with per-output diagnostics. Documented the
+wide-MAD model's shared production Uint128 dependency rather than overstating
+reference independence; hardware and literal extended-sign witnesses remain.
+Wave64 records cover supported modes, upper-lane masks, aliases and guards with
+explicit limits on native capture evidence. All 28 affected/family tests pass
+on Clang/GCC, and all 14 tooling tests pass. Production code is unchanged.

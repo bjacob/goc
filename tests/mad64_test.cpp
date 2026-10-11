@@ -30,6 +30,8 @@ TEST(Mad64, HardwareCartesianCorpus) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned clamp = 0; clamp < 2; ++clamp)
         for (unsigned m = 0; m < 3; ++m) {
+          SCOPED_TRACE(::testing::Message() << "op=" << op << " cpu=" << cpu << " clamp=" << clamp
+                                            << " exec=" << masks[m]);
           uint64_t digest = goc_test::capture_hash_seed;
           for (unsigned start = 0; start < 4096; start += 32) {
             uint32_t data[6][32], carry = 0xa5a5a5a5;
@@ -48,9 +50,20 @@ TEST(Mad64, HardwareCartesianCorpus) {
             ASSERT_EQ(
                 functions[op](cpu | exact, masks[m], clamp ? GOC_ALU_CLAMP : 0, d, &carry, a, b, c),
                 GOC_SUCCESS);
-            for (unsigned lane = 0; lane < 32; ++lane)
-              digest = goc_test::capture_hash_bytes(
-                  digest, data[4][lane] | (uint64_t(data[5][lane]) << 32), 8);
+            uint32_t expected_carry = 0;
+            for (unsigned lane = 0; lane < 32; ++lane) {
+              auto reference =
+                  goc_test::mad64_reference(op % 2, data[0][lane], data[1][lane],
+                                            data[2][lane] | (uint64_t(data[3][lane]) << 32), clamp);
+              bool enabled = (masks[m] >> lane) & 1;
+              uint64_t value = data[4][lane] | (uint64_t(data[5][lane]) << 32);
+              ASSERT_EQ(value, enabled ? reference.value : 0xdeadbeefcafebabeULL)
+                  << "input=" << start + lane;
+              if (enabled && reference.carry)
+                expected_carry |= 1U << lane;
+              digest = goc_test::capture_hash_bytes(digest, value, 8);
+            }
+            ASSERT_EQ(carry, expected_carry) << "batch=" << start;
             digest = goc_test::capture_hash_bytes(digest, carry, 4);
           }
           ASSERT_EQ(digest, goc_test::mad64_capture_digests[op % 2][clamp][m])

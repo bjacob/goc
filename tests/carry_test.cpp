@@ -27,6 +27,8 @@ TEST(Carry, HardwareCaptures) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned clamp = 0; clamp < 2; ++clamp)
         for (unsigned m = 0; m < 3; ++m) {
+          SCOPED_TRACE(::testing::Message() << "op=" << op << " cpu=" << cpu << " clamp=" << clamp
+                                            << " mask=" << masks[m]);
           uint32_t data[3][32], carry = 0x96969696;
           for (unsigned lane = 0; lane < 32; ++lane) {
             data[0][lane] = goc_test::carry_capture_inputs[0][lane % 8];
@@ -39,10 +41,21 @@ TEST(Carry, HardwareCaptures) {
                                                   d, &carry, a, b, 0xa5a5a5a5),
                     GOC_SUCCESS);
           EXPECT_EQ(carry, goc_test::carry_capture_masks[op][m]);
-          for (unsigned lane = 0; lane < 32; ++lane)
+          uint32_t reference_carry = 0;
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            auto reference = goc_test::carry_reference(op, data[0][lane], data[1][lane],
+                                                       (0xa5a5a5a5U >> lane) & 1, clamp);
+            // Validate the computed oracle directly against the retained capture.
+            EXPECT_EQ(reference.value, goc_test::carry_capture_values[op][clamp][lane % 8])
+                << "lane=" << lane;
+            if ((masks[m] >> lane) & 1)
+              reference_carry |= uint32_t(reference.carry) << lane;
             EXPECT_EQ(data[2][lane], ((masks[m] >> lane) & 1)
                                          ? goc_test::carry_capture_values[op][clamp][lane % 8]
-                                         : 0xdeadbeef);
+                                         : 0xdeadbeef)
+                << "lane=" << lane;
+          }
+          EXPECT_EQ(reference_carry, goc_test::carry_capture_masks[op][m]);
         }
 }
 
@@ -255,9 +268,13 @@ TEST(Carry, DppHardwareCorpusAndHostFpState) {
         uint64_t hash = goc_test::capture_hash_seed;
         for (uint32_t ci : {0u, UINT32_MAX, 0xa5a5a5a5u})
           for (auto exec_mask : masks)
-            for (auto fn : goc_test::carry_functions)
+            for (unsigned op = 0; op < 6; ++op)
               for (bool clamp : {false, true})
                 for (auto descriptor : goc_test::dpp_modes) {
+                  SCOPED_TRACE(::testing::Message()
+                               << "op=" << op << " cpu=" << cpu << " semantics=" << semantics
+                               << " rounding=" << rounding << " ci=" << ci << " exec=" << exec_mask
+                               << " clamp=" << clamp << " dpp=" << descriptor);
                   uint32_t av[32], bv[32], output[32], carry = 0x96969696;
                   for (unsigned lane = 0; lane < 32; ++lane) {
                     av[lane] = values[lane % 8];
@@ -266,11 +283,26 @@ TEST(Carry, DppHardwareCorpusAndHostFpState) {
                   }
                   const uint32_t *a[] = {av}, *b[] = {bv};
                   uint32_t *d[] = {output};
-                  EXPECT_EQ(fn(cpu | semantics, exec_mask, descriptor | (clamp ? GOC_ALU_CLAMP : 0),
-                               d, &carry, a, b, ci),
+                  ASSERT_EQ(goc_test::carry_functions[op](cpu | semantics, exec_mask,
+                                                          descriptor | (clamp ? GOC_ALU_CLAMP : 0),
+                                                          d, &carry, a, b, ci),
                             GOC_SUCCESS);
-                  for (auto word : output)
-                    hash = goc_test::capture_hash_word(hash, word);
+                  uint32_t expected_carry = 0;
+                  for (unsigned lane = 0; lane < 32; ++lane) {
+                    int source;
+                    bool enabled = goc_test::dpp_source(descriptor, exec_mask, lane, source);
+                    bool reverse = op % 3 == 2;
+                    uint32_t routed = source < 0 ? 0 : (reverse ? bv[source] : av[source]);
+                    auto expected = goc_test::carry_reference(op, reverse ? av[lane] : routed,
+                                                              reverse ? routed : bv[lane],
+                                                              (ci >> lane) & 1, clamp);
+                    ASSERT_EQ(output[lane], enabled ? expected.value : 0xdead0000U + lane)
+                        << "lane=" << lane;
+                    if (enabled && expected.carry)
+                      expected_carry |= 1U << lane;
+                    hash = goc_test::capture_hash_word(hash, output[lane]);
+                  }
+                  ASSERT_EQ(carry, expected_carry);
                   hash = goc_test::capture_hash_word(hash, carry);
                 }
         EXPECT_EQ(hash, 0x8c738ac66b29e6adULL) << cpu << "/" << semantics;

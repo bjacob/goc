@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Seventy-seven explicit family-file reviews exist and 77
+non-generic family references. Eighty-two explicit family-file reviews exist and 72
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -199,3 +199,14 @@ check each output and report field boundaries before their retained digest.
 Optional exact state rejection and preservation are distinguished from successful
 state generation. Constant predicates require exact masks in both semantics;
 there is no floating numerical result for a fuzzy comparison here.
+
+## Carry and Wave64 integer arithmetic
+
+Five reviews cover carry/borrow, wide MAD and remaining Wave64 integer families.
+Carry references now compare directly with retained captured values and masks.
+Carry DPP and wide-MAD hardware digests have per-output diagnostic companions.
+The wide-MAD model shares the production `Uint128` utility; its independent
+hardware digests and literal extended-sign witnesses remain essential evidence.
+Integer results require exact comparisons under either semantics. Wave64 reviews
+record all-selector coverage, supported modes, upper-lane masks and overlapping
+outputs without claiming separate native hardware captures where none exist.

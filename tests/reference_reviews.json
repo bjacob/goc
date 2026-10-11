@@ -1169,5 +1169,102 @@
     ],
     "scope": "Constant true/false integer and floating CMP/CMPX predicates in both wave widths, all available CPU selectors and both semantics. Boolean constants filtered by EXEC and independently modeled DPP destination enablement give directly justified exact masks; no approximate floating arithmetic is involved. Null source operands demonstrate that inputs are not read. Tests cover upper lanes, empty EXEC, ignored supported modifiers, invalid flags with preserved results and unsupported 64-bit DPP. Floating exact optional state is explicitly unsupported (including precedence over empty EXEC and bad flags); loose requested state is preserved. These tests do not claim floating exception generation.",
     "diagnostics": "Per-mask assertions and DPP configuration diagnostics; explicit sentinel values expose partial writes on errors. No golden array or fuzzy comparison is needed for constant predicate masks."
+  },
+  {
+    "file": "carry_test.cpp",
+    "assertions": [
+      "Carry.HardwareCaptures",
+      "Carry.BoundaryCartesianAndRandomInputs",
+      "Carry.ExecAndInputMasksUnalignedAliases",
+      "Carry.SharedSourcesScalarOutputAliasAndHostEnvironment",
+      "Carry.ValidationAndZeroExec",
+      "Carry.DppMasksModifiersAndScalarVectorAliases",
+      "Carry.DppValidationAndZeroExec",
+      "Carry.DppHardwareCorpusAndHostFpState",
+      "Carry.Wave64BoundaryPairsInputCarryAndSaturation",
+      "Carry.Wave64DppRowsAndWholeRegisterAliases",
+      "Carry.Wave64ScalarOutputAliasAndErrors",
+      "Carry.ChainedWordsFormFullWidthArithmetic"
+    ],
+    "evidence": [
+      "tests/carry_test.cpp",
+      "tests/carry_reference.h",
+      "tests/carry_hardware.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Six add/subtract/reverse-subtract operations with and without carry-in, both widths and both semantics. Unsigned 64-bit arithmetic independently derives 32-bit results, borrow/carry and saturation. Direct captured values and masks now validate this reference without depending on GoC; the DPP capture retains its hardware digest plus per-lane routed arithmetic checks. Deterministic mt19937 boundary/random streams, chained 64-bit word arithmetic, all CPU selectors, inactive-lane carry clearing, scalar/vector aliases, guards and zero-EXEC/error preservation are covered. Wave64 scalar alias reference is differential, supplemented by independent boundary and chained-word tests.",
+    "diagnostics": "Hardware output checks identify operation/CPU/clamp/EXEC/lane; DPP digest companions additionally identify source carry, route, host rounding and semantics. Existing masked-alias tests retain complete before-image comparisons."
+  },
+  {
+    "file": "mad64_test.cpp",
+    "assertions": [
+      "Mad64.HardwareCartesianCorpus",
+      "Mad64.SignedScalarOutputIsTheExtendedSign",
+      "Mad64.IndependentWideReferenceAndRandomInputs",
+      "Mad64.MasksAndCrossRegisterAliases",
+      "Mad64.SharedSourcesScalarOutputAliasAndHostEnvironment",
+      "Mad64.ValidationAndZeroExec"
+    ],
+    "evidence": [
+      "tests/mad64_test.cpp",
+      "tests/mad64_reference.h",
+      "tests/mad64_hardware.h"
+    ],
+    "scope": "Four RDNA3/RDNA4 signed/unsigned wide MAD spellings in Wave32. The extended-sum model computes product plus accumulator, extracts bit 64 before saturation, and distinguishes the signed extended sign from overflow. It shares the production Uint128 utility, so arithmetic-helper independence is limited; gfx1201 Cartesian digests and literal signed overflow/sign witnesses remain independent anchors. Captured outputs now have per-input model companions. Deterministic mt19937 streams, all CPU selectors, overlapping destination registers and scalar output, EXEC, saturation, host settings and validation are covered. Loose mask/alias tests use unclamped operations; clamped coverage here is exact, supplemented by both-semantics Wave64 tests.",
+    "diagnostics": "Retained digest identifies operation/CPU/clamp/EXEC; new per-input and scalar-mask checks locate Cartesian failures. Literal positive/negative overflow cases explain scalar output semantics."
+  },
+  {
+    "file": "mad_wave64_test.cpp",
+    "assertions": [
+      "MadWave64.NarrowFactorsModifiersDppAndAliases",
+      "MadWave64.WideExtendedSumSaturationMasksAndAliases",
+      "MadWave64.ScalarOutputAliasValidationAndEmptyExec",
+      "MadWave64.OverlappingVectorAndScalarDestinations"
+    ],
+    "evidence": [
+      "tests/mad_wave64_test.cpp",
+      "tests/integer_mad_reference.h",
+      "tests/mad64_reference.h",
+      "tests/mad64_hardware.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Four narrow-factor and four wide-result Wave64 MAD entry points. Bounded 64-bit arithmetic handles signed/unsigned 16/24-bit factors and explicit extension/clamp. Wide reference inherits the Wave32 captured/literal validation and shared-Uint128 limitation. Both semantics/all CPU selectors, all narrow half/clamp modes, DPP row masks, upper-lane EXEC, source/destination aliases and guards are exercised. Wide overlapping D0/D1 and scalar output straddling lanes31/32 tests use each single-bit mask and its complement. Scalar alias integration includes differential checks; independent wide-result checks remain separate. Unsupported DPP and empty-EXEC behavior are tested.",
+    "diagnostics": "Per-lane narrow and overlapping-wide checks identify operation/batch or mask bit. Wide arithmetic/guard assertions supplement the Wave32 hardware digests; no separate native Wave64 hardware capture is claimed."
+  },
+  {
+    "file": "integer_wave64_test.cpp",
+    "assertions": [
+      "IntegerWave64.BoundariesSaturationRoutingMasksAndAliases",
+      "IntegerWave64.ZeroExecAndValidation",
+      "IntegerWave64.SelectionAndTernaryBoundariesRoutingAndAliases",
+      "IntegerWave64.SelectionAndTernaryValidation"
+    ],
+    "evidence": [
+      "tests/integer_wave64_test.cpp",
+      "tests/integer_add_reference.h",
+      "tests/integer_mul_reference.h",
+      "tests/integer_minmax_reference.h",
+      "tests/integer_ternary_reference.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Thirty-five Wave64 add/subtract/multiply/select/ternary entry points. References use bounded widened arithmetic, magnitude multiplication with explicit sign restoration, scalar comparisons and sorting; these directly implement integer ISA rules, so exact comparison remains appropriate in loose semantics. Boundary Cartesian inputs and deterministic unsigned mixing cover both semantics/all CPU selectors, supported saturation, reverse-source DPP, all row masks, upper/inactive lanes, whole-register aliases and guard preservation. No numerical hardware-equivalence claim is inferred from SIMD/scalar agreement. Zero EXEC and unsupported flags/routes are separately checked.",
+    "diagnostics": "Direct per-lane assertions identify opcode, batch, lane and mode; guard checks expose writes outside the wave. Shared test references are separately reviewed in their Wave32 families."
+  },
+  {
+    "file": "integer16_wave64_test.cpp",
+    "assertions": [
+      "Integer16Wave64.HalfSelectorsSaturationRoutingAndAliases",
+      "Integer16Wave64.ValidationBeforeOperandAccess"
+    ],
+    "evidence": [
+      "tests/integer16_wave64_test.cpp",
+      "tests/integer16_reference.h",
+      "tests/integer16_ternary_reference.h",
+      "tests/packed_integer_reference.h",
+      "tests/packed_mad_reference.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Thirty-four selected-half and packed Wave64 integer entry points, including signed/unsigned MAD. Widened bounded arithmetic, explicit signed extension, scalar sorting, masked shifts and half insertion provide simple ISA-derived exact references. Both semantics/all CPU selectors cover every encoded half-selector/clamp combination, DPP where supported, row masks, upper/inactive lanes, aliases and destination guards. Input patterns combine integer boundaries and defined unsigned mixing; mode-dependent generation is deterministic but not an exhaustive Cartesian input/mode product. Packed DPP rejection and pre-access validation/zero EXEC are explicit.",
+    "diagnostics": "Per-lane comparisons include opcode/mode/lane/route; raw-word comparison verifies untouched halves. No fuzzy numerical comparison is applicable."
   }
 ]
