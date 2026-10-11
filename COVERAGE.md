@@ -7083,8 +7083,8 @@ and round to FP32. This replaces the earlier loose-only qualification against
 
 The new GoC-local captured matrix and operand replay covers raw special values,
 native subnormal factors, Wave64 order, inline C values, nonuniform factor groups
-and complete destination/source preservation on every CPU selector. It translates captured guest denormal/overflow controls and checks four host
-rounding modes with FTZ/DAZ off/on. Old finite
+and complete destination/source preservation on every CPU selector. It translates captured guest denormal/overflow
+controls and checks four host rounding modes with FTZ/DAZ off/on. Old finite
 hardware corpora and independent fuzzy references remain in place. These saved
 observations qualify a borrowed empirical model, not arbitrary hardware behavior.
 
@@ -7136,21 +7136,16 @@ Other important upstream differences are recorded rather than hidden:
 - LLVM `cba25ae10871`'s `SWMMACInstGFX12` declares
   `mayRaiseFPException = 0`; generated rocjitsu handlers write only D. GoC
   consequently exposes no optional implicit-state output for these APIs.
-  Floating guest mode support remains limited to the documented FP16 overflow
-  behavior; no host-independent loose arithmetic or directed rounding is claimed.
+  Guest denormal and IEEE controls are accepted but ignored; FP16 overflow
+  remains effective. No host-independent loose arithmetic or directed rounding
+  is claimed.
 
-Expanded both floating sparse families' Wave32/Wave64 capture tests to cover
-non-strict exact fallback as well as loose requests at every CPU level and
-legal modifier/index selection. Existing tests cover strict rejection, native
-integer saturation, every FP8/BF8 code, packed midpoints, overflow, overlapping
-operands/metadata, duplicate destinations and invalid-flag preservation.
-All 46 `SubbyteWmma`, `Swmmac8`, `Swmmac16` and `SwmmacInteger` tests pass on
-Clang 21 and GCC 15 Release and ASan/UBSan. Nine inventory/review tooling tests
-also pass. No production implementation changed in this review.
-
-Together with the dense reviews above, all 22 in-scope canonical WMMA/SWMMAC
-mnemonics now have recorded contracts. This closes the matrix review queue,
-not the remaining scalar/vector reviews or the documented numerical limitations.
+The later alignment replaces non-strict exact fallback with borrowed exact
+implementations. Existing loose tests and digests remain, with new exact raw
+captures and explicit raw-encoding exclusions. Packed loose references now
+include intermediate narrowing; reserved semantics and unsupported flags still
+reject without writes. See [the alignment report](WMMA_ALIGNMENT.md) for final
+validation and performance evidence.
 
 ## FP8 and BF8 conversion contract review
 

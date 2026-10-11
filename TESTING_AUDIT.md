@@ -1102,3 +1102,16 @@ identical and host control bits remain unchanged. Ordinary sticky flags are
 permitted. IEEE-on is additionally toggled to check borrowed-model invariance;
 there are no IEEE-on hardware captures in this compact corpus. These checks
 supersede prior notes that guest-state qualification remained pending.
+
+
+## WMMA alignment completion
+
+The pinned rocjitsu alignment is complete; see [WMMA_ALIGNMENT.md](WMMA_ALIGNMENT.md)
+for the per-family evidence and exclusions. The added compact corpus contains
+2,758 supported cases; 72 raw sparse modifier cases remain outside the public API.
+All four final build configurations (Clang Release, GCC Release, scalar-only
+Clang, and Debug ASan/UBSan) pass 1,224 CTests each. Fourteen tooling tests pass;
+the compiled inventory covers 1,791 instructions and 163 active test objects,
+with no missing family references or unreviewed family files. These counts do
+not imply exhaustive numerical-domain coverage. The report also records the
+measured cost of corrected packed sparse intermediate narrowing.
