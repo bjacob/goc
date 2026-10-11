@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Fifty-eight explicit family-file reviews exist and 96
+non-generic family references. Sixty explicit family-file reviews exist and 94
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -125,3 +125,11 @@ word in each destination byte; its computed reference is now directly checked
 against the stored capture columns. The DPP hardware total is retained alongside
 per-lane checks. Architecture tests distinguish RDNA4 exact FP16 field packing
 from unsupported strict-exact byte packing, and now include DPP failure context.
+
+## Integer/FP32 conversion
+
+Two reviews record the integer-only rounding reference, independent literal
+rounding/saturation witnesses, retained ordinary/DPP hardware digests and
+architecture OMOD policy witness. These families reject strict exact semantics;
+exact encoded comparisons test their current conversion/quantization behavior.
+The hardware per-output assertions now report the full configuration and lane.

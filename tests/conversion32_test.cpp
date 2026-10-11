@@ -237,6 +237,9 @@ TEST(Conversion32, HardwareOrdinaryAndDppCorpus) {
           for (unsigned index = 0; index < (dpp ? 7u : 1u); ++index)
             for (unsigned variant = 0; variant < 8; ++variant) {
               uint64_t descriptor = dpp ? goc_test::dpp_modes[index] : 0;
+              SCOPED_TRACE(::testing::Message()
+                           << "cpu=" << cpu << " exec_mask=" << exec_mask << " op=" << op
+                           << " descriptor=" << descriptor << " variant=" << variant);
               uint32_t a[32], d[32];
               uint32_t mode = goc_test::conversion32_mode(op, variant);
               for (unsigned lane = 0; lane < 32; ++lane) {
@@ -251,7 +254,7 @@ TEST(Conversion32, HardwareOrdinaryAndDppCorpus) {
                 if (dpp ? goc_test::dpp_source(descriptor, exec_mask, lane, source)
                         : ((exec_mask >> lane) & 1))
                   want = goc_test::conversion32_reference(op, source < 0 ? 0u : a[source], mode);
-                EXPECT_EQ(d[lane], want);
+                EXPECT_EQ(d[lane], want) << "lane=" << lane;
                 hash = goc_test::capture_hash_word(hash, d[lane]);
               }
             }

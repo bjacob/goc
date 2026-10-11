@@ -853,5 +853,36 @@
     ],
     "scope": "FP16 field packing and FP32 byte packing across both architectures and wave widths. Reuses the separately hardware-anchored field and quantization references. All guest policies, modifiers, full/zero/mixed masks and four destination placements are exercised; DPP tests cover the routing descriptors with representative modifiers. Strict exact FP16 packing is accepted only for RDNA4, with a literal sNaN-quieting result; strict exact byte packing is rejected. Optional exact state returns unsupported without touching output, and loose calls preserve optional state. This integration coverage is not a native hardware capture for every architecture/policy combination.",
     "diagnostics": "DPP comparisons now trace opcode, architecture, width, CPU, guest policy and descriptor. Other whole-buffer checks have configuration context; literal exact-support assertions separately anchor the accepted behavior."
+  },
+  {
+    "file": "conversion32_test.cpp",
+    "assertions": [
+      "Conversion32.LiteralRoundingAndSaturationWitnesses",
+      "Conversion32.PrecisionBoundariesAndEveryModifier",
+      "Conversion32.RandomFullWordsAndEveryModifier",
+      "Conversion32.HardwareOrdinaryAndDppCorpus",
+      "Conversion32.Wave64RoundingBoundariesAndMasks",
+      "Conversion32.TruncatingOptionalStateAndOutputModifiers"
+    ],
+    "evidence": [
+      "tests/conversion32_reference.h",
+      "tests/conversion32_test.cpp"
+    ],
+    "scope": "Six integer/FP32 conversion operations in both widths, loose/fallback semantics. The independent integer-only reference derives nearest-even integer-to-FP32 rounding from discarded bits, and truncating/nearest/floor FP32-to-integer results from exact significand fractions with saturation. Literal witnesses distinguish positive-tie nearest rounding, negative floor, NaN policy and signed limits. Exponent/precision boundaries, deterministic full words and all modifiers are covered. Hardware ordinary/DPP digests already compare individual outputs to the model. Masks, aliases, guards, Wave64 high lanes and optional-state preservation/rejection have dedicated checks. Exact comparisons intentionally test conversion rounding and integer results; this does not imply supported strict exact semantics, which validation rejects.",
+    "diagnostics": "Hardware assertions now include CPU, EXEC, opcode, DPP descriptor, modifier variant and lane. Computed helpers already print input/result/mode and literal witnesses independently anchor rounding rules."
+  },
+  {
+    "file": "conversion32_architecture_test.cpp",
+    "assertions": [
+      "Conversion32Architecture.OutputScalingLiteralWitness",
+      "Conversion32Architecture.GuestPoliciesModifiersDppMasksAndAliases",
+      "Conversion32Architecture.ValidationStateAndHostControls"
+    ],
+    "evidence": [
+      "tests/conversion32_reference.h",
+      "tests/conversion32_architecture_test.cpp"
+    ],
+    "scope": "Six conversions across RDNA3/RDNA4 and both widths. Numerical integration reuses the independent integer reference. A literal conversion of integer 3 anchors architecture-dependent OMOD gating, citing rocjitsu effective_omod: RDNA3 requires output flush and IEEE=0, RDNA4 does not. All eight guest policies, all operation modifiers, ordinary plus seven DPP routes, mixed EXEC and source/destination overlap are exercised with boundary inputs and deterministic word patterns. Strict exact is explicitly rejected; applicable exact optional-state requests reject without changing state or destination. These are loose-path tests rather than hardware captures for every architecture/policy combination.",
+    "diagnostics": "Whole-buffer comparisons identify architecture, width, opcode, guest mode, modifier, route, alias and CPU. Literal scaling witnesses distinguish policy errors from numerical reference errors."
   }
 ]

@@ -346,3 +346,13 @@ hardware digest now has per-lane computed checks and configuration diagnostics.
 Packing architecture DPP failures now identify their configuration as well.
 All 13 affected tests pass on Clang and GCC; all 14 tooling tests pass. Existing
 hardware digests and production implementations are unchanged.
+
+### Integer/FP32 conversion reference review
+
+Two more family reviews bring the inventory to 60 reviewed and 94 pending.
+Recorded integer-only rounding and saturation references, literal tie/NaN/limit
+witnesses, retained hardware digests and the architecture OMOD policy witness.
+Strict-exact rejection is explicit; encoded equality in these tests is not a
+claim of strict-exact API support. Added configuration/lane context to existing
+per-output hardware assertions. All 15 family/integration tests pass with Clang
+and GCC, and all 14 tooling tests pass. No production code changed.
