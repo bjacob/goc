@@ -234,8 +234,13 @@ TEST(HalfMinmax3, HardwareMedianSignedZeroOrdering) {
       uint32_t *p[] = {words[0], words[1], words[2], words[3]};
       ASSERT_EQ(goc_v_med3_num_f16(cpu, UINT32_MAX, 0, p + 3, p, p + 1, p + 2, nullptr),
                 GOC_SUCCESS);
-      for (uint32_t word : words[3])
-        hash = goc_test::capture_hash_word(hash, word);
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        uint16_t expected = goc_test::half_minmax_reference(8, words[0][lane], words[1][lane],
+                                                            words[2][lane], 0, false);
+        ASSERT_EQ(words[3][lane], 0xdead0000U | expected)
+            << "cpu=" << cpu << " input=" << base + lane;
+        hash = goc_test::capture_hash_word(hash, words[3][lane]);
+      }
     }
     EXPECT_EQ(hash, 0x6621dd1b4ac695edULL);
   }
@@ -257,9 +262,13 @@ TEST(HalfMinmax3, HardwareMedianNanRules) {
       uint32_t *p[] = {words[0], words[1], words[2], words[3]};
       ASSERT_EQ(goc_v_med3_num_f16(cpu, UINT32_MAX, 0, p + 3, p, p + 1, p + 2, nullptr),
                 GOC_SUCCESS);
-      for (uint32_t word : words[3]) {
-        if ((word & 0x7fff) > 0x7c00)
-          word = (word & 0xffff0000u) | 0x7e00;
+      for (unsigned lane = 0; lane < 32; ++lane) {
+        uint32_t expected =
+            0xdead0000U | goc_test::half_minmax_reference(8, words[0][lane], words[1][lane],
+                                                          words[2][lane], 0, false);
+        uint32_t word = goc_test::canonical_half_nan(words[3][lane], 0);
+        ASSERT_EQ(word, goc_test::canonical_half_nan(expected, 0))
+            << "cpu=" << cpu << " input=" << base + lane;
         hash = goc_test::capture_hash_word(hash, word);
       }
     }

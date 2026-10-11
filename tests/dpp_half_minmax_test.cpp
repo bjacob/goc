@@ -60,7 +60,8 @@ void hardware_corpus(const uint32_t *values, uint64_t expected_hash) {
             if (goc_test::dpp_source(mode, exec_mask, lane, source))
               want =
                   reference(op, source < 0 ? 0 : a[source], b[lane], c[lane], uint32_t(mode), want);
-            ASSERT_EQ(d[lane], want) << cpu << '/' << op << '/' << mode << '/' << lane;
+            ASSERT_EQ(d[lane], want)
+                << cpu << '/' << op << '/' << mode << '/' << exec_mask << '/' << lane;
             hash = goc_test::capture_hash_word(hash, d[lane]);
           }
         }

@@ -1372,5 +1372,87 @@
     ],
     "scope": "Twenty-eight scalar and eighty-four RDNA4 Wave32 vector predicates. gfx1201 captured 12x12 operand pairs anchor invalid/input-denormal flags across denormal and signaling modes, with OR accumulation and inactive-lane suppression. Reporting/nonreporting predicate results now both check the independent bitwise ordering model rather than only one another. Scalar literal ISA truth-table rows separately anchor less/equal/greater/unordered, signed zero, NaN and ignored upper-half inputs. DPP reduction uses captured per-pair flags after routing/half selection and tests result/source aliasing. All CPU selectors, loose skipping, optional output, invalid-call preservation and host-state checks are covered. RDNA3 exact reporting remains explicitly unsupported in architecture tests.",
     "diagnostics": "Hardware pair checks now report opcode/CPU/pair/denormal/signaling/EXEC and independently verify predicates. Literal scalar references avoid relying on the same order transform; captured flags remain independent numerical evidence."
+  },
+  {
+    "file": "minmax_test.cpp",
+    "assertions": [
+      "Minmax3.AllModifiersMasksAliasesAndSpecialValues",
+      "Minmax3.LiteralOrderNaNsAndSignedZeros",
+      "Minmax3.RandomBitPatterns",
+      "Minmax3.Validation",
+      "Minmax3.MedianLiteralNaNsAndZeroTies",
+      "Minmax3.Wave64ModifiersDppSelectorsAndAliases",
+      "Minmax3.Wave64ValidationAndOptionalState",
+      "Minmax3.Rdna3GuestSelectionPolicies",
+      "Minmax3.GuestDenormalsAndArchitectureScaling",
+      "Minmax3.GuestPoliciesAllModifiersDppMasksAndAliases"
+    ],
+    "evidence": [
+      "tests/minmax_test.cpp",
+      "tests/minmax_reference.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Nine RDNA4 FP32 ternary selections plus five RDNA3 spellings in Wave32/Wave64. Integer ordering/sorting and explicit nested selection provide computed loose references; literal cases anchor zero ties, NaN precedence and RDNA3 IEEE behavior. Raw equality intentionally checks selection and binary power-of-two OMOD with explicit flush/overflow/clamp boundaries rather than approximate accumulated arithmetic. Deterministic mt19937 patterns, all 512 modifiers, guest policies, CPU selectors, DPP, EXEC and aliases/guards are covered. Route/mode pairing in integration loops is stratified, not full Cartesian coverage. Strict exact is rejected; exact optional reporting is unsupported, loose requested state is unchanged. Reference shares production bit-cast helpers only; no arbitrary hardware equivalence is claimed.",
+    "diagnostics": "Literal triple tests report operands and operation; broad integration checks report opcode/guest/width/mode/CPU/register/lane. No new golden fixture is needed for loose selection references."
+  },
+  {
+    "file": "minmax_spellings_test.cpp",
+    "assertions": [
+      "MinmaxSpellings.BinaryFiniteResultsMasksAndAliases",
+      "MinmaxSpellings.TernaryFiniteOrderAndModifiers",
+      "MinmaxSpellings.ExactReportingErrorsPreserveOutputs",
+      "MinmaxSpellings.BinaryNumberSelectionSpecialValues"
+    ],
+    "evidence": [
+      "tests/minmax_spellings_test.cpp",
+      "tests/minmax_reference.h"
+    ],
+    "scope": "Legacy Wave32 binary FP16/32/64 and packed FP16 plus ten half/single ternary entry points. Finite literal operands and direct masks/half preservation establish ordinary results and aliases for every available CPU selector. Ternary references select exactly representable small integers, with explicit lossless half encoding. Literal binary cases cover signed zeros, NaN-versus-number, infinities and denormals. These are loose-only spelling tests; strict exact and requested exact state must fail without writes. Broader architecture, modifier and special-value behavior is covered in minmax/half_minmax and binary families.",
+    "diagnostics": "Compact literals and opcode/CPU/mask/alias diagnostics; no fuzzy comparison is needed for selected exact operands. Error tests preserve destination and state sentinels."
+  },
+  {
+    "file": "half_minmax_test.cpp",
+    "assertions": [
+      "HalfMinmax3.BoundaryCartesianProductsAndEveryEncoding",
+      "HalfMinmax3.AllModifiersAndHalfSelectors",
+      "HalfMinmax3.MasksAndAllWholeRegisterAliases",
+      "HalfMinmax3.LiteralOrderNanAndSignedZeroRules",
+      "HalfMinmax3.ValidationAndSemantics",
+      "HalfMinmax3.HardwareMedianSignedZeroOrdering",
+      "HalfMinmax3.HardwareMedianNanRules",
+      "HalfMinmax3.Wave64ModifiersDppSelectorsAndAliases",
+      "HalfMinmax3.Wave64ValidationAndOptionalState",
+      "HalfMinmax3.ArchitectureGuestSelectionPayloadsAndZeroTies",
+      "HalfMinmax3.LegacyEveryHalfEncodingPreservedAgainstQuietNaNs",
+      "HalfMinmax3.GuestDenormalsAndArchitectureScaling",
+      "HalfMinmax3.GuestPoliciesAllModifiersDppMasksAndAliases"
+    ],
+    "evidence": [
+      "tests/half_minmax_test.cpp",
+      "tests/half_minmax_reference.h",
+      "tests/half_reference.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Nine RDNA4 half ternary selections and five RDNA3 spellings, both wave widths. Sortable integer keys, nested selection and independently decoded double/half rounding model provide loose references. All half encodings for one input with deterministic other operands, boundary triples, 8192 modifiers, overflow selection, CPU selectors, masks, aliases and untouched halves are exercised. Literal architecture cases separately enforce payload/zero ordering, including every legacy A encoding selected against quiet NaNs. Two retained median hardware digests anchor signed zeros and canonicalized NaNs; per-input companions now localize failures. Guest-policy integration uses stratified selector/routes. Strict exact and exact global state remain unsupported; loose state is preserved.",
+    "diagnostics": "Hardware median tests now report CPU/input index before retained totals; NaN digest still canonicalizes sign/payload exactly as before. General half comparisons allow NaN classification while explicit architecture witnesses check payloads; finite selections/scaling and preserved bits use raw equality."
+  },
+  {
+    "file": "dpp_half_minmax_test.cpp",
+    "assertions": [
+      "DppHalfMinmax.HardwareCorpus",
+      "DppHalfMinmax.HardwareOmodBoundaries",
+      "DppHalfMinmax.MasksAliasesAndRandomWords",
+      "DppHalfMinmax.Validation",
+      "DppHalfMinmax.EveryModifierAndOverflowMode"
+    ],
+    "evidence": [
+      "tests/dpp_half_minmax_test.cpp",
+      "tests/half_minmax_reference.h",
+      "tests/half_reference.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h"
+    ],
+    "scope": "Wave32 DPP integration for nine half ternary selections, loose-only. Two gfx1201 digests cover finite inputs and OMOD boundaries with per-lane reference checks. Defined uint32 LCG draws, reduced deliberate EXEC set for nondefault modes, whole-register alias layouts, guards and preserved halves are covered; separate loops exercise every 8192 modifier combination with all seven DPP descriptors and both overflow settings on all CPU selectors. Integer selection followed by power-of-two scaling and explicit half quantization justifies raw finite result checks; random NaNs are canonicalized. Invalid DPP and strict-exact rejection are explicit. This family does not implement or establish exact numerical semantics.",
+    "diagnostics": "Hardware failures identify CPU/opcode/modifier/EXEC/lane; broad random tests have configuration traces and retained independent hardware hashes. Reduced mask cross-product is the previously measured audit optimization."
   }
 ]

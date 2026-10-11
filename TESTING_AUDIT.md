@@ -456,3 +456,12 @@ Removed vacuous state assertions on null-pointer calls and improved pair/mode
 failure context. Recorded RDNA3 unsupported-reporting behavior, RDNA4 captured
 state evidence, and Wave64/CPU coverage limits explicitly. All 12 affected tests
 pass with Clang/GCC; all 14 tooling tests pass. Production is unchanged.
+
+### Floating min/max selection review
+
+Four reviews bring the queue to 92 reviewed and 62 pending. Recorded why raw
+selection/scaling/quantization checks are intentional despite loose-only API
+support, with separate NaN classification versus payload witnesses. Half-median
+hardware captures now include per-input checks while retaining their digests and
+NaN canonicalization. DPP failure context includes EXEC. All 32 family tests pass
+with Clang/GCC; all 14 tooling tests pass. No production or fixture changes.

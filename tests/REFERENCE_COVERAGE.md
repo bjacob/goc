@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Eighty-eight explicit family-file reviews exist and 66
+non-generic family references. Ninety-two explicit family-file reviews exist and 62
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -229,3 +229,14 @@ as reporting/nonreporting agreement. State assertions apply only to calls that
 actually pass the state pointer. Records distinguish supported RDNA4 reporting
 from RDNA3 atomic rejection, and reused per-pair hardware classifications from
 native Wave64 captures. No new numerical model or golden fixture was introduced.
+
+## Floating min/max selection
+
+Four reviews record selection, signed-zero and NaN rules separately from
+approximate numerical arithmetic. Raw finite comparisons are intentional for
+operand selection and specified binary scaling/quantization; strict exact
+semantics remains unsupported. Literal architecture checks enforce payload
+rules where intended, while general half tests permit canonicalized NaNs.
+Half-median hardware corpora now have per-input checks and retain their hashes,
+including the original NaN canonicalization policy. Mode/route integration
+sampling is explicitly distinguished from exhaustive Cartesian coverage.
