@@ -13,6 +13,7 @@ inline const Tolerance half_sfu_tolerance = {0x1p-24, 1.1e-3};
 inline const Tolerance fp8_dot_repeated_tolerance = {0, 2.5e-7};
 // Mixed FP8/BF8 factors bounded by 4, including cancellation against C.
 inline const Tolerance fp8_dot_bounded_tolerance = {4e-6, 2e-7};
+inline const Tolerance arithmetic_f64_tolerance = {0x1p-1074, 2.5e-16};
 inline const Tolerance unary_f64_tolerance = {0x1p-1072, 5e-16};
 inline const Tolerance hardware_sfu_f64_tolerance = {0, 0x1p-23};
 inline const Tolerance unary_f32_tolerance = {0, 2.5e-7};

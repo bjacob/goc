@@ -574,3 +574,12 @@ tests now check every nondestination register; hardware transcendental failures
 include modifier/lane context. Removed a production decoding dependency and
 clarified hash serialization without changing capture data. Both affected tests
 pass on Clang/GCC. Production is unchanged.
+
+### FP64 arithmetic review
+
+One review brings the queue to 114 reviewed and 40 pending. Added deterministic
+random ADD/MUL/FMA proximity tests with cancellation, both widths and all CPU
+selectors. Calibration and alternate seeds pass on Clang/GCC, including a measured
+nonzero difference from the wider reference. Existing raw dyadic, selection and
+literal boundary checks remain. All 14 family tests pass on both compilers;
+production is unchanged. The new reference explicitly requires wider long double.

@@ -1899,5 +1899,32 @@
     ],
     "scope": "Seventeen RDNA4 Wave32 FP64 output operations (arithmetic, rounding/fract, sqrt/rcp/rsq, min/max, frexp mantissa and ldexp). Retained gfx1201 MODE=0xf0 boundary captures cover 16 OMOD/CLAMP/NEG_A combinations and cross-half source/destination aliases on all CPU selectors. ADD/MUL/FMA use identity operands, so their raw captured outputs test scaling/encoding rather than general loose arithmetic. Transcendentals compare individual captured values with the previously calibrated hardware SFU bound, preserving signs, zero/infinity bits and classification separately. Other operations retain normalized-NaN digests. LDEXP tests exponents zero and minus one. This is full-EXEC loose-mode integration, not complete masks, Wave64 or strict exact coverage; those belong to companion family tests.",
     "diagnostics": "Added checks that all nondestination registers remain unchanged; transcendental failures now identify modifier/lane in addition to CPU/operation/alias. Local memcpy decoding removes dependence on production fp64.h. Clarified legacy byte-as-uint32_t hash serialization without changing capture data. Aggregate digest cases are complemented by family-specific numerical tests."
+  },
+  {
+    "file": "fp64_test.cpp",
+    "assertions": [
+      "Fp64.AllModifiersMasksAndCrossHalfAliases",
+      "Fp64.LiteralRoundingAndExceptionalValues",
+      "Fp64.Validation",
+      "Fp64.MinMaxSpecialPairsAndAllModifiers",
+      "Fp64.MinMaxLiteralNaNPriorityAndZeros",
+      "Fp64.MinmaxNaNPriorityAcrossPrecisions",
+      "Fp64.Wave64AllModifiersMasksAndCrossWordAliases",
+      "Fp64.Wave64LiteralRoundingAndExceptionalValues",
+      "Fp64.Wave64ReportingAndValidation",
+      "Fp64.ArchitectureScalingAndGuestDenormalsAcrossAliases",
+      "Fp64.MinmaxGuestIeeeLiteralNaNSelection",
+      "Fp64.ArithmeticOptionalStateAndExactFallback",
+      "Fp64.MinmaxOptionalStateFallbackAndEncodingRejection",
+      "Fp64.DeterministicLooseArithmetic"
+    ],
+    "evidence": [
+      "tests/fp64_test.cpp",
+      "tests/omod_reference.h",
+      "tests/fp64_output_hardware.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Loose FP64 ADD/MUL/FMA and min/max forms across both architectures and widths. Large all-modifier mask/alias sweeps deliberately use small dyadic inputs whose arithmetic is exact; raw word checks establish split-register behavior, including coincident destinations, masks and guards. Literal tables cover rounding, signed zeros, fused cancellation, overflow/underflow and NaN selection. Min/max references use bit ordering and explicit NaN priority; raw checks are intentional operand-selection contracts. Guest-policy integration covers flush/IEEE/OMOD differences and aliases. New deterministic random numerical coverage exercises RDNA4 ADD/MUL/FMA, both widths, all CPU selectors, 16 modifiers and cancellation patterns, using calibrated fuzzy comparisons against wider long-double arithmetic. The new reference is skipped where long double lacks extra precision. Strict exact arithmetic/minmax and exact optional reporting remain explicitly unsupported; non-strict fallback and loose reporting preservation are tested.",
+    "diagnostics": "Large integration sweeps identify operation/mode/CPU/EXEC/alias; random numerical failures additionally report batch/width/lane and the fuzzy error bound. Small literal tables complement the captured output-scaling suite. Deterministic mathematical references are not presented as new hardware exactness evidence. Random numerical coverage does not cross every guest mode; those policies are covered by separate fixed boundary integration."
   }
 ]

@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: MIT
 
 #include "exec_masks.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
+#include "loose_tolerances.h"
 #include "omod_reference.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <limits>
+#include <random>
 #include <stdint.h>
 
 namespace {
@@ -817,4 +821,74 @@ TEST(Fp64, MinmaxOptionalStateFallbackAndEncodingRejection) {
               }
             }
           }
+}
+
+TEST(Fp64, DeterministicLooseArithmetic) {
+  // Wider fused arithmetic avoids a binary64 intermediate in the reference.
+  // Literal tests separately cover overflow, subnormals and exact zero signs.
+  if (std::numeric_limits<long double>::digits <= std::numeric_limits<double>::digits) {
+    GTEST_SKIP() << "reference requires wider long double";
+  }
+  std::mt19937 random(63017);
+  for (unsigned batch = 0; batch < 32; ++batch) {
+    uint32_t input[6][64];
+    for (unsigned lane = 0; lane < 64; ++lane) {
+      double values[3];
+      for (unsigned operand = 0; operand < 3; ++operand) {
+        uint64_t high = random();
+        uint64_t low = random();
+        uint64_t raw = (high << 32) | low;
+        // Finite normal inputs, with products also safely inside binary64 range.
+        raw = (raw & 0x800fffffffffffffULL) | (uint64_t(600 + random() % 800) << 52);
+        values[operand] = number(raw);
+      }
+      if (lane % 4 == 0)
+        values[2] = -values[0] * values[1];
+      if (lane % 4 == 1)
+        values[1] = std::nextafter(-values[0], 0.0);
+      for (unsigned operand = 0; operand < 3; ++operand) {
+        uint64_t raw = bits(values[operand]);
+        input[2 * operand][lane] = uint32_t(raw);
+        input[2 * operand + 1][lane] = uint32_t(raw >> 32);
+      }
+    }
+    const uint32_t *a[] = {input[0], input[1]}, *b[] = {input[2], input[3]},
+                   *c[] = {input[4], input[5]};
+    for (unsigned variant = 0; variant < 16; ++variant) {
+      uint32_t mode = ((variant & 3) << 6) | (variant & 4 ? GOC_ALU_NEG_A : 0) |
+                      (variant & 8 ? GOC_ALU_ABS_B : 0);
+      for (int op = 0; op < 3; ++op) {
+        double expected[64];
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          long double x[3];
+          for (unsigned operand = 0; operand < 3; ++operand) {
+            x[operand] = number(uint64_t(input[2 * operand][lane]) |
+                                uint64_t(input[2 * operand + 1][lane]) << 32);
+            if (mode & (GOC_ALU_ABS_A << operand))
+              x[operand] = std::fabs(x[operand]);
+            if (mode & (GOC_ALU_NEG_A << operand))
+              x[operand] = -x[operand];
+          }
+          long double result = op == 0   ? x[0] + x[1]
+                               : op == 1 ? x[0] * x[1]
+                                         : std::fma(x[0], x[1], x[2]);
+          expected[lane] = goc_test::omod_f64_reference(double(result), mode);
+        }
+        for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
+          for (bool wide : {false, true}) {
+            uint32_t output[2][64];
+            uint32_t *d[] = {output[0], output[1]};
+            ASSERT_EQ(wide ? call_wave64(op, cpu, UINT64_MAX, mode, d, a, b, c)
+                           : call(op, cpu, UINT32_MAX, mode, d, a, b, c),
+                      GOC_SUCCESS);
+            for (unsigned lane = 0; lane < (wide ? 64U : 32U); ++lane) {
+              double actual = number(uint64_t(output[0][lane]) | uint64_t(output[1][lane]) << 32);
+              ASSERT_TRUE(
+                  goc_test::fuzzy(actual, expected[lane], goc_test::arithmetic_f64_tolerance))
+                  << batch << '/' << mode << '/' << op << '/' << cpu << '/' << wide << '/' << lane;
+            }
+          }
+      }
+    }
+  }
 }

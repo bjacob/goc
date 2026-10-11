@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 113 explicit family-file reviews exist and 41
+non-generic family references. 114 explicit family-file reviews exist and 40
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -344,3 +344,12 @@ comparisons and exact captured scaling/selection witnesses. Alias tests now
 check every nondestination register as well as the split output. Test decoding
 is independent of production helpers; capture serialization and the Wave32,
 full-EXEC scope are documented explicitly.
+
+## FP64 arithmetic and selection
+
+The main FP64 suite retains raw comparisons for exact dyadic mask/alias sweeps,
+selection and literal boundary behavior. A new compact deterministic random
+ADD/MUL/FMA test adds fuzzy numerical coverage against wider fused arithmetic,
+including cancellation. An alternate seed measures a small nonzero difference
+within the documented bound. The review distinguishes loose coverage from the
+explicit rejection of strict exact semantics/reporting.

@@ -273,3 +273,22 @@ unselected half are always bitwise, including in loose semantics. Dedicated
 comparator tests inject differences deliberately and are excluded from numerical
 calibration. Script and logs:
 `goc-build/coverage-work/testing-mixed-fma-calibration/run.py`.
+
+## FP64 ADD/MUL/FMA
+
+`Fp64.DeterministicLooseArithmetic` uses `(2^-1074, 2.5e-16)` against long-double
+ADD/MUL/fused-FMA, rounded to binary64 before the independently expressed OMOD.
+It tests 32 batches of 64 deterministic inputs, 16 scale/source-modifier settings,
+three operations, both wave widths and all CPU selectors. Random finite inputs
+span biased exponents 600 through 1399; products stay in binary64 range. Every
+fourth lane cancels a rounded product and the next lane uses neighboring opposite
+operands. Literal tests separately cover overflow, subnormals and zero signs.
+The reference requires wider long double; this test explicitly skips otherwise.
+
+Clang and GCC each measured 589,824 finite pairs per seed. Seed 63017 matched
+exactly; alternate seed 88721 had maximum absolute error `5.9347298410998742e-67`
+and maximum relative error `1.5295430857584179e-16`. The chosen relative bound
+allows about one binary64 encoding step with margin; the absolute term supplies
+a minimum-subnormal floor. Wider host arithmetic is a proximity reference, not
+a hardware bit-exact oracle. Script/snapshots/logs:
+`goc-build/coverage-work/testing-fp64-arithmetic-calibration/run.py`.
