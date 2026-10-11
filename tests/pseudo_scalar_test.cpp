@@ -2,8 +2,11 @@
 
 #include "capture_hash.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
+#include "half_reference.h"
 #include "half_unary_reference.h"
+#include "loose_tolerances.h"
 #include "pseudo_scalar_hardware.h"
 #include "pseudo_scalar_reference.h"
 #include "unary_exact_hardware.h"
@@ -206,7 +209,9 @@ TEST(PseudoScalar, ExactHalfEveryEncodingAndGuestPolicy) {
           ASSERT_EQ(result, 0xfe00U);
         else if ((expected & 0x7fff) && (expected & 0x7fff) < 0x7c00) {
           ASSERT_EQ(result & 0x8000, expected & 0x8000);
-          ASSERT_LE(std::abs(int(result) - int(expected)), 1);
+          ASSERT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(result)),
+                                      goc_test::half_value(uint16_t(expected)),
+                                      goc_test::half_sfu_tolerance));
         } else
           ASSERT_EQ(result, expected) << op << "/" << state << "/" << raw;
       }

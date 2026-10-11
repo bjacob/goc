@@ -2,13 +2,14 @@
 
 #pragma once
 
-#include "fuzzy.h"
+#include "fuzzy_compare.h"
 
 namespace goc_test {
 
 // Family/domain-specific bounds. Measurements and provenance are recorded in
 // LOOSE_TOLERANCES.md; these are not universal tolerances for every instruction
 // producing the same numeric format.
+inline const Tolerance half_sfu_tolerance = {0x1p-24, 1.1e-3};
 inline const Tolerance fp8_dot_repeated_tolerance = {0, 2.5e-7};
 // Mixed FP8/BF8 factors bounded by 4, including cancellation against C.
 inline const Tolerance fp8_dot_bounded_tolerance = {4e-6, 2e-7};

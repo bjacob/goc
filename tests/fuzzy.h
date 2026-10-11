@@ -2,16 +2,13 @@
 
 #pragma once
 
+#include "fuzzy_compare.h"
+
 #include <cmath>
 #include <gtest/gtest.h>
 #include <iomanip>
 
 namespace goc_test {
-
-struct Tolerance {
-  double atol;
-  double rtol;
-};
 
 // Compare with |actual-expected| <= atol + rtol*|expected|. Both tolerances
 // must be finite and nonnegative. NaNs match NaNs; equal infinities and signed
@@ -23,12 +20,10 @@ inline ::testing::AssertionResult fuzzy(double actual, double expected, Toleranc
       tolerance.rtol < 0)
     return ::testing::AssertionFailure()
            << "invalid tolerances: atol=" << tolerance.atol << ", rtol=" << tolerance.rtol;
-  if (actual == expected || (std::isnan(actual) && std::isnan(expected)))
+  if (fuzzy_equal(actual, expected, tolerance))
     return ::testing::AssertionSuccess();
   const double error = std::abs(actual - expected);
   const double bound = tolerance.atol + tolerance.rtol * std::abs(expected);
-  if (std::isfinite(actual) && std::isfinite(expected) && error <= bound)
-    return ::testing::AssertionSuccess();
   return ::testing::AssertionFailure()
          << std::setprecision(17) << "actual=" << actual << ", expected=" << expected
          << ", abs_error=" << error << ", allowed=" << bound << " (atol=" << tolerance.atol

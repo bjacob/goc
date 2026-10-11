@@ -3,6 +3,7 @@
 #include "capture_hash.h"
 #include "dpp_reference.h"
 #include "exec_masks.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "internal.h"
 #include "loose_tolerances.h"

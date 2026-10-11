@@ -3,9 +3,11 @@
 #include "capture_hash.h"
 #include "dpp_reference.h"
 #include "exec_masks.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_reference.h"
 #include "half_unary_reference.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cmath>
@@ -38,7 +40,8 @@ void check(unsigned op, uint32_t got, uint32_t want, uint32_t mode) {
     ASSERT_GT(x & 0x7fff, 0x7c00);
   } else if (op >= 4 && op <= 8 && (y & 0x7fff) && (y & 0x7fff) < 0x7c00) {
     ASSERT_EQ(x & 0x8000, y & 0x8000);
-    ASSERT_LE(std::abs(int(x) - int(y)), 1);
+    ASSERT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(x)),
+                                goc_test::half_value(uint16_t(y)), goc_test::half_sfu_tolerance));
   } else {
     ASSERT_EQ(x, y);
   }

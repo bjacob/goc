@@ -2,7 +2,9 @@
 
 #pragma once
 
+#include "fuzzy_compare.h"
 #include "goc/goc.h"
+#include "loose_tolerances.h"
 
 #include <cmath>
 #include <cstring>
@@ -63,7 +65,10 @@ inline bool rcp_iflag_close(uint32_t a, uint32_t b) {
     return bm > 0x7f800000;
   if (!am || !bm || am >= 0x7f800000 || bm >= 0x7f800000)
     return a == b;
-  return a > b ? a - b <= 2 : b - a <= 2;
+  float actual, expected;
+  std::memcpy(&actual, &a, sizeof(actual));
+  std::memcpy(&expected, &b, sizeof(expected));
+  return fuzzy_equal(actual, expected, unary_f32_tolerance);
 }
 
 template <typename Mask>

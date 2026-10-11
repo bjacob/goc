@@ -1,11 +1,13 @@
 # Loose floating comparison policy and measurements
 
-`fuzzy.h` implements the NumPy-style contract already used by GoC WMMA and
+`fuzzy_compare.h` implements the NumPy-style contract already used by GoC WMMA and
 hrx-system/IREE: `abs(actual - expected) <= atol + rtol * abs(expected)`.
 The relative term uses the reference operand. NaNs match NaNs; same-sign
 infinities and either signed zero match. Other nonfinite pairs fail. Tests that
 require payload, zero-sign, masks, flags, or preserved bits check those separately.
-Failure diagnostics include both operands, the absolute error and allowed bound.
+`fuzzy.h` adds GoogleTest failure diagnostics with both operands, the absolute
+error and allowed bound. The numerical helper has no GoogleTest dependency so
+benchmark checks and unit tests can share the same rule.
 
 `loose_tolerances.h` centralizes bounds for the migrated families. The initial
 migration preserved existing bounds; subsequent calibration is documented below.
@@ -144,3 +146,45 @@ pass under both compilers. No `EXPECT/ASSERT_FLOAT_EQ`, `DOUBLE_EQ` or `NEAR`
 calls remain in test sources. That textual fact does not establish that every
 loose numerical comparison has been migrated: half-format ULP checks and the
 meaning of existing bitwise/differential comparisons remain under review.
+
+## Half-format and pseudo-scalar comparisons
+
+Half SFU comparisons to rounded half references use `(2^-24, 1.1e-3)`.
+These replace adjacent-encoding checks with an explicit numerical contract:
+the absolute term covers a minimum-subnormal step, and the relative term has
+margin above the observed adjacent-normal differences. This is not algebraically
+identical to a one-ULP test. Sign checks, exact zero/infinity cases, preserved
+halves, NaN handling and hardware bitwise/digest comparisons remain separate.
+The half trig comparison to an unrounded mathematical reference keeps its
+previous `(0.0005, 0)` bound.
+
+Clang measurements across the existing corpora:
+
+| Family/domain | Finite pairs | Max absolute error | Max relative error | Fraction of bound |
+| --- | ---: | ---: | ---: | ---: |
+| HalfUnary | 16,529,844 | 0.00390625 | 0.000975610 | 0.886906 |
+| DppHalfUnary | 6,864,652 | 0 | 0 | 0 |
+| HalfLogExpArchitecture | 527,064 | 0 | 0 | 0 |
+| HalfTrig vs rounded reference | 4,634,704 | 0.000244141 | 0.000752446 | 0.683928 |
+| HalfTrigArchitecture loose comparisons | 2,939,840 | 0 | 0 | 0 |
+| HalfUnaryExact loose-policy comparisons | 27,427,072 | 0 | 0 | 0 |
+| PseudoScalar half comparisons | 1,125,024 | 0 | 0 | 0 |
+| PseudoScalar FP32 comparisons | 129,536 | 1.980705e28 | 1.188431e-7 | 0.475373 |
+| RcpIflag comparisons | 14,958,448 | 1.014121e31 | 1.188431e-7 | 0.475373 |
+
+The half unary/trig suites enumerate every input encoding, with representative
+modifier/FP policies; other tests cross selected inputs with the broader modifier,
+DPP, alias and policy matrices. There is no unseen input encoding to reserve as
+a holdout for exhaustive sweeps. This is not exhaustive over every encoding ×
+policy × alias combination. Pseudo-scalar and reciprocal checks use their existing
+hardware/computed corpora and the calibrated FP32 unary bound `(0, 2.5e-7)`.
+`PseudoScalar`'s exact-half mathematical proximity check is supplemental; its
+hardware anchors and borrowed-model digests establish the exact result contract.
+A zero error in a computed proximity corpus alone is not an equivalence proof.
+
+These bounds pass the full 1,201-test Clang/GCC suites, including benchmark smoke
+checks; the final two migrated test files also pass all 11 targeted Clang tests.
+Measurements are in `goc-build/coverage-work/testing-half-calibration/`.
+The numeric comparator is shared with the benchmark's reciprocal correctness
+checks without introducing a GoogleTest dependency there. Small wrapper helpers
+retain their instruction-specific classification/preservation rules.

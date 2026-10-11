@@ -237,3 +237,19 @@ all 27 affected tests pass on Clang and GCC. Hardware FP64 SFU comparisons retai
 their separate, intentionally looser hardware-relative bound. Half-format ULP
 comparisons, remaining calibration domains and the oracle inventory are still
 open; removal of comparison macros is not used as a completion criterion.
+
+### Half-format, pseudo-scalar and reciprocal tolerance migration
+
+Replaced the remaining encoding-distance numerical checks with the shared fuzzy
+rule, while keeping exact structural/classification and hardware-reference checks.
+Measured the exhaustive half sweeps and existing modifier/architecture corpora;
+results and limitations are in [tests/LOOSE_TOLERANCES.md](tests/LOOSE_TOLERANCES.md).
+The plain numerical comparison now lives in `tests/fuzzy_compare.h`; `fuzzy.h`
+adds assertion diagnostics. This extra header serves the existing benchmark
+caller of the reciprocal helper, so it can share the rule without GoogleTest.
+All 1,201 tests pass on Clang and GCC; the last two migrated files additionally
+pass 11 targeted Clang tests. No production code changed.
+
+The tolerance audit is not yet closed: broader WMMA/interpolation calibration
+and the classification of existing bitwise/differential numerical checks are
+still needed alongside the reference-evidence inventory.

@@ -2,9 +2,11 @@
 
 #include "dpp_reference.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_reference.h"
 #include "half_unary_reference.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -200,7 +202,9 @@ TEST(HalfUnaryExact, SfuLooseGuestModesAndOptionalState) {
                 ASSERT_GT(actual & 0x7fff, 0x7c00);
               } else if ((expected & 0x7fff) && (expected & 0x7fff) < 0x7c00) {
                 ASSERT_EQ(actual & 0x8000, expected & 0x8000);
-                ASSERT_LE(std::abs(int(actual) - int(expected)), 1);
+                ASSERT_TRUE(goc_test::fuzzy(goc_test::half_value(actual),
+                                            goc_test::half_value(expected),
+                                            goc_test::half_sfu_tolerance));
               } else {
                 ASSERT_EQ(actual, expected);
               }

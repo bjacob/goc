@@ -2,8 +2,11 @@
 
 #include "dpp_reference.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
+#include "half_reference.h"
 #include "half_unary_reference.h"
+#include "loose_tolerances.h"
 #include "test_instruction.h"
 
 #include <algorithm>
@@ -43,7 +46,9 @@ void check(uint16_t got, uint16_t expected) {
     ASSERT_EQ(got, expected);
   } else {
     ASSERT_EQ(got & 0x8000, expected & 0x8000);
-    ASSERT_LE(std::abs(int(got) - int(expected)), 1);
+    ASSERT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(got)),
+                                goc_test::half_value(uint16_t(expected)),
+                                goc_test::half_sfu_tolerance));
   }
 }
 } // namespace

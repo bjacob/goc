@@ -3,6 +3,7 @@
 #include "capture_hash.h"
 #include "fp64.h"
 #include "fp64_output_hardware.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "loose_tolerances.h"
 

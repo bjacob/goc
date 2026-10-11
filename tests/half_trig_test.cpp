@@ -89,7 +89,8 @@ void expect_near(uint16_t actual, uint16_t expected) {
     EXPECT_EQ(actual, expected);
   else {
     EXPECT_EQ(actual & 0x8000, expected & 0x8000);
-    EXPECT_LE(std::abs(int(actual & 0x7fff) - int(magnitude)), 1);
+    EXPECT_TRUE(goc_test::fuzzy(goc_test::half_value(actual), goc_test::half_value(expected),
+                                goc_test::half_sfu_tolerance));
   }
 }
 

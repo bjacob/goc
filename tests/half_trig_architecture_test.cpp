@@ -2,9 +2,11 @@
 
 #include "dpp_reference.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_reference.h"
 #include "internal.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cfenv>
@@ -194,7 +196,9 @@ TEST(HalfTrigArchitecture, ModifiersDppMasksHalfSelectionAndAliases) {
                       unsigned magnitude = (want >> shift) & 0x7fff;
                       if (loose && written && magnitude && magnitude < 0x7c00) {
                         ASSERT_EQ(got & ~(0x7fffU << shift), want & ~(0x7fffU << shift));
-                        ASSERT_LE(std::abs(int((got >> shift) & 0x7fff) - int(magnitude)), 1);
+                        ASSERT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(got >> shift)),
+                                                    goc_test::half_value(uint16_t(want >> shift)),
+                                                    goc_test::half_sfu_tolerance));
                       } else {
                         ASSERT_EQ(got, want) << arch << "/" << cosine << "/" << guest << "/"
                                              << variant << "/" << lane;

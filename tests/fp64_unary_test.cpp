@@ -2,6 +2,7 @@
 
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "loose_tolerances.h"
 #include "omod_reference.h"

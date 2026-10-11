@@ -3,9 +3,11 @@
 #include "capture_hash.h"
 #include "dpp_reference.h"
 #include "exec_masks.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_reference.h"
 #include "half_unary_reference.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cmath>
@@ -30,7 +32,9 @@ void check(int op, uint32_t actual, uint32_t before, uint16_t want, uint32_t mod
   } else if (op >= 4 && op <= 8 && (want & 0x7fff) != 0 && (want & 0x7fff) < 0x7c00) {
     // Loose transcendental paths may round at an adjacent half encoding.
     EXPECT_EQ(got & 0x8000, want & 0x8000);
-    EXPECT_LE(std::abs(int(got) - int(want)), 1);
+    EXPECT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(got)),
+                                goc_test::half_value(uint16_t(want)),
+                                goc_test::half_sfu_tolerance));
   } else {
     EXPECT_EQ(got, want);
   }

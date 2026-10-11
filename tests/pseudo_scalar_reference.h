@@ -2,8 +2,12 @@
 
 #pragma once
 
+#include "fuzzy_compare.h"
 #include "goc/goc.h"
+#include "half_reference.h"
+#include "loose_tolerances.h"
 
+#include <cstring>
 #include <stdint.h>
 
 namespace goc_test {
@@ -44,7 +48,7 @@ inline uint32_t pseudo_scalar_input(unsigned half, unsigned i) {
               : (i < 32 ? edges32[i] : ((i * 0x7395a831u) ^ 0xa7925163u));
 }
 
-// Finite nonzero results allow one half ULP or two single ULPs. Signed zeros and
+// Finite nonzero results use measured format-specific tolerances. Signed zeros and
 // infinities must match exactly; NaN payloads and signs are unspecified.
 inline bool pseudo_scalar_close(uint32_t a, uint32_t b, bool half) {
   uint32_t inf = half ? 0x7c00 : 0x7f800000, mag = half ? 0x7fff : 0x7fffffff;
@@ -54,7 +58,12 @@ inline bool pseudo_scalar_close(uint32_t a, uint32_t b, bool half) {
     return (b & mag) > inf;
   if ((a & mag) == inf || (b & mag) >= inf || !(a & mag) || !(b & mag))
     return a == b;
-  return a > b ? a - b <= unsigned(half ? 1 : 2) : b - a <= unsigned(half ? 1 : 2);
+  if (half)
+    return fuzzy_equal(half_value(uint16_t(a)), half_value(uint16_t(b)), half_sfu_tolerance);
+  float actual, expected;
+  std::memcpy(&actual, &a, sizeof(actual));
+  std::memcpy(&expected, &b, sizeof(expected));
+  return fuzzy_equal(actual, expected, unary_f32_tolerance);
 }
 
 } // namespace goc_test
