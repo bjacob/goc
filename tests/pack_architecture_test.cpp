@@ -93,6 +93,9 @@ TEST(PackArchitecture, DppAndGuestPolicies) {
         for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
           for (unsigned guest = 0; guest < 8; ++guest)
             for (uint64_t descriptor : goc_test::dpp_modes) {
+              SCOPED_TRACE(::testing::Message()
+                           << "op=" << op << " arch=" << arch << " wide=" << wide << " cpu=" << cpu
+                           << " guest=" << guest << " descriptor=" << descriptor);
               uint32_t words[4][66], expected[66];
               inputs(op, words);
               std::copy_n(words[3], 66, expected);

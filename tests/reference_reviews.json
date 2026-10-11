@@ -820,5 +820,38 @@
     ],
     "scope": "Nine packed/normalized conversion operations across RDNA3/RDNA4 and Wave32/64. This integration suite reuses the independently computed quantization references reviewed in the numerical family tests. It exercises all guest policies and modifiers, ordinary plus two representative DPP routes, mixed EXEC, three destination/source alias placements and guards across CPU paths. It does not claim native hardware captures for every architecture or policy. Strict exact is rejected, optional exact global-state reporting is rejected for applicable operations, and loose reporting leaves state unchanged. Numerical result checks are exact quantization/field checks, not arbitrary approximate arithmetic.",
     "diagnostics": "Whole-buffer assertions report architecture, width, opcode, policy, modifier, route, alias and CPU. Individual numerical failures can be localized using the companion family tests; no large digest is the sole oracle."
+  },
+  {
+    "file": "byte_pack_test.cpp",
+    "assertions": [
+      "BytePack.HardwareCapturedRoundingAndModifiers",
+      "BytePack.EveryRoundingBoundaryAndBytePosition",
+      "BytePack.EveryNibbleModifierAndUnselectedBit",
+      "BytePack.EveryModifierMaskAndWholeRegisterAlias",
+      "BytePack.DppHardwareCorpus"
+    ],
+    "evidence": [
+      "tests/byte_conversion_reference.h",
+      "tests/byte_pack_hardware.h",
+      "tests/byte_pack_test.cpp"
+    ],
+    "scope": "RDNA4 FP32-to-byte packing and signed-nibble-to-FP32 offset. The byte reference explicitly applies ABS/NEG, classifies NaNs/sign, clamps to 0..255 and rounds significand bits ties-even before replacing only the selected byte of C. Every half-integer boundary and adjacent float is exercised for all byte positions and modifiers, with deterministic full-word alias/guard/mask checks. Literal hardware captures now validate the computed reference independently of GoC. Byte conversion is loose/fallback-only; the separate architecture tests explicitly reject strict exact. The nibble reference is exact bounded dyadic encoding and all selected nibbles/unselected bits are checked. Integer quantization and byte preservation intentionally use exact comparisons rather than fuzzy floating comparison.",
+    "diagnostics": "Hardware capture failures identify row/column/CPU. The retained DPP hardware digest now checks each result against the computed routing/quantization reference with CPU, EXEC, descriptor, modifier and lane context."
+  },
+  {
+    "file": "pack_architecture_test.cpp",
+    "assertions": [
+      "PackArchitecture.PoliciesModifiersMasksAndAliases",
+      "PackArchitecture.DppAndGuestPolicies",
+      "PackArchitecture.ExactSupportAndReportingErrors",
+      "PackArchitecture.HostControlsArePreserved"
+    ],
+    "evidence": [
+      "tests/pack_reference.h",
+      "tests/byte_conversion_reference.h",
+      "tests/pack_architecture_test.cpp"
+    ],
+    "scope": "FP16 field packing and FP32 byte packing across both architectures and wave widths. Reuses the separately hardware-anchored field and quantization references. All guest policies, modifiers, full/zero/mixed masks and four destination placements are exercised; DPP tests cover the routing descriptors with representative modifiers. Strict exact FP16 packing is accepted only for RDNA4, with a literal sNaN-quieting result; strict exact byte packing is rejected. Optional exact state returns unsupported without touching output, and loose calls preserve optional state. This integration coverage is not a native hardware capture for every architecture/policy combination.",
+    "diagnostics": "DPP comparisons now trace opcode, architecture, width, CPU, guest policy and descriptor. Other whole-buffer checks have configuration context; literal exact-support assertions separately anchor the accepted behavior."
   }
 ]

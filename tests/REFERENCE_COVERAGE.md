@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Fifty-six explicit family-file reviews exist and 98
+non-generic family references. Fifty-eight explicit family-file reviews exist and 96
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -116,3 +116,12 @@ checked directly against retained captured outputs, with source/column context
 in both wave widths. Exact integer/encoded comparisons intentionally test
 quantization and field preservation; passing captures do not imply strict exact
 API support or arbitrary-input hardware equivalence.
+
+## Byte packing and architecture integration
+
+Two reviews cover byte quantization/nibble offsets and packing architecture
+integration. Byte packing exercises every rounding boundary and adjacent FP32
+word in each destination byte; its computed reference is now directly checked
+against the stored capture columns. The DPP hardware total is retained alongside
+per-lane checks. Architecture tests distinguish RDNA4 exact FP16 field packing
+from unsupported strict-exact byte packing, and now include DPP failure context.

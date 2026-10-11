@@ -335,3 +335,14 @@ new traces identify source, column, CPU and applicable saturation mode. This
 retains existing golden evidence rather than assuming agreement with GoC proves
 equivalence. All 27 affected/integration tests pass on Clang and GCC; all 14
 tooling tests pass. Production implementations and API support are unchanged.
+
+### Byte quantization and packing architecture review
+
+Reviewed two more families (58 reviewed, 96 pending). Recorded byte rounding
+boundary/adjacent-value coverage, preserved-byte and alias checks, and the
+architecture-specific strict-exact acceptance/rejection contract. The byte
+reference is directly checked against the existing capture columns; its DPP
+hardware digest now has per-lane computed checks and configuration diagnostics.
+Packing architecture DPP failures now identify their configuration as well.
+All 13 affected tests pass on Clang and GCC; all 14 tooling tests pass. Existing
+hardware digests and production implementations are unchanged.

@@ -44,6 +44,10 @@ TEST(BytePack, HardwareCapturedRoundingAndModifiers) {
   for (const auto &capture : goc_test::byte_pack_captures) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned column = 0; column < 8; ++column) {
+        SCOPED_TRACE(::testing::Message()
+                     << "row=" << row << " column=" << column << " cpu=" << cpu);
+        ASSERT_EQ(reference(column < 4 ? 1 : 0, capture.source, row & 3, 0x12345678, modes[column]),
+                  capture.expected[column]);
         uint32_t av[32], bv[32], cv[32], output[32];
         std::fill_n(av, 32, capture.source);
         std::fill_n(bv, 32, row & 3);
@@ -266,8 +270,18 @@ TEST(BytePack, DppHardwareCorpus) {
           ASSERT_EQ(
               goc_v_cvt_pk_u8_f32_rdna4(cpu, exec_mask, descriptor | modifier, d, a, b, c, nullptr),
               GOC_SUCCESS);
-          for (auto word : output)
-            hash = goc_test::capture_hash_word(hash, word);
+          SCOPED_TRACE(::testing::Message()
+                       << "cpu=" << cpu << " exec_mask=" << exec_mask
+                       << " descriptor=" << descriptor << " modifier=" << modifier);
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            int source = 0;
+            uint32_t expected = 0xdead0000U + lane;
+            if (goc_test::dpp_source(descriptor, exec_mask, lane, source))
+              expected = goc_test::byte_pack_reference(source < 0 ? 0 : av[source], bv[lane],
+                                                       cv[lane], modifier);
+            ASSERT_EQ(output[lane], expected) << "lane=" << lane;
+            hash = goc_test::capture_hash_word(hash, output[lane]);
+          }
         }
     EXPECT_EQ(hash, 0xef165148657501e5ULL) << cpu;
   }
