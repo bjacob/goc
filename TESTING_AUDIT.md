@@ -797,3 +797,15 @@ Added missing Wave64/source/out-of-wave storage checks. All 20 affected tests
 pass on Clang and GCC; original and alternate-seed calibration has zero observed
 arithmetic error without widening bounds. The inventory reaches 142/154 reviewed
 family files; 12 and final broad verification remain.
+
+
+### RDNA4 DOT2 review
+
+Preserved exact hardware-fixture transformations and independent integer routing.
+Extended the existing loose fractional corpus to RDNA4, added ordinary alias
+source checks, and made the captured zero-exception tests expose every possible
+erroneous arithmetic flag bit. General loose scalar/SIMD comparisons are fuzzy;
+inactive storage is raw. All 24 DOT2/architecture tests pass on Clang and GCC,
+including original/alternate-seed calibration with unchanged bounds.
+The explicit inventory reaches 143/154 family files; 11 and final broad
+verification remain.

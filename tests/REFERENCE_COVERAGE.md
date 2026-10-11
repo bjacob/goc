@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 142 explicit family-file reviews exist and 12
+non-generic family references. 143 explicit family-file reviews exist and 11
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -543,3 +543,12 @@ comparator regression checks that distinction. Fixed hardware/OMOD witnesses
 remain raw. Added source and out-of-wave checks; the DPP exhaustive-modifier
 test no longer canonicalizes unwritten NaNs. Both fixed-seed and alternate-seed
 corpora pass on Clang and GCC with unchanged numerical bounds.
+
+
+RDNA4 DOT2 retains raw inverse-modifier hardware fixtures for exact semantics
+and now participates in the architecture corpus's independent loose fractional
+reference checks. Ordinary alias sweeps check all source words. Captured
+no-exception tests now clear every exception bit before invocation, preserving
+all unrelated bits, so erroneous flag writes cannot hide behind pre-set flags.
+The bounded double reference is not presented as an arbitrary exact accumulator
+model; dedicated captures establish empirical behavior.

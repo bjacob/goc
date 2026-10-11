@@ -2410,7 +2410,7 @@
       "tests/dpp_reference.h",
       "tests/LOOSE_TOLERANCES.md"
     ],
-    "scope": "RDNA3 F16/BF16 DOT2 F32 and F16 DOT2ACC at both wave widths. Independent gfx1100 fixtures borrowed from rocjitsu anchor exact unmodified results, masks, destination aliases and host rounding/sticky-state preservation at baseline CPU. The borrowed production model supplies transformed-input expectations for every selection/sign combination and representative DPP routing; this is differential modifier coverage, not an independent exact oracle for those transformed inputs. A direct model-to-fixture assertion records equivalence on the captured domain. Literal architecture differences, unsupported reporting and validation precedence are explicit. Loose fixed-seed fractional normal inputs bounded by four plus bounded FP32 C use independent double arithmetic, random selectors/signs, ignored clamp, full/mixed EXEC and all destination aliases on every CPU selector; accumulator form uses its implicit C destination. Literal loose accumulator checks remain exact. No general exact equivalence to the mathematical sum is claimed.",
+    "scope": "RDNA3 F16/BF16 DOT2 F32 and F16 DOT2ACC at both wave widths. Independent gfx1100 fixtures borrowed from rocjitsu anchor exact unmodified results, masks, destination aliases and host rounding/sticky-state preservation at baseline CPU. The borrowed production model supplies transformed-input expectations for every selection/sign combination and representative DPP routing; this is differential modifier coverage, not an independent exact oracle for those transformed inputs. A direct model-to-fixture assertion records equivalence on the captured domain. Literal architecture differences, unsupported reporting and validation precedence are explicit. Loose fixed-seed fractional normal inputs bounded by four plus bounded FP32 C use independent double arithmetic, random selectors/signs, ignored clamp, full/mixed EXEC and all destination aliases on every CPU selector; accumulator form uses its implicit C destination. Literal loose accumulator checks remain exact. No general exact equivalence to the mathematical sum is claimed. The bounded loose corpus also covers RDNA4 F16/BF16 DOT2 F32, reusing the same independent arithmetic and storage checks; DOT2ACC remains RDNA3-only.",
     "diagnostics": "Added calibrated fuzzy comparisons with seed holdout and raw source/inactive/guard checks, CPU/mode/lane diagnostics and capture-index oracle assertions. Existing modifier aggregate storage checks identify destination; fixed capture diagnostics are scoped to the capture index for oracle failures."
   },
   {
@@ -2582,5 +2582,32 @@
     ],
     "scope": "Eight RDNA4 half binary operations in Wave32. Two retained gfx1201 hardware hashes independently anchor finite binary-exact and OMOD-boundary corpora across 128 operation/modifier combinations, seven DPP descriptors and eight EXEC masks; per-lane mathematical-reference checks supplement the aggregate hashes. All 1024 modifiers and both overflow policies are tested with explicitly sequenced unsigned LCG words. Representative modifiers cross DPP routing, focused mask sets, five source/destination alias layouts and four boundary/random batches with guards. Invalid modifiers, malformed DPP, global flags and strict exact rejection are explicit. Wave64 DPP coverage lives in half_binary_test.cpp. No arbitrary exact numerical equivalence is inferred from these loose-only tests.",
     "diagnostics": "Fixed captured corpora remain raw. General written finite arithmetic now uses the shared half comparison; min/max remains raw. Crucially, unwritten words are no longer NaN-canonicalized in the exhaustive modifier test. References use pre-call input snapshots, both source arrays are checked, and alias tests preserve all inactive storage. Alternate LCG seeds validate the unchanged tolerance; shared routing reference is backed by its dedicated routing tests."
+  },
+  {
+    "file": "dot2_test.cpp",
+    "assertions": [
+      "Dot2.AllModifiersSelectionsMasksAndAliases",
+      "Dot2.ExactModifiersRecoverHardwareGoldens",
+      "Dot2.SimdSpecialValuesAndEveryExecMask",
+      "Dot2.DppModifiersMasksAndAliases",
+      "Dot2.DppValidation",
+      "Dot2.DppHardwareCorpus",
+      "Dot2.NoExceptionHardwareCorpora",
+      "Dot2.Wave64AllModifiersSelectionsMasksAndAliases",
+      "Dot2.Wave64ExactModifiersRecoverHardwareGoldens",
+      "Dot2.Wave64DppModifiersMasksAndAliases",
+      "Dot2.Wave64DppValidation",
+      "Dot2.Wave64NoExceptionHardwareCorpora"
+    ],
+    "evidence": [
+      "tests/dot2_test.cpp",
+      "tests/dot2_architecture_test.cpp",
+      "tests/dot_fixtures.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "RDNA4 F16/BF16 DOT2 F32 at both widths. Both semantics and every CPU selector exercise all half selectors/signs and ignored clamp with independent exactly representable integer products/sums, masks, destination aliases and guards. Exact empirical behavior is independently anchored by retained gfx1201 fixtures: inverse signs and half swaps recover each captured input under 128 modifier transformations, at the detected CPU level and both widths. DPP integration checks all modifier variants, representative routing and stratified EXEC/row masks using an independent routing reference; a retained fixed finite corpus digest also anchors DPP results. Captured exception corpora cover 4096 edge and 4096 deterministic xorshift triples for each configuration with lane 0 or lane 63 active and CPU selectors cycled. All captured flag reads are zero. Loose numerical behavior has special-value scalar/SIMD differential tests plus independent bounded fractional double-reference tests in dot2_architecture_test.cpp, including held-out operands. The latter does not claim hardware-exact arbitrary accumulation.",
+    "diagnostics": "Added nondestination storage checks to ordinary alias sweeps. Exact captures remain raw; special-value loose finite comparisons use the existing FP32 bound with inactive storage checked first. No-exception corpora now begin with all seven exception bits clear and all unrelated bits set, exposing erroneous updates previously hidden by pre-set exception bits. Bit casts are local memcpy operations instead of production helpers. Extended the existing fractional corpus to RDNA4 without duplicating its reference; Clang/GCC and alternate seeds pass unchanged tolerances."
   }
 ]

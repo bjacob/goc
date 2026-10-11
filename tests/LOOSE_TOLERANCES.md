@@ -467,3 +467,14 @@ All observed errors are zero on both Clang and GCC. The counts include repeated
 masks/modifiers/CPU paths; the holdout changes random operands, not fixed witnesses.
 Calibration excludes the dedicated comparator regression's deliberately rejected
 examples. Script/snapshots/logs: goc-build/coverage-work/testing-half-binary-calibration/run.py.
+
+
+The bounded DOT2 architecture corpus now includes RDNA4 F16/BF16 forms.
+Each seed checks 190,720 finite outputs on Clang and GCC, with unchanged maximum
+absolute/relative errors from the original RDNA3 measurements above:
+absolute 1.1920928955078125e-6, relative 8.6570342731986881e-6 for seed 42683
+and 0.00035398230088495576 for seed 79393. The existing bound (2e-6, 2e-7)
+passes both. RDNA4's separate fixed special-value scalar/SIMD differential
+test contributes 17,960 finite comparisons with zero error under the FP32 FMA
+bound; it is repeated unchanged rather than treated as a random holdout.
+Script/snapshots/logs: goc-build/coverage-work/testing-dot2-calibration/run.py.

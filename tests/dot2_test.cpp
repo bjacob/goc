@@ -4,15 +4,33 @@
 #include "dot_fixtures.h"
 #include "dpp_reference.h"
 #include "exec_masks.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
-#include "internal.h"
+#include "loose_tolerances.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <stdint.h>
 #include <vector>
+
+namespace {
+
+float as_float(uint32_t bits) {
+  float value;
+  std::memcpy(&value, &bits, sizeof(value));
+  return value;
+}
+
+uint32_t as_bits(float value) {
+  uint32_t bits;
+  std::memcpy(&bits, &value, sizeof(bits));
+  return bits;
+}
+
+} // namespace
 
 TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
   const uint16_t f16[] = {0xc000, 0xbc00, 0x3c00, 0x4000};
@@ -32,7 +50,7 @@ TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
                   SCOPED_TRACE(::testing::Message()
                                << brain << "/" << mode << "/" << cpu << "/" << semantics << "/"
                                << exec_mask << "/" << alias);
-                  uint32_t storage[4][34], before[32], expected[32];
+                  uint32_t storage[4][34], before[32], expected[32], saved[4][34];
                   uint32_t *v[4];
                   for (int r = 0; r < 4; ++r) {
                     std::fill(storage[r], storage[r] + 34, 0xdeadbeef);
@@ -43,7 +61,7 @@ TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
                     v[0][lane] = codes[ix[0]] | (uint32_t(codes[ix[1]]) << 16);
                     v[1][lane] = codes[ix[2]] | (uint32_t(codes[ix[3]]) << 16);
                     int c = lane - 16;
-                    v[2][lane] = goc::as_bits(float(c));
+                    v[2][lane] = as_bits(float(c));
                     int x0 = values[ix[selection & 1 ? 1 : 0]];
                     int y0 = values[ix[selection & 2 ? 3 : 2]];
                     int x1 = values[ix[selection & 4 ? 0 : 1]];
@@ -58,9 +76,10 @@ TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
                       x1 = -x1;
                     if (negate & 16)
                       y1 = -y1;
-                    expected[lane] = goc::as_bits(float(x0 * y0 + x1 * y1 + c));
+                    expected[lane] = as_bits(float(x0 * y0 + x1 * y1 + c));
                   }
                   std::copy(v[alias], v[alias] + 32, before);
+                  std::memcpy(saved, storage, sizeof(storage));
                   uint32_t exceptions = 0x80000055;
                   ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode, &v[alias],
                                &v[0], &v[1], &v[2], &exceptions),
@@ -69,9 +88,12 @@ TEST(Dot2, AllModifiersSelectionsMasksAndAliases) {
                   for (int lane = 0; lane < 32; ++lane)
                     EXPECT_EQ(v[alias][lane],
                               (exec_mask >> lane & 1) ? expected[lane] : before[lane]);
-                  for (const auto &reg : storage) {
-                    EXPECT_EQ(reg[0], 0xdeadbeef);
-                    EXPECT_EQ(reg[33], 0xdeadbeef);
+                  for (unsigned reg = 0; reg < 4; ++reg) {
+                    EXPECT_EQ(storage[reg][0], 0xdeadbeef);
+                    EXPECT_EQ(storage[reg][33], 0xdeadbeef);
+                    if (reg != unsigned(alias)) {
+                      EXPECT_EQ(std::memcmp(storage[reg], saved[reg], sizeof(storage[reg])), 0);
+                    }
                   }
                 }
         }
@@ -135,10 +157,14 @@ TEST(Dot2, SimdSpecialValuesAndEveryExecMask) {
                     GOC_SUCCESS);
           ASSERT_EQ(fn(cpu, exec_mask, mode, &pd, &pa, &pb, &pc, nullptr), GOC_SUCCESS);
           for (int i = 0; i < 32; ++i) {
-            if (std::isnan(goc::as_float(ref[i]))) {
-              EXPECT_TRUE(std::isnan(goc::as_float(d[i])));
+            if (!((exec_mask >> i) & 1)) {
+              EXPECT_EQ(d[i], 0xdeadbeefU);
+            } else if (std::isnan(as_float(ref[i]))) {
+              EXPECT_TRUE(std::isnan(as_float(d[i])));
             } else {
-              EXPECT_EQ(d[i], ref[i]);
+              EXPECT_TRUE(
+                  goc_test::fuzzy(as_float(d[i]), as_float(ref[i]), goc_test::fma_f32_tolerance))
+                  << "brain=" << brain << " cpu=" << cpu << " mode=" << mode << " lane=" << i;
             }
           }
         }
@@ -169,7 +195,7 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
                     factors[reg][lane][0] = values[low];
                     factors[reg][lane][1] = values[high];
                   }
-                  storage[2][lane + 1] = goc::as_bits(float(int(lane) - 16));
+                  storage[2][lane + 1] = as_bits(float(int(lane) - 16));
                 }
                 for (unsigned reg = 0; reg < 4; ++reg)
                   std::copy_n(storage[reg], 34, expected[reg]);
@@ -192,7 +218,7 @@ TEST(Dot2, DppModifiersMasksAndAliases) {
                     b1 = -b1;
                   if (mode & GOC_DOT_NEG_C)
                     c = -c;
-                  expected[alias][lane + 1] = goc::as_bits(float(a0 * b0 + a1 * b1 + c));
+                  expected[alias][lane + 1] = as_bits(float(a0 * b0 + a1 * b1 + c));
                 }
                 const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[1] + 1},
                                *c[] = {storage[2] + 1};
@@ -242,7 +268,7 @@ TEST(Dot2, DppHardwareCorpus) {
               for (unsigned lane = 0; lane < 32; ++lane) {
                 av[lane] = values[brain][lane % 8];
                 bv[lane] = values[brain][(lane + 3) % 8];
-                cv[lane] = goc::as_bits(float(int(lane) - 16));
+                cv[lane] = as_bits(float(int(lane) - 16));
                 output[lane] = 0xdead0000u + lane;
               }
               const uint32_t *a[] = {av}, *b[] = {bv}, *c[] = {cv};
@@ -312,11 +338,11 @@ TEST(Dot2, NoExceptionHardwareCorpora) {
           }
         }
         const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
-        uint32_t *d[] = {words[3]}, exceptions = 0x80000055;
+        uint32_t *d[] = {words[3]}, exceptions = 0xffffff80;
         uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                          (variant & 16 ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
         ASSERT_EQ(fn(flags, 1, mode, d, a, b, c, &exceptions), GOC_SUCCESS);
-        EXPECT_EQ(exceptions, 0x80000055);
+        EXPECT_EQ(exceptions, 0xffffff80U);
       }
     }
   }
@@ -341,7 +367,7 @@ TEST(Dot2, Wave64AllModifiersSelectionsMasksAndAliases) {
                   SCOPED_TRACE(::testing::Message()
                                << brain << "/" << mode << "/" << cpu << "/" << semantics << "/"
                                << exec_mask << "/" << alias);
-                  uint32_t storage[4][66], before[64], expected[64];
+                  uint32_t storage[4][66], before[64], expected[64], saved[4][66];
                   uint32_t *v[4];
                   for (int r = 0; r < 4; ++r) {
                     std::fill(storage[r], storage[r] + 66, 0xdeadbeef);
@@ -352,7 +378,7 @@ TEST(Dot2, Wave64AllModifiersSelectionsMasksAndAliases) {
                     v[0][lane] = codes[ix[0]] | (uint32_t(codes[ix[1]]) << 16);
                     v[1][lane] = codes[ix[2]] | (uint32_t(codes[ix[3]]) << 16);
                     int c = lane - 16;
-                    v[2][lane] = goc::as_bits(float(c));
+                    v[2][lane] = as_bits(float(c));
                     int x0 = values[ix[selection & 1 ? 1 : 0]];
                     int y0 = values[ix[selection & 2 ? 3 : 2]];
                     int x1 = values[ix[selection & 4 ? 0 : 1]];
@@ -367,9 +393,10 @@ TEST(Dot2, Wave64AllModifiersSelectionsMasksAndAliases) {
                       x1 = -x1;
                     if (negate & 16)
                       y1 = -y1;
-                    expected[lane] = goc::as_bits(float(x0 * y0 + x1 * y1 + c));
+                    expected[lane] = as_bits(float(x0 * y0 + x1 * y1 + c));
                   }
                   std::copy(v[alias], v[alias] + 64, before);
+                  std::memcpy(saved, storage, sizeof(storage));
                   uint32_t exceptions = 0x80000055;
                   ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, exec_mask, mode, &v[alias],
                                &v[0], &v[1], &v[2], &exceptions),
@@ -378,9 +405,12 @@ TEST(Dot2, Wave64AllModifiersSelectionsMasksAndAliases) {
                   for (int lane = 0; lane < 64; ++lane)
                     EXPECT_EQ(v[alias][lane],
                               (exec_mask >> lane & 1) ? expected[lane] : before[lane]);
-                  for (const auto &reg : storage) {
-                    EXPECT_EQ(reg[0], 0xdeadbeef);
-                    EXPECT_EQ(reg[65], 0xdeadbeef);
+                  for (unsigned reg = 0; reg < 4; ++reg) {
+                    EXPECT_EQ(storage[reg][0], 0xdeadbeef);
+                    EXPECT_EQ(storage[reg][65], 0xdeadbeef);
+                    if (reg != unsigned(alias)) {
+                      EXPECT_EQ(std::memcmp(storage[reg], saved[reg], sizeof(storage[reg])), 0);
+                    }
                   }
                 }
         }
@@ -451,7 +481,7 @@ TEST(Dot2, Wave64DppModifiersMasksAndAliases) {
                     factors[reg][lane][0] = values[low];
                     factors[reg][lane][1] = values[high];
                   }
-                  storage[2][lane + 1] = goc::as_bits(float(int(lane) - 16));
+                  storage[2][lane + 1] = as_bits(float(int(lane) - 16));
                 }
                 for (unsigned reg = 0; reg < 4; ++reg)
                   std::copy_n(storage[reg], 66, expected[reg]);
@@ -474,7 +504,7 @@ TEST(Dot2, Wave64DppModifiersMasksAndAliases) {
                     b1 = -b1;
                   if (mode & GOC_DOT_NEG_C)
                     c = -c;
-                  expected[alias][lane + 1] = goc::as_bits(float(a0 * b0 + a1 * b1 + c));
+                  expected[alias][lane + 1] = as_bits(float(a0 * b0 + a1 * b1 + c));
                 }
                 const uint32_t *a[] = {storage[0] + 1}, *b[] = {storage[1] + 1},
                                *c[] = {storage[2] + 1};
@@ -555,11 +585,11 @@ TEST(Dot2, Wave64NoExceptionHardwareCorpora) {
           }
         }
         const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
-        uint32_t *d[] = {words[3]}, exceptions = 0x80000055;
+        uint32_t *d[] = {words[3]}, exceptions = 0xffffff80;
         uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
                          (variant & 16 ? GOC_FP16_OVFL : 0) | (i % (goc_init_cpu_flags() + 1));
         ASSERT_EQ(fn(flags, 1ULL << 63, mode, d, a, b, c, &exceptions), GOC_SUCCESS);
-        EXPECT_EQ(exceptions, 0x80000055);
+        EXPECT_EQ(exceptions, 0xffffff80U);
       }
     }
   }
