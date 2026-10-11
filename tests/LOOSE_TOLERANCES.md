@@ -594,3 +594,25 @@ Original seed `0x12345678 + batch` gives 17,934 FP16 and 9,816 BF16 finite
 comparisons; alternate seed `0x92715381 + batch` gives 18,537 and 9,432.
 Both compilers measure zero differential error in both runs, across both
 architectures/widths and available SIMD selectors. No tolerance was widened.
+
+
+## Sparse packed WMMA staged narrowing (Jakub alignment)
+
+The former reference summed all sixteen products in double and narrowed only
+once. It cannot represent the four DOT4 narrowing boundaries established by
+rocjitsu `184faac7d94` and the imported hardware captures. The revised loose
+reference independently decodes operands numerically, accumulates each product
+in double, explicitly rounds the fused sum to FP32, and quantizes after each
+four products: FP16 nearest-even, BF16 truncation. In the bounded normal-input
+domain the double fused sum is exact before the FP32 conversion. No production
+packing or arithmetic helper is used by this oracle. It is a loose arithmetic
+reference, not an assertion of general hardware bit-exact equivalence.
+
+Primary seed 38671 and holdout 97211 each cover 1,572,864 outputs on a machine
+with four CPU selectors, across both widths, four output/input formats, all
+half-modifier combinations and legal keys. On Clang and GCC Release, maximum absolute
+errors across both seeds are FP16-to-FP32 `8.6808577179908752e-6`, BF16-to-FP32
+`5.6028366088867188e-6`, packed FP16 `0`, packed BF16 `0`. Existing tolerances
+remain unchanged; none was widened to conceal the changed rounding semantics.
+Tests record these metrics in GTest XML. Separate literal witnesses distinguish
+intermediate narrowing and overflow from final-only packing.

@@ -1061,3 +1061,17 @@ packed intermediates and tied C/D. Existing small-integer hardware digests also
 pass with exact dispatch. This supersedes the earlier loose-only exact-support
 conclusion. Packed loose scalar/SIMD intermediate narrowing is still pending,
 so the old final-only loose reference is not yet aligned with the new model.
+
+
+## Sparse packed loose intermediate narrowing
+
+Scalar, AVX2 and AVX-512 packed sparse FP16/BF16 now narrow after each four
+products, matching the stage boundaries of the borrowed model. FP16 uses RNE
+and the finite-overflow policy; BF16 truncates each FP32 intermediate. SIMD
+paths retain A/B half modifiers and all selector keys. New midpoint and
+intermediate-overflow/cancellation witnesses distinguish this behavior from
+final-only packing. The deterministic fractional test now uses an independent
+staged numerical reference and both primary/holdout seeds; packed errors are
+zero in the Clang measured corpus without changing the fuzzy tolerances.
+See `tests/LOOSE_TOLERANCES.md` for the reference domain and calibration.
+This supersedes earlier notes that packed loose narrowing remained pending.

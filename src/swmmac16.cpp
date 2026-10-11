@@ -7,6 +7,7 @@
 #include "swmmac_float.h"
 
 #include <array>
+#include <cmath>
 #include <stdint.h>
 
 namespace {
@@ -83,7 +84,25 @@ int run(uint64_t flags, uint32_t mode, uint32_t *const *d, const uint32_t *const
     return GOC_SUCCESS;
   }
 #endif
-  goc::swmmac_float_accumulate(mode, input);
+  if constexpr (Packed) {
+    for (unsigned row = 0; row < 16; ++row)
+      for (unsigned col = 0; col < 16; ++col) {
+        float acc = input.acc[row][col];
+        for (unsigned ck = 0; ck < 16; ++ck) {
+          float bv = input.b[input.selected[row][ck]][col];
+          if (mode & (ck % 2 ? GOC_WMMA_NEG_HI_B : GOC_WMMA_NEG_LO_B))
+            bv = -bv;
+          acc = std::fma(input.a[row][ck], bv, acc);
+          if ((ck + 1) % 4 == 0) {
+            uint16_t bits =
+                Bf16 ? uint16_t(goc::as_bits(acc) >> 16) : goc::float_to_f16(acc, saturate);
+            acc = goc::as_float(goc::packed16::widen<Bf16>(bits));
+          }
+        }
+        input.acc[row][col] = acc;
+      }
+  } else
+    goc::swmmac_float_accumulate(mode, input);
   uint32_t result[Packed ? 4 : 8][32];
   goc::swmmac_float_pack<Bf16, Packed>(result, input.acc, saturate);
   for (unsigned reg = 0; reg < (Packed ? 4u : 8u); ++reg)

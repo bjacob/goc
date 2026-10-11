@@ -2692,7 +2692,8 @@ int goc_v_swmmac_f32_16x16x32_bf8_bf8_wave64(uint64_t flags, uint64_t instructio
 // each lane. Supports GOC_WMMA_NEG_LO_A/B and GOC_WMMA_NEG_HI_A/B; these negate
 // the first/second member of each selected pair, including B after selection.
 // No C modifiers or CLAMP apply. Loose semantics accumulate selected products
-// with FP32 FMA, then round packed outputs to nearest-even. Host FP state must
+// with FP32 FMA, narrowing packed outputs after each four products (FP16 RNE,
+// BF16 truncation). Host FP state must
 // provide nearest-even rounding with denormals enabled; exception flags may change.
 // GOC_FP16_OVFL saturates finite overflow when narrowing to FP16; otherwise it
 // has no effect. Exact semantics use four borrowed gfx1201 DOT4 steps, narrowing

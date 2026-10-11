@@ -76,7 +76,7 @@ inline void swmmac_float_pack(uint32_t (&result)[Packed ? 4 : 8][32], const floa
       unsigned reg = row % 8, lane = col + 16 * (row / 8);
       if constexpr (Packed) {
         uint16_t value =
-            Bf16 ? float_to_bf16(acc[row][col]) : float_to_f16(acc[row][col], saturate);
+            Bf16 ? uint16_t(as_bits(acc[row][col]) >> 16) : float_to_f16(acc[row][col], saturate);
         if (reg % 2)
           result[reg / 2][lane] |= uint32_t(value) << 16;
         else
