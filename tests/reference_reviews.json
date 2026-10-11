@@ -1126,5 +1126,48 @@
     ],
     "scope": "Raw 16/32-bit swaps, relative swaps and PERMLANE64 in both widths. Independent before-image exchange and lane XOR32 mapping are exact field/routing references. Half tests preserve untouched bits even when exchanging halves of one register. Invalid relative operand cancels both writes, tested separately from allocation-size limits with offsets 255/256/299 and widened addressing. Native Wave32/Wave64 gfx1201 digests anchor relative-swap semantics. Wave32 PERMLANE64 is a no-op with no EXEC parameter. Masks include zero/full/alternating/single upper lanes; all available CPU selectors are exercised.",
     "diagnostics": "Native hardware digests identify width/opcode/mask and have literal bounds and per-output swap companions. Direct field-copy models suffice; fuzzy comparisons would weaken raw-bit behavior."
+  },
+  {
+    "file": "hwreg_test.cpp",
+    "assertions": [
+      "Hwreg.CapturedUserWrites",
+      "Hwreg.EveryIdFieldPrivilegeAndPreservedBit",
+      "Hwreg.NullOutputsAndValidation",
+      "Hwreg.UnsupportedScratchReportingIsOptionalAndNeverGuessed",
+      "Hwreg.GuestModeDoesNotChangeHostEnvironment",
+      "Hwreg.GetregEveryIdAndField",
+      "Hwreg.GetregHardwareCapture",
+      "Hwreg.GetregSnapshotsAndOptionalSideEffects",
+      "Hwreg.GetregClockHalvesAliasesAndErrors",
+      "Hwreg.Rdna3WritesEveryIdFieldAndPrivilege",
+      "Hwreg.Rdna3NullOutputsAndUnimplementedState",
+      "Hwreg.ArchitectureSpecificWritableFieldsAndExceptionClearing",
+      "Hwreg.ModeInstructionsAgreeWithFieldAccess",
+      "Hwreg.UnsupportedStatePrecedesValidation"
+    ],
+    "evidence": [
+      "tests/hwreg_test.cpp",
+      "tests/hwreg_hardware.h"
+    ],
+    "scope": "Scalar hardware-register access and mode updates for RDNA3/RDNA4. Independent per-bit insertion/extraction checks all register IDs and offset/width combinations against manual-defined writable fields, with privilege, reserved-bit preservation, clock halves and literal architecture differences. Retained gfx1201 MODE/EXCP_FLAG_USER capture digests anchor the per-bit model on captured inputs; this is not arbitrary numerical reverse engineering. Tests cover optional snapshots, null outputs, unavailable exact state, error precedence and unchanged outputs, plus host-control preservation while modifying guest MODE. Mode instructions run every available CPU selector; scalar register enumeration uses baseline. Exact raw register comparisons apply in loose semantics too.",
+    "diagnostics": "Hardware read/write corpora now report register, seed, source pattern and field boundaries, and check each output independently before the retained group digest. Literal and exhaustive field tests supplement capture evidence."
+  },
+  {
+    "file": "constant_compare_test.cpp",
+    "assertions": [
+      "ConstantCompare.PredicatesMasksAndDppFiltering",
+      "ConstantCompare.FloatingResultsMasksAndDpp",
+      "ConstantCompare.FloatingModifiersAndOptionalStateContract",
+      "ConstantCompareWave64.PredicatesMasksAndDppFiltering",
+      "ConstantCompareWave64.FloatingResultsMasksAndDpp",
+      "ConstantCompareWave64.FloatingModifiersAndOptionalStateContract",
+      "ConstantCompare.ExactStateRejectionPrecedesEmptyExecAndFlagValidation"
+    ],
+    "evidence": [
+      "tests/constant_compare_test.cpp",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Constant true/false integer and floating CMP/CMPX predicates in both wave widths, all available CPU selectors and both semantics. Boolean constants filtered by EXEC and independently modeled DPP destination enablement give directly justified exact masks; no approximate floating arithmetic is involved. Null source operands demonstrate that inputs are not read. Tests cover upper lanes, empty EXEC, ignored supported modifiers, invalid flags with preserved results and unsupported 64-bit DPP. Floating exact optional state is explicitly unsupported (including precedence over empty EXEC and bad flags); loose requested state is preserved. These tests do not claim floating exception generation.",
+    "diagnostics": "Per-mask assertions and DPP configuration diagnostics; explicit sentinel values expose partial writes on errors. No golden array or fuzzy comparison is needed for constant predicate masks."
   }
 ]

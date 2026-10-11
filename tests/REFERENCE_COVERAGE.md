@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Seventy-five explicit family-file reviews exist and 79
+non-generic family references. Seventy-seven explicit family-file reviews exist and 77
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -190,3 +190,12 @@ semantics. The half-move capture now checks each output independently while
 retaining the hardware digest that anchors ignored OMOD/CLAMP. Relative-move
 coverage is explicitly baseline-CPU coverage; other move/swap tests iterate CPU
 selectors. Native relative-swap captures cover both wave widths.
+
+## Hardware registers and constant predicates
+
+Two reviews cover independent per-bit register models, captured writable-field
+behavior and simple constant comparison masks. Hardware-register captures now
+check each output and report field boundaries before their retained digest.
+Optional exact state rejection and preservation are distinguished from successful
+state generation. Constant predicates require exact masks in both semantics;
+there is no floating numerical result for a fuzzy comparison here.

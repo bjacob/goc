@@ -64,15 +64,20 @@ TEST(Hwreg, CapturedUserWrites) {
     for (unsigned reg = 0; reg < 2; ++reg)
       for (unsigned seed = 0; seed < 2; ++seed)
         for (unsigned pattern = 0; pattern < 5; ++pattern) {
+          SCOPED_TRACE(::testing::Message() << "flags=" << flags << " register=" << ids[reg]
+                                            << " seed=" << seed << " source=" << pattern);
           auto fn = pattern == 4 ? goc_s_setreg_imm32_b32_rdna4 : goc_s_setreg_b32_rdna4;
           uint64_t hash = goc_test::capture_hash_seed;
           for (unsigned offset = 0; offset < 32; ++offset)
             for (unsigned width = 1; width <= 32; ++width) {
+              SCOPED_TRACE(::testing::Message() << "offset=" << offset << " width=" << width);
               uint32_t value = seed ? writable[reg] : 0;
+              uint32_t expected = insert(value, sources[pattern], offset, width, writable[reg]);
               ASSERT_EQ(fn(flags, 0, descriptor(ids[reg], offset, width), sources[pattern], 0,
                            reg == 0 ? &value : nullptr, nullptr, nullptr,
                            reg == 1 ? &value : nullptr, nullptr, nullptr),
                         GOC_SUCCESS);
+              ASSERT_EQ(value, expected);
               hash = goc_test::capture_hash_word(hash, value);
             }
           EXPECT_EQ(hash, goc_test::hwreg_write_hashes[reg][seed][pattern]);
@@ -258,15 +263,22 @@ TEST(Hwreg, GetregHardwareCapture) {
   for (unsigned reg = 0; reg < 2; ++reg)
     for (unsigned seed = 0; seed < 2; ++seed)
       for (unsigned pattern = 0; pattern < 5; ++pattern) {
+        SCOPED_TRACE(::testing::Message()
+                     << "register=" << ids[reg] << " seed=" << seed << " source=" << pattern);
         uint64_t hash = goc_test::capture_hash_seed;
         for (unsigned offset = 0; offset < 32; ++offset)
           for (unsigned width = 1; width <= 32; ++width) {
+            SCOPED_TRACE(::testing::Message() << "offset=" << offset << " width=" << width);
             std::array<uint32_t, 64> values{};
             values[ids[reg]] =
                 insert(seed ? writable[reg] : 0, sources[pattern], offset, width, writable[reg]);
+            uint32_t expected = 0;
+            for (unsigned bit = 0; bit < width && bit + offset < 32; ++bit)
+              expected |= ((values[ids[reg]] >> (bit + offset)) & 1U) << bit;
             uint32_t output = 0;
             ASSERT_EQ(read(true, exact, 0, descriptor(ids[reg], offset, width), &output, values),
                       GOC_SUCCESS);
+            ASSERT_EQ(output, expected);
             hash = goc_test::capture_hash_word(hash, output);
           }
         EXPECT_EQ(hash, goc_test::hwreg_read_hashes[reg][seed][pattern]);

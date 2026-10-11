@@ -418,3 +418,12 @@ checks and lane/modifier diagnostics while retaining its digest. Relative-move
 baseline-only CPU coverage is stated explicitly rather than generalized to all
 selectors. All seven affected Move tests pass on Clang/GCC; all 14 tooling tests
 pass. Production code and hardware fixtures are unchanged.
+
+### Hardware registers and constant comparisons
+
+Two reviews bring the queue to 77 reviewed and 77 pending. Recorded independent
+per-bit register references, architecture/privilege masks and Boolean predicate
+proofs, including optional-state rejection rather than claiming state generation.
+Hardware-register captures now check individual outputs with field diagnostics
+while retaining their independent hardware digests. All 21 affected tests pass
+on Clang/GCC; all 14 tooling tests pass. No production changes or new fixtures.
