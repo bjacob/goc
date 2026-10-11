@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 115 explicit family-file reviews exist and 39
+non-generic family references. 116 explicit family-file reviews exist and 38
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -361,3 +361,11 @@ separate hardware SFU evidence. Coincident destination aliases now check the
 retained high word even for NaNs, while finite mantissa extraction compares raw
 bits. Approximate SFU results remain fuzzy. Numerical failure context is retained
 without formatting a trace on every successful lane.
+
+## Trigonometric exceptions
+
+The exception review distinguishes direct retained flags from differential DPP
+routing/accumulation. Both-width capture replays now preserve every nonflag bit;
+DPP failures identify the relevant route, mask and lane. Exhaustive half inputs
+and sampled FP32 corpora remain explicitly bounded evidence, with CPU selectors
+cycled across inputs rather than a full CPU/input cross-product.

@@ -1950,5 +1950,25 @@
     ],
     "scope": "Nine FP64 unary operations across RDNA3/RDNA4 and both widths: rounding/fract, sqrt/rcp/rsq and mantissa extraction. Long-double mathematical references supply calibrated loose SFU comparisons; raw bits remain for rounding/extraction, zero/infinity signs, storage and literal boundary/payload witnesses. All 32 modifiers, 84 Wave32 masks, three Wave64 masks, cross-half/coincident outputs and guards are exercised on all CPU selectors. Architecture integration covers eight guest policies, both widths and aliases with independent OMOD gating; FP64 input/output denormals follow the reference behavior rather than assuming FP32 flushing rules. Dedicated deterministic SFU calibration and holdout use fixed MT19937 seeds and raw/near-one/subnormal domains, with wider long-double assumptions recorded in LOOSE_TOLERANCES.md. Strict exact semantics/reporting remain explicitly unsupported; validation, error preservation, loose state preservation and host controls are covered.",
     "diagnostics": "Coincident-output alias checks now compare the retained high word against disjoint execution even for NaNs; those comparisons test storage behavior rather than independent arithmetic. Finite mantissa extraction is now raw, matching its exact rescaling contract. Numerical context is formatted only on failure, retaining seed/batch/op/mode/width/CPU/lane details. Captured hardware approximation proximity is separately covered by fp64_output_test.cpp."
+  },
+  {
+    "file": "trig_exceptions_test.cpp",
+    "assertions": [
+      "TrigExceptions.HardwareCorpora",
+      "TrigExceptions.DppMasksAliasesAndHalfSelectors",
+      "TrigExceptions.LooseOptOutAndErrorAtomicity",
+      "TrigExceptions.Wave64HardwareCorpora",
+      "TrigExceptions.Wave64DppMasksAliasesAndHalfSelectors",
+      "TrigExceptions.Wave64LooseOptOutAndErrorAtomicity",
+      "TrigExceptions.Wave64ReportingAliasesUpperSource"
+    ],
+    "evidence": [
+      "tests/trig_exceptions_test.cpp",
+      "tests/trig_exceptions_hardware.h",
+      "tests/dpp_reference.h",
+      "tests/exec_masks.h"
+    ],
+    "scope": "RDNA4 exact SIN/COS FP16/FP32 exception reporting, both widths. Retained gfx1201 MODE=0xf0 digests cover every half encoding, a deterministic FP32 sign/exponent/mantissa corpus and dense values around 16 boundary anchors, each across 16 modifier combinations. CPU selectors cycle by input; Wave64 replays the same captured values at lane 63, with inactive signaling NaNs elsewhere. Nonflag preservation now checks all bits outside the seven captured flags. DPP/alias/half-selector tests compute expected lane results and accumulated flags using scalar one-lane API calls: they establish routing/integration, not independent arithmetic evidence. Wave32 covers 84 EXEC masks; Wave64 three upper/mixed/full masks with sampled row/modifier combinations. Loose optional-state preservation, null opt-out, empty EXEC/error precedence and reporting into an upper source are covered.",
+    "diagnostics": "Hardware hashes identify corpus/modifier; nonflag failures additionally identify input. DPP failures now include operation/descriptor/EXEC/variant/CPU/lane. Upper-source alias test remains differential, complemented by the independent exception captures. Numerical reference coverage is reviewed in the separate trig family files."
   }
 ]

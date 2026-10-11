@@ -590,3 +590,10 @@ One review brings the queue to 115 reviewed and 39 pending. Tightened coincident
 output alias checks for NaNs and raw mantissa-extraction checks; retained calibrated
 fuzzy SFU tests. Moved numerical diagnostic formatting to failures only. All 11
 family tests pass on Clang/GCC. Production and capture data are unchanged.
+
+### Trigonometric exception review
+
+One review brings the queue to 116 reviewed and 38 pending. Both-width capture
+tests now check every nonflag bit, and DPP failures have route/mask/lane context.
+Recorded independent hardware evidence separately from differential integration.
+All seven affected tests pass on Clang/GCC. Production and fixtures are unchanged.

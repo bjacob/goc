@@ -41,11 +41,11 @@ TEST(TrigExceptions, HardwareCorpora) {
                : corpus < 4 ? (i << 16) | ((i * 0x9e37) & 65535)
                             : anchors[i / 4096] + (i % 4096) - 2048;
         const uint32_t *pa = a;
-        uint32_t *pd = d, exceptions = 0x80000000;
+        uint32_t *pd = d, exceptions = 0xffffff80U;
         ASSERT_EQ(functions[corpus < 4 ? corpus : corpus - 2](
                       exact | (i % (goc_init_cpu_flags() + 1)), 1, mode, &pd, &pa, &exceptions),
                   GOC_SUCCESS);
-        ASSERT_TRUE(exceptions & 0x80000000);
+        ASSERT_EQ(exceptions & ~127U, 0xffffff80U) << corpus << '/' << variant << '/' << i;
         hash = goc_test::capture_hash_word(hash, exceptions & 127);
       }
       EXPECT_EQ(hash, goc_test::trig_exception_hashes[corpus][variant]) << corpus << "/" << variant;
@@ -83,9 +83,12 @@ TEST(TrigExceptions, DppMasksAliasesAndHalfSelectors) {
             uint32_t *p = actual;
             ASSERT_EQ(functions[op](cpu | exact, exec_mask, descriptor | mode, &p, &p, &exceptions),
                       GOC_SUCCESS);
-            EXPECT_EQ(exceptions, expected_flags);
+            EXPECT_EQ(exceptions, expected_flags)
+                << op << '/' << descriptor << '/' << exec_mask << '/' << variant << '/' << cpu;
             for (unsigned lane = 0; lane < 32; ++lane)
-              EXPECT_EQ(actual[lane], expected[lane]);
+              EXPECT_EQ(actual[lane], expected[lane])
+                  << op << '/' << descriptor << '/' << exec_mask << '/' << variant << '/' << cpu
+                  << '/' << lane;
           }
         }
 }
@@ -129,12 +132,12 @@ TEST(TrigExceptions, Wave64HardwareCorpora) {
                 : corpus < 4 ? (i << 16) | ((i * 0x9e37) & 65535)
                              : anchors[i / 4096] + (i % 4096) - 2048;
         const uint32_t *pa = a;
-        uint32_t *pd = d, exceptions = 0x80000000;
+        uint32_t *pd = d, exceptions = 0xffffff80U;
         ASSERT_EQ(
             wave64_functions[corpus < 4 ? corpus : corpus - 2](
                 exact | (i % (goc_init_cpu_flags() + 1)), 1ULL << 63, mode, &pd, &pa, &exceptions),
             GOC_SUCCESS);
-        ASSERT_TRUE(exceptions & 0x80000000);
+        ASSERT_EQ(exceptions & ~127U, 0xffffff80U) << corpus << '/' << variant << '/' << i;
         hash = goc_test::capture_hash_word(hash, exceptions & 127);
       }
       EXPECT_EQ(hash, goc_test::trig_exception_hashes[corpus][variant]) << corpus << "/" << variant;
@@ -180,9 +183,12 @@ TEST(TrigExceptions, Wave64DppMasksAliasesAndHalfSelectors) {
             ASSERT_EQ(wave64_functions[op](cpu | exact, exec_mask, descriptor | mode, &p, &p,
                                            &exceptions),
                       GOC_SUCCESS);
-            EXPECT_EQ(exceptions, expected_flags);
+            EXPECT_EQ(exceptions, expected_flags)
+                << op << '/' << descriptor << '/' << exec_mask << '/' << variant << '/' << cpu;
             for (unsigned lane = 0; lane < 64; ++lane)
-              EXPECT_EQ(actual[lane], expected[lane]);
+              EXPECT_EQ(actual[lane], expected[lane])
+                  << op << '/' << descriptor << '/' << exec_mask << '/' << variant << '/' << cpu
+                  << '/' << lane;
           }
         }
 }
