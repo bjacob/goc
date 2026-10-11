@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 128 explicit family-file reviews exist and 26
+non-generic family references. 129 explicit family-file reviews exist and 25
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -448,3 +448,11 @@ preserved-denormal domain, closing a gap where exact execution had only a fuzzy
 full-encoding reference. Other policies retain selected independent captures and
 mathematical proximity checks. Loose corpus calls now verify non-null state
 preservation. No additional golden arrays were needed.
+
+### Scalar FMA
+
+Separated loose proximity from hardware hash equality. FP32 loose references use
+the exact implementation with the retained independent capture check; FP16 uses
+the existing independent integer-grid reference, now directly hash-validated over
+the captured domain. Exact FP32 output and literal payload checks remain bitwise.
+This reuses proven computed behavior without expanding golden fixtures.

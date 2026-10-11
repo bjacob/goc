@@ -358,3 +358,15 @@ is `2199023255552` for large-magnitude results. This fixed boundary corpus has n
 random holdout; core unary random calibration/holdout is recorded above. Rounding,
 fraction/mantissa extraction and storage are checked bitwise. Local script/logs:
 `goc-build/coverage-work/testing-dpp-unary-calibration/run.py`.
+
+## Scalar FMA captured corpus
+
+The scalar FMA suite now uses the existing FMA FP32/FP16 bounds for loose
+outputs. Clang and GCC each measure 1,818,448 finite nonzero FP32 pairs and
+97,928 FP16 pairs, all with zero error. The per-input references themselves must
+match the original independent hardware digest: FP32 uses the exact path; FP16
+uses the existing independent integer-grid oracle. This validates that computed
+reference over the captured domain (with normalized NaNs), not arbitrary inputs.
+No new tolerance is inferred from zero error; the existing FMA bounds and their
+broader calibration/holdout remain above. This fixed capture has no fresh random
+holdout. Script and logs: `goc-build/coverage-work/testing-scalar-fma-calibration/run.py`.

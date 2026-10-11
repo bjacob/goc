@@ -2,15 +2,47 @@
 
 #include "capture_hash.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
+#include "half_fma_reference.h"
+#include "half_reference.h"
+#include "loose_tolerances.h"
 #include "scalar_fma_hardware.h"
 #include "scalar_fma_reference.h"
 #include "scalar_fp_reference.h"
 
 #include <cfenv>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <stdint.h>
+
+namespace {
+
+float value(uint32_t bits) {
+  float result;
+  std::memcpy(&result, &bits, sizeof(result));
+  return result;
+}
+
+::testing::AssertionResult close(uint32_t actual, uint32_t expected, bool half) {
+  uint32_t magnitude = expected & (half ? 0x7fffU : 0x7fffffffU);
+  uint32_t inf = half ? 0x7c00 : 0x7f800000;
+  if (half && (actual >> 16))
+    return ::testing::AssertionFailure() << "upper half is not zero";
+  if (!magnitude || magnitude == inf) {
+    if (actual == expected)
+      return ::testing::AssertionSuccess();
+    return ::testing::AssertionFailure()
+           << "actual bits=" << actual << ", expected bits=" << expected;
+  }
+  return half ? goc_test::fuzzy(goc_test::half_value(uint16_t(actual)),
+                                goc_test::half_value(uint16_t(expected)),
+                                goc_test::fma_f16_tolerance)
+              : goc_test::fuzzy(value(actual), value(expected), goc_test::fma_f32_tolerance);
+}
+
+} // namespace
 
 TEST(ScalarFma, HardwareEveryFpStateAndLiteral) {
   for (unsigned state = 0; state < 8; ++state)
@@ -29,7 +61,28 @@ TEST(ScalarFma, HardwareEveryFpStateAndLiteral) {
                                                     goc_test::scalar_fp_flags(state),
                                                 0, &d, w[0], w[1]),
                       GOC_SUCCESS);
-            hash = goc_test::capture_hash_word(hash, goc_test::scalar_fp_canonical(d, k == 1));
+            uint32_t reference = d;
+            if (!semantics) {
+              if (k == 1) {
+                reference = goc_test::half_fma_reference::evaluate(
+                    w[0], w[1], w[2], 0, goc_test::scalar_fp_flags(state) & GOC_FP16_OVFL,
+                    goc_test::scalar_fp_flags(state));
+              } else {
+                reference = w[2];
+                ASSERT_EQ(goc_test::scalar_fma_call(k,
+                                                    GOC_SEMANTICS_EXACT_EMPIRICAL |
+                                                        GOC_SEMANTICS_STRICT |
+                                                        goc_test::scalar_fp_flags(state),
+                                                    0, &reference, w[0], w[1]),
+                          GOC_SUCCESS);
+              }
+              ASSERT_TRUE(close(d, reference, k == 1))
+                  << state << "/" << k << "/" << cpu << "/" << i;
+            }
+            // Keep the independent capture as evidence for the reference used
+            // above. Loose outputs need proximity, not an identical digest.
+            hash =
+                goc_test::capture_hash_word(hash, goc_test::scalar_fp_canonical(reference, k == 1));
           }
           ASSERT_EQ(hash, goc_test::scalar_fma_hardware[state][k])
               << state << "/" << k << "/" << cpu;
@@ -102,6 +155,7 @@ TEST(ScalarFma, ErrorsAndHostRounding) {
     for (unsigned bit = 0; bit < 32; ++bit)
       EXPECT_EQ(goc_test::scalar_fma_call(k, 0, 1u << bit, &d, 0, 0), GOC_ERROR_INVALID_FLAGS);
     EXPECT_EQ(goc_test::scalar_fma_call(k, 1ULL << 63, 0, &d, 0, 0), GOC_ERROR_INVALID_FLAGS);
+    EXPECT_EQ(d, 123U);
     if (k == 1) {
       EXPECT_EQ(goc_test::scalar_fma_call(k, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT,
                                           0, &d, 0, 0),

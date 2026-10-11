@@ -2252,5 +2252,26 @@
     ],
     "scope": "Ten pseudo-scalar FP32/FP16 EXP/LOG/RCP/RSQ/SQRT APIs (no EXEC parameter). Independent gfx1201 fixtures retain 48 selected inputs across eight denormal/saturation policies and all 32 modifiers, with fuzzy loose checks and raw checks for eight supported exact operations on all CPU selectors. Storage-alias tests use by-value inputs and adjacent sentinel words. Literal witnesses cover denormal stages, signed zero and finite versus infinite saturation. Exact FP32 dense domains reuse the borrowed unary hardware digests and checkpoints, checking baseline CPU; other CPU selectors are covered by selected fixtures. Every half encoding across eight policies cycles CPU selectors; its mathematical comparison is proximity only. Reused independent rocjitsu half-SFU checkpoints now provide raw full-encoding validation for preserved denormals/no saturation, while captures validate selected policy inputs. Unsupported half EXP/LOG exact semantics, global-state reporting errors/precedence, output preservation and host rounding are explicit. Loose hardware-corpus calls now also exercise non-null optional state.",
     "diagnostics": "Half checkpoint failures identify operation and 4096-input interval without new fixture data. Mathematical half failures include operation/policy/raw input. Explicit comments distinguish proximity checks from independently anchored exact behavior. Existing dense FP32 checkpoints localize failures to 2^20-input intervals."
+  },
+  {
+    "file": "scalar_fma_test.cpp",
+    "assertions": [
+      "ScalarFma.HardwareEveryFpStateAndLiteral",
+      "ScalarFma.AllScalarAliases",
+      "ScalarFma.TrueFusionAndGuestFpStages",
+      "ScalarFma.ErrorsAndHostRounding",
+      "ScalarFma.ExactFp32LiteralNaNsFusionAndTininess",
+      "ScalarFma.ReportingErrorsPrecedeAccumulatorReads"
+    ],
+    "evidence": [
+      "tests/scalar_fma_test.cpp",
+      "tests/scalar_fma_reference.h",
+      "tests/scalar_fp_reference.h",
+      "tests/scalar_fma_hardware.h",
+      "tests/half_fma_reference.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Four scalar FMA APIs: FP32/FP16 FMAC plus FP32 FMAAK/FMAMK. Twenty-six variants cover twelve literal values for each immediate placement. Independent gfx1201 digests cover eight input/output-denormal and saturation policies, 4096 deterministic edge/cancellation/tininess/integer-mixed triples and every CPU selector. Exact FP32 outputs retain hardware digest equality. Loose FP32 uses baseline exact calls as per-input references, checked against the same independent digest; loose FP16 uses the independent integer-grid half-FMA reference, whose digest now directly matches the hardware corpus. NaN normalization limits this aggregate evidence to canonicalized results; literal exact FP32 cases separately test payload/priority. Fuzzy comparisons apply only to loose numerical results, while zeros/infinities, zeroed upper half, guards and alias preservation stay exact. By-value source/accumulator aliases cover five selected samples and all variants/policies. Fusion, stage-flushing and saturation have literal witnesses. Unsupported FP16 exact semantics, invalid flags, reporting-error precedence before accumulator access and loose state preservation are covered.",
+    "diagnostics": "Loose execution no longer has to reproduce the hardware digest bit-for-bit; the per-input reference does, keeping captured-domain equivalence independently anchored. Loose failures identify state/variant/CPU/input. Invalid-flag tests now check destination preservation for every variant. Existing capture values and exact literal witnesses are unchanged."
   }
 ]

@@ -681,3 +681,12 @@ while explicitly distinguishing mathematical proximity from exact evidence.
 Loose hardware-corpus tests now exercise non-null state preservation. All eight
 family tests pass on Clang/GCC, as do 14 tooling tests. Production, tolerances
 and fixture contents are unchanged.
+
+### Scalar FMA review
+
+One review brings the queue to 129 reviewed and 25 pending. Loose scalar FMA
+outputs now use calibrated fuzzy comparisons while their references retain
+independent hardware-digest validation. The computed FP16 oracle matches the
+capture, avoiding new fixtures. Tightened error destination-preservation checks.
+All six family tests and numerical measurements pass on Clang/GCC, as do 14
+tooling tests. Production and captured values remain unchanged.
