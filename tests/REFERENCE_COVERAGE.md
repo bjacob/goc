@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 127 explicit family-file reviews exist and 27
+non-generic family references. 128 explicit family-file reviews exist and 26
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -439,3 +439,12 @@ are now checked bitwise; computed mathematical comparisons remain proximity
 checks outside the independently anchored domain. Null reporting equivalence now
 covers both semantics and wave widths. DPP diagnostics include masks and aliases,
 and state assertions no longer claim coverage when the pointer was null.
+
+### Pseudo-scalar numerical APIs
+
+Reviewed captured policies/modifiers, dense FP32 hardware evidence and half
+mathematical checks. Reused the independent half-SFU checkpoints for the full
+preserved-denormal domain, closing a gap where exact execution had only a fuzzy
+full-encoding reference. Other policies retain selected independent captures and
+mathematical proximity checks. Loose corpus calls now verify non-null state
+preservation. No additional golden arrays were needed.

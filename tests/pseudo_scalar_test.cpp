@@ -5,6 +5,7 @@
 #include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_reference.h"
+#include "half_sfu_checkpoints.h"
 #include "half_unary_reference.h"
 #include "loose_tolerances.h"
 #include "pseudo_scalar_hardware.h"
@@ -31,10 +32,12 @@ TEST(PseudoScalar, HardwareEveryModifierAndFpState) {
           for (uint64_t cpu = 0; cpu <= max_cpu; ++cpu) {
             uint32_t result = 0xdeadbeef, a = goc_test::pseudo_scalar_input(
                                               op & 1, goc_test::pseudo_scalar_samples[sample]);
+            uint32_t report = 0x12345678;
             ASSERT_EQ(goc_test::pseudo_scalar_functions[op](
                           cpu | goc_test::pseudo_scalar_flags(state),
-                          goc_test::pseudo_scalar_mode(m), &result, a, nullptr),
+                          goc_test::pseudo_scalar_mode(m), &result, a, &report),
                       GOC_SUCCESS);
+            ASSERT_EQ(report, 0x12345678U);
             ASSERT_TRUE(goc_test::pseudo_scalar_close(result, gold[sample], op & 1))
                 << state << "/" << op << "/" << m << "/" << sample << "/" << cpu << std::hex
                 << " result " << result << " expected " << gold[sample];
@@ -188,18 +191,30 @@ TEST(PseudoScalar, ExactFp32BorrowedDenseDomains) {
   }
 }
 
+// The mathematical half reference checks proximity, not arbitrary bit-exact
+// equivalence. Independent rocjitsu checkpoints below validate the unmodified
+// preserved-denormal domain; captured fixtures separately cover guest policies.
 TEST(PseudoScalar, ExactHalfEveryEncodingAndGuestPolicy) {
   const goc_test::PseudoScalarFn functions[] = {goc_v_s_rcp_f16, goc_v_s_rsq_f16, goc_v_s_sqrt_f16};
   const unsigned reference_ops[] = {5, 6, 4};
   const uint64_t exact = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT;
   const unsigned cpu_count = unsigned(goc_init_cpu_flags() + 1);
   for (unsigned op = 0; op < 3; ++op)
-    for (unsigned state = 0; state < 8; ++state)
+    for (unsigned state = 0; state < 8; ++state) {
+      uint64_t hash = goc_test::capture_hash_seed;
       for (unsigned raw = 0; raw < 65536; ++raw) {
         uint64_t flags = exact | goc_test::pseudo_scalar_flags(state) | (raw % cpu_count);
         uint32_t result;
         ASSERT_EQ(functions[op](flags, 0, &result, 0xabcd0000U | raw, nullptr), GOC_SUCCESS);
-        ASSERT_EQ(result >> 16, 0U);
+        ASSERT_EQ(result >> 16, 0U) << op << "/" << state << "/" << raw;
+        if (state == 3) { // Preserve input/output denormals, no saturation.
+          hash = goc_test::capture_hash_word(hash, result);
+          if ((raw + 1) % 4096 == 0) {
+            unsigned block = (raw + 1) / 4096 - 1;
+            ASSERT_EQ(hash, goc_test::half_sfu_checkpoints[op][block])
+                << "op=" << op << " input range=[" << block * 4096 << "," << raw + 1 << ")";
+          }
+        }
         if ((raw & 0x7fff) > 0x7c00) {
           ASSERT_EQ(result, raw | 0x200U);
           continue;
@@ -217,8 +232,10 @@ TEST(PseudoScalar, ExactHalfEveryEncodingAndGuestPolicy) {
           ASSERT_EQ(result & 0x8000, expected & 0x8000);
           ASSERT_TRUE(goc_test::fuzzy(goc_test::half_value(uint16_t(result)),
                                       goc_test::half_value(uint16_t(expected)),
-                                      goc_test::half_sfu_tolerance));
+                                      goc_test::half_sfu_tolerance))
+              << op << "/" << state << "/" << raw;
         } else
           ASSERT_EQ(result, expected) << op << "/" << state << "/" << raw;
       }
+    }
 }

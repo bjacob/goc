@@ -2227,5 +2227,30 @@
     ],
     "scope": "RCP_IFLAG FP32 across RDNA3/RDNA4 and both widths. Independent gfx1201 numeric fixtures now require raw equality in exact semantics and calibrated proximity in loose semantics. Status digests cover 4096 deterministic boundary/walking-lane/integer-mixed inputs, six masks, three seeds and all 32 modifiers; Wave64 replays captures in the upper half with inactive zero inputs below. Mathematical double reciprocal references in other tests are proximity checks, not arbitrary exact oracles. The inherited RCP normalized hardware digest with rocjitsu-generated checkpoints independently checks all 2^23 normalized mantissas, rotating architecture/width/CPU by batch; it does not enumerate every CPU per input. DPP capture and computed routing tests cover seven routes, 84 Wave32 masks, stratified Wave64 masks/row controls, in-place/disjoint/unaligned storage and status aliases in both source/destination registers. Architecture OMOD witnesses use exactly representable powers of two; RDNA3 exact reporting is rejected explicitly. Clamping/active subnormal status, null output, errors and NaN quieting have dedicated checks. Cheap RDNA4 loose INT_DIV0 reporting is tested as existing behavior, not a general guarantee for loose global-state reporting.",
     "diagnostics": "Tightened exact captured numeric assertions and added exact-semantics null-output equivalence tests in both widths. DPP numerical failures identify semantics, CPU, modifier, descriptor, EXEC, destination/status alias and word. Removed assertions about state variables whose pointers were null; error-path state checks remain. Existing normalized checkpoints localize failures to 2^20-input blocks."
+  },
+  {
+    "file": "pseudo_scalar_test.cpp",
+    "assertions": [
+      "PseudoScalar.HardwareEveryModifierAndFpState",
+      "PseudoScalar.ScalarStorageMayAlias",
+      "PseudoScalar.DenormalStagesZerosAndOverflow",
+      "PseudoScalar.ValidationSemanticsAndHostRounding",
+      "PseudoScalar.ExactHardwareEveryModifierAndFpState",
+      "PseudoScalar.ExactGlobalStateRemainsExplicitlyUnsupported",
+      "PseudoScalar.ExactFp32BorrowedDenseDomains",
+      "PseudoScalar.ExactHalfEveryEncodingAndGuestPolicy"
+    ],
+    "evidence": [
+      "tests/pseudo_scalar_test.cpp",
+      "tests/pseudo_scalar_reference.h",
+      "tests/pseudo_scalar_hardware.h",
+      "tests/half_sfu_checkpoints.h",
+      "tests/unary_checkpoints.h",
+      "tests/unary_exact_hardware.h",
+      "tests/half_unary_reference.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Ten pseudo-scalar FP32/FP16 EXP/LOG/RCP/RSQ/SQRT APIs (no EXEC parameter). Independent gfx1201 fixtures retain 48 selected inputs across eight denormal/saturation policies and all 32 modifiers, with fuzzy loose checks and raw checks for eight supported exact operations on all CPU selectors. Storage-alias tests use by-value inputs and adjacent sentinel words. Literal witnesses cover denormal stages, signed zero and finite versus infinite saturation. Exact FP32 dense domains reuse the borrowed unary hardware digests and checkpoints, checking baseline CPU; other CPU selectors are covered by selected fixtures. Every half encoding across eight policies cycles CPU selectors; its mathematical comparison is proximity only. Reused independent rocjitsu half-SFU checkpoints now provide raw full-encoding validation for preserved denormals/no saturation, while captures validate selected policy inputs. Unsupported half EXP/LOG exact semantics, global-state reporting errors/precedence, output preservation and host rounding are explicit. Loose hardware-corpus calls now also exercise non-null optional state.",
+    "diagnostics": "Half checkpoint failures identify operation and 4096-input interval without new fixture data. Mathematical half failures include operation/policy/raw input. Explicit comments distinguish proximity checks from independently anchored exact behavior. Existing dense FP32 checkpoints localize failures to 2^20-input intervals."
   }
 ]

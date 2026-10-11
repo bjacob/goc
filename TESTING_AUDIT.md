@@ -672,3 +672,12 @@ calibrated tolerance. Both-width null-output tests now cover exact semantics.
 Improved DPP failure context and removed null-state no-op assertions. All 17
 family tests pass on Clang/GCC, as do 14 tooling tests. Production, capture
 fixtures and tolerance values are unchanged.
+
+### Pseudo-scalar review
+
+One review brings the queue to 128 reviewed and 26 pending. Reused independent
+half-SFU checkpoints to validate every unmodified preserved-denormal encoding,
+while explicitly distinguishing mathematical proximity from exact evidence.
+Loose hardware-corpus tests now exercise non-null state preservation. All eight
+family tests pass on Clang/GCC, as do 14 tooling tests. Production, tolerances
+and fixture contents are unchanged.
