@@ -85,7 +85,7 @@ TEST(DppHalfFma, MasksAliasesAndRandomWords) {
     for (uint64_t sem : {uint64_t{0}, GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT})
       for (unsigned op = 0; op < 2; ++op)
         for (uint64_t mode : modes(op))
-          for (uint32_t exec_mask : exec_masks())
+          for (uint32_t exec_mask : dpp_arithmetic_exec_masks(mode))
             for (const auto &layout : layouts)
               for (unsigned dest = 0; dest < 4; ++dest) {
                 SCOPED_TRACE(::testing::Message()

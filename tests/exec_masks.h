@@ -23,3 +23,13 @@ inline std::vector<uint32_t> exec_masks() {
   }
   return masks;
 }
+
+// DPP/arithmetic integration masks. Unmodified arithmetic retains every single
+// active/inactive lane and the deterministic random masks. Other modifiers keep
+// zero/full, alternating, half-wave masks, and both ends of each SIMD chunk.
+inline std::vector<uint32_t> dpp_arithmetic_exec_masks(uint64_t instruction_flags) {
+  if (uint32_t(instruction_flags) == 0)
+    return exec_masks();
+  return {0,       UINT32_MAX, 0x55555555U, 0xaaaaaaaaU, 0x0000ffffU, 0xffff0000U, 1U,
+          1U << 7, 1U << 8,    1U << 15,    1U << 16,    1U << 23,    1U << 24,    1U << 31};
+}

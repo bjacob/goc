@@ -62,11 +62,10 @@ TEST(DppInteger16, HardwareCorpus) {
 
 TEST(DppInteger16, MasksAliasesAndRandomWords) {
   const unsigned aliases[][3] = {{2, 0, 1}, {0, 0, 1}, {1, 0, 1}, {0, 0, 0}, {2, 0, 0}};
-  auto masks = exec_masks();
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 12; ++op)
       for (uint64_t mode : modes(op))
-        for (uint32_t exec_mask : masks)
+        for (uint32_t exec_mask : dpp_arithmetic_exec_masks(mode))
           for (const auto &alias : aliases)
             for (unsigned batch = 0; batch < 4; ++batch) {
               SCOPED_TRACE(::testing::Message()

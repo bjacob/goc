@@ -87,7 +87,7 @@ TEST(DppHalfMinmax, MasksAliasesAndRandomWords) {
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 9; ++op)
       for (uint64_t mode : modes())
-        for (uint32_t exec_mask : exec_masks())
+        for (uint32_t exec_mask : dpp_arithmetic_exec_masks(mode))
           for (const auto &layout : layouts)
             for (unsigned dest = 0; dest < 4; ++dest) {
               SCOPED_TRACE(::testing::Message()

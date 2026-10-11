@@ -143,7 +143,7 @@ clarified policy that established computed exact references are welcome.
 - [x] Fix the identified RNG sequencing sites and pin fixture-dependent input streams.
 - [ ] Centralize loose fuzzy comparisons and record empirical tolerance calibration.
 - [ ] Map instruction tests to reference evidence and establish missing oracle provenance.
-- [ ] Reduce the expensive DPP products while preserving essential interactions; measure latency.
+- [x] Reduce the expensive DPP products while preserving essential interactions; measure latency.
 - [ ] Improve compact-corpus diagnostics with justified checkpoints/readable anchors.
 - [ ] Run final compiler/SIMD/sanitizer validation and record remaining limitations.
 
@@ -173,3 +173,42 @@ Initial measured error envelopes and their limitations are recorded in
 [tests/LOOSE_TOLERANCES.md](tests/LOOSE_TOLERANCES.md). No tolerance was widened.
 This is partial completion: remaining loose comparisons, deterministic holdout
 calibration, and the reference-provenance inventory still need work.
+
+### DPP integration products reduced
+
+The five `MasksAliasesAndRandomWords` tests below still exercise every previously
+covered operation, CPU selector, DPP descriptor, arithmetic modifier, source
+layout, destination alias and numerical batch. For every DPP descriptor,
+unmodified arithmetic retains all 84 masks, including every single active and
+inactive lane and the deterministic random sequence. Modified arithmetic uses
+14 masks: zero/full, both alternating patterns, both half-waves, and single lanes
+at both ends of every eight-lane SIMD chunk. This retains inactive-source,
+FI/BOUND, row/bank filtering and mask/alias interactions without repeating every
+random/single-inactive mask under every modifier. Dedicated exhaustive routing,
+modifier-encoding and captured hardware tests are unchanged.
+
+This is a deliberate reduction in cross-product coverage, not an assertion that
+all interactions are equivalent. A future mask/modifier regression should add a
+focused case. One short shared mask-selection helper expresses the rule for the
+five callers; their instruction-specific reference loops remain directly readable.
+
+Controlled Clang Release measurements (median of three runs, these five tests
+only, `ctest -j24`, no concurrent builds/tests):
+
+| Test family | Before (s) | After (s) |
+| --- | ---: | ---: |
+| DppHalfMinmax | 7.30 | 1.43 |
+| DppInteger16Ternary | 5.38 | 1.07 |
+| DppHalfBinary | 5.54 | 1.10 |
+| DppInteger16 | 4.27 | 1.05 |
+| DppHalfFma | 3.89 | 0.75 |
+| Total wall time | 7.32 | 1.45 |
+
+Logs: `goc-build/coverage-work/testing-dpp-cost/{before,after}-{0,1,2}.log`.
+These are test-duration improvements, not production performance changes.
+
+Validation: all 1,195 tests pass in Clang and GCC Release builds. All 22 tests
+in the five affected DPP families pass under ASan/UBSan, including their unchanged
+hardware-corpus and exhaustive modifier tests. Logs are
+`coverage-work/testing-dpp-full.log` in both Release build trees and
+`coverage-work/testing-dpp-targeted.log` in the sanitizer build tree.
