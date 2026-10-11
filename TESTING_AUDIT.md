@@ -253,3 +253,15 @@ pass 11 targeted Clang tests. No production code changed.
 The tolerance audit is not yet closed: broader WMMA/interpolation calibration
 and the classification of existing bitwise/differential numerical checks are
 still needed alongside the reference-evidence inventory.
+
+### Dense unary digest localization
+
+Added 88 cumulative checkpoints to the large RCP/SQRT/RSQ/EXP/LOG domains,
+shared by vector, pseudo-scalar and RCP_IFLAG tests. They come from unchanged
+rocjitsu headers, with all final hashes verified against the retained hardware
+captures before fixture emission. No GoC output was used as the oracle.
+See [tests/CORPUS_DIAGNOSTICS.md](tests/CORPUS_DIAGNOSTICS.md) for exact provenance,
+the standalone generator and reproduction commands. Seven affected tests pass
+under Clang and GCC; an out-of-tree injected checkpoint error correctly reports
+its million-input interval. Other digest families remain part of the pending
+reference/diagnostic review, so the overall diagnostics item remains open.

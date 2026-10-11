@@ -7,6 +7,7 @@
 #include "goc/goc.h"
 #include "rcp_iflag_hardware.h"
 #include "rcp_iflag_reference.h"
+#include "unary_checkpoints.h"
 #include "unary_exact_hardware.h"
 
 #include <algorithm>
@@ -561,6 +562,11 @@ TEST(RcpIflag, ExactBorrowedNormalizedCapture) {
     EXPECT_EQ(state, 0x80000001U);
     for (auto word : output)
       hash = goc_test::capture_hash_word(hash, word);
+    if ((base + 64) % (1U << 20) == 0) {
+      unsigned block = (base + 64) / (1U << 20) - 1;
+      ASSERT_EQ(hash, goc_test::unary_normalized_checkpoints[0][block])
+          << "input indices [" << (block << 20) << ", " << (base + 64) << ')';
+    }
   }
   // rocjitsu uses the same empirical reciprocal for RCP and RCP_IFLAG.
   // Reuse the retained RCP mapping fixture; this is not a new IFLAG capture.

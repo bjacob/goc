@@ -5,6 +5,7 @@
 #include "fp_environment.h"
 #include "goc/goc.h"
 #include "unary_capture_input.h"
+#include "unary_checkpoints.h"
 #include "unary_exact_hardware.h"
 
 #include <algorithm>
@@ -64,6 +65,11 @@ TEST_P(UnaryExact, DenseDomainHardwareCapture) {
     }
     for (auto value : output)
       hash = goc_test::capture_hash_word(hash, value);
+    if ((base + 64) % (1U << 20) == 0) {
+      unsigned block = (base + 64) / (1U << 20) - 1;
+      ASSERT_EQ(hash, goc_test::unary_normalized_checkpoints[op][block])
+          << "op=" << op << ", input indices [" << (block << 20) << ", " << (base + 64) << ')';
+    }
   }
   EXPECT_EQ(hash, goc_test::unary_normalized_hashes[op]);
 }

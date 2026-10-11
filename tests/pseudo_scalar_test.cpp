@@ -9,6 +9,7 @@
 #include "loose_tolerances.h"
 #include "pseudo_scalar_hardware.h"
 #include "pseudo_scalar_reference.h"
+#include "unary_checkpoints.h"
 #include "unary_exact_hardware.h"
 
 #include <cfenv>
@@ -177,6 +178,11 @@ TEST(PseudoScalar, ExactFp32BorrowedDenseDomains) {
       uint32_t result;
       ASSERT_EQ(functions[op](exact, 0, &result, input, nullptr), GOC_SUCCESS);
       hash = goc_test::capture_hash_word(hash, result);
+      if ((index + 1) % (1U << 20) == 0) {
+        unsigned block = (index + 1) / (1U << 20) - 1;
+        ASSERT_EQ(hash, goc_test::unary_normalized_checkpoints[op][block])
+            << "op=" << op << ", input indices [" << (block << 20) << ", " << (index + 1) << ')';
+      }
     }
     EXPECT_EQ(hash, goc_test::unary_normalized_hashes[op]) << op;
   }
