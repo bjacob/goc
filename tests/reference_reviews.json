@@ -884,5 +884,37 @@
     ],
     "scope": "Six conversions across RDNA3/RDNA4 and both widths. Numerical integration reuses the independent integer reference. A literal conversion of integer 3 anchors architecture-dependent OMOD gating, citing rocjitsu effective_omod: RDNA3 requires output flush and IEEE=0, RDNA4 does not. All eight guest policies, all operation modifiers, ordinary plus seven DPP routes, mixed EXEC and source/destination overlap are exercised with boundary inputs and deterministic word patterns. Strict exact is explicitly rejected; applicable exact optional-state requests reject without changing state or destination. These are loose-path tests rather than hardware captures for every architecture/policy combination.",
     "diagnostics": "Whole-buffer comparisons identify architecture, width, opcode, guest mode, modifier, route, alias and CPU. Literal scaling witnesses distinguish policy errors from numerical reference errors."
+  },
+  {
+    "file": "conversion64_test.cpp",
+    "assertions": [
+      "Conversion64.LiteralRoundingSaturationAndScalingOrder",
+      "Conversion64.ExponentBoundariesAndEveryModifier",
+      "Conversion64.NarrowingMidpointsAcrossTheFp32Range",
+      "Conversion64.RandomFullWordsAndEveryModifier",
+      "Conversion64.MasksCrossHalfAliasesAndUnalignedStorage",
+      "Conversion64.Wave64WordLayoutsMasksAndAliases"
+    ],
+    "evidence": [
+      "tests/conversion64_reference.h",
+      "tests/conversion64_test.cpp"
+    ],
+    "scope": "Six int32/FP32/FP64 conversions in both widths, loose/fallback only. The reference decodes integer significands and re-encodes with an explicit ties-even shift and separate normal/subnormal ranges; integer outputs truncate and saturate without host FP casts. Literal cases independently anchor overflow, signed zero, rounding ties, subnormals and conversion-before-OMOD ordering. Narrowing midpoint tests span every FP32 exponent with six representative fractions and adjacent FP64 encodings, not every possible midpoint. Full-word random draws are explicitly sequenced. Exact finite checks test quantization; quiet NaNs are compared by class without fixing payload/sign. Alias tests cover split words, overlapping destinations, masks and guards; their finite-only Wave64 inputs avoid incorrectly requiring NaN payload agreement. Strict exact is explicitly rejected, and DPP is invalid for these forms.",
+    "diagnostics": "Per-lane numeric helper reports operation, flags, mode, input, expected and actual. Literal cases anchor model independence. There is no opaque hardware digest requiring checkpoints; fixtures are literal numerical witnesses, not claimed hardware captures."
+  },
+  {
+    "file": "conversion64_architecture_test.cpp",
+    "assertions": [
+      "Conversion64Architecture.OutputScalingLiteralWitness",
+      "Conversion64Architecture.GuestPoliciesModifiersMasksAndAliases",
+      "Conversion64Architecture.ValidationAndHostControls",
+      "Conversion64Architecture.NanResultsAcrossGuestPolicies"
+    ],
+    "evidence": [
+      "tests/conversion64_reference.h",
+      "tests/conversion64_architecture_test.cpp"
+    ],
+    "scope": "Six conversions across both architectures and widths. Literal conversion/scaling of 3 anchors RDNA3 OMOD gating (RDNA3 ISA 7.2.3.1 and rocjitsu effective_omod). Boundary inputs, all modifiers and guest policies, mixed EXEC, swapped source/destination halves and overlapping output registers use the integer reference. A separate NaN suite exercises both signs and signaling/quiet payloads, requiring quiet NaN class for floating results and zero for integer results, rather than payload equality. Strict exact and applicable exact optional-state requests are rejected without destination/state changes. This is loose-path integration evidence, not native hardware equivalence for all modes.",
+    "diagnostics": "Whole-buffer assertions report architecture, width, opcode, policy, modifier, alias and CPU. NaN assertions have configuration context and finite alias tests remain independent of payload policy."
   }
 ]

@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Sixty explicit family-file reviews exist and 94
+non-generic family references. Sixty-two explicit family-file reviews exist and 92
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -133,3 +133,13 @@ rounding/saturation witnesses, retained ordinary/DPP hardware digests and
 architecture OMOD policy witness. These families reject strict exact semantics;
 exact encoded comparisons test their current conversion/quantization behavior.
 The hardware per-output assertions now report the full configuration and lane.
+
+## FP64 conversion and NaN scope
+
+Two reviews document integer-significand encoding, exponent/midpoint sweeps and
+split-word aliases. The midpoint sweep uses representative fractions across all
+FP32 exponents, not all possible midpoints. Loose NaN checks deliberately require
+quiet classification without payload/sign equality; finite-only alias checks
+remain exact and separate NaN-policy tests cover both architectures. Existing
+literal witnesses and per-input diagnostics are adequate here, so this review
+adds no redundant fixtures or test loops.

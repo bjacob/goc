@@ -356,3 +356,13 @@ Strict-exact rejection is explicit; encoded equality in these tests is not a
 claim of strict-exact API support. Added configuration/lane context to existing
 per-output hardware assertions. All 15 family/integration tests pass with Clang
 and GCC, and all 14 tooling tests pass. No production code changed.
+
+### FP64 conversion scope and NaN review
+
+Reviewed two more families (62 reviewed, 92 pending). Recorded integer-significand
+rounding, representative midpoint coverage across FP32 exponents, split-word
+alias layouts and the separate loose NaN classification policy. Literal numerical
+witnesses are not mislabeled as hardware captures. Existing per-input diagnostics
+and independent literal cases were adequate; no redundant test loops or fixtures
+were added. The regenerated inventory validates all review links and the 14
+tooling tests pass. This batch changes documentation only.
