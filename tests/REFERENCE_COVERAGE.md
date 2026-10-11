@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 138 explicit family-file reviews exist and 16
+non-generic family references. 140 explicit family-file reviews exist and 14
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -524,3 +524,13 @@ coverage for all four formats and both widths. Completed its review by adding
 nondestination storage checks to aliases and immutable source/out-of-wave checks
 to the bounded corpus. Integer DPP routing stays raw; these loose-only APIs
 require no invented exact reference. Diagnostic formatting now occurs on failure.
+
+
+Interpolation reviews distinguish raw routing/capture witnesses from general loose
+arithmetic. FP16-input references now reproduce the retained hardware digests
+directly, without using GoC output; this validates their captured domain while
+the APIs remain loose-only. Finite comparisons use the output format's calibrated
+bound, while inactive storage and unselected halves remain raw. FP32 references
+use long-double FMA with explicit quad routing. Both families now protect random
+test references against source mutation and pass alternate-seed calibration.
+Wave64 capture reuse is explicitly distinguished from native hardware captures.

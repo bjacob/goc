@@ -2480,5 +2480,55 @@
     ],
     "scope": "All four FP8/BF8 DOT4 format pairings, both widths and all available CPU selectors. Independent mathematical byte decoding and double accumulation cover every repeated-byte pair with all four C ABS/NEG modes, including NaN/infinity encodings. Separate fixed-seed mixed-byte bounded arithmetic and holdout corpora exercise all C modifiers and cancellation with calibrated tolerances. Exact small integer factors/sums drive 84 Wave32 masks, representative Wave64 masks, all destination aliases, DPP routes and all DPP16 row masks; these raw comparisons are deliberate routing/field checks. Invalid modifiers, strict exact rejection, non-strict loose fallback, empty EXEC and DPP validation are explicit. These APIs are loose-only, have no optional global-state output, and need no arbitrary bit-exact oracle equivalence claim.",
     "diagnostics": "Converted repeated-pair comparison to an assertion result with caller lane context. Replaced production bit-cast dependencies with local memcpy conversions. Added every nondestination word to ordinary alias sweeps and immutable input snapshots plus out-of-wave storage checks to the bounded corpus. Successful numerical cases no longer construct per-lane diagnostic strings. Existing independent calibration and holdout bounds are unchanged; both are ordinary tests and pass on Clang and GCC."
+  },
+  {
+    "file": "interp16_test.cpp",
+    "assertions": [
+      "Interp16.HardwareModifiersRoundingAndOverflow",
+      "Interp16.MasksAliasesUnalignedStorageAndWaits",
+      "Interp16.IndependentIntegerOracleAndRoundingBoundaries",
+      "Interp16.ValidationAndUnchangedHostRounding",
+      "Interp16.P10RtzAcrossHostRoundingModes",
+      "Interp16.Wave64HardwareModifiersRoundingAndOverflow",
+      "Interp16.Wave64MasksAliasesUnalignedStorageAndWaits",
+      "Interp16.Wave64IndependentIntegerOracleAndRoundingBoundaries",
+      "Interp16.Wave64ValidationAndUnchangedHostRounding",
+      "Interp16.Wave64P10RtzAcrossHostRoundingModes"
+    ],
+    "evidence": [
+      "tests/interp16_test.cpp",
+      "tests/interp16_reference.h",
+      "tests/mixed_fma_reference.h",
+      "tests/interp16_hardware.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "Four FP16-input interpolation spellings (P10/P2, RNE/RTZ), both wave widths and all CPU selectors. Independent integer mixed-FMA reference with quad routing covers all 64 NEG/clamp/half selections, both FP16 overflow policies, five source-sharing layouts, four destinations, unaligned guarded storage, 84 Wave32 masks and representative Wave64 masks. Boundary operands and deterministic full-word random inputs broaden arithmetic coverage. A standalone reference digest calculation now agrees with all retained gfx1201 MODE 0xf0 capture digests (1024 inputs per modifier/overflow/op), independently of GoC outputs; that establishes captured-domain agreement only. Wave64 reuses the captured sequence across its two halves, not a new native Wave64 capture. Explicit RTZ host-rounding invariance stays raw. Wait counts, invalid flags, empty EXEC and unsupported strict exact semantics are exercised; these remain loose-only APIs.",
+    "diagnostics": "General finite arithmetic now uses FP32 or half-FMA atol/rtol by output format. Inactive/source storage and unselected destination halves remain raw, and NaNs are canonicalized only in the selected output field. Added input-preservation assertions to random tests; retained per-configuration/lane diagnostics. Existing and alternate seeds calibrate both output formats without changing bounds. Hardware digests remain aggregate anchors, supplemented by independent per-lane reference tests and direct reference-to-capture validation."
+  },
+  {
+    "file": "interp32_test.cpp",
+    "assertions": [
+      "Interp32.HardwareModifiersAndWaitCounts",
+      "Interp32.HardwareReadsInactiveSourceLanes",
+      "Interp32.MasksModifiersAliasesAndUnalignedStorage",
+      "Interp32.SpecialValuesAndRandomBits",
+      "Interp32.ValidationAndEmptyExec",
+      "Interp32.Wave64HardwareModifiersAndWaitCounts",
+      "Interp32.Wave64HardwareReadsInactiveSourceLanes",
+      "Interp32.Wave64MasksModifiersAliasesAndUnalignedStorage",
+      "Interp32.Wave64SpecialValuesAndRandomBits",
+      "Interp32.Wave64ValidationAndEmptyExec",
+      "Interp32.SharedArchitectureContracts"
+    ],
+    "evidence": [
+      "tests/interp32_test.cpp",
+      "tests/interp32_reference.h",
+      "tests/interp32_hardware.h",
+      "tests/exec_masks.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "P10/P2 FP32 interpolation at both widths and all CPU selectors. Independent long-double FMA with quad source routing supplies random/special-value loose references. Exactly representable binary-fraction routing inputs cover all 16 NEG/clamp modes, five source-sharing layouts, all destinations, unaligned storage/guards, 84 Wave32 masks and representative Wave64 masks. Retained gfx1201 digests cover every modifier/wait count and 36 EXEC patterns including every single lane; Wave64 applies the same capture to each half and verifies lower-half preservation for upper-only EXEC. Shared-contract tests also cover four FP16-input spellings, unsupported exact semantics, rejected guest flags, error preservation and non-strict fallback. No independent native Wave64 hardware-capture claim is made.",
+    "diagnostics": "Random numerical tests now assert input preservation and compute references from immutable source snapshots. Existing calibrated atol/rtol passes a new alternate seed as well as the original on both compilers. Raw full-array routing assertions are retained for the exactly representable corpus; hardware digests retain CPU/op/modifier/wait or mask diagnostics."
   }
 ]

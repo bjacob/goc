@@ -127,11 +127,15 @@ TEST(Interp32, SpecialValuesAndRandomBits) {
                                             : uint32_t(random());
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
+          uint32_t sources[3][32];
+          std::memcpy(sources, words, sizeof(sources));
           ASSERT_EQ(functions[op](cpu, UINT32_MAX, goc_test::interp32_mode(m), d, a, b, c),
                     GOC_SUCCESS);
+          ASSERT_EQ(std::memcmp(sources, words, sizeof(sources)), 0);
           for (unsigned lane = 0; lane < 32; ++lane)
-            ASSERT_TRUE(equal_float(words[3][lane], goc_test::interp32_reference(
-                                                        op, words[0], words[1], words[2], lane, m)))
+            ASSERT_TRUE(
+                equal_float(words[3][lane], goc_test::interp32_reference(op, sources[0], sources[1],
+                                                                         sources[2], lane, m)))
                 << cpu << "/" << op << "/" << m << "/" << batch << "/" << lane;
         }
       }
@@ -243,11 +247,15 @@ TEST(Interp32, Wave64SpecialValuesAndRandomBits) {
                                             : uint32_t(random());
           const uint32_t *a[] = {words[0]}, *b[] = {words[1]}, *c[] = {words[2]};
           uint32_t *d[] = {words[3]};
+          uint32_t sources[3][64];
+          std::memcpy(sources, words, sizeof(sources));
           ASSERT_EQ(wave64_functions[op](cpu, UINT64_MAX, goc_test::interp32_mode(m), d, a, b, c),
                     GOC_SUCCESS);
+          ASSERT_EQ(std::memcmp(sources, words, sizeof(sources)), 0);
           for (unsigned lane = 0; lane < 64; ++lane)
-            ASSERT_TRUE(equal_float(words[3][lane], goc_test::interp32_reference(
-                                                        op, words[0], words[1], words[2], lane, m)))
+            ASSERT_TRUE(
+                equal_float(words[3][lane], goc_test::interp32_reference(op, sources[0], sources[1],
+                                                                         sources[2], lane, m)))
                 << cpu << "/" << op << "/" << m << "/" << batch << "/" << lane;
         }
       }

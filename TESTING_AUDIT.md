@@ -773,3 +773,15 @@ operands, and removed successful per-lane diagnostic formatting overhead.
 All 11 tests pass on Clang and GCC with unchanged tolerance bounds and input
 corpora. The explicit inventory now has 138/154 family-file reviews, with 16
 remaining before final broad verification.
+
+
+### Interpolation reference and tolerance review
+
+Completed FP32 and FP16-input interpolation reviews. Added direct independent
+integer-reference validation against the retained FP16-input hardware digests.
+General loose arithmetic now uses output-format atol/rtol while selected-field
+NaN handling, unselected halves and inactive storage remain separate. Random
+references now have source-preservation checks in both families. Original and
+alternate seeds agree exactly with the computed references on Clang and GCC;
+all 21 tests pass. Explicit inventory: 140/154 reviewed family files, with 14
+remaining before final broad verification.

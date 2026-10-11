@@ -3,9 +3,13 @@
 #include "capture_hash.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
+#include "half_reference.h"
 #include "interp16_hardware.h"
 #include "interp16_reference.h"
+#include "interp32_reference.h"
+#include "loose_tolerances.h"
 
 #include <cfenv>
 #include <cstring>
@@ -32,9 +36,52 @@ void wave64_capture_inputs(uint32_t words[4][64], unsigned start) {
   }
 }
 
+::testing::AssertionResult compare_result(unsigned op, unsigned m, uint32_t actual,
+                                          uint32_t expected) {
+  actual = goc_test::interp16_canonical(op, m, actual);
+  expected = goc_test::interp16_canonical(op, m, expected);
+  if (!(op & 1)) {
+    unsigned magnitude = expected & 0x7fffffff;
+    if (magnitude && magnitude < 0x7f800000)
+      return goc_test::fuzzy(goc_test::interp32_float(actual), goc_test::interp32_float(expected),
+                             goc_test::fma_f32_tolerance);
+  } else {
+    unsigned shift = m & 32 ? 16 : 0;
+    if ((actual & ~(0xffffU << shift)) != (expected & ~(0xffffU << shift)))
+      return ::testing::AssertionFailure() << "unselected destination half changed";
+    uint16_t got = uint16_t(actual >> shift), want = uint16_t(expected >> shift);
+    if ((want & 0x7fff) && (want & 0x7fff) < 0x7c00)
+      return goc_test::fuzzy(goc_test::half_value(got), goc_test::half_value(want),
+                             goc_test::fma_f16_tolerance);
+  }
+  if (actual == expected)
+    return ::testing::AssertionSuccess();
+  return ::testing::AssertionFailure()
+         << "categorical result: actual=" << actual << " expected=" << expected;
+}
+
 } // namespace
 
 TEST(Interp16, HardwareModifiersRoundingAndOverflow) {
+  for (unsigned op = 0; op < 4; ++op)
+    for (unsigned ovfl = 0; ovfl < 2; ++ovfl)
+      for (unsigned m = 0; m < 64; ++m) {
+        uint64_t digest = goc_test::capture_hash_seed;
+        for (unsigned start = 0; start < 1024; start += 32) {
+          uint32_t words[4][32];
+          goc_test::interp16_capture_inputs(words, start);
+          for (unsigned lane = 0; lane < 32; ++lane) {
+            uint32_t expected = goc_test::interp16_canonical(
+                op, m,
+                goc_test::interp16_reference(op, words[0], words[1], words[2], words[3][lane], lane,
+                                             m, ovfl));
+            digest = goc_test::capture_hash_bytes(digest, expected, 4);
+          }
+        }
+        ASSERT_EQ(digest, goc_test::interp16_digests[(op * 2 + ovfl) * 64 + m])
+            << "reference corpus: " << op << "/" << ovfl << "/" << m;
+      }
+
   for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
     for (unsigned op = 0; op < 4; ++op)
       for (unsigned ovfl = 0; ovfl < 2; ++ovfl)
@@ -88,8 +135,9 @@ TEST(Interp16, MasksAliasesUnalignedStorageAndWaits) {
                     uint32_t want = initial[reg][lane], got = words[reg][lane];
                     if (reg == target && lane > 0 && lane <= 32 &&
                         ((exec_mask >> (lane - 1)) & 1)) {
-                      want = goc_test::interp16_canonical(op, m, result[lane - 1]);
-                      got = goc_test::interp16_canonical(op, m, got);
+                      ASSERT_TRUE(compare_result(op, m, got, result[lane - 1]))
+                          << cpu << "/" << op << "/" << m << "/" << target << "/" << lane;
+                      continue;
                     }
                     ASSERT_EQ(got, want)
                         << cpu << "/" << op << "/" << m << "/" << target << "/" << lane;
@@ -125,8 +173,9 @@ TEST(Interp16, IndependentIntegerOracleAndRoundingBoundaries) {
             ASSERT_EQ(functions[op](cpu | (ovfl ? GOC_FP16_OVFL : 0), UINT32_MAX,
                                     goc_test::interp16_mode(op, m), d, a, b, c),
                       GOC_SUCCESS);
+            ASSERT_EQ(std::memcmp(words, initial, sizeof(initial[0]) * 3), 0);
             for (unsigned lane = 0; lane < 32; ++lane)
-              ASSERT_EQ(goc_test::interp16_canonical(op, m, words[3][lane]), expected[lane])
+              ASSERT_TRUE(compare_result(op, m, words[3][lane], expected[lane]))
                   << cpu << "/" << op << "/" << m << "/" << ovfl << "/" << batch << "/" << lane;
           }
         }
@@ -246,8 +295,9 @@ TEST(Interp16, Wave64MasksAliasesUnalignedStorageAndWaits) {
                     uint32_t want = initial[reg][lane], got = words[reg][lane];
                     if (reg == target && lane > 0 && lane <= 64 &&
                         ((exec_mask >> (lane - 1)) & 1)) {
-                      want = goc_test::interp16_canonical(op, m, result[lane - 1]);
-                      got = goc_test::interp16_canonical(op, m, got);
+                      ASSERT_TRUE(compare_result(op, m, got, result[lane - 1]))
+                          << cpu << "/" << op << "/" << m << "/" << target << "/" << lane;
+                      continue;
                     }
                     ASSERT_EQ(got, want)
                         << cpu << "/" << op << "/" << m << "/" << target << "/" << lane;
@@ -283,8 +333,9 @@ TEST(Interp16, Wave64IndependentIntegerOracleAndRoundingBoundaries) {
             ASSERT_EQ(wave64_functions[op](cpu | (ovfl ? GOC_FP16_OVFL : 0), UINT64_MAX,
                                            goc_test::interp16_mode(op, m), d, a, b, c),
                       GOC_SUCCESS);
+            ASSERT_EQ(std::memcmp(words, initial, sizeof(initial[0]) * 3), 0);
             for (unsigned lane = 0; lane < 64; ++lane)
-              ASSERT_EQ(goc_test::interp16_canonical(op, m, words[3][lane]), expected[lane])
+              ASSERT_TRUE(compare_result(op, m, words[3][lane], expected[lane]))
                   << cpu << "/" << op << "/" << m << "/" << ovfl << "/" << batch << "/" << lane;
           }
         }

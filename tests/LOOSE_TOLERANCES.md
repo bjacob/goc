@@ -441,3 +441,17 @@ BF16 has 88,368 comparisons, absolute error 0.031131744384765625 and relative
 error 0.0038610038610038611. Both seeds pass the final bound. Counts include
 differential checks and repeated architecture/CPU cases, not unique hardware samples.
 Script/snapshots/logs: goc-build/coverage-work/testing-half-dot-calibration/run.py.
+
+
+Interpolation holdout and FP16-input calibration: Clang and GCC agree on all
+measurements. FP32 interpolation seed 971 produces 1,004,608 finite comparisons,
+and alternate seed 51263 produces 1,004,288; all have zero observed error.
+FP16-input interpolation uses existing FP32/FP16 FMA bounds against its integer
+reference: seed 314159 gives 23,290,304 FP32-result and 15,471,200 half-result
+finite comparisons, while seed 74117 gives 23,311,808 and 15,473,568 respectively.
+All observed errors are zero. The large counts include repeated modifier, mask,
+alias and CPU configurations; only random operands change in the holdout.
+Fixed captured/RTZ-host-rounding witnesses and storage remain raw. Direct
+reference-to-hardware-digest validation establishes the integer reference on the
+retained capture corpus without implying arbitrary hardware-exact API support.
+Script/snapshots/logs: goc-build/coverage-work/testing-interpolation-calibration/run.py.
