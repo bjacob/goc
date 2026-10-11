@@ -2789,15 +2789,20 @@
       "Swmmac16.Wave64PackedNearestEvenMidpoints",
       "Swmmac16.Wave64FiniteOverflowAndInfinity",
       "Swmmac16.Wave64AccumulatorAndPairNegationAcrossOutputFormats",
-      "Swmmac16.FractionalMatricesAgainstDoubleReference"
+      "Swmmac16.FractionalMatricesAgainstDoubleReference",
+      "Swmmac16.CapturedMatricesAndOperands"
     ],
     "evidence": [
       "tests/swmmac16_test.cpp",
       "tests/swmmac16_hardware.h",
       "tests/swmmac16_wave64_hardware.h",
+      "tests/rdna_swmmac_f32_f16_cases.h",
+      "tests/rdna_swmmac_f32_bf16_cases.h",
+      "tests/rdna_swmmac_f16_f16_cases.h",
+      "tests/rdna_swmmac_bf16_bf16_cases.h",
       "tests/LOOSE_TOLERANCES.md"
     ],
-    "scope": "Sparse FP16/BF16 with FP32 or packed output, both widths and all CPU selectors. Independent gfx1201 small-integer captures cover all negation/index-key variants, including native Wave64 captures. Literal midpoint, overflow/infinity and accumulator/pair-negation witnesses cover packed output rounding and the distinction between compressed pair position and dense K parity. Strict exact semantics are unsupported and non-strict exact capture checks exercise loose fallback. New deterministic fractional logical matrices use independently decoded normal operands bounded by four, legal 2:4 selectors, double accumulation and fuzzy output checks; all negation combinations and keys occur in each width. This mathematical loose oracle does not claim empirical hardware rounding equivalence. Aliases and duplicate destinations use separately identified scalar/SIMD differential references with full expected storage images.",
+    "scope": "Sparse FP16/BF16 with FP32 or packed output, both widths and all CPU selectors. Independent gfx1201 small-integer captures cover all negation/index-key variants, including native Wave64 captures. Literal midpoint, overflow/infinity and accumulator/pair-negation witnesses cover packed output rounding and the distinction between compressed pair position and dense K parity. Strict exact semantics now borrow rocjitsu 184faac7d94 DOT4 staging, with 488 supported captures and 24 explicitly excluded raw C/clamp cases at ad2bb973ec4. FP16 overflow mode is translated. Other guest fields and packed loose intermediate-narrowing alignment remain pending. The existing small-integer captures pass in both semantics. New deterministic fractional logical matrices use independently decoded normal operands bounded by four, legal 2:4 selectors, double accumulation and fuzzy output checks; all negation combinations and keys occur in each width. This mathematical loose oracle does not claim empirical hardware rounding equivalence. Aliases and duplicate destinations use separately identified scalar/SIMD differential references with full expected storage images.",
     "diagnostics": "Added non-output preservation to both hardware corpus tests, full-storage validation with all 64 unknown-bit positions in both widths, and source/out-of-wave checks to random matrices. Calibrated packed FP16/BF16 bounds and retained the existing FP32 WMMA bound, with 1,572,864 total finite comparisons per seed per compiler. Primary and holdout seeds and all fourteen tests pass on Clang and GCC."
   },
   {

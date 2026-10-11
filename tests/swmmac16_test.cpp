@@ -4,9 +4,14 @@
 #include "fuzzy.h"
 #include "goc/goc.h"
 #include "loose_tolerances.h"
+#include "rdna_swmmac_bf16_bf16_cases.h"
+#include "rdna_swmmac_f16_f16_cases.h"
+#include "rdna_swmmac_f32_bf16_cases.h"
+#include "rdna_swmmac_f32_f16_cases.h"
 #include "swmmac16_hardware.h"
 #include "swmmac16_wave64_hardware.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
@@ -49,7 +54,7 @@ using WideRegisters = LaneRegisters<64>;
 } // namespace
 
 TEST(Swmmac16, HardwareAllModifiers) {
-  // A non-strict exact request must follow the same loose path.
+  // Exactly representable small-integer captures agree in both semantics.
   for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
     for (unsigned op = 0; op < 4; ++op)
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
@@ -118,8 +123,7 @@ TEST(Swmmac16, OverlappingSourcesAndDuplicateDestinations) {
 
 TEST(Swmmac16, Validation) {
   for (Fn fn : functions) {
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, nullptr, nullptr, nullptr,
-                 nullptr),
+    EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, 0, nullptr, nullptr, nullptr, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     Registers r(0);
     uint32_t before[21][32];
@@ -130,7 +134,7 @@ TEST(Swmmac16, Validation) {
         EXPECT_EQ(std::memcmp(before, r.data, sizeof(before)), 0);
       }
     EXPECT_EQ(fn(1ULL << 63, 0, r.d, r.a, r.b, r.index), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, r.d, r.a, r.b, r.index),
+    EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, 0, r.d, r.a, r.b, r.index),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(std::memcmp(before, r.data, sizeof(before)), 0);
   }
@@ -229,7 +233,7 @@ const Fn wide_functions[] = {
 } // namespace
 
 TEST(Swmmac16, Wave64NativeAllModifiers) {
-  // A non-strict exact request must follow the same loose path.
+  // Exactly representable small-integer captures agree in both semantics.
   for (uint64_t semantics : {GOC_SEMANTICS_LOOSE, GOC_SEMANTICS_EXACT_EMPIRICAL})
     for (unsigned op = 0; op < 4; ++op)
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
@@ -286,8 +290,7 @@ TEST(Swmmac16, Wave64OverlappingSourcesAndDuplicateDestinations) {
 
 TEST(Swmmac16, Wave64Validation) {
   for (Fn fn : wide_functions) {
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, nullptr, nullptr, nullptr,
-                 nullptr),
+    EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, 0, nullptr, nullptr, nullptr, nullptr),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     WideRegisters r(0);
     uint32_t before[21][64];
@@ -298,7 +301,7 @@ TEST(Swmmac16, Wave64Validation) {
         EXPECT_EQ(std::memcmp(before, r.data, sizeof(before)), 0);
       }
     EXPECT_EQ(fn(1ULL << 63, 0, r.d, r.a, r.b, r.index), GOC_ERROR_INVALID_FLAGS);
-    EXPECT_EQ(fn(GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, r.d, r.a, r.b, r.index),
+    EXPECT_EQ(fn((2ULL << 16) | GOC_SEMANTICS_STRICT, 0, r.d, r.a, r.b, r.index),
               GOC_ERROR_UNSUPPORTED_SEMANTICS);
     EXPECT_EQ(std::memcmp(before, r.data, sizeof(before)), 0);
   }
@@ -507,4 +510,123 @@ TEST(Swmmac16, FractionalMatricesAgainstDoubleReference) {
           }
         }
     }
+}
+
+TEST(Swmmac16, CapturedMatricesAndOperands) {
+  struct Shape {
+    bool bf16, packed;
+    decltype(&goc_v_swmmac_f32_16x16x32_f16) wave32, wave64;
+    const RdnaWmmaFloatMatrixCase *matrices;
+    unsigned matrix_count;
+    const RdnaWmmaFloatOperandCase *operands;
+    unsigned operand_count;
+  };
+
+  const Shape shapes[] = {
+      {false, false, goc_v_swmmac_f32_16x16x32_f16, goc_v_swmmac_f32_16x16x32_f16_wave64,
+       kRdnaSwmmacF32F16Matrices.data(), kRdnaSwmmacF32F16Matrices.size(),
+       kRdnaSwmmacF32F16Operands.data(), kRdnaSwmmacF32F16Operands.size()},
+      {true, false, goc_v_swmmac_f32_16x16x32_bf16, goc_v_swmmac_f32_16x16x32_bf16_wave64,
+       kRdnaSwmmacF32Bf16Matrices.data(), kRdnaSwmmacF32Bf16Matrices.size(),
+       kRdnaSwmmacF32Bf16Operands.data(), kRdnaSwmmacF32Bf16Operands.size()},
+      {false, true, goc_v_swmmac_f16_16x16x32_f16, goc_v_swmmac_f16_16x16x32_f16_wave64,
+       kRdnaSwmmacF16F16Matrices.data(), kRdnaSwmmacF16F16Matrices.size(),
+       kRdnaSwmmacF16F16Operands.data(), kRdnaSwmmacF16F16Operands.size()},
+      {true, true, goc_v_swmmac_bf16_16x16x32_bf16, goc_v_swmmac_bf16_16x16x32_bf16_wave64,
+       kRdnaSwmmacBf16Bf16Matrices.data(), kRdnaSwmmacBf16Bf16Matrices.size(),
+       kRdnaSwmmacBf16Bf16Operands.data(), kRdnaSwmmacBf16Bf16Operands.size()},
+  };
+  unsigned replayed = 0, excluded = 0;
+  for (const auto &shape : shapes)
+    for (unsigned sample = 0; sample < shape.matrix_count + shape.operand_count; ++sample)
+      for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
+        const bool matrix = sample < shape.matrix_count;
+        const auto &m = shape.matrices[matrix ? sample : 0];
+        const auto &o = shape.operands[matrix ? 0 : sample - shape.matrix_count];
+        const unsigned width = matrix ? m.width : o.width;
+        const auto code = matrix ? m.code : o.code;
+        // Raw ignored sign/clamp encodings and out-of-range key aliases
+        // are outside GoC's supported instruction flags, not successful replays.
+        unsigned key = (code[0] >> 11) & 7;
+        if ((code[0] & 0x8400U) || (code[1] & (1U << 31)) || key >= (width == 64 ? 4U : 2U)) {
+          if (cpu == 0)
+            ++excluded;
+          continue;
+        }
+        if (cpu == 0)
+          ++replayed;
+        SCOPED_TRACE(::testing::Message()
+                     << shape.bf16 << shape.packed << "/" << sample << "/" << width << "/" << cpu);
+        uint32_t data[33][66], expected[33][66];
+        uint32_t *v[33];
+        uint32_t rng = m.seed;
+        constexpr uint32_t accumulators[] = {0,           1,           0x80000000U, 0x3f800001U,
+                                             0xbf800001U, 0x43800001U, 0xc3800001U, 0x80000001U};
+        constexpr uint32_t pairs[] = {4, 8, 12, 9, 13, 14};
+        for (unsigned reg = 0; reg < 33; ++reg) {
+          v[reg] = data[reg] + 1;
+          std::fill(data[reg], data[reg] + 66, 0xdeadbeefU);
+          for (unsigned lane = 0; lane < width; ++lane) {
+            uint32_t value;
+            if (matrix) {
+              rng ^= rng << 13;
+              rng ^= rng >> 17;
+              rng ^= rng << 5;
+              value = rng;
+              if (m.finite && reg < 16) {
+                const unsigned max_finite = shape.bf16 ? 0x7f7f : 0x7bff;
+                value = 0;
+                for (unsigned shift = 0; shift < 32; shift += 16) {
+                  unsigned part = (rng >> shift) & 65535;
+                  value |= ((part & 32768) | (m.bounded_bf16 ? 0x3c80U + (part & 32767) % 0x500U
+                                                             : (part & 32767) % (max_finite + 1)))
+                           << shift;
+                }
+              } else if (m.finite && reg < 32) {
+                value = accumulators[(rng >> 24) & 7];
+                if (m.bounded_bf16 && shape.packed) {
+                  constexpr uint32_t packed_c[] = {0,           0x00010001U, 0x80008000U,
+                                                   0x3f813f81U, 0xbf81bf81U, 0x43814381U,
+                                                   0xc381c381U, 0x80018001U};
+                  value = packed_c[(rng >> 24) & 7];
+                }
+              }
+              if (reg == 32) {
+                value = 0;
+                for (unsigned i = 0; i < 8; ++i)
+                  value |= pairs[((rng >> (4 * i)) & 15) % 6] << (4 * i);
+              }
+            } else
+              value = reg < 8 ? o.a : reg < 16 ? o.b : reg < 24 ? o.c : reg < 32 ? o.d : o.index;
+            v[reg][lane] = value;
+          }
+        }
+        if (!matrix && o.factor_base != RdnaWmmaFloatOperandCase::kUniformFactors)
+          for (unsigned i = 0; i < 128; ++i) {
+            unsigned offset = o.factor_base * width + i;
+            v[offset / width][offset % width] = o.factor_groups[i / 16];
+          }
+        std::memcpy(expected, data, sizeof(expected));
+        unsigned dest = code[0] & 255;
+        unsigned count = matrix ? m.expected_words : shape.packed ? 128 : 256;
+        for (unsigned i = 0; i < count; ++i)
+          expected[dest + i / width][1 + i % width] = matrix ? m.expected[i] : o.expected;
+        unsigned a = (code[1] & 511) - 256, b = ((code[1] >> 9) & 511) - 256,
+                 index = ((code[1] >> 18) & 511) - 256;
+        ASSERT_LT(a, 33U);
+        ASSERT_LT(b, 33U);
+        ASSERT_LT(index, 33U);
+        ASSERT_EQ((width == 32 ? shape.wave32 : shape.wave64)(
+                      cpu | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
+                          (((matrix ? m.mode : o.mode) & (1U << 23)) ? GOC_FP16_OVFL : 0),
+                      (uint64_t(key) << 7) | ((code[1] >> 29) & 3) | (((code[0] >> 8) & 3) << 3),
+                      v + dest, v + a, v + b, v + index),
+                  GOC_SUCCESS);
+        for (unsigned reg = 0; reg < 33; ++reg)
+          for (unsigned lane = 0; lane < 66; ++lane)
+            ASSERT_EQ(data[reg][lane], expected[reg][lane])
+                << "reg=" << reg << " guarded lane=" << lane;
+      }
+  EXPECT_EQ(replayed, 488U);
+  EXPECT_EQ(excluded, 24U);
 }

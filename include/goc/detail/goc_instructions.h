@@ -2695,7 +2695,8 @@ int goc_v_swmmac_f32_16x16x32_bf8_bf8_wave64(uint64_t flags, uint64_t instructio
 // with FP32 FMA, then round packed outputs to nearest-even. Host FP state must
 // provide nearest-even rounding with denormals enabled; exception flags may change.
 // GOC_FP16_OVFL saturates finite overflow when narrowing to FP16; otherwise it
-// has no effect. Exact semantics are unsupported. All inputs and D are read
+// has no effect. Exact semantics use four borrowed gfx1201 DOT4 steps, narrowing
+// after each step (FP16 RNE or BF16 truncation). All inputs and D are read
 // before ascending destination-register stores; the last store wins aliases.
 // EXEC is ignored; every lane is read and written, and operand pointers must
 // be valid. Errors leave all destinations unchanged.

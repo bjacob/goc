@@ -673,3 +673,21 @@ metadata is retained; guest-mode translation and host-state qualification remain
 pending. Existing loose numerical references remain applicable and unchanged.
 This supersedes the earlier sparse FP8 loose-only conclusion; sparse FP16/BF16
 alignment is still pending.
+
+
+## Sparse FP16 and BF16 exact qualification
+
+Exact sparse FP16/BF16 now uses four DOT4 steps borrowed from rocjitsu
+`184faac7d94` at `ad2bb973ec4`, with FP16 RNE or BF16 truncation after each
+packed step. B negation follows compressed pair parity, not the selected dense
+position. All results are staged before any stores, preserving A/B/index overlap.
+
+The imported corpus has 80 matrix and 432 operand captures; 488 supported cases
+pass raw-word comparisons on every CPU selector, while 24 raw C modifier/clamp
+encodings are excluded explicitly. Replay counts are asserted. Guest
+MODE.FP16_OVFL is translated; the other guest fields still await qualification.
+These fixtures cover both widths, legal keys, half-negation, special values,
+packed intermediates and tied C/D. Existing small-integer hardware digests also
+pass with exact dispatch. This supersedes the earlier loose-only exact-support
+conclusion. Packed loose scalar/SIMD intermediate narrowing is still pending,
+so the old final-only loose reference is not yet aligned with the new model.

@@ -1226,8 +1226,8 @@
     ]
   },
   {
-    "heading": "Sparse WMMA contract review",
-    "semantics": "loose",
+    "heading": "Sparse FP16 and BF16 exact qualification",
+    "semantics": "loose and exact",
     "tests": "tests/swmmac16_test.cpp",
     "mnemonics": [
       "v_swmmac_f32_16x16x32_f16",
