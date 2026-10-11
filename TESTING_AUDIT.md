@@ -520,3 +520,14 @@ Added comparator boundary checks and per-lane architecture diagnostics. All 15
 family tests and all 14 tooling tests pass; all 1,791 APIs retain active family
 references. Production code and hardware fixtures are unchanged. Broader family
 review and final full-build validation remain pending.
+
+### FMAC and literal-FMA review
+
+Two reviews bring the queue to 105 reviewed and 49 pending. General loose
+numerical comparisons use calibrated FP16/FP32 bounds, while exact references,
+preserved storage, signed zeros and finite fused-rounding literals remain raw.
+Clang/GCC calibration and alternate seeds measured zero numerical error; the
+allowance above zero is documented explicitly. Loose NaN payloads stay
+unspecified. FP32 literal-FMA hardware digests now have per-input companions,
+and a null-pointer state assertion is no longer treated as reporting evidence.
+All 14 affected tests pass on Clang/GCC. Production and fixtures are unchanged.

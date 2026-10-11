@@ -1693,5 +1693,46 @@
     ],
     "scope": "RDNA3/RDNA4 both widths: independently expressed loose lighting rule and inherited rocjitsu ffc144c564c finish/OMOD policy, not a new bit-exact model. All 512 modes and eight guest policies sample DPP, aliases and EXEC with deterministic mt19937 words and capture boundaries on all CPU selectors. Written numerical outputs are fuzzy; guards, inactive lanes and optional-state preservation remain raw. RDNA3 4096-triple Cartesian lighting reference and six literal architecture differences cover sentinel, signed-zero, scaling and denormal ordering. Invalid flags, unsupported strict exact/global-state, empty EXEC and host controls are tested. Calibration and a separate random-seed holdout are documented in LOOSE_TOLERANCES.md.",
     "diagnostics": "Computed checks report CPU/mode/lane (and architecture/policy/route where applicable); hardware digests remain complemented by per-output computed and literal witnesses. Agreement with GoC is not claimed to prove arbitrary-input hardware equivalence."
+  },
+  {
+    "file": "fmac_test.cpp",
+    "assertions": [
+      "Fmac.AllModifiersOverflowPoliciesAndCpuLevels",
+      "Fmac.MasksAndAllAccumulatorAliases",
+      "Fmac.HalfEveryEncodingAndFusedRounding",
+      "Fmac.HalfHardwareWitnessesAndHostEnvironment",
+      "Fmac.ValidationAndZeroMasks"
+    ],
+    "evidence": [
+      "tests/fmac_test.cpp",
+      "tests/half_fma_reference.h",
+      "tests/omod_reference.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "RDNA4 Wave32 FP16/32 FMAC: all supported modifiers, overflow policies, CPU selectors, 84 EXEC masks and accumulator/source aliases with guarded storage. Full half-A encoding sweep uses deterministic random B/C and sampled OMOD/selectors. Half exact oracle uses bounded integer product/addend alignment and nearest-even packing; special-value and OMOD rules have upstream rocjitsu f16_fma_omod_cases capture witnesses, including matching FMA/FMAC behavior. FP32 computed proximity uses host std::fma plus independent OMOD under default host controls; non-strict exact requests in these broad FP32 tests are not claimed as strict exact validation. General loose numerical comparisons now use calibrated fuzzy bounds; preserved halves, signed zero and fused-rounding literals remain raw. Exact half payload/OMOD witnesses run under every host rounding mode. Wave64/architecture/optional-state integration is in other family files, not established by this file alone.",
+    "diagnostics": "Captured FP32 literal-FMA corpus now reports operation/width/CPU/policy/input before its digest. Modifier and alias tests carry test context; exact integer-reference agreement alone is not claimed to prove arbitrary hardware special-value behavior. Calibrated loose numerical checks retain exact storage checks."
+  },
+  {
+    "file": "literal_fma_test.cpp",
+    "assertions": [
+      "LiteralFma.AllHalfLiteralsAndRandomInputs",
+      "LiteralFma.SpecialValuesSelectorsMasksAliasesAndOverflow",
+      "LiteralFma.Fp32RandomTriplesAndLiteralFusedRounding",
+      "LiteralFma.ExactHalfPayloadPriorityAndHostEnvironment",
+      "LiteralFma.ValidationAndZeroMasks",
+      "LiteralFma.Fp32ArchitectureGuestModes",
+      "LiteralFma.Fp32HardwareCorpus",
+      "LiteralFma.ExactFp32HostEnvironment",
+      "LiteralFma.Fp32ReportingPrecedenceAndLiteralNanPlacement"
+    ],
+    "evidence": [
+      "tests/literal_fma_test.cpp",
+      "tests/literal_fma32_hardware.h",
+      "tests/half_fma_reference.h",
+      "tests/mixed_fma_reference.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "FP16 and FP32 FMAMK/FMAAK literal placement: every half literal with deterministic random operands and sampled selector/overflow combinations, all selectors/masks/aliases on edge inputs, FP32 random triples, validation and fused-rounding literals. Independent integer-grid references represent the exact finite product/addend; special payload priority and OMOD rules retain inherited/captured evidence rather than deriving hardware behavior from host math. FP32 retained gfx1201 hardware digests now also check each computed result, establishing captured-domain agreement across four flush policies and both wave widths. Both-architecture FP32 guest-policy tests distinguish exact from fuzzy loose results, unsupported exact state and literal NaN placement. Half host tests preserve payload priority; FP32 exact host-control tests use integer references. Loose half NaNs remain classification checks even in the literal boundary table. This file does not independently provide complete Wave64 half coverage.",
+    "diagnostics": "Captured FP32 literal-FMA corpus now reports operation/width/CPU/policy/input before its digest. Modifier and alias tests carry test context; exact integer-reference agreement alone is not claimed to prove arbitrary hardware special-value behavior. Calibrated loose numerical checks retain exact storage checks."
   }
 ]

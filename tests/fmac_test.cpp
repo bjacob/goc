@@ -2,8 +2,11 @@
 
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_fma_reference.h"
+#include "half_reference.h"
+#include "loose_tolerances.h"
 #include "omod_reference.h"
 
 #include <algorithm>
@@ -69,11 +72,14 @@ void check(bool half, uint32_t actual, uint32_t want, uint32_t mode, bool exact)
   EXPECT_EQ(actual & ~mask, want & ~mask);
   uint32_t shift = half && (mode & GOC_ALU_HIGH_D) ? 16 : 0;
   uint32_t got = (actual & mask) >> shift, expected = (want & mask) >> shift;
-  uint32_t magnitude = half ? 0x7fff : 0x7fffffff, infinity = half ? 0x7c00 : 0x7f800000;
-  if (!exact && (expected & magnitude) > infinity) {
-    EXPECT_GT(got & magnitude, infinity);
-  } else {
+  uint32_t magnitude = half ? 0x7fff : 0x7fffffff;
+  if (exact || (expected & magnitude) == 0) {
     EXPECT_EQ(got, expected);
+  } else {
+    EXPECT_TRUE(
+        goc_test::fuzzy(half ? goc_test::half_value(uint16_t(got)) : as_float(got),
+                        half ? goc_test::half_value(uint16_t(expected)) : as_float(expected),
+                        half ? goc_test::fma_f16_tolerance : goc_test::fma_f32_tolerance));
   }
 }
 

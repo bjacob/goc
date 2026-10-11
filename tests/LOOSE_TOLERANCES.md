@@ -211,3 +211,30 @@ Hardware digests remain separate exact regression anchors. These measurements
 establish reference proximity on the tested domains, not hardware equivalence
 for arbitrary input bits. Reproduction script and instrumented snapshots/logs:
 `goc-build/coverage-work/testing-mullit-calibration/run.py`.
+
+## FMAC and literal FMA
+
+Loose numerical checks in `fmac_test.cpp` and `literal_fma_test.cpp` use
+`(2^-24, 1e-3)` for FP16 and `(2^-149, 1.2e-7)` for FP32. Both allow roughly one
+normal encoding step plus one minimum-subnormal step. The measured error against
+the rounded computed references was zero in every row below on Clang and GCC;
+the nonzero margin is deliberate flexibility for loose arithmetic, not a measured
+hardware error. Zero results retain sign checks; preserved halves/storage and
+finite fused-rounding witnesses remain exact. Loose NaNs require classification,
+while exact semantics retain payload/priority checks.
+
+| Family | Calibration FP32 pairs | Calibration FP16 pairs | Alternate-seed FP32 pairs | Alternate-seed FP16 pairs |
+| --- | ---: | ---: | ---: | ---: |
+| FMAC | 250,328 | 1,126,332 | 240,536 | 1,140,604 |
+| Literal FMA | 1,154,706 | 14,803,752 | 1,154,960 | 14,807,208 |
+
+Counts include finite nonzero loose-reference comparisons only. FMAC covers all
+modifiers, masks/aliases and every half A encoding with sampled B/C. Literal FMA
+covers every half literal with random operands, all selectors, overflow policy,
+FP32 random triples and architecture guest-mode cases. Alternate inputs replace
+FMAC seeds 198/429/45239 with 8791/9817/89317 and offset the encoding-sweep filler
+seed by 9371; literal seeds 431/9341 become 71059/61169. Fixed edge cases remain
+unchanged and are not independent holdout data. Reproduction script, instrumented
+snapshots and logs: `goc-build/coverage-work/testing-fma-calibration/run.py`.
+These observations do not prove hardware equivalence outside the reference's
+inherited rules and captured domains.

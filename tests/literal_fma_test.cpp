@@ -3,9 +3,12 @@
 #include "capture_hash.h"
 #include "exec_masks.h"
 #include "fp_environment.h"
+#include "fuzzy.h"
 #include "goc/goc.h"
 #include "half_fma_reference.h"
+#include "half_reference.h"
 #include "literal_fma32_hardware.h"
+#include "loose_tolerances.h"
 #include "mixed_fma_reference.h"
 
 #if defined(__x86_64__) || defined(_M_X64)
@@ -71,11 +74,13 @@ void check(bool half, uint32_t actual, uint32_t before, uint32_t want, uint32_t 
   uint32_t mask = half ? 0xffffU << shift : UINT32_MAX;
   EXPECT_EQ(actual & ~mask, before & ~mask);
   uint32_t got = (actual & mask) >> shift;
-  uint32_t magnitude = half ? 0x7fff : 0x7fffffff, infinity = half ? 0x7c00 : 0x7f800000;
-  if (!exact && (want & magnitude) > infinity) {
-    EXPECT_GT(got & magnitude, infinity);
-  } else {
+  uint32_t magnitude = half ? 0x7fff : 0x7fffffff;
+  if (exact || (want & magnitude) == 0) {
     EXPECT_EQ(got, want);
+  } else {
+    EXPECT_TRUE(goc_test::fuzzy(half ? goc_test::half_value(uint16_t(got)) : as_float(got),
+                                half ? goc_test::half_value(uint16_t(want)) : as_float(want),
+                                half ? goc_test::fma_f16_tolerance : goc_test::fma_f32_tolerance));
   }
 }
 
@@ -205,7 +210,8 @@ TEST(LiteralFma, Fp32RandomTriplesAndLiteralFusedRounding) {
       ASSERT_EQ(call(test.half, test.multiply, cpu, UINT32_MAX, 0, p + 2, p, p + 1, test.literal),
                 GOC_SUCCESS);
       for (auto word : words[2])
-        check(test.half, word, 0xfacecafe, test.want, 0, false);
+        check(test.half, word, 0xfacecafe, test.want, 0,
+              !test.half || (test.want & 0x7fff) <= 0x7c00);
     }
 }
 
@@ -311,7 +317,9 @@ TEST(LiteralFma, Fp32ArchitectureGuestModes) {
                                : ak32(f, uint32_t(exec_mask), 0, &d, &a, &b, literal, state_output);
                   };
                   ASSERT_EQ(invoke(flags, !exact), GOC_SUCCESS);
-                  EXPECT_EQ(state, 0x12345678U);
+                  if (!exact) {
+                    EXPECT_EQ(state, 0x12345678U);
+                  }
                   for (int lane = 0; lane < 64; ++lane) {
                     if (lane >= (wide ? 64 : 32) || !((exec_mask >> lane) & 1)) {
                       EXPECT_EQ(d[lane], before[alias][lane]);
@@ -327,10 +335,7 @@ TEST(LiteralFma, Fp32ArchitectureGuestModes) {
                       expected = goc_test::mixed_fma_reference::evaluate(
                           0, before[0][lane], multiply ? literal : before[1][lane],
                           multiply ? before[1][lane] : literal, 0, 0, false, false, flags, rdna3);
-                    if (!exact && (expected & 0x7fffffff) > 0x7f800000)
-                      EXPECT_GT(d[lane] & 0x7fffffff, 0x7f800000U);
-                    else
-                      EXPECT_EQ(d[lane], expected);
+                    check(false, d[lane], before[alias][lane], expected, 0, exact);
                   }
                   if (rdna3) {
                     std::memcpy(before, words, sizeof(words));
@@ -377,8 +382,14 @@ TEST(LiteralFma, Fp32HardwareCorpus) {
                                                                 0x3f800001, nullptr))
                      : call(false, multiply, flags, UINT32_MAX, 0, &dest, &a, &b, 0x3f800001);
             ASSERT_EQ(result, GOC_SUCCESS);
-            for (unsigned lane = 0; lane < width; ++lane)
+            for (unsigned lane = 0; lane < width; ++lane) {
+              uint32_t expected = goc_test::mixed_fma_reference::evaluate(
+                  0, input[0][lane], multiply ? 0x3f800001U : input[1][lane],
+                  multiply ? input[2][lane] : 0x3f800001U, 0, 0, false, false, flags);
+              ASSERT_EQ(d[lane], expected)
+                  << multiply << '/' << wide << '/' << cpu << '/' << policy << '/' << base + lane;
               hash = goc_test::capture_hash_word(hash, d[lane]);
+            }
           }
           EXPECT_EQ(hash, goc_test::literal_fma32_hashes[multiply ? 0 : 1][policy])
               << multiply << '/' << wide << '/' << cpu << '/' << policy;

@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 103 explicit family-file reviews exist and 51
+non-generic family references. 105 explicit family-file reviews exist and 49
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -289,3 +289,13 @@ policy and hardware-capture checks. The reference is a loose mathematical and
 policy reference; strict exact remains unsupported. Calibration and an additional
 deterministic random seed pass on Clang/GCC. Review records distinguish the
 sampled routing product from exhaustive modifier and Cartesian input sweeps.
+
+## Accumulating and literal FMA
+
+Two reviews separate integer-grid exact references, captured special-value rules,
+and loose numerical proximity. FMAC retains upstream half-FMA/FMAC witnesses;
+FP32 literal-FMA captures now include per-input reference checks before their
+digests. General loose checks use calibrated fuzzy bounds; exact payloads,
+preserved halves/storage, signed zeros and finite fused-rounding literals remain
+raw. Records explicitly delimit Wave32 half coverage and non-strict FP32 FMAC
+requests rather than claiming strict exact coverage from those requests.
