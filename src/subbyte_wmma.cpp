@@ -8,6 +8,7 @@
 #include "simd.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <stdint.h>
 

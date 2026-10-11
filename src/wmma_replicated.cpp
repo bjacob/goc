@@ -90,20 +90,11 @@ int wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32_t *cons
 }
 
 // rocjitsu de4654cfc34: signed C, with saturation after each pair of IU8
-// products or group of four IU4 products. Unclamped accumulation wraps.
-template <int Bits, int Lanes>
-int integer_wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
-                 const uint32_t *const *b, const uint32_t *const *c) {
-  if (mode & ~(uint64_t(GOC_WMMA_SIGNED_A | GOC_WMMA_SIGNED_B | GOC_WMMA_CLAMP)))
-    return GOC_ERROR_INVALID_FLAGS;
-  if (int error = goc::validate(flags, 0, true))
-    return error;
-#if defined(GOC_HAVE_X86_64_V3)
-  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
-    goc::integer_wmma_replicated_x86_64_v3<Bits, Lanes>(uint32_t(mode), d, a, b, c);
-    return GOC_SUCCESS;
-  }
-#endif
+// products or group of four IU4 products. Specialize saturation outside the
+// reduction so the unclamped loop remains vectorizable.
+template <int Bits, int Lanes, bool Clamp>
+void integer_wmma_scalar(uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
+                         const uint32_t *const *b, const uint32_t *const *c) {
   constexpr int Groups = Lanes / 16, Registers = 256 / Lanes, PerReg = 32 / Bits;
   uint32_t result[Registers][Lanes];
   for (int row = 0; row < 16; ++row)
@@ -120,7 +111,7 @@ int integer_wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32
           y -= 1 << Bits;
         acc += x * y;
         constexpr int clamp_group = Bits == 8 ? 2 : 4;
-        if ((mode & GOC_WMMA_CLAMP) && (k + 1) % clamp_group == 0)
+        if (Clamp && (k + 1) % clamp_group == 0)
           acc = std::clamp(acc, int64_t(-2147483648LL), int64_t(2147483647));
       }
       result[reg][lane] = uint32_t(acc);
@@ -128,6 +119,25 @@ int integer_wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32
   for (int reg = 0; reg < Registers; ++reg)
     for (int lane = 0; lane < Lanes; ++lane)
       d[reg][lane] = result[reg][lane];
+}
+
+template <int Bits, int Lanes>
+int integer_wmma(uint64_t flags, uint64_t mode, uint32_t *const *d, const uint32_t *const *a,
+                 const uint32_t *const *b, const uint32_t *const *c) {
+  if (mode & ~(uint64_t(GOC_WMMA_SIGNED_A | GOC_WMMA_SIGNED_B | GOC_WMMA_CLAMP)))
+    return GOC_ERROR_INVALID_FLAGS;
+  if (int error = goc::validate(flags, 0, true))
+    return error;
+#if defined(GOC_HAVE_X86_64_V3)
+  if ((flags & GOC_CPU_MASK) >= GOC_CPU_X86_64_V3) {
+    goc::integer_wmma_replicated_x86_64_v3<Bits, Lanes>(uint32_t(mode), d, a, b, c);
+    return GOC_SUCCESS;
+  }
+#endif
+  if (mode & GOC_WMMA_CLAMP)
+    integer_wmma_scalar<Bits, Lanes, true>(mode, d, a, b, c);
+  else
+    integer_wmma_scalar<Bits, Lanes, false>(mode, d, a, b, c);
   return GOC_SUCCESS;
 }
 

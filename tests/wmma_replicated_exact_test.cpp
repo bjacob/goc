@@ -20,6 +20,7 @@
 #include "wmma_replicated_packed_fixtures.h"
 
 #include <algorithm>
+#include <array>
 #include <cfenv>
 #include <cmath>
 #include <cstring>
