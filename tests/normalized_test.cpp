@@ -73,6 +73,11 @@ TEST(Normalized, HardwareCapturedTiesSaturationAndModifiers) {
                                        : 0;
         uint32_t av[32], bv[32], output[32];
         uint32_t raw = op < 2 ? capture.source_float : capture.source_half;
+        SCOPED_TRACE(::testing::Message()
+                     << "source=" << raw << " column=" << column << " cpu=" << cpu);
+        ASSERT_EQ(goc_test::normalized_reference(op, raw, raw ^ (op < 2 ? 0x80000000U : 0x8000U),
+                                                 0xa5a5a5a5, mode),
+                  capture.expected[column]);
         std::fill_n(av, 32, raw);
         std::fill_n(bv, 32, raw ^ (op < 2 ? 0x80000000 : 0x8000));
         std::fill_n(output, 32, 0xa5a5a5a5);
@@ -319,6 +324,11 @@ TEST(Normalized, Wave64HardwareCorpus) {
                                        : 0;
         uint32_t a[64], b[64], d[64];
         uint32_t raw = op < 2 ? capture.source_float : capture.source_half;
+        SCOPED_TRACE(::testing::Message()
+                     << "source=" << raw << " column=" << column << " cpu=" << cpu);
+        ASSERT_EQ(goc_test::normalized_reference(op, raw, raw ^ (op < 2 ? 0x80000000U : 0x8000U),
+                                                 0xa5a5a5a5, mode),
+                  capture.expected[column]);
         std::fill_n(a, 64, raw);
         std::fill_n(b, 64, raw ^ (op < 2 ? 0x80000000 : 0x8000));
         std::fill_n(d, 64, 0xa5a5a5a5);

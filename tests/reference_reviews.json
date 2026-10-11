@@ -770,5 +770,55 @@
     ],
     "scope": "Four packed/stochastic FP32-to-FP8/BF8 operations in both widths. Stored gfx1201 outputs anchor special values, overflow saturation, sign modifiers, destination placement and stochastic seed alignment; strict exact calls use these goldens directly. Both capture tests now also validate the computed reference directly against those outputs, independently of GoC. The reference quantizes in output-spacing units using double arithmetic, explicit nearest-even rounding or truncated seed addition. Deterministic boundary/adjacent/random inputs, six seed patterns and alias/DPP corpora provide supplemental model checks; agreement there is not a proof of arbitrary-input hardware equivalence. Retain the goldens for the empirical seed/special-value rules. Exact encoded comparisons also test destination-byte preservation; no blanket fuzzy replacement is justified for these structural checks.",
     "diagnostics": "Captured tests report source, seed, column and CPU in both widths. Boundary checks report source and second operand; the DPP digest has computed per-output routing companions. Captured-domain equivalence is explicit, not inferred solely from agreement with GoC."
+  },
+  {
+    "file": "normalized_test.cpp",
+    "assertions": [
+      "Normalized.HardwareCapturedTiesSaturationAndModifiers",
+      "Normalized.EveryHalfEncoding",
+      "Normalized.EveryIntegerRoundingBoundaryAndAdjacentFloat",
+      "Normalized.EveryModifierAndRandomFullWords",
+      "Normalized.Wave64HardwareCorpus",
+      "Normalized.Wave64ModifiersDppAliasesAndStateContract"
+    ],
+    "evidence": [
+      "tests/normalized_reference.h",
+      "tests/normalized_hardware.h",
+      "src/normalized.cpp"
+    ],
+    "scope": "Six normalized signed/unsigned integer conversions from FP32/FP16, both widths. These are loose/fallback implementations: strict exact is explicitly rejected. The independent model multiplies the integer significand by 32767 or 65535 (less than 2^40), then performs one ties-even integer shift, avoiding a host FP product rounding into a false midpoint. Captured outputs anchor saturation, NaNs, ties and ignored modifiers. Tests now validate that model directly against all stored capture columns, without using GoC as the oracle. Every half encoding, every integer rounding boundary and adjacent float, deterministic full words, modifiers, masks and aliases are covered. Exact comparison of resulting integer fields is intentional; fuzzy FP tolerance would not test their rounding or preserved destination halves. Captured agreement is not a universal bit-exact API claim.",
+    "diagnostics": "Per-lane computed checks report operands and mode. Both literal hardware corpora now report source, column and CPU, including Wave64. DPP final digest has companion per-output routing tests."
+  },
+  {
+    "file": "packed_conversion_test.cpp",
+    "assertions": [
+      "PackedConversion.HardwareCapturedRoundingSaturationAndModifiers",
+      "PackedConversion.EveryExponentAndSourceModifier",
+      "PackedConversion.EveryHalfBoundaryAndAdjacentFloat",
+      "PackedConversion.RandomWordsAndEveryModifier",
+      "PackedConversion.Wave64HardwareCorpus",
+      "PackedConversion.Wave64ModifiersDppAliasesAndValidation"
+    ],
+    "evidence": [
+      "tests/packed_conversion_reference.h",
+      "tests/packed_conversion_hardware.h",
+      "src/packed_conversion.cpp"
+    ],
+    "scope": "Three RDNA4 packed FP32-to-FP16-RTZ or signed/unsigned integer conversions, both widths, loose/fallback only. Integer outputs use explicit truncation and saturation. The FP16 reference binary-searches for the greatest finite half magnitude no larger than the input; sign restoration implements RTZ. Literal captures anchor NaN fields, infinity, saturation and ignored output modifiers, and now directly validate the computed reference as well as GoC. Every half boundary and neighboring FP32 word, exponent/sign boundaries, deterministic full words, flags, DPP, aliases and guards are tested. Exact encoded comparisons deliberately check the specified quantization and packing; this is stronger regression evidence for the current loose path, not an assertion of supported strict exact semantics.",
+    "diagnostics": "Computed checks identify operation, flags, operands and lane. Hardware corpora identify source, column, CPU and saturation in both widths. NaN-canonicalized DPP hash is supplemented by raw literal captures and per-output reference checks."
+  },
+  {
+    "file": "packed_conversion_architecture_test.cpp",
+    "assertions": [
+      "PackedConversionArchitecture.GuestPoliciesModifiersRoutingAndAliases",
+      "PackedConversionArchitecture.ValidationAndHostControls"
+    ],
+    "evidence": [
+      "tests/packed_conversion_reference.h",
+      "tests/normalized_reference.h",
+      "tests/packed_conversion_architecture_test.cpp"
+    ],
+    "scope": "Nine packed/normalized conversion operations across RDNA3/RDNA4 and Wave32/64. This integration suite reuses the independently computed quantization references reviewed in the numerical family tests. It exercises all guest policies and modifiers, ordinary plus two representative DPP routes, mixed EXEC, three destination/source alias placements and guards across CPU paths. It does not claim native hardware captures for every architecture or policy. Strict exact is rejected, optional exact global-state reporting is rejected for applicable operations, and loose reporting leaves state unchanged. Numerical result checks are exact quantization/field checks, not arbitrary approximate arithmetic.",
+    "diagnostics": "Whole-buffer assertions report architecture, width, opcode, policy, modifier, route, alias and CPU. Individual numerical failures can be localized using the companion family tests; no large digest is the sole oracle."
   }
 ]

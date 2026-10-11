@@ -324,3 +324,14 @@ test; documented that this establishes captured-domain agreement, not universal
 hardware equivalence. Both widths retain their golden comparisons and now report
 source/seed/column context. All 22 affected tests pass on Clang and GCC, and all
 14 tooling tests pass. No production code or golden values changed.
+
+### Packed and normalized conversion references
+
+Three more reviews bring the queue to 56 reviewed and 98 pending. Recorded the
+loose/fallback-only scope explicitly, including strict-semantics rejection and
+optional-state behavior. The integer-significand and RTZ-search references are
+now checked directly against existing hardware capture columns in both widths;
+new traces identify source, column, CPU and applicable saturation mode. This
+retains existing golden evidence rather than assuming agreement with GoC proves
+equivalence. All 27 affected/integration tests pass on Clang and GCC; all 14
+tooling tests pass. Production implementations and API support are unchanged.

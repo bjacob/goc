@@ -62,6 +62,11 @@ TEST(PackedConversion, HardwareCapturedRoundingSaturationAndModifiers) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool sat : {false, true})
         for (unsigned column = 0; column < 9; ++column) {
+          SCOPED_TRACE(::testing::Message() << "source=" << capture.source << " column=" << column
+                                            << " cpu=" << cpu << " saturation=" << sat);
+          ASSERT_EQ(goc_test::packed_conversion_reference(
+                        ops[column], capture.source, capture.source ^ 0x80000000U, modes[column]),
+                    capture.expected[column]);
           uint32_t av[32], bv[32], output[32];
           std::fill_n(av, 32, capture.source);
           std::fill_n(bv, 32, capture.source ^ 0x80000000);
@@ -298,6 +303,11 @@ TEST(PackedConversion, Wave64HardwareCorpus) {
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (bool sat : {false, true})
         for (unsigned column = 0; column < 9; ++column) {
+          SCOPED_TRACE(::testing::Message() << "source=" << capture.source << " column=" << column
+                                            << " cpu=" << cpu << " saturation=" << sat);
+          ASSERT_EQ(goc_test::packed_conversion_reference(
+                        ops[column], capture.source, capture.source ^ 0x80000000U, modes[column]),
+                    capture.expected[column]);
           uint32_t a[64], b[64], d[64];
           std::fill_n(a, 64, capture.source);
           std::fill_n(b, 64, capture.source ^ 0x80000000);

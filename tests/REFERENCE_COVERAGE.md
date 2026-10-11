@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Fifty-three explicit family-file reviews exist and 101
+non-generic family references. Fifty-six explicit family-file reviews exist and 98
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -106,3 +106,13 @@ values. Its computed reference is now checked directly against those captured
 outputs, independently of GoC. This demonstrates equivalence on the captured
 domain; the broader random/model tests do not prove arbitrary-input hardware
 equivalence. Existing goldens remain in place.
+
+## Packed and normalized quantization
+
+Three reviews cover packed and normalized conversions and their architecture
+integration tests. These families explicitly reject strict exact semantics.
+Computed integer-significand rounding and FP16 RTZ search references are now
+checked directly against retained captured outputs, with source/column context
+in both wave widths. Exact integer/encoded comparisons intentionally test
+quantization and field preservation; passing captures do not imply strict exact
+API support or arbitrary-input hardware equivalence.
