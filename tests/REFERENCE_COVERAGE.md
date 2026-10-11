@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Sixty-four explicit family-file reviews exist and 90
+non-generic family references. Sixty-six explicit family-file reviews exist and 88
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -153,3 +153,12 @@ inherits rocjitsu's RDNA3 signaling-NaN preservation rule, so its raw comparison
 is distinguished from ordinary loose quiet-NaN checks. Strict exact remains
 unsupported for these APIs. DPP capture failures now report configuration and
 per-lane values alongside the retained hardware digest.
+
+## Rounding and fractional parts
+
+Two reviews distinguish hardware-result corpora, literal edge witnesses and
+DPP differential checks. The exact-rounding DPP test does not request optional
+state; a check of an untouched local variable was removed rather than counted
+as exception coverage. It now reports routing and host/guest settings on failure.
+FRAC remains loose/fallback-only, with retained hardware regression digests and
+literal tiny-negative, denormal, half-selection and masked-alias witnesses.

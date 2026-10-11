@@ -140,7 +140,7 @@ TEST(RoundingArchitecture, ExactDppAliasesAndHostEnvironment) {
                                (policy & 2 ? GOC_FP_FLUSH_OUTPUT_DENORMALS : 0) |
                                (policy & 4 ? GOC_FP_IEEE_MODE : 0);
               unsigned effective = rdna3 && ((policy & 4) || !(policy & 2)) ? m & ~12U : m;
-              uint32_t original[64], expected[64], expected_state = 0x80000040;
+              uint32_t original[64], expected[64];
               for (unsigned lane = 0; lane < lanes; ++lane)
                 original[lane] = goc_test::unary_capture_input(0, lane % 32);
               for (unsigned lane = 0; lane < lanes; ++lane) {
@@ -157,6 +157,10 @@ TEST(RoundingArchitecture, ExactDppAliasesAndHostEnvironment) {
               }
               for (int rounding : {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO})
                 for (bool flush : {false, true}) {
+                  SCOPED_TRACE(::testing::Message()
+                               << "op=" << op << " rdna3=" << rdna3 << " wide=" << wide
+                               << " policy=" << policy << " modifier=" << m << " descriptor="
+                               << descriptor << " rounding=" << rounding << " flush=" << flush);
                   ASSERT_EQ(std::fesetround(rounding), 0);
                   std::feclearexcept(FE_ALL_EXCEPT);
                   std::feraiseexcept(FE_DIVBYZERO);
@@ -164,15 +168,12 @@ TEST(RoundingArchitecture, ExactDppAliasesAndHostEnvironment) {
                   _mm_setcsr((_mm_getcsr() & ~0x8040U) | (flush ? 0x8040U : 0));
                   unsigned controls = _mm_getcsr();
 #endif
-                  uint32_t input[64], state = 0x80000040;
+                  uint32_t input[64];
                   std::memcpy(input, original, lanes * sizeof(uint32_t));
                   ASSERT_EQ(invoke(op, rdna3, wide, flags, exec_mask, modifiers(m) | descriptor,
                                    input, input, nullptr),
                             GOC_SUCCESS);
                   EXPECT_EQ(std::memcmp(input, expected, lanes * sizeof(uint32_t)), 0);
-                  if (!rdna3) {
-                    EXPECT_EQ(state, expected_state);
-                  }
                   EXPECT_EQ(std::fegetround(), rounding);
                   // LLVM may lower vectorized integer shifts through FP conversions.
                   // Sticky flags may be raised, but controls and existing flags survive.

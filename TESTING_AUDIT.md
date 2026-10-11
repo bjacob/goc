@@ -376,3 +376,13 @@ policy. Strict-exact API rejection is distinguished from these reference checks.
 Improved DPP capture failure context while retaining its hardware digest and
 per-output checks. All 17 affected/integration tests pass with Clang and GCC;
 all 14 tooling tests pass. No production changes or new golden arrays.
+
+### Rounding and fractional-part review
+
+Two reviews bring the queue to 66 reviewed and 88 pending. Distinguished retained
+hardware result hashes from literal witnesses and differential DPP references.
+Removed a vacuous exact-rounding assertion that checked a local state variable
+although the API received a null state pointer; this test does not establish
+exception-output correctness. Added exact DPP failure context. All four affected
+rounding tests pass on Clang/GCC and all 14 tooling tests pass. FRAC remains
+explicitly loose/fallback-only; no new numerical model or production change.

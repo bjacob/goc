@@ -949,5 +949,36 @@
     ],
     "scope": "Six conversions across both architectures and widths. All sixteen guest policy/overflow combinations, modifiers, ordinary/seven DPP routes and aliases use the independently computed conversion model with architecture policy adjustments. The literal integer-3 witness anchors OMOD gating. Every-half widening separately checks raw sign/payload/signaling bits following rocjitsu cvt_f32_f16: RDNA3 IEEE=0 with no arithmetic output modifier preserves signaling bits, whereas RDNA4 or IEEE mode quiets them; input-flush maps half subnormals to signed zero. This raw check is intentionally stricter than the general loose quiet-NaN comparator. API calls remain loose and strict exact is rejected; upstream-derived reference behavior does not imply supported strict semantics.",
     "diagnostics": "Architecture assertions identify width, opcode, policy, modifier, route, alias, CPU and lane with actual/expected values. Exhaustive widening failures identify the precise half encoding. No opaque digest requires additional fixtures."
+  },
+  {
+    "file": "rounding_architecture_test.cpp",
+    "assertions": [
+      "RoundingArchitecture.Rdna4HardwareAndRdna3OmodPolicy",
+      "RoundingArchitecture.DppMasksAliasesAndValidation",
+      "RoundingArchitecture.ExactDppAliasesAndHostEnvironment",
+      "RoundingArchitecture.RoundingNanPayloadsIgnoreIeeeMode"
+    ],
+    "evidence": [
+      "tests/rounding_hardware.h",
+      "tests/unary_reference.h",
+      "tests/rounding_architecture_test.cpp"
+    ],
+    "scope": "TRUNC/CEIL/RNDNE/FLOOR FP32 across both architectures and widths. Hardware result digests cover 8192 inputs per policy/modifier with canonicalized NaNs; CPU selectors rotate by batch, not a full CPU-by-input Cartesian product. Computed DPP reference uses double trunc/ceil/floor and explicit ties-even rounding; binary32 inputs and resulting integral values are exactly representable except intentional output scaling overflow. Strict exact DPP/alias tests are differential against an un-routed call, so they prove routing/control invariance rather than independent numerical correctness. Literal raw NaN outputs inherited from rocjitsu establish unconditional quieting and preserved payload/sign. Exact optional state is not requested by this integration test; removal of a vacuous unchanged-local assertion makes that limit explicit.",
+    "diagnostics": "Hardware digests localize to operation, architecture, width, policy and modifier (8192 inputs), with computed DPP and literal NaN companions. Exact DPP failures now include routing, guest mode and host settings."
+  },
+  {
+    "file": "fract_test.cpp",
+    "assertions": [
+      "Fract.HardwareNumericsAndLooseFallback",
+      "Fract.RemovedExactPathsRejectAndLooseStillWorks",
+      "Fract.FractionBoundsAndGuestDenormals"
+    ],
+    "evidence": [
+      "tests/fract_hardware.h",
+      "tests/unary_capture_input.h",
+      "tests/fract_test.cpp"
+    ],
+    "scope": "Loose/fallback FP32 FRAC uses two retained 8192-input gfx1201 result corpora across policies/modifiers and both architectures/widths, with CPU selectors rotating by batch. It compares canonicalized hardware result hashes; this is retained empirical regression evidence, not a supported strict-exact path. Literal FP32/FP16 cases independently anchor zero signs, tiny negative inputs staying below one, integer boundaries, source/destination half selection, guest flushing and in-place mixed EXEC. Strict exact and exact reporting are rejected before writes; loose optional state is unchanged. The hash test uses only captured result hashes, not the stored raw result/exception pair hashes, and does not claim exception generation. General approximate unary calibration is reviewed separately.",
+    "diagnostics": "Small literal boundary cases complement per-policy/modifier hardware hashes. The two corpora distinguish broad random/exponent coverage; each digest failure currently localizes to 8192 inputs, not an individual input. No new reverse-engineered exact model or expanded golden array is introduced."
   }
 ]
