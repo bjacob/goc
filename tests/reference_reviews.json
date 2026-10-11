@@ -2818,5 +2818,59 @@
     ],
     "scope": "Dense FP8/BF8 K16 combinations and RDNA4 integer IU8/IU4 K16 plus IU4 K32, both widths and all CPU selectors. Offline Python goldens cover bounded dyadic floating products and integer sign/clamp/wrap behavior; independent native-width hardware digests anchor integer staged saturation, including opposite-sign near-limit accumulators. Widened logical integer references exercise extremes, cancellation and distinct wave-size saturation groupings. Floating encoding coverage includes all 256 codes of either input, classifying NaNs and independently decoding finite/infinite values; native Wave64 hardware has a separate exactly representable mapping corpus. A new double-reference fractional corpus spans all FP8/BF8 combinations, widths, C modifiers and destination aliases with normal factors/accumulators bounded by four. It provides loose numerical proximity evidence only; strict floating exact semantics are rejected, while non-strict requests fall back. Integer results remain raw in both semantics.",
     "diagnostics": "Added non-output storage preservation to dense golden/alias tests and both-width integer hardware captures, removed production bit-cast dependencies, and expanded floating invalid-bit checks to all 64 bits with unchanged full storage. The fractional corpus has per-row/column context and raw source/guard checks. All fifteen tests and primary/holdout calibration pass on Clang and GCC; each seed supplies 524,288 fuzzy comparisons without changing the existing WMMA bound."
+  },
+  {
+    "file": "wmma_replicated_test.cpp",
+    "assertions": [
+      "WmmaReplicated.DenseMatricesModifiersAliasesAndGuards",
+      "WmmaReplicated.SameMnemonicDifferentInputFootprint",
+      "WmmaReplicated.ValidationAndLooseFallback",
+      "WmmaReplicated.FractionalMatricesAgainstDoubleReference"
+    ],
+    "evidence": [
+      "tests/wmma_replicated_test.cpp",
+      "tests/wmma_replicated_exact_test.cpp",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "RDNA3 FP32-output FP16/BF16 WMMA, both widths and all CPU selectors. Independent logical small-integer matrices span all 64 modifiers and five destination layouts with complete raw storage images. A literal 24-versus-16 witness distinguishes the RDNA3 and RDNA4 input footprints. New fractional double references cover both architectures, widths, formats, every modifier and cycled aliases. RDNA3 replicas have deliberately distinct values, while RDNA4 distributes one matrix across groups; the expected values are computed from logical matrices without production helpers. Bounded normal operands and fractional accumulators stay below four. This file provides loose arithmetic/layout evidence; borrowed exact hardware evidence resides in the companion exact family.",
+    "diagnostics": "Removed production bit-cast dependency and expanded invalid-request checks from one word to the entire destination storage. Fractional outputs use the existing WMMA tolerance and all non-output registers/guards remain raw. Four tests and original/holdout calibration pass on Clang and GCC, with 524,288 finite comparisons per seed/compiler."
+  },
+  {
+    "file": "wmma_test.cpp",
+    "assertions": [
+      "Wmma.HardwareCapturedLooseResults",
+      "Wmma.LaneMappingAndPartialOperandOverlap",
+      "Wmma.UnsupportedSemanticsPreserveAllRegisters",
+      "FloatFormats.HalfBoundaryBits",
+      "Wmma.HardwareCapturedExactResults",
+      "Dot.HardwareCapturedSpecialValuesAndRounding",
+      "Dot.PublicApiHardwareFixturesMaskAndOverlap",
+      "Wmma.AllModifierCombinations",
+      "Wmma.Bf16FastPathSubnormalFallback",
+      "Wmma.NormalBf16FactorsWithSubnormalProducts",
+      "Wmma.DeterministicDenseIntegerGolden",
+      "Dot.LooseAndFallbackIntegerGolden",
+      "WmmaWave64.CapturedGoldensAndOverlap",
+      "WmmaWave64.DenseLaneMapping",
+      "WmmaWave64.ModifiersAndErrorsPreserveState",
+      "Wmma.Fp16V3FiniteAndExceptionalInputsMatchScalar",
+      "Wmma.Bf16V3AndZen4FallbackMatchScalar",
+      "Wmma.Bf16V3BoundaryGoldens",
+      "Wmma.Bf16CpuLevelsRespectModifiers",
+      "Wmma.Bf16Zen4EligibilityChecksEveryPackedElement",
+      "Wmma.Bf16Zen4EligibilityChecksEveryAccumulator",
+      "Wmma.SimdModifiersDenseReferenceAndOverlap",
+      "Wmma.SimdModifiersSpecialValuesAndFallback"
+    ],
+    "evidence": [
+      "tests/wmma_test.cpp",
+      "tests/wmma_fixtures.h",
+      "tests/dot_fixtures.h",
+      "tests/dense_golden.h",
+      "tests/wmma_replicated_test.cpp",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "RDNA4 FP32-output FP16/BF16 WMMA in both widths, across available CPU selectors. Borrowed hardware matrix fixtures have width-specific raw exact outputs and fuzzy loose comparisons. Independent offline small-integer goldens, identity matrices, partial operand overlaps and modifier integer arithmetic cover layout and aliases. Explicit BF16 subnormal/overflow/category witnesses and per-element/per-accumulator Zen4 eligibility checks cover fallback boundaries. General scalar/SIMD comparisons are differential, not hardware evidence; independent bounded fractional references for these same entry points now reside in wmma_replicated_test.cpp. Direct internal format/DOT2 fixture tests and public DOT2 masked/alias checks are supplemental to the separately reviewed DOT2 families. Exact flags remain opt-out where exposed by DOT2.",
+    "diagnostics": "Added all non-output storage preservation to matrix capture/overlap and dense golden checks in both widths. General written finite nonzero scalar/SIMD arithmetic uses fuzzy comparisons; untouched storage, zero/infinity categories and literal policy witnesses remain raw. Captured exact results retain raw bits. All 23 tests pass on Clang and GCC, including calibration with alternate random differential seeds; the existing tolerance remains unchanged."
   }
 ]

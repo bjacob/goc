@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstring>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <random>
@@ -33,6 +34,14 @@ struct Registers {
       v[i] = storage[23 - i] + 1;
       storage[i][0] = storage[i][34] = 0xdeadbeef;
     }
+  }
+
+  void preserved(const uint32_t (&before)[24][35], int dst) {
+    for (int reg = 0; reg < 24; ++reg)
+      for (int word = 0; word < 35; ++word)
+        if (reg < dst || reg >= dst + 8 || word == 0 || word > 32) {
+          EXPECT_EQ(storage[23 - reg][word], before[23 - reg][word]);
+        }
   }
 
   void guards() {
@@ -66,13 +75,15 @@ TEST(Wmma, HardwareCapturedLooseResults) {
             }
           for (int reg = 0; reg < 8; ++reg)
             std::fill(r.v[8 + reg], r.v[8 + reg] + 32, f.c);
+          uint32_t before[24][35];
+          std::memcpy(before, r.storage, sizeof(before));
           ASSERT_EQ(fn(level, 0, r.v + dst, r.v, r.v + 4, r.v + 8), 0);
           for (int reg = 0; reg < 8; ++reg)
             for (int lane = 0; lane < 32; ++lane)
               EXPECT_TRUE(goc_test::fuzzy(goc::as_float(r.v[dst + reg][lane]),
                                           goc::as_float(f.expected32),
                                           goc_test::wmma_f32_tolerance));
-          r.guards();
+          r.preserved(before, dst);
         }
     }
 }
@@ -141,13 +152,15 @@ TEST(Wmma, HardwareCapturedExactResults) {
             }
           for (int reg = 0; reg < 8; ++reg)
             std::fill(r.v[8 + reg], r.v[8 + reg] + 32, f.c);
+          uint32_t before[24][35];
+          std::memcpy(before, r.storage, sizeof(before));
           ASSERT_EQ(fn(level | GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT, 0, r.v + dst,
                        r.v, r.v + 4, r.v + 8),
                     0);
           for (int reg = 0; reg < 8; ++reg)
             for (int lane = 0; lane < 32; ++lane)
               EXPECT_EQ(r.v[dst + reg][lane], f.expected32);
-          r.guards();
+          r.preserved(before, dst);
         }
     }
 }
@@ -270,6 +283,8 @@ TEST(Wmma, DeterministicDenseIntegerGolden) {
             for (int col = 0; col < 16; ++col)
               r.v[8 + row % 8][col + 16 * (row / 8)] = goc::as_bits(float(int(rng() % 5) - 2));
           auto fn = bf16 ? goc_v_wmma_f32_16x16x16_bf16_rdna4 : goc_v_wmma_f32_16x16x16_f16_rdna4;
+          uint32_t before[24][35];
+          std::memcpy(before, r.storage, sizeof(before));
           ASSERT_EQ(
               fn(level | semantics | GOC_SEMANTICS_STRICT, 0, r.v + dst, r.v, r.v + 4, r.v + 8), 0);
           for (int row = 0; row < 16; ++row)
@@ -278,6 +293,7 @@ TEST(Wmma, DeterministicDenseIntegerGolden) {
                         goc::as_bits(float(kDenseGolden[row * 16 + col])))
                   << "row=" << row << " col=" << col << " level=" << level
                   << " semantics=" << semantics;
+          r.preserved(before, dst);
         }
 }
 
@@ -326,6 +342,8 @@ TEST(WmmaWave64, CapturedGoldensAndOverlap) {
               }
             for (int reg = 4; reg < 8; ++reg)
               std::fill(v[reg], v[reg] + 64, f.c);
+            uint32_t before[12][64];
+            std::memcpy(before, data, sizeof(before));
             ASSERT_EQ(fn(cpu | semantics | GOC_SEMANTICS_STRICT, 0, v + dst, v, v + 2, v + 4), 0);
             for (int reg = 0; reg < 4; ++reg)
               for (int lane = 0; lane < 64; ++lane) {
@@ -335,6 +353,10 @@ TEST(WmmaWave64, CapturedGoldensAndOverlap) {
                   EXPECT_TRUE(goc_test::fuzzy(goc::as_float(v[dst + reg][lane]),
                                               goc::as_float(f.expected64),
                                               goc_test::wmma_f32_tolerance));
+              }
+            for (int reg = 0; reg < 12; ++reg)
+              if (reg < dst || reg >= dst + 4) {
+                EXPECT_EQ(std::memcmp(data[11 - reg], before[11 - reg], sizeof(before[0])), 0);
               }
           }
       }
@@ -438,15 +460,20 @@ TEST(Wmma, Fp16V3FiniteAndExceptionalInputsMatchScalar) {
         ASSERT_EQ(goc_v_wmma_f32_16x16x16_f16_rdna4(GOC_CPU_X86_64_V3, 0, actual.v + dst, actual.v,
                                                     actual.v + 4, actual.v + 8),
                   GOC_SUCCESS);
-        // Finite values use the same K order and FMA operations. Loose NaN
-        // payloads may differ between the CPU converter and scalar widening.
+        // Differential dispatch check, not an independent arithmetic oracle.
+        // Finite results use the loose bound; categories and storage stay exact.
         for (int reg = 0; reg < 24; ++reg)
           for (int lane = 0; lane < 32; ++lane) {
             bool written = reg >= dst && reg < dst + 8;
-            if (written && std::isnan(goc::as_float(reference.v[reg][lane])))
+            float expected = goc::as_float(reference.v[reg][lane]);
+            if (written && std::isnan(expected)) {
               EXPECT_TRUE(std::isnan(goc::as_float(actual.v[reg][lane])));
-            else
+            } else if (written && std::isfinite(expected) && expected != 0) {
+              EXPECT_TRUE(goc_test::fuzzy(goc::as_float(actual.v[reg][lane]), expected,
+                                          goc_test::wmma_f32_tolerance));
+            } else {
               EXPECT_EQ(actual.v[reg][lane], reference.v[reg][lane]);
+            }
           }
         reference.guards();
         actual.guards();
@@ -491,10 +518,15 @@ TEST(Wmma, Bf16V3AndZen4FallbackMatchScalar) {
         for (int reg = 0; reg < 24; ++reg)
           for (int lane = 0; lane < 32; ++lane) {
             bool written = reg >= dst && reg < dst + 8;
-            if (written && std::isnan(goc::as_float(reference.v[reg][lane])))
+            float expected = goc::as_float(reference.v[reg][lane]);
+            if (written && std::isnan(expected)) {
               EXPECT_TRUE(std::isnan(goc::as_float(actual.v[reg][lane])));
-            else
+            } else if (written && std::isfinite(expected) && expected != 0) {
+              EXPECT_TRUE(goc_test::fuzzy(goc::as_float(actual.v[reg][lane]), expected,
+                                          goc_test::wmma_f32_tolerance));
+            } else {
               EXPECT_EQ(actual.v[reg][lane], reference.v[reg][lane]);
+            }
           }
         reference.guards();
         actual.guards();

@@ -557,3 +557,24 @@ measured `1.9073486328125e-6` and `0.0001120699316373417`. Clang and GCC agree.
 The absolute term covers cancellation near zero; the unchanged bound passes
 both seeds. The separate offline dyadic goldens, exact integer references and
 single-code decoding tests retain their raw comparisons on those domains.
+
+
+### Dense FP32-output FP16/BF16 WMMA across architectures
+
+`WmmaReplicated.FractionalMatricesAgainstDoubleReference` compares both RDNA3
+and RDNA4, both widths and operand types, all 64 modifiers and cycled destination
+aliases against independent logical double accumulation. RDNA3 replicas differ
+by group; RDNA4 uses one distributed logical matrix. Signed normal factors use
+eight exponents below four, with fractional accumulators bounded by four.
+Each seed covers 524,288 finite comparisons per compiler. Seed 63827 measured
+maximum absolute error `5.5860728025436401e-6` and relative error
+`0.00036729950565099321`; holdout 91397 measured `6.4261257648468018e-6` and
+`0.0010111704595472336`. The unchanged WMMA bound `(1e-5, 1e-5)` covers both,
+including cancellation through its absolute term. Clang/GCC measurements match.
+
+The core `wmma_test.cpp` capture and general differential comparisons now measure
+128,065 finite pairs (alternate differential seeds: 128,080), with unchanged
+maximum absolute/relative errors `0.03125` / `8.7627527626987843e-8` on both
+compilers. Alternate seeds replace 73/107 with 479/719 in the scalar/SIMD
+corpora; hardware captures are unchanged. These differential comparisons are
+supplemental dispatch checks, not independent proof of hardware accuracy.

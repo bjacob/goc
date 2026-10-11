@@ -895,3 +895,16 @@ guard and floating validation preservation checks; removed production bit-cast
 dependencies. All fifteen tests pass on Clang and GCC. Inventory: 151/154
 families reviewed; three dense/replicated WMMA families and final broad
 verification remain pending.
+
+
+### Dense and replicated FP32-output WMMA reviews
+
+Added independent bounded fractional references across RDNA3/RDNA4, both widths,
+formats, all modifiers, aliases and CPU selectors. RDNA3 replicas deliberately
+differ. Original/holdout seeds each provide 524,288 comparisons per compiler;
+maximum absolute errors are 5.59e-6 and 6.43e-6 within the existing WMMA bound.
+Preserved borrowed hardware exact fixtures, integer goldens and category/fallback
+witnesses; changed general finite differential checks to fuzzy comparisons and
+strengthened matrix source/error preservation. All 27 tests and calibration
+runs pass on Clang and GCC. Inventory: 153/154 families reviewed; the packed/
+replicated exact family and final broad verification remain pending.

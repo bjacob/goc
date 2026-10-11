@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 151 explicit family-file reviews exist and 3
+non-generic family references. 153 explicit family-file reviews exist and 1
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -612,3 +612,12 @@ widths, C modifiers and destination aliases. Exhaustive encoding checks remain
 independent decoding/category tests. Added source/guard preservation to golden
 and capture paths and full-storage floating validation checks. Both seeds pass
 the existing WMMA tolerance on Clang and GCC.
+
+
+Dense FP32-output WMMA reviews now connect RDNA4 width-specific hardware
+captures, offline integer goldens and literal fallback witnesses with an
+independent fractional corpus shared across RDNA3/RDNA4 API checks. Distinct
+RDNA3 replica values expose group selection, and both architectures cover all
+modifiers, aliases and CPU selectors. General finite differential checks use
+fuzzy bounds; exact fixtures, categories and storage stay raw. The packed and
+replicated exact companion family remains the last family-file review.
