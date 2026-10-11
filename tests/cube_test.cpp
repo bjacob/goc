@@ -46,8 +46,13 @@ TEST(Cube, HardwareCartesianCorpus) {
         ASSERT_EQ(functions[column / 5](cpu | exact, UINT32_MAX,
                                         goc_test::cube_capture_modes[column % 5], d, a, b, c),
                   GOC_SUCCESS);
-        for (auto word : dv)
-          digest = goc_test::capture_hash_bytes(digest, word, 4);
+        for (unsigned lane = 0; lane < 32; ++lane) {
+          uint32_t expected = goc_test::cube_reference(column / 5, av[lane], bv[lane], cv[lane],
+                                                       goc_test::cube_capture_modes[column % 5]);
+          ASSERT_EQ(dv[lane], expected)
+              << "cpu=" << cpu << " column=" << column << " input=" << start + lane;
+          digest = goc_test::capture_hash_bytes(digest, dv[lane], 4);
+        }
       }
       EXPECT_EQ(digest, goc_test::cube_capture_digests[column]) << cpu << "/" << column;
     }
@@ -78,6 +83,11 @@ TEST(Cube, HardwareLiteralCases) {
   for (const auto &capture : goc_test::cube_captures)
     for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu)
       for (unsigned column = 0; column < 20; ++column) {
+        ASSERT_EQ(goc_test::cube_reference(column / 5, capture.source[0], capture.source[1],
+                                           capture.source[2],
+                                           goc_test::cube_capture_modes[column % 5]),
+                  capture.expected[column])
+            << "column=" << column;
         uint32_t av[32], bv[32], cv[32], dv[32];
         std::fill_n(av, 32, capture.source[0]);
         std::fill_n(bv, 32, capture.source[1]);
@@ -345,8 +355,13 @@ TEST(Cube, Wave64HardwareCartesianCorpus) {
                                                goc_test::cube_capture_modes[column % 5], d, a, b,
                                                c),
                   GOC_SUCCESS);
-        for (auto word : dv)
-          digest = goc_test::capture_hash_bytes(digest, word, 4);
+        for (unsigned lane = 0; lane < 64; ++lane) {
+          uint32_t expected = goc_test::cube_reference(column / 5, av[lane], bv[lane], cv[lane],
+                                                       goc_test::cube_capture_modes[column % 5]);
+          ASSERT_EQ(dv[lane], expected)
+              << "cpu=" << cpu << " column=" << column << " input=" << start + lane;
+          digest = goc_test::capture_hash_bytes(digest, dv[lane], 4);
+        }
       }
       EXPECT_EQ(digest, goc_test::cube_capture_digests[column]) << cpu << "/" << column;
     }

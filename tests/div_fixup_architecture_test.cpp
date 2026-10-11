@@ -99,7 +99,9 @@ TEST(DivFixupArchitecture, PoliciesModifiersMasksAndAliases) {
               ASSERT_EQ(call(arch, wide, op, cpu | policy(guest) | (loose ? 0 : exact), exec_mask,
                              mode, d, a, b, c, loose ? &state : nullptr),
                         GOC_SUCCESS);
-              ASSERT_EQ(state, 0x12345678U);
+              if (loose) {
+                ASSERT_EQ(state, 0x12345678U);
+              }
               ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0)
                   << arch << '/' << wide << '/' << op << '/' << guest << '/' << mode << '/' << cpu;
             }

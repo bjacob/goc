@@ -465,3 +465,12 @@ support, with separate NaN classification versus payload witnesses. Half-median
 hardware captures now include per-input checks while retaining their digests and
 NaN canonicalization. DPP failure context includes EXEC. All 32 family tests pass
 with Clang/GCC; all 14 tooling tests pass. No production or fixture changes.
+
+### Cube and division architecture review
+
+Three reviews bring the queue to 95 reviewed and 59 pending. Cube numeric
+reference is checked directly against retained literal captures; both-width
+Cartesian digests now have per-input companions. Recorded captured-domain limits,
+borrowed division witnesses and the differential nature of DIV_FMAS policy tests.
+DIV_FIXUP state assertions now apply only when its pointer is passed. All 28
+family tests pass with Clang/GCC; all 14 tooling tests pass. Production unchanged.

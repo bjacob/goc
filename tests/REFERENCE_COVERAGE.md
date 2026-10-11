@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Ninety-two explicit family-file reviews exist and 62
+non-generic family references. Ninety-five explicit family-file reviews exist and 59
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -240,3 +240,13 @@ rules where intended, while general half tests permit canonicalized NaNs.
 Half-median hardware corpora now have per-input checks and retain their hashes,
 including the original NaN canonicalization policy. Mode/route integration
 sampling is explicitly distinguished from exhaustive Cartesian coverage.
+
+## Cube and division architecture integration
+
+Three reviews distinguish independent cube/quotient-selection references from
+differential DIV_FMAS policy checks. Cube computed references now compare
+directly with retained literal captures; Cartesian hardware digests retain
+per-input diagnostics. This establishes captured-domain equivalence without
+claiming arbitrary-input proof. Borrowed division literals cover tiny quotients,
+fused scaling, midpoint and overflow behavior. Architecture integration records
+stratified semantics coverage and unsupported exact reporting explicitly.

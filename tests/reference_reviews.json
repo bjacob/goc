@@ -1454,5 +1454,68 @@
     ],
     "scope": "Wave32 DPP integration for nine half ternary selections, loose-only. Two gfx1201 digests cover finite inputs and OMOD boundaries with per-lane reference checks. Defined uint32 LCG draws, reduced deliberate EXEC set for nondefault modes, whole-register alias layouts, guards and preserved halves are covered; separate loops exercise every 8192 modifier combination with all seven DPP descriptors and both overflow settings on all CPU selectors. Integer selection followed by power-of-two scaling and explicit half quantization justifies raw finite result checks; random NaNs are canonicalized. Invalid DPP and strict-exact rejection are explicit. This family does not implement or establish exact numerical semantics.",
     "diagnostics": "Hardware failures identify CPU/opcode/modifier/EXEC/lane; broad random tests have configuration traces and retained independent hardware hashes. Reduced mask cross-product is the previously measured audit optimization."
+  },
+  {
+    "file": "cube_test.cpp",
+    "assertions": [
+      "Cube.HardwareCartesianCorpus",
+      "Cube.AxisTiesAtEveryMaskedLaneWithAlias",
+      "Cube.HardwareLiteralCases",
+      "Cube.EveryModifierSpecialValuesAndRandomBits",
+      "Cube.EveryModifierMaskAndDestinationAlias",
+      "Cube.SharedSourceAliases",
+      "Cube.HostFloatingPointState",
+      "Cube.ValidationAndSemanticFallback",
+      "Cube.DppModifiersMasksAliasesAndGuards",
+      "Cube.DppValidation",
+      "Cube.DppHardwareCorpusAndHostFpState",
+      "Cube.Wave64HardwareCartesianCorpus",
+      "Cube.Wave64AxisTiesAtEveryMaskedLaneWithAlias",
+      "Cube.Wave64EveryModifierSpecialValuesAndRandomBits",
+      "Cube.Wave64EveryModifierMaskAndDestinationAlias",
+      "Cube.Wave64HostFloatingPointState",
+      "Cube.Wave64ValidationAndSemanticFallback",
+      "Cube.Wave64DppModifiersMasksAliasesAndGuards",
+      "Cube.ArchitectureIeeeDenormalAndNanPolicies",
+      "Cube.Dx10ClampFlagAvailability",
+      "Cube.EmptyExecValidatesBothArchitectureContracts"
+    ],
+    "evidence": [
+      "tests/cube_test.cpp",
+      "tests/cube_reference.h",
+      "tests/cube_hardware.h",
+      "tests/dpp_reference.h",
+      "src/cube.h"
+    ],
+    "scope": "Four cube operations on both architectures and wave widths. Production follows borrowed rocjitsu shared/cube.h; numeric reference independently uses ordered FP comparisons and double power-of-two scaling with explicit flush/overflow. Reference now checks retained literal gfx1201 outputs directly, and both-width Cartesian corpora compare each input before the captured hash. Captures establish equivalence on their domain, not exhaustive arbitrary-input proof. Raw exact comparisons are justified by axis selection/sign changes and exactly representable normal binary scaling with explicit endpoints; NaN/payload behavior remains hardware/upstream anchored. All CPU selectors, 512 modifiers, deterministic mt19937 bits, tie ordering, EXEC, aliases, guards, DPP and host settings are exercised. RDNA3 IEEE/DX10/OMOD differences have upstream-derived literal witnesses in both semantics.",
+    "diagnostics": "Cartesian failures identify CPU/column/input, retaining hardware hashes. DPP digest has all-modifier routed-reference and literal companions rather than newly duplicating its large loop. Wave64 reuses the same per-output corpus; no new native Wave64 capture is claimed."
+  },
+  {
+    "file": "div_fixup_architecture_test.cpp",
+    "assertions": [
+      "DivFixupArchitecture.PoliciesModifiersMasksAndAliases",
+      "DivFixupArchitecture.ProvisionalQuotientAndFlushedOperands",
+      "DivFixupArchitecture.ErrorsAndHostEnvironment"
+    ],
+    "evidence": [
+      "tests/div_fixup_architecture_test.cpp",
+      "tests/div_fixup_reference.h"
+    ],
+    "scope": "FP32/64 DIV_FIXUP policy integration, RDNA3/RDNA4 and Wave32/Wave64. Independent long-double decode/classification selects raw quotient or special-case outputs and exactly rescales normal significands; it relies on the wider long-double range of the validated x86 builds. Borrowed division-test literals establish preservation of the tiny provisional quotient while flushing denominator/numerator only. Deterministic sequenced mt19937 pairs, all CPU selectors, all modifiers, eight guest policies, masks and cross-register aliases are covered. Semantics is stratified by mode parity rather than fully crossed. RDNA3 exact state rejection is tested atomically; successful reporting evidence belongs to div_fixup_test.cpp, not this review. State preservation checks now apply only to loose calls actually passing the pointer.",
+    "diagnostics": "Full register comparisons identify architecture/width/type/guest/mode/CPU. Independent raw special-case witnesses and unsupported-state checks supplement computed references. These are exact selection/scaling comparisons, not fuzzy general division estimates."
+  },
+  {
+    "file": "div_fmas_architecture_test.cpp",
+    "assertions": [
+      "DivFmasArchitecture.PoliciesModifiersMasksAndAliases",
+      "DivFmasArchitecture.LiteralDenormalsAndOutputScaling",
+      "DivFmasArchitecture.ReportingErrorsAndHostEnvironment",
+      "DivFmasArchitecture.BorrowedFusedScalingWitnesses"
+    ],
+    "evidence": [
+      "tests/div_fmas_architecture_test.cpp"
+    ],
+    "scope": "FP32/64 DIV_FMAS on both architectures and widths. Broad random policy/alias test is explicitly differential: RDNA4 exact GoC output with effective OMOD becomes expected output, so it establishes integration consistency rather than independent bit-exact arithmetic. Guest flush/sign and OMOD gating have literal witnesses, and seven cases per precision inherited from rocjitsu division_test.cpp at ffc144c564c independently anchor fused scaling direction, subnormal midpoint, avoided overflow and cancellation. All CPU selectors, sequenced mt19937 draws, masks and overlapping split destinations are covered. Active RDNA3 OMOD remains loose-only; unavailable exact optional state (including output-flush cases) is rejected atomically. Raw equality in the differential test is intentional; mathematical loose arithmetic tolerances are a separate family concern.",
+    "diagnostics": "Integration checks identify architecture/width/precision/guest/mode/CPU. Borrowed literal witnesses identify precision/lane and preserve exact expected bit patterns; no hardware equivalence is inferred merely from the differential oracle."
   }
 ]
