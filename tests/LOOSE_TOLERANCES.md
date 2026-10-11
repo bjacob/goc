@@ -188,3 +188,26 @@ Measurements are in `goc-build/coverage-work/testing-half-calibration/`.
 The numeric comparator is shared with the benchmark's reciprocal correctness
 checks without introducing a GoogleTest dependency there. Small wrapper helpers
 retain their instruction-specific classification/preservation rules.
+
+## MULLIT lighting arithmetic
+
+Ordinary computed-result comparisons use `(2^-149, 1.2e-7)`. Measurements against
+our independently expressed, rounded FP32 lighting reference found zero error in
+2,969,024 finite nonsentinel pairs from `Mullit`, and 1,687,776 from
+`MullitArchitecture` (seed 58210), on both Clang and GCC. Replacing the architecture
+random seed with 91367 gave 1,687,244 finite pairs, again zero error on both.
+The latter includes unchanged deterministic Cartesian cases; only the random
+policy inputs are a holdout. Both architectures, wave widths, CPU selectors,
+all 512 modifiers, guest policies and sampled DPP/alias/mask combinations are
+represented. This is not exhaustive over their full Cartesian product.
+
+Zero observed error does not justify requiring bitwise identity for future loose
+implementations. The chosen margin allows roughly one FP32 encoding step for
+normal results, plus one minimum-subnormal step; it is an explicit allowance
+above the measured zero, not an estimate of an observed nonzero error. Tests pin
+acceptance/rejection at representative boundaries. Signed zero, the lighting
+sentinel, untouched storage and literal policy witnesses remain raw checks.
+Hardware digests remain separate exact regression anchors. These measurements
+establish reference proximity on the tested domains, not hardware equivalence
+for arbitrary input bits. Reproduction script and instrumented snapshots/logs:
+`goc-build/coverage-work/testing-mullit-calibration/run.py`.

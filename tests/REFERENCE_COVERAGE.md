@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. 101 explicit family-file reviews exist and 53
+non-generic family references. 103 explicit family-file reviews exist and 51
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -280,3 +280,12 @@ RDNA4; the RDNA3 computed reference inherits rocjitsu's table and RTZ extraction
 Architecture witnesses expose table precision and scaling differences. Records
 state the long-double assumption and the Wave32 even-exponent sampling limit.
 Optional-state assertions now apply only when the pointer is passed.
+
+## MULLIT loose lighting arithmetic
+
+Both family files now compare general numerical results with measured fuzzy
+bounds while retaining exact sentinel, signed-zero, untouched-storage, literal
+policy and hardware-capture checks. The reference is a loose mathematical and
+policy reference; strict exact remains unsupported. Calibration and an additional
+deterministic random seed pass on Clang/GCC. Review records distinguish the
+sampled routing product from exhaustive modifier and Cartesian input sweeps.

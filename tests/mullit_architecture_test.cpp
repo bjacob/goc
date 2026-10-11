@@ -35,8 +35,6 @@ int call(bool rdna4, bool wide, uint64_t flags, uint64_t exec_mask, uint64_t mod
                                                              b, c, state);
 }
 
-uint32_t canonical(uint32_t word) { return (word & 0x7fffffff) > 0x7f800000 ? 0x7fc00000 : word; }
-
 } // namespace
 
 TEST(MullitArchitecture, PoliciesAllModifiersDppMasksAliasesAndGuards) {
@@ -83,11 +81,18 @@ TEST(MullitArchitecture, PoliciesAllModifiersDppMasksAliasesAndGuards) {
                            c, &state),
                       GOC_SUCCESS);
             ASSERT_EQ(state, 0x12345678U);
-            for (unsigned lane = 0; lane < 64; ++lane)
-              if ((writes >> lane) & 1)
-                words[target][lane + 1] = canonical(words[target][lane + 1]);
-            ASSERT_EQ(std::memcmp(words, expected, sizeof(words)), 0)
-                << rdna4 << "/" << wide << "/" << guest << "/" << mode << "/" << cpu;
+            for (unsigned reg = 0; reg < 4; ++reg)
+              for (unsigned lane = 0; lane < 66; ++lane) {
+                if (reg == target && lane > 0 && lane <= 64 && ((writes >> (lane - 1)) & 1)) {
+                  ASSERT_TRUE(goc_test::mullit_result(words[reg][lane], expected[reg][lane]))
+                      << rdna4 << "/" << wide << "/" << guest << "/" << mode << "/" << cpu << "/"
+                      << reg << "/" << lane;
+                } else {
+                  ASSERT_EQ(words[reg][lane], expected[reg][lane])
+                      << rdna4 << "/" << wide << "/" << guest << "/" << mode << "/" << cpu << "/"
+                      << reg << "/" << lane;
+                }
+              }
           }
         }
 }
@@ -111,7 +116,7 @@ TEST(MullitArchitecture, Rdna3LightingCartesianValues) {
       for (uint64_t cpu = 0; cpu <= goc_init_cpu_flags(); ++cpu) {
         ASSERT_EQ(call(false, true, cpu | policy(2), UINT64_MAX, mode, d, a, b, c), GOC_SUCCESS);
         for (unsigned lane = 0; lane < 64; ++lane)
-          ASSERT_EQ(canonical(words[3][lane]), want[lane])
+          ASSERT_TRUE(goc_test::mullit_result(words[3][lane], want[lane]))
               << cpu << "/" << mode << "/" << start << "/" << lane;
       }
     }

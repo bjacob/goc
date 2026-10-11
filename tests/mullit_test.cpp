@@ -62,8 +62,9 @@ TEST(Mullit, AllModifiersMasksAndAliases) {
               uint32_t want = initial[reg][lane], got = words[reg][lane];
               if (reg == target && lane > 0 && lane <= 32 && ((exec_mask >> (lane - 1)) & 1)) {
                 want = result[lane - 1];
-                if ((got & 0x7fffffff) > 0x7f800000)
-                  got = 0x7fc00000;
+                ASSERT_TRUE(goc_test::mullit_result(got, want))
+                    << mode << "/" << cpu << "/" << target << "/" << lane;
+                continue;
               }
               ASSERT_EQ(got, want) << mode << "/" << cpu << "/" << target << "/" << lane;
             }
@@ -118,8 +119,9 @@ TEST(Mullit, DppModifiersMasksAliasesAndGuards) {
                   uint32_t want = initial[reg][lane], got = words[reg][lane];
                   if (reg == target && lane > 0 && lane < 33 && ((writes >> (lane - 1)) & 1)) {
                     want = result[lane - 1];
-                    if ((got & 0x7fffffff) > 0x7f800000)
-                      got = 0x7fc00000;
+                    ASSERT_TRUE(goc_test::mullit_result(got, want))
+                        << mode << "/" << descriptor << "/" << cpu << "/" << target << "/" << lane;
+                    continue;
                   }
                   ASSERT_EQ(got, want) << mode << "/" << descriptor << "/" << cpu << "/" << target;
                 }
@@ -213,8 +215,9 @@ TEST(Mullit, Wave64AllModifiersMasksAndAliases) {
               uint32_t want = initial[reg][lane], got = words[reg][lane];
               if (reg == target && lane > 0 && lane <= 64 && ((exec_mask >> (lane - 1)) & 1)) {
                 want = result[lane - 1];
-                if ((got & 0x7fffffff) > 0x7f800000)
-                  got = 0x7fc00000;
+                ASSERT_TRUE(goc_test::mullit_result(got, want))
+                    << mode << "/" << cpu << "/" << target << "/" << lane;
+                continue;
               }
               ASSERT_EQ(got, want) << mode << "/" << cpu << "/" << target << "/" << lane;
             }
@@ -276,8 +279,9 @@ TEST(Mullit, Wave64DppModifiersMasksAliasesAndGuards) {
                   uint32_t want = initial[reg][lane], got = words[reg][lane];
                   if (reg == target && lane > 0 && lane < 65 && ((writes >> (lane - 1)) & 1)) {
                     want = result[lane - 1];
-                    if ((got & 0x7fffffff) > 0x7f800000)
-                      got = 0x7fc00000;
+                    ASSERT_TRUE(goc_test::mullit_result(got, want))
+                        << mode << "/" << descriptor << "/" << cpu << "/" << target << "/" << lane;
+                    continue;
                   }
                   ASSERT_EQ(got, want) << mode << "/" << descriptor << "/" << cpu << "/" << target;
                 }
@@ -299,4 +303,15 @@ TEST(Mullit, Wave64OptionalState) {
               GOC_ERROR_UNSUPPORTED_GLOBAL_STATE);
     EXPECT_EQ(exceptions, 0x80000000U);
   }
+}
+
+TEST(Mullit, LooseComparisonContract) {
+  EXPECT_TRUE(goc_test::mullit_result(0x3f800001, 0x3f800000));
+  EXPECT_FALSE(goc_test::mullit_result(0x3f800002, 0x3f800000));
+  EXPECT_TRUE(goc_test::mullit_result(2, 1));
+  EXPECT_FALSE(goc_test::mullit_result(4, 1));
+  EXPECT_FALSE(goc_test::mullit_result(0x80000000, 0));
+  EXPECT_FALSE(goc_test::mullit_result(0xff7ffffe, 0xff7fffff));
+  EXPECT_TRUE(goc_test::mullit_result(0x7fc12345, 0x7fc00000));
+  EXPECT_FALSE(goc_test::mullit_result(0x7f800000, 0xff800000));
 }

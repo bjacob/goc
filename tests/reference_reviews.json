@@ -1652,5 +1652,46 @@
     ],
     "scope": "RDNA3/RDNA4 TRIG_PREOP: computed reference inherits rocjitsu ffc144c564c execute_v_trig_preop_f64_vop3 2/pi table and RTZ extraction, with the retained RDNA4 table precision. Wider long-double arithmetic is the reference assumption. RDNA3 strict exact sweep covers all exponents in Wave64 and even exponents in Wave32, all selectors and eight scaling/clamp combinations, on all CPU selectors. Both-architecture guest-policy integration stratifies exact/loose modes, masks, aliases and guarded storage. Literal witnesses distinguish table tails, tiny-result scaling and one-bit rounding. Exact optional state is explicitly unsupported; loose state checks now apply only to calls passing a pointer.",
     "diagnostics": "Computed-reference failures identify architecture/width/policy/mode/target/CPU. Four literal borrowed/table witnesses complement the RDNA4 hardware captures in trig_preop_test.cpp; computed agreement alone is not claimed as new hardware proof."
+  },
+  {
+    "file": "mullit_test.cpp",
+    "assertions": [
+      "Mullit.HardwareSpecialValuesAndModifiers",
+      "Mullit.AllModifiersMasksAndAliases",
+      "Mullit.InvalidFlagsAndEmptyExec",
+      "Mullit.DppModifiersMasksAliasesAndGuards",
+      "Mullit.DppHardwareCorpus",
+      "Mullit.Wave64HardwareSpecialValuesAndModifiers",
+      "Mullit.Wave64AllModifiersMasksAndAliases",
+      "Mullit.Wave64InvalidFlagsAndEmptyExec",
+      "Mullit.Wave64DppModifiersMasksAliasesAndGuards",
+      "Mullit.Wave64OptionalState",
+      "Mullit.LooseComparisonContract"
+    ],
+    "evidence": [
+      "tests/mullit_test.cpp",
+      "tests/mullit_reference.h",
+      "tests/mullit_hardware.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "RDNA4 MULLIT both widths, loose-only. Independent lighting-rule reference supplies numerical comparisons; retained gfx1201 MODE=0xf0 Cartesian and DPP captures separately anchor special behavior. General written numerical results now use calibrated fuzzy bounds; signed zeros, sentinel and untouched storage stay exact. All 512 modifiers, aliases, unaligned guards, shared sources, seven DPP descriptors and EXEC are exercised on all available CPU selectors. Wave32 uses 84 masks for ordinary routing and endpoint DPP modes; Wave64 uses three representative masks and stratified row masks. Strict exact semantics and exact optional-state reporting are explicitly rejected. Captures retain their limited domain and NaN canonicalization.",
+    "diagnostics": "Computed checks report CPU/mode/lane (and architecture/policy/route where applicable); hardware digests remain complemented by per-output computed and literal witnesses. Agreement with GoC is not claimed to prove arbitrary-input hardware equivalence."
+  },
+  {
+    "file": "mullit_architecture_test.cpp",
+    "assertions": [
+      "MullitArchitecture.PoliciesAllModifiersDppMasksAliasesAndGuards",
+      "MullitArchitecture.Rdna3LightingCartesianValues",
+      "MullitArchitecture.LiteralScalingAndDenormalDifferences",
+      "MullitArchitecture.ReportingErrorsAndHostControls"
+    ],
+    "evidence": [
+      "tests/mullit_architecture_test.cpp",
+      "tests/mullit_reference.h",
+      "tests/mullit_hardware.h",
+      "tests/LOOSE_TOLERANCES.md"
+    ],
+    "scope": "RDNA3/RDNA4 both widths: independently expressed loose lighting rule and inherited rocjitsu ffc144c564c finish/OMOD policy, not a new bit-exact model. All 512 modes and eight guest policies sample DPP, aliases and EXEC with deterministic mt19937 words and capture boundaries on all CPU selectors. Written numerical outputs are fuzzy; guards, inactive lanes and optional-state preservation remain raw. RDNA3 4096-triple Cartesian lighting reference and six literal architecture differences cover sentinel, signed-zero, scaling and denormal ordering. Invalid flags, unsupported strict exact/global-state, empty EXEC and host controls are tested. Calibration and a separate random-seed holdout are documented in LOOSE_TOLERANCES.md.",
+    "diagnostics": "Computed checks report CPU/mode/lane (and architecture/policy/route where applicable); hardware digests remain complemented by per-output computed and literal witnesses. Agreement with GoC is not claimed to prove arbitrary-input hardware equivalence."
   }
 ]

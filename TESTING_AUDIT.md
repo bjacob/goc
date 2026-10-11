@@ -507,3 +507,16 @@ Follow-up identified while reviewing MULLIT: general loose multiplication in its
 computed-reference tests still uses raw equality. Preserve sentinel, signed-zero,
 hardware-digest and untouched-storage checks, but calibrate fuzzy comparisons for
 ordinary written numerical results before marking those two files reviewed.
+
+### MULLIT review and fuzzy comparisons
+
+The MULLIT follow-up above is resolved. Two reviews bring the queue to 103
+reviewed and 51 pending. General computed-result checks now use a measured
+absolute/relative bound; sentinel, signed-zero, hardware digests and storage
+preservation remain exact. Calibration and a second deterministic seed found
+zero reference differences on Clang/GCC; documentation distinguishes that
+observation from the deliberately nonzero allowance for future loose arithmetic.
+Added comparator boundary checks and per-lane architecture diagnostics. All 15
+family tests and all 14 tooling tests pass; all 1,791 APIs retain active family
+references. Production code and hardware fixtures are unchanged. Broader family
+review and final full-build validation remain pending.
