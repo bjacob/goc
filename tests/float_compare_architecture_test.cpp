@@ -108,7 +108,9 @@ TEST(FloatCompareArchitecture, GuestPoliciesModifiersAndNativeState) {
               ASSERT_EQ(rdna3_wave64[op](flags, exec_mask, mode, &result64, a, b, state_output),
                         GOC_SUCCESS);
               ASSERT_EQ(result64, expected);
-              ASSERT_EQ(state, 0x12345678U);
+              if (state_output) {
+                ASSERT_EQ(state, 0x12345678U);
+              }
               ASSERT_EQ(goc_test::float_compare_functions[op](flags, uint32_t(exec_mask), mode,
                                                               &result32, a, b, state_output),
                         GOC_SUCCESS);
@@ -117,7 +119,9 @@ TEST(FloatCompareArchitecture, GuestPoliciesModifiersAndNativeState) {
                                                                      &result64, a, b, state_output),
                         GOC_SUCCESS);
               ASSERT_EQ(result64, expected);
-              ASSERT_EQ(state, 0x12345678U);
+              if (state_output) {
+                ASSERT_EQ(state, 0x12345678U);
+              }
             }
           }
   }

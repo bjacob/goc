@@ -1319,5 +1319,58 @@
     ],
     "scope": "Signed/unsigned packed Wave32 integer MAD. Explicit half extraction/sign extension and int64 product-plus-addend are bounded (unsigned maximum below 2^32); clamp precedes 16-bit narrowing. All 128 half-selection/clamp combinations, boundary triples, each source encoding with deterministic other operands, all CPU selectors and all 15 whole-register alias partitions are tested. Primary sweeps use loose semantics; literal full-precision overflow and cross-half witnesses now run both semantics with STRICT. Wave64 packed variants have separate both-semantics coverage in integer16_wave64_test.cpp. Invalid negation flags preserve results, empty EXEC and host-state behavior are checked.",
     "diagnostics": "Mode sweeps carry sign/CPU/mode context and alias failures report EXEC. Small literal witnesses independently anchor clamp-before-narrowing and half selection; no hardware capture is claimed."
+  },
+  {
+    "file": "float_compare_architecture_test.cpp",
+    "assertions": [
+      "FloatCompareArchitecture.GuestPoliciesModifiersAndNativeState",
+      "FloatCompareArchitecture.UnsupportedReportingIsAtomicIncludingEmptyExec",
+      "FloatCompareArchitecture.DppAndAliasedPredicateOutputs",
+      "FloatCompareArchitecture.GuestPoliciesPreserveHostEnvironment"
+    ],
+    "evidence": [
+      "tests/float_compare_architecture_test.cpp",
+      "tests/float_compare_reference.h",
+      "tests/float_compare_hardware.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "RDNA3 and RDNA4 nonconstant FP16/32/64 CMP/CMPX predicates, both wave widths. Bitwise sign/magnitude ordering with explicit NaN, signed-zero, input-flush and half-selection rules supplies exact predicate masks; RDNA4 predicate hardware evidence is in the separately reviewed float_compare family. Both semantics, every CPU selector, eight guest policies and all ABS/NEG/half modifiers are covered on boundary and deterministic mixed inputs. RDNA3 DPP includes aliased scalar results in upper source words. RDNA3 requested exact state is explicitly unsupported with atomic failure; RDNA4 reporting is separately covered in compare_exceptions. State preservation is asserted only when the test actually passes its pointer. Host-control checks do not serve as result or state-generation oracles.",
+    "diagnostics": "Opcode-scoped policy comparisons and independent raw predicates; existing optional-state error tests preserve scalar result and state including empty EXEC. No native RDNA3 hardware capture is claimed."
+  },
+  {
+    "file": "float_compare_wave64_test.cpp",
+    "assertions": [
+      "FloatCompareWave64.PredicatesModifiersDppAndAliases",
+      "FloatCompareWave64.HardwareExceptionPairsInUpperAndLowerLanes",
+      "FloatCompareWave64.InvalidFlagsAndZeroExec"
+    ],
+    "evidence": [
+      "tests/float_compare_wave64_test.cpp",
+      "tests/float_compare_reference.h",
+      "tests/float_compare_hardware.h",
+      "tests/compare_exceptions_hardware.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Eighty-four RDNA4 Wave64 predicate APIs. Independent raw ordering reference covers strict exact modifiers, input flushing, DPP row controls, upper-lane EXEC and predicate output aliasing into source words33/34. Captured per-pair exception data is reused at lanes0/31/32/63, including empty EXEC and signaling CLAMP; the captured classifications are not claimed to be a separate native Wave64 capture. Predicate routing loops select all CPUs; exact exception-pair loops select baseline and loose opt-out checks select the highest available CPU. Architecture integration separately covers loose results. Invalid-call preservation and zero-EXEC state behavior are explicit.",
+    "diagnostics": "Per-pair exception failures now identify predicate, pair, signaling, flush and EXEC. Per-mask predicate checks identify modifier and route; hardware fixture stores individual exception results rather than an opaque digest."
+  },
+  {
+    "file": "compare_exceptions_test.cpp",
+    "assertions": [
+      "CompareExceptions.HardwareOperandPairs",
+      "CompareExceptions.LaneReductionDppAndHalfSelection",
+      "CompareExceptions.LooseSkipsReportingAndErrorsPreserveOutputs",
+      "CompareExceptions.ScalarLiteralTruthTableAndOptionalState",
+      "CompareExceptions.ScalarErrorsPreserveBothOutputs"
+    ],
+    "evidence": [
+      "tests/compare_exceptions_test.cpp",
+      "tests/compare_exceptions_hardware.h",
+      "tests/float_compare_reference.h",
+      "tests/float_compare_hardware.h",
+      "tests/dpp_reference.h"
+    ],
+    "scope": "Twenty-eight scalar and eighty-four RDNA4 Wave32 vector predicates. gfx1201 captured 12x12 operand pairs anchor invalid/input-denormal flags across denormal and signaling modes, with OR accumulation and inactive-lane suppression. Reporting/nonreporting predicate results now both check the independent bitwise ordering model rather than only one another. Scalar literal ISA truth-table rows separately anchor less/equal/greater/unordered, signed zero, NaN and ignored upper-half inputs. DPP reduction uses captured per-pair flags after routing/half selection and tests result/source aliasing. All CPU selectors, loose skipping, optional output, invalid-call preservation and host-state checks are covered. RDNA3 exact reporting remains explicitly unsupported in architecture tests.",
+    "diagnostics": "Hardware pair checks now report opcode/CPU/pair/denormal/signaling/EXEC and independently verify predicates. Literal scalar references avoid relying on the same order transform; captured flags remain independent numerical evidence."
   }
 ]

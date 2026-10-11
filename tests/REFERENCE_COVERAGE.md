@@ -24,7 +24,7 @@ Those checks detect inventory mistakes; they cannot prove oracle equivalence or
 that a test exercises every referenced API in every semantics/mode.
 
 Current inventory: 1,791 instructions, 163 active test objects, no missing
-non-generic family references. Eighty-five explicit family-file reviews exist and 69
+non-generic family references. Eighty-eight explicit family-file reviews exist and 66
 remain. Reviewed-file membership must not be interpreted as complete per-API coverage. Consult the record's
 scope, especially wave width, semantics and optional state.
 
@@ -219,3 +219,13 @@ The compact Wave32 literal cases now exercise strict exact as well as loose
 semantics; the large loose sweeps are not mislabeled as exact coverage.
 SAD DPP capture retains its hardware digest with per-lane diagnostics. Wave64
 threshold cases independently test each accumulator and coincident outputs.
+
+## Floating predicates and their exception state
+
+Three reviews cover architecture integration, Wave64 and captured comparison
+exceptions. Predicate masks require exact equality even in loose semantics.
+Captured exception-pair tests now independently check predicate results as well
+as reporting/nonreporting agreement. State assertions apply only to calls that
+actually pass the state pointer. Records distinguish supported RDNA4 reporting
+from RDNA3 atomic rejection, and reused per-pair hardware classifications from
+native Wave64 captures. No new numerical model or golden fixture was introduced.

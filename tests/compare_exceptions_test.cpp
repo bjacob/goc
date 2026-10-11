@@ -59,9 +59,18 @@ TEST(CompareExceptions, HardwareOperandPairs) {
                 no_report_status = fn(flags, exec_mask, signaling ? GOC_ALU_CLAMP : 0,
                                       &no_report_result, a, b, nullptr);
               }
-              ASSERT_EQ(status, GOC_SUCCESS) << op;
+              SCOPED_TRACE(::testing::Message()
+                           << "op=" << op << " cpu=" << cpu << " pair=" << pair << " denorm="
+                           << denorm << " signaling=" << signaling << " exec=" << exec_mask);
+              ASSERT_EQ(status, GOC_SUCCESS);
               ASSERT_EQ(no_report_status, GOC_SUCCESS);
-              EXPECT_EQ(result, no_report_result);
+              uint32_t input[] = {uint32_t(av), uint32_t(av >> 32), uint32_t(bv),
+                                  uint32_t(bv >> 32)};
+              unsigned predicate = op < 28 ? format * 28 + op % 14 : op - 28;
+              bool truth = goc_test::float_compare_reference(predicate, 0, !(denorm & 1), input);
+              uint32_t expected_result = truth ? (op < 28 ? 1U : exec_mask) : 0;
+              EXPECT_EQ(result, expected_result);
+              EXPECT_EQ(no_report_result, expected_result);
               uint32_t generated =
                   op < 28 || exec_mask
                       ? goc_test::compare_exception_hardware[(denorm & 1) + 2 * signaling][pair]

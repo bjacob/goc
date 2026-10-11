@@ -447,3 +447,12 @@ limits of Wave32 loose-only exhaustive sweeps. Compact Wave32 SAD/packed-MAD
 literal tests now also select strict exact semantics. SAD's DPP hardware digest
 now has per-output diagnostics. All 18 family tests pass with Clang/GCC; all 14
 tooling tests pass. Production and captured data are unchanged.
+
+### Floating-comparison integration and exception review
+
+Three reviews bring the queue to 88 reviewed and 66 pending. Hardware exception
+pairs now check predicate results independently, in addition to captured flags.
+Removed vacuous state assertions on null-pointer calls and improved pair/mode
+failure context. Recorded RDNA3 unsupported-reporting behavior, RDNA4 captured
+state evidence, and Wave64/CPU coverage limits explicitly. All 12 affected tests
+pass with Clang/GCC; all 14 tooling tests pass. Production is unchanged.

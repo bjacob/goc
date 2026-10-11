@@ -79,6 +79,9 @@ TEST(FloatCompareWave64, HardwareExceptionPairsInUpperAndLowerLanes) {
           const uint32_t *a[] = {words[0], words[1]}, *b[] = {words[2], words[3]};
           for (uint64_t exec_mask :
                {uint64_t(0), uint64_t(1), uint64_t(1) << 32, uint64_t(1) << 63, UINT64_MAX}) {
+            SCOPED_TRACE(::testing::Message()
+                         << "op=" << op << " pair=" << pair << " signaling=" << signaling
+                         << " flush=" << flush << " exec=" << exec_mask);
             uint64_t d = 123;
             uint32_t state = 0x80000000;
             uint64_t flags = GOC_SEMANTICS_EXACT_EMPIRICAL | GOC_SEMANTICS_STRICT |
